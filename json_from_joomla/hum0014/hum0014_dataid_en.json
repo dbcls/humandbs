@@ -71,7 +71,7 @@
     "Criteria": "Controlled-access (Type I)",
     "Release Date": "2019/09/27"
   },
-
+  {
     "Data Set ID": "hum0014.v7.POAG.v1",
     "Type of Data": "GWAS for POAG",
     "Criteria": "Unrestricted-access",
@@ -89,7 +89,7 @@
     "Criteria": "Unrestricted-access",
     "Release Date": "2018/08/07"
   },
-
+  {
     "Data Set ID": "JGAS000140",
     "Type of Data": "target sequencing of 11 hereditary breast cancer genes in 7,104 breast cancer patients and 23,731 controls",
     "Criteria": "Controlled-access (Type I)",
@@ -107,13 +107,13 @@
     "Criteria": "Unrestricted-access",
     "Release Date": "2019/01/25"
   },
-
+  {
     "Data Set ID": "hum0014.v14.smok.v1",
     "Type of Data": "GWAS for smoking behaviour",
     "Criteria": "Unrestricted-access",
     "Release Date": "2019/03/26"
   },
-
+  {
     "Data Set ID": "hum0014.v15.ht.v1",
     "Type of Data": "GWAS for height",
     "Criteria": "Unrestricted-access",
@@ -191,7 +191,7 @@
     "Criteria": "Controlled-access (Type I)",
     "Release Date": "2022/04/01"
   },
-
+  {
     "Data Set ID": "hum0014.v27.surv.v1",
     "Type of Data": "GWAS for survival time in 137,693 individuals from BBJ 1st cohort",
     "Criteria": "Unrestricted-access",
