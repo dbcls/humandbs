@@ -1,1526 +1,243 @@
 {
-  "hum0014.v31": {
-    "NBDC Research ID": "hum0014.v31",
-    "データ": {
-      "hum0014.v1.freq.v1": {
+      {
         "データID": "hum0014.v1.freq.v1",
         "内容": "心筋梗塞1,666症例および\r\n対照健常者3,198名のGWAS",
         "制限": "非制限公開",
         "公開日": "2014/09/30"
       },
-      "hum0014.v2.jsnp.934ctrl.v1": {
+      {
         "データID": "hum0014.v2.jsnp.934ctrl.v1",
         "内容": "健常者934名の遺伝子型カウント情報\r\n（JSNPのデータ）",
         "制限": "非制限公開",
         "公開日": "2015/12/28"
       },
-      "35疾患": {
+      {
         "データID": "35疾患",
         "内容": "35疾患各約190症例における遺伝子型カウント情報\r\n（JSNPのデータ）",
         "制限": "非制限公開",
         "公開日": "2015/12/28"
       },
-      "hum0014.v2.jsnp.182ec.v1": {
+      {
         "データID": "hum0014.v2.jsnp.182ec.v1",
         "内容": "食道がん182症例の遺伝子型カウント情報\r\n（JSNPのデータ）",
         "制限": "非制限公開",
         "公開日": "2015/12/28"
       },
-      "hum0014.v2.jsnp.92als.v1": {
+      {
         "データID": "hum0014.v2.jsnp.92als.v1",
         "内容": "筋萎縮性側索硬化症92症例の遺伝子型カウント情報\r\n（JSNPのデータ）",
         "制限": "非制限公開",
         "公開日": "2015/12/28"
       },
-      "hum0014.v3.T2DM-1.v1": {
+      {
         "データID": "hum0014.v3.T2DM-1.v1",
         "内容": "２型糖尿病9,817症例および\r\n対照者6,763名のGWAS",
         "制限": "非制限公開",
         "公開日": "2016/01/28"
       },
-      "hum0014.v3.T2DM-2.v1": {
+      {
         "データID": "hum0014.v3.T2DM-2.v1",
         "内容": "２型糖尿病5,646症例および\r\n対照者19,420名のGWAS",
         "制限": "非制限公開",
         "公開日": "2016/01/28"
       },
-      "hum0014.v4.AD.v1": {
+      {
         "データID": "hum0014.v4.AD.v1",
         "内容": "アトピー性皮膚炎患者1,472症例および\r\n対照者7,966名のGWAS",
         "制限": "非制限公開",
         "公開日": "2016/02/02"
       },
-      "hum0014.v5.AF.v1": {
+      {
         "データID": "hum0014.v5.AF.v1",
         "内容": "心房細動患者8,180症例および対照者28,612名のGWAS",
         "制限": "非制限公開",
         "公開日": "2017/05/18"
       },
-      "JGAS000101": {
+      {
         "データID": "JGAS000101",
         "内容": "心房細動患者8,180症例のPhenotypeデータ、Genotypeデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2017/05/18"
       },
-      "hum0014.v6.158k.v1": {
+      {
         "データID": "hum0014.v6.158k.v1",
         "内容": "158,284名のBMIのGWAS",
         "制限": "非制限公開",
         "公開日": "2017/09/08"
       },
-      "JGAS000114": {
+      {
         "データID": "JGAS000114",
         "内容": "バイオバンクジャパン1,037名のWGSデータと1000ゲノムプロジェクト（Phase3v5）2504名のWGSのvcfファイルを統合したgenotype imputation用のreference panel",
         "制限": "制限公開（Type I）",
         "公開日": "2019/09/27"
       },
-      "hum0014.v7.POAG.v1": {
+      {
         "データID": "hum0014.v7.POAG.v1",
         "内容": "開放隅角緑内障3,980症例および\r\n対照者18,815名のGWAS",
         "制限": "非制限公開",
         "公開日": "2018/04/04"
       },
-      "hum0014.v8.58qt.v1": {
+      {
         "データID": "hum0014.v8.58qt.v1",
         "内容": "162,255名の58臨床検査値のGWAS",
         "制限": "非制限公開",
         "公開日": "2018/05/01"
       },
-      "hum0014.v9.Men.v1\r\nhum0014.v9.MP.v1": {
+      {
         "データID": "hum0014.v9.Men.v1\r\nhum0014.v9.MP.v1",
         "内容": "初潮年齢データを有する女性67,029名および閉経年齢データを有する女性43,861名のGWAS",
         "制限": "非制限公開",
         "公開日": "2018/08/07"
       },
-      "JGAS000140": {
+      {
         "データID": "JGAS000140",
         "内容": "乳がん7,104症例と対照者23,731名の遺伝性乳がん原因11遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2018/10/16"
       },
-      "hum0014.v12.T2DMwN.v1": {
+      {
         "データID": "hum0014.v12.T2DMwN.v1",
         "内容": "２型糖尿病腎症2,809症例および\r\n２型糖尿病対照5,592症例のGWASメタ解析",
         "制限": "非制限公開",
         "公開日": "2018/12/10"
       },
-      "hum0014.v13.T2DMmeta.v1": {
+      {
         "データID": "hum0014.v13.T2DMmeta.v1",
         "内容": "２型糖尿病36,614症例および\r\n対照者155,150名のGWASメタ解析",
         "制限": "非制限公開",
         "公開日": "2019/01/25"
       },
-      "hum0014.v14.smok.v1": {
+      {
         "データID": "hum0014.v14.smok.v1",
         "内容": "日本人集団165,436名における喫煙習慣のGWAS",
         "制限": "非制限公開",
         "公開日": "2019/03/26"
       },
-      "hum0014.v15.ht.v1": {
+      {
         "データID": "hum0014.v15.ht.v1",
         "内容": "159,095名の身長のGWAS",
         "制限": "非制限公開",
         "公開日": "2019/09/27"
       },
-      "JGAS000203": {
+      {
         "データID": "JGAS000203",
         "内容": "遺伝性前立腺がん7,636症例と対照者12,366名の遺伝性前立腺がん原因8遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2019/10/07"
       },
-      "hum0014.v17": {
+      {
         "データID": "hum0014.v17",
         "内容": "40疾患のGWAS",
         "制限": "非制限公開",
         "公開日": "2019/10/08"
       },
-      "hum0014.v18": {
+      {
         "データID": "hum0014.v18",
         "内容": "乳がんのGWAS",
         "制限": "非制限公開",
         "公開日": "2019/11/26"
       },
-      "hum0014.v19": {
+      {
         "データID": "hum0014.v19",
         "内容": "日本人集団165,084名における食習慣のGWAS",
         "制限": "非制限公開",
         "公開日": "2020/04/20"
       },
-      "hum0014.v20.cad.v1": {
+      {
         "データID": "hum0014.v20.cad.v1",
         "内容": "冠動脈疾患のGWAS",
         "制限": "非制限公開",
         "公開日": "2020/08/17"
       },
-      "hum0014.v21": {
+      {
         "データID": "hum0014.v21",
         "内容": "虚血性心疾患のGWAS",
         "制限": "非制限公開",
         "公開日": "2020/08/25"
       },
-      "JGAS000293": {
+      {
         "データID": "JGAS000293",
         "内容": "2003年から2007年度にバイオバンク・ジャパンに登録されたサンプル（約20万例）から抽出された11,234名の23遺伝子における全てのエクソン領域のTarget Capture Sequencingn解析より得られた体細胞変異データおよびSNPアレイにより得られた染色体変異データ",
         "制限": "制限公開（Type I）",
         "公開日": "2021/05/21"
       },
-      "JGAS000114 にデータ追加": {
+      {
         "データID": "JGAS000114 にデータ追加",
         "内容": "JGAD000220のWGSデータのbam/gvcfデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2021/07/13"
       },
-      "JGAS000327": {
+      {
         "データID": "JGAS000327",
         "内容": "膵がん1,005症例の遺伝性腫瘍関連27遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2021/11/26"
       },
-      "JGAS000346": {
+      {
         "データID": "JGAS000346",
         "内容": "大腸がん12,503症例および対照者23,705名の遺伝性腫瘍関連27遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2021/11/26"
       },
-      "JGAS000381": {
+      {
         "データID": "JGAS000381",
         "内容": "心筋梗塞1,765症例、認知症199症例のWGSデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2022/01/25"
       },
-      "JGAS000414": {
+      {
         "データID": "JGAS000414",
         "内容": "腎がん740症例および対照者5,996名の遺伝性腫瘍関連27遺伝子および腎がん関連13遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2022/04/01"
       },
-      "hum0014.v27.surv.v1": {
+      {
         "データID": "hum0014.v27.surv.v1",
         "内容": "BBJ第1コホート137,693名の生存に関するGWAS",
         "制限": "非制限公開",
         "公開日": "2022/12/31"
       },
-      "hum0014.v28.MEs.v1": {
+      {
         "データID": "hum0014.v28.MEs.v1",
         "内容": "BBJ第1コホート4,880名のmobile element多型頻度情報",
         "制限": "非制限公開",
         "公開日": "2023/04/05"
       },
-      "hum0014.v29.AF.v1": {
+      {
         "データID": "hum0014.v29.AF.v1",
         "内容": "心房細動患者9,826症例および対照者140,446名のGWAS（BBJ）\r\n心房細動患者77,690症例および対照者1,167,040名のGWASメタ解析（BBJ、欧米人、FinnGen）",
         "制限": "非制限公開",
         "公開日": "2023/04/05"
       },
-      "JGAS000347": {
+      {
         "データID": "JGAS000347",
         "内容": "リンパ腫1,982症例の遺伝性腫瘍関連27遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2023/04/20"
       },
-      "JGAS000592": {
+      {
         "データID": "JGAS000592",
         "内容": "対照者37,592名（BBJの非がん対象者）の遺伝性腫瘍関連27遺伝子翻訳領域のTarget Capture Sequencingデータ",
         "制限": "制限公開（Type I）",
         "公開日": "2023/04/20"
       },
-      "JGAD000690": {
+      {
         "データID": "JGAD000690",
         "内容": "JGAD000220（BBJ1,026名のWGS）の加工データ（CRAM、gVCF）",
         "制限": "制限公開（Type I）",
         "公開日": "2023/09/01"
       },
-      "JGAD000758": {
+      {
         "データID": "JGAD000758",
         "内容": "JGAD000220（BBJ1,026名のWGS）の加工データ（joint call）（aggregate VCF）",
         "制限": "制限公開（Type I）",
         "公開日": "2023/09/01"
       },
-      "JGAD000679": {
+      {
         "データID": "JGAD000679",
         "内容": "JGAD000220（reference panel）の加工データ（NBDC-DDBJ imputation server用データ）",
         "制限": "制限公開（Type I）",
         "公開日": "2023/09/01"
       }
-    },
-    "研究内容の概要": {
-      "目的": "日本人における疾患関連遺伝子の特定、日本人における転移因子挿入多型の網羅的探索",
-      "方法": "Human610-Quad BeadChip、HumanHap550v3 Genotyping BeadChip、HumanOmniExpress-12 BeadChip、HumanExome BeadChip、 OmniExpressExome Beadchip（Illumina社）、high-density oligonucleotide arrays （Perlegen Sciences社）、もしくはインベーダー法（Hologic Japan社）により遺伝子型を決定し、心筋梗塞、２型糖尿病、アトピー性皮膚炎、心房細動、Body Mass Index（BMI）、開放隅角緑内障、58形質、初潮・閉経年齢、喫煙習慣、身長、42疾患（4疾患は以前のリリースと一部重複あり）、食習慣、および冠動脈疾患のゲノムワイド関連解析（Genome Wide Association Study：GWAS）や２型糖尿病腎症および２型糖尿病発症のGWASメタ解析を実施。また、Illumina社 HiSeq 2500/X Fiveを用いて、BBJ第1コホート1,026名、心筋梗塞1,765症例、および認知症199症例の全ゲノムシークエンス（Whole Genome Sequencing：WGS）を実施した。乳がん7,104症例と対照者23,731名における遺伝性乳がん原因11遺伝子翻訳領域、遺伝性前立腺がん7,636症例と対照者12,366名における遺伝性前立腺がん原因8遺伝子翻訳領域、バイオバンクジャパン11,234名における23遺伝子、膵がん1,005症例、大腸がん12,503症例および対照者23,705名、腎がん740症例および対照者5,996名、リンパ腫1,982症例、胃がん10,366症例および対照者37,592名の遺伝性腫瘍関連27遺伝子翻訳領域ならびに腎がん740症例および対照者5,996名の腎がん関連13遺伝子翻訳領域のTarget Capture Sequencingを実施した。遺伝性乳がん原因11遺伝子翻訳領域、遺伝性前立腺がん原因8遺伝子翻訳領域、バイオバンクジャパン11,234名における23遺伝子、遺伝性腫瘍関連27遺伝子翻訳領域および腎がん関連13遺伝子翻訳領域のTarget Capture Sequencingを実施した。バイオバンクジャパン1,037名のWGSデータから作成したvcfファイルと1000ゲノムプロジェクト（Phase3v5）2504名のvcfファイルを統合し、genotype imputation用reference panelを作成した。バイオバンクジャパン137,693名について、男女別にCox回帰分析を実施した。当研究室が開発したソフトウェアを用い、バイオバンクジャパンの第1コホート4,880名のWGSデータから転移因子多型の同定を行った。バイオバンクジャパンの心房細動ケース9,826人とコントロール140,446人で心房細動GWASを実施し、さらに欧米人の心房細動GWAS（http://csg.sph.umich.edu/willer/public/afib2018; 60,620人ケースと970,216人コントロール、FinnGen; https://www.finngen.fi/en; 7,244人ケースと56,378人コントロール）とメタ解析を行った。メタ解析の結果からポリジェニックリスクスコアを構築した。",
-      "対象": "オーダーメイド医療実現化プロジェクトおよびオーダーメイド医療の実現プログラム参加者",
-      "URL": "http://www.biobankjp.org/index.html"
-    },
-    "分子データ": {
-      "hum0014.v1.freq.v1": {
-        "対象": "心筋梗塞：1,666症例、対照健常者：3,198名",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [Human610-Quad BeadChip、HumanHap550v3 Genotyping BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina Human610-Quad Beadchip",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）",
-        "フィルタリング": "Sample Call rate < 0.98, SNP call rate < 0.99, HWE P < 1 x 10^-6",
-        "マーカー数(QC後)": "455,781 SNPs （hg18/GRCh36）",
-        "NBDC Dataset ID": "hum0014.v1.freq.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "71.3 MB（xlsx）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v2.jsnp.934ctrl.v1": {
-        "対象": "健常者：934名（JSNP）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanHap550v3 Genotyping BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina HumanHap550v3 Genotyping BeadChip",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）",
-        "フィルタリング": "Sample Call rate < 0.98, SNP call rate < 0.99, HWE P < 1 x 10^-6",
-        "マーカー数(QC後)": "515,286 SNPs",
-        "NBDC Dataset ID": "hum0014.v2.jsnp.934ctrl.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "32.2 MB（zip [xls]）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "35疾患": {
-        "対象": "悪性腫瘍 （肺がん、乳がん、胃がん、大腸・直腸がん、前立腺がん）\r\n心血管系疾患 （心不全、心筋梗塞，不安定狭心症、安定狭心症、不整脈、閉塞性動脈硬化症）\r\n脳血管障害 （脳梗塞、脳動脈瘤）\r\n呼吸器疾患 （間質性肺炎＆肺線維症、肺気腫、気管支喘息）\r\n慢性肝疾患 （C型慢性肝炎、肝硬変）\r\n眼疾患 （白内障、緑内障）\r\nその他 （てんかん、歯周病、尿路結石、ネフローゼ症候群、子宮筋腫、子宮内膜症、\r\n骨粗鬆症、関節リウマチ、筋萎縮性側索硬化症、花粉症、アトピー性皮膚炎、\r\n過敏性症候群（薬疹）、高脂血症、糖尿病、バセドウ病）\r\n各約190症例",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Perlegen Sciences [high-density oligonucleotide arrays]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "-",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "-",
-        "フィルタリング": "-",
-        "マーカー数(QC後)": "約20万SNPs （b129）",
-        "データセット": "悪性腫瘍 （肺がん、乳がん、胃がん、大腸・直腸がん、前立腺がん）\r\n心血管系疾患 （心不全、心筋梗塞、不安定狭心症、安定狭心症、不整脈、閉塞性動脈硬化症）\r\n脳血管障害 （脳梗塞、脳動脈瘤）\r\n呼吸器疾患 （間質性肺炎＆肺線維症、肺気腫、気管支喘息）\r\n慢性肝疾患 （C型慢性肝炎、肝硬変）\r\n眼疾患 （白内障、緑内障）\r\nその他 （てんかん、歯周病、尿路結石、ネフローゼ症候群、子宮筋腫、子宮内膜症、\r\n骨粗鬆症、関節リウマチ、筋萎縮性側索硬化症、花粉症、アトピー性皮膚炎、\r\n過敏性症候群（薬疹）、高脂血症、糖尿病、バセドウ病）\r\n（データのダウンロードは上記疾患名をクリックしてください）\r\nDictionary file",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v2.jsnp.182ec.v1": {
-        "対象": "食道がん：182症例（JSNP）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanHap550v3 Genotyping BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina HumanHap550v3 Genotyping BeadChip",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）",
-        "フィルタリング": "Sample Call rate < 0.98, SNP call rate < 0.99, HWE P < 1 x 10^-6",
-        "マーカー数(QC後)": "503,734 SNPs",
-        "NBDC Dataset ID": "hum0014.v2.jsnp.182ec.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "6.6 MB（zip [txt]）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v2.jsnp.92als.v1": {
-        "対象": "筋萎縮性側索硬化症：92症例（JSNP）",
-        "規模": "large-scale case-control association study",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Hologic Japan [Invader]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Invader assay system（Third Wave Technologies）",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "ABI PRISM SDS versions 2.0 - 2.2",
-        "フィルタリング": "SNP call rate ≥ 0.95（疾患群、対照群）, HWE P ≥1.0 x 10^-2（対照群）",
-        "マーカー数(QC後)": "48,939 SNPs",
-        "NBDC Dataset ID": "hum0014.v2.jsnp.92als.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "3.2 MB（zip [txt]）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v3.T2DM-1.v1": {
-        "対象": "２型糖尿病：9,817症例、\r\n対照者：6,763名（健常者および糖尿病を合併していない脳動脈瘤、食道がん、子宮体がん、肺気腫、緑内障の患者）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [OmniExpressExome Beadchip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina OmniExpressExome Beadchip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）",
-        "フィルタリング": "Sample Call rate < 0.98, SNP call rate < 0.99, MAF < 0.01 HWE P < 1 x 10^-6 in control",
-        "マーカー数(QC後)": "552,915 SNPs （hg19）",
-        "NBDC Dataset ID": "hum0014.v3.T2DM-1.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "84.0 MB（xlsx）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v3.T2DM-2.v1": {
-        "対象": "２型糖尿病：5,646症例、\r\n対照者：19,420名 （糖尿病を合併していない大腸-直腸がん、乳がん、前立腺がん、肺がん、胃がん、\r\n閉塞性動脈硬化症、不整脈、脳梗塞、心筋梗塞、胆嚢・胆管がん、膵がん、過敏性症候群（薬疹）、\r\n関節リウマチ、筋萎縮性側索硬化症、肝がん、肝硬変、骨粗鬆症、子宮筋腫の患者）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [Human610-Quad BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina Human610-Quad Beadchip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）",
-        "フィルタリング": "Sample Call rate < 0.98, SNP call rate < 0.99, MAF < 0.01 HWE P < 1 x 10^-6 in control",
-        "マーカー数(QC後)": "479,088 SNPs （hg18）",
-        "NBDC Dataset ID": "hum0014.v3.T2DM-2.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "72.6 MB（xlsx）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v4.AD.v1": {
-        "対象": "アトピー性皮膚炎：1,472症例、\r\n対照者：7,966名（健常者およびアトピー性皮膚炎と気管支喘息のいずれも合併していない脳動脈瘤、食道がん、子宮体がん、肺気腫、緑内障の患者）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress-12 BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress-12 BeadChip",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）]",
-        "関連解析（ソフトウェア）": "mach2dat [GWAS]",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, 対照者群で HWE P < 1 x 10^-6\r\nImputationのQC：リファレンスパネルで HWE P < 1 x 10^-6 もしくは MAF < 0.01\r\n     　                     GWASデータセットとリファレンスパネルのアレル頻度差 > 0.16",
-        "マーカー数(QC後)": "約770万 SNVs（hg19）",
-        "NBDC Dataset ID": "hum0014.v4.AD.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "ADGWAS_auto.txt （525 MB）\r\nADGWAS_X_females.txt （17 MB）\r\nADGWAS_X_males.txt （15 MB）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000101 / hum0014.v5.AF.v1": {
-        "対象": "心房細動：8,180症例\r\n対照者：28,612名",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）]\r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2dat [GWAS]",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, 対照者群で HWE P < 1 x 10^-6\r\nImputationのQC：リファレンスパネルで HWE P < 1 x 10^-6 もしくは MAF < 0.01\r\n     　                     GWASデータセットとリファレンスパネルのアレル頻度差 > 0.16\r\n                              R square < 0.9",
-        "マーカー数(QC後)": "約500万 SNVs（hg19）",
-        "Phenotype情報": "性別、年齢",
-        "NBDC Dataset ID / \r\nJapanese Genotype-phenotype \r\nArchive Dataset ID": "【GWAS集計情報】\r\nhum0014.v5.AF.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file\r\n【個別データ（心房細動群のみ）】\r\nPhenotype：JGAD000101\r\nGenotype：JGAD000102",
-        "総データ量": "GWAS：485 MB（txt）\r\nPhenotype、Genotype：1 GB（txt）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000114 / hum0014.v6.158k.v1": {
-        "対象": "182,505名（内、BMI研究で使用した対象数：158,284名）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）] \r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2qtl (v1.1.3)",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, HWE P < 1 x 10^-6 \r\nImputation referenceのQC:\r\n　以下の条件に該当するSNVはreferenceから除外:\r\n　1) HWE P < 1 x 10^-6、2) MAF < 0.01\r\nImputation後のQC:\r\n　Imputation quality (Rsq) < 0.7　を除外。",
-        "マーカー数(QC後)": "常染色体：約600万 SNVs (hg19)\r\nX染色体：約15万 SNVs (hg19)",
-        "NBDC Dataset ID / \r\nJapanese Genotype-phenotype \r\nArchive Dataset ID": "【GWAS】\r\nhum0014.v6.158k.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file\r\n【個別データ】\r\nPhenotypeデータ（BMI）：JGAD000124\r\nGenotypeデータ：JGAD000123\r\n遺伝型情報に関する詳細\r\nアレイプローブの取り扱いに関する情報",
-        "総データ量": "GWAS：406 MB（zip）\r\nPhenotypeデータ（BMI）：3.32 MB（txt.gz）\r\nGenotypeデータ：26.3 GB（csv.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v7.POAG.v1": {
-        "対象": "開放隅角緑内障（ICD10：H401）：3,980症例（男性：1,997、女性：1,983）\r\n対照者：18,815名（男性：7,817、女性：10,998）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac（ver. 0.1.1）[imputation（1000 genomes Phase I v3 ）]",
-        "関連解析（ソフトウェア）": "mach2dat（ver. 1.0.19）",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, MAF < 0.5%, \r\n　　　　　　　　  対照者群で HWE P < 1 x 10^-6 \r\nImputationのQC：リファレンスパネルで HWE P < 1 x 10^-6 もしくは MAF < 0.01 　 \r\n　　　　　　　　GWASデータセットとリファレンスパネルのアレル頻度差 > 0.16 \r\nImputation後のQC：Imputation quality (Rsq) < 0.7を除外。\r\n　　　　　　　　　さらに、ベータが4未満もしくは4を超えるものは公開用に除外。",
-        "マーカー数(QC後)": "常染色体：5,961,428 SNPs（hg19）\r\n男性X染色体：147,351 SNPs（hg19）\r\n女性X染色体：147,353 SNPs（hg19）",
-        "NBDC Dataset ID": "hum0014.v7.POAG-1.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "113 MB（txt.zip）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000114 / hum0014.v8.58qt.v1": {
-        "対象": "162,255名の58臨床検査値",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）] \r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2qtl（v1.1.3）",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, HWE P < 1 x 10^-6 \r\nImputation referenceのQC:\r\n　以下の条件に該当するSNVはreferenceから除外:\r\n　1) HWE P < 1 x 10^-6、2) MAF < 0.01\r\nImputation後のQC:\r\n　Imputation quality (Rsq) < 0.7　を除外。",
-        "マーカー数(QC後)": "常染色体：5,961,600 SNVs（hg19）\r\nX染色体：147,353 SNVs（hg19）",
-        "HDLコレステロール": "JGAD000145",
-        "LDLコレステロール": "JGAD000146",
-        "中性脂肪": "JGAD000147",
-        "血糖": "JGAD000148",
-        "ヘモグロビンA1c": "JGAD000149",
-        "アルブミン": "JGAD000151",
-        "非アルブミン蛋白": "JGAD000152",
-        "アルブミン/グロブリン比": "JGAD000153",
-        "血清クレアチニン": "JGAD000155",
-        "推算糸球体濾過量": "JGAD000156",
-        "尿酸": "JGAD000157",
-        "カリウム": "JGAD000159",
-        "クロール": "JGAD000160",
-        "カルシウム": "JGAD000161",
-        "無機リン": "JGAD000162",
-        "硫酸亜鉛混濁試験": "JGAD000164",
-        "アスパラギン酸アミノ基転移酵素": "JGAD000165",
-        "アラニンアミノ基転移酵素": "JGAD000166",
-        "アルカリフォスファターゼ": "JGAD000167",
-        "ガンマグルタミルトランスフェラーゼ": "JGAD000168",
-        "プロトロンビン時間": "JGAD000170",
-        "フィブリノーゲン": "JGAD000171",
-        "クレアチンキナーゼ": "JGAD000172",
-        "乳酸脱水素酵素": "JGAD000173",
-        "C反応性蛋白": "JGAD000174",
-        "好中球数": "JGAD000176",
-        "好酸球数": "JGAD000177",
-        "好塩基球数": "JGAD000178",
-        "単球数": "JGAD000179",
-        "リンパ球数": "JGAD000180",
-        "赤血球数": "JGAD000181",
-        "ヘモグロビン濃度": "JGAD000182",
-        "ヘマトクリット値": "JGAD000183",
-        "平均赤血球容積": "JGAD000184",
-        "平均赤血球ヘモグロビン量": "JGAD000185",
-        "平均赤血球ヘモグロビン濃度": "JGAD000186",
-        "血小板数": "JGAD000187",
-        "拡張期血圧": "JGAD000189",
-        "平均血圧": "JGAD000190",
-        "脈圧": "JGAD000191",
-        "後壁厚": "JGAD000193",
-        "左室拡張末期径": "JGAD000194",
-        "左室収縮末期径": "JGAD000195",
-        "左室心筋重量": "JGAD000196",
-        "左室心筋重量係数": "JGAD000197",
-        "相対的壁厚": "JGAD000198",
-        "左室内径短縮率": "JGAD000199",
-        "左室駆出率": "JGAD000200",
-        "E/A比": "JGAD000201",
-        "総データ量": "GWAS：平均 123 MB（zip）\r\nPhenotypeデータ（58形質）：平均 2.4 MB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v9.Men.v1 / hum0014.v9.MP.v1": {
-        "対象": "初潮年齢データを有する女性67,029名\r\n閉経年齢データを有する女性43,861名",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）] \r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2qtl (v1.1.3)",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, MAF < 0.5%, \r\n　　　　　　　　  対照者群で HWE P < 1 x 10^-6 \r\nImputationのQC：リファレンスパネルで HWE P < 1 x 10^-6 もしくは MAF < 0.01 　 \r\n　　　　　　　　GWASデータセットとリファレンスパネルのアレル頻度差 > 0.16 \r\nImputation後のQC：Imputation quality (Rsq) < 0.7を除外。\r\n　　　　　　　　　さらに、ベータが4未満もしくは4を超えるものは公開用に除外。",
-        "マーカー数(QC後)": "9,296,729 SNPs (hg19)",
-        "NBDC Dataset ID": "初潮：hum0014.v9.Men.v1\r\n閉経：hum0014.v9.MP.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\n初潮：Dictionary file\r\n閉経：Dictionary file",
-        "総データ量": "初潮：181 MB（txt.gz）\r\n閉経：186 MB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000114 （JGAD000220 / JGAD000410 / JGAD000690 / JGAD000758）": {
-        "対象": "2003年から2007年度にバイオバンク・ジャパンに登録された47疾患患者：1,026名",
-        "規模": "WGS",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HiSeq 2500]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "TruSeq Nano DNA Library Preparation Kit",
-        "断片化の方法": "超音波断片化",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "160 bp",
-        "クオリティコントロール方法": "リードのbase qualityが全体的に悪い検体、リード毎の%GCの結果にて異常を示した検体を除去。\r\nAlignment後、Low mapping rate検体、Insert sizeがおかしい検体、メタデータの性別情報とalingment結果より推定される性別情報が不一致な検体、性染色体異常疑いの検体を除去。\r\nGenotyping時に、VQSR、DP/GP filter (DP < 5, GQ < 20, DP > 60 && GQ < 95を除去）、heterozygosity filter (F>=0.05 を除去)、HWE filter (p < 10-6を除去）、Repeat & Low Complexity filterを実施。\r\n1000 genomes projectと合わせたPCAを実施し、日本人クラスタから大きく外れる検体を除外。\r\nその後、Genome-In-A-Bottleプロジェクトから公開されているHighConfidenceRegionリストに記載のある領域のバリアントにフラグを付与。",
-        "重複するリードの除去": "Picard 2.10.6",
-        "リアライメントおよびベースクオリティのキャリブレーション": "GATK 3.7",
-        "マッピング方法": "BWA mem 0.7.12",
-        "マッピングクオリティ": "GATK 3.7 HaplotypeCallerで変異コール時にMAPQ<20のリードを除外",
-        "マッピングの際のリファレンス配列": "GRCh37/hg19（hs37d5）",
-        "平均カバー率（Depth）": "31.8x",
-        "変異検出方法": "GATK 3.7 HaplotypeCaller",
-        "SNV数（QC後）": "76,768,387（常染色体）\r\n2,898,518（X 染色体）",
-        "INDEL数（QC後）": "10,202,908（常染色体）\r\n410,435（X 染色体）",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000220（fastq）\r\nJGAD000410（bam、vcf）：GEnome Medical alliance Japan（GEM Japan, GEM-J）の取り組みとして、GATK Best Practicesに準拠した方法により、GRCh37の参照ゲノム配列へのマッピングおよびバリアント検知を実施した際のデータです。詳しくはこちらをご覧ください。",
-        "NBDCおよび生命情報・DDBJ センターによる加工データのID": "JGAD000690\r\nJGAD000758（joint call）\r\n加工方法はこちら",
-        "総データ量": "JGAD000220：73 TB（fastq）\r\nJGAD000410：49 TB（bam、vcf）\r\nJGAD000690：52.1 TB（bam、bai、vcf、document）\r\nJGAD000758：203.8 GB（vcf_aggregate、tabix）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000140": {
-        "対象": "乳がん（ICD10：C509）：7,104症例\r\n対照者：23,731名",
-        "規模": "Target Capture",
-        "対象領域（Target Captureの場合）": "遺伝性乳がんの原因11遺伝子（ATM, BRCA1, BRCA2, CDH1, CHEK2, NBN, NF1, PALB2, PTEN, STK11, TP53）の翻訳領域",
-        "Platform": "Illumina [HiSeq 2500]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "2X Platinum Multiplex PCR Master Mix (Thermo Fisher Scientific)を用いたmultiplex PCRで対象遺伝子領域を抽出し、2nd PCRにより、KAPA HiFi DNA Polymeraseを用いてHiSeqに必要なバーコード配列およびアダプター配列を付加 *1",
-        "断片化の方法": "-",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "150 bp x 2",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000209",
-        "総データ量": "1 TB（fastq）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "※1": {
-        "対象": "[GWAS-1]\r\n　　２型糖尿病腎症：2,380症例、２型糖尿病対照（腎症非発症群）：5,234症例\r\n[GWAS-2]\r\n　　２型糖尿病腎症：429症例、２型糖尿病対照（腎症非発症群）：358症例",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [OmniExpressExome Beadchip、Human610-Quad BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina OmniExpressExome Beadchip kit　\r\nIllumina Human610-Quad Beadchip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "MACH and Minimac（1000 Genomes phased JPT, CHB and Han Chinese South data n = 275, March 2012）\r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2dat",
-        "フィルタリング": "sample call rate < 0.98, SNV call rate < 0.99, MAF < 0.1%, \r\n対照者群で HWE P < 1 x 10-6",
-        "マーカー数(QC後)": "7,521,072 SNPs（hg19）",
-        "NBDC Dataset ID": "hum0014.v12.T2DMwN.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "310 MB（csv.zip）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v12.T2DMwN.v1": {
-        "対象": "[GWAS-1]\r\n　　２型糖尿病（ICD-10：E11）：9,804症例、対照者：6,728名\r\n[GWAS-2]\r\n　　２型糖尿病（ICD-10：E11）：5,639症例、対照者：19,407名\r\n[GWAS-3]\r\n　　２型糖尿病（ICD-10：E11）：18,688症例、対照者：121,950名\r\n[GWAS-4]\r\n　　２型糖尿病（ICD-10：E11）：2,483症例、対照者：7,065名",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome、Human610-Quad BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome、Human610-Quad Beadchip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation(1000 genomes Phase 3)]\r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2dat (v1.0.24)",
-        "フィルタリング": "GenotypingのQC：\r\nGWAS1, GWAS3, GWAS4除外基準\r\n(i) hetero count < 5\r\n(ii) 各chipでHWE P < 1.0 × 10^-6\r\n(iii) in-house WGSデータとのジェノタイプ一致率 < 0.99\r\n(iv) SNV call rate < 0.99\r\n \r\nGWAS2除外基準\r\n(i) SNV call rate < 0.99\r\n(ii) MAF < 0.01\r\n(iii) differential missingness P < 1.0 × 10^-6\r\n(iv) HWE P < 1.0 × 10^-6\r\n \r\nImputationのQC：\r\nリファレンスパネルで HWE P < 1 × 10^-6 もしくは MAF < 0.01を除外\r\n3つ以上のGWASでImputation quality (Rsq) < 0.3となったものを除外",
-        "マーカー数(QC後)": "12,557,761 SNPs（hg19）",
-        "NBDC Dataset ID": "hum0014.v13.T2DMmeta.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "257 MB（txt）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v13.T2DMmeta.v1": {
-        "対象": "165,436名の喫煙習慣データ",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）] \r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "BOLT-LMM（v2.2）\r\nProbABEL（v0.4.5; for X chromosome）",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, HWE P < 1 x 10^-6 \r\nImputation referenceのQC:\r\n　以下の条件に該当するSNVはreferenceから除外:\r\n　1) HWE P < 1 x 10^-6、2) MAF < 0.01\r\nImputation後のQC:\r\n　Imputation quality (Rsq) < 0.7 and MAF < 0.01を除外",
-        "マーカー数(QC後)": "常染色体：5,961,480 SNVs（hg19）\r\n男性X染色体（喫煙開始年齢）：163,412 SNVs（hg19）\r\n女性X染色体（喫煙開始年齢）：146,130 SNVs（hg19）\r\n男性X染色体（喫煙本数）：166,111 SNVs（hg19）\r\n女性X染色体（喫煙本数）：146,114 SNVs（hg19）\r\n男性X染色体（喫煙歴）：166,138 SNVs（hg19）\r\n女性X染色体（喫煙歴）：146,146 SNVs（hg19）\r\n男性X染色体（禁煙歴の有無）：166,142 SNVs（hg19）\r\n女性X染色体（禁煙歴の有無）：146,118 SNVs（hg19）",
-        "NBDC Dataset ID": "hum0014.v14.asi.v1（喫煙開始年齢）\r\nhum0014.v14.cpd.v1（喫煙本数）\r\nhum0014.v14.ens.v1（喫煙歴）\r\nhum0014.v14.fcs.v1（禁煙歴の有無）\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "1.9 GB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v14.smok.v1": {
-        "対象": "・1,026名のWGSデータ（JGAD000220）を含むバイオバンクジャパン1,037名のWGSデータのvcfファイル（WGSデータの分子データは上記参照のこと）\r\n・1000ゲノムプロジェクト（Phase3v5）2,504名のWGSのvcfファイル（ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/）",
-        "規模": "WGS解析により検出された変異情報の統合（常染色体およびX染色体上のvariants）",
-        "対象領域（Target Captureの場合）": "-",
-        "クオリティコントロール方法※": "We set exclusion criteria for genotypes as follows: \r\n(1) DP < 5, (2) GQ < 20, or (3) DP > 60 and GQ < 95, and regarded these genotypes as missing. \r\nVariants with call rates < 90% were excluded before variant quality score recalibration (VQSR). \r\nAfter VQSR, we excluded variants located in low-complexity regions (LCR), as defined by mdust software were excluded. \r\nFinally, we used BEAGLE to impute missing genotypes.",
-        "重複するリードの除去※": "picard (versions 1.106)",
-        "リアライメントおよびベースクオリティのキャリブレーション※": "GATK (version 3.2-2)",
-        "マッピング方法※": "BWA-MEM (version 0.7.5a)",
-        "マッピングクオリティ※": "MAPQ < 20 を除外（HaplotypeCaller）",
-        "マッピングの際のリファレンス配列※": "GRCh37/hg19, hs37d5",
-        "平均カバー率（Depth）※": "aimed at 30x depth",
-        "変異検出方法※": "GATK HaplotypeCaller (version 3.2-2)",
-        "vcfファイルの統合方法": "常染色体：Impute2\r\nX染色体：Beagle（男性）、Impute2（女性）",
-        "リファレンスパネルに含まれるvariant数": "61,608,817 variants（常染色体：59,387,070variants、X染色体：2,221,747variants）",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000220",
-        "NBDCおよび生命情報・DDBJ センターによる加工データのID": "JGAD000679\r\n加工方法はこちら",
-        "総データ量": "約15 GB（vcf.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000114 reference panel": {
-        "対象": "バイオバンクジャパンに参加した159,095名\r\n（男性：86,257名、女性：72,838名）",
-        "規模": "genome wide variants",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "Minimac3 [imputation reference panel using WGS data of the biobank Japan project (N=1,037) and 1KGP p3v5 ALL (N=2,504)]",
-        "関連解析（ソフトウェア）": "BOLT-LMM (ver2.2)、mach2qtl",
-        "フィルタリング": "Sample QCs：1) call rate < 98%、2) closely related samples (PI_HAT > 0.175)、3) outlier from Japanese cluster determined by PCA using GCTA を除外。\r\nImputation後のQC：Imputation quality (Rsq) < 0.3　を除外。",
-        "マーカー数(QC後)": "常染色体：27,211,524 variants（hg19）\r\n男性X染色体：684,533 variants（hg19）\r\n女性X染色体：684,533 variants（hg19）",
-        "NBDC Dataset ID": "hum0014.v15.ht.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "約663 MB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v15.ht.v1": {
-        "対象": "遺伝性前立腺がん（ICD10：C61）：7,636症例\r\n対照者：12,366名",
-        "規模": "Target Capture",
-        "対象領域（Target Captureの場合）": "遺伝性前立腺がんの原因8遺伝子（ATM, BRCA1, BRCA2, BRIP1, CHEK2, HOXB13, NBN, PALB2）の翻訳領域",
-        "Platform": "Illumina [HiSeq 2500]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "2X Platinum Multiplex PCR Master Mix (Thermo Fisher Scientific)を用いたmultiplex PCRで対象遺伝子領域を抽出し、2nd PCRにより、KAPA HiFi DNA Polymeraseを用いてHiSeqに必要なバーコード配列およびアダプター配列を付加 *1",
-        "断片化の方法": "-",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "150 bp x 2",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000288",
-        "総データ量": "2.2 TB（fastq）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000203": {
-        "対象": "42疾患（ICD10 code）\r\n不整脈（I499）、気管支喘息（J459）、アトピー性皮膚炎（L209）、\r\n胆嚢・胆管がん（C23, C240）、白内障（H269）、\r\n脳動脈瘤（I671）、子宮頸がん（C539）、B型慢性肝炎（B181）、\r\nC型慢性肝炎（B182）、COPD（J449）、肝硬変（K746）、\r\n大腸・直腸がん（C189, C20）、心不全（I509, I500）、薬疹（L270）、\r\n子宮体がん（C549）、子宮内膜症（N809）、てんかん（G409）、\r\n食道がん（C159）、胃がん（C169）、緑内障（H409）、バセドウ病（E050）、\r\n造血器腫瘍（C81-96）、肝がん（C220）、肺線維症（J849, J841）、\r\n脳梗塞（I639）、ケロイド（L910）、肺がん（C349）、\r\nネフローゼ症候群（N049）、骨粗鬆症（M8199）、卵巣がん（C56）、\r\n膵がん（C259）、歯周病（K054）、ASO（I709）、花粉症（J301）、\r\n前立腺がん（C61）、肺結核（A169）、関節リウマチ（M0690）、\r\n糖尿病（E14）、尿路結石症（N209）、子宮筋腫（D259）、乳がん（C509）\r\n虚血性心疾患（I200、I209、I219）",
-        "規模": "genome wide variants",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac3 [imputation（1000 genomes Phase 3 v5 ）]\r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "SAIGE（v0.29.4.2）",
-        "フィルタリング": "Imputation後のQC:\r\n　Imputation quality (Rsq) < 0.7　を除外",
-        "マーカー数(QC後)": "常染色体：8,712,794 variants（hg19）\r\nX染色体：207,198 variants（hg19）",
-        "気管支喘息": "hum0014.v17.BA.v1",
-        "アトピー性皮膚炎＊": "hum0014.v17.AD.v1",
-        "胆嚢・胆管がん": "hum0014.v17.GCc.v1",
-        "白内障": "hum0014.v17.Cat.v1",
-        "脳動脈瘤": "hum0014.v17.CA.v1",
-        "子宮頸がん": "hum0014.v17.CeC.v1",
-        "B型慢性肝炎": "hum0014.v17.CHB.v1",
-        "C型慢性肝炎": "hum0014.v17.CHC.v1",
-        "COPD": "hum0014.v17.COPD.v1",
-        "肝硬変": "hum0014.v17.Cir.v1",
-        "大腸・直腸がん": "hum0014.v17.CC.v1",
-        "心不全＊": "hum0014.v17.HF.v1",
-        "薬疹": "hum0014.v17.DE.v1",
-        "子宮体がん": "hum0014.v17.UC.v1",
-        "子宮内膜症": "hum0014.v17.EM.v1",
-        "てんかん": "hum0014.v17.Ep.v1",
-        "食道がん": "hum0014.v17.EC.v1",
-        "胃がん": "hum0014.v17.GC.v1",
-        "緑内障＊": "hum0014.v17.Gla.v1",
-        "バセドウ病": "hum0014.v17.GD.v1",
-        "造血器腫瘍": "hum0014.v17.HT.v1",
-        "肝がん": "hum0014.v17.LiC.v1",
-        "肺線維症": "hum0014.v17.IP.v1",
-        "脳梗塞": "hum0014.v17.CI.v1",
-        "ケロイド": "hum0014.v17.Kel.v1",
-        "肺がん": "hum0014.v17.LuC.v1",
-        "ネフローゼ症候群": "hum0014.v17.NS.v1",
-        "骨粗鬆症": "hum0014.v17.OP.v1",
-        "卵巣がん": "hum0014.v17.OC.v1",
-        "膵がん": "hum0014.v17.PaC.v1",
-        "歯周病": "hum0014.v17.PD.v1",
-        "ASO": "hum0014.v17.PAD.v1",
-        "花粉症": "hum0014.v17.Hay.v1",
-        "前立腺がん": "hum0014.v17.PrC.v1",
-        "肺結核": "hum0014.v17.PT.v1",
-        "関節リウマチ": "hum0014.v17.RA.v1",
-        "糖尿病＊": "hum0014.v17.DM.v1",
-        "尿路結石症": "hum0014.v17.Uro.v1",
-        "子宮筋腫": "hum0014.v17.UF.v1",
-        "乳がん": "hum0014.v18.BC.v1",
-        "虚血性心疾患": "hum0014.v21.CAD.v1",
-        "総データ量": "常染色体：0.9-1.3 GB程度（txt）\r\nX染色体：20-30 MB程度（txt）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v17 / hum0014.v18 / hum0014.v21": {
-        "対象": "165,084名の食習慣（13項目）",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）\r\nMACH\r\nminimac (v.0.1.1) [imputation（1000 genomes Phase I v3 ）]",
-        "関連解析（ソフトウェア）": "BOLT-LMM（v2.2）for autosomes\r\nProbABEL（v0.4.5）for X chromosome",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, MAF < 0.005\r\nImputation referenceのQC:\r\n　HWE P < 1 x 10^-6、MAF < 0.01に該当するSNVを除外\r\nImputation後のQC:\r\n　Imputation quality (Rsq) < 0.7 and MAF < 0.01を除外",
-        "マーカー数(QC後)": "常染色体：5,961,480 variants（hg19）\r\nX染色体：148,568 variants for female、170,117 variants for male（hg19）",
-        "1週間あたりの飲酒量": "hum0014.v19.dpw.v1",
-        "コーヒー摂取頻度": "hum0014.v19.cafe.v1",
-        "緑茶摂取頻度": "hum0014.v19.tea.v1",
-        "牛乳摂取頻度": "hum0014.v19.milk.v1",
-        "ヨーグルト摂取頻度": "hum0014.v19.ygt.v1",
-        "チーズ摂取頻度": "hum0014.v19.cheese.v1",
-        "納豆摂取頻度": "hum0014.v19.natto.v1",
-        "豆腐摂取頻度": "hum0014.v19.tofu.v1",
-        "魚摂取頻度": "hum0014.v19.fish.v1",
-        "小魚摂取頻度": "hum0014.v19.sfish.v1",
-        "野菜摂取頻度": "hum0014.v19.vege.v1",
-        "肉摂取頻度": "hum0014.v19.meat.v1",
-        "総データ量": "各形質：約420 MB（txt.zip）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v19": {
-        "対象": "冠動脈疾患（ICD10：I20-25)：25,892症例\r\n対象者：142,336名",
-        "規模": "genome wide variants",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）\r\nminimac3（BBJ-CAD reference panel）",
-        "関連解析（ソフトウェア）": "PLINK2",
-        "フィルタリング": "Imputation後のQC: Imputation quality (Rsq) < 0.3 または MAF < 0.0002 を除外",
-        "マーカー数(QC後)": "常染色体：19,707,525 variants（hg19）",
-        "NBDC Dataset ID": "hum0014.v20.gwas.v1（統計解析データ）\r\nhum0014.v20.prs.v1（ポリジェニックリスクスコア）\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "約413 MB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v20.cad.v1": {
-        "対象": "2003年から2007年度にバイオバンク・ジャパンに登録されたサンプル（約20万例）から抽出された11,234名",
-        "規模": "Target Capture",
-        "対象領域（Target Captureの場合）": "下記の23遺伝子における全てのエクソン領域\r\nASXL1, CBL, CEBPA, DDX41, DNMT3A, ETV6, EZH2, GATA2, GNAS, GNB1, IDH1, IDH2, JAK2, KRAS, MYD88, NRAS, PPM1D, RUNX1, SF3B1, SRSF2, TET2, TP53, U2AF1",
-        "Platform": "Illumina [HiSeq 2500]",
-        "ライブラリソース": "末梢血から抽出したDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "ライブラリ作成は下記の論文に記載された方法で実施した。\r\nMomozawa, Y., et al. Low-frequency coding variants in CETP and CFB are associated with susceptibility of exudative age-related macular degeneration in the Japanese population. Hum Mol Genet 25, 5027-5034 (2016).",
-        "断片化の方法": "-",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "150 bp",
-        "クオリティコントロール方法": "Depth 20以上の領域が98%以上のサンプルを解析対象とした。",
-        "マッピング方法": "bwa",
-        "マッピングクオリティ": "≥40",
-        "マッピングの際のリファレンス配列": "hg19",
-        "平均カバー率": "x800",
-        "変異検出方法": "Genomon pipeline",
-        "フィルタリング方法": "Genomon pipeline",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000399",
-        "総データ量": "5.3 MB（txt）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000293（Target Capture）": {
-        "対象": "2003年から2007年度にバイオバンク・ジャパンに登録されたサンプル（約20万例）から抽出された11,234名",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、OmniExpressExome]",
-        "ライブラリソース": "末梢血から抽出したDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "Illumina Infinium OmniExpress, Infinium OmniExpressExome v.1.0, or v.1.2",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）",
-        "染色体変異検出アルゴリズム（ソフトウェア）": "ハプロタイプ情報に基づくアリル不均衡の検出法（下記の論文を参照）\r\nTerao, C., et al. Chromosomal alterations among age-related haematopoietic clones in Japan. Nature (2020).",
-        "フィルタリング": "上記の３バージョンのアレイの全てでカバーされているSNPsを使用した",
-        "マーカー数（QC後）": "515,355",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000400",
-        "総データ量": "5.3 MB（csv）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000293（SNPアレイ）": {
-        "対象": "膵がん（ICD10：C25）：1,005症例\r\n大腸がん（ICD10：C18、C19、C20）：12,503症例\r\n腎がん（ICD10：C64）：740症例\r\nリンパ腫（ICD10：C81、C82、C83、C84、C85、C86、C88、C91）：1,982症例\r\n胃がん（ICD10：C16）：10,366症例\r\n対照者：23,705名＋5,996名＋37,592名",
-        "規模": "Target Capture",
-        "対象領域（Target Captureの場合）": "遺伝性腫瘍関連27遺伝子（APC, ATM, BARD1, BMPR1A, BRCA1, BRCA2, BRIP1, CDK4, CDKN2A, CDH1, CHEK2, EPCAM, HOXB13, NBN, NF1, MLH1, MSH2, MSH6, MUTYH, PALB2, PMS2, PTEN, RAD51C, RAD51D, SMAD4, STK11, TP53）の翻訳領域",
-        "Platform": "Illumina [HiSeq 2500]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "2X Platinum Multiplex PCR Master Mix（Thermo Fisher Scientific）を用いたmultiplex PCRで対象遺伝子領域を抽出し、2nd PCRにより、KAPA HiFi DNA Polymeraseを用いてHiSeqに必要なバーコード配列およびアダプター配列を付加 *1",
-        "断片化の方法": "-",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "150 bp x 2",
-        "Japanese Genotype-phenotype Archive Dataset ID": "膵がん：JGAD000438\r\n大腸がん：JGAD000458\r\n23,705名の対照者：JGAD000459\r\n腎がんと5,996名の対照者：JGAD000531\r\nリンパ腫：JGAD000460\r\n胃がん：JGAD000720\r\n37,592名の対照者：JGAD000721",
-        "総データ量": "JGAD000438：78 GB（fastq）\r\nJGAD000458：956 GB（fastq）\r\nJGAD000459：1.9 TB（fastq）\r\nJGAD000531：961.8 GB（fastq）\r\nJGAD000460：126 GB（fastq）\r\nJGAD000720、JGAD000721：3.4 TB（fastq）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000327 / JGAS000346 / JGAS000414 / JGAS000347 / JGAS000592": {
-        "対象": "腎がん（ICD10：C64）：740症例\r\n対照者：5,996名",
-        "規模": "Target Capture",
-        "対象領域（Target Captureの場合）": "腎がん関連13遺伝子（VHL、 BAP1、FH、FLCN、MET、TSC1、TSC2、MITF、SDHA、SDHB、SDHC、SDHD、CDC73）の翻訳領域",
-        "Platform": "Illumina [HiSeq 2500]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "2X Platinum Multiplex PCR Master Mix (Thermo Fisher Scientific)を用いたmultiplex PCRで対象遺伝子領域を抽出し、2nd PCRにより、KAPA HiFi DNA Polymeraseを用いてHiSeqに必要なバーコード配列およびアダプター配列を付加 *1",
-        "断片化の方法": "-",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "150 bp x 2",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000531",
-        "総データ量": "961.8 GB（fastq）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000414": {
-        "対象": "2003年から2017年度にバイオバンク・ジャパンに登録された症例：1,964名\r\n    心筋梗塞（ICD10：I21）：1,765症例\r\n    認知症（ICD10：F00-03）：199症例",
-        "規模": "WGS",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HiSeq X Five]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "TruSeq DNA PCR-Free Prep kit",
-        "断片化の方法": "超音波断片化",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "151 bp",
-        "クオリティコントロール方法": "リードのbase qualityが全体的に悪い検体、リード毎の%GCの結果にて異常を示した検体を除去。\r\nAlignment後、Low mapping rate検体、Insert sizeがおかしい検体、メタデータの性別情報とalingment結果より推定される性別情報が不一致な検体、性染色体異常疑いの検体を除去。\r\nGenotyping時に、VQSR、DP/GP filter (DP < 5, GQ < 20, DP > 60 && GQ < 95を除去）、heterozygosity filter (F>=0.05 を除去)、HWE filter (p < 10-6を除去）、Repeat & Low Complexity filterを実施。\r\n1000 genomes projectと合わせたPCAを実施し、日本人クラスタから大きく外れる検体を除外。\r\nその後、Genome-In-A-Bottleプロジェクトから公開されているHighConfidenceRegionリストに記載のある領域のバリアントにフラグを付与。",
-        "重複するリードの除去": "Picard 2.10.6",
-        "リアライメントおよびベースクオリティのキャリブレーション": "GATK 3.7",
-        "マッピング方法": "BWA mem 0.7.12",
-        "マッピングクオリティ": "GATK 3.7 HaplotypeCallerで変異コール時にMAPQ<20のリードを除外",
-        "マッピングの際のリファレンス配列": "GRCh37/hg19（hs37d5）",
-        "平均カバー率（Depth）": "心筋梗塞：15.0x、認知症：30.0x",
-        "変異検出方法": "GATK 3.7 HaplotypeCaller",
-        "SNV数（QC後）": "76,768,387（常染色体）\r\n2,898,518（X 染色体）",
-        "INDEL数（QC後）": "10,202,908（常染色体）\r\n410,435（X 染色体）",
-        "Japanese Genotype-phenotype Archive Dataset ID": "JGAD000495（fastq）\r\nJGAD000496（bam、vcf）：GEnome Medical alliance Japan（GEM Japan, GEM-J）の取り組みとして、GATK Best Practicesに準拠した方法により、GRCh37の参照ゲノム配列へのマッピングおよびバリアント検知を実施した際のデータです。詳しくはこちらをご覧ください。",
-        "総データ量": "188.4 TB（fastq、bam、vcf）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "JGAS000381": {
-        "対象": "BBJ第1コホート：137,693名",
-        "規模": "genome wide variants",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "minimac [imputation（1000 genomes Phase I v3 ）]\r\nGenCall software（GenomeStudio）",
-        "関連解析（ソフトウェア）": "mach2qtl（v1.1.3）\r\nSPACox",
-        "フィルタリング": "GenotypingのQC：sample call rate < 0.98, SNV call rate < 0.99, HWE P < 1 x 10^-6 \r\nImputation referenceのQC:\r\n　以下の条件に該当するSNVはreferenceから除外:\r\n　1) HWE P < 1 x 10^-6、2) MAF < 0.01\r\nImputation後のQC:\r\n　Imputation quality (Rsq) < 0.7　を除外。",
-        "マーカー数(QC後)": "6,108,833 variants（hg19）",
-        "NBDC Dataset ID": "hum0014.v27.surv.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "789 MB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v27.surv.v1": {
-        "対象": "BBJ第1コホート4880名のWGSデータ（下記データを含む）\r\n    ・1,026名のWGSデータ（JGAD000220）\r\n    ・心筋梗塞症例1,765名および認知症症例199名のWGSデータ（JGAD000495）\r\n    ・胃がん症例255名のWGSデータ（AGDD_000005）\r\n    ・アジアゲノムプロジェクトの1007名\r\n    ・大腸・直腸がん症例の617名\r\n    ・AGDD_000005のQCで除かれた1名\r\n    ・JGAD000220のQCで除かれた10名",
-        "規模": "mobile element多型頻度情報",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HiSeq X/2500]",
-        "ライブラリソース": "末梢血から抽出したgDNA",
-        "検体情報（購入の場合）": "-",
-        "ライブラリ作製方法（キット名）": "TruSeq DNA PCR-Free Sample Prep Kit、TruSeq Nano DNA HT Sample Prep Kit",
-        "断片化の方法": "超音波断片化",
-        "ライブラリ構築方法": "Paired-end",
-        "リード長（除：バーコード、アダプタ、プライマー、リンカー）": "151 bp（HiSeq X）、126 bp（HiSeq 2500）",
-        "クオリティコントロール方法": "-",
-        "マッピング方法": "BWA-MEM",
-        "マッピングクオリティ": "-",
-        "マッピングの際のリファレンス配列": "GRCh37（hs37d5）",
-        "平均カバー率（Depth）": "15×以上（内、1235名：25×以上）",
-        "mobile element検出方法": "MEGAnE *2",
-        "mobile element数": "24,933（4880名）\r\n10,997（1235名）",
-        "NBDC Dataset ID": "hum0014.v28.MEs.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "1.1 MB（txt.gz）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      },
-      "hum0014.v28.MEs.v1": {
-        "対象": "心房細動（ICD10：I48）：77,690症例、対照者：1,167,040名\r\n    BBJ：心房細動：9,826症例、対照者：140,446名\r\n    欧米人：心房細動：60,620症例、対照者：970,216名\r\n    FinnGen：心房細動：7,244症例、対照者：56,378名",
-        "規模": "genome wide SNVs",
-        "対象領域（Target Captureの場合）": "-",
-        "Platform": "Illumina [HumanOmniExpress、HumanExome、OmniExpressExome BeadChip]",
-        "ソース": "末梢血から抽出したgDNA\r\n欧米GWAS：http://csg.sph.umich.edu/willer/public/afib2018\r\nFinnGen GWAS：https://www.finngen.fi/en",
-        "検体情報（購入の場合）": "-",
-        "調整試薬（キット名、バージョン）": "HumanOmniExpress、HumanExome、OmniExpressExome BeadChip kit",
-        "遺伝子型決定アルゴリズム（ソフトウェア）": "GenCall software（GenomeStudio）\r\nminimac [imputation（1000 genomes Phase I v3 ）]",
-        "関連解析（ソフトウェア）": "PLINK2",
-        "フィルタリング": "BBJ GWAS：imputation quality（Rsq） < 0.3 または MAF < 0.001 を除外\r\nメタ解析GWAS：MAF < 1% を除外",
-        "ポリジェニックリスクスコア算出方法": "Pruning and thresholding method",
-        "メタ解析方法": "MANTRA、METAL",
-        "マーカー数(QC後)": "BBJ GWAS：16,817,144 SNPs\r\nメタ解析GWAS：5,158,449 SNPs",
-        "NBDC Dataset ID": "hum0014.v29.AF.v1\r\n（データのダウンロードは上記Dataset IDをクリックしてください）\r\nDictionary file",
-        "総データ量": "BBJのGWAS集計情報：424 MB（txt）\r\nメタ解析のGWAS集計情報：78 MB（txt）\r\nポリジェニックリスクスコア：59 KB（txt）",
-        "コメント（利用にあたっての制限事項）": "NBDC policy"
-      }
-    },
-    "提供者情報": {
-      "研究代表者": "久保 充明",
-      "プロジェクト/研究グループ名": "オーダーメイド医療の実現プログラム",
-      "科研費/助成金（Research Project Number）": {
-        "14": {
-          "科研費・助成金名": "日本医療研究開発機構（AMED） 難治性疾患実用化研究事業",
-          "タイトル": "難治性心血管疾患におけるマルチオミックス解析による病態解明と精密医療",
-          "研究課題番号": "JP20ek0109487"
-        }
-      }
-    },
-    "関連論文": {
-      "1": {
-        "タイトル": "A genome-wide association study identifies PLCL2 and AP3D1-DOT1L-SF3A2 as new susceptibility loci for myocardial infarction in Japanese.",
-        "DOI": "doi:10.1038/ejhg.2014.110",
-        "データID": "hum0014.v1.freq.v1"
-      },
-      "2": {
-        "タイトル": "A functional variant in ZNF512B is associated with susceptibility to amyotrophic lateral sclerosis in Japanese.",
-        "DOI": "doi:10.1093/hmg/ddr268",
-        "データID": "hum0014.v2.jsnp.92als.v1"
-      },
-      "3": {
-        "タイトル": "Functional variants in ADH1B and ALDH2 coupled with alcohol and smoking synergistically enhance esophageal cancer risk.",
-        "DOI": "doi: 10.1053/j.gastro.2009.07.070",
-        "データID": "hum0014.v2.jsnp.182ec.v1"
-      },
-      "4": {
-        "タイトル": "SNPs in KCNQ1 are associated with susceptibility to type 2 diabetes in East Asian and European populations.",
-        "DOI": "doi: 10.1038/ng.208",
-        "データID": "T2DM (JSNP)"
-      },
-      "5": {
-        "タイトル": "Common variants in a novel gene, FONG on chromosome 2q33.1 confer risk of osteoporosis in Japanese.",
-        "DOI": "doi: 10.1371/journal.pone.0019641",
-        "データID": "Osteoporosis (JSNP)"
-      },
-      "6": {
-        "タイトル": "Genome-wide association studies in the Japanese population identify seven novel loci for type 2 diabetes.",
-        "DOI": "doi: 10.1038/ncomms10531",
-        "データID": "hum0014.v3.T2DM-1.v1\r\nhum0014.v3.T2DM-2.v1"
-      },
-      "7": {
-        "タイトル": "Multi-ancestry genome-wide association study of 21,000 cases and 95,000 controls identifies new risk loci for atopic dermatitis.",
-        "DOI": "doi: 10.1038/ng.3424",
-        "データID": "hum0014.v4.AD.v1"
-      },
-      "8": {
-        "タイトル": "Genome-wide association study identifies eight new susceptibility loci for atopic dermatitis in the Japanese population.",
-        "DOI": "doi: 10.1038/ng.2438",
-        "データID": "hum0014.v4.AD.v1"
-      },
-      "9": {
-        "タイトル": "Identification of six new genetic loci associated with atrial fibrillation in the Japanese population.",
-        "DOI": "doi: 10.1038/ng.3842",
-        "データID": "hum0014.v5.AF.v1"
-      },
-      "10": {
-        "タイトル": "Genome-wide association study identifies 112 new loci for body mass index in the Japanese population.",
-        "DOI": "doi:10.1038/ng.3951",
-        "データID": "hum0014.v6.158k.v1\r\nJGAD000123\r\nJGAD000124"
-      },
-      "11": {
-        "タイトル": "Genome-wide association study identifies seven novel susceptibility loci for primary open-angle glaucoma.",
-        "DOI": "doi: 10.1093/hmg/ddy053",
-        "データID": "hum0014.v7.POAG.v1"
-      },
-      "12": {
-        "タイトル": "Genetic analysis of quantitative traits in the Japanese population links cell types to complex human diseases.",
-        "DOI": "doi:10.1038/s41588-018-0047-6",
-        "データID": "hum0014.v8.58qt.v1\r\nJGAD000144-JGAD000201"
-      },
-      "13": {
-        "タイトル": "Elucidating the genetic architecture of reproductive ageing in the Japanese population",
-        "DOI": "doi: 10.1038/s41467-018-04398-z",
-        "データID": "hum0014.v9.Men.v1\r\nhum0014.v9.MP.v1"
-      },
-      "14": {
-        "タイトル": "Deep whole-genome sequencing reveals recent selection signatures linked to evolution and disease risk of Japanese.",
-        "DOI": "doi: 10.1038/s41467-018-03274-0",
-        "データID": "JGAD000220"
-      },
-      "15": {
-        "タイトル": "Germline pathogenic variants of 11 breast cancer genes in 7,051 Japanese patients and 11,241 controls.",
-        "DOI": "doi: 10.1038/s41467-018-06581-8",
-        "データID": "JGAD000209"
-      },
-      "16": {
-        "タイトル": "A Variant within the FTO confers susceptibility to diabetic nephropathy in Japanese patients with type 2 diabetes",
-        "DOI": "doi: 10.1371/journal.pone.0208654",
-        "データID": "hum0014.v12.T2DMwN.v1"
-      },
-      "17": {
-        "タイトル": "Identification of 28 new susceptibility loci for type 2 diabetes in the Japanese population",
-        "DOI": "doi: 10.1038/s41588-018-0332-4",
-        "データID": "hum0014.v13.T2DMmeta.v1"
-      },
-      "18": {
-        "タイトル": "GWAS of smoking behaviour in 165,436 Japanese people reveals seven new loci and shared genetic architecture.",
-        "DOI": "doi: 10.1038/s41562-019-0557-y",
-        "データID": "hum0014.v14.asi.v1\r\nhum0014.v14.cpd.v1\r\nhum0014.v14.ens.v1\r\nhum0014.v14.fcs.v1"
-      },
-      "19": {
-        "タイトル": "Characterizing rare and low-frequency height-asssociated variants in the Japanese population",
-        "DOI": "doi: 10.1038/s41467-019-12276-5",
-        "データID": "JGAD000220 (fastq)\r\nJGAD000220 (reference panel)\r\nhum0014.v15.ht.v1"
-      },
-      "20": {
-        "タイトル": "Germline pathogenic variants in 7,636 Japanese patients with prostate cancer and 12,366 controls.",
-        "DOI": "doi: 10.1093/jnci/djz124",
-        "データID": "JGAD000288"
-      },
-      "21": {
-        "タイトル": "Large-scale genome-wide association study in a Japanese population identifies novel susceptibility loci across different diseases",
-        "DOI": "doi: 10.1038/s41588-020-0640-3",
-        "データID": "hum0014.v17\r\nhum0014.v18\r\nhum0014.v21"
-      },
-      "22": {
-        "タイトル": "GWAS of 165,084 Japanese individuals identified nine loci associated with dietary habits",
-        "DOI": "doi: 10.1038/s41562-019-0805-1",
-        "データID": "hum0014.v19"
-      },
-      "23": {
-        "タイトル": "Population-specific and transethnic genome-wide analyses identify distinct and shared genetic risk loci for coronary artery disease.",
-        "DOI": "doi: 10.1038/s41588-020-0705-3",
-        "データID": "hum0014.v20.cad.v1"
-      },
-      "24": {
-        "タイトル": "Genetic characterization of pancreatic cancer patients and prediction of carrier status of germline pathogenic variants in cancer-predisposing genes",
-        "DOI": "doi: 10.1016/j.ebiom.2020.103033",
-        "データID": "JGAD000438"
-      },
-      "25": {
-        "タイトル": "Population-based Screening for Hereditary Colorectal Cancer Variants in Japan",
-        "DOI": "doi: 10.1016/j.cgh.2020.12.007",
-        "データID": "JGAD000458\r\nJGAD000459"
-      },
-      "26": {
-        "タイトル": "Genome-wide association study reveals BET1L associated with survival time in the 137,693 Japanese individuals.",
-        "DOI": "",
-        "データID": "hum0014.v27.surv.v1"
-      },
-      "27": {
-        "タイトル": "Cross-ancestry genome-wide analysis of atrial fibrillation unveils disease biology and enables cardioembolic risk prediction",
-        "DOI": "doi: 10.1038/s41588-022-01284-9",
-        "データID": "hum0014.v29.AF.v1"
-      },
-      "28": {
-        "タイトル": "Association between germline pathogenic variants in cancer-predisposing genes and lymphoma risk",
-        "DOI": "doi: 10.1111/cas.15522",
-        "データID": "JGAD000460\r\nJGAD000721"
-      },
-      "29": {
-        "タイトル": "Helicobacter pylori, Homologous-Recombination Genes, and Gastric Cancer",
-        "DOI": "doi: 10.1056/NEJMoa2211807",
-        "データID": "JGAD000720\r\nJGAD000721"
-      }
-    },
-    "制限公開データの利用者一覧": {
-      "Mark Daly": {
-        "研究代表者": "Mark Daly",
-        "所属機関": "Broad Institute of MIT and Harvard",
-        "研究題目": "",
-        "利用データID": "",
-        "利用期間": "JGAD000101, JGAD000102, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "岡田 随象": {
-        "研究代表者": "岡田 随象",
-        "所属機関": "大阪大学大学院医学系研究科・遺伝統計学",
-        "研究題目": "",
-        "利用データID": "",
-        "利用期間": "JGAD000101, JGAD000102, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "上辻 茂男": {
-        "研究代表者": "上辻 茂男",
-        "所属機関": "株式会社スタージェン　統計解析事業部",
-        "研究題目": "",
-        "利用データID": "ステント血栓症発症の遺伝的要因の探索のためのゲノムワイド関連研究",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000145, JGAD000146, JGAD000149, JGAD000151, JGAD000155, JGAD000156, JGAD000158, JGAD000159, JGAD000163, JGAD000165-JGAD000167, JGAD000170, JGAD000172-JGAD000175, JGAD000182, JGAD000187-JGAD000189, JGAD000192-JGAD000196, JGAD000200, JGAD000201"
-      },
-      "徳永 勝士": {
-        "研究代表者": "徳永 勝士",
-        "所属機関": "東京大学大学院医学系研究科人類遺伝学教室",
-        "研究題目": "",
-        "利用データID": "",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "角田 達彦": {
-        "研究代表者": "角田 達彦",
-        "所属機関": "東京医科歯科大学・難治疾患研究所・医科学数理分野",
-        "研究題目": "",
-        "利用データID": "オーダーメイド医療のためのシーケンス、画像データなどの解析に関する研究",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "Liming Liang": {
-        "研究代表者": "Liming Liang",
-        "所属機関": "Harvard T.H. Chan School of Public Health, Department of Epidemiology",
-        "研究題目": "",
-        "利用データID": "",
-        "利用期間": "JGAD000123"
-      },
-      "長崎 正朗": {
-        "研究代表者": "長崎 正朗",
-        "所属機関": "京都大学 大学院医学研究科附属ゲノム医学センター 学際融合教育研究推進センター",
-        "研究題目": "",
-        "利用データID": "日本人大規模全ゲノム情報を基盤とした多因子疾患関連遺伝子の同定を加速する情報解析技術の開発と応用（ゲノム情報解析技術開発）",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "小川 誠司": {
-        "研究代表者": "小川 誠司",
-        "所属機関": "京都大学 医学研究科",
-        "研究題目": "",
-        "利用データID": "造血器腫瘍における遺伝子異常の網羅的解析",
-        "利用期間": "JGAD000102, JGAS000123, JGAD000220"
-      },
-      "河野 隆志": {
-        "研究代表者": "河野 隆志",
-        "所属機関": "国立研究開発法人国立がん研究センター研究所 ゲノム生物学研究分野",
-        "研究題目": "",
-        "利用データID": "AYA（Adolescence and Young Adult）世代がんの個別化予防に資する遺伝要因の同定を目指す研究",
-        "利用期間": "JGAD000209, JGAD000220"
-      },
-      "堀江 重郎": {
-        "研究代表者": "堀江 重郎",
-        "所属機関": "順天堂大学大学院医学研究科・遺伝子疾患先端情報学",
-        "研究題目": "",
-        "利用データID": "",
-        "利用期間": "JGAD000123, JGAD000220"
-      },
-      "木下 健吾": {
-        "研究代表者": "木下 健吾",
-        "所属機関": "東北大学 東北メディカル・メガバンク機構",
-        "研究題目": "",
-        "利用データID": "日本人全ゲノムデータベースの構築",
-        "利用期間": "JGAD000220"
-      },
-      "白石 航也": {
-        "研究代表者": "白石 航也",
-        "所属機関": "国立研究開発法人国立がん研究センター研究所 ゲノム生物学研究分野",
-        "研究題目": "",
-        "利用データID": "ゲノム解析に基づく宿主並びに腫瘍における免疫応答ネットワーク機構の解明",
-        "利用期間": "JGAD000124"
-      },
-      "小笠原 理": {
-        "研究代表者": "小笠原 理",
-        "所属機関": "国立遺伝学研究所 生命情報・DDBJセンター",
-        "研究題目": "",
-        "利用データID": "JGA/AGDゲノムデータを利用したヒトゲノム解析ワークフローの評価",
-        "利用期間": "JGAD000123, JGAD000220"
-      },
-      "岡﨑 康司": {
-        "研究代表者": "岡﨑 康司",
-        "所属機関": "順天堂大学 大学院医学研究科 難治性疾患診断・治療学",
-        "研究題目": "",
-        "利用データID": "疾患コホート研究ネットワークによる疾患マーカー探索研究",
-        "利用期間": "JGAD000123"
-      },
-      "秦 千比呂": {
-        "研究代表者": "秦 千比呂",
-        "所属機関": "国立遺伝学研究所 生命情報・DDBJセンター",
-        "研究題目": "",
-        "利用データID": "日本人乳癌患者シーケンスデータにおけるhypomorphic変異同定",
-        "利用期間": "JGAD000209"
-      },
-      "河合 洋介": {
-        "研究代表者": "河合 洋介",
-        "所属機関": "東京大学医科学研究所 人癌病因遺伝子分野",
-        "研究題目": "",
-        "利用データID": "集団遺伝学的解析による日本人集団のなりたちの解析",
-        "利用期間": "JGAD000123"
-      },
-      "岩田 仲生": {
-        "研究代表者": "岩田 仲生",
-        "所属機関": "藤田医科大学 医学部 精神神経科学",
-        "研究題目": "",
-        "利用データID": "遺伝子解析によるこころの健康とこころの病気に対するかかりやすさ（発症脆弱性）や薬の効きめや副作用（治療反応性）等の解明に関する研究",
-        "利用期間": "JGAD000123, JGAD000124"
-      },
-      "Atray Dixit": {
-        "研究代表者": "Atray Dixit",
-        "所属機関": "Coral Genomics, Inc.",
-        "研究題目": "",
-        "利用データID": "Derivation and Evaluation of Functional Response Scores",
-        "利用期間": "JGAD000101, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "Hae Kyung Im": {
-        "研究代表者": "Hae Kyung Im",
-        "所属機関": "Biological Sciences Division, University of Chicago",
-        "研究題目": "",
-        "利用データID": "Predicted Gene Expression: High Power, Mechanism, and Direction of Effect",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "Hongyu Zhao": {
-        "研究代表者": "Hongyu Zhao",
-        "所属機関": "Department of Biostatistics, Yale School of Public Health",
-        "研究題目": "",
-        "利用データID": "Leveraging multi-ethnic data and functional annotations in causal variant identification, genetic correlation estimation, and genetic risk prediction",
-        "利用期間": "JGAD000101, JGAD000102, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "Charleston Chiang": {
-        "研究代表者": "Charleston Chiang",
-        "所属機関": "Center for Genetic Epidemiology, Keck School of Medicine, University of Southern Califolnia",
-        "研究題目": "",
-        "利用データID": "Investigating the evolution of complex genetic architecture in participants of Biobank Japan",
-        "利用期間": "JGAD000101, JGAD000102, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "Ali Torkamani": {
-        "研究代表者": "Ali Torkamani",
-        "所属機関": "Scripps Research Institute",
-        "研究題目": "",
-        "利用データID": "Genomics Deep Learning",
-        "利用期間": "JGAD000101, JGAD000102, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "中山 一大": {
-        "研究代表者": "中山 一大",
-        "所属機関": "東京大学大学院 新領域創成科学研究科 先端生命科学専攻",
-        "研究題目": "",
-        "利用データID": "褐色脂肪組織活性に寄与するゲノム多型の探索",
-        "利用期間": "JGAD000123, JGAD000124"
-      },
-      "藤尾 圭志": {
-        "研究代表者": "藤尾 圭志",
-        "所属機関": "東京大学大学院医学系研究科 アレルギー・リウマチ内科",
-        "研究題目": "",
-        "利用データID": "日本人免疫細胞eQTLデータと日本人大規模GWASデータの統合解析",
-        "利用期間": "JGAD000101, JGAD000102, JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "菊地 正隆": {
-        "研究代表者": "菊地 正隆",
-        "所属機関": "東京大学 大学院新領域創成科学研究科",
-        "研究題目": "日本",
-        "利用データID": "日本人リファレンスパネルを用いたゲノムデータ補完",
-        "利用期間": "JGAD000220"
-      },
-      "松田 文彦": {
-        "研究代表者": "松田 文彦",
-        "所属機関": "国立研究開発法人国立がん研究センター研究所 ゲノム生物学研究分野",
-        "研究題目": "",
-        "利用データID": "オーダーメイド医療開発プロジェクト",
-        "利用期間": "JGAD000123, JGAD000220"
-      },
-      "野口 恵美子": {
-        "研究代表者": "野口 恵美子",
-        "所属機関": "筑波大学 医学医療系遺伝医学",
-        "研究題目": "日本",
-        "利用データID": "炎症性肺疾患の遺伝素因に関する研究",
-        "利用期間": "JGAD000220"
-      },
-      "佐藤 憲子": {
-        "研究代表者": "佐藤 憲子",
-        "所属機関": "東京医科歯科大学 難治疾患研究所 分子疫学",
-        "研究題目": "",
-        "利用データID": "地域コホート縦断データに基づく肥満・糖尿病発症・進行の遺伝・環境リスクの解析",
-        "利用期間": "JGAD000220"
-      },
-      "永田 安伸": {
-        "研究代表者": "永田 安伸",
-        "所属機関": "日本医科大学 血液内科",
-        "研究題目": "",
-        "利用データID": "新たな遺伝学的異常を用いた造血器腫瘍発症メカニズムの探索",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "川上 純": {
-        "研究代表者": "川上 純",
-        "所属機関": "長崎大学病院 リウマチ・膠原病内科",
-        "研究題目": "",
-        "利用データID": "免疫チェックポイント阻害薬ニボルマブが誘発する1型糖尿病、間質性肺疾患の発症に関連する原因遺伝子多型・変異の探索的研究",
-        "利用期間": "JGAD000220"
-      },
-      "藤本 明洋": {
-        "研究代表者": "藤本 明洋",
-        "所属機関": "東京大学大学院 医学系研究科 人類遺伝学教室",
-        "研究題目": "",
-        "利用データID": "全ゲノムシークエンスデータの解析による突然変異・遺伝的多様性・転写異常の包括的解析",
-        "利用期間": "JGAD000220, JGAD000410"
-      },
-      "朝野 仁裕": {
-        "研究代表者": "朝野 仁裕",
-        "所属機関": "大阪大学医学系研究科 循環器内科学",
-        "研究題目": "",
-        "利用データID": "遺伝性心血管疾患の感受性遺伝子解析研究",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "増子 裕典": {
-        "研究代表者": "増子 裕典",
-        "所属機関": "筑波大学 呼吸器内科",
-        "研究題目": "",
-        "利用データID": "炎症性肺疾患の遺伝素因に関する研究",
-        "利用期間": "JGAD000123"
-      },
-      "松田 喬": {
-        "研究代表者": "松田 喬",
-        "所属機関": "アステラス製薬株式会社 アドバンストインフォマティクス＆アナリティクス室",
-        "研究題目": "",
-        "利用データID": "肝がん並びにB型肝炎発症と遺伝子多型の相関に関する検討",
-        "利用期間": "JGAD000102, JGAD000123"
-      },
-      "二宮 利治": {
-        "研究代表者": "二宮 利治",
-        "所属機関": "九州大学 大学院医学研究院　衛生・公衆衛生学分野",
-        "研究題目": "",
-        "利用データID": "健康長寿社会の実現を目指した大規模認知症コホート研究（JPSC-AD）",
-        "利用期間": "JGAD000220"
-      },
-      "Joshua Chiou": {
-        "研究代表者": "Joshua Chiou",
-        "所属機関": "Pfizer Internal Medicine Research Unit",
-        "研究題目": "",
-        "利用データID": "Evaluating GWAS associations from Biobank Japan to Support Confidence in Rationale for Therapeutic Targets",
-        "利用期間": "JGAD000123, JGAD000124, JGAD000144-JGAD000201, JGAD000220"
-      },
-      "Gil McVean": {
-        "研究代表者": "Gil McVean",
-        "所属機関": "Genomics plc",
-        "研究題目": "イギリス",
-        "利用データID": "Using large-scale reference panels for imputation and ancestry analysis to support target discovery and polygenic risk score models",
-        "利用期間": "JGAD000220, JGAD000410"
-      },
-      "中岡 博史": {
-        "研究代表者": "中岡 博史",
-        "所属機関": "公益財団法人佐々木研究所 腫瘍ゲノム研究部",
-        "研究題目": "日本",
-        "利用データID": "大規模シーケンスデータを用いた乳がん関連遺伝子における活性低下型変異の研究",
-        "利用期間": "JGAD000209"
-      },
-      "Nuria Lopez-Bigas": {
-        "研究代表者": "Nuria Lopez-Bigas",
-        "所属機関": "Institute for Research in Biomedicine (IRB Barcelona)",
-        "研究題目": "スペイン",
-        "利用データID": "Study of the genetic basis of clonal hematopoiesis",
-        "利用期間": "JGAD000399, JGAD000400"
-      },
-      "山崎 慶子": {
-        "研究代表者": "山崎 慶子",
-        "所属機関": "千葉大学大学院医学研究院 公衆衛生学",
-        "研究題目": "日本",
-        "利用データID": "炎症性腸疾患における分子標的薬の効果予測システムの構築",
-        "利用期間": "JGAD000220"
-      },
-      "鬼頭 良輔": {
-        "研究代表者": "鬼頭 良輔",
-        "所属機関": "信州大学 医学部 耳鼻咽喉科頭頸部外科",
-        "研究題目": "日本",
-        "利用データID": "突発性難聴の発症・治療効果に関する遺伝子解析",
-        "利用期間": "JGAD000123"
-      }
-    },
-    "リリース情報": {
-      "hum0014.v31": {
-        "Research ID": "hum0014.v31",
-        "公開日": "2023/09/01",
-        "内容": "JGAD000220（BBJ1,026名のWGS）の加工データ（CRAM、gVCF）\r\nJGAD000220（BBJ1,026名のWGS）の加工データ（Joint call）（aggregate VCF）\r\nJGAD000220（reference panel）の加工データ（NBDC-DDBJ imputation server 用データ）",
-        "description": "JGAD000220の2003年から2007年度にバイオバンク・ジャパンに登録された1,026名の全ゲノムシークエンス解析データ（fastqファイル）に対して、特定の解析パイプラインにより加工したCRAM/gVCFファイルを提供する。利用を希望する場合は、データ利用申請書にJGAD000220（元データ）とJGAD000690（加工データ）を記載すること。\nJGAD000220の2003年から2007年度にバイオバンク・ジャパンに登録された1,026名の全ゲノムシークエンス解析データ（fastqファイル）に対して、特定の解析パイプラインにより加工したaggregate VCF、tabixファイルを提供する。Genotypeコールの際、Joint callを実施している。利用を希望する場合は、データ利用申請書にJGAD000220（元データ）とJGAD000758（加工データ）を記載すること。\nJGAS000114 reference panel（JGAD000220）に対して、特定の解析パイプラインにより加工したtbi index ファイル/bref3 ファイル/config ファイルを提供する。これらのファイルは、NBDC-DDBJ imputation serverで使用することができる。利用を希望する場合は、データ利用申請書にJGAD000220（元データ）とJGAD000679（加工データ）を記載すること。\n"
-      },
-      "hum0014.v30": {
-        "Research ID": "hum0014.v30",
-        "公開日": "2023/04/20",
-        "内容": "リンパ腫1,982症例、胃がん10,366症例および対照者37,592名の遺伝性腫瘍関連27遺伝子翻訳領域のターゲットシークエンスデータ",
-        "description": "Illumina社のHiSeq 2500を使用して取得した、リンパ腫1,982症例、胃がん10,366症例および対照者37,592名（BBJの非がん対象者）の遺伝性腫瘍関連27遺伝子翻訳領域のターゲットシークエンスデータを追加した（fastq）。\n"
-      },
-      "hum0014.v29": {
-        "Research ID": "hum0014.v29",
-        "公開日": "2023/04/05",
-        "内容": "心房細動患者9,826症例および対照者140,446名のゲノムワイド関連解析（BBJ）\r\n心房細動患者77,690症例および対照者1,167,040名のGWASメタ解析（BBJ、欧米人、FinnGen）",
-        "description": "BBJ第1コホートの心房細動患者9,826症例および対照者140,446名のGWAS集計情報を追加した（txt）。\nBBJ、欧米人、FinnGenの心房細動患者77,690症例および対照者1,167,040名のGWASメタ解析の集計情報およびポリジェニックリスクスコアを追加した（txt）。\n"
-      },
-      "hum0014.v28": {
-        "Research ID": "hum0014.v28",
-        "公開日": "2023/04/05",
-        "内容": "BBJ第1コホート4,880名のmobile element多型頻度情報",
-        "description": "BBJ第1コホート4,880名のmobile element多型頻度情報を追加した（txt）。\n"
-      },
-      "hum0014.v27": {
-        "Research ID": "hum0014.v27",
-        "公開日": "2022/12/31",
-        "内容": "BBJ第1コホート137,693名の生存に関するゲノムワイド関連解析",
-        "description": "BBJ第1コホート137,693名のGWAS集計情報を追加した（txt）。\n男女別にそれぞれCox回帰分析を用いてGWASを実施した。また、SPACoxソフトウェアを用いた関連解析も併せて実施した。\n"
-      },
-      "hum0014.v26": {
-        "Research ID": "hum0014.v26",
-        "公開日": "2022/04/01",
-        "内容": "腎がん740症例および対照者5,996名の遺伝性腫瘍関連27遺伝子および腎がん関連13遺伝子翻訳領域のターゲットシークエンスデータ",
-        "description": "Illumina社のHiSeq 2500を使用して取得した、腎がん740症例および対照者5,996名の遺伝性腫瘍関連27遺伝子および腎がん関連13遺伝子翻訳領域のターゲットシークエンスデータを追加した（fastq）。\n"
-      },
-      "hum0014.v25": {
-        "Research ID": "hum0014.v25",
-        "公開日": "2022/01/25",
-        "内容": "心筋梗塞1,765症例、認知症199症例の全ゲノムシークエンスデータ",
-        "description": "Illumina社のHiSeq X Fiveを使用して取得した、心筋梗塞1,765症例、認知症199症例の全ゲノムシークエンスデータ（fastq）、およびGEnome Medical alliance Japan（GEM Japan, GEM-J）の取り組みとして、GATK Best Practicesに準拠した方法により、GRCh37の参照ゲノム配列へのマッピングおよびバリアント検知を実施した際のbam/gvcfデータを追加した。\n"
-      },
-      "hum0014.v24": {
-        "Research ID": "hum0014.v24",
-        "公開日": "2021/11/26",
-        "内容": "膵がん1,005症例、大腸がん12,503症例および対照者23,705名の遺伝性腫瘍関連27遺伝子翻訳領域のターゲットシークエンスデータ",
-        "description": "Illumina社のHiSeq 2500を使用して取得した、膵がん1,005症例、大腸がん12,503症例および対照者23,705名の遺伝性腫瘍関連27遺伝子翻訳領域のターゲットシークエンスデータを追加した（fastq）。\n"
-      },
-      "hum0014.v23": {
-        "Research ID": "hum0014.v23",
-        "公開日": "2021/07/13",
-        "内容": "JGAD000220のWGSデータのbam/gvcfデータ",
-        "description": "JGAD000220に含まれるwhole genome sequencing解析データに対し、GEnome Medical alliance Japan（GEM Japan, GEM-J）の取り組みとして、GATK Best Practicesに準拠した方法により、GRCh37の参照ゲノム配列へのマッピングおよびバリアント検知を実施した際のbam/gvcfデータを追加した。\n"
-      },
-      "hum0014.v22": {
-        "Research ID": "hum0014.v22",
-        "公開日": "2021/05/21",
-        "内容": "11,234名の23遺伝子における全てのエクソン領域のターゲットシークエンス解析より得られた体細胞変異データおよびSNPアレイ解析より得られた染色体変異データ",
-        "description": "2003年から2007年度にバイオバンク・ジャパンに登録されたサンプル（約20万例）から抽出された11,234名の23遺伝子における全てのエクソン領域のターゲットシークエンス解析（Illumina HiSeq 2500）より得られた体細胞変異データ、および、SNPアレイ解析（Illumina human OmniExpress、human OmniExpressExome）より得られた染色体変異データを追加した（csv、txt）。\n"
-      },
-      "hum0014.v21": {
-        "Research ID": "hum0014.v21",
-        "公開日": "2020/08/25",
-        "内容": "虚血性心疾患のゲノムワイド関連解析",
-        "description": "虚血性心疾患のGWAS集計情報を追加した（txt）。\n"
-      },
-      "hum0014.v20": {
-        "Research ID": "hum0014.v20",
-        "公開日": "2020/08/17",
-        "内容": "冠動脈疾患のゲノムワイド関連解析",
-        "description": "冠動脈疾患のGWAS集計情報およびポリジェニックリスクスコアを追加した（txt）。\nIllumina社のHumanOminiExpress、Exome、またはOmniExpressExome BeadChipを使用して、約90万個のSNVsの遺伝子型を決定し、minimac3にてimputation（reference: BBJ-CAD reference panel）を実施、plink2を用いて約2000万個の遺伝子変異についてGWASを行った。\n"
-      },
-      "hum0014.v19": {
-        "Research ID": "hum0014.v19",
-        "公開日": "2020/04/20",
-        "内容": "165,084名の食習慣に関するゲノムワイド関連解析",
-        "description": "2003年から2007年度にバイオバンク・ジャパンに登録した165,084名の食習慣データ（飲酒歴の有無、1週間あたりの飲酒量、コーヒー・緑茶・牛乳・ヨーグルト・チーズ・納豆・豆腐・魚・小魚・野菜および肉の摂取頻度）のGWAS結果。\nIllumina社のHumanOminiExpress、HumanExome、または、OmniExpressExome BeadChipを使用してGenotypeを決定後、minimacを用いてimputation（reference: 1000 genome phase I v3）を実施し、BOLT-LMM（for autosomes）およびProbABEL（for X chromosome）を用いて約600万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v18": {
-        "Research ID": "hum0014.v18",
-        "公開日": "2019/11/26",
-        "内容": "乳がんのゲノムワイド関連解析",
-        "description": "乳がんのGWAS集計情報を追加した（txt）。\n"
-      },
-      "hum0014.v17": {
-        "Research ID": "hum0014.v17",
-        "公開日": "2019/10/08",
-        "内容": "40疾患のゲノムワイド関連解析",
-        "description": "40疾患のGWAS集計情報を追加した（txt）。\nIllumina社のHumanOminiExpress、Exome、またはOmniExpressExome BeadChipを使用してGenotypeを決定後、minimac3にてimputation（reference: 1000 genomes Phase 3 v5）を実施、SAIGE（v0.29.4.2）にて8,919,992個のSNVsのGWASを行った。\n"
-      },
-      "hum0014.v16": {
-        "Research ID": "hum0014.v16",
-        "公開日": "2019/10/07",
-        "内容": "遺伝性前立腺がん7,636症例と対照者12,366名の遺伝性前立腺がん原因8遺伝子翻訳領域のターゲットシークエンスデータ",
-        "description": "Illumina社のHiSeq 2500を使用して取得した、遺伝性前立腺がん7,636症例と対照12,366名の遺伝性前立腺がん原因8遺伝子翻訳領域のターゲットシークエンスデータを追加した（fastq）。\n"
-      },
-      "hum0014.v15": {
-        "Research ID": "hum0014.v15",
-        "公開日": "2019/09/27",
-        "内容": "バイオバンクジャパン1,037名のWGSデータと1000ゲノムプロジェクト（Phase3v5）の2,504名の全ゲノム情報を統合したgenotype imputation用のreference panel\r\n159,095名の身長のゲノムワイド関連解析",
-        "description": "・バイオバンクジャパン1,037名のWGSデータと1000ゲノムプロジェクト（Phase3v5）2,504名の全ゲノム情報を統合し、genotype imputation用のreference panelを作成した。\n・Illumina社のHumanOmniExpressExomeまたはOmniExpressおよびHuman Exomeを用いてgenotypeを決定後、minimacを用いてimputation（reference panel using WGS data of the biobank Japan project (N=1,037) and 1KGP p3v5 ALL (N=2,504)）を実施し、BOLT-LMM（ver2.2）およびmach2qtlを用いて約2700万個のvariantsについてGWASを行った。\n"
-      },
-      "hum0014.v14": {
-        "Research ID": "hum0014.v14",
-        "公開日": "2019/03/26",
-        "内容": "165,436名の喫煙習慣に関するゲノムワイド関連解析",
-        "description": "2003年から2007年度にバイオバンク・ジャパンに登録した165,436名の喫煙習慣データ（喫煙開始年齢、喫煙本数、喫煙歴、喫煙中断歴）のGWAS結果。\nIllumina社のHumanOminiExpress、HumanExome、または、OmniExpressExome BeadChipを使用してGenotypeを決定後、minimacを用いてimputation（reference: 1000 genome phase I v3）を実施し、BOLT-LMM（v2.2）およびProbABEL（v0.4.5; for X chromosome）を用いて約600万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v13": {
-        "Research ID": "hum0014.v13",
-        "公開日": "2019/01/25",
-        "内容": "２型糖尿病36,614症例および対照者155,150名のゲノムワイド関連解析メタ解析",
-        "description": "以下の４GWASのメタ解析を行った結果を追加した（txt）。\n　・２型糖尿病9,804症例と対象者6,728名 \n　・２型糖尿病5,639症例と対象者19,407名 \n　・２型糖尿病18,688症例と対象者121,950名 \n　・２型糖尿病2,483症例と対象者7,065名 \n遺伝子型決定には、Illumina [HumanOmniExpress、HumanExome、OmniExpressExome、Human610-Quad BeadChip]を使用している。\n"
-      },
-      "hum0014.v12": {
-        "Research ID": "hum0014.v12",
-        "公開日": "2018/12/10",
-        "内容": "２型糖尿病腎症2,809症例および２型糖尿病対照5,592症例のゲノムワイド関連解析メタ解析",
-        "description": "以下の２GWASのメタ解析を行った結果を追加した（csv）。\n　・２型糖尿病腎症2,380症例と２型糖尿病対照（腎症非発症群）5,234症例\n　・２型糖尿病腎症429症例と２型糖尿病対照（腎症非発症群）358症例\n遺伝子型決定には、Illumina社のOmniExpressExome BeadchipもしくはHuman610-Quad BeadChipを使用している。\n"
-      },
-      "hum0014.v11": {
-        "Research ID": "hum0014.v11",
-        "公開日": "2018/10/16",
-        "内容": "乳がん7,104症例と対照者23,731名の遺伝性乳がん原因11遺伝子翻訳領域のターゲットシークエンスデータ",
-        "description": "Illumina社のHiSeq 2500を使用して取得した、乳がん7,104症例と対照23,731名の遺伝性乳がん原因11遺伝子翻訳領域のターゲットシークエンスデータを追加した（fastq）。\n"
-      },
-      "hum0014.v10": {
-        "Research ID": "hum0014.v10",
-        "公開日": "2018/08/13",
-        "内容": "BBJ第1コホート1,026名の全ゲノムシークエンスデータ",
-        "description": "Illumina社のHiSeq 2500を使用して取得した、2003年から2007年度にバイオバンク・ジャパンに登録した1,026名の全ゲノムシークエンスデータを追加した（fastq）。\n"
-      },
-      "hum0014.v9": {
-        "Research ID": "hum0014.v9",
-        "公開日": "2018/08/07",
-        "内容": "初潮年齢データを有する女性67,029名および\r\n閉経年齢データを有する女性43,861名のゲノムワイド関連解析",
-        "description": "Illumina社のHumanOminiExpress、HumanExome、または、OmniExpressExome BeadChipを使用して初潮年齢データを有する女性67,029名および閉経年齢データを有する女性43,861名のGenotypeを決定後、minimacを用いてimputation（reference: 1000 genome phase I v3）を実施し、mach2dat（ver. 1.0.19）を用いて約1,000万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v8": {
-        "Research ID": "hum0014.v8",
-        "公開日": "2018/05/01",
-        "内容": "162,255名の58臨床検査値のゲノムワイド関連解析",
-        "description": "2003年から2007年度にバイオバンク・ジャパンに登録した162,255名の58臨床検査値のGWASの結果（hum0014.v8.58qt.v1）および個人毎の58臨床検査値データ（JGAD000144～JGAD000201）を追加した。\nIllumina社のHumanOminiExpress-12、HumanExome、または、OmniExpressExome BeadChipを使用してGenotypeを決定後、minimacを用いてimputation（reference: 1000 genomes Phase I v3）を実施し、mach2qtl (v1.1.3)を用いて約600万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v7": {
-        "Research ID": "hum0014.v7",
-        "公開日": "2018/04/04",
-        "内容": "開放隅角緑内障3,980症例と対照者18,815名のゲノムワイド関連解析",
-        "description": "Illumina社のHumanOminiExpress、HumanExome、または、OmniExpressExome BeadChipを使用して開放隅角緑内障3,980症例と対照者18,815名のGenotypeを決定後、minimacを用いてimputation（reference: 1000 genome phase I v3）を実施し、mach2dat（ver. 1.0.19）を用いて約600万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v6": {
-        "Research ID": "hum0014.v6",
-        "公開日": "2017/09/08",
-        "内容": "158,284名のBMIゲノムワイド関連解析\r\n182,505名のGenotypeデータ",
-        "description": "2003年から2007年度にバイオバンク・ジャパンに登録した47疾患のうち158,284名のBMI-GWASの結果（hum0014.v6.158k.v1）および個人毎のBMIデータ（JGAD000124）および182,505名のGenotypeデータ（JGAD000123）を追加した。\nIllumina社のHumanOminiExpress-12、HumanExome、または、OmniExpressExome BeadChipを使用してGenotypeを決定後、minimacを用いてimputation（reference: 1000 genomes Phase I v3）を実施し、mach2qtl（v1.1.3）を用いて約600万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v5": {
-        "Research ID": "hum0014.v5",
-        "公開日": "2017/05/18",
-        "内容": "心房細動8,180症例と対照者28,612名のゲノムワイド関連解析\r\n心房細動8,180症例のGenotypeデータ",
-        "description": "2003年から2007年度にバイオバンク・ジャパンに登録した47疾患患者のうち心房細動を発症した8,180症例と心房細動を発症していない対照者28,612名のGWASの結果（hum0014.v5.AF.v1）および心房細動症例の個人毎のPhenotypeデータ（JGAD000101）およびGenotypeデータ（JGAD000102）を追加した。\nIllumina社のHumanOminiExpress-12、HumanExome、または、OmniExpressExome BeadChipを使用して、約90万個のSNVsの遺伝子型を決定後、minimacを用いてimputation（reference: 1000 genomes Phase I v3）を実施し、mach2datを用いて約500万個のSNVsについてGWASを行った。\n"
-      },
-      "hum0014.v4": {
-        "Research ID": "hum0014.v4",
-        "公開日": "2016/02/02",
-        "内容": "アトピー性皮膚炎1,472症例と対照者7,966名のゲノムワイド関連解析",
-        "description": "Illumina社のHumanOmniExpress-12 BeadChipを使用してアトピー性皮膚炎1,472症例と対照者7,966名の遺伝子型（606,164 SNVs）を決定後、minimacを用いてimputation（リファレンス：1000 genome phase I v3）を実施することで約770万個の変異の疾患群および対照群それぞれの頻度を推定し、mach2datアルゴリズムにより関連解析（allele dosageに対するロジスティック回帰）を行った。常染色体およびX染色体（男女別）上の変異の関連解析結果をテキストファイルにて提供する。\n"
-      },
-      "hum0014.v3": {
-        "Research ID": "hum0014.v3",
-        "公開日": "2016/01/28",
-        "内容": "２型糖尿病9,817症例と対照者6,763名および２型糖尿病5,646症例と対照者19,420名のゲノムワイド関連解析",
-        "description": "２型糖尿病9,817症例と対照者6,763名（552,915 SNPs）および２型糖尿病5,646症例と対照者19,420名（479,088 SNPs）の遺伝子型カウント情報およびGWASの結果を追加した。\n遺伝子型決定には、Illumina [Omni Express exome BeadchipもしくはHuman610-Quad BeadChip]を使用している。\n"
-      },
-      "hum0014.v2": {
-        "Research ID": "hum0014.v2",
-        "公開日": "2015/12/28",
-        "内容": "健常者934名、35疾患各約190症例、食道がん182症例、筋萎縮性側索硬化症92症例の遺伝子型カウント情報　（JSNPのHPにおいて提供していた情報と同じものです）",
-        "description": "健常者934名、35疾患各約190症例、食道がん182症例、筋萎縮性側索硬化症92症例の遺伝子型カウント情報を追加した。\n35疾患は以下の通り。\n悪性腫瘍 （肺がん、乳がん、胃がん、大腸・直腸がん、前立腺がん）\n心血管系疾患 （心不全、心筋梗塞，不安定狭心症、安定狭心症、不整脈、閉塞性動脈硬化症）\n脳血管障害 （脳梗塞、脳動脈瘤）\n呼吸器疾患 （間質性肺炎＆肺線維症、肺気腫、気管支喘息）\n慢性肝疾患 （C型慢性肝炎、肝硬変）\n眼疾患 （白内障、緑内障）\nその他 （てんかん、歯周病、尿路結石、ネフローゼ症候群、子宮筋腫、子宮内膜症、骨粗鬆症、関節リウマチ、筋萎縮性側索硬化症、花粉症、アトピー性皮膚炎、過敏性症候群（薬疹）、高脂血症、糖尿病、バセドウ病）\n遺伝子型決定には、Illumina [Human610-Quad BeadChip、HumanHap550v3 Genotyping BeadChip] 、Perlegen Sciences [high-density oligonucleotide arrays] およびHologic Japan [Invader]を使用している。\n"
-      },
-      "hum0014.v1": {
-        "Research ID": "hum0014.v1",
-        "公開日": "2014/09/30",
-        "内容": "心筋梗塞1,666症例と対照健常者3,198名のゲノムワイド関連解析",
-        "description": "日本人心筋梗塞1,666症例、および日本人対照健常者3,198名の約45万6千SNPsの遺伝子型カウント情報およびGWASの結果を提供する。\n遺伝子型決定には、Illumina [Human610-Quad BeadChipもしくはHumanHap550v3 Genotyping BeadChip]を使用している。\nNote：\n"
-      }
     }
   }
-}
