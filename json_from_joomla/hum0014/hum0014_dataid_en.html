@@ -1,3 +1,253 @@
+<!DOCTYPE html>
+<!-- jsn_epic_pro 6.2.3 -->
+<html lang="" dir="ltr">
+<head>
+	<base href="https://humandbs.biosciencedbc.jp/en/hum0014-v31" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<meta name="keywords" content="human, controlled access, dbgap, ヒト, 制限公開, データベース" />
+	<meta name="description" content="NBDC事業推進部が公開するヒト由来データのデータベースです。" />
+	<meta name="generator" content="Joomla! - Open Source Content Management" />
+	<title>HUM0014.v31 - NBDC Human Database</title>
+	<link href="/templates/jsn_epic_pro/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+	<link href="https://humandbs.biosciencedbc.jp/en/component/search/?Itemid=2536&amp;format=opensearch" rel="search" title="NBDC Human Database" type="application/opensearchdescription+xml" />
+	<link href="/cache/jsn_epic_pro/fc76f038b51ed07ba8099908b35fb119.css?7c85c2ae85ef677035894a08c4e1cc1b" rel="stylesheet" type="text/css" />
+	<link href="/cache/jsn_epic_pro/086e3cbe40ff0a87e35e712181975142.css?7c85c2ae85ef677035894a08c4e1cc1b" rel="stylesheet" type="text/css" media="print" />
+	<link href="//fonts.googleapis.com/css?family=Nobile:regular,bold" rel="stylesheet" type="text/css" />
+	<link href="/cache/jsn_epic_pro/f43e4dcbe36c3befdc432ca529067d63.css?7c85c2ae85ef677035894a08c4e1cc1b" rel="stylesheet" type="text/css" />
+	<style type="text/css">
+#jsn-page,
+	#jsn-menu.jsn-menu-sticky,
+	#jsn-pos-topbar {
+		width: 95%;
+		min-width: 95%;
+	}
+	div.jsn-modulecontainer ul.menu-mainmenu ul,
+	div.jsn-modulecontainer ul.menu-mainmenu ul li {
+		width: 200px;
+	}
+	div.jsn-modulecontainer ul.menu-mainmenu ul ul {
+		margin-left: 199px;
+	}
+	#jsn-pos-toolbar div.jsn-modulecontainer ul.menu-mainmenu ul ul {
+		margin-right: 199px;
+		margin-left : auto
+	}
+	div.jsn-modulecontainer ul.menu-sidemenu ul,
+	div.jsn-modulecontainer ul.menu-sidemenu ul li {
+		width: 200px;
+	}
+	div.jsn-modulecontainer ul.menu-sidemenu li ul {
+		right: -200px;
+	}
+	body.jsn-direction-rtl div.jsn-modulecontainer ul.menu-sidemenu li ul {
+		left: -200px;
+		right: auto;
+	}
+	div.jsn-modulecontainer ul.menu-sidemenu ul ul {
+		margin-left: 199px;
+	}
+	</style>
+	<script type="application/json" class="joomla-script-options new">{"csrf.token":"8c6aa42417ad47433efd64d1c0f39346","system.paths":{"root":"","base":""}}</script>
+	<script src="https://humandbs.biosciencedbc.jp/cache/jsn_epic_pro/13c134213a0e1e205d8b90b321c95b27.js?7c85c2ae85ef677035894a08c4e1cc1b" type="text/javascript"></script>
+	<script src="https://humandbs.biosciencedbc.jp/cache/jsn_epic_pro/2227106a4b9add0dba58a126a8b6845b.js?7c85c2ae85ef677035894a08c4e1cc1b" type="text/javascript"></script>
+	<script src="https://humandbs.biosciencedbc.jp/cache/jsn_epic_pro/fc2dc1ce83868bfa194e552a7941378b.js?7c85c2ae85ef677035894a08c4e1cc1b" type="text/javascript"></script>
+	<script src="https://humandbs.biosciencedbc.jp/cache/jsn_epic_pro/3d6591da1c9d3eb2c4c861719f0654fc.js?7c85c2ae85ef677035894a08c4e1cc1b" type="text/javascript"></script>
+	<script src="https://humandbs.biosciencedbc.jp/cache/jsn_epic_pro/52b9f3939cdf73e95c6df9f753037e49.js?7c85c2ae85ef677035894a08c4e1cc1b" type="text/javascript"></script>
+	<script src="/media/system/js/modal.js?7c85c2ae85ef677035894a08c4e1cc1b" type="text/javascript"></script>
+	<script type="text/javascript">
+jQuery(window).on('load',  function() {
+				new JCaption('img.caption');
+			});
+jQuery(document).ready(function(){WfMediabox.init({"base":"\/","theme":"standard","width":"","height":"","lightbox":0,"shadowbox":0,"icons":1,"overlay":1,"overlay_opacity":0.8,"overlay_color":"#000000","transition_speed":500,"close":2,"scrolling":"fixed","labels":{"close":"Close","next":"Next","previous":"Previous","cancel":"Cancel","numbers":"{{numbers}}","numbers_count":"{{current}} of {{total}}","download":"Download"}});});
+JSNTemplate.initTemplate({
+					templatePrefix			: "jsn_epic_pro_",
+					templatePath			: "/templates/jsn_epic_pro",
+					enableRTL				: 0,
+					enableGotopLink			: 1,
+					enableMobile			: 0,
+					enableMobileMenuSticky	: 1,
+					enableDesktopMenuSticky	: 0,
+					responsiveLayout		: [],
+					mobileMenuEffect		: "default"
+				});
+			
+		jQuery(function($) {
+			SqueezeBox.initialize({});
+			initSqueezeBox();
+			$(document).on('subform-row-add', initSqueezeBox);
+
+			function initSqueezeBox(event, container)
+			{
+				SqueezeBox.assign($(container || document).find('a.modal').get(), {
+					parse: 'rel'
+				});
+			}
+		});
+
+		window.jModalClose = function () {
+			SqueezeBox.close();
+		};
+
+		// Add extra modal close functionality for tinyMCE-based editors
+		document.onreadystatechange = function () {
+			if (document.readyState == 'interactive' && typeof tinyMCE != 'undefined' && tinyMCE)
+			{
+				if (typeof window.jModalClose_no_tinyMCE === 'undefined')
+				{
+					window.jModalClose_no_tinyMCE = typeof(jModalClose) == 'function'  ?  jModalClose  :  false;
+
+					jModalClose = function () {
+						if (window.jModalClose_no_tinyMCE) window.jModalClose_no_tinyMCE.apply(this, arguments);
+						tinyMCE.activeEditor.windowManager.close();
+					};
+				}
+
+				if (typeof window.SqueezeBoxClose_no_tinyMCE === 'undefined')
+				{
+					if (typeof(SqueezeBox) == 'undefined')  SqueezeBox = {};
+					window.SqueezeBoxClose_no_tinyMCE = typeof(SqueezeBox.close) == 'function'  ?  SqueezeBox.close  :  false;
+
+					SqueezeBox.close = function () {
+						if (window.SqueezeBoxClose_no_tinyMCE)  window.SqueezeBoxClose_no_tinyMCE.apply(this, arguments);
+						tinyMCE.activeEditor.windowManager.close();
+					};
+				}
+			}
+		};
+		
+	</script>
+
+<!-- Start Include apple-touch-icon -->
+<link rel="apple-touch-icon" href="/templates/jsn_epic_pro/apple-touch-icon.png" sizes="180x180">
+<!-- End Include apple-touch-icon --></head>
+
+<body id="jsn-master" class="jsn-textstyle-business jsn-color-blue jsn-direction-ltr jsn-desktop jsn-joomla-30  jsn-com-content jsn-view-article jsn-itemid-2536">
+	<a name="top" id="top"></a>
+		<div id="jsn-page" class="container">
+		<div id="jsn-page-inner">
+					<div id="jsn-header">
+				<div id="jsn-logo" class="pull-left">
+									<div id="jsn-pos-logo">
+						<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">
+<div  >
+	<p><a href="/en/"><img src="/files/images/HumanDB.svg" alt="HumanDB logo" style="height:30px; width:auto; margin:8px;" /></a>&nbsp;<img src="/files/images/logo_en.png" alt="logo en" width="280" height="43" /></p></div><div class="clearbreak"></div></div></div></div>
+					</div>
+
+								</div>
+				<div id="jsn-headerright" class="pull-right">
+									<div id="jsn-pos-top" class="pull-left">
+						<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent"><div class="mod-languages">
+
+	<ul class="lang-block" dir="ltr">
+						<li>
+			<a href="/ja/hum0014-v31">
+							Japanese						</a>
+			</li>
+							</ul>
+
+</div>
+<div class="clearbreak"></div></div></div></div><div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">	<div class="search">
+		<form action="/en/hum0014-v31" method="post" class="form-inline">
+			<label for="mod-search-searchword" class="element-invisible">Search ...</label> <input name="searchword" id="mod-search-searchword" maxlength="200"  class="inputbox search-query" type="text" size="20" value="Site Search"  onblur="if (this.value=='') this.value='Site Search';" onfocus="if (this.value=='Site Search') this.value='';" /> <button class="button btn btn-primary" onclick="this.form.searchword.focus();">Search</button>			<input type="hidden" name="task" value="search" />
+			<input type="hidden" name="option" value="com_search" />
+			<input type="hidden" name="Itemid" value="2536" />
+		</form>
+	</div>
+
+<div class="clearbreak"></div></div></div></div>
+						<div class="clearbreak"></div>
+					</div>
+								</div>
+				<div class="clearbreak"></div>
+			</div>
+			<div id="jsn-body">
+							<div id="jsn-menu">
+									<div id="jsn-pos-mainmenu" >
+						<div class="_menu jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent"><span id="jsn-menu-toggle-parent" class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span>
+<ul class="menu-mainmenu menu-iconmenu">
+	<li class="jsn-menu-mobile-control"><span class="close-menu"><i class="fa fa-times"></i></span></li> 
+	<li  class="first"><a class="clearfix" href="/en/" >
+		<span>
+		<span class="jsn-menutitle">Home</span>	</span>
+</a></li><li  class="parent"><a class="clearfix" href="/en/guidelines" >
+		<span>
+		<span class="jsn-menutitle">Guidelines</span>	</span>
+</a><span class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span><ul><li  class="first"><a class="clearfix" href="/en/guidelines/data-sharing-guidelines" >
+		<span>
+		<span class="jsn-menutitle">NBDC Human Data Sharing Guidelines</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/en/guidelines/security-guidelines-for-users" >
+		<span>
+		<span class="jsn-menutitle">NBDC Security Guidelines for Human Data (for Data Users)</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/en/guidelines/security-guidelines-for-submitters" >
+		<span>
+		<span class="jsn-menutitle">NBDC Security Guidelines for Human Data (for Data Submitters)</span>	</span>
+</a></li><li  class="last"><a class="clearfix" href="/en/guidelines/security-guidelines-for-dbcenters" >
+		<span>
+		<span class="jsn-menutitle">NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)</span>	</span>
+</a></li></ul></li><li  class=""><a class="clearfix" href="/en/data-submission" >
+		<span>
+		<span class="jsn-menutitle">Data Submission</span>	</span>
+</a></li><li  class="parent"><a class="clearfix" href="/en/data-use" >
+		<span>
+		<span class="jsn-menutitle">Data Use</span>	</span>
+</a><span class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span><ul><li  class="first last"><a class="clearfix" href="/en/data-use/all-researches" >
+		<span>
+		<span class="jsn-menutitle">List of All Researches</span>	</span>
+</a></li></ul></li><li  class=""><a class="clearfix" href="/en/data-processing" >
+		<span>
+		<span class="jsn-menutitle">Data Processing</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/en/off-premise-server" >
+		<span>
+		<span class="jsn-menutitle">Off-premise Server</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/en/dac" >
+		<span>
+		<span class="jsn-menutitle">Data Access Committee</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/en/publications" >
+		<span>
+		<span class="jsn-menutitle">Publications</span>	</span>
+</a></li><li  class="last"><a class="clearfix" href="/en/contact-us" >
+		<span>
+		<span class="jsn-menutitle">Contact</span>	</span>
+</a></li></ul><div class="clearbreak"></div></div></div></div>
+											</div>
+													<span id="jsn-desktopswitch">
+						<a href="#" onclick="javascript: JSNUtils.setTemplateAttribute('jsn_epic_pro_','mobile','no'); return false;"></a>
+					</span>
+					<span id="jsn-mobileswitch">
+						<a href="#" onclick="javascript: JSNUtils.setTemplateAttribute('jsn_epic_pro_','mobile','yes'); return false;"></a>
+					</span>
+        <div class="clearbreak"></div>
+				</div>
+			
+				<div id="jsn-content" class="">
+					<div id="jsn-content_inner"><div id="jsn-content_inner1"><div id="jsn-content_inner2"><div id="jsn-content_inner3"><div id="jsn-content_inner4"><div id="jsn-content_inner5"><div id="jsn-content_inner6"><div id="jsn-content_inner7" class="row-fluid">
+								<div id="jsn-maincontent" class="span12 order1  row-fluid">
+						<div id="jsn-maincontent_inner"><div id="jsn-maincontent_inner1"><div id="jsn-maincontent_inner2"><div id="jsn-maincontent_inner3"><div id="jsn-maincontent_inner4">
+										<div id="jsn-centercol" class="span12 order1 "><div id="jsn-centercol_inner">
+											<div id="jsn-mainbody-content" class=" jsn-hasmainbody">
+													<div id="jsn-mainbody">
+											<div id="system-message-container">
+	</div>
+
+											<div class="item-page" itemscope itemtype="https://schema.org/Article">
+	<meta itemprop="inLanguage" content="en-GB" />
+	
+<div class="jsn-article-toolbar"><div class="clearfix"></div>
+</div>
+
+
+<div class="articleBody" itemprop="articleBody">
+		<p><span style="font-family: helvetica; font-size: 15pt;"><strong>NBDC Research ID: hum0014.v31</strong></span></p>
+<p>&nbsp;</p>
+<h1><span style="text-decoration: underline; font-family: helvetica; font-size: 15pt;"><strong>SUMMARY</strong></span></h1>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>Aims: </strong>Identify disease-related genes and mobile element variations in Japanese</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>Methods: </strong>Genomic DNA samples were genotyped by following methods: Human610-Quad BeadChip, HumanHap550v3 Genotyping BeadChip, HumanOmniExpress-12 BeadChip, HumanExome BeadChip, OmniExpressExome BeadChip (Illumina), high-density oligonucleotide arrays (Perlegen Sciences), or Invader (Hologic Japan). Genome-Wide Association Studies (GWAS) for myocardial infarction (MI) , type II diabetes mellitus (T2DM), Atopic dermatitis (AD), atrial fibrillation (AF), Body Mass Index (BMI), primary open-angle glaucoma (POAG), 58 quantitative traits, age at menarche / menopause, smoking behaviour, height, 42 diseases (among them, the samples of 4 diseases were partially overlapped with those of previous release), dietary habits, and coronary artery disease were performed using about 500-2700K variants. Meta analyses for T2DM with diabetic nephropathy and for T2DM were also performed. Whole-genome sequencing analyses for 1,026 patients, who were registered Bio Bank Japan from 2003 - 2007, 1,765 myocardial infarction patients and 199 dementia patients were performed with Illumina HiSeq 2500/X Five. Target sequencing analyses of 11 hereditary breast cancer genes in 7,104 breast cancer patients and 23,731 controls, 8 hereditary prostate cancer genes in 7,636 prostate cancer patients and 12,366 controls, 23 genes related to clonal hematopoiesis in 11,234 subjects extracted from approximately 200,000 subjects registered in Biobank Japan between fiscal years 2003 to 2007, 27 cancer-predisposing genes in 1,009 pancreatic cancer patients, 12,606 colorectal cancer patients, 740 renal cell cancer patients, 1,982 lymphoma patients, 10,366 gastric cancer patients and 23,780 + 5,996 + 37,592 controls and 13 renal cell carcinoma-related genes in 740 renal cell cancer patients and 5,996 controls were performed with Illumina HiSeq 2500. SNP array analysis for 11,234 subjects was also performed. A new reference panel was build with WGS data of the biobank Japan project (N=1,037) and the 1KGP p3v5 ALL (N=2,504). Sex-stratified genome-wide association studies using a Cox proportional hazard model under the assumption of the additive genetic model were performed. Associations of genetic variants estimated by saddle point estimation using SPACox software were also evaluated. A mobile element variation (MEV) search tool, MEGAnE, was applied to 4,880 WGS conducted in BBJ and 24,933 MEVs were found. Genome-wide association study for atrial fibrillation was performed in 9,826 cases and 140,446 controls. A subsequent cross-ancestry meta-analysis with European GWAS (60,620 cases and 970,216 controls; <a href="http://csg.sph.umich.edu/willer/public/afib2018" target="_blank" rel="noopener">http://csg.sph.umich.edu/willer/public/afib2018</a>) and Finnish GWAS (7,244 cases and 56,378 controls; FinnGenn; <a href="https://www.finngen.fi/en" target="_blank" rel="noopener">https://www.finngen.fi/en</a>) was performed (77,690 cases and 1,167,040 controls in total). Polygenic risk score was constructed based on the cross-ancestry meta-analysis of atrial fibrillation.</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>Participants/Materials: </strong>Participants for the Tailor-made Medical Treatment Program (BioBank Japan: BBJ)</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>URL: </strong><a href="https://biobankjp.org/cohort_3rd/english/index.html" target="_blank" rel="noopener noreferrer">https://biobankjp.org/cohort_3rd/english/index.html</a></span></p>
+<p>&nbsp;</p>
+
+<div>
+
 <script type="module" src="https://togostanza.github.io/metastanza/pagination-table.js" async></script>
 
 <togostanza-pagination-table
@@ -16,3 +266,41 @@
   {"id":"Release Date","label":"Release Date"}
   ]'
 ></togostanza-pagination-table>
+
+
+</div>
+</div>
+    </div>
+    </div></div> <!-- end centercol -->
+</div></div></div></div></div></div> <!-- end jsn-maincontent -->
+    </div></div></div></div></div></div></div></div>
+</div>
+</div>
+<div id="jsn-footer">
+<div id="jsn-footermodules" class="jsn-modulescontainer jsn-modulescontainer2 row-fluid">
+<div id="jsn-pos-footer" class="span6">
+<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">
+<div  >
+<ul class="menu-divmenu">
+<li class="first"><a href="http://biosciencedbc.jp/en/sitepolicies"><span>Site Policies</span></a></li>
+<li><a href="/en/sitemap"><span>Sitemap</span></a></li>
+<li><a href="/en/contact-us"><span>Contact Us</span></a></li>
+<li class="last"><a href="/en/supported-browsers"><span>Supported Browsers</span></a></li>
+</ul></div><div class="clearbreak"></div></div></div></div>
+</div>
+<div id="jsn-pos-bottom" class="span6">
+<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">
+<div  >
+<p><a href="https://biosciencedbc.jp/en"><img src="/files/images/nbdc_logo.svg" alt="nbdc logo" width="130" height="48" style="margin-left: 5px; margin-right: 5px;" /></a><a href="https://www.jst.go.jp/EN"><img src="/files/images/jst-logo_en.png" alt="logo jst" width="128" /></a></p></div><div class="clearbreak"></div></div></div></div>
+</div>
+<div class="clearbreak"></div>
+</div>
+</div>
+</div>
+</div>
+<a id="jsn-gotoplink" href="https://humandbs.biosciencedbc.jp/en/hum0014-v31#top">
+<span>Go to top</span>
+</a>
+
+</body>
+</html>
