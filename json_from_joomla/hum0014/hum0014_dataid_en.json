@@ -1,8 +1,5 @@
 [
   {
-    "Data Set ID": "aaa",
-    "Type of Data": "bbb",
-    "Criteria": "ccc",
-    "Release Date": "ddd"
+    "DataSetID":"aaa"
   }
 ]
