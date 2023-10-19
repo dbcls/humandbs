@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script type="module" src="https://togostanza.github.io/metastanza/pagination-table.js" async> </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // JSONデータのURL
+      var jsonUrl = "https://raw.githubusercontent.com/dbcls/humandbs/import_json/json_from_joomla/hum0014/hum0014_dataid_en.json";
+
+      // ページ上の要素を取得
+      var tableContainer = document.getElementById("table-container");
+
+      // XMLHttpRequestを使用してJSONデータを取得
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", jsonUrl, true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          var jsonData = JSON.parse(xhr.responseText);
+          renderPaginationTable(jsonData);
+        }
+      };
+      xhr.send();
+
+      // togostanza-pagination-tableタグを描画する関数
+      function renderPaginationTable(data) {
+        // JSON データを文字列に変換します
+        var jsonString = JSON.stringify(data);
+        // Data URI スキームを作成し、JavaScript 変数に格納します
+        var dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(jsonString);
+
+        // togostanza-pagination-tableのタグを表示します
+        var togostanzaTable = document.createElement("togostanza-pagination-table");
+        togostanzaTable.setAttribute("data-type", "json");
+        togostanzaTable.setAttribute("data-url", dataUri);
+        
+        togostanzaTable.setAttribute("custom-css-url", "");
+        togostanzaTable.setAttribute("width", "");
+        togostanzaTable.setAttribute("fixed-columns", "1");
+        togostanzaTable.setAttribute("padding", "0px");
+        togostanzaTable.setAttribute("page-size-option", "10,20,50,100");
+        togostanzaTable.setAttribute("page-slider", "true");
+
+        // togostanza-pagination-tableをページに追加
+        tableContainer.appendChild(togostanzaTable);
+
+        // 生成した要素のHTMLをログに表示
+        console.log(togostanzaTable.outerHTML);
+      }
+    });
+  </script>
+</head>
+<body>
+  <div id="table-container"></div>
+</body>
+</html>

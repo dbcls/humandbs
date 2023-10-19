@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Data URI Decode Sample</title>
+</head>
+
+<body>
+
+<a id="downloadLink" href="#">JSON をダウンロード</a>
+<button id="showContent">内容を表示</button>
+<pre id="output"></pre>
+
+<script>
+    // サンプルの JSON データ
+    const jsonData = {
+        "name": "Taro",
+        "age": 25,
+        "city": "Tokyo"
+    };
+
+    // JSON を文字列に変換
+    const jsonString = JSON.stringify(jsonData, null, 2);
+
+    // JSON 文字列を Base64 エンコード
+    const base64EncodedJson = btoa(unescape(encodeURIComponent(jsonString)));
+
+    // Base64 エンコードされた JSON を Data URI に変換
+    const dataUri = "data:application/json;base64," + base64EncodedJson;
+
+    // `<a>` タグの href 属性に Data URI を設定
+    document.getElementById('downloadLink').setAttribute('href', dataUri);
+    document.getElementById('downloadLink').setAttribute('download', 'data.json');
+
+    // ボタンがクリックされたときの動作を設定
+    document.getElementById('showContent').addEventListener('click', function() {
+        const base64Content = dataUri.split(",")[1];
+        const decodedString = decodeURIComponent(escape(atob(base64Content)));
+        document.getElementById('output').textContent = decodedString;
+    });
+</script>
+
+</body>
+
+</html>
