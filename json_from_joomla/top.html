@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script type="module" src="https://togostanza.github.io/metastanza/pagination-table.js" async> </script>
+  <script>
+    function extractAttributesFromEntry(research){
+      keys(research["DATA"])
+
+      const extractedData = {
+        "Data Set ID": research["DATA"]["E-GEAD-635"]["Data Set ID"],
+        "Type of Data": jsonData["hum0416.v1"]["DATA"]["E-GEAD-635"]["Type of Data"],
+        "Aims": jsonData["hum0416.v1"]["SUMMARY"]["Aims"],
+        "Methods": jsonData["hum0416.v1"]["SUMMARY"]["Methods"],
+        "Participants/Materials (Summary)": jsonData["hum0416.v1"]["SUMMARY"]["Participants/Materials"],
+        "Participants/Materials (Molecular)": jsonData["hum0416.v1"]["MOLECULAR DATA"]["E-GEAD-635"]["Participants/Materials"],
+        "Targets": jsonData["hum0416.v1"]["MOLECULAR DATA"]["E-GEAD-635"]["Targets"],
+        "Principal Investigator": jsonData["hum0416.v1"]["DATA PROVIDER"]["Principal Investigator"]
+      };
+
+      return extractedData;
+    }
+
+    function findTopLevelObjectsWithKey(obj, targetKey) {      
+      let result = [];
+
+      if (typeof obj !== 'object' || obj === null) {
+        return result;
+      }
+
+  // 対象のキーが見つかった場合は結果配列に追加
+      if (obj.hasOwnProperty(targetKey)) {
+          result.push(obj);
+      }
+
+      return result;
+      }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // JSONデータのURL
+      var jsonUrl = "https://raw.githubusercontent.com/skwsm/humandb2json/main/output/humandb_en_20200710.json"
+
+      // ページ上の要素を取得
+      var tableContainer = document.getElementById("table-container");
+
+      // 全research情報
+      var allResearch = []      
+
+      // XMLHttpRequestを使用してJSONデータを取得
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", jsonUrl, true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {          
+          renderAllResearchTable(JSON.parse(xhr.responseText))
+        }
+      };
+      xhr.send();
+  
+      // All research tableのデータを作成する
+      function renderAllResearchTable(json){
+        var allResearch = []   
+        var br = "\r\n"
+
+        Object.entries(json).forEach(([humid, entry]) => {
+//          console.log(entry)
+          var research = {}
+
+          research["Data Set ID"] = [humid]
+          research["Study Title"] = []
+          research["Release Date"] = []
+          research["Type of Study"] = new Set()
+          research["Platform"]  = new Set()
+          research["Participants/Materials"] = entry["SUMMARY"]["Participants/Materials"]
+          research["Data Provider"] = entry["DATA PROVIDER"]["Principal Investigator"]
+          research["Type of Data"] = new Set()
+
+          Object.entries(entry.DATA).forEach(([_, data]) => {
+            research["Data Set ID"].push(data["Data Set ID"])
+            research["Release Date"].push(data["Release Date"])
+            research["Type of Study"].add(data["Type of Data"])
+            research["Type of Data"].add(data["Criteria"])
+          });
+
+          research["Data Set ID"] = research["Data Set ID"].join(br)
+          research["Release Date"] = research["Release Date"].join(br)
+          research["Type of Study"] = Array.from(research["Type of Study"]).join(br)
+          research["Type of Data"] = Array.from(research["Type of Data"]).join(br)
+
+          Object.entries(entry["MOLECULAR DATA"]).forEach(([_, data]) => {
+            research["Platform"].add(data["Platform"])
+          });
+
+          research["Platform"] = Array.from(research["Platform"]).join(br)
+
+
+          allResearch.push(research)
+        });
+
+        renderPaginationTable(allResearch)
+        }
+
+
+      // togostanza-pagination-tableタグを描画する関数
+      function renderPaginationTable(data) {
+        // JSON データを文字列に変換します
+        var jsonString = JSON.stringify(data);
+        // Data URI スキームを作成し、JavaScript 変数に格納します
+        var dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(jsonString);
+
+        // togostanza-pagination-tableのタグを表示します
+        var togostanzaTable = document.createElement("togostanza-pagination-table");
+        togostanzaTable.setAttribute("data-type", "json");
+        togostanzaTable.setAttribute("data-url", dataUri);
+        
+        togostanzaTable.setAttribute("custom-css-url", "");
+        togostanzaTable.setAttribute("width", "");
+        togostanzaTable.setAttribute("fixed-columns", "1");
+        togostanzaTable.setAttribute("padding", "0px");
+        togostanzaTable.setAttribute("page-size-option", "10,20,50,100");
+        togostanzaTable.setAttribute("page-slider", "true");
+
+        // togostanza-pagination-tableをページに追加
+        tableContainer.appendChild(togostanzaTable);
+
+        // 生成した要素のHTMLをログに表示
+//        console.log(togostanzaTable.outerHTML);
+      }
+    });
+  </script>
+</head>
+<body>
+  <div id="table-container"></div>
+</body>
+</html>
