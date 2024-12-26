@@ -1,4 +1,5 @@
 import express from "express";
+import type { APIResponse } from "./types/shared-types";
 
 const app = express();
 

@@ -2,8 +2,14 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 
+import { APIResponse } from "@humandbs/backend/types";
+
 function App() {
   const [count, setCount] = useState(0);
+
+  const a: APIResponse = { message: "Hello from backend!" };
+
+  console.log(a);
 
   return (
     <>

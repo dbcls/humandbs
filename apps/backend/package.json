@@ -1,7 +1,11 @@
 {
-  "name": "backend",
-  "module": "index.ts",
+  "name": "@humandbs/backend",
   "type": "module",
+  "private": true,
+  "types": "./types/shared-types.ts",
+  "exports": {
+    "./types": "./types/shared-types.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/express": "^5.0.0",
