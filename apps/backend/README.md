@@ -1,4 +1,4 @@
-# app
+# backend
 
 To install dependencies:
 
