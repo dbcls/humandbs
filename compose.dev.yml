@@ -1,0 +1,58 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    image: humandbs-dev
+    container_name: humandbs-frontend-dev
+    volumes:
+      - ${PWD}:/app
+      - node_modules:/app/node_modules
+    environment:
+      - HUMANDBS_FRONTEND_HOST=0.0.0.0
+      - HUMANDBS_FRONTEND_PORT=3000
+    ports:
+      - 127.0.0.1:3000:3000
+    restart: always
+    working_dir: /app
+    command: [ "sleep", "infinity" ]
+    networks:
+      - humandbs-dev-network
+    init: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    image: humandbs-dev
+    container_name: humandbs-backend-dev
+    volumes:
+      - ${PWD}:/app
+      - node_modules:/app/node_modules
+    environment:
+      - HUMANDBS_FRONTEND_HOST=0.0.0.0
+      - HUMANDBS_FRONTEND_PORT=8080
+    ports:
+      - 127.0.0.1:8080:8080
+    restart: always
+    working_dir: /app
+    command: [ "sleep", "infinity" ]
+    networks:
+      - humandbs-dev-network
+    init: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+volumes:
+  node_modules: {}
+
+networks:
+  humandbs-dev-network:
+    name: humandbs-dev-network
+    external: true
