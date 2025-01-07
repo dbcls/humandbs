@@ -2,6 +2,8 @@
   "name": "@humandbs/prettier-config",
   "version": "1.0.0",
   "description": "Prettier configuration for HumanDBS projects",
+  "private": true,
+  "type": "module",
   "main": "index.mjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
