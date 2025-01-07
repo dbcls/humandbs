@@ -2,6 +2,13 @@
   "name": "app",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "frontend:dev": "bun run --cwd apps/frontend dev",
+    "frontend:build": "bun run --cwd apps/frontend build",
+    "frontend:lint": "bun run --cwd apps/frontend lint",
+    "frontend:preview": "bun run --cwd apps/frontend preview",
+    "backend:dev": "bun run --cwd apps/backend dev"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -9,6 +16,7 @@
     "typescript": "^5.0.0"
   },
   "workspaces": [
-    "apps/*"
+    "apps/frontend",
+    "apps/backend"
   ]
 }
