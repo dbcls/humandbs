@@ -7,10 +7,6 @@ export const Route = createLazyFileRoute('/')({
 });
 
 function Index() {
-
-  
-
-  
   return (
     <div>
       <Markdown markdown={homeContent} />
@@ -18,9 +14,9 @@ function Index() {
       {/* // sample barchart */}
       <svg>
         <rect x="0" y="0" width="100" height="100" fill="red" />
-        <rect x="100" y="0" width="100" height="50" fill="green" />
-        <rect x="100" y="50" width="100" height="50" fill="blue" />
-        <rect x="200" y="0" width="100" height="100" fill="yellow" />
+        <rect x="100" y="20" width="100" height="80" fill="green" />
+        <rect x="200" y="40" width="100" height="60" fill="blue" />
+        <rect x="300" y="0" width="100" height="100" fill="yellow" />
       </svg>
     </div>
   );

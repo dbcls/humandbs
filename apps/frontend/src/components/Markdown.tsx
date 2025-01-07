@@ -2,7 +2,23 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeRaw from 'rehype-raw';
-export function Markdown({ markdown }: { markdown: string }) {
+import { Skeleton } from './Skeleton';
+
+export function Markdown({
+  markdown,
+  isLoading = false,
+}: {
+  markdown: string | undefined | null;
+  isLoading?: boolean;
+}) {
+  if (!markdown && !isLoading) {
+    return null;
+  }
+
+  if (isLoading) {
+    return <Skeleton />;
+  }
+
   return (
     <ReactMarkdown
       className={'prose'}
