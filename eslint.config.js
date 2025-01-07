@@ -27,5 +27,13 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["apps/backend/**/*.{ts}"],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.node,
+    },
+  },
   eslintConfigPrettier
 );
