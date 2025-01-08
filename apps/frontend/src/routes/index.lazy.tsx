@@ -1,10 +1,10 @@
-import { createLazyFileRoute } from '@tanstack/react-router';
-import homeContent from '@content/home-content.md';
-import { Markdown } from '@components/Markdown';
+import { Markdown } from "@components/Markdown"
+import homeContent from "@content/home-content.md"
+import { createLazyFileRoute } from "@tanstack/react-router"
 
-export const Route = createLazyFileRoute('/')({
+export const Route = createLazyFileRoute("/")({
   component: Index,
-});
+})
 
 function Index() {
   return (
@@ -19,5 +19,5 @@ function Index() {
         <rect x="300" y="0" width="100" height="100" fill="yellow" />
       </svg>
     </div>
-  );
+  )
 }

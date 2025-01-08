@@ -1,8 +1,9 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeSlug from 'rehype-slug';
-import rehypeRaw from 'rehype-raw';
-import { Skeleton } from './Skeleton';
+import ReactMarkdown from "react-markdown"
+import rehypeRaw from "rehype-raw"
+import rehypeSlug from "rehype-slug"
+import remarkGfm from "remark-gfm"
+
+import { Skeleton } from "./Skeleton"
 
 export function Markdown({
   markdown,
@@ -12,20 +13,20 @@ export function Markdown({
   isLoading?: boolean;
 }) {
   if (!markdown && !isLoading) {
-    return null;
+    return null
   }
 
   if (isLoading) {
-    return <Skeleton />;
+    return <Skeleton />
   }
 
   return (
     <ReactMarkdown
-      className={'prose'}
+      className={"prose"}
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeSlug, rehypeRaw]}
     >
       {markdown}
     </ReactMarkdown>
-  );
+  )
 }

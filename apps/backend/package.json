@@ -11,11 +11,9 @@
     "dev": "bun run index.ts"
   },
   "devDependencies": {
-    "@humandbs/prettier-config": "workspace:*",
     "@types/bun": "latest",
     "@types/express": "^5.0.0",
-    "nodemon": "^3.1.9",
-    "prettier": "^3.4.2"
+    "nodemon": "^3.1.9"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

@@ -9,5 +9,5 @@ export function Skeleton() {
       <div className="h-2 max-w-[360px] rounded-full bg-gray-200"></div>
       <span className="sr-only">Loading...</span>
     </div>
-  );
+  )
 }
