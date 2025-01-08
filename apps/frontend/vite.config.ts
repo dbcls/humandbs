@@ -3,6 +3,15 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import path from 'node:path';
 
+function getGithubRepoName() {
+  const repo = process.env.GITHUB_REPOSITORY;
+  const repoName = repo?.split('/')[1];
+  return repoName;
+}
+
+const repoName = getGithubRepoName();
+console.log('repo name', repoName);
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -18,6 +27,8 @@ export default defineConfig({
       },
     },
   ],
+
+  base: repoName ? `/${repoName}/` : '/',
 
   resolve: {
     alias: {
