@@ -12,13 +12,20 @@ export default tseslint.config(
   {
     extends: [
       js.configs.recommended,
-      ...tseslint.configs.recommended,
+      ...tseslint.configs.recommendedTypeChecked,
       ...pluginQuery.configs["flat/recommended"],
     ],
     files: ["apps/frontend/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        project: [
+          "./apps/frontend/tsconfig.node.json",
+          "./apps/frontend/tsconfig.app.json",
+        ],
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     plugins: {
       "react-hooks": reactHooks,
