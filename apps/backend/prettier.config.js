@@ -1,2 +1,2 @@
-import config from "@humandbs/prettier-config";
+import config from '@humandbs/prettier-config';
 export default config;

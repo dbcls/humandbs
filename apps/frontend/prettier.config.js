@@ -6,6 +6,5 @@ import config from '@humandbs/prettier-config';
  */
 export default {
   ...config,
-  plugins: [ "prettier-plugin-tailwindcss" ],
-
+  plugins: ['prettier-plugin-tailwindcss'],
 };
