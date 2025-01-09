@@ -1,5 +1,7 @@
 services:
   frontend:
+    depends_on:
+      - backend
     build:
       context: .
       dockerfile: Dockerfile-dev
@@ -11,11 +13,12 @@ services:
     environment:
       - HUMANDBS_FRONTEND_HOST=0.0.0.0
       - HUMANDBS_FRONTEND_PORT=3000
+      - HUSKY=0
     ports:
       - 127.0.0.1:3000:3000
     restart: always
     working_dir: /app
-    command: [ "sleep", "infinity" ]
+    command: ["sleep", "infinity"]
     networks:
       - humandbs-dev-network
     init: true
@@ -36,11 +39,12 @@ services:
     environment:
       - HUMANDBS_FRONTEND_HOST=0.0.0.0
       - HUMANDBS_FRONTEND_PORT=8080
+      - HUSKY=0
     ports:
       - 127.0.0.1:8080:8080
     restart: always
     working_dir: /app
-    command: [ "sleep", "infinity" ]
+    command: ["sleep", "infinity"]
     networks:
       - humandbs-dev-network
     init: true

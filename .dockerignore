@@ -2,6 +2,7 @@
 **
 
 !apps
+!packages
 !bun.lockb
 !index.ts
 !package.json
