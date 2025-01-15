@@ -11,6 +11,7 @@ const queryClient = new QueryClient()
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
+  basepath: __PATH_PREFIX,
 })
 
 // Register things for typesafety

@@ -47,5 +47,6 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION: JSON.stringify(process.env.npm_package_version || "0.0.0"),
+    __PATH_PREFIX: JSON.stringify(repoName),
   },
 })
