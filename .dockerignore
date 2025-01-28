@@ -2,8 +2,8 @@
 **
 
 !apps
-!packages
 !bun.lockb
+!eslint.config.js
 !index.ts
 !package.json
 !README.md

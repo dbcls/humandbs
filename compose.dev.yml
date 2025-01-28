@@ -13,7 +13,6 @@ services:
     environment:
       - HUMANDBS_FRONTEND_HOST=0.0.0.0
       - HUMANDBS_FRONTEND_PORT=3000
-      - HUSKY=0
     ports:
       - 127.0.0.1:3000:3000
     restart: always
@@ -37,9 +36,8 @@ services:
       - ${PWD}:/app
       - node_modules:/app/node_modules
     environment:
-      - HUMANDBS_FRONTEND_HOST=0.0.0.0
-      - HUMANDBS_FRONTEND_PORT=8080
-      - HUSKY=0
+      - HUMANDBS_BACKGROUND_HOST=0.0.0.0
+      - HUMANDBS_BACKGROUND_PORT=8080
     ports:
       - 127.0.0.1:8080:8080
     restart: always
