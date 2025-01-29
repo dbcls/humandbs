@@ -8,7 +8,6 @@
     "frontend:lint": "bun run --filter @humandbs/frontend lint",
     "frontend:preview": "bun run --filter @humandbs/frontend preview",
     "backend:dev": "bun run --filter @humandbs/backend dev",
-    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
