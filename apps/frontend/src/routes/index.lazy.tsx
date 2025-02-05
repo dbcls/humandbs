@@ -1,5 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router"
 
+import Infographics from "@/assets/Infographics.png"
 import { Button } from "@/components/Button"
 import { Card } from "@/components/Card"
 import { News, NewsItem } from "@/components/FrontNews"
@@ -16,10 +17,10 @@ const dummyNews: NewsItem[] = [
 
 function Index() {
   return (
-    // after the Navbar component
-    <section>
+    // All that after the Navbar component
+    <section className=" flex flex-col gap-8">
       {/* // hero component */}
-      <section className=" flex h-48 justify-between gap-8">
+      <section className=" flex h-fit justify-between gap-8">
 
         <article className=" ml-8 mt-8 max-w-2xl shrink">
           <h1 className="text-secondary text-3xl font-bold">NBDCヒトデータベースについて</h1>
@@ -45,6 +46,11 @@ function Index() {
         </Card>
 
       </section>
+
+      <Card className=" overflow-hidden p-0">
+        <img src={Infographics} alt="Infographics" className=" w-full">
+        </img>
+      </Card>
 
     </section>
 

@@ -31,6 +31,9 @@
 
 @layer components {
   .main-bg {
-    background: top/cover no-repeat url("@/assets/BG.png");
+    background-image: url("@/assets/BG.png");
+    background-repeat: no-repeat;
+    background-position: top;
+    background-size: contain;
   }
 }
