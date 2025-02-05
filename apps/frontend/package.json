@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "GITHUB_REPOSITORY='dbcls/humandbs' vite",
+    "dev": "GITHUB_REPOSITORY='dbcls/humandbs' bunx --bun vite",
     "build": "tsc -b && vite build",
     "lint": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.0.3",
     "@tanstack/react-query": "^5.62.16",
     "@tanstack/react-router": "^1.95.1",
     "react": "^18.3.1",
@@ -19,22 +20,18 @@
     "rehype-raw": "^7.0.0",
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.0",
+    "tailwindcss": "^4.0.3",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@humandbs/backend": "workspace:*",
-    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/typography": "^0.5.16",
     "@tanstack/router-devtools": "^1.95.1",
     "@tanstack/router-plugin": "^1.95.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "prettier-plugin-tailwindcss": "^0.6.9",
-    "tailwindcss": "^3.4.17",
-    "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.6.2",
     "vite": "^6.0.5"
   }

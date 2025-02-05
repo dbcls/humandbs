@@ -1,6 +1,7 @@
-import { Markdown } from "@components/Markdown"
 import { useQuery } from "@tanstack/react-query"
 import { createLazyFileRoute } from "@tanstack/react-router"
+
+import { Markdown } from "@/components/Markdown"
 
 export const Route = createLazyFileRoute("/contact/")({
   component: RouteComponent,

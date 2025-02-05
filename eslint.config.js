@@ -41,6 +41,7 @@ export default tseslint.config([{
 
     // Our rules
     "@typescript-eslint/no-non-null-assertion": "off",
+    "tailwindcss/classnames-order": "warn",
 
     // Stylistic rules
     "@stylistic/js/array-bracket-newline": ["error", "consistent"],

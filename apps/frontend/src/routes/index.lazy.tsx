@@ -1,6 +1,7 @@
-import { Markdown } from "@components/Markdown"
-import homeContent from "@content/home-content.md"
 import { createLazyFileRoute } from "@tanstack/react-router"
+
+import { Markdown } from "@/components/Markdown"
+import homeContent from "@/content/home-content.md"
 
 export const Route = createLazyFileRoute("/")({
   component: Index,
