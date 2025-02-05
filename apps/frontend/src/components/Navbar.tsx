@@ -4,6 +4,9 @@ import { ChevronDown } from "lucide-react"
 import Logo from "@/assets/Logo.png"
 import { FileRoutesByTo } from "@/routeTree.gen"
 
+import { LangSwitcher } from "./LanguageSwitcher"
+import { Search } from "./Search"
+
 type Path = keyof FileRoutesByTo
 
 const navItems: { label: React.ReactNode, href: Path }[] = [
@@ -32,24 +35,29 @@ const navItems: { label: React.ReactNode, href: Path }[] = [
 
 export function Navbar() {
   return (
-    <header className=" flex items-center gap-8 rounded-md bg-white p-4">
-      <Link className=" w-fit" to="/">
+    <header className=" flex items-center justify-between gap-8 rounded-md bg-white p-4">
 
-        <img src={Logo} className=" block" />
+      <nav className=" flex items-center gap-8">
+        <Link className=" w-fit" to="/">
 
-        <div className=" text-center text-sm font-semibold">NDBC ヒトデータベース</div>
-      </Link>
-      <nav>
-        <ul className="flex items-center gap-8">
+          <img src={Logo} className=" block" />
+
+          <div className=" whitespace-nowrap text-center text-sm font-semibold">NDBC ヒトデータベース</div>
+        </Link>
+        <ul className="flex flex-wrap items-center gap-8">
           {navItems.map((item) => (
             <li key={item.href}>
-              <Link className=" font-medium" to={item.href}>{item.label}</Link>
+              <Link className=" whitespace-nowrap font-medium" to={item.href}>{item.label}</Link>
             </li>
           ))}
 
         </ul>
       </nav>
+      <div className=" flex items-center gap-2">
 
+        <LangSwitcher />
+        <Search />
+      </div>
     </header>
   )
 }
