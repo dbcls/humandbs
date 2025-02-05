@@ -17,8 +17,11 @@ import { Route as rootRoute } from './routes/__root'
 // Create Virtual Routes
 
 const IndexLazyImport = createFileRoute('/')()
+const DataUsageIndexLazyImport = createFileRoute('/data-usage/')()
+const DataProvisionIndexLazyImport = createFileRoute('/data-provision/')()
 const ContactIndexLazyImport = createFileRoute('/contact/')()
-const AboutIndexLazyImport = createFileRoute('/about/')()
+const AchievementsIndexLazyImport = createFileRoute('/achievements/')()
+const AboutDataIndexLazyImport = createFileRoute('/about-data/')()
 
 // Create/Update Routes
 
@@ -28,17 +31,43 @@ const IndexLazyRoute = IndexLazyImport.update({
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 
+const DataUsageIndexLazyRoute = DataUsageIndexLazyImport.update({
+  id: '/data-usage/',
+  path: '/data-usage/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/data-usage/index.lazy').then((d) => d.Route),
+)
+
+const DataProvisionIndexLazyRoute = DataProvisionIndexLazyImport.update({
+  id: '/data-provision/',
+  path: '/data-provision/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/data-provision/index.lazy').then((d) => d.Route),
+)
+
 const ContactIndexLazyRoute = ContactIndexLazyImport.update({
   id: '/contact/',
   path: '/contact/',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/contact/index.lazy').then((d) => d.Route))
 
-const AboutIndexLazyRoute = AboutIndexLazyImport.update({
-  id: '/about/',
-  path: '/about/',
+const AchievementsIndexLazyRoute = AchievementsIndexLazyImport.update({
+  id: '/achievements/',
+  path: '/achievements/',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/about/index.lazy').then((d) => d.Route))
+} as any).lazy(() =>
+  import('./routes/achievements/index.lazy').then((d) => d.Route),
+)
+
+const AboutDataIndexLazyRoute = AboutDataIndexLazyImport.update({
+  id: '/about-data/',
+  path: '/about-data/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/about-data/index.lazy').then((d) => d.Route),
+)
 
 // Populate the FileRoutesByPath interface
 
@@ -51,11 +80,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexLazyImport
       parentRoute: typeof rootRoute
     }
-    '/about/': {
-      id: '/about/'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutIndexLazyImport
+    '/about-data/': {
+      id: '/about-data/'
+      path: '/about-data'
+      fullPath: '/about-data'
+      preLoaderRoute: typeof AboutDataIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/achievements/': {
+      id: '/achievements/'
+      path: '/achievements'
+      fullPath: '/achievements'
+      preLoaderRoute: typeof AchievementsIndexLazyImport
       parentRoute: typeof rootRoute
     }
     '/contact/': {
@@ -65,6 +101,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactIndexLazyImport
       parentRoute: typeof rootRoute
     }
+    '/data-provision/': {
+      id: '/data-provision/'
+      path: '/data-provision'
+      fullPath: '/data-provision'
+      preLoaderRoute: typeof DataProvisionIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/data-usage/': {
+      id: '/data-usage/'
+      path: '/data-usage'
+      fullPath: '/data-usage'
+      preLoaderRoute: typeof DataUsageIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -72,42 +122,76 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
-  '/about': typeof AboutIndexLazyRoute
+  '/about-data': typeof AboutDataIndexLazyRoute
+  '/achievements': typeof AchievementsIndexLazyRoute
   '/contact': typeof ContactIndexLazyRoute
+  '/data-provision': typeof DataProvisionIndexLazyRoute
+  '/data-usage': typeof DataUsageIndexLazyRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
-  '/about': typeof AboutIndexLazyRoute
+  '/about-data': typeof AboutDataIndexLazyRoute
+  '/achievements': typeof AchievementsIndexLazyRoute
   '/contact': typeof ContactIndexLazyRoute
+  '/data-provision': typeof DataProvisionIndexLazyRoute
+  '/data-usage': typeof DataUsageIndexLazyRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexLazyRoute
-  '/about/': typeof AboutIndexLazyRoute
+  '/about-data/': typeof AboutDataIndexLazyRoute
+  '/achievements/': typeof AchievementsIndexLazyRoute
   '/contact/': typeof ContactIndexLazyRoute
+  '/data-provision/': typeof DataProvisionIndexLazyRoute
+  '/data-usage/': typeof DataUsageIndexLazyRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/contact'
+  fullPaths:
+    | '/'
+    | '/about-data'
+    | '/achievements'
+    | '/contact'
+    | '/data-provision'
+    | '/data-usage'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/contact'
-  id: '__root__' | '/' | '/about/' | '/contact/'
+  to:
+    | '/'
+    | '/about-data'
+    | '/achievements'
+    | '/contact'
+    | '/data-provision'
+    | '/data-usage'
+  id:
+    | '__root__'
+    | '/'
+    | '/about-data/'
+    | '/achievements/'
+    | '/contact/'
+    | '/data-provision/'
+    | '/data-usage/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
-  AboutIndexLazyRoute: typeof AboutIndexLazyRoute
+  AboutDataIndexLazyRoute: typeof AboutDataIndexLazyRoute
+  AchievementsIndexLazyRoute: typeof AchievementsIndexLazyRoute
   ContactIndexLazyRoute: typeof ContactIndexLazyRoute
+  DataProvisionIndexLazyRoute: typeof DataProvisionIndexLazyRoute
+  DataUsageIndexLazyRoute: typeof DataUsageIndexLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
-  AboutIndexLazyRoute: AboutIndexLazyRoute,
+  AboutDataIndexLazyRoute: AboutDataIndexLazyRoute,
+  AchievementsIndexLazyRoute: AchievementsIndexLazyRoute,
   ContactIndexLazyRoute: ContactIndexLazyRoute,
+  DataProvisionIndexLazyRoute: DataProvisionIndexLazyRoute,
+  DataUsageIndexLazyRoute: DataUsageIndexLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -121,18 +205,30 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/about/",
-        "/contact/"
+        "/about-data/",
+        "/achievements/",
+        "/contact/",
+        "/data-provision/",
+        "/data-usage/"
       ]
     },
     "/": {
       "filePath": "index.lazy.tsx"
     },
-    "/about/": {
-      "filePath": "about/index.lazy.tsx"
+    "/about-data/": {
+      "filePath": "about-data/index.lazy.tsx"
+    },
+    "/achievements/": {
+      "filePath": "achievements/index.lazy.tsx"
     },
     "/contact/": {
       "filePath": "contact/index.lazy.tsx"
+    },
+    "/data-provision/": {
+      "filePath": "data-provision/index.lazy.tsx"
+    },
+    "/data-usage/": {
+      "filePath": "data-usage/index.lazy.tsx"
     }
   }
 }
