@@ -13,139 +13,260 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as otherLayoutImport } from './routes/(other)/_layout'
 
 // Create Virtual Routes
 
-const IndexLazyImport = createFileRoute('/')()
-const DataUsageIndexLazyImport = createFileRoute('/data-usage/')()
-const DataProvisionIndexLazyImport = createFileRoute('/data-provision/')()
-const ContactIndexLazyImport = createFileRoute('/contact/')()
-const AchievementsIndexLazyImport = createFileRoute('/achievements/')()
-const AboutDataIndexLazyImport = createFileRoute('/about-data/')()
+const otherImport = createFileRoute('/(other)')()
+const frontIndexLazyImport = createFileRoute('/(front)/')()
+const otherLayoutResearchListIndexLazyImport = createFileRoute(
+  '/(other)/_layout/research-list/',
+)()
+const otherLayoutDataUsageIndexLazyImport = createFileRoute(
+  '/(other)/_layout/data-usage/',
+)()
+const otherLayoutDataProvisionIndexLazyImport = createFileRoute(
+  '/(other)/_layout/data-provision/',
+)()
+const otherLayoutContactIndexLazyImport = createFileRoute(
+  '/(other)/_layout/contact/',
+)()
+const otherLayoutAchievementsIndexLazyImport = createFileRoute(
+  '/(other)/_layout/achievements/',
+)()
+const otherLayoutAboutDataIndexLazyImport = createFileRoute(
+  '/(other)/_layout/about-data/',
+)()
 
 // Create/Update Routes
 
-const IndexLazyRoute = IndexLazyImport.update({
-  id: '/',
-  path: '/',
+const otherRoute = otherImport.update({
+  id: '/(other)',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+} as any)
 
-const DataUsageIndexLazyRoute = DataUsageIndexLazyImport.update({
-  id: '/data-usage/',
-  path: '/data-usage/',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/data-usage/index.lazy').then((d) => d.Route),
-)
+const frontIndexLazyRoute = frontIndexLazyImport
+  .update({
+    id: '/(front)/',
+    path: '/',
+    getParentRoute: () => rootRoute,
+  } as any)
+  .lazy(() => import('./routes/(front)/index.lazy').then((d) => d.Route))
 
-const DataProvisionIndexLazyRoute = DataProvisionIndexLazyImport.update({
-  id: '/data-provision/',
-  path: '/data-provision/',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/data-provision/index.lazy').then((d) => d.Route),
-)
+const otherLayoutRoute = otherLayoutImport.update({
+  id: '/_layout',
+  getParentRoute: () => otherRoute,
+} as any)
 
-const ContactIndexLazyRoute = ContactIndexLazyImport.update({
-  id: '/contact/',
-  path: '/contact/',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/contact/index.lazy').then((d) => d.Route))
+const otherLayoutResearchListIndexLazyRoute =
+  otherLayoutResearchListIndexLazyImport
+    .update({
+      id: '/research-list/',
+      path: '/research-list/',
+      getParentRoute: () => otherLayoutRoute,
+    } as any)
+    .lazy(() =>
+      import('./routes/(other)/_layout/research-list/index.lazy').then(
+        (d) => d.Route,
+      ),
+    )
 
-const AchievementsIndexLazyRoute = AchievementsIndexLazyImport.update({
-  id: '/achievements/',
-  path: '/achievements/',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/achievements/index.lazy').then((d) => d.Route),
-)
+const otherLayoutDataUsageIndexLazyRoute = otherLayoutDataUsageIndexLazyImport
+  .update({
+    id: '/data-usage/',
+    path: '/data-usage/',
+    getParentRoute: () => otherLayoutRoute,
+  } as any)
+  .lazy(() =>
+    import('./routes/(other)/_layout/data-usage/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
-const AboutDataIndexLazyRoute = AboutDataIndexLazyImport.update({
-  id: '/about-data/',
-  path: '/about-data/',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import('./routes/about-data/index.lazy').then((d) => d.Route),
-)
+const otherLayoutDataProvisionIndexLazyRoute =
+  otherLayoutDataProvisionIndexLazyImport
+    .update({
+      id: '/data-provision/',
+      path: '/data-provision/',
+      getParentRoute: () => otherLayoutRoute,
+    } as any)
+    .lazy(() =>
+      import('./routes/(other)/_layout/data-provision/index.lazy').then(
+        (d) => d.Route,
+      ),
+    )
+
+const otherLayoutContactIndexLazyRoute = otherLayoutContactIndexLazyImport
+  .update({
+    id: '/contact/',
+    path: '/contact/',
+    getParentRoute: () => otherLayoutRoute,
+  } as any)
+  .lazy(() =>
+    import('./routes/(other)/_layout/contact/index.lazy').then((d) => d.Route),
+  )
+
+const otherLayoutAchievementsIndexLazyRoute =
+  otherLayoutAchievementsIndexLazyImport
+    .update({
+      id: '/achievements/',
+      path: '/achievements/',
+      getParentRoute: () => otherLayoutRoute,
+    } as any)
+    .lazy(() =>
+      import('./routes/(other)/_layout/achievements/index.lazy').then(
+        (d) => d.Route,
+      ),
+    )
+
+const otherLayoutAboutDataIndexLazyRoute = otherLayoutAboutDataIndexLazyImport
+  .update({
+    id: '/about-data/',
+    path: '/about-data/',
+    getParentRoute: () => otherLayoutRoute,
+  } as any)
+  .lazy(() =>
+    import('./routes/(other)/_layout/about-data/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/(other)': {
+      id: '/(other)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexLazyImport
+      preLoaderRoute: typeof otherImport
       parentRoute: typeof rootRoute
     }
-    '/about-data/': {
-      id: '/about-data/'
+    '/(other)/_layout': {
+      id: '/(other)/_layout'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof otherLayoutImport
+      parentRoute: typeof otherRoute
+    }
+    '/(front)/': {
+      id: '/(front)/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof frontIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/(other)/_layout/about-data/': {
+      id: '/(other)/_layout/about-data/'
       path: '/about-data'
       fullPath: '/about-data'
-      preLoaderRoute: typeof AboutDataIndexLazyImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof otherLayoutAboutDataIndexLazyImport
+      parentRoute: typeof otherLayoutImport
     }
-    '/achievements/': {
-      id: '/achievements/'
+    '/(other)/_layout/achievements/': {
+      id: '/(other)/_layout/achievements/'
       path: '/achievements'
       fullPath: '/achievements'
-      preLoaderRoute: typeof AchievementsIndexLazyImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof otherLayoutAchievementsIndexLazyImport
+      parentRoute: typeof otherLayoutImport
     }
-    '/contact/': {
-      id: '/contact/'
+    '/(other)/_layout/contact/': {
+      id: '/(other)/_layout/contact/'
       path: '/contact'
       fullPath: '/contact'
-      preLoaderRoute: typeof ContactIndexLazyImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof otherLayoutContactIndexLazyImport
+      parentRoute: typeof otherLayoutImport
     }
-    '/data-provision/': {
-      id: '/data-provision/'
+    '/(other)/_layout/data-provision/': {
+      id: '/(other)/_layout/data-provision/'
       path: '/data-provision'
       fullPath: '/data-provision'
-      preLoaderRoute: typeof DataProvisionIndexLazyImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof otherLayoutDataProvisionIndexLazyImport
+      parentRoute: typeof otherLayoutImport
     }
-    '/data-usage/': {
-      id: '/data-usage/'
+    '/(other)/_layout/data-usage/': {
+      id: '/(other)/_layout/data-usage/'
       path: '/data-usage'
       fullPath: '/data-usage'
-      preLoaderRoute: typeof DataUsageIndexLazyImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof otherLayoutDataUsageIndexLazyImport
+      parentRoute: typeof otherLayoutImport
+    }
+    '/(other)/_layout/research-list/': {
+      id: '/(other)/_layout/research-list/'
+      path: '/research-list'
+      fullPath: '/research-list'
+      preLoaderRoute: typeof otherLayoutResearchListIndexLazyImport
+      parentRoute: typeof otherLayoutImport
     }
   }
 }
 
 // Create and export the route tree
 
+interface otherLayoutRouteChildren {
+  otherLayoutAboutDataIndexLazyRoute: typeof otherLayoutAboutDataIndexLazyRoute
+  otherLayoutAchievementsIndexLazyRoute: typeof otherLayoutAchievementsIndexLazyRoute
+  otherLayoutContactIndexLazyRoute: typeof otherLayoutContactIndexLazyRoute
+  otherLayoutDataProvisionIndexLazyRoute: typeof otherLayoutDataProvisionIndexLazyRoute
+  otherLayoutDataUsageIndexLazyRoute: typeof otherLayoutDataUsageIndexLazyRoute
+  otherLayoutResearchListIndexLazyRoute: typeof otherLayoutResearchListIndexLazyRoute
+}
+
+const otherLayoutRouteChildren: otherLayoutRouteChildren = {
+  otherLayoutAboutDataIndexLazyRoute: otherLayoutAboutDataIndexLazyRoute,
+  otherLayoutAchievementsIndexLazyRoute: otherLayoutAchievementsIndexLazyRoute,
+  otherLayoutContactIndexLazyRoute: otherLayoutContactIndexLazyRoute,
+  otherLayoutDataProvisionIndexLazyRoute:
+    otherLayoutDataProvisionIndexLazyRoute,
+  otherLayoutDataUsageIndexLazyRoute: otherLayoutDataUsageIndexLazyRoute,
+  otherLayoutResearchListIndexLazyRoute: otherLayoutResearchListIndexLazyRoute,
+}
+
+const otherLayoutRouteWithChildren = otherLayoutRoute._addFileChildren(
+  otherLayoutRouteChildren,
+)
+
+interface otherRouteChildren {
+  otherLayoutRoute: typeof otherLayoutRouteWithChildren
+}
+
+const otherRouteChildren: otherRouteChildren = {
+  otherLayoutRoute: otherLayoutRouteWithChildren,
+}
+
+const otherRouteWithChildren = otherRoute._addFileChildren(otherRouteChildren)
+
 export interface FileRoutesByFullPath {
-  '/': typeof IndexLazyRoute
-  '/about-data': typeof AboutDataIndexLazyRoute
-  '/achievements': typeof AchievementsIndexLazyRoute
-  '/contact': typeof ContactIndexLazyRoute
-  '/data-provision': typeof DataProvisionIndexLazyRoute
-  '/data-usage': typeof DataUsageIndexLazyRoute
+  '/': typeof frontIndexLazyRoute
+  '/about-data': typeof otherLayoutAboutDataIndexLazyRoute
+  '/achievements': typeof otherLayoutAchievementsIndexLazyRoute
+  '/contact': typeof otherLayoutContactIndexLazyRoute
+  '/data-provision': typeof otherLayoutDataProvisionIndexLazyRoute
+  '/data-usage': typeof otherLayoutDataUsageIndexLazyRoute
+  '/research-list': typeof otherLayoutResearchListIndexLazyRoute
 }
 
 export interface FileRoutesByTo {
-  '/': typeof IndexLazyRoute
-  '/about-data': typeof AboutDataIndexLazyRoute
-  '/achievements': typeof AchievementsIndexLazyRoute
-  '/contact': typeof ContactIndexLazyRoute
-  '/data-provision': typeof DataProvisionIndexLazyRoute
-  '/data-usage': typeof DataUsageIndexLazyRoute
+  '/': typeof frontIndexLazyRoute
+  '/about-data': typeof otherLayoutAboutDataIndexLazyRoute
+  '/achievements': typeof otherLayoutAchievementsIndexLazyRoute
+  '/contact': typeof otherLayoutContactIndexLazyRoute
+  '/data-provision': typeof otherLayoutDataProvisionIndexLazyRoute
+  '/data-usage': typeof otherLayoutDataUsageIndexLazyRoute
+  '/research-list': typeof otherLayoutResearchListIndexLazyRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/': typeof IndexLazyRoute
-  '/about-data/': typeof AboutDataIndexLazyRoute
-  '/achievements/': typeof AchievementsIndexLazyRoute
-  '/contact/': typeof ContactIndexLazyRoute
-  '/data-provision/': typeof DataProvisionIndexLazyRoute
-  '/data-usage/': typeof DataUsageIndexLazyRoute
+  '/(other)': typeof otherRouteWithChildren
+  '/(other)/_layout': typeof otherLayoutRouteWithChildren
+  '/(front)/': typeof frontIndexLazyRoute
+  '/(other)/_layout/about-data/': typeof otherLayoutAboutDataIndexLazyRoute
+  '/(other)/_layout/achievements/': typeof otherLayoutAchievementsIndexLazyRoute
+  '/(other)/_layout/contact/': typeof otherLayoutContactIndexLazyRoute
+  '/(other)/_layout/data-provision/': typeof otherLayoutDataProvisionIndexLazyRoute
+  '/(other)/_layout/data-usage/': typeof otherLayoutDataUsageIndexLazyRoute
+  '/(other)/_layout/research-list/': typeof otherLayoutResearchListIndexLazyRoute
 }
 
 export interface FileRouteTypes {
@@ -157,6 +278,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/data-provision'
     | '/data-usage'
+    | '/research-list'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -165,33 +287,29 @@ export interface FileRouteTypes {
     | '/contact'
     | '/data-provision'
     | '/data-usage'
+    | '/research-list'
   id:
     | '__root__'
-    | '/'
-    | '/about-data/'
-    | '/achievements/'
-    | '/contact/'
-    | '/data-provision/'
-    | '/data-usage/'
+    | '/(other)'
+    | '/(other)/_layout'
+    | '/(front)/'
+    | '/(other)/_layout/about-data/'
+    | '/(other)/_layout/achievements/'
+    | '/(other)/_layout/contact/'
+    | '/(other)/_layout/data-provision/'
+    | '/(other)/_layout/data-usage/'
+    | '/(other)/_layout/research-list/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
-  IndexLazyRoute: typeof IndexLazyRoute
-  AboutDataIndexLazyRoute: typeof AboutDataIndexLazyRoute
-  AchievementsIndexLazyRoute: typeof AchievementsIndexLazyRoute
-  ContactIndexLazyRoute: typeof ContactIndexLazyRoute
-  DataProvisionIndexLazyRoute: typeof DataProvisionIndexLazyRoute
-  DataUsageIndexLazyRoute: typeof DataUsageIndexLazyRoute
+  otherRoute: typeof otherRouteWithChildren
+  frontIndexLazyRoute: typeof frontIndexLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexLazyRoute: IndexLazyRoute,
-  AboutDataIndexLazyRoute: AboutDataIndexLazyRoute,
-  AchievementsIndexLazyRoute: AchievementsIndexLazyRoute,
-  ContactIndexLazyRoute: ContactIndexLazyRoute,
-  DataProvisionIndexLazyRoute: DataProvisionIndexLazyRoute,
-  DataUsageIndexLazyRoute: DataUsageIndexLazyRoute,
+  otherRoute: otherRouteWithChildren,
+  frontIndexLazyRoute: frontIndexLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -204,31 +322,54 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/",
-        "/about-data/",
-        "/achievements/",
-        "/contact/",
-        "/data-provision/",
-        "/data-usage/"
+        "/(other)",
+        "/(front)/"
       ]
     },
-    "/": {
-      "filePath": "index.lazy.tsx"
+    "/(other)": {
+      "filePath": "(other)",
+      "children": [
+        "/(other)/_layout"
+      ]
     },
-    "/about-data/": {
-      "filePath": "about-data/index.lazy.tsx"
+    "/(other)/_layout": {
+      "filePath": "(other)/_layout.tsx",
+      "parent": "/(other)",
+      "children": [
+        "/(other)/_layout/about-data/",
+        "/(other)/_layout/achievements/",
+        "/(other)/_layout/contact/",
+        "/(other)/_layout/data-provision/",
+        "/(other)/_layout/data-usage/",
+        "/(other)/_layout/research-list/"
+      ]
     },
-    "/achievements/": {
-      "filePath": "achievements/index.lazy.tsx"
+    "/(front)/": {
+      "filePath": "(front)/index.lazy.tsx"
     },
-    "/contact/": {
-      "filePath": "contact/index.lazy.tsx"
+    "/(other)/_layout/about-data/": {
+      "filePath": "(other)/_layout/about-data/index.lazy.tsx",
+      "parent": "/(other)/_layout"
     },
-    "/data-provision/": {
-      "filePath": "data-provision/index.lazy.tsx"
+    "/(other)/_layout/achievements/": {
+      "filePath": "(other)/_layout/achievements/index.lazy.tsx",
+      "parent": "/(other)/_layout"
     },
-    "/data-usage/": {
-      "filePath": "data-usage/index.lazy.tsx"
+    "/(other)/_layout/contact/": {
+      "filePath": "(other)/_layout/contact/index.lazy.tsx",
+      "parent": "/(other)/_layout"
+    },
+    "/(other)/_layout/data-provision/": {
+      "filePath": "(other)/_layout/data-provision/index.lazy.tsx",
+      "parent": "/(other)/_layout"
+    },
+    "/(other)/_layout/data-usage/": {
+      "filePath": "(other)/_layout/data-usage/index.lazy.tsx",
+      "parent": "/(other)/_layout"
+    },
+    "/(other)/_layout/research-list/": {
+      "filePath": "(other)/_layout/research-list/index.lazy.tsx",
+      "parent": "/(other)/_layout"
     }
   }
 }

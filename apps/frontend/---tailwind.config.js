@@ -5,6 +5,7 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+
       colors: {
         primary: {
           DEFAULT: "var(--color-primary)",
@@ -27,8 +28,15 @@ export default {
           DEFAULT: "var(--color-foreground)",
           light: "var(--color-foreground-light)",
         },
+        muted: {
+          DEFAULT: "var(--color-foreground-light)",
+          foreground: "var(--color-foreground-light)",
+        },
       },
+
     },
+
   },
+
   plugins: [typography],
 }
