@@ -8,6 +8,7 @@ export default {
       colors: {
         primary: {
           DEFAULT: "var(--color-primary)",
+          translucent: "var(--color-primary-translucent)",
         },
         secondary: {
           DEFAULT: "var(--color-secondary)",

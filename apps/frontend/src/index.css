@@ -2,6 +2,7 @@
 
 @theme {
   --color-primary: #edeff2;
+  --color-primary-translucent: rgba(0, 0, 0, 0.1);
   --color-secondary: #1a5fbd;
   --color-secondary-light: #1a96d2;
   --color-secondary-lighter: #2ebedb;
@@ -26,4 +27,10 @@
 :root {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .main-bg {
+    background: top/cover no-repeat url("@/assets/BG.png");
+  }
 }

@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar"
 export const Route = createRootRoute({
   component: () => (
 
-    <main >
+    <main className="flex flex-col gap-2 p-4">
       <Navbar />
 
       <Outlet />
