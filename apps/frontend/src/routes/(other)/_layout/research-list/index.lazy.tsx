@@ -33,7 +33,7 @@ function Caption() {
   </div>
 }
 
-interface ResearchData {
+export interface ResearchData {
   researchId: string;
   datasets: string[];
   title: string;
@@ -41,7 +41,7 @@ interface ResearchData {
   dataType: string;
   methodology: string;
   instrument: string;
-  participants: {
+  subjects: {
     content: string[];
     type: string | null;
   }[];
@@ -56,7 +56,7 @@ const data: ResearchData[] = [
     "dataType": "NGS scRNA-seq",
     "methodology": "発現",
     "instrument": "MGI DNBSEQ-G400",
-    "participants": [
+    "subjects": [
       {
         "content": ["正常卵巣機能を有する不妊症: 16症例"],
         "type": "日本人",
@@ -71,7 +71,7 @@ const data: ResearchData[] = [
     "dataType": "NGS WGS",
     "methodology": "配列決定",
     "instrument": "Illumina NovaSeq X Plus 25B",
-    "participants": [
+    "subjects": [
       {
         "content": ["胆道閉鎖症: 5症例"],
         "type": "日本人",
@@ -86,7 +86,7 @@ const data: ResearchData[] = [
     "dataType": "NGS RNA-seq",
     "methodology": "発現",
     "instrument": "Illumina NovaSeq 6000",
-    "participants": [
+    "subjects": [
       {
         "content": ["アルツハイマー病: 424症例"],
         "type": "日本人",
@@ -101,7 +101,7 @@ const data: ResearchData[] = [
     "dataType": "NGS RNA-seq",
     "methodology": "発現",
     "instrument": "Illumina NextSeq 1000",
-    "participants": [
+    "subjects": [
       {
         "content": ["大腸癌患者由来の腸管オルガノイド: 1検体"],
         "type": "日本人",
@@ -120,7 +120,7 @@ const data: ResearchData[] = [
     "dataType": "NGS Target Capture",
     "methodology": "配列決定",
     "instrument": "Illumina iSeq 100",
-    "participants": [
+    "subjects": [
       {
         "content": ["自閉スペクトラム症患者: 32症例", "健康者生後1歳: 82名", "健康者自閉スペクトラム症患者: 5症例", "定型発達児: 36名"],
         "type": "日本人",
@@ -135,7 +135,7 @@ const data: ResearchData[] = [
     "dataType": "NGS scRNA-seq",
     "methodology": "発現",
     "instrument": "Illumina NovaSeq 6000",
-    "participants": [
+    "subjects": [
       {
         "content": ["健常者1名から樹立されたiPS細胞から分化誘導したオルガノイド: 9個"],
         "type": null,
@@ -150,7 +150,7 @@ const data: ResearchData[] = [
     "dataType": "NGS scRNA-seq",
     "methodology": "発現",
     "instrument": "Illumina NovaSeq 6000",
-    "participants": [
+    "subjects": [
       {
         "content": ["妊娠12週, 16週, 20週, 28週, 36週週週の妊婦: 10名"],
         "type": "日本人",
@@ -165,7 +165,7 @@ const data: ResearchData[] = [
     "dataType": "NGS RNA-seq, ChIP-seq, Hi-C, small RNA-seq, CUT&TAG-seq, Methyl-seq",
     "methodology": "発現, クロマチン構造, ヒストン修飾, メチル化",
     "instrument": "Illumina NovaSeq 6000, HiSeq 2500",
-    "participants": [
+    "subjects": [
       {
         "content": ["ヒト妊娠絨毛栄養膜の初期盤座: 1検体", "受精卵: 1検体", "妊娠初期絨毛膜盤座由来胎児の細胞膜層: 14症例", "胎盤組織: 12名"],
         "type": "日本人",
@@ -229,8 +229,8 @@ const columns = [
     header: "機器",
     cell: ctx => ctx.getValue(),
   }),
-  columnHelper.accessor("participants", {
-    id: "participants",
+  columnHelper.accessor("subjects", {
+    id: "subjects",
     header: "被験者",
     cell: ctx => ctx.getValue().map(participant => <div>
       <ul>
