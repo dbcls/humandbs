@@ -1,10 +1,12 @@
-import { createLazyFileRoute } from "@tanstack/react-router"
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, getSortedRowModel } from "@tanstack/react-table"
+import { createLazyFileRoute, Link } from "@tanstack/react-router"
+import { createColumnHelper, flexRender, getCoreRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table"
 import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react"
 
 import { Button } from "@/components/Button"
 import { Card } from "@/components/Card"
 import { Input } from "@/components/Input"
+import { TextWithIcon } from "@/components/TextWithIcon"
+import { FA_ICONS } from "@/lib/faIcons"
 import { cn } from "@/lib/utils"
 
 export const Route = createLazyFileRoute("/(other)/_layout/research-list/")({
@@ -172,23 +174,7 @@ const data: ResearchData[] = [
   },
 ]
 
-const FA_ICONS = {
-  books: <span className="font-fontawesome before:content-(--books) font-black" />,
-  dataset: <span className="font-fontawesome before:content-(--dataset) font-black" />,
-} as const
-
 const columnHelper = createColumnHelper<ResearchData>()
-
-function TextWithIcon({ children, icon, className }: {
-  children: React.ReactNode;
-  icon: React.ReactNode;
-  className?: string;
-}) {
-  return <div className={cn("inline-flex items-center gap-1", className)}>
-    {icon}
-    {children}
-  </div>
-}
 
 const columns = [
   columnHelper.accessor("researchId", {
@@ -203,8 +189,14 @@ const columns = [
 
     },
     cell: function Cell(ctx) {
+
+      const researchIdWithVer = ctx.getValue()
+
+      const researchId = researchIdWithVer.split(".")[0]
+      const researchVer = researchIdWithVer.split(".")[1]
+
       return (<div>
-        <TextWithIcon className=" text-foreground-dark" icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+        <Link to="/research-list/$researchId/$researchVer" params={{ researchId, researchVer }}><TextWithIcon className=" text-foreground-dark" icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon></Link>
         <ul>
           {ctx.row.original.datasets.map(dataset => <li key={dataset}><TextWithIcon className=" text-secondary" icon={FA_ICONS.dataset} >{dataset}</TextWithIcon></li>)}
         </ul>
