@@ -8,7 +8,7 @@
     "./types": "./types/shared-types.ts"
   },
   "scripts": {
-    "dev": "bun run index.ts"
+    "dev": "bun run src/app.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -19,6 +19,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "jsdom": "^26.0.0"
   }
 }

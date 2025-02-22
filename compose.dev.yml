@@ -17,10 +17,11 @@ services:
       - 127.0.0.1:3000:3000
     restart: always
     working_dir: /app
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
     networks:
       - humandbs-dev-network
     init: true
+
   backend:
     build:
       context: .
@@ -30,16 +31,18 @@ services:
     volumes:
       - ${PWD}:/app
       - node_modules:/app/node_modules
-      - /lustre9/open/database/ddbjshare/private/ddbj.nig.ac.jp/jga/metadata:/mount/jga-metadata:ro
+      # - /lustre9/open/database/ddbjshare/private/ddbj.nig.ac.jp/jga/metadata:/mount/jga-metadata:ro
     environment:
       - HUMANDBS_BACKEND_HOST=0.0.0.0
       - HUMANDBS_BACKEND_PORT=8080
-      - HUMANDBS_BACKEND_JGA_METADATA_DIR=/mount/jga-metadata
+      # - HUMANDBS_BACKEND_JGA_METADATA_DIR=/mount/jga-metadata
+      - HUMANDBS_BACKEND_JGA_METADATA_DIR=/app/apps/backend/tests/jga-metadata
+      - HUMANDBS_BACKEND_JOOMLA_METADATA=/app/apps/backend/tests/humandb_20231223_both.json
     ports:
-      - 127.0.0.1:80801:8080
+      - 127.0.0.1:8080:8080
     restart: always
     working_dir: /app
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
     networks:
       - humandbs-dev-network
     init: true

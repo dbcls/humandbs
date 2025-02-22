@@ -8,3 +8,12 @@
 docker network create humandbs-dev-network
 docker-compose -f compose.dev.yml up -d --build backend
 ```
+
+OR
+
+```bash
+$ docker compose -f compose.dev.yml up -d --build backend
+$ docker compose -f compose.dev.yml exec backend bash
+# cd apps/backend
+# bun run dev
+```

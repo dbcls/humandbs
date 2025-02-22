@@ -1,8 +1,8 @@
 import js from "@eslint/js"
-import stylisticJs from "@stylistic/eslint-plugin-js"
+import stylistic from "@stylistic/eslint-plugin"
 import eslintTanstackQuery from "@tanstack/eslint-plugin-query"
 import eslintTanstackRouter from "@tanstack/eslint-plugin-router"
-import eslintPluginImportX from "eslint-plugin-import-x"
+import eslintPluginImport from "eslint-plugin-import"
 import reactHooks from "eslint-plugin-react-hooks"
 import reactRefresh from "eslint-plugin-react-refresh"
 import tailwind from "eslint-plugin-tailwindcss"
@@ -14,8 +14,8 @@ export default tseslint.config([{
     js.configs.recommended,
     ...tsLintConfigs.strict,
     ...tsLintConfigs.stylistic,
-    eslintPluginImportX.flatConfigs.recommended,
-    eslintPluginImportX.flatConfigs.typescript,
+    eslintPluginImport.flatConfigs.recommended,
+    eslintPluginImport.flatConfigs.typescript,
     ...tailwind.configs["flat/recommended"],
     ...eslintTanstackRouter.configs["flat/recommended"],
     ...eslintTanstackQuery.configs["flat/recommended"],
@@ -27,7 +27,7 @@ export default tseslint.config([{
   plugins: {
     "react-hooks": reactHooks,
     "react-refresh": reactRefresh,
-    "@stylistic/js": stylisticJs,
+    "@stylistic": stylistic,
   },
 
   rules: {
@@ -43,29 +43,42 @@ export default tseslint.config([{
     "@typescript-eslint/no-non-null-assertion": "off",
 
     // Stylistic rules
-    "@stylistic/js/array-bracket-newline": ["error", "consistent"],
-    "@stylistic/js/array-bracket-spacing": ["error", "never"],
-    "@stylistic/js/array-element-newline": ["error", "consistent"],
-    "@stylistic/js/brace-style": ["error", "1tbs", { allowSingleLine: true }],
-    "@stylistic/js/comma-dangle": ["error", "always-multiline"],
-    "@stylistic/js/eol-last": ["error", "always"],
-    "@stylistic/js/indent": ["error", 2],
-    "@stylistic/js/jsx-quotes": ["error", "prefer-double"],
-    "@stylistic/js/no-multi-spaces": ["error"],
-    "@stylistic/js/no-multiple-empty-lines": ["error", { max: 1 }],
-    "@stylistic/js/no-trailing-spaces": ["error"],
-    "@stylistic/js/object-curly-newline": ["error", { consistent: true }],
-    "@stylistic/js/object-property-newline": [
+    "@stylistic/array-bracket-newline": ["error", "consistent"],
+    "@stylistic/array-bracket-spacing": ["error", "never"],
+    "@stylistic/array-element-newline": ["error", "consistent"],
+    "@stylistic/brace-style": ["error", "1tbs", { allowSingleLine: true }],
+    "@stylistic/comma-dangle": ["error", "always-multiline"],
+    "@stylistic/eol-last": ["error", "always"],
+    "@stylistic/indent": ["error", 2],
+    "@stylistic/jsx-quotes": ["error", "prefer-double"],
+    "@stylistic/no-multi-spaces": ["error"],
+    "@stylistic/no-multiple-empty-lines": ["error", { max: 1 }],
+    "@stylistic/no-trailing-spaces": ["error"],
+    "@stylistic/object-curly-newline": ["error", { consistent: true }],
+    "@stylistic/object-property-newline": [
       "error",
       { allowAllPropertiesOnSameLine: true },
     ],
-    "@stylistic/js/object-curly-spacing": ["error", "always"],
-    "@stylistic/js/quotes": ["error", "double"],
-    "@stylistic/js/semi": ["error", "never"],
+    "@stylistic/object-curly-spacing": ["error", "always"],
+    "@stylistic/quotes": ["error", "double"],
+    "@stylistic/semi": ["error", "never"],
+    "@stylistic/member-delimiter-style": [
+      "error",
+      {
+        multiline: {
+          delimiter: "none",
+          requireLast: false,
+        },
+        singleline: {
+          delimiter: "semi",
+          requireLast: false,
+        },
+      },
+    ],
 
     // Import rules
-    "import-x/first": "error",
-    "import-x/order": [
+    "import/first": "error",
+    "import/order": [
       "error",
       {
         "newlines-between": "always",
@@ -89,8 +102,8 @@ export default tseslint.config([{
         },
       },
     ],
-    "import-x/newline-after-import": "error",
-    "import-x/no-duplicates": "error",
-    "import-x/no-unresolved": "off",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error",
+    "import/no-unresolved": "off",
   },
 }])

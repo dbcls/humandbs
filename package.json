@@ -1,17 +1,9 @@
 {
   "name": "app",
   "module": "index.ts",
-  "type": "module",
-  "scripts": {
-    "frontend:dev": "bun run --filter @humandbs/frontend dev",
-    "frontend:build": "bun run --filter @humandbs/frontend build",
-    "frontend:lint": "bun run --filter @humandbs/frontend lint",
-    "frontend:preview": "bun run --filter @humandbs/frontend preview",
-    "backend:dev": "bun run --filter @humandbs/backend dev",
-  },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "@stylistic/eslint-plugin-js": "^2.12.1",
+    "@stylistic/eslint-plugin": "^3.0.0",
     "@tanstack/eslint-plugin-query": "^5.62.16",
     "@tanstack/eslint-plugin-router": "^1.92.7",
     "@types/bun": "latest",
@@ -21,7 +13,7 @@
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.7.0",
-    "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "eslint-plugin-tailwindcss": "^3.17.5",
@@ -33,6 +25,14 @@
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
+  "scripts": {
+    "frontend:dev": "bun run --filter @humandbs/frontend dev",
+    "frontend:build": "bun run --filter @humandbs/frontend build",
+    "frontend:lint": "bun run --filter @humandbs/frontend lint",
+    "frontend:preview": "bun run --filter @humandbs/frontend preview",
+    "backend:dev": "bun run --filter @humandbs/backend dev"
+  },
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
