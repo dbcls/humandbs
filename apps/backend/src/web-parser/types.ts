@@ -18,7 +18,7 @@ export interface Summary {
   aims: string
   methods: string
   targets: string
-  url?: string | null
+  url?: string[] | null
 }
 
 // also see: JGA Study (Grant)

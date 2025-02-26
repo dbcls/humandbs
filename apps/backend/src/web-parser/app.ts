@@ -3,6 +3,7 @@ import { join, dirname } from "path"
 
 import { parseDetailPage } from "@/web-parser/detailParser"
 import { parseHumIds } from "@/web-parser/homeParser"
+import { humIds as allHumIds } from "@/web-parser/humIds"
 import type { LangType } from "@/web-parser/types"
 import { fetchHtmlUsingCache, getCacheDirPath } from "@/web-parser/utils"
 
@@ -38,7 +39,7 @@ export const headLatestVersionNum = async (humId: string): Promise<string> => {
     throw new Error(`Failed to HEAD ${url}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
-export const findLatestVersionNum = (cacheDir: string, humId: string): string => {
+export const findLatestVersionNum = (cacheDir: string, humId: string): string | null => {
   const files = readdirSync(cacheDir)
   const versionNums = files
     .filter(file => file.endsWith(".html"))
@@ -46,7 +47,7 @@ export const findLatestVersionNum = (cacheDir: string, humId: string): string =>
     .map(file => {
       const match = file.match(/detail-.*-v(\d+)-(ja|en)\.html/)
       if (match === null) {
-        throw new Error(`Failed to parse version number from ${file}`)
+        return null
       }
       return match[1]
     })
@@ -54,7 +55,7 @@ export const findLatestVersionNum = (cacheDir: string, humId: string): string =>
     .sort((a, b) => b - a)
 
   if (versionNums.length === 0) {
-    throw new Error(`Failed to find version number for ${humId}`)
+    return null
   }
 
   return String(versionNums[0])
@@ -67,8 +68,11 @@ interface ResearchSeriesWithHtml {
 }
 
 export const fetchResearchSeries = async (humId: string, cacheDir: string): Promise<ResearchSeriesWithHtml> => {
-  // const latestVersionNum = await headLatestVersionNum(humId)
-  const latestVersionNum = findLatestVersionNum(cacheDir, humId)
+  let latestVersionNum = findLatestVersionNum(cacheDir, humId)
+  if (latestVersionNum === null) {
+    latestVersionNum = await headLatestVersionNum(humId)
+  }
+
   const researchSeries: ResearchSeriesWithHtml = {
     humId,
     versions: {},
@@ -81,7 +85,7 @@ export const fetchResearchSeries = async (humId: string, cacheDir: string): Prom
     const html = await fetchHtmlUsingCache(url, cacheDir, `detail-${humVersionId}-ja.html`)
 
     let enHtml: string | null
-    if (["hum0003-v1"].includes(humVersionId) || ["hum0003"].includes(humId)) {
+    if (["hum0003"].some(humId => humVersionId.startsWith(humId))) {
       enHtml = null
     } else {
       const enUrl = `${DETAIL_PAGE_BASE_URL}en/${humVersionId}`
@@ -98,24 +102,40 @@ const main = async () => {
   mkdirSync(cacheDir, { recursive: true })
 
   // Parse the home page to get humIds
-  // const homePageHtml = await fetchHtmlUsingCache(HOME_PAGE_URL, cacheDir, "home.html")
-  // const humIds = parseHumIds(homePageHtml)
-  const humIds = ["hum0001", "hum0003", "hum0004", "hum0005", "hum0006", "hum0007", "hum0008", "hum0009", "hum0010"]
+  const homePageHtml = await fetchHtmlUsingCache(HOME_PAGE_URL, cacheDir, "home.html")
+  let humIds = parseHumIds(homePageHtml)
+  // let humIds = allHumIds
+  humIds = humIds.filter(humId => !["hum0031", "hum0043", "hum0064", "hum0235", "hum0250", "hum0395", "hum0396", "hum0397", "hum0398"].includes(humId))
   const researchSeriesArray = await Promise.all(humIds.map(humId => fetchResearchSeries(humId, cacheDir)))
 
   // Parse the detail page
   for (const researchSeries of researchSeriesArray) {
-    const humVersionId = `${researchSeries.humId}.${researchSeries.latestVersion}`
-    const latestVersion = researchSeries.versions[researchSeries.latestVersion]
-    if (latestVersion.ja !== null) {
-      const jaResult = parseDetailPage(humVersionId, latestVersion.ja, "ja")
-      const jaFilePath = join(cacheDir, `${humVersionId}-ja.json`)
-      writeFileSync(jaFilePath, JSON.stringify(jaResult, null, 2))
-    }
-    if (latestVersion.en !== null) {
-      const enResult = parseDetailPage(humVersionId, latestVersion.en, "en")
-      const enFilePath = join(cacheDir, `${humVersionId}-en.json`)
-      writeFileSync(enFilePath, JSON.stringify(enResult, null, 2))
+    for (const version of Object.keys(researchSeries.versions)) {
+      // const humVersionId = `${researchSeries.humId}.${researchSeries.latestVersion}`
+      const humVersionId = `${researchSeries.humId}.${version}`
+      const latestVersion = researchSeries.versions[version]
+      if (latestVersion.ja !== null) {
+        try {
+          const jaResult = parseDetailPage(humVersionId, latestVersion.ja, "ja")
+          const jaFilePath = join(cacheDir, `${humVersionId}-ja.json`)
+          writeFileSync(jaFilePath, JSON.stringify(jaResult, null, 2))
+        } catch (error) {
+          console.error("================================")
+          console.error(`Failed to parse ${humVersionId} (ja): ${error instanceof Error ? error.message : String(error)}`)
+          console.error(error.stack)
+        }
+      }
+      if (latestVersion.en !== null) {
+        try {
+          const enResult = parseDetailPage(humVersionId, latestVersion.en, "en")
+          const enFilePath = join(cacheDir, `${humVersionId}-en.json`)
+          writeFileSync(enFilePath, JSON.stringify(enResult, null, 2))
+        } catch (error) {
+          console.error("================================")
+          console.error(`Failed to parse ${humVersionId} (en): ${error instanceof Error ? error.message : String(error)}`)
+          console.error(error.stack)
+        }
+      }
     }
   }
 }
