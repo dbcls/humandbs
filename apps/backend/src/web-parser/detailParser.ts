@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom"
 
-import type { LangType, Summary } from "@/web-parser/types"
+import type { LangType, Summary, SummaryUrl } from "@/web-parser/types"
 import { extractTagsFromElement, sameArray, cleanJapaneseText } from "@/web-parser/utils"
 
 export interface ParseResult {
@@ -235,7 +235,7 @@ export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): 
     aims: [] as string[],
     methods: [] as string[],
     targets: [] as string[],
-    url: [] as string[],
+    url: [] as SummaryUrl[],
   }
   type SummaryKeys = keyof typeof parsedSummary
   const SUMMARY_HEADERS: Record<LangType, Record<string, SummaryKeys>> = {
@@ -299,7 +299,19 @@ export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): 
         throw new Error(`Unexpected text in summary section of ${humVersionId}: ${strongText}`)
       }
     }
-    parsedSummary[currentKey!].push(text.replace(currentPrefix!, "").trim())
+    if (currentKey === "url") {
+      for (const aNode of node.querySelectorAll("a")) {
+        const text = aNode.textContent?.trim() ?? ""
+        let url = aNode.getAttribute("href") ?? ""
+        if (text === "" || url === "") continue
+        if (text === "JPDSC") {
+          url = "https://humandbs.dbcls.jp/hum0013-jpdsc"
+        }
+        parsedSummary.url.push({ text, url })
+      }
+    } else {
+      parsedSummary[currentKey!].push(text.replace(currentPrefix!, "").trim())
+    }
   }
 
   const joinText = (values: string[], lang: LangType): string => {
@@ -394,7 +406,7 @@ export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): 
 
 interface LinkData {
   text: string
-  href: string
+  url: string
 }
 interface MoleculerData {
   ids: string[]
@@ -457,7 +469,9 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
       "DRA003802（JGAD000006）の集計情報です" :
       "Methylation rate at each CpG site"
     if (humVersionId.startsWith("hum0009")) {
-      restPs = restPs.filter(p => !(p.textContent?.trim() ?? "").startsWith(filterPrefix))
+      restPs = restPs
+        .filter(p => !(p.textContent?.trim() ?? "").startsWith(filterPrefix))
+        .filter(p => !(p.textContent?.trim() ?? "").startsWith("hum0009v1.CpG.v1"))
     }
     const firstPText = firstP.textContent?.trim() ?? ""
     if (firstPText.startsWith(filterPrefix)) { // for hum0009
@@ -497,14 +511,14 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
         if (valueChild.tagName === "A") {
           value.push({
             text: valueChild.textContent?.trim() ?? "",
-            href: valueChild.getAttribute("href") ?? "",
+            url: valueChild.getAttribute("href") ?? "",
           })
         } else if (valueChild.tagName === "P") {
           const anchor = valueChild.querySelector("a")
           if (anchor !== null) {
             value.push({
               text: anchor.textContent?.trim() ?? "",
-              href: anchor.getAttribute("href") ?? "",
+              url: anchor.getAttribute("href") ?? "",
             })
           } else {
             value.push(valueChild.textContent?.trim() ?? "")
@@ -628,7 +642,13 @@ export const parseDataProvider = (humVersionId: string, dom: JSDOM, lang: LangTy
     if (currentKey === "header" || currentKey === "grants") {
       continue
     } else {
-      dataProvider[currentKey!]!.push(pText.replace(currentPrefix!, "").trim())
+      if (humVersionId.startsWith("hum0053") &&
+        (pText.startsWith("URL: https://www.pref.aichi.jp/") || pText.startsWith("https://www.pref.aichi.jp/"))
+      ) {
+        dataProvider.projectUrl!.push(pText.replace("URL: ", "").trim())
+      } else {
+        dataProvider[currentKey!]!.push(pText.replace(currentPrefix!, "").trim())
+      }
     }
   }
 
@@ -867,11 +887,11 @@ export const parseControlledAccessUsers = (humVersionId: string, dom: JSDOM, lan
     }
     for (const [index, cell] of cells.entries()) {
       let userKeys = []
-      if (humVersionId.startsWith("hum0014") && cells.length === 5 && index >= 2) {
+      if (humVersionId.startsWith("hum0014") && actualTableHeaders.length === 6 && cells.length === 5 && index >= 2) {
         // broken table... at hum0014
-        userKeys = Object.entries(rowIndex).filter((_, i) => i === index + 1)
+        userKeys = Object.entries(rowIndex).filter(([_, v]) => v === index + 1)
       } else {
-        userKeys = Object.entries(rowIndex).filter((_, i) => i === index)
+        userKeys = Object.entries(rowIndex).filter(([_, v]) => v === index)
       }
       if (userKeys.length !== 1) {
         throw new Error(`Unexpected error in controlledAccessUsers section of ${humVersionId}`)

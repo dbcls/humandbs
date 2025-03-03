@@ -14,12 +14,17 @@ export interface Research {
   summary: Summary
 }
 
+export interface SummaryUrl {
+  url: string
+  text: string
+}
+
 export interface Summary {
   aims: string
   methods: string
   targets: string
-  url: string[]
+  url: SummaryUrl[]
 }
 
 // also see: JGA Study (Grant)
-export interface Grant { }
+// export interface Grant { }
