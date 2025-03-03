@@ -1,11 +1,18 @@
 import { JSDOM } from "jsdom"
 
 import type { LangType, Summary } from "@/web-parser/types"
-import { extractTagsFromElement, sameArray, cleanJapaneseText, insertAt } from "@/web-parser/utils"
+import { extractTagsFromElement, sameArray, cleanJapaneseText } from "@/web-parser/utils"
 
-import { humIds } from "./humIds"
+export interface ParseResult {
+  summary: Summary
+  datasets: Dataset[]
+  molecularData: MoleculerData[]
+  dataProvider: DataProvider
+  publications: Publication[]
+  controlledAccessUsers: ControlledAccessUser[]
+}
 
-export const parseDetailPage = (humVersionId: string, html: string, lang: LangType): Record<string, any> => {
+export const parseDetailPage = (humVersionId: string, html: string, lang: LangType): ParseResult => {
   const sections = splitToSection(humVersionId, html, lang)
 
   parseHeader(humVersionId, sections.header) // do nothing (only validate)
@@ -33,7 +40,7 @@ const SECTION_LABELS: Record<LangType, string[][]> = {
   ja: [
     ["研究内容の概要", "分子データ", "提供者情報", "関連論文"],
     ["研究内容の概要", "分子データ", "提供者情報", "関連論文", "制限公開データの利用者一覧"],
-    ["研究内容の概要", "データ概要", "提供者情報", "関連論文", "制限公開データの利用者一覧"], // TODO 0043
+    ["研究内容の概要", "データ概要", "提供者情報", "関連論文", "制限公開データの利用者一覧"], // TODO hum0043
   ],
   en: [
     ["SUMMARY", "MOLECULAR DATA", "DATA PROVIDER", "PUBLICATIONS"], // hum0009
@@ -52,7 +59,6 @@ const SECTION_LABELS: Record<LangType, string[][]> = {
     ["SUMMARY", "MOLECULAR DATA", "DATA PROVIDER", "USRES (Controlled-Access Data)"], // 13 // PUBLICATIONS header is P instead of H1 (hum0332, hum0342)
     ["SUMMARY", "MOLECULAR DATA", "DATA PROVIDER", "USRES (Controlled-access Data)"], // 14 // PUBLICATIONS header is P instead of H1 (hum0342)
     ["SUMMARY", "MOLECULAR DATA", "DATA PROVIDER", "PUBLICATIONS", "USRES (Controlled Access Data)"], // hum0009.v2
-
   ],
 }
 
@@ -297,7 +303,9 @@ export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): 
   }
 
   const joinText = (values: string[], lang: LangType): string => {
-    return lang === "ja" ? values.map(cleanJapaneseText).join("\n") : values.join("\n")
+    return lang === "ja" ?
+      values.map(cleanJapaneseText).filter(text => text !== "").join("\n") :
+      values.filter(text => text !== "").join("\n")
   }
   const summary: Summary = {
     aims: joinText(parsedSummary.aims, lang),

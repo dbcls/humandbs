@@ -1,7 +1,8 @@
-import { mkdirSync, writeFileSync, readdirSync } from "fs"
+import { mkdirSync, writeFileSync, readdirSync, readFileSync } from "fs"
 import { join, dirname } from "path"
+import { json } from "stream/consumers"
 
-import { parseDetailPage } from "@/web-parser/detailParser"
+import { parseDetailPage, ParseResult } from "@/web-parser/detailParser"
 import { parseHumIds } from "@/web-parser/homeParser"
 import { humIds as allHumIds } from "@/web-parser/humIds"
 import type { LangType } from "@/web-parser/types"
@@ -109,35 +110,127 @@ const main = async () => {
   const researchSeriesArray = await Promise.all(humIds.map(humId => fetchResearchSeries(humId, cacheDir)))
 
   // Parse the detail page
-  for (const researchSeries of researchSeriesArray) {
-    for (const version of Object.keys(researchSeries.versions)) {
-      // const humVersionId = `${researchSeries.humId}.${researchSeries.latestVersion}`
-      const humVersionId = `${researchSeries.humId}.${version}`
-      const latestVersion = researchSeries.versions[version]
-      if (latestVersion.ja !== null) {
-        try {
-          const jaResult = parseDetailPage(humVersionId, latestVersion.ja, "ja")
-          const jaFilePath = join(cacheDir, `${humVersionId}-ja.json`)
-          writeFileSync(jaFilePath, JSON.stringify(jaResult, null, 2))
-        } catch (error) {
-          console.error("================================")
-          console.error(`Failed to parse ${humVersionId} (ja): ${error instanceof Error ? error.message : String(error)}`)
-          console.error(error.stack)
-        }
-      }
-      if (latestVersion.en !== null) {
-        try {
-          const enResult = parseDetailPage(humVersionId, latestVersion.en, "en")
-          const enFilePath = join(cacheDir, `${humVersionId}-en.json`)
-          writeFileSync(enFilePath, JSON.stringify(enResult, null, 2))
-        } catch (error) {
-          console.error("================================")
-          console.error(`Failed to parse ${humVersionId} (en): ${error instanceof Error ? error.message : String(error)}`)
-          console.error(error.stack)
-        }
-      }
+  // for (const researchSeries of researchSeriesArray) {
+  //   for (const version of Object.keys(researchSeries.versions)) {
+  //     // const humVersionId = `${researchSeries.humId}.${researchSeries.latestVersion}`
+  //     const humVersionId = `${researchSeries.humId}.${version}`
+  //     const latestVersion = researchSeries.versions[version]
+  //     if (latestVersion.ja !== null) {
+  //       try {
+  //         const jaResult = parseDetailPage(humVersionId, latestVersion.ja, "ja")
+  //         const jaFilePath = join(cacheDir, `${humVersionId}-ja.json`)
+  //         writeFileSync(jaFilePath, JSON.stringify(jaResult, null, 2))
+  //       } catch (error) {
+  //         console.error("================================")
+  //         console.error(`Failed to parse ${humVersionId} (ja): ${error instanceof Error ? error.message : String(error)}`)
+  //         console.error(error.stack)
+  //       }
+  //     }
+  //     if (latestVersion.en !== null) {
+  //       try {
+  //         const enResult = parseDetailPage(humVersionId, latestVersion.en, "en")
+  //         const enFilePath = join(cacheDir, `${humVersionId}-en.json`)
+  //         writeFileSync(enFilePath, JSON.stringify(enResult, null, 2))
+  //       } catch (error) {
+  //         console.error("================================")
+  //         console.error(`Failed to parse ${humVersionId} (en): ${error instanceof Error ? error.message : String(error)}`)
+  //         console.error(error.stack)
+  //       }
+  //     }
+  //   }
+  // }
+
+  // === for debug ===
+  const jsonFiles = readdirSync(cacheDir).filter(file => file.endsWith(".json"))
+  const value = {
+    ja: {
+      aims: [] as string[],
+      methods: [] as string[],
+      targets: [] as string[],
+      summary_url: [] as string[],
+      datasets_dataId: [] as string[],
+      datasets_typeOfData: [] as string[],
+      datasets_criteria: [] as string[],
+      datasets_releaseDate: [] as string[],
+      molecularDataIds: [] as string[],
+      molecularDataFooters: [] as string[],
+      moleculerDataKeys: [] as string[],
+      moleculerDataTargets: [] as string[],
+    },
+    en: {
+      aims: [] as string[],
+      methods: [] as string[],
+      targets: [] as string[],
+      summary_url: [] as string[],
+      datasets_dataId: [] as string[],
+      datasets_typeOfData: [] as string[],
+      datasets_criteria: [] as string[],
+      datasets_releaseDate: [] as string[],
+      molecularDataIds: [] as string[],
+      molecularDataFooters: [] as string[],
+      moleculerDataKeys: [] as string[],
+      moleculerDataTargets: [] as string[],
+    },
+  }
+  const foundVal = []
+  for (const jsonFile of jsonFiles) {
+    const humVersionId = jsonFile.replace(/{-ja|-en}\.json/, "")
+    const humId = humVersionId.split(".")[0]
+    const version = humVersionId.split(".")[1]
+    if (!humIds.includes(humId)) {
+      continue
+    }
+    const jsonFilePath = join(cacheDir, jsonFile)
+    const json = JSON.parse(readFileSync(jsonFilePath, "utf8")) as ParseResult
+    const lang = jsonFile.includes("-ja.json") ? "ja" : "en"
+
+    // push sentences
+    value[lang].aims.push(json.summary.aims)
+    value[lang].methods.push(json.summary.methods)
+    value[lang].targets.push(json.summary.targets)
+    value[lang].summary_url = value[lang].summary_url.concat(json.summary.url)
+    // json.summary.url.forEach(url => {
+    //   if (url === "JPDSC") {
+    //     foundVal.push([humVersionId, lang])
+    //   }
+    // })
+    const datasetsDataIds = json.datasets.flatMap(dataset => dataset.dataId.flatMap(dataId => dataId))
+    // datasetsDataIds.forEach(dataId => {
+    // if (dataId.includes("データ追加")) {
+    //   foundVal.push([humVersionId, lang])
+    // }
+    // if (dataId === "（JGA000122）") {
+    //   foundVal.push([humVersionId, lang])
+    // }
+    // })
+    value[lang].datasets_dataId = value[lang].datasets_dataId.concat(datasetsDataIds)
+
+    value[lang].datasets_typeOfData = value[lang].datasets_typeOfData.concat(json.datasets.flatMap(dataset => dataset.typeOfData.flatMap(typeOfData => typeOfData)))
+    value[lang].datasets_criteria = value[lang].datasets_criteria.concat(json.datasets.flatMap(dataset => dataset.criteria.flatMap(criteria => criteria)))
+    value[lang].datasets_releaseDate = value[lang].datasets_releaseDate.concat(json.datasets.flatMap(dataset => dataset.releaseDate.flatMap(releaseDate => releaseDate)))
+
+    // molData
+    value[lang].moleculerDataKeys = value[lang].moleculerDataKeys.concat(json.molecularData.flatMap(molData => Object.keys(molData.data)))
+    value[lang].moleculerDataTargets = value[lang].moleculerDataTargets.concat(
+      json.molecularData.flatMap(molData =>
+        Object.entries(molData.data)
+          .filter(([key, _]) => key === "Targets" || key === "規模")
+          .flatMap(([_, value]) => value as string[]),
+      ),
+    )
+    value[lang].molecularDataIds = value[lang].molecularDataIds.concat(json.molecularData.flatMap(molData => molData.ids))
+    value[lang].molecularDataFooters = value[lang].molecularDataFooters.concat(json.molecularData.flatMap(molData => molData.footers))
+  }
+
+  type Lang = keyof typeof value
+  for (const lang of ["ja", "en"] as Lang[]) {
+    for (const [key, arr] of Object.entries(value[lang])) {
+      const sorted_and_unique_values = [...new Set(arr)].sort()
+      const tmp_result = `/app/apps/backend/tmp_results/${key}_${lang}.json`
+      writeFileSync(tmp_result, JSON.stringify(sorted_and_unique_values, null, 2))
     }
   }
+  console.log(foundVal)
 }
 
 if (require.main === module) {
