@@ -247,6 +247,40 @@ export const dumpSummaryFiles = (cacheDir: string): void => {
       writeFileSync(tmpResultPathWithHumIds, JSON.stringify(value, null, 2))
     }
   }
+
+  // Dump for mol data targets and keys
+  // moldata-keys
+  for (const lang of ["ja", "en"] as LangType[]) {
+    const molDataKeysRows = {}
+    const items = summarizedValue[lang]["moldata-keys"]
+    for (const item of items) {
+      if (molDataKeysRows[item.value] === undefined) {
+        molDataKeysRows[item.value] = [item.value, "", [item.humVersionId]]
+      } else {
+        molDataKeysRows[item.value][2].push(item.humVersionId)
+      }
+    }
+    const filePath = `/app/apps/backend/tmp_results/moldata-keys-${lang}.tsv`
+    writeFileSync(filePath, Object.values(molDataKeysRows).map(row => row.join("\t")).join("\n"))
+  }
+
+  // moldata-targets-values
+  const header = ["実際の値", "正規化された値", "humVersionIds"]
+  for (const key of ["dataset-typeOfData", "moldata-targets-values", "moldata-keys"]) {
+    for (const lang of ["ja", "en"] as LangType[]) {
+      const molDataKeysRows = {}
+      const items = summarizedValue[lang][key]
+      for (const item of items) {
+        if (molDataKeysRows[item.value] === undefined) {
+          molDataKeysRows[item.value] = [item.value, "", [item.humVersionId]]
+        } else {
+          molDataKeysRows[item.value][2].push(item.humVersionId)
+        }
+      }
+      const filePath = `/app/apps/backend/tmp_results/${key}-${lang}.tsv`
+      writeFileSync(filePath, [header, ...Object.values(molDataKeysRows)].map(row => row.join("\t")).join("\n"))
+    }
+  }
 }
 
 const main = async () => {

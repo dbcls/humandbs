@@ -12,6 +12,7 @@ export const normalizer = ((humVersionId: string, lang: LangType, parserResult: 
       dataset.releaseDate = normalizeDatasetReleaseDateEn(dataset.releaseDate)
     }
     for (const molData of parserResult.molecularData) {
+      molData.data = normalizeMolDataKeysJa(molData.data)
       molData.footers = filterFooterEn(molData.footers)
     }
     parserResult.dataProvider.affiliation = normalizeDataProAffiliation(parserResult.dataProvider.affiliation)
@@ -24,7 +25,7 @@ export const normalizer = ((humVersionId: string, lang: LangType, parserResult: 
       dataset.releaseDate = normalizeDatasetReleaseDateJa(dataset.releaseDate)
     }
     for (const molData of parserResult.molecularData) {
-      // molData.data = normalizeMolDataKeysJa(molData.data)
+      molData.data = normalizeMolDataKeysJa(molData.data)
       molData.footers = filterFooterJa(molData.footers)
     }
     parserResult.dataProvider.affiliation = normalizeDataProAffiliation(parserResult.dataProvider.affiliation)
@@ -256,12 +257,20 @@ const KEY_FORMAT_JA = {
 }
 
 const normalizeMolDataKeysJa = (molData: Record<string, any>): Record<string, any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  // return Object.fromEntries(
+  //   Object.entries(molData).map(([key, value]) => {
+  //     for (const [normalizedKey, keys] of Object.entries(KEY_FORMAT_JA)) {
+  //       if (keys.includes(key)) {
+  //         return [normalizedKey, value]
+  //       }
+  //     }
+  //     return [key, value]
+  //   }),
+  // )
   return Object.fromEntries(
     Object.entries(molData).map(([key, value]) => {
-      for (const [normalizedKey, keys] of Object.entries(KEY_FORMAT_JA)) {
-        if (keys.includes(key)) {
-          return [normalizedKey, value]
-        }
+      if (key.includes("\n")) {
+        return [key.replace("\n", " "), value]
       }
       return [key, value]
     }),
