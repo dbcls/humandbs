@@ -41,6 +41,9 @@ const otherLayoutAboutDataIndexLazyImport = createFileRoute(
 const otherLayoutResearchListResearchIdIndexLazyImport = createFileRoute(
   '/(other)/_layout/research-list/$researchId/',
 )()
+const otherLayoutDataProvisionNavigationIndexLazyImport = createFileRoute(
+  '/(other)/_layout/data-provision/navigation/',
+)()
 
 // Create/Update Routes
 
@@ -148,6 +151,19 @@ const otherLayoutResearchListResearchIdIndexLazyRoute =
       ).then((d) => d.Route),
     )
 
+const otherLayoutDataProvisionNavigationIndexLazyRoute =
+  otherLayoutDataProvisionNavigationIndexLazyImport
+    .update({
+      id: '/data-provision/navigation/',
+      path: '/data-provision/navigation/',
+      getParentRoute: () => otherLayoutRoute,
+    } as any)
+    .lazy(() =>
+      import(
+        './routes/(other)/_layout/data-provision/navigation/index.lazy'
+      ).then((d) => d.Route),
+    )
+
 const otherLayoutResearchListResearchIdResearchVerRoute =
   otherLayoutResearchListResearchIdResearchVerImport.update({
     id: '/research-list/$researchId/$researchVer',
@@ -229,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof otherLayoutResearchListResearchIdResearchVerImport
       parentRoute: typeof otherLayoutImport
     }
+    '/(other)/_layout/data-provision/navigation/': {
+      id: '/(other)/_layout/data-provision/navigation/'
+      path: '/data-provision/navigation'
+      fullPath: '/data-provision/navigation'
+      preLoaderRoute: typeof otherLayoutDataProvisionNavigationIndexLazyImport
+      parentRoute: typeof otherLayoutImport
+    }
     '/(other)/_layout/research-list/$researchId/': {
       id: '/(other)/_layout/research-list/$researchId/'
       path: '/research-list/$researchId'
@@ -249,6 +272,7 @@ interface otherLayoutRouteChildren {
   otherLayoutDataUsageIndexLazyRoute: typeof otherLayoutDataUsageIndexLazyRoute
   otherLayoutResearchListIndexLazyRoute: typeof otherLayoutResearchListIndexLazyRoute
   otherLayoutResearchListResearchIdResearchVerRoute: typeof otherLayoutResearchListResearchIdResearchVerRoute
+  otherLayoutDataProvisionNavigationIndexLazyRoute: typeof otherLayoutDataProvisionNavigationIndexLazyRoute
   otherLayoutResearchListResearchIdIndexLazyRoute: typeof otherLayoutResearchListResearchIdIndexLazyRoute
 }
 
@@ -262,6 +286,8 @@ const otherLayoutRouteChildren: otherLayoutRouteChildren = {
   otherLayoutResearchListIndexLazyRoute: otherLayoutResearchListIndexLazyRoute,
   otherLayoutResearchListResearchIdResearchVerRoute:
     otherLayoutResearchListResearchIdResearchVerRoute,
+  otherLayoutDataProvisionNavigationIndexLazyRoute:
+    otherLayoutDataProvisionNavigationIndexLazyRoute,
   otherLayoutResearchListResearchIdIndexLazyRoute:
     otherLayoutResearchListResearchIdIndexLazyRoute,
 }
@@ -289,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/data-usage': typeof otherLayoutDataUsageIndexLazyRoute
   '/research-list': typeof otherLayoutResearchListIndexLazyRoute
   '/research-list/$researchId/$researchVer': typeof otherLayoutResearchListResearchIdResearchVerRoute
+  '/data-provision/navigation': typeof otherLayoutDataProvisionNavigationIndexLazyRoute
   '/research-list/$researchId': typeof otherLayoutResearchListResearchIdIndexLazyRoute
 }
 
@@ -301,6 +328,7 @@ export interface FileRoutesByTo {
   '/data-usage': typeof otherLayoutDataUsageIndexLazyRoute
   '/research-list': typeof otherLayoutResearchListIndexLazyRoute
   '/research-list/$researchId/$researchVer': typeof otherLayoutResearchListResearchIdResearchVerRoute
+  '/data-provision/navigation': typeof otherLayoutDataProvisionNavigationIndexLazyRoute
   '/research-list/$researchId': typeof otherLayoutResearchListResearchIdIndexLazyRoute
 }
 
@@ -316,6 +344,7 @@ export interface FileRoutesById {
   '/(other)/_layout/data-usage/': typeof otherLayoutDataUsageIndexLazyRoute
   '/(other)/_layout/research-list/': typeof otherLayoutResearchListIndexLazyRoute
   '/(other)/_layout/research-list/$researchId/$researchVer': typeof otherLayoutResearchListResearchIdResearchVerRoute
+  '/(other)/_layout/data-provision/navigation/': typeof otherLayoutDataProvisionNavigationIndexLazyRoute
   '/(other)/_layout/research-list/$researchId/': typeof otherLayoutResearchListResearchIdIndexLazyRoute
 }
 
@@ -330,6 +359,7 @@ export interface FileRouteTypes {
     | '/data-usage'
     | '/research-list'
     | '/research-list/$researchId/$researchVer'
+    | '/data-provision/navigation'
     | '/research-list/$researchId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -341,6 +371,7 @@ export interface FileRouteTypes {
     | '/data-usage'
     | '/research-list'
     | '/research-list/$researchId/$researchVer'
+    | '/data-provision/navigation'
     | '/research-list/$researchId'
   id:
     | '__root__'
@@ -354,6 +385,7 @@ export interface FileRouteTypes {
     | '/(other)/_layout/data-usage/'
     | '/(other)/_layout/research-list/'
     | '/(other)/_layout/research-list/$researchId/$researchVer'
+    | '/(other)/_layout/data-provision/navigation/'
     | '/(other)/_layout/research-list/$researchId/'
   fileRoutesById: FileRoutesById
 }
@@ -399,6 +431,7 @@ export const routeTree = rootRoute
         "/(other)/_layout/data-usage/",
         "/(other)/_layout/research-list/",
         "/(other)/_layout/research-list/$researchId/$researchVer",
+        "/(other)/_layout/data-provision/navigation/",
         "/(other)/_layout/research-list/$researchId/"
       ]
     },
@@ -431,6 +464,10 @@ export const routeTree = rootRoute
     },
     "/(other)/_layout/research-list/$researchId/$researchVer": {
       "filePath": "(other)/_layout/research-list/$researchId/$researchVer.tsx",
+      "parent": "/(other)/_layout"
+    },
+    "/(other)/_layout/data-provision/navigation/": {
+      "filePath": "(other)/_layout/data-provision/navigation/index.lazy.tsx",
       "parent": "/(other)/_layout"
     },
     "/(other)/_layout/research-list/$researchId/": {

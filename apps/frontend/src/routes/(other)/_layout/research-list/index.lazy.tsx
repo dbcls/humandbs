@@ -1,21 +1,13 @@
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import {
-  Column,
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
+import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { FA_ICONS } from "@/lib/faIcons";
-import { cn } from "@/lib/utils";
-import { Table } from "@/components/Table";
 
 export const Route = createLazyFileRoute("/(other)/_layout/research-list/")({
   component: RouteComponent,
@@ -52,10 +44,7 @@ export interface ResearchData {
   dataType: string;
   methodology: string;
   instrument: string;
-  subjects: {
-    content: string[];
-    type: string | null;
-  }[];
+  subjects: { content: string[]; type: string | null }[];
 }
 
 const data: ResearchData[] = [
@@ -69,10 +58,7 @@ const data: ResearchData[] = [
     methodology: "発現",
     instrument: "MGI DNBSEQ-G400",
     subjects: [
-      {
-        content: ["正常卵巣機能を有する不妊症: 16症例"],
-        type: "日本人",
-      },
+      { content: ["正常卵巣機能を有する不妊症: 16症例"], type: "日本人" },
     ],
   },
   {
@@ -84,12 +70,7 @@ const data: ResearchData[] = [
     dataType: "NGS WGS",
     methodology: "配列決定",
     instrument: "Illumina NovaSeq X Plus 25B",
-    subjects: [
-      {
-        content: ["胆道閉鎖症: 5症例"],
-        type: "日本人",
-      },
-    ],
+    subjects: [{ content: ["胆道閉鎖症: 5症例"], type: "日本人" }],
   },
   {
     researchId: "hum0481.v1",
@@ -100,12 +81,7 @@ const data: ResearchData[] = [
     dataType: "NGS RNA-seq",
     methodology: "発現",
     instrument: "Illumina NovaSeq 6000",
-    subjects: [
-      {
-        content: ["アルツハイマー病: 424症例"],
-        type: "日本人",
-      },
-    ],
+    subjects: [{ content: ["アルツハイマー病: 424症例"], type: "日本人" }],
   },
   {
     researchId: "hum0477.v1",
@@ -117,14 +93,8 @@ const data: ResearchData[] = [
     methodology: "発現",
     instrument: "Illumina NextSeq 1000",
     subjects: [
-      {
-        content: ["大腸癌患者由来の腸管オルガノイド: 1検体"],
-        type: "日本人",
-      },
-      {
-        content: ["Caco-2細胞: 1検体"],
-        type: "細胞株",
-      },
+      { content: ["大腸癌患者由来の腸管オルガノイド: 1検体"], type: "日本人" },
+      { content: ["Caco-2細胞: 1検体"], type: "細胞株" },
     ],
   },
   {
