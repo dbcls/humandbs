@@ -1,60 +1,63 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-primary: #edeff2;
+  --color-primary-translucent: rgba(0, 0, 0, 0.1);
+
+  --color-secondary: #1a5fbd;
+  --color-secondary-light: #1a96d2;
+  --color-secondary-lighter: #2ebedb;
+
+  --color-tetriary: #002245;
+  --color-tetriary-light: #2a5b73;
+
+  --color-accent: #eb0075;
+  --color-accent-light: #ff618e;
+
+  --color-foreground: black;
+  --color-foreground-dark: #002245;
+  --color-foreground-light: #abb4c4;
+
+  --font-sans: i-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-fontawesome: "FontAwesome6";
+
+  --books: "\f5db";
+  --dataset: "\f1c0";
+}
+
+@layer base {
+  @font-face {
+    font-family: "FontAwesome6";
+    font-weight: 400;
+    font-style: normal;
+
+    src:
+      url("@/assets/fontawesome/fa-regular-400.woff2") format("woff2"),
+      url("@/assets/fontawesome/fa-regular-400.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "FontAwesome6";
+    font-weight: 900;
+    font-style: normal;
+
+    src:
+      url("@/assets/fontawesome/fa-solid-900.woff2") format("woff2"),
+      url("@/assets/fontawesome/fa-solid-900.ttf") format("truetype");
+  }
+}
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color: #213547;
-  background-color: #ffffff;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #747bff;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  justify-content: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-  background-color: #f9f9f9;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+@layer components {
+  .main-bg {
+    background-image: url("@/assets/BG.png");
+    background-repeat: no-repeat;
+    background-position: top;
+    background-size: contain;
+  }
 }

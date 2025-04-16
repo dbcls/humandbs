@@ -1,0 +1,6 @@
+{
+  "apps/backend/*.{js,ts,tsx}": [
+    "eslint --cache --fix",
+    "prettier --write"
+  ]
+}

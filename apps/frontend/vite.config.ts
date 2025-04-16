@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import react from "@vitejs/plugin-react"
 import path from "node:path"
@@ -17,6 +18,7 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite(),
     react(),
+    tailwindcss(),
     {
       name: "markdown-loader",
       transform(code, id) {
@@ -32,8 +34,8 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      "@components": path.resolve(__dirname, "src/components/"),
-      "@content": path.resolve(__dirname, "src/content/"),
+      "@": path.resolve(__dirname, "./src"),
+
     },
   },
 
