@@ -1,6 +1,10 @@
 import { JSDOM } from "jsdom"
 
-export const parseHumIds = (html: string): string[] => {
+import { HOME_HTML, HOME_URL } from "@/crawler/const"
+import { readHtml } from "@/crawler/utils"
+
+export const parseAllHumIds = async (useCache = true): Promise<string[]> => {
+  const html = await readHtml(HOME_URL, HOME_HTML, useCache)
   const dom = new JSDOM(html)
   const document = dom.window.document
 

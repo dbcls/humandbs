@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom"
 
-import type { LangType, Summary, SummaryUrl } from "@/web-parser/types"
-import { extractTagsFromElement, sameArray, cleanJapaneseText } from "@/web-parser/utils"
+import type { LangType, Summary, SummaryUrl } from "@/crawler/types"
+import { extractTagsFromElement, sameArray, cleanJapaneseText } from "@/crawler/utils"
 
 export interface ParseResult {
   summary: Summary
@@ -15,7 +15,7 @@ export interface ParseResult {
 export const parseDetailPage = (humVersionId: string, html: string, lang: LangType): ParseResult => {
   const sections = splitToSection(humVersionId, html, lang)
 
-  parseHeader(humVersionId, sections.header) // do nothing (only validate)
+  // parseHeader(humVersionId, sections.header) // do nothing (only validate)
   const [summary, datasets] = parseSummary(humVersionId, sections.summary, lang)
   const molecularData = parseMolecularData(humVersionId, sections.molecularData, lang)
   const dataProvider = parseDataProvider(humVersionId, sections.dataProvider, lang)
@@ -799,11 +799,6 @@ export const parseControlledAccessUsers = (humVersionId: string, dom: JSDOM, lan
   // ["TABLE"]
   const body = dom.window.document.body
 
-  // const tags = extractTagsFromElement(body)
-  // if (!sameArray(tags, ["TABLE"])) {
-  //   throw new Error(`Unexpected tags in controlledAccessUsers section of ${humVersionId}: ${tags}`)
-  // }
-
   const TABLE_HEADERS: Record<LangType, Record<string, ControlledAccessUserKeys>> = {
     ja: {
       "研究代表者": "principalInvestigator",
@@ -889,9 +884,9 @@ export const parseControlledAccessUsers = (humVersionId: string, dom: JSDOM, lan
       let userKeys = []
       if (humVersionId.startsWith("hum0014") && actualTableHeaders.length === 6 && cells.length === 5 && index >= 2) {
         // broken table... at hum0014
-        userKeys = Object.entries(rowIndex).filter(([_, v]) => v === index + 1)
+        userKeys = Object.entries(rowIndex).filter(([, v]) => v === index + 1)
       } else {
-        userKeys = Object.entries(rowIndex).filter(([_, v]) => v === index)
+        userKeys = Object.entries(rowIndex).filter(([, v]) => v === index)
       }
       if (userKeys.length !== 1) {
         throw new Error(`Unexpected error in controlledAccessUsers section of ${humVersionId}`)

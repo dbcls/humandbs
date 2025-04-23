@@ -180,4 +180,4 @@ dist
 
 # === our custom rules ===
 apps/backend/tests
-apps/backend/tmp_results
+apps/backend/crawler-results

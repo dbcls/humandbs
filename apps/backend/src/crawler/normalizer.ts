@@ -1,7 +1,7 @@
-import type { ParseResult } from "@/web-parser/detailParser"
-import type { LangType, Summary, SummaryUrl } from "@/web-parser/types"
+import type { ParseResult } from "@/crawler/detail-parser"
+import type { LangType } from "@/crawler/types"
 
-export const normalizer = ((humVersionId: string, lang: LangType, parserResult: ParseResult): void => {
+export const normalizer = ((lang: LangType, parserResult: ParseResult): void => {
   if (lang === "en") {
     parserResult.summary.aims = normalizeEnText(parserResult.summary.aims)
     parserResult.summary.methods = normalizeEnText(parserResult.summary.methods)

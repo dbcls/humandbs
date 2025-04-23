@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "bun run src/app.ts",
-    "web-parser": "bun run src/web-parser/app.ts"
+    "crawler": "bun run src/crawler/app.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -21,7 +21,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@types/yargs": "^17.0.33",
     "express": "^4.21.2",
-    "jsdom": "^26.0.0"
+    "jsdom": "^26.0.0",
+    "yargs": "^17.7.2"
   }
 }
