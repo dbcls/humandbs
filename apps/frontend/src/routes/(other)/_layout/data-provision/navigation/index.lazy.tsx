@@ -1,5 +1,5 @@
 import { Card } from "@/components/Card";
-import { createLazyFileRoute, useRouterState } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 
 export const Route = createLazyFileRoute(
   "/(other)/_layout/data-provision/navigation/"

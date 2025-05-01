@@ -6,7 +6,6 @@ import {
 import { useMemo } from "react";
 
 import { Breacrumbs, BreadcroumbsPath } from "@/components/Breadcrumb";
-import { Card } from "@/components/Card";
 
 export const Route = createFileRoute("/(other)/_layout")({
   component: RouteComponent,
