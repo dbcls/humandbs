@@ -35,3 +35,31 @@ export const parseAllHumIds = async (useCache = true): Promise<string[]> => {
 
   return humIds
 }
+
+export const humVersionIdToTitle = async (useCache = true): Promise<Record<string, string>> => {
+  const html = await readHtml(HOME_URL, HOME_HTML, useCache)
+  const dom = new JSDOM(html)
+  const document = dom.window.document
+
+  const rows = document.querySelectorAll(
+    "#list-of-all-researches > tbody > tr",
+  )
+
+  const humVersionIdToTitle: Record<string, string> = {}
+  for (const row of rows) {
+    const firstCell = row.querySelector("th")
+    const humVersionIdWithDot = firstCell?.textContent?.trim()
+    if (humVersionIdWithDot === undefined) {
+      throw new Error("Failed to find first cell during parsing home page")
+    }
+    const humVersionId = humVersionIdWithDot.replace(/\./g, "-")
+    const secondCell = row.querySelector("td:nth-child(2)")
+    const title = secondCell?.textContent?.trim()
+    if (title === undefined) {
+      throw new Error("Failed to find second cell during parsing home page")
+    }
+    humVersionIdToTitle[humVersionId] = title
+  }
+
+  return humVersionIdToTitle
+}

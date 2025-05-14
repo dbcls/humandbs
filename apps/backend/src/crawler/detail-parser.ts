@@ -1,7 +1,74 @@
 import { JSDOM } from "jsdom"
 
-import type { LangType, Summary, SummaryUrl } from "@/crawler/types"
+import type { LangType } from "@/crawler/types"
 import { extractTagsFromElement, sameArray, cleanJapaneseText } from "@/crawler/utils"
+
+interface SummaryUrl {
+  url: string
+  text: string
+}
+
+interface Summary {
+  aims: string
+  methods: string
+  targets: string
+  url: SummaryUrl[]
+}
+
+interface Dataset {
+  dataId: string[]
+  typeOfData: string[]
+  criteria: string[]
+  releaseDate: string[]
+}
+type DatasetKeys = keyof Dataset
+const DATASET_KEYS: DatasetKeys[] = ["dataId", "typeOfData", "criteria", "releaseDate"]
+
+// interface LinkData {
+//   text: string
+//   url: string
+// }
+
+interface MoleculerData {
+  ids: string[]
+  // data: Record<string, (string | LinkData)[]>
+  data: Record<string, string> // TODO: 一旦 raw html にする
+  footers: string[]
+}
+
+interface Grant {
+  grantName: string[]
+  projectTitle: string[]
+  grantId: string[]
+}
+type GrantKeys = keyof Grant
+const GRANT_KEYS: GrantKeys[] = ["grantName", "projectTitle", "grantId"]
+
+interface DataProvider {
+  principalInvestigator: string[]
+  affiliation: string[]
+  projectName: string[]
+  projectUrl: string[]
+  grants: Grant[]
+}
+type DataProviderKeys = keyof DataProvider
+
+interface ControlledAccessUser {
+  principalInvestigator: string | null
+  affiliation: string | null
+  country: string | null
+  researchTitle: string | null
+  datasetIds: string[]
+  periodOfDataUse: string | null
+}
+type ControlledAccessUserKeys = keyof ControlledAccessUser
+
+interface Release {
+  humVersionId: string
+  releaseDate: string // YYYY-MM-DD
+  content: string
+  releaseNote: string[]
+}
 
 export interface ParseResult {
   summary: Summary
@@ -10,7 +77,10 @@ export interface ParseResult {
   dataProvider: DataProvider
   publications: Publication[]
   controlledAccessUsers: ControlledAccessUser[]
+  releases?: Release[]
 }
+
+// === Parser impl. ===
 
 export const parseDetailPage = (humVersionId: string, html: string, lang: LangType): ParseResult => {
   const sections = splitToSection(humVersionId, html, lang)
@@ -71,7 +141,7 @@ export const splitToSection = (humVersionId: string, html: string, lang: LangTyp
   const dom = new JSDOM(html)
   const articleBody = dom.window.document.querySelector("div.articleBody")
   if (articleBody === null) {
-    throw new Error(`Failed to find articleBody in ${humVersionId}`)
+    throw new Error(`Failed to find articleBody in ${humVersionId} ${lang}`)
   }
 
   let sectionLabels = Array.from(articleBody.querySelectorAll("h1"))
@@ -197,15 +267,6 @@ export const parseHeader = (humVersionId: string, dom: JSDOM): void => {
     }
   }
 }
-
-interface Dataset {
-  dataId: string[]
-  typeOfData: string[]
-  criteria: string[]
-  releaseDate: string[]
-}
-type DatasetKeys = keyof Dataset
-const DATASET_KEYS: DatasetKeys[] = ["dataId", "typeOfData", "criteria", "releaseDate"]
 
 export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): [Summary, Dataset[]] => {
   // ["P", "P", "P", "P", "P", "P", "TABLE", "P", "P", "P", "P"]
@@ -404,16 +465,6 @@ export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): 
   return [summary, datasets]
 }
 
-interface LinkData {
-  text: string
-  url: string
-}
-interface MoleculerData {
-  ids: string[]
-  data: Record<string, (string | LinkData)[]>
-  footers: string[]
-}
-
 export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangType): MoleculerData[] => {
   // ["P", "TABLE", "P", "P", "TABLE", "P", "P", "TABLE", "P", "P", "TABLE", "P", "P", "TABLE", "P", "P"]
   // PTABLEPP => P: IDs, TABLE: table, Ps: footer text or empty line
@@ -490,7 +541,50 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
     } else {
       ids = firstP.textContent?.trim().split(ID_SPLITTER[lang]) ?? []
     }
-    const data: Record<string, (string | LinkData)[]> = {}
+    //   const data: Record<string, (string | LinkData)[]> = {}
+    //   for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
+    //     const cells = Array.from(row.querySelectorAll("td"))
+    //     if (cells.length !== 2) {
+    //       throw new Error(`Unexpected number of cells in table of molecularData section of ${humVersionId}: ${cells.length}`)
+    //     }
+
+    //     const key = cells[0].textContent?.trim() ?? ""
+    //     const value: (string | LinkData)[] = []
+    //     const valueNode = cells[1]
+    //     // valueNode's children: A, P, SPAN
+    //     // However, there may be an A in P
+    //     const valueNodeTags = extractTagsFromElement(valueNode)
+    //     const isValid = valueNodeTags.every(tag => ["A", "P", "SPAN"].includes(tag))
+    //     if (!isValid) {
+    //       throw new Error(`Unexpected tags in value node of molecularData section of ${humVersionId}: ${key}: ${valueNodeTags}`)
+    //     }
+    //     for (const valueChild of Array.from(valueNode.children)) {
+    //       if (valueChild.tagName === "A") {
+    //         value.push({
+    //           text: valueChild.textContent?.trim() ?? "",
+    //           url: valueChild.getAttribute("href") ?? "",
+    //         })
+    //       } else if (valueChild.tagName === "P") {
+    //         const anchor = valueChild.querySelector("a")
+    //         if (anchor !== null) {
+    //           value.push({
+    //             text: anchor.textContent?.trim() ?? "",
+    //             url: anchor.getAttribute("href") ?? "",
+    //           })
+    //         } else {
+    //           value.push(valueChild.textContent?.trim() ?? "")
+    //         }
+    //       } else if (valueChild.tagName === "SPAN") {
+    //         value.push(valueChild.textContent?.trim() ?? "")
+    //       }
+    //     }
+
+    //     data[key] = value
+    //   }
+    //   molecularData.push({ ids, data, footers })
+    // }
+
+    const data: Record<string, string> = {}
     for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
       const cells = Array.from(row.querySelectorAll("td"))
       if (cells.length !== 2) {
@@ -498,36 +592,8 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
       }
 
       const key = cells[0].textContent?.trim() ?? ""
-      const value: (string | LinkData)[] = []
       const valueNode = cells[1]
-      // valueNode's children: A, P, SPAN
-      // However, there may be an A in P
-      const valueNodeTags = extractTagsFromElement(valueNode)
-      const isValid = valueNodeTags.every(tag => ["A", "P", "SPAN"].includes(tag))
-      if (!isValid) {
-        throw new Error(`Unexpected tags in value node of molecularData section of ${humVersionId}: ${key}: ${valueNodeTags}`)
-      }
-      for (const valueChild of Array.from(valueNode.children)) {
-        if (valueChild.tagName === "A") {
-          value.push({
-            text: valueChild.textContent?.trim() ?? "",
-            url: valueChild.getAttribute("href") ?? "",
-          })
-        } else if (valueChild.tagName === "P") {
-          const anchor = valueChild.querySelector("a")
-          if (anchor !== null) {
-            value.push({
-              text: anchor.textContent?.trim() ?? "",
-              url: anchor.getAttribute("href") ?? "",
-            })
-          } else {
-            value.push(valueChild.textContent?.trim() ?? "")
-          }
-        } else if (valueChild.tagName === "SPAN") {
-          value.push(valueChild.textContent?.trim() ?? "")
-        }
-      }
-
+      const value = valueNode.textContent?.trim() ?? ""
       data[key] = value
     }
     molecularData.push({ ids, data, footers })
@@ -535,23 +601,6 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
 
   return molecularData
 }
-
-interface Grant {
-  grantName: string[]
-  projectTitle: string[]
-  grantId: string[]
-}
-type GrantKeys = keyof Grant
-const GRANT_KEYS: GrantKeys[] = ["grantName", "projectTitle", "grantId"]
-
-interface DataProvider {
-  principalInvestigator: string[]
-  affiliation: string[]
-  projectName: string[]
-  projectUrl: string[]
-  grants: Grant[]
-}
-type DataProviderKeys = keyof DataProvider
 
 export const parseDataProvider = (humVersionId: string, dom: JSDOM, lang: LangType): DataProvider => {
   // ["P", "P", "P", "TABLE", "P"]
@@ -784,16 +833,6 @@ export const parsePublications = (humVersionId: string, dom: JSDOM, lang: LangTy
 
   return publications
 }
-
-interface ControlledAccessUser {
-  principalInvestigator: string | null
-  affiliation: string | null
-  country: string | null
-  researchTitle: string | null
-  datasetIds: string[]
-  periodOfDataUse: string | null
-}
-type ControlledAccessUserKeys = keyof ControlledAccessUser
 
 export const parseControlledAccessUsers = (humVersionId: string, dom: JSDOM, lang: LangType): ControlledAccessUser[] => {
   // ["TABLE"]
