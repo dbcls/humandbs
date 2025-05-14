@@ -1,10 +1,11 @@
 # Ignore everything
 **
 
+!.prettierignore
 !apps
-!bun.lockb
-!eslint.config.js
+!bun.lock
 !index.ts
 !package.json
+!packages
 !README.md
 !tsconfig.json
