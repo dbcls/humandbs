@@ -1,10 +1,11 @@
 # Ignore everything
 **
 
+!.prettierignore
 !apps
-!packages
-!bun.lockb
+!bun.lock
 !index.ts
 !package.json
+!packages
 !README.md
 !tsconfig.json

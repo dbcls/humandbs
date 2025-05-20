@@ -1,15 +1,19 @@
-# backend
+# Shin HumanDBs Backend
 
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
+- at `at073`
+  - `/lustre9/open/database/ddbjshare/private/ddbj.nig.ac.jp/jga/metadata` を mount している
+    - frontend のため、普段は comment out しておく
 
 ```bash
-bun run index.ts
+docker network create humandbs-dev-network
+docker-compose -f compose.dev.yml up -d --build backend
 ```
 
-This project was created using `bun init` in bun v1.1.37. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+OR
+
+```bash
+$ docker compose -f compose.dev.yml up -d --build backend
+$ docker compose -f compose.dev.yml exec backend bash
+# cd apps/backend
+# bun run dev
+```
