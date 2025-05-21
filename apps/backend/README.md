@@ -1,19 +1,21 @@
-# Shin HumanDBs Backend
+# HumanDBs Backend
 
-- at `at073`
-  - `/lustre9/open/database/ddbjshare/private/ddbj.nig.ac.jp/jga/metadata` を mount している
-    - frontend のため、普段は comment out しておく
+## Crawler
+
+`./crawler-results` に、各 crawler の結果が出力される。
+
+現状、mode として、`"elasticsearch" | "detail" | "summary"` がある。
+
+- `elasticsearch`: elasticsearch に insert するための json
+- `detail`: 各 html (humIdVersion 単位) ごとの parse 結果の json
+- `summary`: 各 field ごとなどの summary files
+
+まず、html file が fetch されて、detail json が生成され、それを元に elasticsearch json や summary json が生成される。  
+html が既に存在する場合、cache として、それが使われる。
+もし、cache を無視する場合は、`--no-cache` オプションをつける。
 
 ```bash
-docker network create humandbs-dev-network
-docker-compose -f compose.dev.yml up -d --build backend
-```
-
-OR
-
-```bash
-$ docker compose -f compose.dev.yml up -d --build backend
-$ docker compose -f compose.dev.yml exec backend bash
-# cd apps/backend
-# bun run dev
+bun run crawler --process detail
+bun run crawler --process summary
+bun run crawler --process elasticsearch
 ```

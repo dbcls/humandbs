@@ -1,14 +1,14 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs"
-import { join, normalize } from "path"
+import { join } from "path"
 
 import { loadDetailJson } from "@/crawler/detail-json-dump"
 import type { LangType } from "@/crawler/types"
 import { findLatestVersionNum, getResultsDirPath } from "@/crawler/utils"
 
-export const dumpSummaryJson = async (humIds: string[], useCache = true): Promise<void> => {
-  const summaryJsonDir = join(getResultsDirPath(), "summary-json")
-  if (!existsSync(summaryJsonDir)) {
-    mkdirSync(summaryJsonDir, { recursive: true })
+export const dumpSummaryFiles = async (humIds: string[], useCache = true): Promise<void> => {
+  const summaryFilesDir = join(getResultsDirPath(), "summary-json")
+  if (!existsSync(summaryFilesDir)) {
+    mkdirSync(summaryFilesDir, { recursive: true })
   }
 
   const summarizedValue: Record<LangType, Record<string, any>> = { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -114,13 +114,13 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
   }
 
   writeFileSync(
-    join(summaryJsonDir, "molData-values-ja.tsv"),
+    join(summaryFilesDir, "molData-values-ja.tsv"),
     Object.entries(molDataValuesJa)
       .map(([key, values]) => [key, ...Array.from(values).map(v => JSON.stringify(v))].join("\t"))
       .join("\n"),
   )
   writeFileSync(
-    join(summaryJsonDir, "molData-values-en.tsv"),
+    join(summaryFilesDir, "molData-values-en.tsv"),
     Object.entries(molDataValuesEn)
       .map(([key, values]) => [key, ...Array.from(values).map(v => JSON.stringify(v))].join("\t"))
       .join("\n"),
@@ -128,7 +128,7 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
 
   for (const lang of ["ja", "en"] as LangType[]) {
     for (const [key, value] of Object.entries(summarizedValue[lang])) {
-      const summaryFilePath = join(summaryJsonDir, `${key}-${lang}.json`)
+      const summaryFilePath = join(summaryFilesDir, `${key}-${lang}.json`)
       const sortedAndUniqueValues = [...new Set(value.map((v: any) => v.value))].sort() // eslint-disable-line @typescript-eslint/no-explicit-any
       writeFileSync(summaryFilePath, JSON.stringify(sortedAndUniqueValues, null, 2))
 
@@ -136,14 +136,14 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
         if (typeof value[0].value === "object") {
           const insideKeys = Object.keys(value[0].value)
           for (const insideKey of insideKeys) {
-            const summaryFilePathWithInsideKey = join(summaryJsonDir, `${key}-${lang}-${insideKey}.json`)
+            const summaryFilePathWithInsideKey = join(summaryFilesDir, `${key}-${lang}-${insideKey}.json`)
             const sortedAndUniqueValuesInsideKey = [...new Set(value.map((v: any) => v.value[insideKey]))].sort() // eslint-disable-line @typescript-eslint/no-explicit-any
             writeFileSync(summaryFilePathWithInsideKey, JSON.stringify(sortedAndUniqueValuesInsideKey, null, 2))
           }
         }
       }
 
-      const summaryFilePathWithHumIds = join(summaryJsonDir, `${key}-${lang}-with-humIds.json`)
+      const summaryFilePathWithHumIds = join(summaryFilesDir, `${key}-${lang}-with-humIds.json`)
       writeFileSync(summaryFilePathWithHumIds, JSON.stringify(value, null, 2))
     }
   }
@@ -160,7 +160,7 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
         molDataKeysRows[item.value][2].push(item.humVersionId)
       }
     }
-    const moldataKeysFilePath = join(summaryJsonDir, `moldata-keys-${lang}.tsv`)
+    const moldataKeysFilePath = join(summaryFilesDir, `moldata-keys-${lang}.tsv`)
     writeFileSync(moldataKeysFilePath, Object.values(molDataKeysRows).map(row => row.join("\t")).join("\n"))
   }
 
@@ -177,7 +177,7 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
           molDataKeysRows[item.value][2].push(item.humVersionId)
         }
       }
-      const moldataTargetsFilePath = join(summaryJsonDir, `${key}-${lang}.tsv`)
+      const moldataTargetsFilePath = join(summaryFilesDir, `${key}-${lang}.tsv`)
       writeFileSync(moldataTargetsFilePath, [header, ...Object.values(molDataKeysRows)].map(row => row.join("\t")).join("\n"))
     }
   }
@@ -394,7 +394,7 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
     // console.log("Not found En items:", notFoundEnTitles)
   }
 
-  const moldataKeysFilePath = join(summaryJsonDir, "summarized-moldata-keys.tsv")
+  const moldataKeysFilePath = join(summaryFilesDir, "summarized-moldata-keys.tsv")
   writeFileSync(
     moldataKeysFilePath,
     [
@@ -447,7 +447,7 @@ export const dumpSummaryJson = async (humIds: string[], useCache = true): Promis
     }
   }
   writeFileSync(
-    join(summaryJsonDir, "filtering-and-qc-values-en.json"),
+    join(summaryFilesDir, "filtering-and-qc-values-en.json"),
     JSON.stringify(filteringAndQcValuesEn, null, 2),
   )
 }

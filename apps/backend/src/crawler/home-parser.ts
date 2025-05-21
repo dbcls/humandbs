@@ -1,6 +1,7 @@
 import { JSDOM } from "jsdom"
 
-import { HOME_HTML, HOME_URL } from "@/crawler/const"
+import { HOME_HTML, HOME_URL, HOME_HTML_EN, HOME_URL_EN } from "@/crawler/const"
+import type { LangType } from "@/crawler/types"
 import { readHtml } from "@/crawler/utils"
 
 export const parseAllHumIds = async (useCache = true): Promise<string[]> => {
@@ -36,8 +37,10 @@ export const parseAllHumIds = async (useCache = true): Promise<string[]> => {
   return humIds
 }
 
-export const humVersionIdToTitle = async (useCache = true): Promise<Record<string, string>> => {
-  const html = await readHtml(HOME_URL, HOME_HTML, useCache)
+export const humIdToTitle = async (lang: LangType, useCache = true): Promise<Record<string, string>> => {
+  const htmlFile = lang === "ja" ? HOME_HTML : HOME_HTML_EN
+  const htmlUrl = lang === "ja" ? HOME_URL : HOME_URL_EN
+  const html = await readHtml(htmlUrl, htmlFile, useCache)
   const dom = new JSDOM(html)
   const document = dom.window.document
 
@@ -45,21 +48,23 @@ export const humVersionIdToTitle = async (useCache = true): Promise<Record<strin
     "#list-of-all-researches > tbody > tr",
   )
 
-  const humVersionIdToTitle: Record<string, string> = {}
+  const humIdToTitle: Record<string, string> = {}
   for (const row of rows) {
     const firstCell = row.querySelector("th")
-    const humVersionIdWithDot = firstCell?.textContent?.trim()
-    if (humVersionIdWithDot === undefined) {
-      throw new Error("Failed to find first cell during parsing home page")
+    const firstCellContent = firstCell?.textContent?.trim()
+    const humVersionIdMatch = firstCellContent!.match(/hum\d{4}\.v\d+/)
+    if (!humVersionIdMatch) {
+      throw new Error(`Failed to extract humVersionId from: "${firstCellContent}"`)
     }
-    const humVersionId = humVersionIdWithDot.replace(/\./g, "-")
+    const humVersionIdWithDot = humVersionIdMatch[0]
+    const humId = humVersionIdWithDot.split(".")[0]
     const secondCell = row.querySelector("td:nth-child(2)")
-    const title = secondCell?.textContent?.trim()
+    const title = secondCell?.textContent?.trim().replace(/\n/g, "")
     if (title === undefined) {
       throw new Error("Failed to find second cell during parsing home page")
     }
-    humVersionIdToTitle[humVersionId] = title
+    humIdToTitle[humId] = title
   }
 
-  return humVersionIdToTitle
+  return humIdToTitle
 }
