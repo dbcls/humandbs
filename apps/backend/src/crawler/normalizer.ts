@@ -12,7 +12,7 @@ export const normalizer = ((lang: LangType, parserResult: ParseResult): void => 
       dataset.releaseDate = normalizeDatasetReleaseDateEn(dataset.releaseDate)
     }
     for (const molData of parserResult.molecularData) {
-      molData.data = normalizeMolDataKeysJa(molData.data)
+      // molData.data = normalizeMolDataKeysJa(molData.data)
       molData.footers = filterFooterEn(molData.footers)
     }
     parserResult.dataProvider.affiliation = normalizeDataProAffiliation(parserResult.dataProvider.affiliation)
@@ -131,14 +131,26 @@ const normalizeDatasetDataIdJa = (values: string[]): string[] => {
     })
 }
 
+export function normalizeDateArray(dates: string[]): string[] {
+  return dates
+    .map((date) => {
+      const [year, month, day] = date.split("/").map((v) => v.padStart(2, "0"))
+      return `${year}-${month}-${day}`
+    })
+}
+
 const normalizeDatasetReleaseDateEn = (values: string[]): string[] => {
-  return values
-    .filter((value) => !["Coming soon"].includes(value))
+  return normalizeDateArray(
+    values
+      .filter((value) => !["Coming soon"].includes(value)),
+  )
 }
 
 const normalizeDatasetReleaseDateJa = (values: string[]): string[] => {
-  return values
-    .filter((value) => !["近日公開予定"].includes(value))
+  return normalizeDateArray(
+    values
+      .filter((value) => !["近日公開予定"].includes(value)),
+  )
 }
 
 const KEY_FORMAT_JA = {

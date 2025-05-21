@@ -3,6 +3,7 @@ import { join } from "path"
 
 import { DETAIL_PAGE_BASE_URL } from "@/crawler/const"
 import { parseDetailPage, type ParseResult } from "@/crawler/detail-parser"
+import { normalizeMolDataHeader } from "@/crawler/normalizeHeader"
 import { normalizer } from "@/crawler/normalizer"
 import { parseReleasePage } from "@/crawler/release-parser"
 import type { LangType } from "@/crawler/types"
@@ -37,6 +38,7 @@ export const dumpDetailJson = async (humVersionId: string, lang: LangType, useCa
   const detailHtml = await readHtml(detailPageUrl, detailHtmlFileName, useCache)
 
   const parseResult = parseDetailPage(humVersionId, detailHtml, lang)
+  normalizeMolDataHeader(humVersionId, lang, parseResult)
   normalizer(lang, parseResult)
 
   if (lang === "ja" && humVersionId === "hum0329-v1") {

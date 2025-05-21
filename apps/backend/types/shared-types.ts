@@ -10,7 +10,7 @@
 //   title: string // data source が見つからない
 //   dataset: Dataset[]
 //   summary: Summary
-//   molecularData: MoleculerData[]
+//   molecularData: MolecularData[]
 //   dataProvider: DataProvider[]
 //   publication: Publication[]
 //   releaseNote: ReleaseNote
@@ -33,7 +33,7 @@
 //   target: string // 対象
 // }
 
-// interface MoleculerData {
+// interface MolecularData {
 // "Participants/Materials": "3980 POAG patients (Male: 1,997, Female: 1,983)\r\n18,815 controls (Male: 7,817, Female: 10,998)",
 // "Targets": "genome wide SNVs",
 // "Target Loci for Capture Methods": "-",
@@ -77,9 +77,9 @@
 //   relatedPublication: Publication[]
 // }
 
-// // Dataset と MoleculerData の 1 対 1? 1 対 多? n 対 n? とかは決まってない。。。
+// // Dataset と MolecularData の 1 対 1? 1 対 多? n 対 n? とかは決まってない。。。
 
-// interface MoleculerData {
+// interface MolecularData {
 //   //
 // }
 

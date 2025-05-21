@@ -54,7 +54,7 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
           datasetId: user.datasetIds,
           periodOfDataUse: user.periodOfDataUse,
         })),
-        version: [],
+        versions: [],
       }
       const datasetMap = normalizeDataset(humId, lang, latestVersionNum, useCache)
       for (let versionNum = 1; versionNum <= latestVersionNum; versionNum++) {
@@ -72,8 +72,12 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
           releaseDate: release?.releaseDate ?? "",
           releaseNote: release?.releaseNote ?? [],
         }
-        research.version.push(researchVersion)
+        research.versions.push(researchVersion)
       }
+      // write to file
+      const fileName = `research-${humId}-${lang}.json`
+      const filePath = join(esJsonsDir, fileName)
+      writeFileSync(filePath, JSON.stringify(research, null, 2), { encoding: "utf-8" })
     }
   }
 }

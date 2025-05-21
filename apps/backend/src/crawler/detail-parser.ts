@@ -29,10 +29,10 @@ const DATASET_KEYS: DatasetKeys[] = ["dataId", "typeOfData", "criteria", "releas
 //   url: string
 // }
 
-interface MoleculerData {
+interface MolecularData {
   ids: string[]
   // data: Record<string, (string | LinkData)[]>
-  data: Record<string, string> // TODO: 一旦 raw html にする
+  data: Record<string, string | null> // TODO: 一旦 raw html にする
   footers: string[]
 }
 
@@ -73,7 +73,7 @@ interface Release {
 export interface ParseResult {
   summary: Summary
   datasets: Dataset[]
-  molecularData: MoleculerData[]
+  molecularData: MolecularData[]
   dataProvider: DataProvider
   publications: Publication[]
   controlledAccessUsers: ControlledAccessUser[]
@@ -465,7 +465,33 @@ export const parseSummary = (humVersionId: string, dom: JSDOM, lang: LangType): 
   return [summary, datasets]
 }
 
-export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangType): MoleculerData[] => {
+const getCleanInnerHTML = (node: Element): string => {
+  const cloned = node.cloneNode(true) as HTMLElement
+
+  const cleanAttributes = (el: Element) => {
+    el.removeAttribute("style")
+    el.removeAttribute("class")
+    el.removeAttribute("id")
+    el.removeAttribute("rel")
+    el.removeAttribute("target")
+    for (const child of Array.from(el.children)) {
+      cleanAttributes(child)
+    }
+  }
+  cleanAttributes(cloned)
+
+  if (
+    cloned.children.length === 1 &&
+    ["SPAN", "P"].includes(cloned.children[0].tagName) &&
+    cloned.childNodes.length === 1
+  ) {
+    return cloned.children[0].innerHTML.trim()
+  }
+
+  return cloned.innerHTML.trim()
+}
+
+export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangType): MolecularData[] => {
   // ["P", "TABLE", "P", "P", "TABLE", "P", "P", "TABLE", "P", "P", "TABLE", "P", "P", "TABLE", "P", "P"]
   // PTABLEPP => P: IDs, TABLE: table, Ps: footer text or empty line
   if (["hum0014"].some(humId => humVersionId.startsWith(humId))) {
@@ -504,7 +530,7 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
   const tableIndexes = tags.
     map((tag, index) => tag === "TABLE" ? index : -1).
     filter((index) => index !== -1)
-  const molecularData: MoleculerData[] = []
+  const molecularData: MolecularData[] = []
   for (const [i, tableIndex] of tableIndexes.entries()) {
     let firstP = body.children[tableIndex - 1]
     const table = body.children[tableIndex]
@@ -584,7 +610,7 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
     //   molecularData.push({ ids, data, footers })
     // }
 
-    const data: Record<string, string> = {}
+    const data: Record<string, string | null> = {}
     for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
       const cells = Array.from(row.querySelectorAll("td"))
       if (cells.length !== 2) {
@@ -594,7 +620,11 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
       const key = cells[0].textContent?.trim() ?? ""
       const valueNode = cells[1]
       const value = valueNode.textContent?.trim() ?? ""
-      data[key] = value
+      if (value === "-") {
+        data[key] = null
+      } else {
+        data[key] = getCleanInnerHTML(valueNode)
+      }
     }
     molecularData.push({ ids, data, footers })
   }

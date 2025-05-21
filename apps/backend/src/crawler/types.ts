@@ -39,9 +39,10 @@ export interface Research {
       text: string
     }[]
   }
-  version: ResearchVersion[]
+  versions: ResearchVersion[]
 }
 
+// primary key: humVersionId: `${humId}-v${versionNum}`
 export interface ResearchVersion {
   humId: string
   version: string
@@ -52,6 +53,7 @@ export interface ResearchVersion {
 }
 
 // Ref: MolecularData, JGA Experiment, JGA Dataset, JGA Analysis, JGA Data
+// primary key: humDatasetId: `${humId}-${datasetId}-v${latestVersionId + 1}`
 export interface DatasetVersion {
   datasetId: string
   datasetVersion: string
@@ -62,9 +64,4 @@ export interface DatasetVersion {
   typeOfData: string[]
   criteria: string[]
   releaseDate: string[]
-}
-
-export interface Dataset {
-  datasetId: string
-  humDatasetIds: string[]
 }
