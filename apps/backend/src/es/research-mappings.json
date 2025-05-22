@@ -1,0 +1,167 @@
+{
+  "mappings": {
+    "properties": {
+      "humId": {
+        "type": "keyword"
+      },
+      "lang": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "url": {
+        "type": "keyword"
+      },
+      "dataProvider": {
+        "properties": {
+          "principalInvestigator": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "affiliation": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "researchProjectName": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "researchProjectUrl": {
+            "type": "keyword"
+          }
+        }
+      },
+      "grant": {
+        "type": "nested",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "title": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "agency": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "relatedPublication": {
+        "type": "nested",
+        "properties": {
+          "title": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "doi": {
+            "type": "keyword"
+          },
+          "datasetIds": {
+            "type": "keyword"
+          }
+        }
+      },
+      "controlledAccessUser": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "affiliation": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "country": {
+            "type": "keyword"
+          },
+          "researchTitle": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "datasetId": {
+            "type": "keyword"
+          },
+          "periodOfDataUse": {
+            "type": "keyword"
+          }
+        }
+      },
+      "summary": {
+        "properties": {
+          "aims": {
+            "type": "text"
+          },
+          "methods": {
+            "type": "text"
+          },
+          "targets": {
+            "type": "text"
+          },
+          "url": {
+            "type": "nested",
+            "properties": {
+              "url": {
+                "type": "keyword"
+              },
+              "text": {
+                "type": "text",
+                "fields": {
+                  "raw": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "versions": {
+        "type": "keyword"
+      }
+    }
+  }
+}

@@ -27,6 +27,7 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
       const latestJsonData = loadDetailJson(`${humId}-v${latestVersionNum}`, lang, useCache)
       const research: Research = {
         humId,
+        lang,
         title: lang === "ja" ? titleMapJa[humId] : titleMapEn[humId],
         url: lang === "ja" ?
           `https://humandbs.dbcls.jp/${humId}` :
@@ -66,10 +67,11 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
           .filter(d => d.humVersionIds.includes(humVersionId))
         const researchVersion: ResearchVersion = {
           humId,
+          lang,
           version: `v${versionNum}`,
           humVersionId,
           datasets: datasets,
-          releaseDate: release?.releaseDate ?? "",
+          releaseDate: release?.releaseDate ?? null,
           releaseNote: release?.releaseNote ?? [],
         }
         research.versions.push(researchVersion)
@@ -114,6 +116,7 @@ export const normalizeDataset = (humId: string, lang: LangType, latestVersionNum
       for (const datasetId of molData.ids) {
         const nowDataset = {
           data: molData.data,
+          lang,
           footers: molData.footers,
           typeOfData: datasetFieldMap[datasetId]?.typeOfData ?? [], // TODO why?
           criteria: datasetFieldMap[datasetId]?.criteria ?? [], // TODO why?

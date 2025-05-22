@@ -1,0 +1,65 @@
+Analysis Methods
+Antigen Activation
+Bacteria Identification
+Blocking
+Calibration for Re-alignment and Base Quality
+Cell Lines
+Cell Treatment
+Chromogen
+CNV Number
+Coverage
+CRISPR Construction
+Data Download
+Dataset ID of the Processed data by JGA
+DDBJ Accession
+Experiment Variables
+Experimental Method
+Filtering
+Fragmentation
+Gene Expression Omnibus Accession
+Gene Number
+Genome Sequence Construction
+Genomic Expression Archive Accession
+Histological Staining
+Host Read Removal
+Immobilization
+Imputation
+INDEL Number
+Japanese Genotype-phenotype Archive Dataset Accession
+JPOST Accession
+Library Construction
+MAG Construction
+Mapping
+Mapping Quality
+Materials and Participants
+Measurement
+Measurement Conditions
+MetaboBank Accession
+miRNA Number
+NBDC Dataset Accession
+Normalization
+Peak Number
+Platform
+Policies
+Primary Antibodies for IHC
+Probe Number
+Protein Identification
+Raw Call Variant Number
+Read Deduplication
+Read Length
+Read Type
+Reagents
+Reference Sequence
+Sample Description
+Sample Preparation
+Secondary Antibodies for IHC
+Sequence Read Archive Accession
+SNV Number
+SV Number
+Targets
+Total Data Volume
+Total Reads and Uniquely Mapped Reads
+Validation
+Variant Number
+Virus Genome Construction
+Washing

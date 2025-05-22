@@ -1,0 +1,27 @@
+{
+  "mappings": {
+    "properties": {
+      "humId": {
+        "type": "keyword"
+      },
+      "lang": {
+        "type": "keyword"
+      },
+      "version": {
+        "type": "keyword"
+      },
+      "humVersionId": {
+        "type": "keyword"
+      },
+      "releaseDate": {
+        "type": "date"
+      },
+      "releaseNote": {
+        "type": "text"
+      },
+      "datasets": {
+        "type": "keyword"
+      }
+    }
+  }
+}

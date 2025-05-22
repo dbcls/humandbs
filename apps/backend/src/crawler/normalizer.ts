@@ -139,6 +139,20 @@ export function normalizeDateArray(dates: string[]): string[] {
     })
 }
 
+export function normalizeDate(date: string): string | null {
+  const [year, month, day] = date.split("/").map((v) => v.padStart(2, "0"))
+  const isoDate = `${year}-${month}-${day}`
+  const parsedDate = new Date(isoDate)
+
+  if (isNaN(parsedDate.getTime())) {
+    // TODO: check
+    return null
+    // throw new Error(`Invalid date string: "${date}"`)
+  }
+
+  return isoDate
+}
+
 const normalizeDatasetReleaseDateEn = (values: string[]): string[] => {
   return normalizeDateArray(
     values

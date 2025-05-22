@@ -9,7 +9,9 @@
   },
   "scripts": {
     "dev": "bun run src/app.ts",
-    "crawler": "bun run src/crawler/app.ts"
+    "crawler": "bun run src/crawler/app.ts",
+    "es:loadMappings": "node src/es/loadMappings.ts",
+    "es:loadDocs": "node src/es/loadDocs.ts"
   },
   "devDependencies": {
     "@humandbs/eslint-config": "workspace:*",
@@ -23,6 +25,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "8",
     "@types/yargs": "^17.0.33",
     "express": "^4.21.2",
     "jsdom": "^26.0.0",

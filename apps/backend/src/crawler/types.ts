@@ -4,6 +4,7 @@ export type LangType = "ja" | "en"
 
 export interface Research {
   humId: string
+  lang: LangType
   title: string
   url: string
   dataProvider: {
@@ -45,6 +46,7 @@ export interface Research {
 // primary key: humVersionId: `${humId}-v${versionNum}`
 export interface ResearchVersion {
   humId: string
+  lang: LangType
   version: string
   humVersionId: string
   datasets: DatasetVersion[]
@@ -56,6 +58,7 @@ export interface ResearchVersion {
 // primary key: humDatasetId: `${humId}-${datasetId}-v${latestVersionId + 1}`
 export interface DatasetVersion {
   datasetId: string
+  lang: LangType
   datasetVersion: string
   humDatasetId: string
   humVersionIds: string[]

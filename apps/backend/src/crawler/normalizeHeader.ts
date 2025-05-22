@@ -19,6 +19,7 @@ const SPLIT_VAL_2 = "Sequence Read Archive Accession"
 const UNUSED_CELL = "不要な項目のため削除する"
 const jaMap = new Map<string, string>()
 const enMap = new Map<string, string>()
+const jaToEnMap = new Map<string, string>()
 const splitSet = new Set<string>()
 const unUsedSet = new Set<string>()
 
@@ -39,6 +40,7 @@ for (const line of lines) {
   }
   jaMap.set(ja, fixedJa)
   enMap.set(en, fixedEn)
+  jaToEnMap.set(fixedJa, fixedEn)
 }
 
 export const normalizeMolDataHeader = (humVersionId: string, lang: LangType, parseResult: ParseResult) => {
@@ -58,7 +60,10 @@ export const normalizeMolDataHeader = (humVersionId: string, lang: LangType, par
         continue
       }
       const fixedKey = key.split("\n").join(" ")
-      const newKey = headerMap.get(fixedKey)
+      let newKey = headerMap.get(fixedKey)
+      if (lang === "ja") {
+        newKey = jaToEnMap.get(newKey ?? "")
+      }
       if (newKey) {
         newData[newKey] = value
       } else {

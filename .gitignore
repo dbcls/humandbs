@@ -182,3 +182,4 @@ dist
 apps/backend/tests
 apps/backend/crawler-results
 apps/backend/jga-example
+es-data
