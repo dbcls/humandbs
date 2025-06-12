@@ -13,6 +13,7 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as frontIndexImport } from './routes/(front)/index'
 import { Route as otherLayoutImport } from './routes/(other)/_layout'
 import { Route as otherLayoutContactIndexImport } from './routes/(other)/_layout/contact/index'
 import { Route as otherLayoutResearchListResearchIdResearchVerImport } from './routes/(other)/_layout/research-list/$researchId/$researchVer'
@@ -20,7 +21,6 @@ import { Route as otherLayoutResearchListResearchIdResearchVerImport } from './r
 // Create Virtual Routes
 
 const otherImport = createFileRoute('/(other)')()
-const frontIndexLazyImport = createFileRoute('/(front)/')()
 const otherLayoutResearchListIndexLazyImport = createFileRoute(
   '/(other)/_layout/research-list/',
 )()
@@ -50,13 +50,11 @@ const otherRoute = otherImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const frontIndexLazyRoute = frontIndexLazyImport
-  .update({
-    id: '/(front)/',
-    path: '/',
-    getParentRoute: () => rootRoute,
-  } as any)
-  .lazy(() => import('./routes/(front)/index.lazy').then((d) => d.Route))
+const frontIndexRoute = frontIndexImport.update({
+  id: '/(front)/',
+  path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const otherLayoutRoute = otherLayoutImport.update({
   id: '/_layout',
@@ -187,7 +185,7 @@ declare module '@tanstack/react-router' {
       id: '/(front)/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof frontIndexLazyImport
+      preLoaderRoute: typeof frontIndexImport
       parentRoute: typeof rootRoute
     }
     '/(other)/_layout/contact/': {
@@ -301,7 +299,7 @@ const otherRouteChildren: otherRouteChildren = {
 const otherRouteWithChildren = otherRoute._addFileChildren(otherRouteChildren)
 
 export interface FileRoutesByFullPath {
-  '/': typeof frontIndexLazyRoute
+  '/': typeof frontIndexRoute
   '/contact': typeof otherLayoutContactIndexRoute
   '/about-data': typeof otherLayoutAboutDataIndexLazyRoute
   '/achievements': typeof otherLayoutAchievementsIndexLazyRoute
@@ -314,7 +312,7 @@ export interface FileRoutesByFullPath {
 }
 
 export interface FileRoutesByTo {
-  '/': typeof frontIndexLazyRoute
+  '/': typeof frontIndexRoute
   '/contact': typeof otherLayoutContactIndexRoute
   '/about-data': typeof otherLayoutAboutDataIndexLazyRoute
   '/achievements': typeof otherLayoutAchievementsIndexLazyRoute
@@ -330,7 +328,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/(other)': typeof otherRouteWithChildren
   '/(other)/_layout': typeof otherLayoutRouteWithChildren
-  '/(front)/': typeof frontIndexLazyRoute
+  '/(front)/': typeof frontIndexRoute
   '/(other)/_layout/contact/': typeof otherLayoutContactIndexRoute
   '/(other)/_layout/about-data/': typeof otherLayoutAboutDataIndexLazyRoute
   '/(other)/_layout/achievements/': typeof otherLayoutAchievementsIndexLazyRoute
@@ -386,12 +384,12 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   otherRoute: typeof otherRouteWithChildren
-  frontIndexLazyRoute: typeof frontIndexLazyRoute
+  frontIndexRoute: typeof frontIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   otherRoute: otherRouteWithChildren,
-  frontIndexLazyRoute: frontIndexLazyRoute,
+  frontIndexRoute: frontIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -430,7 +428,7 @@ export const routeTree = rootRoute
       ]
     },
     "/(front)/": {
-      "filePath": "(front)/index.lazy.tsx"
+      "filePath": "(front)/index.tsx"
     },
     "/(other)/_layout/contact/": {
       "filePath": "(other)/_layout/contact/index.tsx",

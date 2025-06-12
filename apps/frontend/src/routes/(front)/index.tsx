@@ -1,11 +1,11 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import InfographicsImg from "@/assets/Infographics.png";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { News, NewsItem } from "@/components/FrontNews";
 
-export const Route = createLazyFileRoute("/(front)/")({
+export const Route = createFileRoute("/(front)/")({
   component: Index,
 });
 
