@@ -1,13 +1,20 @@
 {
   "compilerOptions": {
     "jsx": "react-jsx",
-    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
     "module": "ESNext",
     "target": "ES2022",
+    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "noEmit": true
   }
 }

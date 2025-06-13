@@ -1,4 +1,4 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
 
@@ -9,7 +9,7 @@ import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { FA_ICONS } from "@/lib/faIcons";
 
-export const Route = createLazyFileRoute("/(other)/_layout/research-list/")({
+export const Route = createFileRoute("/(other)/_layout/research-list/")({
   component: RouteComponent,
 });
 

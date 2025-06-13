@@ -4,7 +4,7 @@ import { CardWithCaption } from "@/components/Card";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { FA_ICONS } from "@/lib/faIcons";
 
-import { ResearchData } from "../index.lazy";
+import { ResearchData } from "../index";
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";

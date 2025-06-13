@@ -1,6 +1,6 @@
-import { createLazyFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
-export const Route = createLazyFileRoute("/(other)/_layout/achievements/")({
+export const Route = createFileRoute("/(other)/_layout/achievements/")({
   component: RouteComponent,
   pendingComponent: () => <div>Loading...</div>,
 })

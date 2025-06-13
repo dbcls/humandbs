@@ -19,8 +19,9 @@
   --color-foreground-dark: #002245;
   --color-foreground-light: #abb4c4;
 
-  --font-sans: i-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans:
+    i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
   --font-fontawesome: "FontAwesome6";
 
   --books: "\f5db";
@@ -34,8 +35,8 @@
     font-style: normal;
 
     src:
-      url("@/assets/fontawesome/fa-regular-400.woff2") format("woff2"),
-      url("@/assets/fontawesome/fa-regular-400.ttf") format("truetype");
+      url("./assets/fontawesome/fa-regular-400.woff2") format("woff2"),
+      url("./assets/fontawesome/fa-regular-400.ttf") format("truetype");
   }
   @font-face {
     font-family: "FontAwesome6";
@@ -43,8 +44,8 @@
     font-style: normal;
 
     src:
-      url("@/assets/fontawesome/fa-solid-900.woff2") format("woff2"),
-      url("@/assets/fontawesome/fa-solid-900.ttf") format("truetype");
+      url("./assets/fontawesome/fa-solid-900.woff2") format("woff2"),
+      url("./assets/fontawesome/fa-solid-900.ttf") format("truetype");
   }
 }
 
@@ -55,7 +56,13 @@
 
 @layer components {
   .main-bg {
-    background-image: url("@/assets/BG.png");
+    background-image:
+      linear-gradient(
+        var(--color-primary-translucent),
+        var(--color-primary-translucent)
+      ),
+      url("./assets/BG.png");
+    background-blend-mode: multiply;
     background-repeat: no-repeat;
     background-position: top;
     background-size: contain;

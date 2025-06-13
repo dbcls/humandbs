@@ -1,8 +1,8 @@
-import { createLazyFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 
 import { CardWithCaption } from "@/components/Card"
 
-export const Route = createLazyFileRoute(
+export const Route = createFileRoute(
   "/(other)/_layout/research-list/$researchId/",
 )({
   component: RouteComponent,

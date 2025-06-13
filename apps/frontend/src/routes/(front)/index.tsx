@@ -52,7 +52,6 @@ function Index() {
                 navigate({ to: "/research-list" });
               }}
             >
-              {" "}
               データを利用される方
             </Button>
           </div>
