@@ -2,6 +2,7 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
+  redirect,
   Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
@@ -10,10 +11,13 @@ import { Footer } from "@/components/Footer";
 import { QueryClient } from "@tanstack/react-query";
 import css from "@/index.css?url";
 import { Navbar } from "@/components/Navbar";
-import { useTranslation } from "react-i18next";
+import { getLocaleFn } from "@/serverFunctions/locale";
+import { i18n, Locale } from "@/serverFunctions/i18n-config";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
+  crumb: string;
+  lang: Locale | null;
 }>()({
   head: () => ({
     meta: [
@@ -30,6 +34,32 @@ export const Route = createRootRouteWithContext<{
     links: [{ rel: "stylesheet", href: css }],
   }),
   component: RootComponent,
+  beforeLoad: async (ctx) => {
+    const locale = await getLocaleFn();
+
+    const pathname = ctx.location.pathname;
+    const pathnameIsMissingLocale = i18n.locales.every(
+      (locale) =>
+        !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+    );
+
+    let lang = locale;
+
+    if (pathnameIsMissingLocale) {
+      // e.g. incoming request is /products
+      // The new URL is now /en-US/products
+      throw redirect({
+        //@ts-expect-error
+        to: `/${locale}${pathname}`,
+      });
+    } else {
+      lang = pathname.split("/")[1] as Locale;
+    }
+
+    return {
+      lang,
+    };
+  },
 });
 
 function RootComponent() {
@@ -41,10 +71,6 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const [t, i18n] = useTranslation();
-
-  console.log(i18n.languages);
-
   return (
     <html>
       <head>

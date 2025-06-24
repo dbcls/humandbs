@@ -11,305 +11,308 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as frontIndexRouteImport } from './routes/(front)/index'
-import { Route as otherLayoutRouteImport } from './routes/(other)/_layout'
-import { Route as otherLayoutResearchListIndexRouteImport } from './routes/(other)/_layout/research-list/index'
-import { Route as otherLayoutDataUsageIndexRouteImport } from './routes/(other)/_layout/data-usage/index'
-import { Route as otherLayoutDataProvisionIndexRouteImport } from './routes/(other)/_layout/data-provision/index'
-import { Route as otherLayoutContactIndexRouteImport } from './routes/(other)/_layout/contact/index'
-import { Route as otherLayoutAchievementsIndexRouteImport } from './routes/(other)/_layout/achievements/index'
-import { Route as otherLayoutAboutDataIndexRouteImport } from './routes/(other)/_layout/about-data/index'
-import { Route as otherLayoutResearchListResearchIdIndexRouteImport } from './routes/(other)/_layout/research-list/$researchId/index'
-import { Route as otherLayoutDataProvisionNavigationIndexRouteImport } from './routes/(other)/_layout/data-provision/navigation/index'
-import { Route as otherLayoutResearchListResearchIdResearchVerRouteImport } from './routes/(other)/_layout/research-list/$researchId/$researchVer'
+import { Route as LangIndexRouteImport } from './routes/$lang/index'
+import { Route as LangLayoutRouteImport } from './routes/$lang/_layout'
+import { Route as LangLayoutResearchListIndexRouteImport } from './routes/$lang/_layout/research-list/index'
+import { Route as LangLayoutDataUsageIndexRouteImport } from './routes/$lang/_layout/data-usage/index'
+import { Route as LangLayoutDataProvisionIndexRouteImport } from './routes/$lang/_layout/data-provision/index'
+import { Route as LangLayoutContactIndexRouteImport } from './routes/$lang/_layout/contact/index'
+import { Route as LangLayoutAchievementsIndexRouteImport } from './routes/$lang/_layout/achievements/index'
+import { Route as LangLayoutAboutDataIndexRouteImport } from './routes/$lang/_layout/about-data/index'
+import { Route as LangLayoutResearchListResearchIdIndexRouteImport } from './routes/$lang/_layout/research-list/$researchId/index'
+import { Route as LangLayoutDataProvisionNavigationIndexRouteImport } from './routes/$lang/_layout/data-provision/navigation/index'
+import { Route as LangLayoutResearchListResearchIdResearchVerRouteImport } from './routes/$lang/_layout/research-list/$researchId/$researchVer'
 
-const otherRouteImport = createFileRoute('/(other)')()
+const LangRouteImport = createFileRoute('/$lang')()
 
-const otherRoute = otherRouteImport.update({
-  id: '/(other)',
+const LangRoute = LangRouteImport.update({
+  id: '/$lang',
+  path: '/$lang',
   getParentRoute: () => rootRouteImport,
 } as any)
-const frontIndexRoute = frontIndexRouteImport.update({
-  id: '/(front)/',
+const LangIndexRoute = LangIndexRouteImport.update({
+  id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => LangRoute,
 } as any)
-const otherLayoutRoute = otherLayoutRouteImport.update({
+const LangLayoutRoute = LangLayoutRouteImport.update({
   id: '/_layout',
-  getParentRoute: () => otherRoute,
+  getParentRoute: () => LangRoute,
 } as any)
-const otherLayoutResearchListIndexRoute =
-  otherLayoutResearchListIndexRouteImport.update({
+const LangLayoutResearchListIndexRoute =
+  LangLayoutResearchListIndexRouteImport.update({
     id: '/research-list/',
     path: '/research-list/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutDataUsageIndexRoute =
-  otherLayoutDataUsageIndexRouteImport.update({
+const LangLayoutDataUsageIndexRoute =
+  LangLayoutDataUsageIndexRouteImport.update({
     id: '/data-usage/',
     path: '/data-usage/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutDataProvisionIndexRoute =
-  otherLayoutDataProvisionIndexRouteImport.update({
+const LangLayoutDataProvisionIndexRoute =
+  LangLayoutDataProvisionIndexRouteImport.update({
     id: '/data-provision/',
     path: '/data-provision/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutContactIndexRoute = otherLayoutContactIndexRouteImport.update({
+const LangLayoutContactIndexRoute = LangLayoutContactIndexRouteImport.update({
   id: '/contact/',
   path: '/contact/',
-  getParentRoute: () => otherLayoutRoute,
+  getParentRoute: () => LangLayoutRoute,
 } as any)
-const otherLayoutAchievementsIndexRoute =
-  otherLayoutAchievementsIndexRouteImport.update({
+const LangLayoutAchievementsIndexRoute =
+  LangLayoutAchievementsIndexRouteImport.update({
     id: '/achievements/',
     path: '/achievements/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutAboutDataIndexRoute =
-  otherLayoutAboutDataIndexRouteImport.update({
+const LangLayoutAboutDataIndexRoute =
+  LangLayoutAboutDataIndexRouteImport.update({
     id: '/about-data/',
     path: '/about-data/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutResearchListResearchIdIndexRoute =
-  otherLayoutResearchListResearchIdIndexRouteImport.update({
+const LangLayoutResearchListResearchIdIndexRoute =
+  LangLayoutResearchListResearchIdIndexRouteImport.update({
     id: '/research-list/$researchId/',
     path: '/research-list/$researchId/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutDataProvisionNavigationIndexRoute =
-  otherLayoutDataProvisionNavigationIndexRouteImport.update({
+const LangLayoutDataProvisionNavigationIndexRoute =
+  LangLayoutDataProvisionNavigationIndexRouteImport.update({
     id: '/data-provision/navigation/',
     path: '/data-provision/navigation/',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
-const otherLayoutResearchListResearchIdResearchVerRoute =
-  otherLayoutResearchListResearchIdResearchVerRouteImport.update({
+const LangLayoutResearchListResearchIdResearchVerRoute =
+  LangLayoutResearchListResearchIdResearchVerRouteImport.update({
     id: '/research-list/$researchId/$researchVer',
     path: '/research-list/$researchId/$researchVer',
-    getParentRoute: () => otherLayoutRoute,
+    getParentRoute: () => LangLayoutRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof frontIndexRoute
-  '/about-data': typeof otherLayoutAboutDataIndexRoute
-  '/achievements': typeof otherLayoutAchievementsIndexRoute
-  '/contact': typeof otherLayoutContactIndexRoute
-  '/data-provision': typeof otherLayoutDataProvisionIndexRoute
-  '/data-usage': typeof otherLayoutDataUsageIndexRoute
-  '/research-list': typeof otherLayoutResearchListIndexRoute
-  '/research-list/$researchId/$researchVer': typeof otherLayoutResearchListResearchIdResearchVerRoute
-  '/data-provision/navigation': typeof otherLayoutDataProvisionNavigationIndexRoute
-  '/research-list/$researchId': typeof otherLayoutResearchListResearchIdIndexRoute
+  '/$lang': typeof LangLayoutRouteWithChildren
+  '/$lang/': typeof LangIndexRoute
+  '/$lang/about-data': typeof LangLayoutAboutDataIndexRoute
+  '/$lang/achievements': typeof LangLayoutAchievementsIndexRoute
+  '/$lang/contact': typeof LangLayoutContactIndexRoute
+  '/$lang/data-provision': typeof LangLayoutDataProvisionIndexRoute
+  '/$lang/data-usage': typeof LangLayoutDataUsageIndexRoute
+  '/$lang/research-list': typeof LangLayoutResearchListIndexRoute
+  '/$lang/research-list/$researchId/$researchVer': typeof LangLayoutResearchListResearchIdResearchVerRoute
+  '/$lang/data-provision/navigation': typeof LangLayoutDataProvisionNavigationIndexRoute
+  '/$lang/research-list/$researchId': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof frontIndexRoute
-  '/about-data': typeof otherLayoutAboutDataIndexRoute
-  '/achievements': typeof otherLayoutAchievementsIndexRoute
-  '/contact': typeof otherLayoutContactIndexRoute
-  '/data-provision': typeof otherLayoutDataProvisionIndexRoute
-  '/data-usage': typeof otherLayoutDataUsageIndexRoute
-  '/research-list': typeof otherLayoutResearchListIndexRoute
-  '/research-list/$researchId/$researchVer': typeof otherLayoutResearchListResearchIdResearchVerRoute
-  '/data-provision/navigation': typeof otherLayoutDataProvisionNavigationIndexRoute
-  '/research-list/$researchId': typeof otherLayoutResearchListResearchIdIndexRoute
+  '/$lang': typeof LangIndexRoute
+  '/$lang/about-data': typeof LangLayoutAboutDataIndexRoute
+  '/$lang/achievements': typeof LangLayoutAchievementsIndexRoute
+  '/$lang/contact': typeof LangLayoutContactIndexRoute
+  '/$lang/data-provision': typeof LangLayoutDataProvisionIndexRoute
+  '/$lang/data-usage': typeof LangLayoutDataUsageIndexRoute
+  '/$lang/research-list': typeof LangLayoutResearchListIndexRoute
+  '/$lang/research-list/$researchId/$researchVer': typeof LangLayoutResearchListResearchIdResearchVerRoute
+  '/$lang/data-provision/navigation': typeof LangLayoutDataProvisionNavigationIndexRoute
+  '/$lang/research-list/$researchId': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/(other)': typeof otherRouteWithChildren
-  '/(other)/_layout': typeof otherLayoutRouteWithChildren
-  '/(front)/': typeof frontIndexRoute
-  '/(other)/_layout/about-data/': typeof otherLayoutAboutDataIndexRoute
-  '/(other)/_layout/achievements/': typeof otherLayoutAchievementsIndexRoute
-  '/(other)/_layout/contact/': typeof otherLayoutContactIndexRoute
-  '/(other)/_layout/data-provision/': typeof otherLayoutDataProvisionIndexRoute
-  '/(other)/_layout/data-usage/': typeof otherLayoutDataUsageIndexRoute
-  '/(other)/_layout/research-list/': typeof otherLayoutResearchListIndexRoute
-  '/(other)/_layout/research-list/$researchId/$researchVer': typeof otherLayoutResearchListResearchIdResearchVerRoute
-  '/(other)/_layout/data-provision/navigation/': typeof otherLayoutDataProvisionNavigationIndexRoute
-  '/(other)/_layout/research-list/$researchId/': typeof otherLayoutResearchListResearchIdIndexRoute
+  '/$lang': typeof LangRouteWithChildren
+  '/$lang/_layout': typeof LangLayoutRouteWithChildren
+  '/$lang/': typeof LangIndexRoute
+  '/$lang/_layout/about-data/': typeof LangLayoutAboutDataIndexRoute
+  '/$lang/_layout/achievements/': typeof LangLayoutAchievementsIndexRoute
+  '/$lang/_layout/contact/': typeof LangLayoutContactIndexRoute
+  '/$lang/_layout/data-provision/': typeof LangLayoutDataProvisionIndexRoute
+  '/$lang/_layout/data-usage/': typeof LangLayoutDataUsageIndexRoute
+  '/$lang/_layout/research-list/': typeof LangLayoutResearchListIndexRoute
+  '/$lang/_layout/research-list/$researchId/$researchVer': typeof LangLayoutResearchListResearchIdResearchVerRoute
+  '/$lang/_layout/data-provision/navigation/': typeof LangLayoutDataProvisionNavigationIndexRoute
+  '/$lang/_layout/research-list/$researchId/': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/about-data'
-    | '/achievements'
-    | '/contact'
-    | '/data-provision'
-    | '/data-usage'
-    | '/research-list'
-    | '/research-list/$researchId/$researchVer'
-    | '/data-provision/navigation'
-    | '/research-list/$researchId'
+    | '/$lang'
+    | '/$lang/'
+    | '/$lang/about-data'
+    | '/$lang/achievements'
+    | '/$lang/contact'
+    | '/$lang/data-provision'
+    | '/$lang/data-usage'
+    | '/$lang/research-list'
+    | '/$lang/research-list/$researchId/$researchVer'
+    | '/$lang/data-provision/navigation'
+    | '/$lang/research-list/$researchId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/about-data'
-    | '/achievements'
-    | '/contact'
-    | '/data-provision'
-    | '/data-usage'
-    | '/research-list'
-    | '/research-list/$researchId/$researchVer'
-    | '/data-provision/navigation'
-    | '/research-list/$researchId'
+    | '/$lang'
+    | '/$lang/about-data'
+    | '/$lang/achievements'
+    | '/$lang/contact'
+    | '/$lang/data-provision'
+    | '/$lang/data-usage'
+    | '/$lang/research-list'
+    | '/$lang/research-list/$researchId/$researchVer'
+    | '/$lang/data-provision/navigation'
+    | '/$lang/research-list/$researchId'
   id:
     | '__root__'
-    | '/(other)'
-    | '/(other)/_layout'
-    | '/(front)/'
-    | '/(other)/_layout/about-data/'
-    | '/(other)/_layout/achievements/'
-    | '/(other)/_layout/contact/'
-    | '/(other)/_layout/data-provision/'
-    | '/(other)/_layout/data-usage/'
-    | '/(other)/_layout/research-list/'
-    | '/(other)/_layout/research-list/$researchId/$researchVer'
-    | '/(other)/_layout/data-provision/navigation/'
-    | '/(other)/_layout/research-list/$researchId/'
+    | '/$lang'
+    | '/$lang/_layout'
+    | '/$lang/'
+    | '/$lang/_layout/about-data/'
+    | '/$lang/_layout/achievements/'
+    | '/$lang/_layout/contact/'
+    | '/$lang/_layout/data-provision/'
+    | '/$lang/_layout/data-usage/'
+    | '/$lang/_layout/research-list/'
+    | '/$lang/_layout/research-list/$researchId/$researchVer'
+    | '/$lang/_layout/data-provision/navigation/'
+    | '/$lang/_layout/research-list/$researchId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  otherRoute: typeof otherRouteWithChildren
-  frontIndexRoute: typeof frontIndexRoute
+  LangRoute: typeof LangRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(other)': {
-      id: '/(other)'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof otherRouteImport
+    '/$lang': {
+      id: '/$lang'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof LangRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(front)/': {
-      id: '/(front)/'
+    '/$lang/': {
+      id: '/$lang/'
       path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof frontIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$lang/'
+      preLoaderRoute: typeof LangIndexRouteImport
+      parentRoute: typeof LangRoute
     }
-    '/(other)/_layout': {
-      id: '/(other)/_layout'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof otherLayoutRouteImport
-      parentRoute: typeof otherRoute
+    '/$lang/_layout': {
+      id: '/$lang/_layout'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof LangLayoutRouteImport
+      parentRoute: typeof LangRoute
     }
-    '/(other)/_layout/research-list/': {
-      id: '/(other)/_layout/research-list/'
+    '/$lang/_layout/research-list/': {
+      id: '/$lang/_layout/research-list/'
       path: '/research-list'
-      fullPath: '/research-list'
-      preLoaderRoute: typeof otherLayoutResearchListIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/research-list'
+      preLoaderRoute: typeof LangLayoutResearchListIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/data-usage/': {
-      id: '/(other)/_layout/data-usage/'
+    '/$lang/_layout/data-usage/': {
+      id: '/$lang/_layout/data-usage/'
       path: '/data-usage'
-      fullPath: '/data-usage'
-      preLoaderRoute: typeof otherLayoutDataUsageIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/data-usage'
+      preLoaderRoute: typeof LangLayoutDataUsageIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/data-provision/': {
-      id: '/(other)/_layout/data-provision/'
+    '/$lang/_layout/data-provision/': {
+      id: '/$lang/_layout/data-provision/'
       path: '/data-provision'
-      fullPath: '/data-provision'
-      preLoaderRoute: typeof otherLayoutDataProvisionIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/data-provision'
+      preLoaderRoute: typeof LangLayoutDataProvisionIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/contact/': {
-      id: '/(other)/_layout/contact/'
+    '/$lang/_layout/contact/': {
+      id: '/$lang/_layout/contact/'
       path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof otherLayoutContactIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/contact'
+      preLoaderRoute: typeof LangLayoutContactIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/achievements/': {
-      id: '/(other)/_layout/achievements/'
+    '/$lang/_layout/achievements/': {
+      id: '/$lang/_layout/achievements/'
       path: '/achievements'
-      fullPath: '/achievements'
-      preLoaderRoute: typeof otherLayoutAchievementsIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/achievements'
+      preLoaderRoute: typeof LangLayoutAchievementsIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/about-data/': {
-      id: '/(other)/_layout/about-data/'
+    '/$lang/_layout/about-data/': {
+      id: '/$lang/_layout/about-data/'
       path: '/about-data'
-      fullPath: '/about-data'
-      preLoaderRoute: typeof otherLayoutAboutDataIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/about-data'
+      preLoaderRoute: typeof LangLayoutAboutDataIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/research-list/$researchId/': {
-      id: '/(other)/_layout/research-list/$researchId/'
+    '/$lang/_layout/research-list/$researchId/': {
+      id: '/$lang/_layout/research-list/$researchId/'
       path: '/research-list/$researchId'
-      fullPath: '/research-list/$researchId'
-      preLoaderRoute: typeof otherLayoutResearchListResearchIdIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/research-list/$researchId'
+      preLoaderRoute: typeof LangLayoutResearchListResearchIdIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/data-provision/navigation/': {
-      id: '/(other)/_layout/data-provision/navigation/'
+    '/$lang/_layout/data-provision/navigation/': {
+      id: '/$lang/_layout/data-provision/navigation/'
       path: '/data-provision/navigation'
-      fullPath: '/data-provision/navigation'
-      preLoaderRoute: typeof otherLayoutDataProvisionNavigationIndexRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/data-provision/navigation'
+      preLoaderRoute: typeof LangLayoutDataProvisionNavigationIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
-    '/(other)/_layout/research-list/$researchId/$researchVer': {
-      id: '/(other)/_layout/research-list/$researchId/$researchVer'
+    '/$lang/_layout/research-list/$researchId/$researchVer': {
+      id: '/$lang/_layout/research-list/$researchId/$researchVer'
       path: '/research-list/$researchId/$researchVer'
-      fullPath: '/research-list/$researchId/$researchVer'
-      preLoaderRoute: typeof otherLayoutResearchListResearchIdResearchVerRouteImport
-      parentRoute: typeof otherLayoutRoute
+      fullPath: '/$lang/research-list/$researchId/$researchVer'
+      preLoaderRoute: typeof LangLayoutResearchListResearchIdResearchVerRouteImport
+      parentRoute: typeof LangLayoutRoute
     }
   }
 }
 
-interface otherLayoutRouteChildren {
-  otherLayoutAboutDataIndexRoute: typeof otherLayoutAboutDataIndexRoute
-  otherLayoutAchievementsIndexRoute: typeof otherLayoutAchievementsIndexRoute
-  otherLayoutContactIndexRoute: typeof otherLayoutContactIndexRoute
-  otherLayoutDataProvisionIndexRoute: typeof otherLayoutDataProvisionIndexRoute
-  otherLayoutDataUsageIndexRoute: typeof otherLayoutDataUsageIndexRoute
-  otherLayoutResearchListIndexRoute: typeof otherLayoutResearchListIndexRoute
-  otherLayoutResearchListResearchIdResearchVerRoute: typeof otherLayoutResearchListResearchIdResearchVerRoute
-  otherLayoutDataProvisionNavigationIndexRoute: typeof otherLayoutDataProvisionNavigationIndexRoute
-  otherLayoutResearchListResearchIdIndexRoute: typeof otherLayoutResearchListResearchIdIndexRoute
+interface LangLayoutRouteChildren {
+  LangLayoutAboutDataIndexRoute: typeof LangLayoutAboutDataIndexRoute
+  LangLayoutAchievementsIndexRoute: typeof LangLayoutAchievementsIndexRoute
+  LangLayoutContactIndexRoute: typeof LangLayoutContactIndexRoute
+  LangLayoutDataProvisionIndexRoute: typeof LangLayoutDataProvisionIndexRoute
+  LangLayoutDataUsageIndexRoute: typeof LangLayoutDataUsageIndexRoute
+  LangLayoutResearchListIndexRoute: typeof LangLayoutResearchListIndexRoute
+  LangLayoutResearchListResearchIdResearchVerRoute: typeof LangLayoutResearchListResearchIdResearchVerRoute
+  LangLayoutDataProvisionNavigationIndexRoute: typeof LangLayoutDataProvisionNavigationIndexRoute
+  LangLayoutResearchListResearchIdIndexRoute: typeof LangLayoutResearchListResearchIdIndexRoute
 }
 
-const otherLayoutRouteChildren: otherLayoutRouteChildren = {
-  otherLayoutAboutDataIndexRoute: otherLayoutAboutDataIndexRoute,
-  otherLayoutAchievementsIndexRoute: otherLayoutAchievementsIndexRoute,
-  otherLayoutContactIndexRoute: otherLayoutContactIndexRoute,
-  otherLayoutDataProvisionIndexRoute: otherLayoutDataProvisionIndexRoute,
-  otherLayoutDataUsageIndexRoute: otherLayoutDataUsageIndexRoute,
-  otherLayoutResearchListIndexRoute: otherLayoutResearchListIndexRoute,
-  otherLayoutResearchListResearchIdResearchVerRoute:
-    otherLayoutResearchListResearchIdResearchVerRoute,
-  otherLayoutDataProvisionNavigationIndexRoute:
-    otherLayoutDataProvisionNavigationIndexRoute,
-  otherLayoutResearchListResearchIdIndexRoute:
-    otherLayoutResearchListResearchIdIndexRoute,
+const LangLayoutRouteChildren: LangLayoutRouteChildren = {
+  LangLayoutAboutDataIndexRoute: LangLayoutAboutDataIndexRoute,
+  LangLayoutAchievementsIndexRoute: LangLayoutAchievementsIndexRoute,
+  LangLayoutContactIndexRoute: LangLayoutContactIndexRoute,
+  LangLayoutDataProvisionIndexRoute: LangLayoutDataProvisionIndexRoute,
+  LangLayoutDataUsageIndexRoute: LangLayoutDataUsageIndexRoute,
+  LangLayoutResearchListIndexRoute: LangLayoutResearchListIndexRoute,
+  LangLayoutResearchListResearchIdResearchVerRoute:
+    LangLayoutResearchListResearchIdResearchVerRoute,
+  LangLayoutDataProvisionNavigationIndexRoute:
+    LangLayoutDataProvisionNavigationIndexRoute,
+  LangLayoutResearchListResearchIdIndexRoute:
+    LangLayoutResearchListResearchIdIndexRoute,
 }
 
-const otherLayoutRouteWithChildren = otherLayoutRoute._addFileChildren(
-  otherLayoutRouteChildren,
+const LangLayoutRouteWithChildren = LangLayoutRoute._addFileChildren(
+  LangLayoutRouteChildren,
 )
 
-interface otherRouteChildren {
-  otherLayoutRoute: typeof otherLayoutRouteWithChildren
+interface LangRouteChildren {
+  LangLayoutRoute: typeof LangLayoutRouteWithChildren
+  LangIndexRoute: typeof LangIndexRoute
 }
 
-const otherRouteChildren: otherRouteChildren = {
-  otherLayoutRoute: otherLayoutRouteWithChildren,
+const LangRouteChildren: LangRouteChildren = {
+  LangLayoutRoute: LangLayoutRouteWithChildren,
+  LangIndexRoute: LangIndexRoute,
 }
 
-const otherRouteWithChildren = otherRoute._addFileChildren(otherRouteChildren)
+const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  otherRoute: otherRouteWithChildren,
-  frontIndexRoute: frontIndexRoute,
+  LangRoute: LangRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
