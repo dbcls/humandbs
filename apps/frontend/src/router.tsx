@@ -2,7 +2,14 @@ import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { QueryClient } from "@tanstack/react-query";
 import { routerWithQueryClient } from "@tanstack/react-router-with-query";
-import { i18n } from "./serverFunctions/i18n-config";
+import type { Locale, Messages } from "./serverFunctions/i18n-config";
+
+export type Context = {
+  queryClient: QueryClient;
+  crumb: string;
+  lang: Locale;
+  messages: Messages;
+};
 
 export function createRouter() {
   const queryClient = new QueryClient();
@@ -12,9 +19,7 @@ export function createRouter() {
       routeTree,
       context: {
         queryClient,
-        crumb: "",
-        lang: null,
-      },
+      } as Context,
       defaultPreload: "intent",
       scrollRestoration: true,
     }),

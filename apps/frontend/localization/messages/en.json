@@ -1,0 +1,40 @@
+{
+  "common": {
+    "humandb": "NDBC HumanDB"
+  },
+  "Footer": {
+    "sitemap": "Sitemap",
+    "home": "Home",
+    "process-data": "Processed Data",
+    "guideline-violation": "Guideline Violation",
+    "guideline": "Guidelines",
+    "off-premise-server": "Off-premise Server",
+    "FAQ": "FAQ",
+    "data-submission": "Data submission",
+    "data-privision-committee": "Human Data Review Committee",
+    "contact": "Contact Us",
+    "data-usage": "Data Usage",
+    "achievements": "Achievements",
+    "supported-browsers": "Supported Browsers"
+  },
+  "Navbar": {
+    "data-submission": "Data submission",
+    "data-usage": "Data Usage",
+    "about-data": "About Data",
+    "achievements": "Achievements",
+    "contact": "Contact Us"
+  },
+  "Front": {
+    "data-submission-button": "For Data Providers",
+    "data-usage-button": "For Data Users",
+    "news": "News"
+  },
+  "Data-usage": {
+    "header": "List of Available Research Data",
+    "research-summary": "Research Summary",
+    "dataset": "Dataset"
+  },
+  "Research-list": {
+    "research-list": "Research list"
+  }
+}

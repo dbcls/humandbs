@@ -1,69 +1,22 @@
-# 簡単なMarkdown ファイル
+# データ加工について
 
-This is a sample markdown file. You can use markdown to write your content.
+データ利用者の利便性向上のため、NBDCヒトデータベースに制限公開データとして登録されたデータ（元データ）に対して一定のワークフローにより加工した、アライメントデータ・バリアントコールデータ・統計データを、ヒトデータ審査委員会によって元データの利用を許可されたデータ利用者が希望する場合、加工データも併せて閲覧・利用することを可能にしています。加工データは、元のデータに紐づく形で配置され、Analysis と Datasetのtitleに 「Processed by JGA」と記載されています。 なお、加工データを含む解析結果を論文等で公表する際は、**元データのアクセッション番号を記載して下さい**。
 
-## Heading 2
+## 加工方法
 
-### Heading 3
+- **生殖系列の全ゲノムシークエンスデータの加工**
+  GATK best practice - Germline short variant discovery（SNPs + Indels）に則り加工しております。詳細は[こちら](https://humandbs.dbcls.jp/whole-genome-sequencing)
+  ワークフローのソースコード（jga-analysis）：[https://github.com/ddbj/jga-analysis](https://github.com/ddbj/jga-analysis)
 
-#### Heading 4
+  [加工済みデータ一覧](https://humandbs.dbcls.jp/processed-data-wgs)
 
-##### Heading 5
+- **インピュテーション用の参照パネルデータの加工**
+  bcftools（バージョン1.9）ならびに、beagle-bref3（バージョン28Jun21.220）を用いて参照パネルを作成しております。詳細は[こちら](https://humandbs.dbcls.jp/imputation-reference)
+  ワークフローのソースコード（imputation-server-wf）：
 
-###### Heading 6
+  - [bcftools-index-t.cwl](https://github.com/ddbj/imputation-server-wf/blob/main/Tools/bcftools-index-t.cwl)
+  - [beagle-bref3.cwl](https://github.com/ddbj/imputation-server-wf/blob/main/Tools/beagle-bref3.cwl)
 
-**Bold text**
+  [加工済みデータ一覧](https://humandbs.dbcls.jp/processed-data-imputation)
 
-_Italic text_
-
-- List item 1
-- List item 2
-  - List item 3
-    - List item 4
-
-1. Numbered list item 1
-2. Numbered list item 2
-   1. Numbered list item 2.1
-      1. Numbered list item 2.1.1
-      2. Numbered list item 2.1.2
-
-[Link to Google](https://www.google.com)
-
-![Image](https://via.placeholder.com/150)
-
-```javascript
-console.log("Hello, world!");
-```
-
-> Some blockquote text
-> Some more blockquote text
-
----
-
-Horizontal rule
-
----
-
-| Header 1 | Header 2 | Header 3 |
-| -------- | -------- | -------- |
-| Row 1    | Row 1    | Row 1    |
-| Row 2    | Row 2    | Row 2    |
-| Row 3    | Row 3    | Row 3    |
-
----
-
-- [x] Task 1
-- [ ] Task 2
-
----
-
-<details>
-  <summary>Click to expand</summary>
-
-Some hidden content
-
-</details>
-
----
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+なお、DBCLSおよび生命情報・DDBJ センターが実施する当該データ加工において、NBDCヒトデータベースの利用促進活動の目的以外に利用することはありません。

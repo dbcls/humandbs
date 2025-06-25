@@ -1,47 +1,51 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import * as fs from "fs/promises";
-import { i18n } from "./i18n-config";
+import { localeSchema } from "./i18n-config";
+import fs from "fs/promises";
+import Markdoc from "@markdoc/markdoc";
+import * as tags from "@/markdoc/tags/index";
+import * as nodes from "@/markdoc/nodes/index";
 
 const contentPath = "./localization/content";
 
-const contensNameSchema = z.enum(["about", "home"]);
+const contensNameSchema = z.enum([
+  "about",
+  "home",
+  "front",
+  "data-submission",
+  "data-usage",
+]);
 
 type ContentNames = z.infer<typeof contensNameSchema>;
 
 async function getFileContent({
   contentName,
-  locale,
+  lang,
 }: {
   contentName: ContentNames;
-  locale: string;
+  lang: string;
 }) {
-  const file = await fs.readFile(`${contentPath}/${locale}/${contentName}.md`, {
+  const file = await fs.readFile(`${contentPath}/${lang}/${contentName}.md`, {
     encoding: "utf-8",
   });
 
   return file;
 }
 
-function unionOfLiterals<T extends string | number>(constants: readonly T[]) {
-  const literals = constants.map((x) => z.literal(x)) as unknown as readonly [
-    z.ZodLiteral<T>,
-    z.ZodLiteral<T>,
-    ...z.ZodLiteral<T>[],
-  ];
-  return z.union(literals);
-}
-
 const contentReqSchema = z.object({
   contentName: contensNameSchema,
-  lang: unionOfLiterals(i18n.locales),
+  lang: localeSchema,
 });
 
-export const getContent = createServerFn({ method: "GET" })
+export const getContent = createServerFn({ method: "GET", response: "data" })
   .validator(contentReqSchema)
   .handler(async ({ data }) => {
-    return getFileContent({
-      contentName: data.contentName,
-      locale: data.lang,
+    const raw = await getFileContent(data);
+    const ast = Markdoc.parse(raw);
+    const content = Markdoc.transform(ast, {
+      tags,
+      nodes,
     });
+
+    return content as any;
   });

@@ -8,15 +8,17 @@ import { Input } from "@/components/Input";
 import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { FA_ICONS } from "@/lib/faIcons";
+import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/$lang/_layout/research-list/")({
   component: RouteComponent,
 });
 
 function Caption() {
+  const t = useTranslations("Research-list");
   return (
     <div className="flex items-center justify-between">
-      <h3 className="text-lg">研究一覧</h3>
+      <h3 className="text-lg">{t("research-list")}</h3>
 
       <div className="flex gap-4">
         <div className="flex gap-1">
@@ -185,7 +187,6 @@ const columns = [
     id: "researchId",
     header: (ctx) => {
       const sortDirection = ctx.column.getIsSorted();
-
       const sortIcon =
         sortDirection === "desc" ? (
           <ChevronDown size={18} />
@@ -194,10 +195,8 @@ const columns = [
         ) : (
           <ChevronsUpDown size={18} />
         );
-
       return (
         <div className="flex items-center whitespace-nowrap">
-          {" "}
           <div>Research ID </div>
           <Button
             onClick={ctx.column.getToggleSortingHandler()}
@@ -211,10 +210,8 @@ const columns = [
     },
     cell: function Cell(ctx) {
       const researchIdWithVer = ctx.getValue();
-
       const researchId = researchIdWithVer.split(".")[0];
       const researchVer = researchIdWithVer.split(".")[1];
-
       return (
         <div>
           <Route.Link

@@ -1,28 +1,22 @@
 import { cn } from "@/lib/utils";
-import { i18n, Locale } from "@/serverFunctions/i18n-config";
-import {
-  useNavigate,
-  useRouteContext,
-  useRouter,
-} from "@tanstack/react-router";
-
-import { useState } from "react";
+import { i18n as i18nConfig, Locale } from "@/serverFunctions/i18n-config";
+import { saveLocaleFn } from "@/serverFunctions/locale";
+import { useRouter } from "@tanstack/react-router";
+import { useLocale } from "use-intl";
 
 export function LangSwitcher() {
-  const { navigate, invalidate } = useRouter();
+  const { navigate } = useRouter();
+  const currentLang = useLocale();
 
-  const { lang: currentLang } = useRouteContext({ from: "/$lang" });
+  async function handleSwitch(lang: Locale) {
+    await saveLocaleFn({ data: { lang } });
 
-  const [count, setCount] = useState(0);
-
-  function handleSwitch(lang: Locale) {
-    navigate({ to: ".", params: { lang } });
-    invalidate();
+    await navigate({ to: ".", params: { lang } });
   }
 
   return (
     <div className="bg-primary/50 f relative flex rounded-full p-1">
-      {i18n.locales.map((lang) => (
+      {i18nConfig.locales.map((lang) => (
         <button
           onClick={() => {
             handleSwitch(lang);
@@ -38,8 +32,6 @@ export function LangSwitcher() {
           {lang}
         </button>
       ))}
-      {count}
-      <button onClick={() => setCount((p) => p + 1)}> + </button>
 
       <div
         className="bg-secondary absolute z-0 size-8 rounded-full transition-transform"

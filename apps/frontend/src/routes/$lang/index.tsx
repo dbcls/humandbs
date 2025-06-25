@@ -4,9 +4,21 @@ import InfographicsImg from "@/assets/Infographics.png";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { News, NewsItem } from "@/components/FrontNews";
+import { getContent } from "@/serverFunctions/getContent";
+import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/$lang/")({
   component: Index,
+  loader: async ({ context }) => {
+    const content = await getContent({
+      data: { contentName: "front", lang: context.lang },
+    });
+
+    return {
+      content,
+    };
+  },
 });
 
 const dummyNews: NewsItem[] = [
@@ -26,24 +38,20 @@ const dummyNews: NewsItem[] = [
 function Index() {
   const navigate = Route.useNavigate();
 
+  const { content } = Route.useLoaderData();
+
+  const t = useTranslations("Front");
+
   return (
     // All that after the Navbar component
     <section className="flex flex-col gap-8">
-      {/* // hero component */}
-
-      <section className="flex h-fit justify-between gap-8">
+      <section className="flex h-fit items-start justify-between gap-8">
         <article className="mt-8 ml-8 max-w-2xl shrink">
-          <h1 className="text-secondary text-3xl font-bold">
-            NBDCヒトデータベースについて
-          </h1>
-
-          <p>
-            ヒトに関するデータは、次世代シークエンサーをはじめとした解析技術の発達に伴って膨大な量が産生されつつあり、それらを整理・格納して、生命科学の進展のために有効に活用するためのルールや仕組みが必要です。
-          </p>
+          <RenderMarkdoc content={content} />
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button variant={"accent"} size={"lg"}>
-              データを提供される方
+              {t("data-submission-button")}
             </Button>
 
             <Button
@@ -53,7 +61,7 @@ function Index() {
                 navigate({ to: "research-list" });
               }}
             >
-              データを利用される方
+              {t("data-usage-button")}
             </Button>
           </div>
         </article>

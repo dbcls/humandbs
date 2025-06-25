@@ -1,20 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-import { Markdown } from "@/components/Markdown";
 import { getContent } from "@/serverFunctions/getContent";
-import { getLocale } from "@/paraglide/runtime";
-// import aboutContent from "@/content/about-content.md";
+import { RenderableTreeNode } from "@markdoc/markdoc";
+
+import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 
 export const Route = createFileRoute("/$lang/_layout/about-data/")({
   component: About,
   loader: async ({ context }) => {
-    const content = await getContent({
+    const content: RenderableTreeNode = await getContent({
       data: { contentName: "about", lang: context.lang },
     });
 
     return {
       content,
-      crumb: "About",
     };
   },
 });
@@ -22,10 +20,5 @@ export const Route = createFileRoute("/$lang/_layout/about-data/")({
 function About() {
   const { content } = Route.useLoaderData();
 
-  return (
-    <div>
-      About
-      <Markdown markdown={content} />
-    </div>
-  );
+  return <RenderMarkdoc className="mx-auto mt-8" content={content} />;
 }

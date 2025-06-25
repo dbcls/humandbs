@@ -6,18 +6,22 @@ import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
 
 import { Link, useRouteContext } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 export function Navbar() {
   const { lang } = useRouteContext({ from: "/$lang" });
 
+  const t = useTranslations("Navbar");
+  const tCommon = useTranslations("common");
+
   return (
     <header className="flex items-center justify-between gap-8 rounded-md bg-white p-4">
       <nav className="flex items-center gap-8">
-        <Link className="w-fit" to=".">
-          <img src={Logo} className="block" />
+        <Link className="w-fit shrink-0" to=".">
+          <img src={Logo} width={200} height={50} className="block" />
 
           <div className="text-center text-sm font-semibold whitespace-nowrap">
-            NDBC ヒトデータベース
+            {tCommon("humandb")}
           </div>
         </Link>
         <ul className="flex flex-wrap items-center gap-8">
@@ -27,7 +31,7 @@ export function Navbar() {
               params={{ lang }}
               to={"/$lang/data-provision"}
             >
-              データの提供
+              {t("data-submission")}
             </Link>
           </li>
           <li>
@@ -36,7 +40,7 @@ export function Navbar() {
               params={{ lang }}
               to={"/$lang/data-usage"}
             >
-              データの利用
+              {t("data-usage")}
             </Link>
           </li>
           <li>
@@ -46,7 +50,7 @@ export function Navbar() {
               to={"/$lang/about-data"}
             >
               <span>
-                データについて <ChevronDown className="inline" size={10} />
+                {t("about-data")} <ChevronDown className="inline" size={10} />
               </span>
             </Link>
           </li>
@@ -57,7 +61,7 @@ export function Navbar() {
               to={"/$lang/achievements"}
             >
               <span>
-                実績 <ChevronDown className="inline" size={10} />
+                {t("achievements")} <ChevronDown className="inline" size={10} />
               </span>
             </Link>
           </li>
@@ -68,7 +72,7 @@ export function Navbar() {
               to={"/$lang/contact"}
             >
               <span>
-                お問い合わせ <ChevronDown className="inline" size={10} />
+                {t("contact")} <ChevronDown className="inline" size={10} />
               </span>
             </Link>
           </li>

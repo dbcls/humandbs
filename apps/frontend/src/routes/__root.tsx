@@ -1,72 +1,90 @@
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
+import css from "@/index.css?url";
+import { Context } from "@/router";
+import {
+  i18n as i18nConfig,
+  Locale,
+  Messages,
+} from "@/serverFunctions/i18n-config";
+import {
+  getLocaleFn,
+  getMessagesFn,
+  saveLocaleFn,
+} from "@/serverFunctions/locale";
+import { QueryClient } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
   redirect,
   Scripts,
+  useLoaderData,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { Footer } from "@/components/Footer";
-import { QueryClient } from "@tanstack/react-query";
-import css from "@/index.css?url";
-import { Navbar } from "@/components/Navbar";
-import { getLocaleFn } from "@/serverFunctions/locale";
-import { i18n, Locale } from "@/serverFunctions/i18n-config";
+import { IntlProvider } from "use-intl";
 
-export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient;
-  crumb: string;
-  lang: Locale | null;
-}>()({
-  head: () => ({
-    meta: [
-      {
-        charSet: "utf-8",
-      },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      { title: "シン NBDCヒトデータベース" },
-    ],
+export const Route = createRootRouteWithContext<Context>()({
+  head: ({
+    match: {
+      context: { lang },
+    },
+  }) => {
+    return {
+      meta: [
+        {
+          charSet: "utf-8",
+        },
+        {
+          name: "viewport",
+          content: "width=device-width, initial-scale=1",
+        },
+        { title: `シン NBDCヒトデータベース ${lang}` },
+      ],
 
-    links: [{ rel: "stylesheet", href: css }],
-  }),
+      links: [{ rel: "stylesheet", href: css }],
+    };
+  },
   component: RootComponent,
   beforeLoad: async (ctx) => {
     const locale = await getLocaleFn();
 
+    // if in request path missing locale, add it
     const pathname = ctx.location.pathname;
-    const pathnameIsMissingLocale = i18n.locales.every(
+    const pathnameIsMissingLocale = i18nConfig.locales.every(
       (locale) =>
         !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
     );
 
-    let lang = locale;
+    await saveLocaleFn({ data: { lang: locale } });
 
     if (pathnameIsMissingLocale) {
-      // e.g. incoming request is /products
-      // The new URL is now /en-US/products
       throw redirect({
         //@ts-expect-error
         to: `/${locale}${pathname}`,
       });
-    } else {
-      lang = pathname.split("/")[1] as Locale;
     }
 
+    const messages = await getMessagesFn({ data: locale });
+
     return {
-      lang,
+      lang: locale,
+      messages,
     };
   },
 });
 
 function RootComponent() {
+  const { messages, lang } = Route.useRouteContext();
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
+    <IntlProvider locale={lang} messages={messages} timeZone={timeZone}>
+      <RootDocument>
+        <Outlet />
+      </RootDocument>
+    </IntlProvider>
   );
 }
 

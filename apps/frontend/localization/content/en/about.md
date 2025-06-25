@@ -1,68 +1,23 @@
-# Sample markdown file
+# About Data Processing
 
-This is a sample markdown file. You can use markdown to write your content.
+For the convenience of data users, alignment data, variant call data, and statistical data, which are processed by a certain workflow on data deposited to the NBDC Human Database as controlled-access data (original data), can be used together with the original data if the user who is permitted to use the original data by the Human Data Review Board and wishes to use the processed data as well. The processed data are placed in a way that they are connected to the original data, and are indicated as "Processed by JGA" in the title of the Analysis and Dataset. When publishing analysis results including processed data, please **include the accession number of the original data in the article**.
 
-## Heading 2
+## How to process the data
 
-### Heading 3
+- **Whole genome sequencing analysis data (germline)**
 
-#### Heading 4
+  - Data were processed by using of [GATK Best Practice - Germline short variant discovery (SNPs and Indels)](https://humandbs.dbcls.jp/en/whole-genome-sequencing)
+  - [Workflow Source Code (jga-analysis)](https://github.com/ddbj/jga-analysis)
+  - [List of processed data](https://humandbs.dbcls.jp/en/processed-data-wgs)
 
-##### Heading 5
+- **Imputation reference panel**
 
-###### Heading 6
+  - Reference panels were created by using of [bcftools (version 1.9) and beagle-bref3 (version 28Jun21.220)](https://humandbs.dbcls.jp/en/imputation-reference)
+  - Workflow Source Code (imputation-server-wf):
 
-**Bold text**
+    - [bcftools-index-t.cwl](https://github.com/ddbj/imputation-server-wf/blob/main/Tools/bcftools-index-t.cwl)
+    - [beagle-bref3.cwl](https://github.com/ddbj/imputation-server-wf/blob/main/Tools/beagle-bref3.cwl)
 
-_Italic text_
+  - [List of processed data](https://humandbs.dbcls.jp/en/processed-data-imputation)
 
-- List item 1
-- List item 2
-  - List item 3
-    - List item 4
-
-1. Numbered list item 1
-2. Numbered list item 2
-   1. Numbered list item 2.1
-      1. Numbered list item 2.1.1
-      2. Numbered list item 2.1.2
-
-[Link to Google](https://www.google.com)
-
-![Image](https://via.placeholder.com/150)
-
-```javascript
-console.log('Hello, world!');
-```
-
-> Some blockquote text
-> Some more blockquote text
-
----
-
-Horizontal rule
-
----
-
-| Header 1 | Header 2 | Header 3 |
-| -------- | -------- | -------- |
-| Row 1    | Row 1    | Row 1    |
-| Row 2    | Row 2    | Row 2    |
-| Row 3    | Row 3    | Row 3    |
-
----
-
-- [x] Task 1
-- [ ] Task 2
-
----
-
-<details>
-  <summary>Click to expand</summary>
-  
-  Some hidden content
-</details>
-
----
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+In such data processing conducted by the DBCLS and the Bioinformation and DDBJ Center, the data will not be used for any purposes other than those of activities to promote the use of the NBDC human database.

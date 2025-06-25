@@ -1,0 +1,40 @@
+{
+  "common": {
+    "humandb": "NDBC ヒトデータベース"
+  },
+  "Footer": {
+    "sitemap": "サイトマップ",
+    "home": "ホーム",
+    "process-data": "加工データ",
+    "guideline-violation": "ガイドライン違反",
+    "guideline": "ガイドライン",
+    "off-premise-server": "機関外サーバ",
+    "FAQ": "FAQ",
+    "data-submission": "データの提供",
+    "data-privision-committee": "ヒトデータ審査委員会",
+    "contact": "お問い合わせ",
+    "data-usage": "データの利用",
+    "achievements": "成果発表",
+    "supported-browsers": "対応ブラウザ"
+  },
+  "Navbar": {
+    "data-submission": "データの提供",
+    "data-usage": "データの利用",
+    "about-data": "データについて",
+    "achievements": "実績",
+    "contact": "お問い合わせ"
+  },
+  "Front": {
+    "data-submission-button": "データを提供される方",
+    "data-usage-button": "データを利用される方",
+    "news": "新着情報"
+  },
+  "Data-usage": {
+    "header": "利用可能な研究データ一覧",
+    "research-summary": "研究概要",
+    "dataset": "データセット"
+  },
+  "Research-list": {
+    "research-list": "研究一覧"
+  }
+}
