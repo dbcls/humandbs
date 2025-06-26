@@ -221,7 +221,6 @@ function RouteComponent() {
   const params = Route.useParams();
 
   const research = useMemo(() => {
-    console.log("params.researchId", params.researchId);
     return researchDetails.find(
       (researchDetail) =>
         researchDetail.researchId.split(".")[0] === params.researchId

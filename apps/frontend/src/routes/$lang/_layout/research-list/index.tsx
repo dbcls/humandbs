@@ -288,7 +288,6 @@ const columns = [
 // table using Tanstack table:
 
 function RouteComponent() {
-  console.log("research-list");
   return (
     <Card caption={<Caption />}>
       <Table className="mt-4" columns={columns} data={data} />

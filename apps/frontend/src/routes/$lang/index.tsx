@@ -66,7 +66,7 @@ function Index() {
           </div>
         </article>
 
-        <Card caption="新着情報" className="w-80 shrink-0">
+        <Card caption={t("news")} className="w-80 shrink-0">
           <News news={dummyNews} />
         </Card>
       </section>

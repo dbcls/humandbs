@@ -2,6 +2,7 @@ import Markdoc from "@markdoc/markdoc";
 import React from "react";
 import * as components from "./Components";
 import { getDocumentWithClassName } from "@/markdoc/nodes/Document";
+import { CatchBoundary } from "@tanstack/react-router";
 
 export function RenderMarkdoc({
   content,
@@ -10,10 +11,14 @@ export function RenderMarkdoc({
   content: any;
   className?: string;
 }) {
-  return Markdoc.renderers.react(content, React, {
-    components: {
-      ...components,
-      Document: getDocumentWithClassName(className),
-    },
-  });
+  return (
+    <CatchBoundary getResetKey={() => "reset"}>
+      {Markdoc.renderers.react(content, React, {
+        components: {
+          ...components,
+          Document: getDocumentWithClassName(className),
+        },
+      })}
+    </CatchBoundary>
+  );
 }

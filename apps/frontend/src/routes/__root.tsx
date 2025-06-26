@@ -1,18 +1,13 @@
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import css from "@/index.css?url";
+import { i18n as i18nConfig } from "@/lib/i18n-config";
 import { Context } from "@/router";
-import {
-  i18n as i18nConfig,
-  Locale,
-  Messages,
-} from "@/serverFunctions/i18n-config";
 import {
   getLocaleFn,
   getMessagesFn,
   saveLocaleFn,
 } from "@/serverFunctions/locale";
-import { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   createRootRouteWithContext,
@@ -20,7 +15,6 @@ import {
   Outlet,
   redirect,
   Scripts,
-  useLoaderData,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { IntlProvider } from "use-intl";

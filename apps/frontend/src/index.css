@@ -68,3 +68,12 @@
     background-size: contain;
   }
 }
+
+@layer utilities {
+  .content-inline-icon {
+    @apply my-0 inline h-4;
+  }
+  .content-callout {
+    @apply border-secondary rounded border p-2;
+  }
+}

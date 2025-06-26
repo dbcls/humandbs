@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { i18n as i18nConfig, Locale } from "@/serverFunctions/i18n-config";
+import { i18n as i18nConfig, Locale } from "@/lib/i18n-config";
 import { saveLocaleFn } from "@/serverFunctions/locale";
 import { useRouter } from "@tanstack/react-router";
 import { useLocale } from "use-intl";

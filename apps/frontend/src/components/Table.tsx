@@ -27,7 +27,6 @@ function Table<T extends Record<string, any>>({
     <table className={cn("w-full align-top", className)}>
       <thead className="text-white">
         {table.getHeaderGroups().map((headerGroup) => {
-          console.log("headerGroup.id", headerGroup.id);
           return (
             <tr
               key={headerGroup.id}

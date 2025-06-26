@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-start/server";
 import Negotiator from "negotiator";
 import { z } from "zod";
-import { i18n as i18nConfig, Locale, localeSchema } from "./i18n-config";
+import { i18n as i18nConfig, Locale, localeSchema } from "../lib/i18n-config";
 
 const localeKey = "locale";
 
@@ -60,7 +60,7 @@ function getLocale(request: Request): Locale {
   return locale;
 }
 
-export const getLocaleFn = createServerFn().handler(async (ctx) => {
+export const getLocaleFn = createServerFn().handler(async () => {
   const request = getWebRequest();
 
   return getLocale(request);
