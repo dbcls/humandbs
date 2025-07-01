@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -12,6 +14,7 @@
   --color-tetriary: #002245;
   --color-tetriary-light: #2a5b73;
 
+  --color-hover: #f5f5f5;
   --color-accent: #eb0075;
   --color-accent-light: #ff618e;
 
@@ -38,6 +41,7 @@
       url("./assets/fontawesome/fa-regular-400.woff2") format("woff2"),
       url("./assets/fontawesome/fa-regular-400.ttf") format("truetype");
   }
+
   @font-face {
     font-family: "FontAwesome6";
     font-weight: 900;
@@ -75,5 +79,16 @@
   }
   .content-callout {
     @apply border-secondary rounded border p-2;
+  }
+
+  /* Tailwind utilities */
+  .animate-spin {
+    animation: var(--animate-spin); /* spin 1s linear infinite */
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 }

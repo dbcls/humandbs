@@ -19,6 +19,8 @@
   },
   "Navbar": {
     "data-submission": "データの提供",
+    "data-submission-navigation": "ナビゲーション",
+    "data-submission-application": "申請",
     "data-usage": "データの利用",
     "about-data": "データについて",
     "achievements": "実績",

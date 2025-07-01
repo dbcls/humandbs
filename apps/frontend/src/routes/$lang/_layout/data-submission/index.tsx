@@ -2,7 +2,7 @@ import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContent } from "@/serverFunctions/getContent";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/$lang/_layout/data-provision/")({
+export const Route = createFileRoute("/$lang/_layout/data-submission/")({
   component: RouteComponent,
   loader: ({ context }) =>
     getContent({

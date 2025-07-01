@@ -1,17 +1,64 @@
 import { ChevronDown } from "lucide-react";
-
 import Logo from "@/assets/Logo.png";
-
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
+import {
+  Link,
+  linkOptions,
+  RegisteredRouter,
+  useRouteContext,
+} from "@tanstack/react-router";
+import { useLocale, useTranslations } from "use-intl";
 
-import { Link, useRouteContext } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+import { NavLink } from "./NavLink";
+import { Locale } from "@/lib/i18n-config";
+import type { Messages } from "@/lib/i18n-config";
+import { ValidateLinkOptions } from "@tanstack/react-router";
+
+type NavLinkId = keyof Messages["Navbar"];
+
+// First let's define our types
+type BaseNavItem = {
+  id: NavLinkId;
+  to: Omit<ValidateLinkOptions<RegisteredRouter>, "params">["to"];
+};
+
+type NavItemWithChildren = BaseNavItem & {
+  children?: BaseNavItem[];
+};
+
+type NavConfig = NavItemWithChildren[];
+
+const navConfig: NavConfig = [
+  {
+    id: "data-submission",
+    to: "/$lang/data-submission",
+    children: [
+      {
+        id: "data-submission-application",
+        to: "/$lang/data-submission/navigation",
+      },
+    ],
+  },
+  { id: "data-usage", to: "/$lang/data-usage" },
+  { id: "about-data", to: "/$lang/about-data" },
+  { id: "achievements", to: "/$lang/achievements" },
+  { id: "contact", to: "/$lang/achievements" },
+];
 
 export function Navbar() {
-  const { lang } = useRouteContext({ from: "/$lang" });
-
   const t = useTranslations("Navbar");
+
+  const lang = useLocale();
+
   const tCommon = useTranslations("common");
 
   return (
@@ -24,59 +71,41 @@ export function Navbar() {
             {tCommon("humandb")}
           </div>
         </Link>
-        <ul className="flex flex-wrap items-center gap-8">
-          <li>
-            <Link
-              className="font-medium whitespace-nowrap"
-              params={{ lang }}
-              to={"/$lang/data-provision"}
-            >
-              {t("data-submission")}
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="font-medium whitespace-nowrap"
-              params={{ lang }}
-              to={"/$lang/data-usage"}
-            >
-              {t("data-usage")}
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="font-medium whitespace-nowrap"
-              params={{ lang }}
-              to={"/$lang/about-data"}
-            >
-              <span>
-                {t("about-data")} <ChevronDown className="inline" size={10} />
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="font-medium whitespace-nowrap"
-              params={{ lang }}
-              to={"/$lang/achievements"}
-            >
-              <span>
-                {t("achievements")} <ChevronDown className="inline" size={10} />
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="font-medium whitespace-nowrap"
-              params={{ lang }}
-              to={"/$lang/contact"}
-            >
-              <span>
-                {t("contact")} <ChevronDown className="inline" size={10} />
-              </span>
-            </Link>
-          </li>
-        </ul>
+
+        <NavigationMenu viewport={false}>
+          <NavigationMenuList className="flex flex-wrap items-center gap-8">
+            {navConfig.map((item) => (
+              <NavigationMenuItem key={item.id}>
+                {item.children ? (
+                  <>
+                    <NavigationMenuTrigger>
+                      <NavLink params={{ lang }} to={item.to}>
+                        {t(item.id)}
+                      </NavLink>
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="p-2">
+                      <ul className="space-y-2">
+                        {item.children.map((child) => (
+                          <li key={child.id}>
+                            <NavigationMenuLink asChild>
+                              <NavLink params={{ lang }} to={child.to}>
+                                {t(child.id)}
+                              </NavLink>
+                            </NavigationMenuLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
+                  </>
+                ) : (
+                  <NavLink params={{ lang }} to={item.to}>
+                    {t(item.id)}
+                  </NavLink>
+                )}
+              </NavigationMenuItem>
+            ))}
+          </NavigationMenuList>
+        </NavigationMenu>
       </nav>
       <div className="flex items-center gap-2">
         <LangSwitcher />

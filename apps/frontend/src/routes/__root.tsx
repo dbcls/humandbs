@@ -35,6 +35,7 @@ export const Route = createRootRouteWithContext<Context>()({
           content: "width=device-width, initial-scale=1",
         },
         { title: `シン NBDCヒトデータベース ${lang}` },
+        { rel: "icon", href: "/favicon.ico" },
       ],
 
       links: [{ rel: "stylesheet", href: css }],

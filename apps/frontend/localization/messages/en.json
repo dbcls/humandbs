@@ -22,7 +22,9 @@
     "data-usage": "Data Usage",
     "about-data": "About Data",
     "achievements": "Achievements",
-    "contact": "Contact Us"
+    "contact": "Contact Us",
+    "data-submission-navigation": "Navigation",
+    "data-submission-application": "Application"
   },
   "Front": {
     "data-submission-button": "For Data Providers",
