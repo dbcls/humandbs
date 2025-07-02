@@ -10,15 +10,10 @@ import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/$lang/")({
   component: Index,
-  loader: async ({ context }) => {
-    const content = await getContent({
+  loader: ({ context }) =>
+    getContent({
       data: { contentName: "front", lang: context.lang },
-    });
-
-    return {
-      content,
-    };
-  },
+    }),
 });
 
 const dummyNews: NewsItem[] = [

@@ -24,4 +24,9 @@ dist-ssr
 *.sw?
 
 
+
 .tanstack
+
+.output
+
+.nitro

@@ -22,6 +22,11 @@
   --color-foreground-dark: #002245;
   --color-foreground-light: #abb4c4;
 
+  --text-lg: 2.8rem;
+  --text-base: 1.6rem;
+  --text-sm: 1.4rem;
+  --text-xs: 1.2rem;
+
   --font-sans:
     i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
@@ -29,9 +34,20 @@
 
   --books: "\f5db";
   --dataset: "\f1c0";
+  --info: "\f05a";
+  --tip: "\f0eb";
+  --warning: "\f071";
 }
 
 @layer base {
+  html {
+    font-size: 62.5%;
+  }
+
+  * {
+    @apply text-base;
+  }
+
   @font-face {
     font-family: "FontAwesome6";
     font-weight: 400;

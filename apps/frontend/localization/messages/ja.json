@@ -24,7 +24,11 @@
     "data-usage": "データの利用",
     "about-data": "データについて",
     "achievements": "実績",
-    "contact": "お問い合わせ"
+    "contact": "お問い合わせ",
+    "guidelines": "ガイドライン",
+    "guidelines-data-sharing": "NBDCヒトデータ共有ガイドライン",
+    "guidelines-security-for-users": "NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）",
+    "guidelines-security-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）"
   },
   "Front": {
     "data-submission-button": "データを提供される方",

@@ -13,6 +13,7 @@ export default defineConfig({
     }),
 
     tanstackStart({
+      target: "bun",
       public: {
         dir: "assets",
       },

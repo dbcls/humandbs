@@ -5,7 +5,7 @@ export function Footer() {
   const t = useTranslations("Footer");
 
   return (
-    <footer className="mt-8 flex h-44 justify-between bg-white p-4 text-sm">
+    <footer className="mt-8 flex justify-between bg-white p-6 text-sm">
       <nav>
         <h3 className="text-secondary font-semibold">{t("sitemap")}</h3>
         <div className="mt-4 flex gap-8">

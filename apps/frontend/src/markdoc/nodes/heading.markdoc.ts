@@ -1,4 +1,4 @@
-import { Schema, Tag } from "@markdoc/markdoc";
+import Markdoc, { type Schema } from "@markdoc/markdoc";
 
 /**
  * Generate an id for a heading to be able to jump to it from an index contents
@@ -27,7 +27,7 @@ export const heading: Schema = {
 
     const id = generateID(children, attributes);
 
-    return new Tag(
+    return new Markdoc.Tag(
       `h${node.attributes["level"]}`,
       { ...attributes, id },
       children

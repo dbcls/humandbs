@@ -19,12 +19,16 @@
   },
   "Navbar": {
     "data-submission": "Data submission",
+    "data-submission-navigation": "Navigation",
+    "data-submission-application": "Application",
     "data-usage": "Data Usage",
     "about-data": "About Data",
     "achievements": "Achievements",
     "contact": "Contact Us",
-    "data-submission-navigation": "Navigation",
-    "data-submission-application": "Application"
+    "guidelines": "Guidelines",
+    "guidelines-data-sharing": "NBDC Guidelines for Human Data Sharing ",
+    "guidelines-security-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
+    "guidelines-security-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)"
   },
   "Front": {
     "data-submission-button": "For Data Providers",

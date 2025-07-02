@@ -14,12 +14,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LangIndexRouteImport } from './routes/$lang/index'
 import { Route as LangLayoutRouteImport } from './routes/$lang/_layout'
 import { Route as LangLayoutResearchListIndexRouteImport } from './routes/$lang/_layout/research-list/index'
+import { Route as LangLayoutGuidelinesIndexRouteImport } from './routes/$lang/_layout/guidelines/index'
 import { Route as LangLayoutDataUsageIndexRouteImport } from './routes/$lang/_layout/data-usage/index'
 import { Route as LangLayoutDataSubmissionIndexRouteImport } from './routes/$lang/_layout/data-submission/index'
 import { Route as LangLayoutContactIndexRouteImport } from './routes/$lang/_layout/contact/index'
 import { Route as LangLayoutAchievementsIndexRouteImport } from './routes/$lang/_layout/achievements/index'
 import { Route as LangLayoutAboutDataIndexRouteImport } from './routes/$lang/_layout/about-data/index'
 import { Route as LangLayoutResearchListResearchIdIndexRouteImport } from './routes/$lang/_layout/research-list/$researchId/index'
+import { Route as LangLayoutGuidelinesSecurityForUsersIndexRouteImport } from './routes/$lang/_layout/guidelines/security-for-users/index'
+import { Route as LangLayoutGuidelinesSecurityForSubmittersIndexRouteImport } from './routes/$lang/_layout/guidelines/security-for-submitters/index'
+import { Route as LangLayoutGuidelinesDataSharingIndexRouteImport } from './routes/$lang/_layout/guidelines/data-sharing/index'
 import { Route as LangLayoutDataSubmissionNavigationIndexRouteImport } from './routes/$lang/_layout/data-submission/navigation/index'
 import { Route as LangLayoutDataSubmissionApplicationIndexRouteImport } from './routes/$lang/_layout/data-submission/application/index'
 import { Route as LangLayoutResearchListResearchIdResearchVerRouteImport } from './routes/$lang/_layout/research-list/$researchId/$researchVer'
@@ -44,6 +48,12 @@ const LangLayoutResearchListIndexRoute =
   LangLayoutResearchListIndexRouteImport.update({
     id: '/research-list/',
     path: '/research-list/',
+    getParentRoute: () => LangLayoutRoute,
+  } as any)
+const LangLayoutGuidelinesIndexRoute =
+  LangLayoutGuidelinesIndexRouteImport.update({
+    id: '/guidelines/',
+    path: '/guidelines/',
     getParentRoute: () => LangLayoutRoute,
   } as any)
 const LangLayoutDataUsageIndexRoute =
@@ -81,6 +91,24 @@ const LangLayoutResearchListResearchIdIndexRoute =
     path: '/research-list/$researchId/',
     getParentRoute: () => LangLayoutRoute,
   } as any)
+const LangLayoutGuidelinesSecurityForUsersIndexRoute =
+  LangLayoutGuidelinesSecurityForUsersIndexRouteImport.update({
+    id: '/guidelines/security-for-users/',
+    path: '/guidelines/security-for-users/',
+    getParentRoute: () => LangLayoutRoute,
+  } as any)
+const LangLayoutGuidelinesSecurityForSubmittersIndexRoute =
+  LangLayoutGuidelinesSecurityForSubmittersIndexRouteImport.update({
+    id: '/guidelines/security-for-submitters/',
+    path: '/guidelines/security-for-submitters/',
+    getParentRoute: () => LangLayoutRoute,
+  } as any)
+const LangLayoutGuidelinesDataSharingIndexRoute =
+  LangLayoutGuidelinesDataSharingIndexRouteImport.update({
+    id: '/guidelines/data-sharing/',
+    path: '/guidelines/data-sharing/',
+    getParentRoute: () => LangLayoutRoute,
+  } as any)
 const LangLayoutDataSubmissionNavigationIndexRoute =
   LangLayoutDataSubmissionNavigationIndexRouteImport.update({
     id: '/data-submission/navigation/',
@@ -108,10 +136,14 @@ export interface FileRoutesByFullPath {
   '/$lang/contact': typeof LangLayoutContactIndexRoute
   '/$lang/data-submission': typeof LangLayoutDataSubmissionIndexRoute
   '/$lang/data-usage': typeof LangLayoutDataUsageIndexRoute
+  '/$lang/guidelines': typeof LangLayoutGuidelinesIndexRoute
   '/$lang/research-list': typeof LangLayoutResearchListIndexRoute
   '/$lang/research-list/$researchId/$researchVer': typeof LangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/data-submission/application': typeof LangLayoutDataSubmissionApplicationIndexRoute
   '/$lang/data-submission/navigation': typeof LangLayoutDataSubmissionNavigationIndexRoute
+  '/$lang/guidelines/data-sharing': typeof LangLayoutGuidelinesDataSharingIndexRoute
+  '/$lang/guidelines/security-for-submitters': typeof LangLayoutGuidelinesSecurityForSubmittersIndexRoute
+  '/$lang/guidelines/security-for-users': typeof LangLayoutGuidelinesSecurityForUsersIndexRoute
   '/$lang/research-list/$researchId': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -121,10 +153,14 @@ export interface FileRoutesByTo {
   '/$lang/contact': typeof LangLayoutContactIndexRoute
   '/$lang/data-submission': typeof LangLayoutDataSubmissionIndexRoute
   '/$lang/data-usage': typeof LangLayoutDataUsageIndexRoute
+  '/$lang/guidelines': typeof LangLayoutGuidelinesIndexRoute
   '/$lang/research-list': typeof LangLayoutResearchListIndexRoute
   '/$lang/research-list/$researchId/$researchVer': typeof LangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/data-submission/application': typeof LangLayoutDataSubmissionApplicationIndexRoute
   '/$lang/data-submission/navigation': typeof LangLayoutDataSubmissionNavigationIndexRoute
+  '/$lang/guidelines/data-sharing': typeof LangLayoutGuidelinesDataSharingIndexRoute
+  '/$lang/guidelines/security-for-submitters': typeof LangLayoutGuidelinesSecurityForSubmittersIndexRoute
+  '/$lang/guidelines/security-for-users': typeof LangLayoutGuidelinesSecurityForUsersIndexRoute
   '/$lang/research-list/$researchId': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesById {
@@ -137,10 +173,14 @@ export interface FileRoutesById {
   '/$lang/_layout/contact/': typeof LangLayoutContactIndexRoute
   '/$lang/_layout/data-submission/': typeof LangLayoutDataSubmissionIndexRoute
   '/$lang/_layout/data-usage/': typeof LangLayoutDataUsageIndexRoute
+  '/$lang/_layout/guidelines/': typeof LangLayoutGuidelinesIndexRoute
   '/$lang/_layout/research-list/': typeof LangLayoutResearchListIndexRoute
   '/$lang/_layout/research-list/$researchId/$researchVer': typeof LangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/_layout/data-submission/application/': typeof LangLayoutDataSubmissionApplicationIndexRoute
   '/$lang/_layout/data-submission/navigation/': typeof LangLayoutDataSubmissionNavigationIndexRoute
+  '/$lang/_layout/guidelines/data-sharing/': typeof LangLayoutGuidelinesDataSharingIndexRoute
+  '/$lang/_layout/guidelines/security-for-submitters/': typeof LangLayoutGuidelinesSecurityForSubmittersIndexRoute
+  '/$lang/_layout/guidelines/security-for-users/': typeof LangLayoutGuidelinesSecurityForUsersIndexRoute
   '/$lang/_layout/research-list/$researchId/': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -153,10 +193,14 @@ export interface FileRouteTypes {
     | '/$lang/contact'
     | '/$lang/data-submission'
     | '/$lang/data-usage'
+    | '/$lang/guidelines'
     | '/$lang/research-list'
     | '/$lang/research-list/$researchId/$researchVer'
     | '/$lang/data-submission/application'
     | '/$lang/data-submission/navigation'
+    | '/$lang/guidelines/data-sharing'
+    | '/$lang/guidelines/security-for-submitters'
+    | '/$lang/guidelines/security-for-users'
     | '/$lang/research-list/$researchId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -166,10 +210,14 @@ export interface FileRouteTypes {
     | '/$lang/contact'
     | '/$lang/data-submission'
     | '/$lang/data-usage'
+    | '/$lang/guidelines'
     | '/$lang/research-list'
     | '/$lang/research-list/$researchId/$researchVer'
     | '/$lang/data-submission/application'
     | '/$lang/data-submission/navigation'
+    | '/$lang/guidelines/data-sharing'
+    | '/$lang/guidelines/security-for-submitters'
+    | '/$lang/guidelines/security-for-users'
     | '/$lang/research-list/$researchId'
   id:
     | '__root__'
@@ -181,10 +229,14 @@ export interface FileRouteTypes {
     | '/$lang/_layout/contact/'
     | '/$lang/_layout/data-submission/'
     | '/$lang/_layout/data-usage/'
+    | '/$lang/_layout/guidelines/'
     | '/$lang/_layout/research-list/'
     | '/$lang/_layout/research-list/$researchId/$researchVer'
     | '/$lang/_layout/data-submission/application/'
     | '/$lang/_layout/data-submission/navigation/'
+    | '/$lang/_layout/guidelines/data-sharing/'
+    | '/$lang/_layout/guidelines/security-for-submitters/'
+    | '/$lang/_layout/guidelines/security-for-users/'
     | '/$lang/_layout/research-list/$researchId/'
   fileRoutesById: FileRoutesById
 }
@@ -220,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/research-list'
       fullPath: '/$lang/research-list'
       preLoaderRoute: typeof LangLayoutResearchListIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
+    }
+    '/$lang/_layout/guidelines/': {
+      id: '/$lang/_layout/guidelines/'
+      path: '/guidelines'
+      fullPath: '/$lang/guidelines'
+      preLoaderRoute: typeof LangLayoutGuidelinesIndexRouteImport
       parentRoute: typeof LangLayoutRoute
     }
     '/$lang/_layout/data-usage/': {
@@ -264,6 +323,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LangLayoutResearchListResearchIdIndexRouteImport
       parentRoute: typeof LangLayoutRoute
     }
+    '/$lang/_layout/guidelines/security-for-users/': {
+      id: '/$lang/_layout/guidelines/security-for-users/'
+      path: '/guidelines/security-for-users'
+      fullPath: '/$lang/guidelines/security-for-users'
+      preLoaderRoute: typeof LangLayoutGuidelinesSecurityForUsersIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
+    }
+    '/$lang/_layout/guidelines/security-for-submitters/': {
+      id: '/$lang/_layout/guidelines/security-for-submitters/'
+      path: '/guidelines/security-for-submitters'
+      fullPath: '/$lang/guidelines/security-for-submitters'
+      preLoaderRoute: typeof LangLayoutGuidelinesSecurityForSubmittersIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
+    }
+    '/$lang/_layout/guidelines/data-sharing/': {
+      id: '/$lang/_layout/guidelines/data-sharing/'
+      path: '/guidelines/data-sharing'
+      fullPath: '/$lang/guidelines/data-sharing'
+      preLoaderRoute: typeof LangLayoutGuidelinesDataSharingIndexRouteImport
+      parentRoute: typeof LangLayoutRoute
+    }
     '/$lang/_layout/data-submission/navigation/': {
       id: '/$lang/_layout/data-submission/navigation/'
       path: '/data-submission/navigation'
@@ -294,10 +374,14 @@ interface LangLayoutRouteChildren {
   LangLayoutContactIndexRoute: typeof LangLayoutContactIndexRoute
   LangLayoutDataSubmissionIndexRoute: typeof LangLayoutDataSubmissionIndexRoute
   LangLayoutDataUsageIndexRoute: typeof LangLayoutDataUsageIndexRoute
+  LangLayoutGuidelinesIndexRoute: typeof LangLayoutGuidelinesIndexRoute
   LangLayoutResearchListIndexRoute: typeof LangLayoutResearchListIndexRoute
   LangLayoutResearchListResearchIdResearchVerRoute: typeof LangLayoutResearchListResearchIdResearchVerRoute
   LangLayoutDataSubmissionApplicationIndexRoute: typeof LangLayoutDataSubmissionApplicationIndexRoute
   LangLayoutDataSubmissionNavigationIndexRoute: typeof LangLayoutDataSubmissionNavigationIndexRoute
+  LangLayoutGuidelinesDataSharingIndexRoute: typeof LangLayoutGuidelinesDataSharingIndexRoute
+  LangLayoutGuidelinesSecurityForSubmittersIndexRoute: typeof LangLayoutGuidelinesSecurityForSubmittersIndexRoute
+  LangLayoutGuidelinesSecurityForUsersIndexRoute: typeof LangLayoutGuidelinesSecurityForUsersIndexRoute
   LangLayoutResearchListResearchIdIndexRoute: typeof LangLayoutResearchListResearchIdIndexRoute
 }
 
@@ -307,6 +391,7 @@ const LangLayoutRouteChildren: LangLayoutRouteChildren = {
   LangLayoutContactIndexRoute: LangLayoutContactIndexRoute,
   LangLayoutDataSubmissionIndexRoute: LangLayoutDataSubmissionIndexRoute,
   LangLayoutDataUsageIndexRoute: LangLayoutDataUsageIndexRoute,
+  LangLayoutGuidelinesIndexRoute: LangLayoutGuidelinesIndexRoute,
   LangLayoutResearchListIndexRoute: LangLayoutResearchListIndexRoute,
   LangLayoutResearchListResearchIdResearchVerRoute:
     LangLayoutResearchListResearchIdResearchVerRoute,
@@ -314,6 +399,12 @@ const LangLayoutRouteChildren: LangLayoutRouteChildren = {
     LangLayoutDataSubmissionApplicationIndexRoute,
   LangLayoutDataSubmissionNavigationIndexRoute:
     LangLayoutDataSubmissionNavigationIndexRoute,
+  LangLayoutGuidelinesDataSharingIndexRoute:
+    LangLayoutGuidelinesDataSharingIndexRoute,
+  LangLayoutGuidelinesSecurityForSubmittersIndexRoute:
+    LangLayoutGuidelinesSecurityForSubmittersIndexRoute,
+  LangLayoutGuidelinesSecurityForUsersIndexRoute:
+    LangLayoutGuidelinesSecurityForUsersIndexRoute,
   LangLayoutResearchListResearchIdIndexRoute:
     LangLayoutResearchListResearchIdIndexRoute,
 }

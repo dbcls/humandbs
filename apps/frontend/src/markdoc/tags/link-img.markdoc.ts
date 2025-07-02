@@ -1,3 +1,5 @@
+import { MarkdocTag } from "./types";
+
 export const linkImg = {
   render: "LinkImg",
   description: "Link img",
@@ -24,4 +26,4 @@ export const linkImg = {
       required: false,
     },
   },
-};
+} satisfies MarkdocTag;

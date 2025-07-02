@@ -15,7 +15,7 @@ export function LangSwitcher() {
   }
 
   return (
-    <div className="bg-primary/50 f relative flex rounded-full p-1">
+    <div className="bg-primary/50 relative flex rounded-full p-2">
       {i18nConfig.locales.map((lang) => (
         <button
           onClick={() => {
@@ -23,7 +23,7 @@ export function LangSwitcher() {
           }}
           key={lang}
           className={cn(
-            "text-foreground-light z-10 h-8 w-8 cursor-pointer rounded-full text-center text-sm font-bold uppercase",
+            "text-foreground-light z-10 h-12 w-12 cursor-pointer rounded-full text-center text-sm font-bold uppercase",
             {
               "text-white": currentLang === lang,
             }
@@ -34,9 +34,9 @@ export function LangSwitcher() {
       ))}
 
       <div
-        className="bg-secondary absolute z-0 size-8 rounded-full transition-transform"
+        className="bg-secondary absolute z-0 size-12 rounded-full transition-transform"
         style={{
-          transform: `translateX(${currentLang === "en" ? 0 : 32}px)`,
+          transform: `translateX(${currentLang === "en" ? 0 : "3rem"})`,
         }}
       />
     </div>

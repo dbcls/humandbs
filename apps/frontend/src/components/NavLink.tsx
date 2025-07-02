@@ -16,7 +16,7 @@ export const NavLink: LinkComponent<typeof BasicLinkComponent> = (props) => {
   return (
     <CreatedLinkComponent
       preload={"intent"}
-      className="[&.active]:text-secondary text-base font-medium whitespace-nowrap"
+      className="[&.active]:text-secondary w-fit font-medium whitespace-nowrap"
       {...props}
     />
   );

@@ -1,14 +1,8 @@
-import { ChevronDown } from "lucide-react";
 import Logo from "@/assets/Logo.png";
+import { Link, RegisteredRouter } from "@tanstack/react-router";
+import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
-import {
-  Link,
-  linkOptions,
-  RegisteredRouter,
-  useRouteContext,
-} from "@tanstack/react-router";
-import { useLocale, useTranslations } from "use-intl";
 
 import {
   NavigationMenu,
@@ -18,10 +12,9 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { NavLink } from "./NavLink";
-import { Locale } from "@/lib/i18n-config";
 import type { Messages } from "@/lib/i18n-config";
 import { ValidateLinkOptions } from "@tanstack/react-router";
+import { NavLink } from "./NavLink";
 
 type NavLinkId = keyof Messages["Navbar"];
 
@@ -48,10 +41,28 @@ const navConfig: NavConfig = [
       },
     ],
   },
+  {
+    id: "guidelines",
+    to: "/$lang/guidelines",
+    children: [
+      {
+        id: "guidelines-data-sharing",
+        to: "/$lang/guidelines/data-sharing",
+      },
+      {
+        id: "guidelines-security-for-users",
+        to: "/$lang/guidelines/security-for-users",
+      },
+      {
+        id: "guidelines-security-for-submitters",
+        to: "/$lang/guidelines/security-for-submitters",
+      },
+    ],
+  },
   { id: "data-usage", to: "/$lang/data-usage" },
   { id: "about-data", to: "/$lang/about-data" },
   { id: "achievements", to: "/$lang/achievements" },
-  { id: "contact", to: "/$lang/achievements" },
+  { id: "contact", to: "/$lang/contact" },
 ];
 
 export function Navbar() {
@@ -84,7 +95,7 @@ export function Navbar() {
                       </NavLink>
                     </NavigationMenuTrigger>
                     <NavigationMenuContent className="p-2">
-                      <ul className="space-y-2">
+                      <ul className="w-fit max-w-96 space-y-2">
                         {item.children.map((child) => (
                           <li key={child.id}>
                             <NavigationMenuLink asChild>
