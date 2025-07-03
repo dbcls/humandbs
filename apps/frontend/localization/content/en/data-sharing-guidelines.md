@@ -32,16 +32,6 @@ Human Data Review Board Office
 
 [humandbs@dbcls.jp](mailt:humandbs@dbcls.jp)
 
-## Contents
-
-1.  Principles
-2.  Definitions
-3.  Acceptable Data
-4.  Data Submission to the NBDC Human Database
-5.  Using Data in the NBDC Human Database
-6.  Procedure for Revising the Guidelines
-7.  Other Topics
-
 ---
 
 ## 1. Principles
@@ -119,8 +109,10 @@ The NBDC Human Database accepts: 1) unrestricted-access data, 3) controlled-acce
 
 1.  The data submitter must obtain permission from the head of his/her affiliated organization after taking the following steps: (1) Explain the required descriptions in the “Examples of Content for Informed Consent Forms” (shown below) to a research subject from whom the human data are collected; (2) Obtain written consent from the research subject regarding submission of the data to databases and sharing of the data by domestic and/or foreign investigators; and (3) Obtain approval regarding such data submission and data sharing from the Ethical Review Committee of the affiliated or an equivalent organization. However, if the data submission and data sharing were approved for the entire research project after an ethical review conducted at the start point of the project, then another review is not required.
 2.  When the data submitter provides data to the NBDC Human Database collected from specimens, e.g., human biological specimens, diagnostic specimens, that were obtained without prior intention to submit such data to databases (e.g., in cases where the informed consent form does not refer to data submission or data sharing), the data submitter must follow procedures that conform to the ethical guidelines that must be complied with in conducting the research (for example, the data submitter obtain re-consent. Alternatively, if it is difficult to do re-consent, he/she must ensure information disclosure and opportunities of rejections (opt-out), and obtain permission from the head of his/her affiliated organization after obtaining approval of the Ethical Review Committee of the affiliated or an equivalent organization).
-3.  When the data submitter provides data that is clearly not the subject of "Ethical Guidelines for Medical and Biological Research Involving Human Subjects" \*\[1\] to the NBDC Human Database, the data submitter must submit a "statement requesting a simplified review of an application for data submission" (in an arbitrary format) signed by the PI. Submission of this statement can be a substitute for submission of documents concerning ethics review of the affiliated organization (e.g., research protocol, informed consent form, and notice of approval).
-    \*\[1\]: In "Ethical Guidelines for Medical and Biological Research Involving Human Subjects", specimens and information, the value of which has already been established academically, widely utilized in research and generally available.
+3.  When the data submitter provides data that is clearly not the subject of "Ethical Guidelines for Medical and Biological Research Involving Human Subjects" <sup>\*[1]</sup> to the NBDC Human Database, the data submitter must submit a "statement requesting a simplified review of an application for data submission" (in an arbitrary format) signed by the PI. Submission of this statement can be a substitute for submission of documents concerning ethics review of the affiliated organization (e.g., research protocol, informed consent form, and notice of approval).
+
+    \*[1]: In "Ethical Guidelines for Medical and Biological Research Involving Human Subjects", specimens and information, the value of which has already been established academically, widely utilized in research and generally available.
+
 4.  While the Human Data Review Board reviews the descriptions of the informed consent form submitted at the time of application for data submission in terms of the consistency with the restrictions on data use, the data submitter is responsible for ensuring that the data are provided in accordance with the conditions of the consent.
 5.  The data submitter must provide data according to the content of the "application form for submitting data" to the DBCLS.
 6.  The data submitter must confirm that the data to be submitted have been pseudonymized by replacing a part or all of personal information which enables identification of a specific individual (including a specific deceased individual) with descriptions, e.g., a code or number which is unrelated to the specific individual and further by assigning another code or number. In case of withdrawal of consent, in order to delete the data derived from the corresponding research subject, in principle, the data submitter must keep the decoding index.
@@ -131,9 +123,36 @@ The NBDC Human Database accepts: 1) unrestricted-access data, 3) controlled-acce
 
 In case the data submitter provided human data in violation of the NBDC Human Data Sharing Guidelines etc., or provided human data that contain a defect (including hidden defects) intentionally or with negligence, the DBCLS may take one or more further actions such as reporting of the fact to the head of the organization to which the data submitter belongs, announcing of the fact on the website etc., and so on. Besides, the DBCLS may seek compensation from the data submitter, if the DBCLS determines that due to these reasons it has suffered damages such as inability of operation of “the NBDC Human Database” as stated in the section “1. Principles.”
 
-{% callout type="tip" %} \[the NBDC Security Guidelines for Human Data.\](/en/guidelines/security-guidelines-for-users) {% /callout %}
+{% callout type="tip" %}
+For the description of the security levels (Type I and Type II), see [the NBDC Security Guidelines for Human Data.](/en/guidelines/security-for-users)
+{% /callout %}
 
-{% callout type="info" %} ##### Examples of Content for Informed Consent Forms ##### Informed Consent Forms \*\*Required description:\*\* \* Registration to a database and sharing of research data among many investigators internationally. \* Sample statement: Since the data obtained for this study are also important for other studies which contribute to improved public health, they will be submitted to a public database or the database managed by the Database Center for Life Science (hereinafter, DBCLS) / the Joint Support-Center for Data Science Research of the Research Organization of Information and Systems and will be shared with many investigators internationally. \* Use by a third party in a foreign country (outside Japan). \* Sample statement: It is unknown at this time which countries’ investigators will use the data in the future. However, investigators from any country are required to use the data in accordance with the guidelines of the database that are developed in accordance with the laws and guidelines in Japan. \*\*Items desirable for inclusion:\*\* \* Description of the DBCLS \* Sample statement: Aiming for rapid advancement in research, the Database Center for Life Science (hereinafter, DBCLS) / the Joint Support-Center for Data Science Research of the Research Organization of Information and Systems conducts projects in order for broad sharing of various research data and operates public databases that store data obtained from various studies. The NBDC Human Database, one of the databases operated by the DBCLS, aims for rapid development of medical research and others by widely sharing various data on humans while paying attention to the protection of personal information and making full use of valuable data including those from this (our) research. For that reason, we are also promoting not only research use in domestic research institutions but also the use of data for research in private companies such as pharmaceuticals and overseas institutions that contribute to academic research or public health improvement. In the NBDC Human Database, data are managed and released based on strict guidelines that conform to Japanese laws, regulations, and so on. For details, please see the DBCLS website (\[https://dbcls.jp/en/\](https://dbcls.jp/en/)). \* The necessity and importance of data sharing \* Sample statement: The sharing of research data with other domestic and/or foreign investigators through a database can help advance related studies overall and can aid in the development of new technologies. Data sharing may contribute to the elucidation of causes of diseases and the development of new treatments and prevention methods, which have not been enabled. \* Data released to the public \* Sample statement: When data obtained from research are released from the database, the access level (controlled-access or unrestricted-access) differs depending on the type of data. Aggregated information, e.g., frequency data/statistical data, that does not lead to the identification of individuals are handled as unrestricted-access data and used by many unspecified persons. The genetic information of individuals is handled as controlled-access data and used by researchers approved for data use after passing through a review on the validity of scientific viewpoint and research system. \* Impossibility to remove data \* Sample statement: When research results have been published in a paper or at an academic conference, even if the consent is withdrawn, the content published in the paper or the conference cannot be withdrawn. In addition, even when data for each individual are published from the public database, your data may not be deleted if your data cannot be identified. {% /callout %}
+---
+
+{% callout type="info" %}
+
+### Examples of Content for Informed Consent Forms
+
+### Informed Consent Forms
+
+**Required description:**
+
+- Registration to a database and sharing of research data among many investigators internationally.
+
+* Sample statement: Since the data obtained for this study are also important for other studies which contribute to improved public health, they will be submitted to a public database or the database managed by the Database Center for Life Science (hereinafter, DBCLS) / the Joint Support-Center for Data Science Research of the Research Organization of Information and Systems and will be shared with many investigators internationally.
+* Use by a third party in a foreign country (outside Japan).
+* Sample statement: It is unknown at this time which countries’ investigators will use the data in the future. However, investigators from any country are required to use the data in accordance with the guidelines of the database that are developed in accordance with the laws and guidelines in Japan.
+  **Items desirable for inclusion:**
+* Description of the DBCLS
+* Sample statement: Aiming for rapid advancement in research, the Database Center for Life Science (hereinafter, DBCLS) / the Joint Support-Center for Data Science Research of the Research Organization of Information and Systems conducts projects in order for broad sharing of various research data and operates public databases that store data obtained from various studies. The NBDC Human Database, one of the databases operated by the DBCLS, aims for rapid development of medical research and others by widely sharing various data on humans while paying attention to the protection of personal information and making full use of valuable data including those from this (our) research. For that reason, we are also promoting not only research use in domestic research institutions but also the use of data for research in private companies such as pharmaceuticals and overseas institutions that contribute to academic research or public health improvement. In the NBDC Human Database, data are managed and released based on strict guidelines that conform to Japanese laws, regulations, and so on. For details, please see the [DBCLS website](https://dbcls.jp/en/).
+* The necessity and importance of data sharing
+* Sample statement: The sharing of research data with other domestic and/or foreign investigators through a database can help advance related studies overall and can aid in the development of new technologies. Data sharing may contribute to the elucidation of causes of diseases and the development of new treatments and prevention methods, which have not been enabled.
+* Data released to the public
+* Sample statement: When data obtained from research are released from the database, the access level (controlled-access or unrestricted-access) differs depending on the type of data. Aggregated information, e.g., frequency data/statistical data, that does not lead to the identification of individuals are handled as unrestricted-access data and used by many unspecified persons. The genetic information of individuals is handled as controlled-access data and used by researchers approved for data use after passing through a review on the validity of scientific viewpoint and research system.
+* Impossibility to remove data
+* Sample statement: When research results have been published in a paper or at an academic conference, even if the consent is withdrawn, the content published in the paper or the conference cannot be withdrawn. In addition, even when data for each individual are published from the public database, your data may not be deleted if your data cannot be identified.
+
+{% /callout %}
 
 ### 4.3 Procedure for Data Submission to NBDC Human Database
 
@@ -190,11 +209,21 @@ An investigator can apply for data use as the PI if he/she satisfies the data us
 1.  In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
 2.  The data user must comply with the following rules for the data obtained from the NBDC Human Database as well as any data derived therefrom.
 
-    {% callout type="info" %} Basic rules to be complied with in using data \* The use of data is limited to research and/or development purposes only. \* The use of data for weapons development or military applications is prohibited. \* Identification of individuals is prohibited. \* The latest data should be downloaded and used. {% /callout %}
+    {% callout type="info" %}
+    Basic rules to be complied with in using data
+
+    - The use of data is limited to research and/or development purposes only.
+    - The use of data for weapons development or military applications is prohibited. \* Identification of individuals is prohibited. \* The latest data should be downloaded and used.
+
+    {% /callout %}
 
 3.  When the research results including data downloaded from the NBDC Human Databases (the DDBJ Sequence Read Archive, the NBDC Human data Archive, the Genomic Expression Archive, and so on) are made public in a publication or a presentation, the data user must state the accession number of the data set used. In addition, a statement such as the following\*\* must be included as references to the paper in which the data set was originally reported, or as acknowledgments.
 
-    {% callout type="info" %} \\\*\\\* Example of acknowledgment (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS). {% /callout %}
+    {% callout type="info" %}
+    \*\*Example of acknowledgment
+
+    (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS).
+    {% /callout %}
 
 #### 5.3.2 Registered-access Data
 
@@ -210,11 +239,25 @@ An investigator can apply for data use as the PI if he/she satisfies the data us
 3.  When using controlled-access data contained in the NBDC Human Database, the data user must comply with the “Ethical Guidelines for Medical and Biological Research Involving Human Subjects” in Japan. That is, among others, before carrying out any medical or biological research involving human subjects using data obtained from the NBDC Human Database, the data user must prepare the research protocol, go through a review by an Ethical Review Committee of his/her affiliated or an equivalent organization, and obtain approval therefrom and authorization from the head of his/her affiliated organization.
 4.  The data user must comply with the following rules for the data obtained from the NBDC Human Database as well as any data derived therefrom.
 
-    {% callout type="info" %} Basic rules to be complied with in using data \* The data users must be limited. (Access is granted only to the PI and his/her research collaborators who belong to the same organization as the PI.) \* The purpose of data use must be explicitly stated. \* The use of data for purposes other than those stated in the application is prohibited. \* The use of data is limited to research and/or development purposes only. \* The use of data for weapons development or military applications is prohibited. \* Identification of individuals is prohibited. \* Redistribution of data is prohibited. (Distribution of processed data with no or very low personal identifiability or primary data recoverability does not constitute redistribution subject to prohibition. However, in principle, an application for retention of secondary data or distribution of processed data is required.) {% /callout %}
+    {% callout type="info" %}
+    Basic rules to be complied with in using data
+
+    - The data users must be limited. (Access is granted only to the PI and his/her research collaborators who belong to the same organization as the PI.)
+    - The purpose of data use must be explicitly stated.
+    - The use of data for purposes other than those stated in the application is prohibited.
+    - The use of data is limited to research and/or development purposes only.
+    - The use of data for weapons development or military applications is prohibited.
+    - Identification of individuals is prohibited.
+    - Redistribution of data is prohibited. (Distribution of processed data with no or very low personal identifiability or primary data recoverability does not constitute redistribution subject to prohibition. However, in principle, an application for retention of secondary data or distribution of processed data is required.)
+
+    {% /callout %}
 
 5.  The data user must securely handle data, complying with the NBDC Security Guidelines for Human Data (for Data Users). Attention should be paid to the fact that the security level to be maintained varies for different data.\* The data user must accept an inspection conducted by the Human Data Review Board or a third party commissioned by the DBCLS with regard to the state of implementation of security measures.
 
-    {% callout type="info" %} \\\* Security levels: Standard-level (Type I) security is required in principle, but high-level (Type II) security may be required based on consultation between the data submitter and the Human Data Review Board. For details on Type I and Type II security, see \[the NBDC Security Guidelines for Human Data (for Data Users)\](/en/guidelines/security-guidelines-for-users). {% /callout %}
+    {% callout type="info" %}
+
+    Security levels: Standard-level (Type I) security is required in principle, but high-level (Type II) security may be required based on consultation between the data submitter and the Human Data Review Board. For details on Type I and Type II security, see [the NBDC Security Guidelines for Human Data (for Data Users)](/en/guidelines/security-for-users).
+    {% /callout %}
 
 6.  The data user must establish a security control system depending on the security level (Type I, Type II) and submit "Checklist for the NBDC Security Guidelines for Human Data" to the Human Data Review Board Office in order to demonstrate that the system conforms to the standards set forth by the DBCLS.
 7.  The data user must follow the terms of each ”off-premise-server” use in addition to the NBDC Human Data Sharing Guidelines and the NBDC Human Data Security Guidelines when using the ”off-premise-server” for his/her data use.
@@ -223,7 +266,11 @@ An investigator can apply for data use as the PI if he/she satisfies the data us
 10. When finished with using data, the data user must delete all data obtained from the NBDC Human Database (whole data, or any part of the data stored. When the off-premise-server is used, all the data stored on the off-premise-server, including backup data on the off-premise-server.) and all the data that can restore the data in accordance with the NBDC Security Guidelines for Human Data (for backup data on the off-premise-server, confirm when the data will be deleted), and report on the use (and deletion) of the data, using "Reporting on the completion of the data use". With regard to keeping secondary data (e.g., results of calculations or statistical analyses based on controlled-access data) or distribution of processed data with no or very low personal identifiability or primary data recoverability, see the section on the procedure for using controlled-access data (“5.4 Procedure for Data Use”; Subsection “5.4.3 Controlled-access Data”). When the secondary data contains genetic data, the data must be properly managed as personal information and redistribution of the secondary data is prohibited.
 11. When the research results including data downloaded from the NBDC Human Databases (the Japanese Genotype-phenotype Archive, the NBDC Human data Archive, and so on) are made public in a publication or a presentation, the data user must state the accession number of the data set used. In addition, a statement such as the following\*\* must be included as a reference to the paper in which the data set was originally reported, or as acknowledgment.
 
-    {% callout type="info" %} \\\*\\\* Example of acknowledgment (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS). {% /callout %}
+    {% callout type="info" %}
+    \*\*Example of acknowledgment
+
+    (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS).
+    {% /callout %}
 
     When the service of JGA was used, it is desirable to refer to the following paper: [Nucleic Acids Res. 2015, 43 Database issue: D18-22.](http://nar.oxfordjournals.org/content/43/D1/D18)
 

@@ -126,8 +126,8 @@ The Data Sharing Subcommittee Office
 
 ## References
 
-\[1\] NCBI. NIH Security Best Practices for Controlled-Access Data Subject to the NIH Genomic Data Sharing (GDS) Policy. (Online) November 29, 2021.
+[1] NCBI. NIH Security Best Practices for Controlled-Access Data Subject to the NIH Genomic Data Sharing (GDS) Policy. (Online) November 29, 2021.
 [https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf](https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf)
 
-\[2\] Ministry of Health, Labor, and Welfare. _Iryojoho shisutemu no anzenkanri ni kansuru gaidorain_ (Guidelines for Security Management for Medical Information Systems) \[in Japanese\]. Version 5, May 2017.
+[2] Ministry of Health, Labor, and Welfare. _Iryojoho shisutemu no anzenkanri ni kansuru gaidorain_ (Guidelines for Security Management for Medical Information Systems) \[in Japanese\]. Version 5, May 2017.
 [http://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf](http://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf)

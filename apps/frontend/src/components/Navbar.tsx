@@ -95,7 +95,7 @@ export function Navbar() {
                       </NavLink>
                     </NavigationMenuTrigger>
                     <NavigationMenuContent className="p-2">
-                      <ul className="w-fit max-w-96 space-y-2">
+                      <ul className="w-max max-w-96 min-w-full">
                         {item.children.map((child) => (
                           <li key={child.id}>
                             <NavigationMenuLink asChild>
