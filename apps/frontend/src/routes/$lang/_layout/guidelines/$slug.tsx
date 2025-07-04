@@ -1,18 +1,19 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { enumFromStringArray } from "@/lib/utils";
+import { getContent } from "@/serverFunctions/getContent";
+import { CONTENT_IDS } from "@/lib/content-config";
 import { Card } from "@/components/Card";
 import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getContent } from "@/serverFunctions/getContent";
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
 
-export const Route = createFileRoute(
-  "/$lang/_layout/guidelines/security-for-submitters/"
-)({
+export const Route = createFileRoute("/$lang/_layout/guidelines/$slug")({
   component: RouteComponent,
-  loader: async ({ context }) => {
+  params: z.object({ slug: enumFromStringArray(CONTENT_IDS.guidelines) }),
+  loader: async ({ context, params }) => {
     const { content, headings, frontmatter } = await getContent({
       data: {
-        contentName: "security-guidelines-for-submitters",
+        contentId: params.slug,
         lang: context.lang,
         generateTOC: true,
       },
@@ -22,6 +23,7 @@ export const Route = createFileRoute(
       content,
       headings,
       frontmatter,
+      crumb: params.slug,
     };
   },
 });
@@ -33,7 +35,7 @@ function RouteComponent() {
     <Card caption={frontmatter.title} captionSize={"lg"}>
       <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
         <MarkdocTOC headings={headings} />
-        <RenderMarkdoc className="mx-auto mt-8" content={content} />
+        <RenderMarkdoc content={content} />
       </div>
     </Card>
   );

@@ -7,13 +7,24 @@ import { News, NewsItem } from "@/components/FrontNews";
 import { getContent } from "@/serverFunctions/getContent";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { useTranslations } from "use-intl";
+import { z } from "zod";
+import { localeSchema } from "@/lib/i18n-config";
 
 export const Route = createFileRoute("/$lang/")({
   component: Index,
-  loader: ({ context }) =>
-    getContent({
-      data: { contentName: "front", lang: context.lang },
-    }),
+  params: z.object({
+    lang: localeSchema,
+  }),
+  loader: async ({ context }) => {
+    const content = await getContent({
+      data: { contentId: "front", lang: context.lang },
+    });
+
+    return {
+      ...content,
+      crumb: "Home",
+    };
+  },
 });
 
 const dummyNews: NewsItem[] = [
@@ -41,7 +52,7 @@ function Index() {
     // All that after the Navbar component
     <section className="flex flex-col gap-8">
       <section className="flex h-fit items-start justify-between gap-8">
-        <article className="mt-8 ml-8 max-w-2xl shrink">
+        <div className="flex flex-1 flex-col items-center">
           <RenderMarkdoc content={content} />
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -59,9 +70,9 @@ function Index() {
               {t("data-usage-button")}
             </Button>
           </div>
-        </article>
+        </div>
 
-        <Card caption={t("news")} className="w-80 shrink-0">
+        <Card caption={t("news")} className="w-96 shrink-0">
           <News news={dummyNews} />
         </Card>
       </section>

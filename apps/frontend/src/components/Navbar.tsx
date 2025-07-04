@@ -1,5 +1,10 @@
 import Logo from "@/assets/Logo.png";
-import { Link, RegisteredRouter } from "@tanstack/react-router";
+import {
+  Link,
+  LinkOptions,
+  linkOptions,
+  RegisteredRouter,
+} from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
@@ -12,7 +17,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import type { Messages } from "@/lib/i18n-config";
+import type { Locale, Messages } from "@/lib/i18n-config";
 import { ValidateLinkOptions } from "@tanstack/react-router";
 import { NavLink } from "./NavLink";
 
@@ -21,49 +26,95 @@ type NavLinkId = keyof Messages["Navbar"];
 // First let's define our types
 type BaseNavItem = {
   id: NavLinkId;
-  to: Omit<ValidateLinkOptions<RegisteredRouter>, "params">["to"];
+  linkOptions: LinkOptions;
 };
 
 type NavItemWithChildren = BaseNavItem & {
   children?: BaseNavItem[];
 };
 
+// const l = linkOptions({ to: "/$lang/guidelines/$slug", params: { lang: "en", slug: "guidelines" } });
+
 type NavConfig = NavItemWithChildren[];
 
-const navConfig: NavConfig = [
-  {
-    id: "data-submission",
-    to: "/$lang/data-submission",
-    children: [
-      {
-        id: "data-submission-application",
-        to: "/$lang/data-submission/navigation",
-      },
-    ],
-  },
-  {
-    id: "guidelines",
-    to: "/$lang/guidelines",
-    children: [
-      {
-        id: "guidelines-data-sharing",
-        to: "/$lang/guidelines/data-sharing",
-      },
-      {
-        id: "guidelines-security-for-users",
-        to: "/$lang/guidelines/security-for-users",
-      },
-      {
-        id: "guidelines-security-for-submitters",
-        to: "/$lang/guidelines/security-for-submitters",
-      },
-    ],
-  },
-  { id: "data-usage", to: "/$lang/data-usage" },
-  { id: "about-data", to: "/$lang/about-data" },
-  { id: "achievements", to: "/$lang/achievements" },
-  { id: "contact", to: "/$lang/contact" },
-];
+const getNavConfig = (lang: Locale): NavConfig => {
+  return [
+    {
+      id: "data-submission",
+      linkOptions: { to: "/$lang/data-submission", params: { lang } },
+      children: [
+        {
+          id: "data-submission-application",
+          linkOptions: {
+            to: "/$lang/data-submission/navigation",
+            params: {
+              lang,
+            },
+          },
+        },
+      ],
+    },
+    {
+      id: "guidelines",
+      linkOptions: { to: "/$lang/guidelines" },
+      children: [
+        {
+          id: "guidelines-data-sharing",
+          linkOptions: {
+            to: "/$lang/guidelines/$slug",
+            params: {
+              lang,
+              slug: "data-sharing-guidelines",
+            },
+          },
+        },
+        {
+          id: "guidelines-security-for-users",
+          linkOptions: {
+            to: "/$lang/guidelines/$slug",
+            params: {
+              lang,
+              slug: "security-guidelines-for-users",
+            },
+          },
+        },
+        {
+          id: "guidelines-security-for-submitters",
+          linkOptions: {
+            to: "/$lang/guidelines/$slug",
+            params: {
+              lang,
+              slug: "security-guidelines-for-submitters",
+            },
+          },
+        },
+        {
+          id: "guidelines-security-for-dbcenters",
+          linkOptions: {
+            to: "/$lang/guidelines/$slug",
+            params: {
+              lang,
+              slug: "security-guidelines-for-dbcenters",
+            },
+          },
+        },
+      ],
+    },
+    {
+      id: "data-usage",
+      linkOptions: { to: "/$lang/data-usage", params: { lang } },
+    },
+    {
+      id: "about-data",
+      linkOptions: { to: "/$lang/about-data", params: { lang } },
+    },
+    {
+      id: "achievements",
+      linkOptions: { to: "/$lang/achievements", params: { lang } },
+    },
+    { id: "contact", linkOptions: { to: "/$lang/contact", params: { lang } } },
+  ];
+};
 
 export function Navbar() {
   const t = useTranslations("Navbar");
@@ -85,21 +136,19 @@ export function Navbar() {
 
         <NavigationMenu viewport={false}>
           <NavigationMenuList className="flex flex-wrap items-center gap-8">
-            {navConfig.map((item) => (
+            {getNavConfig(lang).map((item) => (
               <NavigationMenuItem key={item.id}>
                 {item.children ? (
                   <>
                     <NavigationMenuTrigger>
-                      <NavLink params={{ lang }} to={item.to}>
-                        {t(item.id)}
-                      </NavLink>
+                      <NavLink {...item.linkOptions}>{t(item.id)}</NavLink>
                     </NavigationMenuTrigger>
-                    <NavigationMenuContent className="p-2">
+                    <NavigationMenuContent className="z-10 p-2">
                       <ul className="w-max max-w-96 min-w-full">
                         {item.children.map((child) => (
                           <li key={child.id}>
                             <NavigationMenuLink asChild>
-                              <NavLink params={{ lang }} to={child.to}>
+                              <NavLink {...child.linkOptions}>
                                 {t(child.id)}
                               </NavLink>
                             </NavigationMenuLink>
@@ -109,9 +158,7 @@ export function Navbar() {
                     </NavigationMenuContent>
                   </>
                 ) : (
-                  <NavLink params={{ lang }} to={item.to}>
-                    {t(item.id)}
-                  </NavLink>
+                  <NavLink {...item.linkOptions}>{t(item.id)}</NavLink>
                 )}
               </NavigationMenuItem>
             ))}

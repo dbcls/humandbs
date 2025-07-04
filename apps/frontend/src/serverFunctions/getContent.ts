@@ -7,41 +7,31 @@ import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
 import { z } from "zod";
 import { localeSchema } from "../lib/i18n-config";
+import { ContentId, contentIdSchema } from "@/lib/content-config";
 
 type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
 
-const contentPath = "./localization/content";
-
-const contentsNameSchema = z.enum([
-  "about",
-  "home",
-  "front",
-  "data-submission",
-  "data-sharing-guidelines",
-  "security-guidelines-for-submitters",
-  "security-guidelines-for-users",
-  "data-usage",
-  "guidelines",
-]);
-
-type ContentNames = z.infer<typeof contentsNameSchema>;
+const contentPath = "./public/content";
 
 async function getFileContent({
-  contentName,
+  contentId,
   lang,
 }: {
-  contentName: ContentNames;
+  contentId: ContentId;
   lang: string;
 }) {
-  const file = await fs.readFile(`${contentPath}/${lang}/${contentName}.md`, {
-    encoding: "utf-8",
-  });
+  const file = await fs.readFile(
+    `${contentPath}/${lang}/${contentId}/content.md`,
+    {
+      encoding: "utf-8",
+    }
+  );
 
   return file;
 }
 
 const contentReqSchema = z.object({
-  contentName: contentsNameSchema,
+  contentId: contentIdSchema,
   lang: localeSchema,
   generateTOC: z.boolean().default(false),
 });
@@ -164,7 +154,11 @@ export const getContent = createServerFn({ method: "GET", response: "data" })
     const ast = Markdoc.parse(processed);
 
     const frontmatter = (
-      ast.attributes.frontmatter ? yaml.load(ast.attributes.frontmatter) : {}
+      ast.attributes.frontmatter
+        ? yaml.load(ast.attributes.frontmatter, {
+            schema: yaml.FAILSAFE_SCHEMA,
+          })
+        : {}
     ) as Record<string, string | number>;
 
     config.variables = {

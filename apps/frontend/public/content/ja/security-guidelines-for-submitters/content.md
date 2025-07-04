@@ -4,11 +4,10 @@ version: 3.0
 updated_at: "2024-4-1"
 ---
 
-{% version %}
-ver. {% $frontmatter.version %}
-
-更新：{% $frontmatter.updated_at %}
-{% /version %}
+{% version
+    version=$frontmatter.version
+    updatedAt=$frontmatter.updated_at
+/%}
 
 ## はじめに
 

@@ -6,12 +6,12 @@ export const Route = createFileRoute("/$lang/_layout/data-usage/")({
   component: RouteComponent,
   loader: ({ context }) =>
     getContent({
-      data: { contentName: "data-usage", lang: context.lang },
+      data: { contentId: "data-usage", lang: context.lang },
     }),
 });
 
 function RouteComponent() {
   const { content } = Route.useLoaderData();
 
-  return <RenderMarkdoc className="mx-auto mt-8" content={content} />;
+  return <RenderMarkdoc content={content} />;
 }

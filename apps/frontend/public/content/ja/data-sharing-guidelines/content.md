@@ -4,13 +4,10 @@ updated_at: "2024-04-01"
 version: 8.0
 ---
 
-# {% $frontmatter.title %}
-
-{% version %}
-ver. {% $frontmatter.version %}
-
-Updated at {% $frontmatter.updated_at %}
-{% /version %}
+{% version
+    version=$frontmatter.version
+    updatedAt=$frontmatter.updated_at
+/%}
 
 {% callout %}
 　NBDCヒトデータベースでは、ご提供いただいたデータを広くかつ有効に活用していただくことを推奨しているため、国内の研究機関におけるデータ利用のみならず、学術研究や公衆衛生の向上に資する民間企業や海外の機関における研究へのデータ利用も促進しております。
@@ -125,7 +122,7 @@ NBDCヒトデータベースでは、データ提供者が特定の個人（死�
 
 2. 登録者公開データは、受け入れたデータに対してデータベースセンターがデータ利用促進を目的として実施する加工により作成されたデータである。
 
-![dataClassification](/files/dataClassification_6.png)
+![dataClassification](/content/ja/data-sharing-guidelines/dataClassification_6.png)
 
 ## ４．『NBDCヒトデータベース』へのデータの提供について
 

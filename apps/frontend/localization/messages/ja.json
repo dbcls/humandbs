@@ -28,7 +28,12 @@
     "guidelines": "ガイドライン",
     "guidelines-data-sharing": "NBDCヒトデータ共有ガイドライン",
     "guidelines-security-for-users": "NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）",
-    "guidelines-security-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）"
+    "guidelines-security-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
+    "guidelines-security-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）"
+  },
+  "Markdoc": {
+    "version": "Ver.",
+    "updatedAt": "更新日"
   },
   "Front": {
     "data-submission-button": "データを提供される方",

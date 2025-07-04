@@ -1,14 +1,13 @@
 ---
 title: NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）
 version: 7.0
-updated_at: "2024-4-1"
+updated_at: 2024-4-1
 ---
 
-{% version %}
-ver. {% $frontmatter.version %}
-
-更新：{% $frontmatter.updated_at %}
-{% /version %}
+{% version
+    version=$frontmatter.version
+    updatedAt=$frontmatter.updated_at
+/%}
 
 ## はじめに
 
@@ -16,7 +15,7 @@ ver. {% $frontmatter.version %}
 
 制限公開データには、他の情報と照合されることによって個人識別が可能になるデータが含まれている場合もあり、データごとにデータ提供者が指定したセキュリティレベル（標準レベル【TypeⅠ】又はハイレベル【TypeⅡ】）の対策を講じることが求められる。
 
-なお、データ利用者をとりまくIT環境は千差万別で、日々変化しているため、このガイドラインを遵守するだけでセキュリティが十分に保証されるとは限らない。データ利用者は、制限公開データの保存や計算処理で利用するIT環境をよく理解し、各IT環境の管理者が定めるセキュリティ規則や他のガイドライン[\[1\] \[2\]](#NCBI)も参考にしながら、必要に応じて追加のセキュリティ対策を講じることが求められる。
+なお、データ利用者をとりまくIT環境は千差万別で、日々変化しているため、このガイドラインを遵守するだけでセキュリティが十分に保証されるとは限らない。データ利用者は、制限公開データの保存や計算処理で利用するIT環境をよく理解し、各IT環境の管理者が定めるセキュリティ規則や他のガイドライン[[\[1\]](#1) [\[2\]](#2)](#NCBI)も参考にしながら、必要に応じて追加のセキュリティ対策を講じることが求められる。
 このガイドラインについては、IT環境の進展に応じ、適宜見直しを行うものとする。
 
 ## １. 用語定義
@@ -125,9 +124,10 @@ ver. {% $frontmatter.version %}
 
 ## 参考文献
 
-\[1\]. **NCBI**. NIH Security Best Practices for Controlled-Access Data Subject to the NIH Genomic Data Sharing (GDS) Policy. (オンライン) 2021年11月29日.
+[1] {% id="1" %}. **NCBI**. NIH Security Best Practices for Controlled-Access Data Subject to the NIH Genomic Data Sharing (GDS) Policy. (オンライン) 2021年11月29日.
 [https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf](https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf)
-\[2\]. **厚生労働省.** 医療情報システムの安全管理に関するガイドライン第5版 2017年5月.
+
+[2] {% id="2" %}. **厚生労働省.** 医療情報システムの安全管理に関するガイドライン第5版 2017年5月.
 [https://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf](https://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf)
 
 以上

@@ -1,7 +1,13 @@
-import { createFileRoute, isMatch, Outlet } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  isMatch,
+  Match,
+  Outlet,
+  useMatches,
+  useRouterState,
+} from "@tanstack/react-router";
 
 import { Breacrumbs } from "@/components/Breadcrumb";
-import { useMatches } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/$lang/_layout")({
   component: RouteComponent,
@@ -13,14 +19,16 @@ function RouteComponent() {
   if (matches.some((match) => match.status === "pending")) return null;
 
   const matchesWithCrumbs = matches.filter((match) =>
-    isMatch(match, "loaderData.crumb")
+    isMatch(match, "context.crumb")
   );
+
+  console.log("matchesWithCrumbs", matchesWithCrumbs);
 
   return (
     <div>
       <Breacrumbs
         breadcrumbsPath={matchesWithCrumbs.map((m) => ({
-          label: m.loaderData!.crumb!,
+          label: m.context.crumb!,
           href: m.fullPath,
         }))}
       />

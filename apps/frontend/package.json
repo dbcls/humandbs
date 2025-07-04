@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "start": "bun ./.output/server/index.mjs"
+    "start": "bun ./.output/server/index.mjs",
+    "get-md": "bun ./src/scripts/parsePageToMarkdown.js \"$@\""
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.6.1",

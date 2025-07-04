@@ -10,7 +10,7 @@ interface CardProps
 }
 
 const cardCaptionVariants = cva(
-  "text-secondary before:bg-secondary absolute font-medium before:absolute before:-left-4 before:h-full before:w-1 before:rounded-r-sm",
+  "text-secondary before:bg-secondary relative font-medium before:absolute before:-left-4 before:h-full before:w-1 before:rounded-r-sm",
   {
     variants: {
       captionSize: {

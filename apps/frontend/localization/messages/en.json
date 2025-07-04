@@ -28,7 +28,12 @@
     "guidelines": "Guidelines",
     "guidelines-data-sharing": "NBDC Guidelines for Human Data Sharing ",
     "guidelines-security-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
-    "guidelines-security-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)"
+    "guidelines-security-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
+    "guidelines-security-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)"
+  },
+  "Markdoc": {
+    "version": "Version",
+    "updatedAt": "Updated at"
   },
   "Front": {
     "data-submission-button": "For Data Providers",

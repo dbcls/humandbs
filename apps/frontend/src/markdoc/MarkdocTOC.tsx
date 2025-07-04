@@ -4,7 +4,7 @@ export function MarkdocTOC({ headings }: { headings: Heading[] }) {
   const headingsToShow = headings.filter((heading) => heading.level <= 2);
 
   return (
-    <div className="border-secondary static flex max-w-96 min-w-44 flex-col gap-2 rounded bg-white p-2 md:sticky md:top-4 md:mt-6">
+    <div className="border-secondary static flex w-96 min-w-44 flex-col gap-2 rounded bg-white p-2 md:sticky md:top-4 md:mt-6">
       {headingsToShow.map((heading) => (
         <a
           key={heading.id}
