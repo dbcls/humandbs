@@ -95,7 +95,7 @@ Data are classified into the following four types according to the state of data
 
 The NBDC Human Database accepts: 1) unrestricted-access data, 3) controlled-access data, and 4) data for future release. The NBDC Human Database accepts only these data that have been pseudonymized by the data submitter by replacing a part or all of personal information which enable identification of a specific individual (including a specific deceased individual) with descriptions, e.g., a code or number which is unrelated to the specific individual, and then by assigning another code or number again. Registered-access data (2.) are data created by the database center from the controlled-access data through processing for the purpose of promoting data use.
 
-![dataClassification](/content/en/data-sharing-guidelines/dataClassification_e6.png)
+![dataClassification](dataClassification_e6.png)
 
 ## 4. Data Submission to the NBDC Human Database
 

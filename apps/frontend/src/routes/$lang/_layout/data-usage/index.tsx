@@ -1,3 +1,4 @@
+import { Card } from "@/components/Card";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContent } from "@/serverFunctions/getContent";
 import { createFileRoute } from "@tanstack/react-router";
@@ -11,7 +12,11 @@ export const Route = createFileRoute("/$lang/_layout/data-usage/")({
 });
 
 function RouteComponent() {
-  const { content } = Route.useLoaderData();
+  const { content, frontmatter } = Route.useLoaderData();
 
-  return <RenderMarkdoc content={content} />;
+  return (
+    <Card caption={frontmatter.title} captionSize={"lg"}>
+      <RenderMarkdoc className="mx-auto" content={content} />;
+    </Card>
+  );
 }

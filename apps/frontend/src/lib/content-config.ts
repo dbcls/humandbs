@@ -9,7 +9,14 @@ export const CONTENT_IDS = {
     "security-guidelines-for-submitters",
     "security-guidelines-for-users",
   ],
-  others: ["about", "home", "front", "data-submission", "data-usage"],
+  others: [
+    "about",
+    "home",
+    "front",
+    "data-submission",
+    "data-submission-application",
+    "data-usage",
+  ],
 } as const;
 
 export const contentIdSchema = enumFromStringArray(

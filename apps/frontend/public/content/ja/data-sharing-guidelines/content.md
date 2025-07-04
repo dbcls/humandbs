@@ -122,7 +122,7 @@ NBDCヒトデータベースでは、データ提供者が特定の個人（死�
 
 2. 登録者公開データは、受け入れたデータに対してデータベースセンターがデータ利用促進を目的として実施する加工により作成されたデータである。
 
-![dataClassification](/content/ja/data-sharing-guidelines/dataClassification_6.png)
+![dataClassification](dataClassification_6.png)
 
 ## ４．『NBDCヒトデータベース』へのデータの提供について
 

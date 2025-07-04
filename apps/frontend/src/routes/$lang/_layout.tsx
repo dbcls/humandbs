@@ -1,39 +1,44 @@
 import {
+  CatchBoundary,
   createFileRoute,
-  isMatch,
-  Match,
   Outlet,
-  useMatches,
-  useRouterState,
+  useLocation,
 } from "@tanstack/react-router";
 
 import { Breacrumbs } from "@/components/Breadcrumb";
+import { FileRoutesByTo } from "@/routeTree.gen";
 
 export const Route = createFileRoute("/$lang/_layout")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const matches = useMatches();
+  const current = useLocation();
 
-  if (matches.some((match) => match.status === "pending")) return null;
+  const routeHistory = current.pathname
+    .split("/")
+    .filter((x) => x && x.length > 0);
 
-  const matchesWithCrumbs = matches.filter((match) =>
-    isMatch(match, "context.crumb")
+  const breadcrumbRoutes = routeHistory.reduce(
+    (acc: { label: string; href: keyof FileRoutesByTo }[], route) => {
+      const prev_path = acc[acc.length - 1]?.href ?? "";
+      acc.push({
+        label: route,
+        href: `${prev_path}/${route}` as keyof FileRoutesByTo,
+      });
+      return acc;
+    },
+    []
   );
 
-  console.log("matchesWithCrumbs", matchesWithCrumbs);
+  breadcrumbRoutes[0].label = "home";
 
   return (
     <div>
-      <Breacrumbs
-        breadcrumbsPath={matchesWithCrumbs.map((m) => ({
-          label: m.context.crumb!,
-          href: m.fullPath,
-        }))}
-      />
-
-      <Outlet />
+      <CatchBoundary getResetKey={() => "reset"}>
+        <Breacrumbs breadcrumbsPath={breadcrumbRoutes} />
+        <Outlet />
+      </CatchBoundary>
     </div>
   );
 }

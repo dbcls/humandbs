@@ -19,17 +19,18 @@
   },
   "Navbar": {
     "data-submission": "データの提供",
-    "data-submission-navigation": "ナビゲーション",
-    "data-submission-application": "申請",
+    "navigation": "ナビゲーション",
+    "application": "申請",
     "data-usage": "データの利用",
     "about-data": "データについて",
     "achievements": "実績",
     "contact": "お問い合わせ",
     "guidelines": "ガイドライン",
-    "guidelines-data-sharing": "NBDCヒトデータ共有ガイドライン",
-    "guidelines-security-for-users": "NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）",
-    "guidelines-security-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
-    "guidelines-security-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）"
+    "data-sharing-guidelines": "NBDCヒトデータ共有ガイドライン",
+    "security-guidelines-for-users": "NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）",
+    "security-guidelines-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
+    "security-guidelines-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）",
+    "home": "ホーム"
   },
   "Markdoc": {
     "version": "Ver.",

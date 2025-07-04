@@ -54,6 +54,8 @@ const config = {
   nodes,
   variables: {
     frontmatter: {},
+    slug: "",
+    lang: "",
   },
 } satisfies Config;
 
@@ -163,6 +165,8 @@ export const getContent = createServerFn({ method: "GET", response: "data" })
 
     config.variables = {
       frontmatter,
+      slug: data.contentId,
+      lang: data.lang,
     };
 
     const content = Markdoc.transform(ast, config) as any;

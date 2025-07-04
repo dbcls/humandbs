@@ -4,11 +4,11 @@ import InfographicsImg from "@/assets/Infographics.png";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { News, NewsItem } from "@/components/FrontNews";
-import { getContent } from "@/serverFunctions/getContent";
+import { localeSchema } from "@/lib/i18n-config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import { getContent } from "@/serverFunctions/getContent";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
-import { localeSchema } from "@/lib/i18n-config";
 
 export const Route = createFileRoute("/$lang/")({
   component: Index,
@@ -16,12 +16,14 @@ export const Route = createFileRoute("/$lang/")({
     lang: localeSchema,
   }),
   loader: async ({ context }) => {
-    const content = await getContent({
+    const data = await getContent({
       data: { contentId: "front", lang: context.lang },
     });
 
+    return data;
+  },
+  context() {
     return {
-      ...content,
       crumb: "Home",
     };
   },
@@ -42,9 +44,9 @@ const dummyNews: NewsItem[] = [
 ];
 
 function Index() {
-  const navigate = Route.useNavigate();
-
   const { content } = Route.useLoaderData();
+
+  const navigate = Route.useNavigate();
 
   const t = useTranslations("Front");
 

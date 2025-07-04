@@ -19,17 +19,18 @@
   },
   "Navbar": {
     "data-submission": "Data submission",
-    "data-submission-navigation": "Navigation",
-    "data-submission-application": "Application",
+    "navigation": "Navigation",
+    "application": "Application",
     "data-usage": "Data Usage",
     "about-data": "About Data",
     "achievements": "Achievements",
     "contact": "Contact Us",
     "guidelines": "Guidelines",
-    "guidelines-data-sharing": "NBDC Guidelines for Human Data Sharing ",
-    "guidelines-security-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
-    "guidelines-security-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
-    "guidelines-security-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)"
+    "data-sharing-guidelines": "NBDC Guidelines for Human Data Sharing ",
+    "security-guidelines-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
+    "security-guidelines-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
+    "security-guidelines-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)",
+    "home": "Home"
   },
   "Markdoc": {
     "version": "Version",

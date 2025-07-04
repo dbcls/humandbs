@@ -44,9 +44,9 @@ const getNavConfig = (lang: Locale): NavConfig => {
       linkOptions: { to: "/$lang/data-submission", params: { lang } },
       children: [
         {
-          id: "data-submission-application",
+          id: "application",
           linkOptions: {
-            to: "/$lang/data-submission/navigation",
+            to: "/$lang/data-submission/application",
             params: {
               lang,
             },
@@ -59,7 +59,7 @@ const getNavConfig = (lang: Locale): NavConfig => {
       linkOptions: { to: "/$lang/guidelines" },
       children: [
         {
-          id: "guidelines-data-sharing",
+          id: "data-sharing-guidelines",
           linkOptions: {
             to: "/$lang/guidelines/$slug",
             params: {
@@ -69,7 +69,7 @@ const getNavConfig = (lang: Locale): NavConfig => {
           },
         },
         {
-          id: "guidelines-security-for-users",
+          id: "security-guidelines-for-users",
           linkOptions: {
             to: "/$lang/guidelines/$slug",
             params: {
@@ -79,7 +79,7 @@ const getNavConfig = (lang: Locale): NavConfig => {
           },
         },
         {
-          id: "guidelines-security-for-submitters",
+          id: "security-guidelines-for-submitters",
           linkOptions: {
             to: "/$lang/guidelines/$slug",
             params: {
@@ -89,7 +89,7 @@ const getNavConfig = (lang: Locale): NavConfig => {
           },
         },
         {
-          id: "guidelines-security-for-dbcenters",
+          id: "security-guidelines-for-dbcenters",
           linkOptions: {
             to: "/$lang/guidelines/$slug",
             params: {

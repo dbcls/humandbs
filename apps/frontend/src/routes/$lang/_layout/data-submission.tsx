@@ -3,16 +3,28 @@ import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContent } from "@/serverFunctions/getContent";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/$lang/_layout/guidelines/")({
+export const Route = createFileRoute("/$lang/_layout/data-submission")({
   component: RouteComponent,
   loader: async ({ context }) => {
-    const data = await getContent({
-      data: { contentId: "guidelines", lang: context.lang },
+    const { content, frontmatter } = await getContent({
+      data: {
+        contentId: "data-submission",
+
+        lang: context.lang,
+      },
     });
 
-    return data;
+    return {
+      content,
+      frontmatter,
+      crumb: "Data Submission",
+    };
   },
-  context: () => ({ crumb: "guidelines" }),
+  context({ context }) {
+    return {
+      crumb: "Data Submission",
+    };
+  },
 });
 
 function RouteComponent() {

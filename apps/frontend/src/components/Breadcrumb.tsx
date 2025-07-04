@@ -4,6 +4,7 @@ import { Home, MoreHorizontal } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { FileRoutesByTo } from "@/routeTree.gen";
+import { useTranslations } from "use-intl";
 
 const Breadcrumb = React.forwardRef<
   HTMLElement,
@@ -115,22 +116,27 @@ function Breacrumbs({
 }: {
   breadcrumbsPath: BreadcroumbsPath[];
 }) {
+  const t = useTranslations("Navbar");
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {breadcrumbsPath.map(({ label, href }, index) => (
-          <BreadcrumbItem key={href}>
-            <Link
-              to={href}
-              className={cn("text-foreground-light", {
-                "text-secondary": index === breadcrumbsPath.length - 1,
-              })}
-            >
-              {index === 0 ? <Home className="mr-1 inline" size={12} /> : null}
-              {label}
-            </Link>
+          <React.Fragment key={href}>
+            <BreadcrumbItem>
+              <Link
+                to={href}
+                className={cn("text-foreground-light", {
+                  "text-secondary": index === breadcrumbsPath.length - 1,
+                })}
+              >
+                {index === 0 ? (
+                  <Home className="mr-1 inline" size={12} />
+                ) : null}
+                {t(label)}
+              </Link>
+            </BreadcrumbItem>
             {index < breadcrumbsPath.length - 1 && <BreadcrumbSeparator />}
-          </BreadcrumbItem>
+          </React.Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

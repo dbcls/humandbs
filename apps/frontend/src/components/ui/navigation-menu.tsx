@@ -75,7 +75,7 @@ function NavigationMenuTrigger({
     >
       {children}
       <ChevronDownIcon
-        className="relative top-[1px] ml-1 size-3 size-4 shrink-0 transition duration-300 group-data-[state=open]:rotate-180"
+        className="relative top-[1px] ml-1 size-4 shrink-0 transition duration-300 group-data-[state=open]:rotate-180"
         aria-hidden="true"
       />
     </NavigationMenuPrimitive.Trigger>
