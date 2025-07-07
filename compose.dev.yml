@@ -20,6 +20,25 @@ services:
     networks:
       - humandbs-dev-network
 
+  cms-db-migrator:
+    image: oven/bun:1.2-debian
+    working_dir: /app
+    # Mount your app (so drizzle.config.ts, migrations folder, etc. are available)
+    volumes:
+      - ./:/app
+    depends_on:
+      cms-db:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        cd ./apps/frontend &&
+        echo '🏃‍♂️ Applying Drizzle migrations' &&
+        bunx --bun drizzle-kit migrate &&
+        echo '✅ Migrations complete'
+      "
+    networks:
+      - humandbs-dev-network
+
   frontend:
     depends_on:
       - cms-db
