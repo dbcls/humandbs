@@ -34,6 +34,8 @@ services:
         cd ./apps/frontend &&
         echo '🏃‍♂️ Applying Drizzle migrations' &&
         bunx --bun drizzle-kit migrate &&
+        echo '🌱 Seeding…' &&
+        bun run db:seed &&
         echo '✅ Migrations complete'
       "
     networks:
