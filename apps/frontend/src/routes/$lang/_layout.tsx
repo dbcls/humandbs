@@ -18,8 +18,6 @@ function RouteComponent() {
 
   const matches = useMatches();
 
-  console.log("matches", matches);
-
   const routeHistory = current.pathname
     .split("/")
     .filter((x) => x && x.length > 0);

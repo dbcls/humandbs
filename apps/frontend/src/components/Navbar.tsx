@@ -1,10 +1,5 @@
 import Logo from "@/assets/Logo.png";
-import {
-  Link,
-  LinkOptions,
-  linkOptions,
-  RegisteredRouter,
-} from "@tanstack/react-router";
+import { Link, LinkOptions } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
@@ -17,8 +12,9 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { authClient } from "@/lib/auth-client";
 import type { Locale, Messages } from "@/lib/i18n-config";
-import { ValidateLinkOptions } from "@tanstack/react-router";
+import { Button } from "./Button";
 import { NavLink } from "./NavLink";
 
 type NavLinkId = keyof Messages["Navbar"];
@@ -123,6 +119,11 @@ export function Navbar() {
 
   const tCommon = useTranslations("common");
 
+  async function handleLogin() {
+    const data = await authClient.signIn.social({ provider: "github" });
+    console.log("data", data);
+  }
+
   return (
     <header className="flex items-center justify-between gap-8 rounded-md bg-white p-4">
       <nav className="flex items-center gap-8">
@@ -165,6 +166,9 @@ export function Navbar() {
           </NavigationMenuList>
         </NavigationMenu>
       </nav>
+      <div>
+        <Button onClick={handleLogin}>Login with github</Button>
+      </div>
       <div className="flex items-center gap-2">
         <LangSwitcher />
         <Search />
