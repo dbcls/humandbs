@@ -3,6 +3,7 @@ import {
   createFileRoute,
   Outlet,
   useLocation,
+  useMatches,
 } from "@tanstack/react-router";
 
 import { Breacrumbs } from "@/components/Breadcrumb";
@@ -14,6 +15,10 @@ export const Route = createFileRoute("/$lang/_layout")({
 
 function RouteComponent() {
   const current = useLocation();
+
+  const matches = useMatches();
+
+  console.log("matches", matches);
 
   const routeHistory = current.pathname
     .split("/")

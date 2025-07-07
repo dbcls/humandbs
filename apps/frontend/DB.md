@@ -11,21 +11,15 @@
 - lang - Language of the document (en/ja)
 - version - version / revision
 
-## Image
+## Asset
 
 - id
 - title
 - lang
 - url
 - alt_text
+- type - mime type
 
-## File
-
-- id
-- title
-- url
-- file_type
-
-* Local files for actually store the files.
+* Local files for actually store the files. using multer?
 
 Upload -> File uploads to a `public` folder with unique name -> url is stored in db.

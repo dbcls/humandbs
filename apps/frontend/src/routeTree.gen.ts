@@ -14,6 +14,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LangIndexRouteImport } from './routes/$lang/index'
 import { Route as LangLayoutRouteImport } from './routes/$lang/_layout'
 import { Route as LangLayoutDataSubmissionRouteImport } from './routes/$lang/_layout/data-submission'
+import { Route as LangLayoutGuidelinesRouteRouteImport } from './routes/$lang/_layout/guidelines/route'
 import { Route as LangLayoutResearchListIndexRouteImport } from './routes/$lang/_layout/research-list/index'
 import { Route as LangLayoutGuidelinesIndexRouteImport } from './routes/$lang/_layout/guidelines/index'
 import { Route as LangLayoutDataUsageIndexRouteImport } from './routes/$lang/_layout/data-usage/index'
@@ -50,6 +51,12 @@ const LangLayoutDataSubmissionRoute =
     path: '/data-submission',
     getParentRoute: () => LangLayoutRoute,
   } as any)
+const LangLayoutGuidelinesRouteRoute =
+  LangLayoutGuidelinesRouteRouteImport.update({
+    id: '/guidelines',
+    path: '/guidelines',
+    getParentRoute: () => LangLayoutRoute,
+  } as any)
 const LangLayoutResearchListIndexRoute =
   LangLayoutResearchListIndexRouteImport.update({
     id: '/research-list/',
@@ -58,9 +65,9 @@ const LangLayoutResearchListIndexRoute =
   } as any)
 const LangLayoutGuidelinesIndexRoute =
   LangLayoutGuidelinesIndexRouteImport.update({
-    id: '/guidelines/',
-    path: '/guidelines/',
-    getParentRoute: () => LangLayoutRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => LangLayoutGuidelinesRouteRoute,
   } as any)
 const LangLayoutDataUsageIndexRoute =
   LangLayoutDataUsageIndexRouteImport.update({
@@ -87,9 +94,9 @@ const LangLayoutAboutDataIndexRoute =
   } as any)
 const LangLayoutGuidelinesSlugRoute =
   LangLayoutGuidelinesSlugRouteImport.update({
-    id: '/guidelines/$slug',
-    path: '/guidelines/$slug',
-    getParentRoute: () => LangLayoutRoute,
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => LangLayoutGuidelinesRouteRoute,
   } as any)
 const LangLayoutDataSubmissionNavigationRoute =
   LangLayoutDataSubmissionNavigationRouteImport.update({
@@ -117,9 +124,9 @@ const LangLayoutResearchListResearchIdResearchVerRoute =
   } as any)
 const LangLayoutGuidelinesRevisionRevRoute =
   LangLayoutGuidelinesRevisionRevRouteImport.update({
-    id: '/guidelines/revision/$rev',
-    path: '/guidelines/revision/$rev',
-    getParentRoute: () => LangLayoutRoute,
+    id: '/revision/$rev',
+    path: '/revision/$rev',
+    getParentRoute: () => LangLayoutGuidelinesRouteRoute,
   } as any)
 const LangLayoutDataSubmissionNavigationSomethngRoute =
   LangLayoutDataSubmissionNavigationSomethngRouteImport.update({
@@ -131,6 +138,7 @@ const LangLayoutDataSubmissionNavigationSomethngRoute =
 export interface FileRoutesByFullPath {
   '/$lang': typeof LangLayoutRouteWithChildren
   '/$lang/': typeof LangIndexRoute
+  '/$lang/guidelines': typeof LangLayoutGuidelinesRouteRouteWithChildren
   '/$lang/data-submission': typeof LangLayoutDataSubmissionRouteWithChildren
   '/$lang/data-submission/navigation': typeof LangLayoutDataSubmissionNavigationRouteWithChildren
   '/$lang/guidelines/$slug': typeof LangLayoutGuidelinesSlugRoute
@@ -138,7 +146,7 @@ export interface FileRoutesByFullPath {
   '/$lang/achievements': typeof LangLayoutAchievementsIndexRoute
   '/$lang/contact': typeof LangLayoutContactIndexRoute
   '/$lang/data-usage': typeof LangLayoutDataUsageIndexRoute
-  '/$lang/guidelines': typeof LangLayoutGuidelinesIndexRoute
+  '/$lang/guidelines/': typeof LangLayoutGuidelinesIndexRoute
   '/$lang/research-list': typeof LangLayoutResearchListIndexRoute
   '/$lang/data-submission/navigation/somethng': typeof LangLayoutDataSubmissionNavigationSomethngRoute
   '/$lang/guidelines/revision/$rev': typeof LangLayoutGuidelinesRevisionRevRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/$lang': typeof LangRouteWithChildren
   '/$lang/_layout': typeof LangLayoutRouteWithChildren
   '/$lang/': typeof LangIndexRoute
+  '/$lang/_layout/guidelines': typeof LangLayoutGuidelinesRouteRouteWithChildren
   '/$lang/_layout/data-submission': typeof LangLayoutDataSubmissionRouteWithChildren
   '/$lang/_layout/data-submission/navigation': typeof LangLayoutDataSubmissionNavigationRouteWithChildren
   '/$lang/_layout/guidelines/$slug': typeof LangLayoutGuidelinesSlugRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/$lang'
     | '/$lang/'
+    | '/$lang/guidelines'
     | '/$lang/data-submission'
     | '/$lang/data-submission/navigation'
     | '/$lang/guidelines/$slug'
@@ -195,7 +205,7 @@ export interface FileRouteTypes {
     | '/$lang/achievements'
     | '/$lang/contact'
     | '/$lang/data-usage'
-    | '/$lang/guidelines'
+    | '/$lang/guidelines/'
     | '/$lang/research-list'
     | '/$lang/data-submission/navigation/somethng'
     | '/$lang/guidelines/revision/$rev'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/$lang'
     | '/$lang/_layout'
     | '/$lang/'
+    | '/$lang/_layout/guidelines'
     | '/$lang/_layout/data-submission'
     | '/$lang/_layout/data-submission/navigation'
     | '/$lang/_layout/guidelines/$slug'
@@ -274,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LangLayoutDataSubmissionRouteImport
       parentRoute: typeof LangLayoutRoute
     }
+    '/$lang/_layout/guidelines': {
+      id: '/$lang/_layout/guidelines'
+      path: '/guidelines'
+      fullPath: '/$lang/guidelines'
+      preLoaderRoute: typeof LangLayoutGuidelinesRouteRouteImport
+      parentRoute: typeof LangLayoutRoute
+    }
     '/$lang/_layout/research-list/': {
       id: '/$lang/_layout/research-list/'
       path: '/research-list'
@@ -283,10 +301,10 @@ declare module '@tanstack/react-router' {
     }
     '/$lang/_layout/guidelines/': {
       id: '/$lang/_layout/guidelines/'
-      path: '/guidelines'
-      fullPath: '/$lang/guidelines'
+      path: '/'
+      fullPath: '/$lang/guidelines/'
       preLoaderRoute: typeof LangLayoutGuidelinesIndexRouteImport
-      parentRoute: typeof LangLayoutRoute
+      parentRoute: typeof LangLayoutGuidelinesRouteRoute
     }
     '/$lang/_layout/data-usage/': {
       id: '/$lang/_layout/data-usage/'
@@ -318,10 +336,10 @@ declare module '@tanstack/react-router' {
     }
     '/$lang/_layout/guidelines/$slug': {
       id: '/$lang/_layout/guidelines/$slug'
-      path: '/guidelines/$slug'
+      path: '/$slug'
       fullPath: '/$lang/guidelines/$slug'
       preLoaderRoute: typeof LangLayoutGuidelinesSlugRouteImport
-      parentRoute: typeof LangLayoutRoute
+      parentRoute: typeof LangLayoutGuidelinesRouteRoute
     }
     '/$lang/_layout/data-submission/navigation': {
       id: '/$lang/_layout/data-submission/navigation'
@@ -353,10 +371,10 @@ declare module '@tanstack/react-router' {
     }
     '/$lang/_layout/guidelines/revision/$rev': {
       id: '/$lang/_layout/guidelines/revision/$rev'
-      path: '/guidelines/revision/$rev'
+      path: '/revision/$rev'
       fullPath: '/$lang/guidelines/revision/$rev'
       preLoaderRoute: typeof LangLayoutGuidelinesRevisionRevRouteImport
-      parentRoute: typeof LangLayoutRoute
+      parentRoute: typeof LangLayoutGuidelinesRouteRoute
     }
     '/$lang/_layout/data-submission/navigation/somethng': {
       id: '/$lang/_layout/data-submission/navigation/somethng'
@@ -367,6 +385,24 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface LangLayoutGuidelinesRouteRouteChildren {
+  LangLayoutGuidelinesSlugRoute: typeof LangLayoutGuidelinesSlugRoute
+  LangLayoutGuidelinesIndexRoute: typeof LangLayoutGuidelinesIndexRoute
+  LangLayoutGuidelinesRevisionRevRoute: typeof LangLayoutGuidelinesRevisionRevRoute
+}
+
+const LangLayoutGuidelinesRouteRouteChildren: LangLayoutGuidelinesRouteRouteChildren =
+  {
+    LangLayoutGuidelinesSlugRoute: LangLayoutGuidelinesSlugRoute,
+    LangLayoutGuidelinesIndexRoute: LangLayoutGuidelinesIndexRoute,
+    LangLayoutGuidelinesRevisionRevRoute: LangLayoutGuidelinesRevisionRevRoute,
+  }
+
+const LangLayoutGuidelinesRouteRouteWithChildren =
+  LangLayoutGuidelinesRouteRoute._addFileChildren(
+    LangLayoutGuidelinesRouteRouteChildren,
+  )
 
 interface LangLayoutDataSubmissionNavigationRouteChildren {
   LangLayoutDataSubmissionNavigationSomethngRoute: typeof LangLayoutDataSubmissionNavigationSomethngRoute
@@ -402,29 +438,25 @@ const LangLayoutDataSubmissionRouteWithChildren =
   )
 
 interface LangLayoutRouteChildren {
+  LangLayoutGuidelinesRouteRoute: typeof LangLayoutGuidelinesRouteRouteWithChildren
   LangLayoutDataSubmissionRoute: typeof LangLayoutDataSubmissionRouteWithChildren
-  LangLayoutGuidelinesSlugRoute: typeof LangLayoutGuidelinesSlugRoute
   LangLayoutAboutDataIndexRoute: typeof LangLayoutAboutDataIndexRoute
   LangLayoutAchievementsIndexRoute: typeof LangLayoutAchievementsIndexRoute
   LangLayoutContactIndexRoute: typeof LangLayoutContactIndexRoute
   LangLayoutDataUsageIndexRoute: typeof LangLayoutDataUsageIndexRoute
-  LangLayoutGuidelinesIndexRoute: typeof LangLayoutGuidelinesIndexRoute
   LangLayoutResearchListIndexRoute: typeof LangLayoutResearchListIndexRoute
-  LangLayoutGuidelinesRevisionRevRoute: typeof LangLayoutGuidelinesRevisionRevRoute
   LangLayoutResearchListResearchIdResearchVerRoute: typeof LangLayoutResearchListResearchIdResearchVerRoute
   LangLayoutResearchListResearchIdIndexRoute: typeof LangLayoutResearchListResearchIdIndexRoute
 }
 
 const LangLayoutRouteChildren: LangLayoutRouteChildren = {
+  LangLayoutGuidelinesRouteRoute: LangLayoutGuidelinesRouteRouteWithChildren,
   LangLayoutDataSubmissionRoute: LangLayoutDataSubmissionRouteWithChildren,
-  LangLayoutGuidelinesSlugRoute: LangLayoutGuidelinesSlugRoute,
   LangLayoutAboutDataIndexRoute: LangLayoutAboutDataIndexRoute,
   LangLayoutAchievementsIndexRoute: LangLayoutAchievementsIndexRoute,
   LangLayoutContactIndexRoute: LangLayoutContactIndexRoute,
   LangLayoutDataUsageIndexRoute: LangLayoutDataUsageIndexRoute,
-  LangLayoutGuidelinesIndexRoute: LangLayoutGuidelinesIndexRoute,
   LangLayoutResearchListIndexRoute: LangLayoutResearchListIndexRoute,
-  LangLayoutGuidelinesRevisionRevRoute: LangLayoutGuidelinesRevisionRevRoute,
   LangLayoutResearchListResearchIdResearchVerRoute:
     LangLayoutResearchListResearchIdResearchVerRoute,
   LangLayoutResearchListResearchIdIndexRoute:
