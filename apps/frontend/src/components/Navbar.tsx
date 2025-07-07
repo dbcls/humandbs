@@ -177,7 +177,12 @@ export function Navbar() {
       </nav>
 
       <div className="flex items-center gap-2">
-        {user ? <Button onClick={handleLogout}>Logout</Button> : null}
+        {user ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">{user.name}</span>
+            <Button onClick={handleLogout}>Logout</Button>
+          </div>
+        ) : null}
         <LangSwitcher />
         <Search />
       </div>
