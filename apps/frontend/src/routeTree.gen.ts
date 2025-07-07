@@ -12,7 +12,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginErrorRouteImport } from './routes/login-error'
+import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LangIndexRouteImport } from './routes/$lang/index'
+import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as LangLayoutRouteImport } from './routes/$lang/_layout'
 import { Route as LangLayoutDataSubmissionRouteImport } from './routes/$lang/_layout/data-submission'
 import { Route as LangLayoutGuidelinesRouteRouteImport } from './routes/$lang/_layout/guidelines/route'
@@ -39,10 +42,24 @@ const LangRoute = LangRouteImport.update({
   path: '/$lang',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginErrorRoute = LoginErrorRouteImport.update({
+  id: '/login-error',
+  path: '/login-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LangIndexRoute = LangIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LangRoute,
+} as any)
+const AuthedAdminRoute = AuthedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const LangLayoutRoute = LangLayoutRouteImport.update({
   id: '/_layout',
@@ -144,7 +161,9 @@ const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/login-error': typeof LoginErrorRoute
   '/$lang': typeof LangLayoutRouteWithChildren
+  '/admin': typeof AuthedAdminRoute
   '/$lang/': typeof LangIndexRoute
   '/$lang/guidelines': typeof LangLayoutGuidelinesRouteRouteWithChildren
   '/$lang/data-submission': typeof LangLayoutDataSubmissionRouteWithChildren
@@ -163,7 +182,9 @@ export interface FileRoutesByFullPath {
   '/$lang/research-list/$researchId': typeof LangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/login-error': typeof LoginErrorRoute
   '/$lang': typeof LangIndexRoute
+  '/admin': typeof AuthedAdminRoute
   '/$lang/data-submission': typeof LangLayoutDataSubmissionRouteWithChildren
   '/$lang/data-submission/navigation': typeof LangLayoutDataSubmissionNavigationRouteWithChildren
   '/$lang/guidelines/$slug': typeof LangLayoutGuidelinesSlugRoute
@@ -181,8 +202,11 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_authed': typeof AuthedRouteWithChildren
+  '/login-error': typeof LoginErrorRoute
   '/$lang': typeof LangRouteWithChildren
   '/$lang/_layout': typeof LangLayoutRouteWithChildren
+  '/_authed/admin': typeof AuthedAdminRoute
   '/$lang/': typeof LangIndexRoute
   '/$lang/_layout/guidelines': typeof LangLayoutGuidelinesRouteRouteWithChildren
   '/$lang/_layout/data-submission': typeof LangLayoutDataSubmissionRouteWithChildren
@@ -203,7 +227,9 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/login-error'
     | '/$lang'
+    | '/admin'
     | '/$lang/'
     | '/$lang/guidelines'
     | '/$lang/data-submission'
@@ -222,7 +248,9 @@ export interface FileRouteTypes {
     | '/$lang/research-list/$researchId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/login-error'
     | '/$lang'
+    | '/admin'
     | '/$lang/data-submission'
     | '/$lang/data-submission/navigation'
     | '/$lang/guidelines/$slug'
@@ -239,8 +267,11 @@ export interface FileRouteTypes {
     | '/$lang/research-list/$researchId'
   id:
     | '__root__'
+    | '/_authed'
+    | '/login-error'
     | '/$lang'
     | '/$lang/_layout'
+    | '/_authed/admin'
     | '/$lang/'
     | '/$lang/_layout/guidelines'
     | '/$lang/_layout/data-submission'
@@ -260,6 +291,8 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  AuthedRoute: typeof AuthedRouteWithChildren
+  LoginErrorRoute: typeof LoginErrorRoute
   LangRoute: typeof LangRouteWithChildren
 }
 export interface FileServerRoutesByFullPath {
@@ -293,12 +326,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LangRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login-error': {
+      id: '/login-error'
+      path: '/login-error'
+      fullPath: '/login-error'
+      preLoaderRoute: typeof LoginErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$lang/': {
       id: '/$lang/'
       path: '/'
       fullPath: '/$lang/'
       preLoaderRoute: typeof LangIndexRouteImport
       parentRoute: typeof LangRoute
+    }
+    '/_authed/admin': {
+      id: '/_authed/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthedAdminRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/$lang/_layout': {
       id: '/$lang/_layout'
@@ -426,6 +480,17 @@ declare module '@tanstack/react-start/server' {
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedAdminRoute: typeof AuthedAdminRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAdminRoute: AuthedAdminRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 interface LangLayoutGuidelinesRouteRouteChildren {
   LangLayoutGuidelinesSlugRoute: typeof LangLayoutGuidelinesSlugRoute
   LangLayoutGuidelinesIndexRoute: typeof LangLayoutGuidelinesIndexRoute
@@ -520,6 +585,8 @@ const LangRouteChildren: LangRouteChildren = {
 const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  AuthedRoute: AuthedRouteWithChildren,
+  LoginErrorRoute: LoginErrorRoute,
   LangRoute: LangRouteWithChildren,
 }
 export const routeTree = rootRouteImport

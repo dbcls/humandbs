@@ -1,5 +1,10 @@
 import Logo from "@/assets/Logo.png";
-import { Link, LinkOptions } from "@tanstack/react-router";
+import {
+  Link,
+  LinkOptions,
+  useRouteContext,
+  useRouter,
+} from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
@@ -12,10 +17,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { authClient } from "@/lib/auth-client";
 import type { Locale, Messages } from "@/lib/i18n-config";
-import { Button } from "./Button";
 import { NavLink } from "./NavLink";
+import { authClient } from "@/lib/auth-client";
+import { Button } from "./Button";
 
 type NavLinkId = keyof Messages["Navbar"];
 
@@ -115,13 +120,17 @@ const getNavConfig = (lang: Locale): NavConfig => {
 export function Navbar() {
   const t = useTranslations("Navbar");
 
+  const { user } = useRouteContext({ from: "__root__" });
+
+  const router = useRouter();
+
   const lang = useLocale();
 
   const tCommon = useTranslations("common");
 
-  async function handleLogin() {
-    const data = await authClient.signIn.social({ provider: "github" });
-    console.log("data", data);
+  async function handleLogout() {
+    await authClient.signOut();
+    router.invalidate();
   }
 
   return (
@@ -166,10 +175,9 @@ export function Navbar() {
           </NavigationMenuList>
         </NavigationMenu>
       </nav>
-      <div>
-        <Button onClick={handleLogin}>Login with github</Button>
-      </div>
+
       <div className="flex items-center gap-2">
+        {user ? <Button onClick={handleLogout}>Logout</Button> : null}
         <LangSwitcher />
         <Search />
       </div>

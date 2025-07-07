@@ -10,7 +10,8 @@
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
     "start": "bun ./.output/server/index.mjs",
-    "get-md": "bun ./src/scripts/parsePageToMarkdown.js \"$@\""
+    "get-md": "bun ./src/scripts/parsePageToMarkdown.js \"$@\"",
+    "db:studio": "POSTGRES_HOST=localhost bunx drizzle-kit studio"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.6.1",

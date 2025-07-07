@@ -1,6 +1,8 @@
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import css from "@/index.css?url";
+import { auth } from "@/lib/auth";
+import { authClient } from "@/lib/auth-client";
 import { i18n as i18nConfig } from "@/lib/i18n-config";
 import { Context } from "@/router";
 import {
@@ -17,7 +19,16 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { createServerFn } from "@tanstack/react-start";
+import { getWebRequest } from "@tanstack/react-start/server";
 import { IntlProvider } from "use-intl";
+
+const getUser = createServerFn({ method: "GET" }).handler(async () => {
+  const { headers } = getWebRequest()!;
+  const session = await auth.api.getSession({ headers });
+
+  return session?.user || null;
+});
 
 export const Route = createRootRouteWithContext<Context>()({
   head: ({
@@ -44,6 +55,7 @@ export const Route = createRootRouteWithContext<Context>()({
   component: RootComponent,
   beforeLoad: async (ctx) => {
     const locale = await getLocaleFn();
+    const user = await getUser();
 
     // if in request path missing locale, add it
     const pathname = ctx.location.pathname;
@@ -54,7 +66,7 @@ export const Route = createRootRouteWithContext<Context>()({
 
     await saveLocaleFn({ data: { lang: locale } });
 
-    if (pathnameIsMissingLocale) {
+    if (pathnameIsMissingLocale && !pathname.startsWith("/admin")) {
       throw redirect({
         //@ts-expect-error
         to: `/${locale}${pathname}`,
@@ -66,6 +78,7 @@ export const Route = createRootRouteWithContext<Context>()({
     return {
       lang: locale,
       messages,
+      user,
     };
   },
 });
