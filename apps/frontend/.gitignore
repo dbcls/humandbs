@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+
+.tanstack
+
+.output
+
+.nitro
