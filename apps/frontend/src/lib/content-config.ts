@@ -10,9 +10,8 @@ export const CONTENT_IDS = {
     "security-guidelines-for-users",
   ],
   others: [
-    "about",
+    "about-data",
     "home",
-    "front",
     "data-submission",
     "data-submission-application",
     "data-usage",

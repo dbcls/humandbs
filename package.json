@@ -6,6 +6,8 @@
     "frontend:build": "bun run --filter @humandbs/frontend build",
     "frontend:lint": "bun run --filter @humandbs/frontend lint",
     "frontend:preview": "bun run --filter @humandbs/frontend preview",
+    "front:sh": "docker compose -f compose.dev.yml up -d && docker compose -f compose.dev.yml exec frontend sh -lc \"cd /app/apps/frontend && exec sh\"",
+    "dc:up": "docker compose -f compose.dev.yml up -d",
     "backend:dev": "bun run --filter @humandbs/backend dev"
   },
   "devDependencies": {

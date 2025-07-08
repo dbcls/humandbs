@@ -17,7 +17,7 @@ export const Route = createFileRoute("/$lang/")({
   }),
   loader: async ({ context }) => {
     const data = await getContent({
-      data: { contentId: "front", lang: context.lang },
+      data: { contentId: "home", lang: context.lang },
     });
 
     return data;

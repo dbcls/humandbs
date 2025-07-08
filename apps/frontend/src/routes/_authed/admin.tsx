@@ -1,17 +1,23 @@
+import { Button } from "@/components/Button";
+import { ContentId } from "@/lib/content-config";
 import { db } from "@/lib/database";
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { useTranslations } from "use-intl";
 
 const getDocuments = createServerFn({ type: "dynamic", method: "GET" }).handler(
   async () => {
-    console.log("hello serverFn");
     const documents = await db.query.document.findMany();
-
-    console.log("documents", documents);
 
     return documents;
   }
 );
+
+// const getDocument = createServerFn({ method: "GET" }).handler(
+//   async (contentId: string) => {
+//     /// const document = await db.query.documentVersion.findFirst({where})
+//   }
+// );
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
@@ -19,19 +25,19 @@ export const Route = createFileRoute("/_authed/admin")({
 });
 
 function RouteComponent() {
-  const { user } = Route.useRouteContext();
-
   const documents = Route.useLoaderData();
 
+  const t = useTranslations("Navbar");
   return (
-    <section>
-      <h2>Welcome {user?.name}</h2>
-
-      <ul>
+    <section className="flex items-stretch gap-2">
+      <ul className="bg-primary max-w-md space-y-4 p-4">
         {documents.map((doc) => (
-          <li key={doc.id}>{doc.name}</li>
+          <li key={doc.id}>
+            <Button variant={"toggle"}>{t(doc.contentId as any)}</Button>
+          </li>
         ))}
       </ul>
+      <div className="border-primary"></div>
     </section>
   );
 }

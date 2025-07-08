@@ -1,11 +1,13 @@
-# Welcome to HumanDBS
+# About NBDC Human Database
 
-## Static Markdown content
+Human-related data is being generated in enormous quantities with the development of analysis technologies, including next-generation sequencers. Rules and systems are necessary to organize and store this data for effective utilization in the advancement of life sciences.
 
-Markdown が動的にimportされた`*.md`ファイルを表示するためのコンポーネントです。
-`*.md`ファイルは、`src/content` ディレクトリに保存されています。
+[The Database Center for Life Science (DBCLS) of the Research Organization of Information and Systems - Data Science Joint Usage/Research Center (ROIS-DS)](https://dbcls.rois.ac.jp/) operates the "NBDC Human Database" platform for sharing various human-related data in cooperation with [DNA Data Bank of Japan, National Institute of Genetics <img src="https://humandbs.dbcls.jp/files/DDBJ_logo_ddbj_2013.png" class="content-inline-icon"/>](http://www.ddbj.nig.ac.jp/), while ensuring the protection of personal information and promoting the sharing and utilization of human-related data.
 
-## Static Markdown content
+Through this website, you can access and provide human-related data.
 
-GitHub に保存されたMarkdownファイルを表示することもできる。
-[/contact](/contact) にアクセスすると、公的のGitHub レポ（tailwindcss のリポ）に保存された `readme.md` が表示される。
+For information about the purpose and significance of this database, types of data handled, scope of data users, and responsible parties, please see [here](https://humandbs.dbcls.jp/aim).
+
+<div class="content-callout">
+Violators of the guidelines who have not submitted a report on the deletion of Controlled-access data shall be disclosed <a href="https://humandbs.dbcls.jp/en/violation"> here </a>.
+</div>
