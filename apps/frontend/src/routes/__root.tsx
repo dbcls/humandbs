@@ -25,9 +25,12 @@ import { IntlProvider } from "use-intl";
 
 const getUser = createServerFn({ method: "GET" }).handler(async () => {
   const { headers } = getWebRequest()!;
-  const session = await auth.api.getSession({ headers });
-
-  return session?.user || null;
+  try {
+    const session = await auth.api.getSession({ headers });
+    return session?.user || null;
+  } catch (error) {
+    return null;
+  }
 });
 
 export const Route = createRootRouteWithContext<Context>()({

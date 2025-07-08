@@ -33,7 +33,7 @@ services:
       sh -c "
         cd ./apps/frontend &&
         echo '🏃‍♂️ Applying Drizzle migrations' &&
-        bunx --bun drizzle-kit migrate &&
+        bunx drizzle-kit push &&
         echo '🌱 Seeding…' &&
         bun run db:seed &&
         echo '✅ Migrations complete'
