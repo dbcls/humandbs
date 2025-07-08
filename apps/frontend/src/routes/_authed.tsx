@@ -4,10 +4,17 @@ import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authed")({
   beforeLoad: async ({ context }) => {
+    // do not let in users unless they are admins or editors
     if (!context.user) {
-      throw new Error("Not authenticated");
+      throw new Error("In order to enter this section, you need to login", {
+        cause: "notAuthed",
+      });
     }
-    console.log("context.user", context.user);
+    if (context.user.role !== "admin" && context.user.role !== "editor") {
+      throw new Error("You are not authorized to access this section", {
+        cause: "notAuthorized",
+      });
+    }
   },
   errorComponent: ({ error }) => {
     async function handleLogin() {
@@ -18,10 +25,22 @@ export const Route = createFileRoute("/_authed")({
       });
     }
 
-    if (error.message === "Not authenticated") {
+    if (error.cause === "notAuthed") {
       return (
         <div className="flex items-center justify-center p-12">
+          <p>Please login here</p>
           <Button onClick={handleLogin}> Login with GitHub </Button>
+        </div>
+      );
+    }
+
+    if (error.cause === "notAuthorized") {
+      return (
+        <div className="flex items-center justify-center p-12">
+          <p>
+            You are not authorized to access this section. Ask for your
+            administrator to give you access rights.
+          </p>
         </div>
       );
     }
