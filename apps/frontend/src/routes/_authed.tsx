@@ -7,6 +7,7 @@ export const Route = createFileRoute("/_authed")({
     if (!context.user) {
       throw new Error("Not authenticated");
     }
+    console.log("context.user", context.user);
   },
   errorComponent: ({ error }) => {
     async function handleLogin() {

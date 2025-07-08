@@ -12,16 +12,13 @@ async function main() {
     }
   );
 
-  await db.execute(sql`CREATE TABLE IF NOT EXISTS seed_history (
-        seed_name TEXT PRIMARY KEY,
-        executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );`);
-
   const seedName = "initial_documents_seed";
 
-  const existingSeed = await db.execute(sql`
-      SELECT seed_name FROM seed_history WHERE seed_name = ${seedName}
-    `);
+  const existingSeed = await db
+    .select()
+    .from(schema.seedHistory)
+    .where(sql`seed_name = ${seedName}`)
+    .execute();
 
   if (existingSeed.length > 0) {
     console.log("Seed was already executed. Skipping...");
@@ -37,9 +34,7 @@ async function main() {
         .values(documentIds.map((d) => ({ contentId: d })))
         .execute();
 
-      await tx.execute(sql`
-       INSERT INTO seed_history (seed_name) VALUES (${seedName})
-     `);
+      await tx.insert(schema.seedHistory).values({ seedName }).execute();
     });
   } catch (error) {
     console.error("Error during seeding:", error);
