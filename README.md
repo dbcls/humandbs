@@ -59,17 +59,29 @@ Each workspace (e.g., `apps/backend`) can create its own `eslint.config.js`, imp
 
 ### Environment variables
 
-1. Copy `.env.example` to new `.env` file:
+1. `cd` into `apps/frontend`
+
+2. Copy `.env.example` to new `.env` file:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Fill in your own GitHub credentials (and any other secrets).
-3. Run `docker compose -f compose.dev.yml up -d --build`
+3. Fill in your own GitHub credentials (and any other secrets).
+4. Run `docker compose -f compose.dev.yml up -d --build`
+   That would build and run docker containers.
+5. Enter the container's sh:
 
-That would build and run docker containers.
+```bash
+docker exec -it <container_id> sh
+```
 
-> For automatically enter the `frontend` container, `cd` into the frontend folder, run `bun run front:sh`
+6. In the container's sh, run `bun run front:dev` from the root.
 
-Then, in the container's sh, run `bun run front:dev`
+> For running the `docker compose` , entering the `frontent`'s container's `sh` and `cd`-ing into `apps/frontend` folder, use shourtcut command
+
+```bash
+bun run front:sh
+```
+
+Then run the frontend with `bun run dev`
