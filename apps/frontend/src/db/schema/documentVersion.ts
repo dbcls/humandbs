@@ -10,6 +10,7 @@ import {
 import { user } from "./auth-schema";
 import { document } from "./document";
 import { relations } from "drizzle-orm";
+import { asset } from "./asset";
 
 export const documentVersion = pgTable(
   "document_version",
@@ -52,6 +53,7 @@ export const documentVersionRelations = relations(
       fields: [documentVersion.authorId],
       references: [user.id],
     }),
+    assets: many(asset),
   })
 );
 

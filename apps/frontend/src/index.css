@@ -87,6 +87,10 @@
     background-position: top;
     background-size: contain;
   }
+
+  .cm-editor {
+    height: 100%;
+  }
 }
 
 @layer utilities {

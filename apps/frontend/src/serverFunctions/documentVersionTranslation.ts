@@ -4,21 +4,22 @@ import {
   updateDocumentVersionTranslationSchema,
 } from "@/db/types";
 import { db } from "@/lib/database";
-import { localeSchema } from "@/lib/i18n-config";
+import { Locale, localeSchema } from "@/lib/i18n-config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 /** Get document version translation */
-export const getDocumentVersionTranslation = createServerFn({
+export const $getDocumentVersionTranslation = createServerFn({
   method: "GET",
   response: "data",
 })
   .validator(
     z.object({
       locale: localeSchema,
-      documentVersionId: z.string().uuid(),
+      documentVersionId: z.string(),
     })
   )
   .handler(async ({ data }) => {
@@ -26,19 +27,46 @@ export const getDocumentVersionTranslation = createServerFn({
 
     const translation = await db.query.documentVersionTranslation.findFirst({
       where: (table) =>
-        eq(table.documentVersionId, documentVersionId) &&
-        eq(table.locale, locale),
+        and(
+          eq(table.documentVersionId, documentVersionId),
+          eq(table.locale, locale)
+        ),
       with: {
         translator: true,
         version: true,
       },
     });
 
+    console.log("translation", translation);
+
     return translation || null;
   });
 
+export function getDocumentVersionTranslationQueryOptions({
+  locale,
+  documentVersionId,
+}: {
+  locale: Locale;
+  documentVersionId: string;
+}) {
+  console.log("getDocumentVersionTranslationQueryOptions", documentVersionId);
+  return queryOptions({
+    queryKey: ["document", "locale", locale, "versionId", documentVersionId],
+    queryFn: () => {
+      if (!documentVersionId) {
+        return Promise.resolve(null);
+      }
+
+      return $getDocumentVersionTranslation({
+        data: { locale, documentVersionId },
+      });
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
 /** Create document version translation */
-export const createDocumentVersionTranslation = createServerFn({
+export const $createDocumentVersionTranslation = createServerFn({
   method: "POST",
 })
   .validator(insertDocumentVersionTranslationSchema)
@@ -55,7 +83,7 @@ export const createDocumentVersionTranslation = createServerFn({
   });
 
 /** Update Translation by versionId and locale */
-export const updateDocumentVersiontranslation = createServerFn({
+export const $updateDocumentVersionTranslation = createServerFn({
   method: "POST",
 })
   .validator(updateDocumentVersionTranslationSchema)
@@ -80,7 +108,7 @@ export const updateDocumentVersiontranslation = createServerFn({
 
 /** Delete document version translation */
 
-export const deleteDocumentVersiontranslation = createServerFn({
+export const $deleteDocumentVersionTranslation = createServerFn({
   method: "POST",
 })
   .validator(updateDocumentVersionTranslationSchema)

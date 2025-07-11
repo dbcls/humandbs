@@ -3,8 +3,8 @@ import { ContentId } from "./content-config";
 import { Locale } from "./i18n-config";
 import { getContent } from "@/serverFunctions/getContent";
 import { getDocuments } from "@/serverFunctions/document";
-import { getDocumentVersions } from "@/serverFunctions/documentVersion";
-import { getDocumentVersionTranslation } from "@/serverFunctions/documentVersionTranslation";
+import { $getDocumentVersions } from "@/serverFunctions/documentVersion";
+import { $getDocumentVersionTranslation } from "@/serverFunctions/documentVersionTranslation";
 
 interface ContentQueryOptions {
   contentId: ContentId;
@@ -27,19 +27,6 @@ export const createGetDocumentListQueryOptions = () =>
     staleTime: 5 * 1000 * 60,
   });
 
-export const createGetDocumentVersionsQueryOptions = (
-  documentId: string | null
-) =>
-  queryOptions({
-    queryKey: ["documents", documentId, "versions"],
-    queryFn: () => {
-      if (!documentId) return Promise.resolve([]);
-      return getDocumentVersions({ data: { documentId } });
-    },
-    staleTime: 5 * 1000 * 60,
-    enabled: !!documentId,
-  });
-
 export const createGetDocVerTranslationsQueryOptions = ({
   versionId,
   locale,
@@ -51,7 +38,7 @@ export const createGetDocVerTranslationsQueryOptions = ({
     queryKey: ["documents", "versions", versionId, locale],
     queryFn: () => {
       if (!versionId || !locale) return Promise.resolve(null);
-      return getDocumentVersionTranslation({
+      return $getDocumentVersionTranslation({
         data: { documentVersionId: versionId, locale },
       });
     },

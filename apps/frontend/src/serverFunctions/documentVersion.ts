@@ -5,9 +5,10 @@ import { db } from "@/lib/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
+import { queryOptions } from "@tanstack/react-query";
 
 /** Read a document version list */
-export const getDocumentVersions = createServerFn({
+export const $getDocumentVersions = createServerFn({
   method: "GET",
   response: "data",
 })
@@ -18,6 +19,8 @@ export const getDocumentVersions = createServerFn({
   )
   .handler(async ({ data }) => {
     const { documentId } = data;
+
+    console.log("documentId", documentId);
 
     const versions = await db.query.documentVersion.findMany({
       where: (table) => eq(table.documentId, documentId),
@@ -33,6 +36,21 @@ export const getDocumentVersions = createServerFn({
     console.log("versions", versions);
 
     return versions;
+  });
+
+export const getDocumentVersionsListQueryOptions = ({
+  documentId,
+}: {
+  documentId: string | null;
+}) =>
+  queryOptions({
+    queryKey: ["documents", documentId, "versions"],
+    queryFn: () => {
+      if (!documentId) return Promise.resolve([]);
+      return $getDocumentVersions({ data: { documentId } });
+    },
+    staleTime: 5 * 1000 * 60,
+    enabled: !!documentId,
   });
 
 /** Create document version */

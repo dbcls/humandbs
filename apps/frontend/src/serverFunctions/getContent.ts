@@ -36,7 +36,7 @@ const contentReqSchema = z.object({
   generateTOC: z.boolean().default(false),
 });
 
-const config = {
+export const config = {
   tags: {
     ...tags,
     "html-tag": {
@@ -52,17 +52,18 @@ const config = {
     },
   },
   nodes,
-  variables: {
-    frontmatter: {},
-    slug: "",
-    lang: "",
+  variables: {} as {
+    locale: string;
+    version: string;
+    updatedAt: Date | string | undefined;
+    frontmatter?: Record<string, string | number>;
   },
 } satisfies Config;
 
 /**
  * For including HTML from markdown as-is
  */
-function processTokens(tokens: Tokens) {
+export function processTokens(tokens: Tokens) {
   const output: any[] = [];
 
   const parser = new Parser({
@@ -109,7 +110,7 @@ function processTokens(tokens: Tokens) {
   return output;
 }
 
-const tokenizer = new Markdoc.Tokenizer({ html: true });
+export const tokenizer = new Markdoc.Tokenizer({ html: true });
 
 export type Heading = {
   title: string;

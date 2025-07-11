@@ -1,22 +1,32 @@
 import { Button } from "@/components/Button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, Locale } from "@/lib/i18n-config";
-import {
-  createGetDocumentVersionsQueryOptions,
-  createGetDocVerTranslationsQueryOptions,
-} from "@/lib/query-options";
+import { cn } from "@/lib/utils";
+import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocuments } from "@/serverFunctions/document";
-import { createDocumentVersion } from "@/serverFunctions/documentVersion";
+import {
+  createDocumentVersion,
+  getDocumentVersionsListQueryOptions,
+} from "@/serverFunctions/documentVersion";
+import {
+  $createDocumentVersionTranslation,
+  $deleteDocumentVersionTranslation,
+  $updateDocumentVersionTranslation,
+  getDocumentVersionTranslationQueryOptions,
+} from "@/serverFunctions/documentVersionTranslation";
+import { config, processTokens, tokenizer } from "@/serverFunctions/getContent";
+import { markdown } from "@codemirror/lang-markdown";
+import Markdoc from "@markdoc/markdoc";
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useCallback, useState } from "react";
+import CodeMirror, { EditorView } from "@uiw/react-codemirror";
+import { LucideTrash2 } from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
-import CodeMirror from "@uiw/react-codemirror";
-import { markdown } from "@codemirror/lang-markdown";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
@@ -79,7 +89,7 @@ function RouteComponent() {
           {selectedVersionId ? (
             <TranslationDetails
               locale={selectedLocale}
-              versionId={selectedVersionId}
+              documentVersionId={selectedVersionId}
             />
           ) : (
             <p>Select a version</p>
@@ -100,16 +110,17 @@ function ListOfVersions({
   selectedVersionId: string | null;
 }) {
   const queryClient = useQueryClient();
-  const { data: versions } = useSuspenseQuery(
-    createGetDocumentVersionsQueryOptions(documentId)
-  );
+
+  const documentVersionsListQO = getDocumentVersionsListQueryOptions({
+    documentId,
+  });
+
+  const { data: versions } = useSuspenseQuery(documentVersionsListQO);
 
   async function handleAddNewVersion() {
     await createDocumentVersion({ data: { documentId } });
 
-    await queryClient.invalidateQueries(
-      createGetDocumentVersionsQueryOptions(documentId)
-    );
+    await queryClient.invalidateQueries(documentVersionsListQO);
   }
 
   return (
@@ -137,35 +148,136 @@ function ListOfVersions({
 }
 
 function TranslationDetails({
-  versionId,
+  documentVersionId,
   locale,
 }: {
-  versionId: string;
+  documentVersionId: string;
   locale: Locale;
 }) {
+  const documentVersionTranslationQO =
+    getDocumentVersionTranslationQueryOptions({
+      documentVersionId,
+      locale,
+    });
+
+  const queryClient = useQueryClient();
+
   const { data: versionDetails } = useSuspenseQuery(
-    createGetDocVerTranslationsQueryOptions({ versionId, locale })
+    documentVersionTranslationQO
   );
 
-  const [value, setValue] = useState("console.log('hello world!');");
+  const [value, setValue] = useState(versionDetails?.content);
+
+  useEffect(() => {
+    setValue(versionDetails?.content ?? "");
+  }, [versionDetails?.content]);
+
+  const { mutate: createTranslation } = useMutation({
+    mutationFn: $createDocumentVersionTranslation,
+    onSuccess: () => {
+      queryClient.invalidateQueries(documentVersionTranslationQO);
+    },
+  });
+
+  const { mutate: updateTranslation } = useMutation({
+    mutationFn: $updateDocumentVersionTranslation,
+    onSuccess: () => {
+      queryClient.invalidateQueries(documentVersionTranslationQO);
+    },
+  });
+
+  const { mutate: deleteTranslation } = useMutation({
+    mutationFn: $deleteDocumentVersionTranslation,
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+
+  function handleSubmit() {
+    if (!value) return;
+    if (!versionDetails) {
+      createTranslation({
+        data: { documentVersionId, locale, content: value, title: "" },
+      });
+    } else {
+      updateTranslation({
+        data: {
+          documentVersionId,
+          locale,
+          content: value,
+        },
+      });
+    }
+  }
+
+  function handleDelete() {
+    deleteTranslation({
+      data: {
+        documentVersionId,
+        locale,
+      },
+    });
+  }
+
   const onChange = useCallback((val: string) => {
     setValue(val);
   }, []);
 
+  const content = useMemo(() => {
+    if (!value) return null;
+    const tokens = tokenizer.tokenize(value);
+    const processed = processTokens(tokens);
+    const ast = Markdoc.parse(processed);
+
+    console.log(
+      "versionDetails?.updatedAt is a date",
+      versionDetails?.updatedAt instanceof Date
+    );
+
+    config.variables = {
+      ...config.variables,
+      locale,
+      updatedAt: versionDetails?.updatedAt.toLocaleDateString(),
+      version: `${versionDetails?.version.versionNumber}` || "Unknown",
+    };
+    return Markdoc.transform(ast, config);
+  }, [value, versionDetails]);
+
   return (
-    <div className="h-full w-full">
-      <p>Locale: {versionDetails?.locale}</p>
-      <p> Author: {versionDetails?.translator?.name || "Unknown"} </p>
-      <CodeMirror
-        value={value}
-        onChange={onChange}
-        extensions={[markdown()]}
-        height="500px"
-        basicSetup={{
-          lineNumbers: true,
-          foldGutter: false,
-        }}
-      />
+    <div className="flex h-full flex-col gap-1">
+      <Tabs defaultValue="edit">
+        <TabsList>
+          <TabsTrigger value="edit">Edit</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="edit">
+          <p>Locale: {versionDetails?.locale}</p>
+          <p> Author: {versionDetails?.translator?.name || "Unknown"} </p>
+          <CodeMirror
+            value={value}
+            onChange={onChange}
+            className="flex-1 p-2"
+            extensions={[markdown(), EditorView.lineWrapping]}
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              highlightActiveLine: false,
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="preview">
+          <RenderMarkdoc content={content} />
+        </TabsContent>
+      </Tabs>
+      <div className="flex justify-end gap-5">
+        <Button onClick={handleDelete} variant={"plain"} className="bg-white">
+          <LucideTrash2 className="text-red-600" />
+        </Button>
+        <Button onClick={handleSubmit} size={"lg"}>
+          {versionDetails ? "Update" : "Create"}
+        </Button>
+      </div>
     </div>
   );
 }
