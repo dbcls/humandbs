@@ -1,6 +1,6 @@
 import Markdoc from "@markdoc/markdoc";
 import React from "react";
-import * as components from "./components";
+import * as components from "./Components";
 import { getDocumentWithClassName } from "@/markdoc/nodes/Document";
 import { CatchBoundary } from "@tanstack/react-router";
 

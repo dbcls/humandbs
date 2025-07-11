@@ -16,7 +16,7 @@ export const newsItem = pgTable("news_item", {
 });
 
 export const newsTranslation = pgTable(
-  "news_translations",
+  "news_translation",
   {
     newsId: uuid("news_id")
       .notNull()

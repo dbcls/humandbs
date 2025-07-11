@@ -5,3 +5,5 @@ export const document = pgTable("document", {
   contentId: text("name").notNull(), // id for i18n to translate
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export type Document = typeof document.$inferSelect;

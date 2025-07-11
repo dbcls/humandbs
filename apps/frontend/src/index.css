@@ -87,6 +87,11 @@
     background-position: top;
     background-size: contain;
   }
+
+  .cm-editor {
+    height: 100%;
+    @apply rounded-sm p-5;
+  }
 }
 
 @layer utilities {

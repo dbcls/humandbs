@@ -21,6 +21,7 @@ import type { Locale, Messages } from "@/lib/i18n-config";
 import { NavLink } from "./NavLink";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "./Button";
+import { auth } from "@/lib/auth";
 
 type NavLinkId = keyof Messages["Navbar"];
 
