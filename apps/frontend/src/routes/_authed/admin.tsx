@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
@@ -85,11 +86,16 @@ function RouteComponent() {
       </Suspense>
 
       <div className="border-primary flex-1">
+        <LocaleSwitcher
+          locale={selectedLocale}
+          onSwitchLocale={setSelectedLocale}
+        />
         <Suspense fallback={<div>Loading...</div>}>
           {selectedVersionId ? (
             <TranslationDetails
               locale={selectedLocale}
               documentVersionId={selectedVersionId}
+              onSwitchLocale={setSelectedLocale}
             />
           ) : (
             <p>Select a version</p>
@@ -147,12 +153,32 @@ function ListOfVersions({
   );
 }
 
+function LocaleSwitcher({
+  locale,
+  onSwitchLocale,
+}: {
+  locale: Locale;
+  onSwitchLocale: (locale: Locale) => void;
+}) {
+  return (
+    <ToggleGroup type="single" value={locale} onValueChange={onSwitchLocale}>
+      {i18n.locales.map((loc) => (
+        <ToggleGroupItem key={loc} value={loc}>
+          {loc}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
 function TranslationDetails({
   documentVersionId,
   locale,
+  onSwitchLocale,
 }: {
   documentVersionId: string;
   locale: Locale;
+  onSwitchLocale: (locale: Locale) => void;
 }) {
   const documentVersionTranslationQO =
     getDocumentVersionTranslationQueryOptions({
@@ -228,11 +254,6 @@ function TranslationDetails({
     const tokens = tokenizer.tokenize(value);
     const processed = processTokens(tokens);
     const ast = Markdoc.parse(processed);
-
-    console.log(
-      "versionDetails?.updatedAt is a date",
-      versionDetails?.updatedAt instanceof Date
-    );
 
     config.variables = {
       ...config.variables,
