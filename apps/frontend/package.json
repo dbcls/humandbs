@@ -21,6 +21,7 @@
     "@formatjs/intl-localematcher": "^0.6.1",
     "@markdoc/markdoc": "^0.5.2",
     "@radix-ui/react-navigation-menu": "^1.2.13",
+    "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.12",
     "@radix-ui/react-toggle": "^1.1.9",

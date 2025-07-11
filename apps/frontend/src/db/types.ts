@@ -24,3 +24,7 @@ export const updateDocumentVersionTranslationSchema = createUpdateSchema(
 
 export type CreateDocumentVersionTranslationParams =
   typeof schema.documentVersionTranslation.$inferInsert;
+
+export const userSelectSchema = createSelectSchema(schema.user);
+
+export const userRoleSchema = userSelectSchema.pick({ role: true });

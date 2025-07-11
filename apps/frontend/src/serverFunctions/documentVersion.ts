@@ -1,11 +1,10 @@
 import { z } from "zod";
-
 import { documentVersion } from "@/db/schema";
 import { db } from "@/lib/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
-import { queryOptions } from "@tanstack/react-query";
 
 /** Read a document version list */
 export const $getDocumentVersions = createServerFn({
@@ -20,8 +19,6 @@ export const $getDocumentVersions = createServerFn({
   .handler(async ({ data }) => {
     const { documentId } = data;
 
-    console.log("documentId", documentId);
-
     const versions = await db.query.documentVersion.findMany({
       where: (table) => eq(table.documentId, documentId),
       with: {
@@ -32,8 +29,6 @@ export const $getDocumentVersions = createServerFn({
         },
       },
     });
-
-    console.log("versions", versions);
 
     return versions;
   });
@@ -54,7 +49,7 @@ export const getDocumentVersionsListQueryOptions = ({
   });
 
 /** Create document version */
-export const createDocumentVersion = createServerFn({
+export const $createDocumentVersion = createServerFn({
   method: "POST",
   response: "data",
 })
@@ -65,8 +60,7 @@ export const createDocumentVersion = createServerFn({
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
-    // TODO: Implement permissions
-    context.requirePermission("please");
+    context.checkPermission("documentVersions", "create");
 
     const user = context.user!;
 
@@ -94,7 +88,7 @@ export const createDocumentVersion = createServerFn({
   });
 
 /** Delete document version */
-export const deleteDocumentVersion = createServerFn({
+export const $deleteDocumentVersion = createServerFn({
   method: "POST",
   response: "data",
 })
@@ -107,7 +101,7 @@ export const deleteDocumentVersion = createServerFn({
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     // TODO: Implement permissions
-    context.requirePermission("please");
+    context.checkPermission("documentVersions", "delete");
 
     const { documentId, versionNumber } = data;
 

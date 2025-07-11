@@ -29,6 +29,8 @@ export const documentVersion = pgTable(
   (table) => [uniqueIndex().on(table.documentId, table.versionNumber)]
 );
 
+export type DocumentVersion = typeof documentVersion.$inferSelect;
+
 export const documentVersionTranslation = pgTable(
   "document_version_translation",
   {
@@ -44,6 +46,9 @@ export const documentVersionTranslation = pgTable(
   },
   (table) => [primaryKey({ columns: [table.documentVersionId, table.locale] })]
 );
+
+export type DocumentVersionTranslation =
+  typeof documentVersionTranslation.$inferSelect;
 
 export const documentVersionRelations = relations(
   documentVersion,

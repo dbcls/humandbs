@@ -1,12 +1,24 @@
 import { Button } from "@/components/Button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { UserRole } from "@/db/schema";
 import { i18n, Locale } from "@/lib/i18n-config";
+import { roles } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getDocuments } from "@/serverFunctions/document";
 import {
-  createDocumentVersion,
+  $getDocuments,
+  getDocumentsQueryOptions,
+} from "@/serverFunctions/document";
+import {
+  $createDocumentVersion,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import {
@@ -16,6 +28,7 @@ import {
   getDocumentVersionTranslationQueryOptions,
 } from "@/serverFunctions/documentVersionTranslation";
 import { config, processTokens, tokenizer } from "@/serverFunctions/getContent";
+import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
 import { markdown } from "@codemirror/lang-markdown";
 import Markdoc from "@markdoc/markdoc";
 import {
@@ -31,11 +44,34 @@ import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
-  loader: async () => await getDocuments(),
+  loader: async () => await $getDocuments(),
 });
 
 function RouteComponent() {
-  const documents = Route.useLoaderData();
+  return (
+    <Tabs defaultValue="news">
+      <TabsList>
+        <TabsTrigger value="news">News</TabsTrigger>
+        <TabsTrigger value="documents">Documents</TabsTrigger>
+        <TabsTrigger value="users">Users</TabsTrigger>
+      </TabsList>
+      <TabsContent value="news"></TabsContent>
+      <TabsContent value="documents">
+        <Suspense fallback={<div>Loading...</div>}>
+          <ManageDocuments />
+        </Suspense>
+      </TabsContent>
+      <TabsContent value="users">
+        <Suspense fallback={<div>Loading...</div>}>
+          <ManageUsers />
+        </Suspense>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function ManageDocuments() {
+  const { data: documents } = useSuspenseQuery(getDocumentsQueryOptions());
 
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
     null
@@ -58,7 +94,7 @@ function RouteComponent() {
 
   return (
     <section className="flex items-stretch gap-2">
-      <ul className="bg-primary max-w-md space-y-4 p-4">
+      <ul className="bg-primary max-w-md space-y-4 rounded-sm p-4">
         {documents.map((doc) => (
           <li key={doc.id}>
             <Button
@@ -85,7 +121,7 @@ function RouteComponent() {
         )}
       </Suspense>
 
-      <div className="border-primary flex-1">
+      <div className="flex-1 rounded-sm bg-white p-4">
         <LocaleSwitcher
           locale={selectedLocale}
           onSwitchLocale={setSelectedLocale}
@@ -95,7 +131,6 @@ function RouteComponent() {
             <TranslationDetails
               locale={selectedLocale}
               documentVersionId={selectedVersionId}
-              onSwitchLocale={setSelectedLocale}
             />
           ) : (
             <p>Select a version</p>
@@ -124,7 +159,7 @@ function ListOfVersions({
   const { data: versions } = useSuspenseQuery(documentVersionsListQO);
 
   async function handleAddNewVersion() {
-    await createDocumentVersion({ data: { documentId } });
+    await $createDocumentVersion({ data: { documentId } });
 
     await queryClient.invalidateQueries(documentVersionsListQO);
   }
@@ -174,11 +209,9 @@ function LocaleSwitcher({
 function TranslationDetails({
   documentVersionId,
   locale,
-  onSwitchLocale,
 }: {
   documentVersionId: string;
   locale: Locale;
-  onSwitchLocale: (locale: Locale) => void;
 }) {
   const documentVersionTranslationQO =
     getDocumentVersionTranslationQueryOptions({
@@ -278,7 +311,7 @@ function TranslationDetails({
           <CodeMirror
             value={value}
             onChange={onChange}
-            className="flex-1 p-2"
+            className="flex-1 rounded-sm"
             extensions={[markdown(), EditorView.lineWrapping]}
             basicSetup={{
               lineNumbers: false,
@@ -288,7 +321,7 @@ function TranslationDetails({
           />
         </TabsContent>
         <TabsContent value="preview">
-          <RenderMarkdoc content={content} />
+          <RenderMarkdoc className="mx-auto" content={content} />
         </TabsContent>
       </Tabs>
       <div className="flex justify-end gap-5">
@@ -300,5 +333,45 @@ function TranslationDetails({
         </Button>
       </div>
     </div>
+  );
+}
+
+function ManageUsers() {
+  const queryClient = useQueryClient();
+  const { data: users } = useSuspenseQuery(getUsersQueryOptions());
+
+  const { mutate: changeRole } = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: UserRole }) =>
+      $changeUserRole({ data: { id, role } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(getUsersQueryOptions());
+    },
+  });
+
+  return (
+    <ul className="bg-primary space-y-1 p-2">
+      {users.map((user) => (
+        <li className="flex justify-between" key={user.id}>
+          <span>{user.name}</span>
+          <Select
+            onValueChange={(value) =>
+              changeRole({ id: user.id, role: value as UserRole })
+            }
+            value={user.role || undefined}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.map((role) => (
+                <SelectItem key={role} value={role}>
+                  {role}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </li>
+      ))}
+    </ul>
   );
 }

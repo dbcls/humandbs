@@ -37,8 +37,6 @@ export const $getDocumentVersionTranslation = createServerFn({
       },
     });
 
-    console.log("translation", translation);
-
     return translation || null;
   });
 
@@ -49,7 +47,6 @@ export function getDocumentVersionTranslationQueryOptions({
   locale: Locale;
   documentVersionId: string;
 }) {
-  console.log("getDocumentVersionTranslationQueryOptions", documentVersionId);
   return queryOptions({
     queryKey: ["document", "locale", locale, "versionId", documentVersionId],
     queryFn: () => {
@@ -72,7 +69,7 @@ export const $createDocumentVersionTranslation = createServerFn({
   .validator(insertDocumentVersionTranslationSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
-    context.requirePermission("please");
+    context.checkPermission("documentVersionTranslations", "create");
 
     const user = context.user!;
 
@@ -89,7 +86,7 @@ export const $updateDocumentVersionTranslation = createServerFn({
   .validator(updateDocumentVersionTranslationSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
-    context.requirePermission("please");
+    context.checkPermission("documentVersionTranslations", "update");
 
     return await db
       .update(documentVersionTranslation)
@@ -114,7 +111,7 @@ export const $deleteDocumentVersionTranslation = createServerFn({
   .validator(updateDocumentVersionTranslationSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
-    context.requirePermission("please");
+    context.checkPermission("documentVersionTranslations", "update");
 
     return await db
       .delete(documentVersionTranslation)

@@ -90,6 +90,7 @@
 
   .cm-editor {
     height: 100%;
+    @apply rounded-sm p-5;
   }
 }
 

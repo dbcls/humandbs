@@ -1,13 +1,9 @@
-import { Document } from "@/db/schema";
 import { db } from "@/lib/database";
+import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
-interface DocumentListItem extends Document {
-  locales: string[];
-}
-
 /** List all documents */
-export const getDocuments = createServerFn({
+export const $getDocuments = createServerFn({
   type: "dynamic",
   method: "GET",
   response: "data",
@@ -16,3 +12,11 @@ export const getDocuments = createServerFn({
 
   return documents;
 });
+
+export function getDocumentsQueryOptions() {
+  return queryOptions({
+    queryKey: ["documents"],
+    queryFn: $getDocuments,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
