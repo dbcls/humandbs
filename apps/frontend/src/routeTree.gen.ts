@@ -18,21 +18,21 @@ import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as MainLangRouteRouteImport } from './routes/_main/$lang/route'
 import { Route as MainLangIndexRouteImport } from './routes/_main/$lang/index'
 import { Route as MainLangLayoutRouteImport } from './routes/_main/$lang/_layout'
-import { Route as MainLangLayoutDataSubmissionRouteImport } from './routes/_main/$lang/_layout/data-submission'
 import { Route as MainLangLayoutGuidelinesRouteRouteImport } from './routes/_main/$lang/_layout/guidelines/route'
 import { Route as MainLangLayoutResearchListIndexRouteImport } from './routes/_main/$lang/_layout/research-list/index'
 import { Route as MainLangLayoutGuidelinesIndexRouteImport } from './routes/_main/$lang/_layout/guidelines/index'
 import { Route as MainLangLayoutDataUsageIndexRouteImport } from './routes/_main/$lang/_layout/data-usage/index'
+import { Route as MainLangLayoutDataSubmissionIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/index'
 import { Route as MainLangLayoutContactIndexRouteImport } from './routes/_main/$lang/_layout/contact/index'
 import { Route as MainLangLayoutAchievementsIndexRouteImport } from './routes/_main/$lang/_layout/achievements/index'
 import { Route as MainLangLayoutAboutDataIndexRouteImport } from './routes/_main/$lang/_layout/about-data/index'
 import { Route as MainLangLayoutGuidelinesSlugRouteImport } from './routes/_main/$lang/_layout/guidelines/$slug'
-import { Route as MainLangLayoutDataSubmissionNavigationRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation'
 import { Route as MainLangLayoutResearchListResearchIdIndexRouteImport } from './routes/_main/$lang/_layout/research-list/$researchId/index'
+import { Route as MainLangLayoutDataSubmissionNavigationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/index'
 import { Route as MainLangLayoutDataSubmissionApplicationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/application/index'
 import { Route as MainLangLayoutResearchListResearchIdResearchVerRouteImport } from './routes/_main/$lang/_layout/research-list/$researchId/$researchVer'
 import { Route as MainLangLayoutGuidelinesRevisionRevRouteImport } from './routes/_main/$lang/_layout/guidelines/revision/$rev'
-import { Route as MainLangLayoutDataSubmissionNavigationSomethngRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation.somethng'
+import { Route as MainLangLayoutDataSubmissionNavigationBeforeSubmissionRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/before-submission'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth.$'
 
 const rootServerRouteImport = createServerRootRoute()
@@ -69,12 +69,6 @@ const MainLangLayoutRoute = MainLangLayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => MainLangRouteRoute,
 } as any)
-const MainLangLayoutDataSubmissionRoute =
-  MainLangLayoutDataSubmissionRouteImport.update({
-    id: '/data-submission',
-    path: '/data-submission',
-    getParentRoute: () => MainLangLayoutRoute,
-  } as any)
 const MainLangLayoutGuidelinesRouteRoute =
   MainLangLayoutGuidelinesRouteRouteImport.update({
     id: '/guidelines',
@@ -97,6 +91,12 @@ const MainLangLayoutDataUsageIndexRoute =
   MainLangLayoutDataUsageIndexRouteImport.update({
     id: '/data-usage/',
     path: '/data-usage/',
+    getParentRoute: () => MainLangLayoutRoute,
+  } as any)
+const MainLangLayoutDataSubmissionIndexRoute =
+  MainLangLayoutDataSubmissionIndexRouteImport.update({
+    id: '/data-submission/',
+    path: '/data-submission/',
     getParentRoute: () => MainLangLayoutRoute,
   } as any)
 const MainLangLayoutContactIndexRoute =
@@ -123,23 +123,23 @@ const MainLangLayoutGuidelinesSlugRoute =
     path: '/$slug',
     getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
-const MainLangLayoutDataSubmissionNavigationRoute =
-  MainLangLayoutDataSubmissionNavigationRouteImport.update({
-    id: '/navigation',
-    path: '/navigation',
-    getParentRoute: () => MainLangLayoutDataSubmissionRoute,
-  } as any)
 const MainLangLayoutResearchListResearchIdIndexRoute =
   MainLangLayoutResearchListResearchIdIndexRouteImport.update({
     id: '/research-list/$researchId/',
     path: '/research-list/$researchId/',
     getParentRoute: () => MainLangLayoutRoute,
   } as any)
+const MainLangLayoutDataSubmissionNavigationIndexRoute =
+  MainLangLayoutDataSubmissionNavigationIndexRouteImport.update({
+    id: '/data-submission/navigation/',
+    path: '/data-submission/navigation/',
+    getParentRoute: () => MainLangLayoutRoute,
+  } as any)
 const MainLangLayoutDataSubmissionApplicationIndexRoute =
   MainLangLayoutDataSubmissionApplicationIndexRouteImport.update({
-    id: '/application/',
-    path: '/application/',
-    getParentRoute: () => MainLangLayoutDataSubmissionRoute,
+    id: '/data-submission/application/',
+    path: '/data-submission/application/',
+    getParentRoute: () => MainLangLayoutRoute,
   } as any)
 const MainLangLayoutResearchListResearchIdResearchVerRoute =
   MainLangLayoutResearchListResearchIdResearchVerRouteImport.update({
@@ -153,11 +153,11 @@ const MainLangLayoutGuidelinesRevisionRevRoute =
     path: '/revision/$rev',
     getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
-const MainLangLayoutDataSubmissionNavigationSomethngRoute =
-  MainLangLayoutDataSubmissionNavigationSomethngRouteImport.update({
-    id: '/somethng',
-    path: '/somethng',
-    getParentRoute: () => MainLangLayoutDataSubmissionNavigationRoute,
+const MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute =
+  MainLangLayoutDataSubmissionNavigationBeforeSubmissionRouteImport.update({
+    id: '/data-submission/navigation/before-submission',
+    path: '/data-submission/navigation/before-submission',
+    getParentRoute: () => MainLangLayoutRoute,
   } as any)
 const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
   id: '/api/auth/$',
@@ -171,38 +171,38 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthedAdminRoute
   '/$lang/': typeof MainLangIndexRoute
   '/$lang/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
-  '/$lang/data-submission': typeof MainLangLayoutDataSubmissionRouteWithChildren
-  '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteWithChildren
   '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/$lang/about-data': typeof MainLangLayoutAboutDataIndexRoute
   '/$lang/achievements': typeof MainLangLayoutAchievementsIndexRoute
   '/$lang/contact': typeof MainLangLayoutContactIndexRoute
+  '/$lang/data-submission': typeof MainLangLayoutDataSubmissionIndexRoute
   '/$lang/data-usage': typeof MainLangLayoutDataUsageIndexRoute
   '/$lang/guidelines/': typeof MainLangLayoutGuidelinesIndexRoute
   '/$lang/research-list': typeof MainLangLayoutResearchListIndexRoute
-  '/$lang/data-submission/navigation/somethng': typeof MainLangLayoutDataSubmissionNavigationSomethngRoute
+  '/$lang/data-submission/navigation/before-submission': typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute
   '/$lang/guidelines/revision/$rev': typeof MainLangLayoutGuidelinesRevisionRevRoute
   '/$lang/research-list/$researchId/$researchVer': typeof MainLangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/data-submission/application': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
+  '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationIndexRoute
   '/$lang/research-list/$researchId': typeof MainLangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login-error': typeof LoginErrorRoute
   '/admin': typeof AuthedAdminRoute
   '/$lang': typeof MainLangIndexRoute
-  '/$lang/data-submission': typeof MainLangLayoutDataSubmissionRouteWithChildren
-  '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteWithChildren
   '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/$lang/about-data': typeof MainLangLayoutAboutDataIndexRoute
   '/$lang/achievements': typeof MainLangLayoutAchievementsIndexRoute
   '/$lang/contact': typeof MainLangLayoutContactIndexRoute
+  '/$lang/data-submission': typeof MainLangLayoutDataSubmissionIndexRoute
   '/$lang/data-usage': typeof MainLangLayoutDataUsageIndexRoute
   '/$lang/guidelines': typeof MainLangLayoutGuidelinesIndexRoute
   '/$lang/research-list': typeof MainLangLayoutResearchListIndexRoute
-  '/$lang/data-submission/navigation/somethng': typeof MainLangLayoutDataSubmissionNavigationSomethngRoute
+  '/$lang/data-submission/navigation/before-submission': typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute
   '/$lang/guidelines/revision/$rev': typeof MainLangLayoutGuidelinesRevisionRevRoute
   '/$lang/research-list/$researchId/$researchVer': typeof MainLangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/data-submission/application': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
+  '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationIndexRoute
   '/$lang/research-list/$researchId': typeof MainLangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRoutesById {
@@ -215,19 +215,19 @@ export interface FileRoutesById {
   '/_main/$lang/_layout': typeof MainLangLayoutRouteWithChildren
   '/_main/$lang/': typeof MainLangIndexRoute
   '/_main/$lang/_layout/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
-  '/_main/$lang/_layout/data-submission': typeof MainLangLayoutDataSubmissionRouteWithChildren
-  '/_main/$lang/_layout/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteWithChildren
   '/_main/$lang/_layout/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/_main/$lang/_layout/about-data/': typeof MainLangLayoutAboutDataIndexRoute
   '/_main/$lang/_layout/achievements/': typeof MainLangLayoutAchievementsIndexRoute
   '/_main/$lang/_layout/contact/': typeof MainLangLayoutContactIndexRoute
+  '/_main/$lang/_layout/data-submission/': typeof MainLangLayoutDataSubmissionIndexRoute
   '/_main/$lang/_layout/data-usage/': typeof MainLangLayoutDataUsageIndexRoute
   '/_main/$lang/_layout/guidelines/': typeof MainLangLayoutGuidelinesIndexRoute
   '/_main/$lang/_layout/research-list/': typeof MainLangLayoutResearchListIndexRoute
-  '/_main/$lang/_layout/data-submission/navigation/somethng': typeof MainLangLayoutDataSubmissionNavigationSomethngRoute
+  '/_main/$lang/_layout/data-submission/navigation/before-submission': typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute
   '/_main/$lang/_layout/guidelines/revision/$rev': typeof MainLangLayoutGuidelinesRevisionRevRoute
   '/_main/$lang/_layout/research-list/$researchId/$researchVer': typeof MainLangLayoutResearchListResearchIdResearchVerRoute
   '/_main/$lang/_layout/data-submission/application/': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
+  '/_main/$lang/_layout/data-submission/navigation/': typeof MainLangLayoutDataSubmissionNavigationIndexRoute
   '/_main/$lang/_layout/research-list/$researchId/': typeof MainLangLayoutResearchListResearchIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -238,38 +238,38 @@ export interface FileRouteTypes {
     | '/admin'
     | '/$lang/'
     | '/$lang/guidelines'
-    | '/$lang/data-submission'
-    | '/$lang/data-submission/navigation'
     | '/$lang/guidelines/$slug'
     | '/$lang/about-data'
     | '/$lang/achievements'
     | '/$lang/contact'
+    | '/$lang/data-submission'
     | '/$lang/data-usage'
     | '/$lang/guidelines/'
     | '/$lang/research-list'
-    | '/$lang/data-submission/navigation/somethng'
+    | '/$lang/data-submission/navigation/before-submission'
     | '/$lang/guidelines/revision/$rev'
     | '/$lang/research-list/$researchId/$researchVer'
     | '/$lang/data-submission/application'
+    | '/$lang/data-submission/navigation'
     | '/$lang/research-list/$researchId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login-error'
     | '/admin'
     | '/$lang'
-    | '/$lang/data-submission'
-    | '/$lang/data-submission/navigation'
     | '/$lang/guidelines/$slug'
     | '/$lang/about-data'
     | '/$lang/achievements'
     | '/$lang/contact'
+    | '/$lang/data-submission'
     | '/$lang/data-usage'
     | '/$lang/guidelines'
     | '/$lang/research-list'
-    | '/$lang/data-submission/navigation/somethng'
+    | '/$lang/data-submission/navigation/before-submission'
     | '/$lang/guidelines/revision/$rev'
     | '/$lang/research-list/$researchId/$researchVer'
     | '/$lang/data-submission/application'
+    | '/$lang/data-submission/navigation'
     | '/$lang/research-list/$researchId'
   id:
     | '__root__'
@@ -281,19 +281,19 @@ export interface FileRouteTypes {
     | '/_main/$lang/_layout'
     | '/_main/$lang/'
     | '/_main/$lang/_layout/guidelines'
-    | '/_main/$lang/_layout/data-submission'
-    | '/_main/$lang/_layout/data-submission/navigation'
     | '/_main/$lang/_layout/guidelines/$slug'
     | '/_main/$lang/_layout/about-data/'
     | '/_main/$lang/_layout/achievements/'
     | '/_main/$lang/_layout/contact/'
+    | '/_main/$lang/_layout/data-submission/'
     | '/_main/$lang/_layout/data-usage/'
     | '/_main/$lang/_layout/guidelines/'
     | '/_main/$lang/_layout/research-list/'
-    | '/_main/$lang/_layout/data-submission/navigation/somethng'
+    | '/_main/$lang/_layout/data-submission/navigation/before-submission'
     | '/_main/$lang/_layout/guidelines/revision/$rev'
     | '/_main/$lang/_layout/research-list/$researchId/$researchVer'
     | '/_main/$lang/_layout/data-submission/application/'
+    | '/_main/$lang/_layout/data-submission/navigation/'
     | '/_main/$lang/_layout/research-list/$researchId/'
   fileRoutesById: FileRoutesById
 }
@@ -375,13 +375,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutRouteImport
       parentRoute: typeof MainLangRouteRoute
     }
-    '/_main/$lang/_layout/data-submission': {
-      id: '/_main/$lang/_layout/data-submission'
-      path: '/data-submission'
-      fullPath: '/$lang/data-submission'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionRouteImport
-      parentRoute: typeof MainLangLayoutRoute
-    }
     '/_main/$lang/_layout/guidelines': {
       id: '/_main/$lang/_layout/guidelines'
       path: '/guidelines'
@@ -408,6 +401,13 @@ declare module '@tanstack/react-router' {
       path: '/data-usage'
       fullPath: '/$lang/data-usage'
       preLoaderRoute: typeof MainLangLayoutDataUsageIndexRouteImport
+      parentRoute: typeof MainLangLayoutRoute
+    }
+    '/_main/$lang/_layout/data-submission/': {
+      id: '/_main/$lang/_layout/data-submission/'
+      path: '/data-submission'
+      fullPath: '/$lang/data-submission'
+      preLoaderRoute: typeof MainLangLayoutDataSubmissionIndexRouteImport
       parentRoute: typeof MainLangLayoutRoute
     }
     '/_main/$lang/_layout/contact/': {
@@ -438,13 +438,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutGuidelinesSlugRouteImport
       parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation': {
-      id: '/_main/$lang/_layout/data-submission/navigation'
-      path: '/navigation'
-      fullPath: '/$lang/data-submission/navigation'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionRoute
-    }
     '/_main/$lang/_layout/research-list/$researchId/': {
       id: '/_main/$lang/_layout/research-list/$researchId/'
       path: '/research-list/$researchId'
@@ -452,12 +445,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutResearchListResearchIdIndexRouteImport
       parentRoute: typeof MainLangLayoutRoute
     }
+    '/_main/$lang/_layout/data-submission/navigation/': {
+      id: '/_main/$lang/_layout/data-submission/navigation/'
+      path: '/data-submission/navigation'
+      fullPath: '/$lang/data-submission/navigation'
+      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationIndexRouteImport
+      parentRoute: typeof MainLangLayoutRoute
+    }
     '/_main/$lang/_layout/data-submission/application/': {
       id: '/_main/$lang/_layout/data-submission/application/'
-      path: '/application'
+      path: '/data-submission/application'
       fullPath: '/$lang/data-submission/application'
       preLoaderRoute: typeof MainLangLayoutDataSubmissionApplicationIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionRoute
+      parentRoute: typeof MainLangLayoutRoute
     }
     '/_main/$lang/_layout/research-list/$researchId/$researchVer': {
       id: '/_main/$lang/_layout/research-list/$researchId/$researchVer'
@@ -473,12 +473,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutGuidelinesRevisionRevRouteImport
       parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation/somethng': {
-      id: '/_main/$lang/_layout/data-submission/navigation/somethng'
-      path: '/somethng'
-      fullPath: '/$lang/data-submission/navigation/somethng'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationSomethngRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRoute
+    '/_main/$lang/_layout/data-submission/navigation/before-submission': {
+      id: '/_main/$lang/_layout/data-submission/navigation/before-submission'
+      path: '/data-submission/navigation/before-submission'
+      fullPath: '/$lang/data-submission/navigation/before-submission'
+      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRouteImport
+      parentRoute: typeof MainLangLayoutRoute
     }
   }
 }
@@ -524,63 +524,39 @@ const MainLangLayoutGuidelinesRouteRouteWithChildren =
     MainLangLayoutGuidelinesRouteRouteChildren,
   )
 
-interface MainLangLayoutDataSubmissionNavigationRouteChildren {
-  MainLangLayoutDataSubmissionNavigationSomethngRoute: typeof MainLangLayoutDataSubmissionNavigationSomethngRoute
-}
-
-const MainLangLayoutDataSubmissionNavigationRouteChildren: MainLangLayoutDataSubmissionNavigationRouteChildren =
-  {
-    MainLangLayoutDataSubmissionNavigationSomethngRoute:
-      MainLangLayoutDataSubmissionNavigationSomethngRoute,
-  }
-
-const MainLangLayoutDataSubmissionNavigationRouteWithChildren =
-  MainLangLayoutDataSubmissionNavigationRoute._addFileChildren(
-    MainLangLayoutDataSubmissionNavigationRouteChildren,
-  )
-
-interface MainLangLayoutDataSubmissionRouteChildren {
-  MainLangLayoutDataSubmissionNavigationRoute: typeof MainLangLayoutDataSubmissionNavigationRouteWithChildren
-  MainLangLayoutDataSubmissionApplicationIndexRoute: typeof MainLangLayoutDataSubmissionApplicationIndexRoute
-}
-
-const MainLangLayoutDataSubmissionRouteChildren: MainLangLayoutDataSubmissionRouteChildren =
-  {
-    MainLangLayoutDataSubmissionNavigationRoute:
-      MainLangLayoutDataSubmissionNavigationRouteWithChildren,
-    MainLangLayoutDataSubmissionApplicationIndexRoute:
-      MainLangLayoutDataSubmissionApplicationIndexRoute,
-  }
-
-const MainLangLayoutDataSubmissionRouteWithChildren =
-  MainLangLayoutDataSubmissionRoute._addFileChildren(
-    MainLangLayoutDataSubmissionRouteChildren,
-  )
-
 interface MainLangLayoutRouteChildren {
   MainLangLayoutGuidelinesRouteRoute: typeof MainLangLayoutGuidelinesRouteRouteWithChildren
-  MainLangLayoutDataSubmissionRoute: typeof MainLangLayoutDataSubmissionRouteWithChildren
   MainLangLayoutAboutDataIndexRoute: typeof MainLangLayoutAboutDataIndexRoute
   MainLangLayoutAchievementsIndexRoute: typeof MainLangLayoutAchievementsIndexRoute
   MainLangLayoutContactIndexRoute: typeof MainLangLayoutContactIndexRoute
+  MainLangLayoutDataSubmissionIndexRoute: typeof MainLangLayoutDataSubmissionIndexRoute
   MainLangLayoutDataUsageIndexRoute: typeof MainLangLayoutDataUsageIndexRoute
   MainLangLayoutResearchListIndexRoute: typeof MainLangLayoutResearchListIndexRoute
+  MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute
   MainLangLayoutResearchListResearchIdResearchVerRoute: typeof MainLangLayoutResearchListResearchIdResearchVerRoute
+  MainLangLayoutDataSubmissionApplicationIndexRoute: typeof MainLangLayoutDataSubmissionApplicationIndexRoute
+  MainLangLayoutDataSubmissionNavigationIndexRoute: typeof MainLangLayoutDataSubmissionNavigationIndexRoute
   MainLangLayoutResearchListResearchIdIndexRoute: typeof MainLangLayoutResearchListResearchIdIndexRoute
 }
 
 const MainLangLayoutRouteChildren: MainLangLayoutRouteChildren = {
   MainLangLayoutGuidelinesRouteRoute:
     MainLangLayoutGuidelinesRouteRouteWithChildren,
-  MainLangLayoutDataSubmissionRoute:
-    MainLangLayoutDataSubmissionRouteWithChildren,
   MainLangLayoutAboutDataIndexRoute: MainLangLayoutAboutDataIndexRoute,
   MainLangLayoutAchievementsIndexRoute: MainLangLayoutAchievementsIndexRoute,
   MainLangLayoutContactIndexRoute: MainLangLayoutContactIndexRoute,
+  MainLangLayoutDataSubmissionIndexRoute:
+    MainLangLayoutDataSubmissionIndexRoute,
   MainLangLayoutDataUsageIndexRoute: MainLangLayoutDataUsageIndexRoute,
   MainLangLayoutResearchListIndexRoute: MainLangLayoutResearchListIndexRoute,
+  MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute:
+    MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute,
   MainLangLayoutResearchListResearchIdResearchVerRoute:
     MainLangLayoutResearchListResearchIdResearchVerRoute,
+  MainLangLayoutDataSubmissionApplicationIndexRoute:
+    MainLangLayoutDataSubmissionApplicationIndexRoute,
+  MainLangLayoutDataSubmissionNavigationIndexRoute:
+    MainLangLayoutDataSubmissionNavigationIndexRoute,
   MainLangLayoutResearchListResearchIdIndexRoute:
     MainLangLayoutResearchListResearchIdIndexRoute,
 }
