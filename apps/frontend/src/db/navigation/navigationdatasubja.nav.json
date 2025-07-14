@@ -1,0 +1,42 @@
+{
+  "$schema": "./navigationschema.json",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "ステップ1のオプション",
+      "text": "最初のステップの説明文です。以下のオプションから一つを選択してください。",
+      "options": [
+        {
+          "id": "option1",
+          "title": "オプション 1-1",
+          "nextStep": "step2"
+        },
+        {
+          "id": "option2",
+          "title": "オプション 1-2",
+          "link": "https://www.example.com/create-account",
+          "linkText": "D-wayアカウント登録"
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "ステップ2のオプション",
+      "text": "2番目のステップの説明文です。以下のオプションから一つを選択してください。",
+      "options": [
+        {
+          "id": "option3",
+          "title": "オプション 2-1",
+          "link": "https://www.example.com/enter-id",
+          "linkText": "データ提供申請IDの入力"
+        },
+        {
+          "id": "option4",
+          "title": "オプション 2-2",
+          "link": "https://www.example.com/make-submission",
+          "linkText": "申請に進む"
+        }
+      ]
+    }
+  ]
+}

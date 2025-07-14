@@ -1,0 +1,102 @@
+{
+  "$schema": "./navigationschema.json",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "Step 1 Options",
+      "text": "Explanation text for the first step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option1",
+          "title": "Option 1-1",
+          "nextStep": "step2"
+        },
+        {
+          "id": "option2",
+          "title": "Option 1-2",
+          "link": "https://www.ddbj.nig.ac.jp/submission-navigation.html",
+          "linkText": "Select a database"
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "Step 2 Options",
+      "text": "Explanation text for the second step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option3",
+          "title": "Option 2-1",
+          "nextStep": "step3"
+        },
+        {
+          "id": "option4",
+          "title": "Option 2-2",
+          "link": "before-submission",
+          "linkText": "Before submission system"
+        },
+        {
+          "id": "option5",
+          "title": "Option 2-3",
+          "link": "before-submission",
+          "linkText": "Before submission system"
+        }
+      ]
+    },
+    {
+      "id": "step3",
+      "title": "Step 3 Options",
+      "text": "Explanation text for the third step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option6",
+          "title": "Option 3-1",
+          "link": "before-submission",
+          "linkText": "Before submission system"
+        },
+        {
+          "id": "option7",
+          "title": "Option 3-2",
+          "nextStep": "step4"
+        }
+      ]
+    },
+    {
+      "id": "step4",
+      "title": "Step 4 Options",
+      "text": "Explanation text for the fourth step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option8",
+          "title": "Option 4-1",
+          "link": "before-submission",
+          "linkText": "Before submission system"
+        },
+        {
+          "id": "option9",
+          "title": "Option 4-2",
+          "nextStep": "step5"
+        }
+      ]
+    },
+    {
+      "id": "step5",
+      "title": "Step 5 Options",
+      "text": "Explanation text for the fifth step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option10",
+          "title": "Option 5-1",
+          "link": "before-submission",
+          "linkText": "Before submission system"
+        },
+        {
+          "id": "option11",
+          "title": "Option 5-2",
+          "link": "https://www.ddbj.nig.ac.jp/submission-navigation.html?state=3dMgWWX3tFJcUi2aYAyLk4XgNkCE",
+          "linkText": "Select a database"
+        }
+      ]
+    }
+  ]
+}

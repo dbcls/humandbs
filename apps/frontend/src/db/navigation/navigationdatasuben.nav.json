@@ -1,0 +1,42 @@
+{
+  "$schema": "./navigationschema.json",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "Step 1 Options",
+      "text": "Explanation text for the first step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option1",
+          "title": "Option 1-1",
+          "nextStep": "step2"
+        },
+        {
+          "id": "option2",
+          "title": "Option 1-2",
+          "link": "https://www.example.com/create-account",
+          "linkText": "Create a D-way account"
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "Step 2 Options",
+      "text": "Explanation text for the second step. Please select one of the following options.",
+      "options": [
+        {
+          "id": "option3",
+          "title": "Option 2-1",
+          "link": "https://www.example.com/enter-id",
+          "linkText": "Enter your submission ID"
+        },
+        {
+          "id": "option4",
+          "title": "Option 2-2",
+          "link": "https://www.example.com/make-submission",
+          "linkText": "Make a submission"
+        }
+      ]
+    }
+  ]
+}

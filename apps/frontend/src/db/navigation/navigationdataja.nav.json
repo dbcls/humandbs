@@ -1,0 +1,102 @@
+{
+  "$schema": "./navigationschema.json",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "ステップ1のオプション",
+      "text": "最初のステップの説明テキストです。以下のオプションの中から一つを選択してください。",
+      "options": [
+        {
+          "id": "option1",
+          "title": "オプション 1-1",
+          "nextStep": "step2"
+        },
+        {
+          "id": "option2",
+          "title": "オプション 1-2",
+          "link": "https://www.ddbj.nig.ac.jp/submission-navigation.html",
+          "linkText": "データベースを選ぶ"
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "ステップ2のオプション",
+      "text": "2番目のステップの説明テキストです。以下のオプションの中から一つを選択してください。",
+      "options": [
+        {
+          "id": "option3",
+          "title": "オプション 2-1",
+          "nextStep": "step3"
+        },
+        {
+          "id": "option4",
+          "title": "オプション 2-2",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option5",
+          "title": "オプション 2-3",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        }
+      ]
+    },
+    {
+      "id": "step3",
+      "title": "ステップ3のオプション",
+      "text": "3番目のステップの説明テキストです。以下のオプションの中から一つを選択してください。",
+      "options": [
+        {
+          "id": "option6",
+          "title": "オプション 3-1",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option7",
+          "title": "オプション 3-2",
+          "nextStep": "step4"
+        }
+      ]
+    },
+    {
+      "id": "step4",
+      "title": "ステップ4のオプション",
+      "text": "4番目のステップの説明テキストです。以下のオプションの中から一つを選択してください。",
+      "options": [
+        {
+          "id": "option8",
+          "title": "オプション 4-1",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option9",
+          "title": "オプション 4-2",
+          "nextStep": "step5"
+        }
+      ]
+    },
+    {
+      "id": "step5",
+      "title": "ステップ5のオプション",
+      "text": "5番目のステップの説明テキストです。以下のオプションの中から一つを選択してください。",
+      "options": [
+        {
+          "id": "option10",
+          "title": "オプション 5-1",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option11",
+          "title": "オプション 5-2",
+          "link": "https://www.ddbj.nig.ac.jp/submission-navigation.html?state=3dMgWWX3tFJcUi2aYAyLk4XgNkCE",
+          "linkText": "データベースを選ぶ"
+        }
+      ]
+    }
+  ]
+}
