@@ -8,12 +8,12 @@ export function RenderMarkdoc({
   content,
   className,
 }: {
-  content: any;
+  content: string;
   className?: string;
 }) {
   return (
     <CatchBoundary getResetKey={() => "reset"}>
-      {Markdoc.renderers.react(content, React, {
+      {Markdoc.renderers.react(JSON.stringify(content), React, {
         components: {
           ...components,
           Document: getDocumentWithClassName(className),

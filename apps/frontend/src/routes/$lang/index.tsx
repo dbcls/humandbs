@@ -4,11 +4,15 @@ import InfographicsImg from "@/assets/Infographics.png";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { News, NewsItem } from "@/components/FrontNews";
+import { Skeleton } from "@/components/ui/skeleton";
 import { localeSchema } from "@/lib/i18n-config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getContent } from "@/serverFunctions/getContent";
+import { getDocumentLatestVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const Route = createFileRoute("/$lang/")({
   component: Index,
@@ -17,9 +21,12 @@ export const Route = createFileRoute("/$lang/")({
   }),
 
   loader: async ({ context }) => {
-    const data = await getContent({
-      data: { contentId: "home", lang: context.lang },
-    });
+    const data = await context.queryClient.ensureQueryData(
+      getDocumentLatestVersionTranslationQueryOptions({
+        contentId: "home",
+        locale: context.lang,
+      })
+    );
 
     return data;
   },
@@ -28,6 +35,7 @@ export const Route = createFileRoute("/$lang/")({
       crumb: "Home",
     };
   },
+  errorComponent: (context) => <div>{context.error.message}</div>,
 });
 
 const dummyNews: NewsItem[] = [
@@ -45,8 +53,6 @@ const dummyNews: NewsItem[] = [
 ];
 
 function Index() {
-  const { content } = Route.useLoaderData();
-
   const navigate = Route.useNavigate();
 
   const t = useTranslations("Front");
@@ -56,7 +62,9 @@ function Index() {
     <section className="flex flex-col gap-8">
       <section className="flex h-fit items-start justify-between gap-8">
         <div className="flex flex-1 flex-col items-center">
-          <RenderMarkdoc content={JSON.parse(content)} />
+          <Suspense fallback={<Skeleton />}>
+            <HomeContent />
+          </Suspense>
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button variant={"accent"} size={"lg"}>
@@ -84,6 +92,19 @@ function Index() {
       </Card>
     </section>
   );
+}
+
+function HomeContent() {
+  const { lang } = Route.useRouteContext();
+
+  const { data } = useSuspenseQuery(
+    getDocumentLatestVersionTranslationQueryOptions({
+      contentId: "home",
+      locale: lang,
+    })
+  );
+
+  return <RenderMarkdoc content={data.content} />;
 }
 
 type InfographicsItem = {
