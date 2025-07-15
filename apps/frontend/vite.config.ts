@@ -1,6 +1,7 @@
-import { tanstackStart } from "@tanstack/react-start-plugin";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   server: {
@@ -18,6 +19,8 @@ export default defineConfig({
       public: {
         dir: "assets",
       },
+      customViteReactPlugin: true,
     }),
+    react(),
   ],
 });

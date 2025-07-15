@@ -1,4 +1,5 @@
 import Markdoc, { type Schema } from "@markdoc/markdoc";
+import { MarkdocTag } from "../tags/types";
 
 /**
  * Generate an id for a heading to be able to jump to it from an index contents
@@ -16,7 +17,7 @@ function generateID(children, attributes) {
 }
 
 export const heading: Schema = {
-  children: ["inline"],
+  // children: ["inline"],
   attributes: {
     id: { type: String },
     level: { type: Number, required: true, default: 1 },
@@ -33,4 +34,4 @@ export const heading: Schema = {
       children
     );
   },
-};
+} satisfies MarkdocTag;

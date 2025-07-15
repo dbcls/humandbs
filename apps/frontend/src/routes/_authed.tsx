@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authed")({
 
     if (error.cause === "notAuthed") {
       return (
-        <div className="flex items-center justify-center p-12">
+        <div className="flex flex-col items-center justify-center p-12">
           <p>Please login here</p>
           <Button onClick={handleLogin}> Login with GitHub </Button>
         </div>

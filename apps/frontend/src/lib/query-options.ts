@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { ContentId } from "./content-config";
 import { Locale } from "./i18n-config";
 import { getContent } from "@/serverFunctions/getContent";
-import { getDocuments } from "@/serverFunctions/document";
+import { $getDocuments } from "@/serverFunctions/document";
 import { $getDocumentVersions } from "@/serverFunctions/documentVersion";
 import { $getDocumentVersionTranslation } from "@/serverFunctions/documentVersionTranslation";
 
@@ -23,7 +23,7 @@ export const getContentQueryOptions = ({
 export const createGetDocumentListQueryOptions = () =>
   queryOptions({
     queryKey: ["documents"],
-    queryFn: () => getDocuments(),
+    queryFn: () => $getDocuments(),
     staleTime: 5 * 1000 * 60,
   });
 

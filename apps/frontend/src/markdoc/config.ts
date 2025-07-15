@@ -1,40 +1,9 @@
-import { ContentId, contentIdSchema } from "@/lib/content-config";
-import * as nodes from "@/markdoc/nodes/index";
-import * as tags from "@/markdoc/tags/index";
-import Markdoc, { type Config, type Tag } from "@markdoc/markdoc";
-import { createServerFn } from "@tanstack/react-start";
-import fs from "fs/promises";
+import * as tags from "@/markdoc/tags";
+import * as nodes from "@/markdoc/nodes";
+import Markdoc, { Config, Tag } from "@markdoc/markdoc";
 import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
-import { z } from "zod";
-import { localeSchema } from "../lib/i18n-config";
-
-type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
-
-const contentPath = "./public/content";
-
-async function getFileContent({
-  contentId,
-  lang,
-}: {
-  contentId: ContentId;
-  lang: string;
-}) {
-  const file = await fs.readFile(
-    `${contentPath}/${lang}/${contentId}/content.md`,
-    {
-      encoding: "utf-8",
-    }
-  );
-
-  return file;
-}
-
-const contentReqSchema = z.object({
-  contentId: contentIdSchema,
-  lang: localeSchema,
-  generateTOC: z.boolean().default(false),
-});
+import { Locale } from "@/lib/i18n-config";
 
 export const config = {
   tags: {
@@ -53,12 +22,14 @@ export const config = {
   },
   nodes,
   variables: {} as {
-    locale: string;
-    version: string;
-    updatedAt: Date | string | undefined;
+    version?: number;
+    // TODO: updated by user?
+    updatedAt?: Date | string | undefined;
     frontmatter?: Record<string, string | number>;
   },
 } satisfies Config;
+
+type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
 
 /**
  * For including HTML from markdown as-is
@@ -118,10 +89,11 @@ export type Heading = {
   level: number;
   [x: string]: string | number;
 } & {};
+
 /**
  * Function to generate headings from content
  */
-function collectHeadings(
+export function collectHeadings(
   node: Tag | Tag["children"][number],
   sections: Heading[] = []
 ) {
@@ -148,35 +120,34 @@ function collectHeadings(
   return sections;
 }
 
-export const getContent = createServerFn({ method: "GET", response: "data" })
-  .validator(contentReqSchema)
-  .handler(async ({ data }) => {
-    const raw = await getFileContent(data);
-    const tokens = tokenizer.tokenize(raw);
-    const processed = processTokens(tokens);
-    const ast = Markdoc.parse(processed);
+export function transformMarkdoc({
+  rawContent,
+  includeFrontmatter = false,
+  generateTOC = false,
+}: {
+  rawContent: string;
+  includeFrontmatter?: boolean;
+  generateTOC?: boolean;
+}) {
+  const tokens = tokenizer.tokenize(rawContent);
+  const processed = processTokens(tokens);
+  const ast = Markdoc.parse(processed);
 
-    const frontmatter = (
-      ast.attributes.frontmatter
-        ? yaml.load(ast.attributes.frontmatter, {
-            schema: yaml.FAILSAFE_SCHEMA,
-          })
-        : {}
-    ) as Record<string, string | number>;
+  const frontmatter = (
+    ast.attributes.frontmatter && includeFrontmatter
+      ? yaml.load(ast.attributes.frontmatter, {
+          schema: yaml.FAILSAFE_SCHEMA,
+        })
+      : {}
+  ) as Record<string, string | number>;
 
-    config.variables = {
-      frontmatter,
-      slug: data.contentId,
-      lang: data.lang,
-    };
+  config.variables = {
+    frontmatter,
+  };
 
-    const content = Markdoc.transform(ast, config) as any;
+  const content = Markdoc.transform(ast, config);
 
-    let headings: Heading[] = [];
+  const toc = generateTOC ? collectHeadings(content) : null;
 
-    if (data.generateTOC) {
-      headings = collectHeadings(content);
-    }
-
-    return { content: JSON.stringify(content), headings, frontmatter };
-  });
+  return { content, toc };
+}
