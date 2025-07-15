@@ -15,6 +15,7 @@ export const Route = createFileRoute("/$lang/")({
   params: z.object({
     lang: localeSchema,
   }),
+
   loader: async ({ context }) => {
     const data = await getContent({
       data: { contentId: "home", lang: context.lang },
@@ -55,7 +56,7 @@ function Index() {
     <section className="flex flex-col gap-8">
       <section className="flex h-fit items-start justify-between gap-8">
         <div className="flex flex-1 flex-col items-center">
-          <RenderMarkdoc content={content} />
+          <RenderMarkdoc content={JSON.parse(content)} />
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button variant={"accent"} size={"lg"}>

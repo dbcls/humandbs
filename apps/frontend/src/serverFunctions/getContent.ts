@@ -1,3 +1,4 @@
+import { ContentId, contentIdSchema } from "@/lib/content-config";
 import * as nodes from "@/markdoc/nodes/index";
 import * as tags from "@/markdoc/tags/index";
 import Markdoc, { type Config, type Tag } from "@markdoc/markdoc";
@@ -7,7 +8,6 @@ import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
 import { z } from "zod";
 import { localeSchema } from "../lib/i18n-config";
-import { ContentId, contentIdSchema } from "@/lib/content-config";
 
 type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
 
@@ -178,5 +178,5 @@ export const getContent = createServerFn({ method: "GET", response: "data" })
       headings = collectHeadings(content);
     }
 
-    return { content, headings, frontmatter };
+    return { content: JSON.stringify(content), headings, frontmatter };
   });

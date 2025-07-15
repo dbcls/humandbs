@@ -4,12 +4,13 @@
  * atypical pattern for Markdoc applications.
  */
 import Markdoc from "@markdoc/markdoc";
+import { MarkdocTag } from "../tags/types";
 // import { Document } from "./Document";
 
 export const document = {
   ...Markdoc.nodes.document,
   render: "Document",
-  children: ["inline"],
+
   transform(node, config) {
     return new Markdoc.Tag(
       this.render,
@@ -17,4 +18,4 @@ export const document = {
       node.transformChildren(config)
     );
   },
-};
+} satisfies MarkdocTag;
