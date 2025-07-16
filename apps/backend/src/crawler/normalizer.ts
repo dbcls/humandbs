@@ -25,6 +25,7 @@ export const normalizer = ((lang: LangType, parserResult: ParseResult): void => 
       dataset.releaseDate = normalizeDatasetReleaseDateJa(dataset.releaseDate)
     }
     for (const molData of parserResult.molecularData) {
+      molData.id = normalizeEnText(molData.id)
       molData.data = normalizeMolDataKeysJa(molData.data)
       molData.footers = filterFooterJa(molData.footers)
     }
@@ -43,6 +44,7 @@ export const normalizeEnText = (text: string): string => {
     .replace(/：/g, ": ")
     .replace(/–/g, "-")
     .replace(/／/g, "/")
+    .replace(/：/g, ": ")
     .replace(/ {2,}/g, " ")
 }
 

@@ -29,8 +29,9 @@ const DATASET_KEYS: DatasetKeys[] = ["dataId", "typeOfData", "criteria", "releas
 //   url: string
 // }
 
-interface MolecularData {
-  ids: string[]
+export interface MolecularData {
+  // ids: string[]
+  id: string
   // data: Record<string, (string | LinkData)[]>
   data: Record<string, string | null> // TODO: 一旦 raw html にする
   footers: string[]
@@ -522,10 +523,10 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
     }
   }
 
-  const ID_SPLITTER: Record<LangType, string> = {
-    ja: "、",
-    en: ",",
-  }
+  // const ID_SPLITTER: Record<LangType, string> = {
+  //   ja: "、",
+  //   en: ",",
+  // }
 
   const tableIndexes = tags.
     map((tag, index) => tag === "TABLE" ? index : -1).
@@ -560,13 +561,14 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
       .map(p => p.textContent?.trim() ?? "")
       .filter(text => text !== "")
 
-    let ids = []
-    if (humVersionId.startsWith("hum0356") && i === 0) {
-      const lines = Array.from(body.children).slice(0, tableIndex)
-      ids = lines.map(line => line.textContent?.trim() ?? "")
-    } else {
-      ids = firstP.textContent?.trim().split(ID_SPLITTER[lang]) ?? []
-    }
+    const id = firstP.textContent?.trim() ?? ""
+    // let ids = []
+    // if (humVersionId.startsWith("hum0356") && i === 0) {
+    //   const lines = Array.from(body.children).slice(0, tableIndex)
+    //   ids = lines.map(line => line.textContent?.trim() ?? "")
+    // } else {
+    //   ids = firstP.textContent?.trim().split(ID_SPLITTER[lang]) ?? []
+    // }
     //   const data: Record<string, (string | LinkData)[]> = {}
     //   for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
     //     const cells = Array.from(row.querySelectorAll("td"))
@@ -626,7 +628,7 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
         data[key] = getCleanInnerHTML(valueNode)
       }
     }
-    molecularData.push({ ids, data, footers })
+    molecularData.push({ id, data, footers })
   }
 
   return molecularData
