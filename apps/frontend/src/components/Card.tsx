@@ -3,19 +3,45 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardCaptionVariants> {
   caption?: ReactNode;
 }
 
-function Card({ children, className, caption }: CardProps) {
+const cardCaptionVariants = cva(
+  "text-secondary before:bg-secondary relative font-medium before:absolute before:-left-4 before:h-full before:w-1 before:rounded-r-sm",
+  {
+    variants: {
+      captionSize: {
+        lg: "text-lg",
+        sm: "text-sm",
+        default: "text-base",
+      },
+    },
+    defaultVariants: {
+      captionSize: "default",
+    },
+  }
+);
+
+function Card({ children, className, caption, captionSize }: CardProps) {
   return (
     <div className={cn("h-fit rounded-md bg-white p-4", className)}>
       {caption ? (
-        <div className="text-secondary before:bg-secondary relative font-medium before:absolute before:-left-4 before:h-full before:w-1 before:rounded-r-sm">
+        <div className={cn(cardCaptionVariants({ captionSize }))}>
           {caption}
         </div>
       ) : null}
-      {children}
+      <div
+        className={cn("relative", {
+          "mt-8": !!caption && captionSize === "sm",
+          "mt-10": !!caption && captionSize === "default",
+          "mt-16": !!caption && captionSize === "lg",
+        })}
+      >
+        {children}
+      </div>
     </div>
   );
 }

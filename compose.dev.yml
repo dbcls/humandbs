@@ -1,6 +1,49 @@
 services:
+  cms-db:
+    image: postgres:17
+    container_name: cms-db
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    networks:
+      - humandbs-dev-network
+
+  cms-db-migrator:
+    image: oven/bun:1.2-debian
+    working_dir: /app
+    # Mount your app (so drizzle.config.ts, migrations folder, etc. are available)
+    volumes:
+      - ./:/app
+    depends_on:
+      cms-db:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        cd ./apps/frontend &&
+        echo '🏃‍♂️ Applying Drizzle migrations' &&
+        bunx drizzle-kit push &&
+        echo '🌱 Seeding…' &&
+        bun run db:seed &&
+        echo '✅ Migrations complete'
+      "
+    networks:
+      - humandbs-dev-network
+
   frontend:
     depends_on:
+      - cms-db
       - backend
     build:
       context: .
@@ -16,7 +59,7 @@ services:
     ports:
       - 127.0.0.1:3000:3000
     working_dir: /app
-    command: [ "sleep", "infinity" ]
+    command: ["sleep", "infinity"]
     networks:
       - humandbs-dev-network
     init: true
@@ -38,7 +81,7 @@ services:
     ports:
       - 127.0.0.1:8080:8080
     working_dir: /app
-    command: [ "sleep", "infinity" ]
+    command: ["sleep", "infinity"]
     networks:
       - humandbs-dev-network
     init: true
@@ -82,6 +125,7 @@ services:
 
 volumes:
   node_modules: {}
+  pgdata: {}
 
 networks:
   humandbs-dev-network:
