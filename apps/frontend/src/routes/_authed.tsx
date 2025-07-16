@@ -6,14 +6,10 @@ export const Route = createFileRoute("/_authed")({
   beforeLoad: async ({ context }) => {
     // do not let in users unless they are admins or editors
     if (!context.user) {
-      throw new Error("In order to enter this section, you need to login", {
-        cause: "notAuthed",
-      });
+      throw new Error("notAuthenticated");
     }
     if (context.user.role !== "admin" && context.user.role !== "editor") {
-      throw new Error("You are not authorized to access this section", {
-        cause: "notAuthorized",
-      });
+      throw new Error("notAuthorized");
     }
   },
   errorComponent: ({ error }) => {
@@ -25,7 +21,7 @@ export const Route = createFileRoute("/_authed")({
       });
     }
 
-    if (error.cause === "notAuthed") {
+    if (error.message === "notAuthenticated") {
       return (
         <div className="flex flex-col items-center justify-center p-12">
           <p>Please login here</p>
@@ -34,7 +30,7 @@ export const Route = createFileRoute("/_authed")({
       );
     }
 
-    if (error.cause === "notAuthorized") {
+    if (error.message === "notAuthorized") {
       return (
         <div className="flex items-center justify-center p-12">
           <p>

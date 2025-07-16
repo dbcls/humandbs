@@ -1,4 +1,5 @@
 import {
+  Asset,
   Document,
   DocumentVersion,
   DocumentVersionTranslation,
@@ -35,6 +36,10 @@ export type Permissions = {
     dataType: DocumentVersionTranslation;
     action: "view" | "update" | "create" | "delete";
   };
+  assets: {
+    dataType: Asset;
+    action: "view" | "list" | "create" | "delete";
+  };
 };
 
 const ROLES = {
@@ -59,6 +64,12 @@ const ROLES = {
       create: true,
       delete: true,
     },
+    assets: {
+      view: true,
+      create: true,
+      delete: true,
+      list: true,
+    },
   },
   editor: {
     documents: {
@@ -75,6 +86,12 @@ const ROLES = {
       update: true,
       create: true,
       delete: true,
+    },
+    assets: {
+      view: true,
+      create: true,
+      delete: true,
+      list: true,
     },
   },
   user: {},

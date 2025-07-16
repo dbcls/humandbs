@@ -1,4 +1,7 @@
 import { Button } from "@/components/Button";
+import { Skeleton } from "@/components/Skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -6,13 +9,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UserRole } from "@/db/schema";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { roles } from "@/lib/permissions";
+import { useCopyToClipboard } from "@/lib/useColyToClipboard";
 import { cn } from "@/lib/utils";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import {
+  $deleteAsset,
+  $uploadAsset,
+  listAssetsQueryOptions,
+} from "@/serverFunctions/assets";
 import {
   $getDocuments,
   getDocumentsQueryOptions,
@@ -29,7 +46,7 @@ import {
 } from "@/serverFunctions/documentVersionTranslation";
 import { config, processTokens, tokenizer } from "@/serverFunctions/getContent";
 import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
-import { markdown } from "@codemirror/lang-markdown";
+import MDEditor from "@uiw/react-md-editor";
 import Markdoc from "@markdoc/markdoc";
 import {
   useMutation,
@@ -37,10 +54,17 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import CodeMirror, { EditorView } from "@uiw/react-codemirror";
-import { LucideTrash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CopyIcon,
+  LucideTrash2,
+  PlusIcon,
+  Trash2Icon,
+  UploadIcon,
+} from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
+import { transformMarkdoc } from "@/markdoc/config";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
@@ -76,6 +100,8 @@ function ManageDocuments() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
     null
   );
+
+  const [assetsOpen, setAssetsOpen] = useState(false);
 
   const [selectedLocale, setSelectedLocale] = useState<Locale>(
     i18n.defaultLocale
@@ -136,6 +162,33 @@ function ManageDocuments() {
             <p>Select a version</p>
           )}
         </Suspense>
+      </div>
+      <div
+        className={cn("w-20 rounded-sm bg-white transition-all", {
+          "w-[50rem]": assetsOpen,
+        })}
+      >
+        <Button
+          onClick={() => setAssetsOpen((prev) => !prev)}
+          className="text-black"
+          variant={"plain"}
+        >
+          <ArrowLeft
+            className={cn("transition-transform", { "rotate-180": assetsOpen })}
+          />
+          <Label
+            className={cn("origin-left", {
+              "translate-x-5 rotate-90": !assetsOpen,
+            })}
+          >
+            Assets
+          </Label>
+        </Button>
+        {assetsOpen ? (
+          <Suspense fallback={<Skeleton />}>
+            <Assets />
+          </Suspense>
+        ) : null}
       </div>
     </section>
   );
@@ -278,52 +331,26 @@ function TranslationDetails({
     });
   }
 
-  const onChange = useCallback((val: string) => {
-    setValue(val);
-  }, []);
-
-  const content = useMemo(() => {
-    if (!value) return null;
-    const tokens = tokenizer.tokenize(value);
-    const processed = processTokens(tokens);
-    const ast = Markdoc.parse(processed);
-
-    config.variables = {
-      ...config.variables,
-      locale,
-      updatedAt: versionDetails?.updatedAt.toLocaleDateString(),
-      version: `${versionDetails?.version.versionNumber}` || "Unknown",
-    };
-    return Markdoc.transform(ast, config);
-  }, [value, versionDetails]);
-
   return (
-    <div className="flex h-full flex-col gap-1">
-      <Tabs defaultValue="edit">
-        <TabsList>
-          <TabsTrigger value="edit">Edit</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-        </TabsList>
+    <div className="flex h-full flex-col gap-2">
+      <p>Locale: {versionDetails?.locale}</p>
+      <p> Author: {versionDetails?.translator?.name || "Unknown"} </p>
+      <div data-color-mode="light" className="flex-1">
+        <MDEditor
+          highlightEnable={true}
+          height="100%"
+          value={value}
+          onChange={setValue}
+          className="md-editor"
+          components={{
+            preview: (source) => {
+              const { content } = transformMarkdoc({ rawContent: source });
 
-        <TabsContent value="edit">
-          <p>Locale: {versionDetails?.locale}</p>
-          <p> Author: {versionDetails?.translator?.name || "Unknown"} </p>
-          <CodeMirror
-            value={value}
-            onChange={onChange}
-            className="flex-1 rounded-sm"
-            extensions={[markdown(), EditorView.lineWrapping]}
-            basicSetup={{
-              lineNumbers: false,
-              foldGutter: false,
-              highlightActiveLine: false,
-            }}
-          />
-        </TabsContent>
-        <TabsContent value="preview">
-          <RenderMarkdoc className="mx-auto" content={content} />
-        </TabsContent>
-      </Tabs>
+              return <RenderMarkdoc content={content} />;
+            },
+          }}
+        />
+      </div>
       <div className="flex justify-end gap-5">
         <Button onClick={handleDelete} variant={"plain"} className="bg-white">
           <LucideTrash2 className="text-red-600" />
@@ -373,5 +400,132 @@ function ManageUsers() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function Assets() {
+  const queryClient = useQueryClient();
+  const { data } = useSuspenseQuery(listAssetsQueryOptions());
+
+  const [filter, setFilter] = useState("");
+
+  const filteredAssets = useMemo(() => {
+    if (!data) return [];
+    if (!filter) return data;
+
+    return data.filter(
+      (asset) =>
+        asset.name.includes(filter) || asset.description.includes(filter)
+    );
+  }, [data, filter]);
+
+  const [addingNewAsset, setAddingNewAsset] = useState(false);
+  const [newAssetName, setNewAssetName] = useState("");
+
+  function handleChangeFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setNewAssetName(file.name);
+  }
+
+  const { mutate } = useMutation({
+    mutationFn: $uploadAsset,
+    onSuccess: () => {
+      queryClient.invalidateQueries(listAssetsQueryOptions());
+    },
+  });
+
+  const { mutate: deleteAsset } = useMutation({
+    mutationFn: (id: string) => $deleteAsset({ data: { id } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(listAssetsQueryOptions());
+    },
+  });
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const fd = new FormData(e.target as HTMLFormElement);
+
+    mutate({ data: fd });
+
+    setAddingNewAsset(false);
+  }
+
+  const [, copy] = useCopyToClipboard();
+
+  return (
+    <section className="flex flex-col gap-2 p-4">
+      <Label>
+        <span className="text-sm whitespace-nowrap">Search filter</span>
+        <Input type="text" onChange={(e) => setFilter(e.target.value)} />
+      </Label>
+
+      <div className="flex-1">
+        <Table className="max-h-full overflow-y-auto">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Url</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredAssets.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>{row.mimeType}</TableCell>
+                <TableCell>
+                  <Button
+                    variant={"cms-table-action"}
+                    className="text-black"
+                    onClick={() => copy(row.url)}
+                  >
+                    <CopyIcon className="size-4" />
+                  </Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    onClick={() => deleteAsset(row.id)}
+                    variant={"cms-table-action"}
+                  >
+                    <Trash2Icon className="text-accent size-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <Button
+        disabled={addingNewAsset}
+        variant={"toggle"}
+        onClick={() => setAddingNewAsset(true)}
+      >
+        <PlusIcon className="mr-2 inline size-4" /> Add new asset
+      </Button>
+      {addingNewAsset ? (
+        <form onSubmit={onSubmit} className="space-y-1 p-3">
+          <Input
+            name="name"
+            placeholder="Name"
+            value={newAssetName}
+            onChange={(e) => setNewAssetName(e.target.value)}
+          />
+          <Input name="description" placeholder="Description" />
+          <Input
+            name="file"
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={handleChangeFile}
+          />
+          <Button type="submit" className="ml-auto">
+            <UploadIcon className="mr-2 inline size-4" />
+            Upload
+          </Button>
+        </form>
+      ) : null}
+    </section>
   );
 }

@@ -18,6 +18,8 @@ const buttonVariants = cva(
         action: " bg-linear-to-r from-secondary to-secondary-light",
         tableAction: " bg-secondary-light rounded-full ",
         plain: " bg-none",
+        "cms-table-action":
+          "bg-none rounded-xs hover:bg-hover active:bg-foreground-light/30",
         toggle:
           " bg-none text-foreground rounded-md whitespace-normal w-full text-left hover:bg-hover",
       },

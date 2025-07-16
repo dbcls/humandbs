@@ -12,14 +12,12 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const Route = createFileRoute("/$lang/")({
   component: Index,
   params: z.object({
     lang: localeSchema,
   }),
-
   loader: async ({ context }) => {
     const data = await context.queryClient.ensureQueryData(
       getDocumentLatestVersionTranslationQueryOptions({

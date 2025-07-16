@@ -22,6 +22,8 @@
   --color-foreground-dark: #002245;
   --color-foreground-light: #abb4c4;
 
+  --color-ring: var(--color-secondary);
+
   --text-lg: 2.8rem;
   --text-base: 1.6rem;
   --text-sm: 1.4rem;
@@ -88,9 +90,25 @@
     background-size: contain;
   }
 
-  .cm-editor {
-    height: 100%;
-    @apply rounded-sm p-5;
+  .md-editor {
+    .w-md-editor-text {
+      height: 100%;
+    }
+
+    textarea.w-md-editor-text-input {
+      font-size: 1.6rem !important;
+      line-height: var(--tw-leading, var(--text-base--line-height)) !important;
+    }
+
+    .wmde-markdown-color {
+      > .language-markdown {
+        .code-line {
+          .title {
+            text-decoration: underline !important;
+          }
+        }
+      }
+    }
   }
 }
 
