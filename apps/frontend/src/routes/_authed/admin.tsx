@@ -58,6 +58,9 @@ import {
   ArrowLeft,
   CopyIcon,
   LucideTrash2,
+  PanelLeftClose,
+  PanelRight,
+  PanelRightClose,
   PlusIcon,
   Trash2Icon,
   UploadIcon,
@@ -101,8 +104,6 @@ function ManageDocuments() {
     null
   );
 
-  const [assetsOpen, setAssetsOpen] = useState(false);
-
   const [selectedLocale, setSelectedLocale] = useState<Locale>(
     i18n.defaultLocale
   );
@@ -120,6 +121,7 @@ function ManageDocuments() {
 
   return (
     <section className="flex items-stretch gap-2">
+      <AssetsPanel />
       <ul className="bg-primary max-w-md space-y-4 rounded-sm p-4">
         {documents.map((doc) => (
           <li key={doc.id}>
@@ -135,61 +137,36 @@ function ManageDocuments() {
           </li>
         ))}
       </ul>
-      <Suspense fallback={<div>Loading...</div>}>
-        {!selectedDocumentId ? (
-          <p>No document selected</p>
-        ) : (
-          <ListOfVersions
-            selectedVersionId={selectedVersionId}
-            onSelect={setSelectedVersionId}
-            documentId={selectedDocumentId}
-          />
-        )}
-      </Suspense>
 
-      <div className="flex-1 rounded-sm bg-white p-4">
-        <LocaleSwitcher
-          locale={selectedLocale}
-          onSwitchLocale={setSelectedLocale}
-        />
-        <Suspense fallback={<div>Loading...</div>}>
-          {selectedVersionId ? (
-            <TranslationDetails
-              locale={selectedLocale}
-              documentVersionId={selectedVersionId}
+      {selectedDocumentId ? (
+        <>
+          <Suspense fallback={<div>Loading...</div>}>
+            <ListOfVersions
+              selectedVersionId={selectedVersionId}
+              onSelect={setSelectedVersionId}
+              documentId={selectedDocumentId}
             />
-          ) : (
-            <p>Select a version</p>
-          )}
-        </Suspense>
-      </div>
-      <div
-        className={cn("w-20 rounded-sm bg-white transition-all", {
-          "w-[50rem]": assetsOpen,
-        })}
-      >
-        <Button
-          onClick={() => setAssetsOpen((prev) => !prev)}
-          className="text-black"
-          variant={"plain"}
-        >
-          <ArrowLeft
-            className={cn("transition-transform", { "rotate-180": assetsOpen })}
-          />
-          <Label
-            className={cn("origin-left", {
-              "translate-x-5 rotate-90": !assetsOpen,
-            })}
-          >
-            Assets
-          </Label>
-        </Button>
-        {assetsOpen ? (
-          <Suspense fallback={<Skeleton />}>
-            <Assets />
           </Suspense>
-        ) : null}
-      </div>
+          {selectedVersionId ? (
+            <div className="flex-1 rounded-sm bg-white p-4">
+              <LocaleSwitcher
+                locale={selectedLocale}
+                onSwitchLocale={setSelectedLocale}
+              />
+              <Suspense fallback={<div>Loading...</div>}>
+                <TranslationDetails
+                  locale={selectedLocale}
+                  documentVersionId={selectedVersionId}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <div>Select a version</div>
+          )}
+        </>
+      ) : (
+        <div> No document selected </div>
+      )}
     </section>
   );
 }
@@ -220,7 +197,7 @@ function ListOfVersions({
   return (
     <ul className="space-y-2 rounded-sm bg-white p-2">
       {versions.map((v) => (
-        <li className="" key={v.id}>
+        <li key={v.id}>
           <Button
             className={cn({
               "border-secondary-light border": selectedVersionId === v.id,
@@ -332,8 +309,7 @@ function TranslationDetails({
   }
 
   return (
-    <div className="flex h-full flex-col gap-2">
-      <p>Locale: {versionDetails?.locale}</p>
+    <div className="flex flex-col gap-2">
       <p> Author: {versionDetails?.translator?.name || "Unknown"} </p>
       <div data-color-mode="light" className="flex-1">
         <MDEditor
@@ -351,7 +327,7 @@ function TranslationDetails({
           }}
         />
       </div>
-      <div className="flex justify-end gap-5">
+      <div className="flex h-fit justify-end gap-5">
         <Button onClick={handleDelete} variant={"plain"} className="bg-white">
           <LucideTrash2 className="text-red-600" />
         </Button>
@@ -403,6 +379,43 @@ function ManageUsers() {
   );
 }
 
+function AssetsPanel() {
+  const [assetsOpen, setAssetsOpen] = useState(false);
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-0 w-12 flex-col rounded-sm bg-white transition-all",
+        {
+          "w-assets-panel": assetsOpen,
+        }
+      )}
+    >
+      <Button
+        onClick={() => setAssetsOpen((prev) => !prev)}
+        className={cn("flex gap-2 text-black", { "flex-col": !assetsOpen })}
+        variant={"plain"}
+        size={"slim"}
+      >
+        {assetsOpen ? <PanelLeftClose /> : <PanelRight />}
+
+        <Label
+          className={cn("origin-left", {
+            "translate-x-5 -translate-y-2 rotate-90": !assetsOpen,
+          })}
+        >
+          Assets
+        </Label>
+      </Button>
+      {assetsOpen ? (
+        <Suspense fallback={<Skeleton />}>
+          <Assets />
+        </Suspense>
+      ) : null}
+    </div>
+  );
+}
+
 function Assets() {
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(listAssetsQueryOptions());
@@ -420,11 +433,13 @@ function Assets() {
   }, [data, filter]);
 
   const [addingNewAsset, setAddingNewAsset] = useState(false);
+  const [assetFile, setAssetFile] = useState<File>();
   const [newAssetName, setNewAssetName] = useState("");
 
   function handleChangeFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAssetFile(file);
     setNewAssetName(file.name);
   }
 
@@ -449,22 +464,26 @@ function Assets() {
 
     mutate({ data: fd });
 
+    setAssetFile(undefined);
     setAddingNewAsset(false);
   }
 
   const [, copy] = useCopyToClipboard();
 
   return (
-    <section className="flex flex-col gap-2 p-4">
+    <section className="flex flex-1 flex-col gap-2 p-4">
       <Label>
-        <span className="text-sm whitespace-nowrap">Search filter</span>
+        <span className="text-sm font-normal whitespace-nowrap">
+          Search filter
+        </span>
         <Input type="text" onChange={(e) => setFilter(e.target.value)} />
       </Label>
 
-      <div className="flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <Table className="max-h-full overflow-y-auto">
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[100px]">Preview</TableHead>
               <TableHead className="w-[100px]">Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Url</TableHead>
@@ -474,6 +493,9 @@ function Assets() {
           <TableBody>
             {filteredAssets.map((row) => (
               <TableRow key={row.id}>
+                <TableCell>
+                  <img src={row.url} />
+                </TableCell>
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{row.mimeType}</TableCell>
                 <TableCell>
@@ -506,7 +528,13 @@ function Assets() {
         <PlusIcon className="mr-2 inline size-4" /> Add new asset
       </Button>
       {addingNewAsset ? (
-        <form onSubmit={onSubmit} className="space-y-1 p-3">
+        <form onSubmit={onSubmit} className="space-y-1">
+          <Input
+            name="file"
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={handleChangeFile}
+          />
           <Input
             name="name"
             placeholder="Name"
@@ -514,13 +542,11 @@ function Assets() {
             onChange={(e) => setNewAssetName(e.target.value)}
           />
           <Input name="description" placeholder="Description" />
-          <Input
-            name="file"
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={handleChangeFile}
-          />
-          <Button type="submit" className="ml-auto">
+          <Button
+            disabled={!assetFile || !newAssetName}
+            type="submit"
+            className="ml-auto"
+          >
             <UploadIcon className="mr-2 inline size-4" />
             Upload
           </Button>

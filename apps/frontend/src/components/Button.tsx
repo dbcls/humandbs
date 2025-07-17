@@ -14,7 +14,8 @@ const buttonVariants = cva(
         slim: "p-1 text-xs",
       },
       variant: {
-        accent: " bg-linear-to-r from-accent to-accent-light",
+        accent:
+          "disabled:opacity-30 bg-linear-to-r from-accent to-accent-light",
         action: " bg-linear-to-r from-secondary to-secondary-light",
         tableAction: " bg-secondary-light rounded-full ",
         plain: " bg-none",

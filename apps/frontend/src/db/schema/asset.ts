@@ -12,8 +12,4 @@ export const asset = pgTable("asset", {
   mimeType: text("mime_type").notNull(),
 });
 
-export const assetRelations = relations(asset, ({ one }) => ({
-  documentVersion: one(documentVersion),
-}));
-
 export type Asset = typeof asset.$inferSelect;

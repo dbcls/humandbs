@@ -3,6 +3,16 @@
 
 @plugin "@tailwindcss/typography";
 
+:root {
+  --books: "\f5db";
+  --dataset: "\f1c0";
+  --info: "\f05a";
+  --tip: "\f0eb";
+  --warning: "\f071";
+
+  --assets-panel-width: 500px;
+}
+
 @theme {
   --color-primary: #edeff2;
   --color-primary-translucent: rgba(0, 0, 0, 0.1);
@@ -29,16 +39,12 @@
   --text-sm: 1.4rem;
   --text-xs: 1.2rem;
 
+  --spacing-assets-panel: var(--assets-panel-width);
+
   --font-sans:
     i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
   --font-fontawesome: "FontAwesome6";
-
-  --books: "\f5db";
-  --dataset: "\f1c0";
-  --info: "\f05a";
-  --tip: "\f0eb";
-  --warning: "\f071";
 }
 
 @layer base {
