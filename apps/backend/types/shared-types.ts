@@ -2,35 +2,73 @@ export type LangType = "ja" | "en"
 
 // === Schema for Elasticsearch JSON ===
 
+export interface Address {
+  country?: string | null
+  state?: string | null
+  city?: string | null
+  street?: string | null
+  postalCode?: string | null
+}
+
+export interface Organization {
+  name: string
+  abbreviation?: string | null
+  url?: string | null
+  type?: "institution" | "company" | "government" | "non-profit" | "consortium" | "agency" | "other" | null
+  address?: Address | null
+  rorId?: string | null // Research Organization Registry ID
+}
+
+export interface ResearchProject {
+  name: string
+  url?: string | null
+}
+
+export interface Person {
+  name: string
+  affiliation?: string | null
+  email?: string | null
+  orcid?: string | null
+  organization?: Organization | null
+  datasetIds?: string[] // IDs of datasets related to this person
+  periodOfDataUse?: string | null // Period during which the person can access the data
+}
+
+export interface Grant {
+  id: string
+  title: string
+  agency: Organization
+}
+
+export interface Publication {
+  title: string
+  authors: Person[]
+  consortiums: Organization[]
+  status: "published" | "unpublished" | "in-press"
+  year: number
+  journal?: string | null
+  volume?: string | null
+  issue?: string | null
+  startPage?: string | null
+  endPage?: string | null
+  datePublished?: string | null
+  doi?: string | null
+  url?: string | null
+  pubMedId?: string | null
+  datasetIds?: string[] // IDs of datasets related to this publication
+}
+
+// es entry: /research/{humId}-{lang}
 export interface Research {
   humId: string
   lang: LangType
   title: string
   url: string
-  dataProvider: {
-    principalInvestigator: string[]
-    affiliation: string[]
-    researchProjectName: string[]
-    researchProjectUrl: string[]
-  }
-  grant: { // JGA study
-    id: string
-    title: string
-    agency: string
-  }[]
-  relatedPublication: { // TODO
-    title: string
-    doi: string
-    datasetIds: string[]
-  }[]
-  controlledAccessUser: {
-    name: string | null
-    affiliation: string | null
-    country: string | null
-    researchTitle: string | null
-    datasetId: string[]
-    periodOfDataUse: string | null
-  }[]
+  dataProvider: Person[]
+  researchProject: ResearchProject[]
+  grant: Grant[]
+  relatedPublication: Publication[]
+  controlledAccessUser: Person[]
   summary: {
     aims: string
     methods: string
@@ -43,7 +81,7 @@ export interface Research {
   versions: ResearchVersion[]
 }
 
-// primary key: humVersionId: `${humId}-v${versionNum}`
+// es entry: /researchVersion/{humId}-{lang}-v{versionNum}
 export interface ResearchVersion {
   humId: string
   lang: LangType
@@ -54,19 +92,23 @@ export interface ResearchVersion {
   releaseNote: string[]
 }
 
-// Ref: MolecularData, JGA Experiment, JGA Dataset, JGA Analysis, JGA Data
-// primary key: humDatasetId: `${humId}-${datasetId}-v${latestVersionId + 1}`
+// datasetId として用いるもの
+// - JGAD
+// - DRA
+// - E-GEAD
+// - MTBK
+// - hum.v1.rna - seq.v1
+// - PRJDB10452
+// es entry: /dataset/{datasetId}-{lang}
 export interface Dataset {
   datasetId: string
   lang: LangType
-  datasetVersion: string
-  humDatasetId: string
-  humVersionIds: string[]
-  data: Record<string, string>
   footers: string[]
   typeOfData: string[]
   criteria: string[]
   releaseDate: string[]
+  experiment: Experiment
 }
 
-export interface Experiment { }
+// Table の中身 (現状は Record<string, string> で定義しているが、将来的にはもっと詳細な型にする)
+export type Experiment = Record<string, string>

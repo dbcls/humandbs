@@ -56,6 +56,10 @@ const FILTER_HUM_IDS = [
   "hum0396", // 健康調査
   "hum0397", // 健康調査
   "hum0398", // 健康調査
+  "hum0375", // hot fix... (多分手作業で html が修正され、html の構造がまた変わっている。。。)
+  "hum0499", // hot fix...
+  "hum0501", // hot fix...
+  "hum0505", // hot fix...
 ]
 
 const main = async () => {

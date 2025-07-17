@@ -181,5 +181,6 @@ dist
 # === our custom rules ===
 apps/backend/tests
 apps/backend/crawler-results
+apps/backend/crawler-results-prev
 apps/backend/jga-example
 es-data
