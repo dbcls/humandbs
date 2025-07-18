@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "./Button";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,21 @@ const OptionComponent = ({
   isEnabled?: boolean;
   isSelected?: boolean;
 }) => {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [buttonHeight, setButtonHeight] = useState<number>(0);
+
+  function updateHeight() {
+    if (buttonRef.current) {
+      setButtonHeight(buttonRef.current.offsetHeight);
+    }
+  }
+
+  useEffect(() => {
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [option.title]);
+
   const optionBaseClasses =
     "border-tetriary w-full rounded-xl border-3 bg-white p-3 font-bold transition-colors text-3xl";
 
@@ -49,7 +64,6 @@ const OptionComponent = ({
         className={cn(optionBaseClasses, "flex flex-col items-center gap-2", {
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
         })}
-        data-option-id={option.id}
       >
         {option.title}
         {isExternal ? (
@@ -64,7 +78,7 @@ const OptionComponent = ({
         ) : (
           <Button
             onClick={onOptionClick}
-            className="px-8 text-sm"
+            className="px-8 text-sm disabled:opacity-100"
             size="slim"
             disabled={!isEnabled || isSelected}
           >
@@ -75,19 +89,32 @@ const OptionComponent = ({
     );
   }
 
-  return (
-    <button
-      onClick={onOptionClick}
-      disabled={!isEnabled || isSelected}
-      className={cn(optionBaseClasses, {
-        "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
-        "hover:bg-tetriary cursor-pointer hover:text-white":
-          isEnabled && !isSelected,
-      })}
-      data-option-id={option.id}
+  const arrow = (
+    // Add arrow with a height of: (Largest Option div height (100%) - Button height) (Equals the distance until start of padding) + arbitrary value (roughly padding + gap/2)
+    <div
+      className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center"
+      style={{ height: `calc(100% - ${buttonHeight}px + 32px)` }}
     >
-      {option.title}
-    </button>
+      <div className="bg-tetriary h-full w-[3px]" />
+      <div className="border-t-tetriary h-0 w-0 border-t-8 border-r-8 border-l-8 border-r-transparent border-l-transparent" />
+    </div>
+  );
+
+  return (
+    <div>
+      <button
+        ref={buttonRef}
+        onClick={onOptionClick}
+        disabled={!isEnabled || isSelected}
+        className={cn(optionBaseClasses, {
+          "hover:bg-tetriary cursor-pointer hover:text-white":
+            isEnabled && !isSelected,
+        })}
+      >
+        {option.title}
+      </button>
+      {arrow}
+    </div>
   );
 };
 
@@ -95,25 +122,21 @@ const StepComponent = ({
   step,
   stepIndex,
   onOptionClick,
-  stepRef,
-  innerRef,
   isEnabled = true,
   selectedOptionId,
 }: {
   step: Step;
   stepIndex: number;
   onOptionClick: (option: Option, stepIndex: number) => void;
-  stepRef: (el: HTMLDivElement | null) => void;
-  innerRef: (el: HTMLDivElement | null) => void;
   isEnabled?: boolean;
   selectedOptionId?: string;
 }) => (
-  <div className="relative" ref={stepRef}>
-    <div className="bg-primary rounded-xl px-16 py-7" ref={innerRef}>
+  <div className="relative">
+    <div className="bg-primary rounded-xl px-16 py-7">
       <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
         {step.title}
       </h2>
-      <p className="m-auto mb-5 max-w-3/5 text-center">{step.text}</p>
+      <p className="m-auto mb-5 w-2/3 max-w-3xl">{step.text}</p>
       <div className="text-tetriary flex justify-center gap-8">
         {step.options.map((option) => (
           <div
@@ -133,90 +156,11 @@ const StepComponent = ({
   </div>
 );
 
-const Arrow = ({
-  option,
-  stepIndex,
-  selectedOptions,
-  stepRefs,
-  containerRect,
-}: {
-  option: Option;
-  stepIndex: number;
-  selectedOptions: Record<number, string>;
-  stepRefs: React.RefObject<
-    {
-      step: HTMLDivElement | null;
-      inner: HTMLDivElement | null;
-    }[]
-  >;
-  containerRect: DOMRect;
-}) => {
-  const currentStepElements = stepRefs.current[stepIndex];
-  const nextStepElements = stepRefs.current[stepIndex + 1];
-  const isSelected = selectedOptions[stepIndex] === option.id;
-
-  if (!currentStepElements?.step || !nextStepElements?.inner) return null;
-
-  const optionElement = currentStepElements.step.querySelector(
-    `[data-option-id="${option.id}"]`
-  );
-
-  if (!optionElement) return null;
-
-  const nextStepRect = nextStepElements.inner.getBoundingClientRect();
-  const optionRect = optionElement.getBoundingClientRect();
-  const height = nextStepRect.top - optionRect.bottom;
-
-  if (height <= 0) return null;
-
-  return (
-    <div
-      className={cn(
-        "absolute z-10 flex flex-col items-center transition-opacity duration-300",
-        isSelected ? "opacity-100" : "opacity-30"
-      )}
-      style={{
-        top: `${optionRect.bottom - containerRect.top}px`,
-        left: `${optionRect.left + optionRect.width / 2 - containerRect.left}px`,
-        transform: "translateX(-50%)",
-      }}
-    >
-      <div
-        className="bg-tetriary w-[3px]"
-        style={{ height: `${height - 14}px` }}
-      />
-      <div className="border-t-tetriary h-0 w-0 border-t-8 border-r-8 border-l-8 border-r-transparent border-l-transparent" />
-    </div>
-  );
-};
-
 function NavigationChart({ data, navigate }: NavigationChartProps) {
   const [enabledStepIndex, setEnabledStepIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<
     Record<number, string>
   >({});
-  const [_, setWindowSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-  const stepRefs = useRef<
-    { step: HTMLDivElement | null; inner: HTMLDivElement | null }[]
-  >([]);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
-    window.addEventListener("resize", handleResize);
-    handleResize();
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const handleOptionClick = (option: Option, stepIndex: number) => {
     if (
@@ -237,32 +181,8 @@ function NavigationChart({ data, navigate }: NavigationChartProps) {
     }
   };
 
-  const renderArrows = useCallback(() => {
-    if (!containerRef.current) return null;
-    const containerRect = containerRef.current.getBoundingClientRect();
-
-    return data.steps.slice(0, -1).map((step, index) => {
-      const nextStepId = data.steps[index + 1]?.id;
-      return step.options
-        .filter((option) => option.nextStep === nextStepId)
-        .map((option) => (
-          <Arrow
-            key={`${index}-${option.id}`}
-            option={option}
-            stepIndex={index}
-            selectedOptions={selectedOptions}
-            stepRefs={stepRefs}
-            containerRect={containerRect}
-          />
-        ));
-    });
-  }, [data.steps, selectedOptions]);
-
   return (
-    <div
-      className="relative my-8 flex min-w-5xl flex-col items-center gap-8"
-      ref={containerRef}
-    >
+    <div className="relative my-8 flex min-w-5xl flex-col items-center gap-8">
       {data.steps.map((step, index) => {
         const isEnabled = index <= enabledStepIndex;
 
@@ -278,25 +198,12 @@ function NavigationChart({ data, navigate }: NavigationChartProps) {
               step={step}
               stepIndex={index}
               onOptionClick={handleOptionClick}
-              stepRef={(el) => {
-                stepRefs.current[index] = {
-                  ...stepRefs.current[index],
-                  step: el,
-                };
-              }}
-              innerRef={(el) => {
-                stepRefs.current[index] = {
-                  ...stepRefs.current[index],
-                  inner: el,
-                };
-              }}
               isEnabled={isEnabled}
               selectedOptionId={selectedOptions[index]}
             />
           </div>
         );
       })}
-      {renderArrows()}
     </div>
   );
 }

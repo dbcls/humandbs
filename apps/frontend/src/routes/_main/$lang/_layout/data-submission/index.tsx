@@ -3,6 +3,7 @@ import { Card } from "@/components/Card";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContent } from "@/serverFunctions/getContent";
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/_main/$lang/_layout/data-submission/")({
   component: RouteComponent,
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/_main/$lang/_layout/data-submission/")({
 function RouteComponent() {
   const { content, frontmatter } = Route.useLoaderData();
   const navigate = Route.useNavigate();
+  const t = useTranslations("Data-submission");
 
   return (
     <Card caption={frontmatter.title} captionSize={"lg"}>
@@ -41,7 +43,7 @@ function RouteComponent() {
             navigate({ to: "./navigation" });
           }}
         >
-          Button
+          {t("data-submission")}
         </Button>
       </div>
     </Card>

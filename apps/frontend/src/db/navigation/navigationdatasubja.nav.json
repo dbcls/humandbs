@@ -3,17 +3,17 @@
   "steps": [
     {
       "id": "step1",
-      "title": "ステップ1のオプション",
-      "text": "最初のステップの説明文です。以下のオプションから一つを選択してください。",
+      "title": "D-wayアカウントについて",
+      "text": "D-wayアカウントはお持ちですか？",
       "options": [
         {
           "id": "option1",
-          "title": "オプション 1-1",
+          "title": "持っている",
           "nextStep": "step2"
         },
         {
           "id": "option2",
-          "title": "オプション 1-2",
+          "title": "持っていない",
           "link": "https://www.example.com/create-account",
           "linkText": "D-wayアカウント登録"
         }
@@ -21,18 +21,18 @@
     },
     {
       "id": "step2",
-      "title": "ステップ2のオプション",
-      "text": "2番目のステップの説明文です。以下のオプションから一つを選択してください。",
+      "title": "申請状態について",
+      "text": "同じ研究計画のもとで実施された解析データについて、既にNBDCヒトデータベースに提供申請をしていまか？",
       "options": [
         {
           "id": "option3",
-          "title": "オプション 2-1",
+          "title": "申請中",
           "link": "https://www.example.com/enter-id",
           "linkText": "データ提供申請IDの入力"
         },
         {
           "id": "option4",
-          "title": "オプション 2-2",
+          "title": "新規に申請",
           "link": "https://www.example.com/make-submission",
           "linkText": "申請に進む"
         }
