@@ -11,6 +11,7 @@ import { write } from "bun";
 const PUBLIC_DIR = "./public";
 const ASSETS_SUBDIR = `assets`;
 const ASSET_DIR = `${PUBLIC_DIR}/${ASSETS_SUBDIR}`;
+const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
 export const $getAsset = createServerFn({ method: "GET" })
   .validator(
@@ -72,6 +73,10 @@ export const $uploadAsset = createServerFn({ method: "POST" })
     context.checkPermission("assets", "create");
 
     const file = data.get("file") as File;
+
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File size exceeds limit of ${MAX_FILE_SIZE} MB`);
+    }
 
     const name = data.get("name") as string;
 

@@ -182,12 +182,7 @@ function Assets() {
       </Button>
       {addingNewAsset ? (
         <form onSubmit={onSubmit} className="space-y-1">
-          <Input
-            name="file"
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={handleChangeFile}
-          />
+          <Input name="file" type="file" onChange={handleChangeFile} />
           <Input
             name="name"
             placeholder="Name"
