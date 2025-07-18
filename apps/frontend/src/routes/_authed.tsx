@@ -1,6 +1,8 @@
 import { Button } from "@/components/Button";
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 import { authClient } from "@/lib/auth-client";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authed")({
   beforeLoad: async ({ context }) => {
@@ -42,5 +44,15 @@ export const Route = createFileRoute("/_authed")({
     }
 
     throw error;
+  },
+
+  component: () => {
+    return (
+      <main className="flex h-screen flex-col gap-2 p-4">
+        <Navbar />
+        <Outlet />
+        <Footer />
+      </main>
+    );
   },
 });
