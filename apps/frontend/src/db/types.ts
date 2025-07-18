@@ -4,9 +4,6 @@ import {
   createUpdateSchema,
 } from "drizzle-zod";
 import * as schema from "./schema";
-import { z } from "zod";
-
-const documentSchema = createSelectSchema(schema.document);
 
 export const documentVersionTranslationSchema = createSelectSchema(
   schema.documentVersionTranslation
@@ -28,3 +25,14 @@ export type CreateDocumentVersionTranslationParams =
 export const userSelectSchema = createSelectSchema(schema.user);
 
 export const userRoleSchema = userSelectSchema.pick({ role: true });
+
+export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem);
+export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
+
+export const newsTranslationUpdateSchema = createUpdateSchema(
+  schema.newsTranslation
+);
+
+export const newsTranslationInsertSchema = createInsertSchema(
+  schema.newsTranslation
+);

@@ -1,3 +1,4 @@
+import { NewsItem } from "@/components/FrontNews";
 import {
   Asset,
   Document,
@@ -40,6 +41,10 @@ export type Permissions = {
     dataType: Asset;
     action: "view" | "list" | "create" | "delete";
   };
+  news: {
+    dataType: NewsItem;
+    action: "view" | "update" | "create" | "delete";
+  };
 };
 
 const ROLES = {
@@ -70,6 +75,12 @@ const ROLES = {
       delete: true,
       list: true,
     },
+    news: {
+      view: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
   },
   editor: {
     documents: {
@@ -92,6 +103,12 @@ const ROLES = {
       create: true,
       delete: true,
       list: true,
+    },
+    news: {
+      view: true,
+      update: true,
+      create: true,
+      delete: true,
     },
   },
   user: {},

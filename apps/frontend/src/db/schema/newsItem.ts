@@ -6,14 +6,19 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
+import { relations } from "drizzle-orm";
 
 export const newsItem = pgTable("news_item", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: uuid("id").notNull().primaryKey(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   authorId: text("author_id")
     .notNull()
     .references(() => user.id),
 });
+
+export const newsItemRelations = relations(newsItem, ({ many, one }) => ({
+  translations: many(newsTranslation),
+}));
 
 export const newsTranslation = pgTable(
   "news_translation",
@@ -27,4 +32,14 @@ export const newsTranslation = pgTable(
     content: text("content").notNull(),
   },
   (table) => [primaryKey({ columns: [table.newsId, table.lang] })]
+);
+
+export const newsTranslationRelations = relations(
+  newsTranslation,
+  ({ one }) => ({
+    newsItem: one(newsItem, {
+      fields: [newsTranslation.newsId],
+      references: [newsItem.id],
+    }),
+  })
 );

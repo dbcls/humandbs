@@ -13,10 +13,7 @@ import { UserRole } from "@/db/schema";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { roles } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import {
-  $getDocuments,
-  getDocumentsQueryOptions,
-} from "@/serverFunctions/document";
+import { getDocumentsQueryOptions } from "@/serverFunctions/document";
 import {
   $createDocumentVersion,
   getDocumentVersionsListQueryOptions,
@@ -35,7 +32,6 @@ import { TranslationDetails } from "./-components/TranslationDetails";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
-  loader: async () => await $getDocuments(),
 });
 
 function RouteComponent() {
@@ -64,6 +60,12 @@ function RouteComponent() {
 }
 
 function ManageNews() {
+  const [selectedNewsId, setSelectedNewsId] = useState<string>();
+
+  const [selectedLocale, setSelectedLocale] = useState<Locale>(
+    i18n.defaultLocale
+  );
+
   return (
     <Suspense fallback={<Skeleton />}>
       <ListOfNews />
