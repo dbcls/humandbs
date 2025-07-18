@@ -58,7 +58,6 @@ export const documentVersionRelations = relations(
       fields: [documentVersion.authorId],
       references: [user.id],
     }),
-    assets: many(asset),
   })
 );
 

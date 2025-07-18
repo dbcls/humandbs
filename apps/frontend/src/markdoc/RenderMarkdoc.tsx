@@ -1,4 +1,4 @@
-import Markdoc from "@markdoc/markdoc";
+import Markdoc, { RenderableTreeNode } from "@markdoc/markdoc";
 import React from "react";
 import * as components from "./Components";
 import { getDocumentWithClassName } from "@/markdoc/nodes/Document";
@@ -8,17 +8,21 @@ export function RenderMarkdoc({
   content,
   className,
 }: {
-  content: string;
+  content: string | RenderableTreeNode;
   className?: string;
 }) {
   return (
     <CatchBoundary getResetKey={() => "reset"}>
-      {Markdoc.renderers.react(JSON.stringify(content), React, {
-        components: {
-          ...components,
-          Document: getDocumentWithClassName(className),
-        },
-      })}
+      {Markdoc.renderers.react(
+        typeof content === "string" ? JSON.parse(content) : content,
+        React,
+        {
+          components: {
+            ...components,
+            Document: getDocumentWithClassName(className),
+          },
+        }
+      )}
     </CatchBoundary>
   );
 }

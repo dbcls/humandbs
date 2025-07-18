@@ -14,20 +14,40 @@ Document version. Has actual document content.
 - id
 - document_id - reference to the document
 - version - version number
-- title - string
+- authorId - author
+- createdAt
+- updatedAt
+
+## Document Version translation
+
+Document version translation
+
+- title
 - content - markdown / markdoc text
-- created_at
-- author_id
+- locale
+- documentVersionId
+- createdAt
+- updatedAt
+- translatedBy
 
 ## Newspost
+
+- id
+- createdAt
+- updatedAt
+- authorId
+
+## Newspost translation
 
 A news post for displaying on the news page.
 
 - id
 - title - string
 - content - markdown / markdoc text
-- author_id
-- created_at
+- locale
+- translatedBy
+- createdAt
+- updatedAt
 
 ## Asset
 
@@ -35,10 +55,11 @@ A file entity. can be Image, PDF etc.
 
 - id
 - title - string
-- lang
 - url
-- alt_text
-- type - mime type
+- description
+- mimeType - mime type
+- createdAt
+- updatedAt
 
 * Local files for actually store the files. Using multer.
 

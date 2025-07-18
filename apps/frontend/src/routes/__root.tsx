@@ -106,14 +106,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-family-sans text-foreground main-bg relative">
-        <main className="flex flex-col gap-2 p-4">
-          <Navbar />
-          {children}
-          <TanStackRouterDevtools position="bottom-right" />
-          <ReactQueryDevtools buttonPosition="bottom-left" />
-          <Footer />
-          <Scripts />
-        </main>
+        {children}
+        <TanStackRouterDevtools position="bottom-right" />
+        <ReactQueryDevtools buttonPosition="bottom-left" />
+        <Scripts />
       </body>
     </html>
   );

@@ -23,7 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-
+# Uploads
+public/assets
 
 .tanstack
 
