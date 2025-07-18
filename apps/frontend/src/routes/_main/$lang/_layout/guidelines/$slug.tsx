@@ -27,7 +27,6 @@ export const Route = createFileRoute("/_main/$lang/_layout/guidelines/$slug")({
 function RouteComponent() {
   const { frontmatter, content, headings } = Route.useLoaderData();
 
-  console.log("hello component");
   return (
     <Card caption={frontmatter.title} captionSize={"lg"}>
       <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">

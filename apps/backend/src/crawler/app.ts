@@ -2,12 +2,12 @@ import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import { dumpDetailJsons } from "@/crawler/detail-json-dump"
+import { generateEsJson } from "@/crawler/es-json-generator"
 import { parseAllHumIds } from "@/crawler/home-parser"
-
-import { dumpSummaryJson } from "./summary-dump"
+import { dumpSummaryFiles } from "@/crawler/summary-dump"
 
 interface Args {
-  process?: "json" | "detail-json" | "summary"
+  process?: "elasticsearch" | "detail" | "summary"
   humId?: string
   noCache: boolean
 }
@@ -20,7 +20,7 @@ const parseArgs = (): Args => {
 HumanDBs backend crawler for fetching and processing previous portal site data.`)
     .option("process", {
       alias: "p",
-      choices: ["json", "detail-json", "summary"] as const,
+      choices: ["elasticsearch", "detail", "summary"] as const,
     })
     .option("hum-id", {
       alias: "i",
@@ -33,9 +33,9 @@ HumanDBs backend crawler for fetching and processing previous portal site data.`
       description: "Disable cache for HTML files",
     })
     .example([
-      ["$0", "Dump all humIds entries to JSON files"],
-      ["$0 --process html", "Dump only HTML files"],
-      ["$0 -p json-lines --humId 12345", "Dump JSON-Lines files for a specific humId"],
+      ["$0", "Dump all humIds entries to elasticsearch JSON files"],
+      ["$0 --process summary", "Dump summary files"],
+      ["$0 -p detail --humId 12345", "Dump detail JSON files for humId 12345"],
       ["$0 -p summary", "Dump summary files for all humIds"],
     ])
     .help()
@@ -66,15 +66,15 @@ const main = async () => {
   humIds = humIds.filter(humId => !FILTER_HUM_IDS.includes(humId))
 
   const processType = args.process ?? "json"
-  if (processType === "json") {
-    console.log("Dumping JSON files...")
-    // await dumpDetailJsons(humIds, useCache)
-  } else if (processType === "detail-json") {
+  if (processType === "elasticsearch") {
+    console.log("Dumping elasticsearch JSON files...")
+    await generateEsJson(humIds, useCache)
+  } else if (processType === "detail") {
     console.log("Dumping detail JSON files...")
     await dumpDetailJsons(humIds, useCache)
   } else if (processType === "summary") {
     console.log("Dumping summary files...")
-    await dumpSummaryJson(humIds, useCache)
+    await dumpSummaryFiles(humIds, useCache)
   }
 }
 

@@ -1,3 +1,5 @@
 export const HOME_URL = "https://humandbs.dbcls.jp/"
+export const HOME_URL_EN = "https://humandbs.dbcls.jp/en/"
 export const HOME_HTML = "home.html"
+export const HOME_HTML_EN = "home-en.html"
 export const DETAIL_PAGE_BASE_URL = "https://humandbs.dbcls.jp/"

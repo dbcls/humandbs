@@ -2,19 +2,16 @@ export type LangType = "ja" | "en"
 
 // === Schema for Elasticsearch JSON ===
 
-interface Research {
+export interface Research {
   humId: string
+  lang: LangType
   title: string
   url: string
   dataProvider: {
-    principalInvestigator: {
-      name: string
-      affiliation: string
-    }[]
-    researchProject: {
-      name: string
-      url: string
-    }
+    principalInvestigator: string[]
+    affiliation: string[]
+    researchProjectName: string[]
+    researchProjectUrl: string[]
   }
   grant: { // JGA study
     id: string
@@ -24,32 +21,52 @@ interface Research {
   relatedPublication: { // TODO
     title: string
     doi: string
-    datasetId: string[]
+    datasetIds: string[]
   }[]
   controlledAccessUser: {
-    name: string
-    affiliation: string
-    country: string
-    researchTitle: string
+    name: string | null
+    affiliation: string | null
+    country: string | null
+    researchTitle: string | null
     datasetId: string[]
-    usagePeriod: {
-      startDate: string
-      endDate: string
-    }
+    periodOfDataUse: string | null
   }[]
-  version: ResearchVersion[]
+  summary: {
+    aims: string
+    methods: string
+    targets: string
+    url: {
+      url: string
+      text: string
+    }[]
+  }
+  versions: ResearchVersion[]
 }
 
-interface ResearchVersion {
+// primary key: humVersionId: `${humId}-v${versionNum}`
+export interface ResearchVersion {
   humId: string
+  lang: LangType
   version: string
   humVersionId: string
-  dataset: Dataset[]
+  datasets: Dataset[]
   releaseDate: string
-  releaseNote: string
+  releaseNote: string[]
 }
 
 // Ref: MolecularData, JGA Experiment, JGA Dataset, JGA Analysis, JGA Data
-interface Dataset {
-  datasetType: string
+// primary key: humDatasetId: `${humId}-${datasetId}-v${latestVersionId + 1}`
+export interface Dataset {
+  datasetId: string
+  lang: LangType
+  version: string
+  humDatasetId: string
+  humVersionIds: string[]
+  experiments: Experiment[]
+  footers: string[]
+  typeOfData: string[]
+  criteria: string[]
+  releaseDate: string[]
 }
+
+export type Experiment = Record<string, string>

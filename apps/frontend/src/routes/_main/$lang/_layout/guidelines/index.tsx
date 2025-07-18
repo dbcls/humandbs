@@ -12,7 +12,6 @@ export const Route = createFileRoute("/_main/$lang/_layout/guidelines/")({
 
     return data;
   },
-  context: () => ({ crumb: "guidelines" }),
 });
 
 function RouteComponent() {

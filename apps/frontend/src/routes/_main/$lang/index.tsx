@@ -4,12 +4,9 @@ import InfographicsImg from "@/assets/Infographics.png";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { News, NewsItem } from "@/components/FrontNews";
-import { SkeletonLoading } from "@/components/Skeleton";
 import { localeSchema } from "@/lib/i18n-config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentLatestVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
@@ -20,10 +17,17 @@ export const Route = createFileRoute("/_main/$lang/")({
     lang: localeSchema,
   }),
 
-  context() {
-    return {
-      crumb: "Home",
-    };
+  loader: async ({ context, params }) => {
+    const lang = params.lang;
+
+    const content = await context.queryClient.ensureQueryData(
+      getDocumentLatestVersionTranslationQueryOptions({
+        locale: lang,
+        contentId: "home",
+      })
+    );
+
+    return content;
   },
 });
 
@@ -52,9 +56,7 @@ function Index() {
       <section className="flex h-fit items-start justify-between gap-8">
         <div className="flex flex-1 flex-col items-center">
           <ErrorBoundary fallbackRender={(e) => <div>{e.error.message}</div>}>
-            <Suspense fallback={<SkeletonLoading />}>
-              <HomeContent />
-            </Suspense>
+            <HomeContent />
           </ErrorBoundary>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button variant={"accent"} size={"lg"}>
@@ -85,16 +87,9 @@ function Index() {
 }
 
 function HomeContent() {
-  const { lang } = Route.useRouteContext();
+  const { content } = Route.useLoaderData();
 
-  const { data } = useSuspenseQuery(
-    getDocumentLatestVersionTranslationQueryOptions({
-      contentId: "home",
-      locale: lang,
-    })
-  );
-
-  return <RenderMarkdoc content={data.content} />;
+  return <RenderMarkdoc content={content} />;
 }
 
 type InfographicsItem = {

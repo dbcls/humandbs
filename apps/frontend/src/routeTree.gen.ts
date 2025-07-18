@@ -8,7 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
@@ -16,6 +15,7 @@ import { Route as LoginErrorRouteImport } from './routes/login-error'
 import { Route as MainRouteImport } from './routes/_main'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
+import { Route as MainLangRouteRouteImport } from './routes/_main/$lang/route'
 import { Route as MainLangIndexRouteImport } from './routes/_main/$lang/index'
 import { Route as MainLangLayoutRouteImport } from './routes/_main/$lang/_layout'
 import { Route as MainLangLayoutDataSubmissionRouteImport } from './routes/_main/$lang/_layout/data-submission'
@@ -35,7 +35,6 @@ import { Route as MainLangLayoutGuidelinesRevisionRevRouteImport } from './route
 import { Route as MainLangLayoutDataSubmissionNavigationSomethngRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation.somethng'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth.$'
 
-const MainLangRouteImport = createFileRoute('/_main/$lang')()
 const rootServerRouteImport = createServerRootRoute()
 
 const LoginErrorRoute = LoginErrorRouteImport.update({
@@ -51,24 +50,24 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MainLangRoute = MainLangRouteImport.update({
-  id: '/$lang',
-  path: '/$lang',
-  getParentRoute: () => MainRoute,
-} as any)
 const AuthedAdminRoute = AuthedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AuthedRoute,
 } as any)
+const MainLangRouteRoute = MainLangRouteRouteImport.update({
+  id: '/$lang',
+  path: '/$lang',
+  getParentRoute: () => MainRoute,
+} as any)
 const MainLangIndexRoute = MainLangIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => MainLangRoute,
+  getParentRoute: () => MainLangRouteRoute,
 } as any)
 const MainLangLayoutRoute = MainLangLayoutRouteImport.update({
   id: '/_layout',
-  getParentRoute: () => MainLangRoute,
+  getParentRoute: () => MainLangRouteRoute,
 } as any)
 const MainLangLayoutDataSubmissionRoute =
   MainLangLayoutDataSubmissionRouteImport.update({
@@ -168,8 +167,8 @@ const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/login-error': typeof LoginErrorRoute
-  '/admin': typeof AuthedAdminRoute
   '/$lang': typeof MainLangLayoutRouteWithChildren
+  '/admin': typeof AuthedAdminRoute
   '/$lang/': typeof MainLangIndexRoute
   '/$lang/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
   '/$lang/data-submission': typeof MainLangLayoutDataSubmissionRouteWithChildren
@@ -211,8 +210,8 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/_main': typeof MainRouteWithChildren
   '/login-error': typeof LoginErrorRoute
+  '/_main/$lang': typeof MainLangRouteRouteWithChildren
   '/_authed/admin': typeof AuthedAdminRoute
-  '/_main/$lang': typeof MainLangRouteWithChildren
   '/_main/$lang/_layout': typeof MainLangLayoutRouteWithChildren
   '/_main/$lang/': typeof MainLangIndexRoute
   '/_main/$lang/_layout/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
@@ -235,8 +234,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/login-error'
-    | '/admin'
     | '/$lang'
+    | '/admin'
     | '/$lang/'
     | '/$lang/guidelines'
     | '/$lang/data-submission'
@@ -277,8 +276,8 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/_main'
     | '/login-error'
-    | '/_authed/admin'
     | '/_main/$lang'
+    | '/_authed/admin'
     | '/_main/$lang/_layout'
     | '/_main/$lang/'
     | '/_main/$lang/_layout/guidelines'
@@ -348,13 +347,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_main/$lang': {
-      id: '/_main/$lang'
-      path: '/$lang'
-      fullPath: '/$lang'
-      preLoaderRoute: typeof MainLangRouteImport
-      parentRoute: typeof MainRoute
-    }
     '/_authed/admin': {
       id: '/_authed/admin'
       path: '/admin'
@@ -362,19 +354,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_main/$lang': {
+      id: '/_main/$lang'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof MainLangRouteRouteImport
+      parentRoute: typeof MainRoute
+    }
     '/_main/$lang/': {
       id: '/_main/$lang/'
       path: '/'
       fullPath: '/$lang/'
       preLoaderRoute: typeof MainLangIndexRouteImport
-      parentRoute: typeof MainLangRoute
+      parentRoute: typeof MainLangRouteRoute
     }
     '/_main/$lang/_layout': {
       id: '/_main/$lang/_layout'
-      path: '/$lang'
+      path: ''
       fullPath: '/$lang'
       preLoaderRoute: typeof MainLangLayoutRouteImport
-      parentRoute: typeof MainLangRoute
+      parentRoute: typeof MainLangRouteRoute
     }
     '/_main/$lang/_layout/data-submission': {
       id: '/_main/$lang/_layout/data-submission'
@@ -590,26 +589,26 @@ const MainLangLayoutRouteWithChildren = MainLangLayoutRoute._addFileChildren(
   MainLangLayoutRouteChildren,
 )
 
-interface MainLangRouteChildren {
+interface MainLangRouteRouteChildren {
   MainLangLayoutRoute: typeof MainLangLayoutRouteWithChildren
   MainLangIndexRoute: typeof MainLangIndexRoute
 }
 
-const MainLangRouteChildren: MainLangRouteChildren = {
+const MainLangRouteRouteChildren: MainLangRouteRouteChildren = {
   MainLangLayoutRoute: MainLangLayoutRouteWithChildren,
   MainLangIndexRoute: MainLangIndexRoute,
 }
 
-const MainLangRouteWithChildren = MainLangRoute._addFileChildren(
-  MainLangRouteChildren,
+const MainLangRouteRouteWithChildren = MainLangRouteRoute._addFileChildren(
+  MainLangRouteRouteChildren,
 )
 
 interface MainRouteChildren {
-  MainLangRoute: typeof MainLangRouteWithChildren
+  MainLangRouteRoute: typeof MainLangRouteRouteWithChildren
 }
 
 const MainRouteChildren: MainRouteChildren = {
-  MainLangRoute: MainLangRouteWithChildren,
+  MainLangRouteRoute: MainLangRouteRouteWithChildren,
 }
 
 const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
