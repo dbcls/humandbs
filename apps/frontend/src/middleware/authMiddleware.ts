@@ -27,8 +27,6 @@ export const hasPermissionMiddleware = createMiddleware({
       throw new Error("Unauthorized");
     }
 
-    console.log("user.role", user.role);
-
     return next({
       context: {
         checkPermission: <Resource extends keyof Permissions>(

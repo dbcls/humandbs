@@ -9,8 +9,9 @@ import { user } from "./auth-schema";
 import { relations } from "drizzle-orm";
 
 export const newsItem = pgTable("news_item", {
-  id: uuid("id").notNull().primaryKey(),
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  publishedAt: timestamp("published_at"), // nullable for drafts
   authorId: text("author_id")
     .notNull()
     .references(() => user.id),

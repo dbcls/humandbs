@@ -4,6 +4,7 @@ import {
   createUpdateSchema,
 } from "drizzle-zod";
 import * as schema from "./schema";
+import { z } from "zod";
 
 export const documentVersionTranslationSchema = createSelectSchema(
   schema.documentVersionTranslation
@@ -26,8 +27,17 @@ export const userSelectSchema = createSelectSchema(schema.user);
 
 export const userRoleSchema = userSelectSchema.pick({ role: true });
 
-export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem);
+export const newsItemUpdateSchema = createUpdateSchema(
+  schema.newsItem
+).required({
+  id: true,
+});
+
 export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
+
+export const newsTranslationSelectSchema = createSelectSchema(
+  schema.newsTranslation
+);
 
 export const newsTranslationUpdateSchema = createUpdateSchema(
   schema.newsTranslation
@@ -36,3 +46,5 @@ export const newsTranslationUpdateSchema = createUpdateSchema(
 export const newsTranslationInsertSchema = createInsertSchema(
   schema.newsTranslation
 );
+
+export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;

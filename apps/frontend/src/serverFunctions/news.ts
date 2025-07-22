@@ -1,44 +1,123 @@
 import { newsItem, newsTranslation } from "@/db/schema";
 import {
-  newsItemInsertSchema,
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
+  newsTranslationSelectSchema,
   newsTranslationUpdateSchema,
 } from "@/db/types";
 import { db } from "@/lib/database";
-import { Locale } from "@/lib/i18n-config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, getTableColumns } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { getLocaleFn } from "./locale";
+import { Locale } from "@/lib/i18n-config";
+import { transformMarkdoc } from "@/markdoc/config";
 
-export const $getLatestNews = createServerFn({ method: "GET" })
+/**
+ * Get paginated list of titles and publication dates
+ */
+export const $getNewsTitles = createServerFn({ method: "GET" })
   .validator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
+      offset: z.number().min(0).optional().default(0),
+      locale: z.string(),
     })
   )
   .handler(async ({ data }) => {
-    const locale = await getLocaleFn();
+    const locale = data.locale;
 
     const news = await db
-      .select(getTableColumns(newsTranslation))
+      .select({
+        id: newsItem.id,
+        locale: newsTranslation.lang,
+        title: newsTranslation.title,
+        publishedAt: newsItem.publishedAt,
+      })
       .from(newsTranslation)
       .where(eq(newsTranslation.lang, locale))
-      .leftJoin(newsItem, eq(newsItem.id, newsTranslation.newsId))
-      .orderBy(desc(newsItem.createdAt))
-      .limit(data.limit);
+      .innerJoin(
+        newsItem,
+        and(
+          eq(newsItem.id, newsTranslation.newsId),
+          isNotNull(newsItem.publishedAt)
+        )
+      )
+      .orderBy(desc(newsItem.publishedAt))
+      .limit(data.limit)
+      .offset(data.offset);
 
     return news;
   });
 
-export function getLatestNewsQueryOptions({ locale }: { locale: Locale }) {
+export type NewsTitleResponse = Awaited<
+  ReturnType<typeof $getNewsTitles>
+>[number];
+
+export function getNewsTitlesQueryOptions({
+  limit,
+  offset,
+  locale,
+}: {
+  limit?: number;
+  offset?: number;
+  locale: Locale;
+}) {
   return queryOptions({
-    queryKey: ["news", "latest", locale],
-    queryFn: () => $getLatestNews({ data: {} }),
+    queryKey: ["news", { limit, offset, locale }],
+    queryFn: () => $getNewsTitles({ data: { limit, offset, locale } }),
     staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
+/**
+ * Get specific news translation by newsItemId and lang, for public-facing
+ */
+export const $getNewsTranslation = createServerFn({ method: "GET" })
+  .validator(newsTranslationSelectSchema.pick({ lang: true, newsId: true }))
+  .handler(async ({ data }) => {
+    const newsItemId = data.newsId;
+
+    const lang = data.lang;
+
+    const result = await db.query.newsTranslation.findFirst({
+      where: and(
+        eq(newsTranslation.newsId, newsItemId),
+        eq(newsTranslation.lang, lang)
+      ),
+      columns: {
+        title: true,
+        content: true,
+        newsId: true,
+        lang: true,
+      },
+      with: {
+        newsItem: {
+          columns: { publishedAt: true },
+        },
+      },
+    });
+
+    return {
+      ...result,
+      content: JSON.stringify(
+        transformMarkdoc({ rawContent: result?.content ?? "" }).content
+      ),
+    };
+  });
+
+export function getNewsTranslationQueryOptions({
+  newsItemId,
+  lang,
+}: {
+  newsItemId: string;
+  lang: Locale;
+}) {
+  return queryOptions({
+    queryKey: ["news", { newsItemId, lang }],
+    queryFn: () => $getNewsTranslation({ data: { newsId: newsItemId, lang } }),
   });
 }
 
@@ -80,12 +159,25 @@ export const $getNewsItems = createServerFn({ method: "GET" })
     return groupedNews;
   });
 
+export type GetNewsItemsResponse = Awaited<ReturnType<typeof $getNewsItems>>;
+
+export const $updateNewsItem = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .validator(newsItemUpdateSchema)
+  .handler(async ({ context, data }) => {
+    context.checkPermission("news", "update");
+
+    const { id, ...restItem } = data;
+
+    await db.update(newsItem).set(data).where(eq(newsItem.id, id));
+  });
+
 export function getNewsItemsQueryOptions({
   limit,
   offset,
 }: {
-  limit: number;
-  offset: number;
+  limit?: number;
+  offset?: number;
 }) {
   return queryOptions({
     queryKey: ["news", "items", limit, offset],
@@ -146,11 +238,16 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
  */
 export const $createNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsItemInsertSchema)
-  .handler(async ({ data, context }) => {
+
+  .handler(async ({ context }) => {
     context.checkPermission("news", "create");
 
-    const result = await db.insert(newsItem).values(data).returning();
+    const user = context.user!;
+
+    const [result] = await db
+      .insert(newsItem)
+      .values({ authorId: user.id })
+      .returning();
 
     return result;
   });
