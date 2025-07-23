@@ -249,7 +249,7 @@ function ListOfNews({
           item.translations[0]?.title ||
           "No title";
         return (
-          <li key={item.id}>
+          <li key={item.id} className="flex items-start gap-1">
             <Button
               size={"slim"}
               className={cn({
@@ -271,6 +271,9 @@ function ListOfNews({
                 ))}
               </p>
               <p className="text-sm">{title}</p>
+            </Button>
+            <Button variant={"cms-table-action"} size={"slim"}>
+              <Trash2Icon className="size-5 text-red-700" />
             </Button>
           </li>
         );
