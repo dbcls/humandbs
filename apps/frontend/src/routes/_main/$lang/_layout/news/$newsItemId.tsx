@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/$lang/_layout/news/$newsItemId")({
   component: RouteComponent,
-  search: {},
+
   loader: async ({ context, params }) => {
     const lang = context.lang;
     const id = params.newsItemId;

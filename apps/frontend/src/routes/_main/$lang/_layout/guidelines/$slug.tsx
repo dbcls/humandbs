@@ -15,12 +15,7 @@ export const Route = createFileRoute("/_main/$lang/_layout/guidelines/$slug")({
       data: { contentId: params.slug, lang: context.lang, generateTOC: true },
     });
 
-    return data;
-  },
-  context({ params }) {
-    return {
-      crumb: params.slug,
-    };
+    return { ...data, crumb: data.frontmatter?.title };
   },
 });
 

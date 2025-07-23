@@ -4,6 +4,7 @@ export const Route = createFileRoute(
   "/_main/$lang/_layout/data-submission/application/"
 )({
   component: RouteComponent,
+  loader: ({ context }) => ({ crumb: context.messages.Navbar.application }),
 });
 
 function RouteComponent() {

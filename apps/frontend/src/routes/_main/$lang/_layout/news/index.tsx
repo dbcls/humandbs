@@ -28,11 +28,6 @@ export const Route = createFileRoute("/_main/$lang/_layout/news/")({
       newsTitles,
     };
   },
-  context() {
-    return {
-      crumb: "All news",
-    };
-  },
 });
 
 function RouteComponent() {

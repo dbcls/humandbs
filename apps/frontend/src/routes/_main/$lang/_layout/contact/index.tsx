@@ -15,8 +15,10 @@ const contactQueryOptions = queryOptions({
 export const Route = createFileRoute("/_main/$lang/_layout/contact/")({
   component: RouteComponent,
   pendingComponent: SkeletonLoading,
-  loader: ({ context }) => {
-    return context.queryClient.ensureQueryData(contactQueryOptions);
+  loader: async ({ context }) => {
+    const content =
+      await context.queryClient.ensureQueryData(contactQueryOptions);
+    return { content, crumb: context.messages.Navbar.contact };
   },
 });
 
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/_main/$lang/_layout/contact/")({
  */
 
 function RouteComponent() {
-  const { data: markdown } = useSuspenseQuery(contactQueryOptions);
+  const { content } = Route.useLoaderData();
 
-  return <Markdown markdown={markdown} />;
+  return <Markdown markdown={content} />;
 }
