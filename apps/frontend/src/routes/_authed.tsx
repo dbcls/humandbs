@@ -25,34 +25,44 @@ export const Route = createFileRoute("/_authed")({
 
     if (error.message === "notAuthenticated") {
       return (
-        <div className="flex flex-col items-center justify-center p-12">
-          <p>Please login here</p>
-          <Button onClick={handleLogin}> Login with GitHub </Button>
-        </div>
+        <Layout>
+          <div className="flex flex-col items-center justify-center p-12">
+            <p>Please login here</p>
+            <Button onClick={handleLogin}> Login with GitHub </Button>
+          </div>
+        </Layout>
       );
     }
 
     if (error.message === "notAuthorized") {
       return (
-        <div className="flex items-center justify-center p-12">
-          <p>
-            You are not authorized to access this section. Ask for your
-            administrator to give you access rights.
-          </p>
-        </div>
+        <Layout>
+          <div className="flex items-center justify-center p-12">
+            <p>
+              You are not authorized to access this section. Ask for your
+              administrator to give you access rights.
+            </p>
+          </div>
+        </Layout>
       );
     }
 
     throw error;
   },
 
-  component: () => {
-    return (
-      <main className="flex h-screen flex-col gap-2 p-4">
-        <Navbar />
-        <Outlet />
-        <Footer />
-      </main>
-    );
-  },
+  component: () => (
+    <Layout>
+      <Outlet />
+    </Layout>
+  ),
 });
+
+function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="flex h-screen flex-col gap-2 p-4">
+      <Navbar />
+      {children}
+      <Footer />
+    </main>
+  );
+}
