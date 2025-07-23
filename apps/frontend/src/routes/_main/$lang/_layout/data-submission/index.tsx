@@ -17,12 +17,6 @@ export const Route = createFileRoute("/_main/$lang/_layout/data-submission/")({
     return {
       content,
       frontmatter,
-      crumb: "Data Submission",
-    };
-  },
-  context({ context }) {
-    return {
-      crumb: "Data Submission",
     };
   },
 });

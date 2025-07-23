@@ -1,38 +1,32 @@
 import { Breacrumbs } from "@/components/Breadcrumb";
-import { FileRoutesByTo } from "@/routeTree.gen";
-import { useLocation, useMatches } from "@tanstack/react-router";
-import { CatchBoundary, createFileRoute, Outlet } from "@tanstack/react-router";
+import {
+  CatchBoundary,
+  createFileRoute,
+  isMatch,
+  Outlet,
+  useMatches,
+} from "@tanstack/react-router";
+import { useMemo } from "react";
 
 export const Route = createFileRoute("/_main/$lang/_layout")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const current = useLocation();
-
   const matches = useMatches();
 
-  const routeHistory = current.pathname
-    .split("/")
-    .filter((x) => x && x.length > 0);
-
-  const breadcrumbRoutes = routeHistory.reduce(
-    (acc: { label: string; href: keyof FileRoutesByTo }[], route) => {
-      const prev_path = acc[acc.length - 1]?.href ?? "";
-      acc.push({
-        label: route,
-        href: `${prev_path}/${route}` as keyof FileRoutesByTo,
-      });
-      return acc;
-    },
-    []
-  );
-
-  breadcrumbRoutes[0].label = "home";
+  const crumbs = useMemo(() => {
+    return matches
+      .filter((match) => isMatch(match, "loaderData.crumb"))
+      .map((match) => ({
+        label: (match.loaderData?.crumb ?? "") as string,
+        href: match.fullPath,
+      }));
+  }, [matches]);
 
   return (
     <CatchBoundary getResetKey={() => "reset"}>
-      <Breacrumbs breadcrumbsPath={breadcrumbRoutes} />
+      <Breacrumbs breadcrumbsPath={crumbs} />
       <Outlet />
     </CatchBoundary>
   );

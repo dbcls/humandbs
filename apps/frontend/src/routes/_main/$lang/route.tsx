@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/$lang")({
-  context() {
+  loader: ({ context }) => {
     return {
-      crumb: "Home",
+      crumb: context.messages.Navbar.home,
     };
   },
 });

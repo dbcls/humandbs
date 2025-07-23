@@ -3,13 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import InfographicsImg from "@/assets/Infographics.png";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { News, NewsItem } from "@/components/FrontNews";
+import { News } from "./-components/FrontNews";
 import { localeSchema } from "@/lib/i18n-config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentLatestVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
 import { ErrorBoundary } from "react-error-boundary";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
+import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 export const Route = createFileRoute("/_main/$lang/")({
   component: Index,
@@ -20,30 +21,20 @@ export const Route = createFileRoute("/_main/$lang/")({
   loader: async ({ context, params }) => {
     const lang = params.lang;
 
-    const content = await context.queryClient.ensureQueryData(
+    const { content } = await context.queryClient.ensureQueryData(
       getDocumentLatestVersionTranslationQueryOptions({
         locale: lang,
         contentId: "home",
       })
     );
 
-    return content;
+    const newsTitles = await context.queryClient.ensureQueryData(
+      getNewsTitlesQueryOptions({ locale: lang })
+    );
+
+    return { content, newsTitles };
   },
 });
-
-const dummyNews: NewsItem[] = [
-  {
-    date: "2024/12/25",
-    href: "#",
-    title: "制限公開データ（Type I）1件が追加されました（hum0423.v2）",
-  },
-  {
-    date: "2021/09/01",
-    href: "#",
-    title:
-      "大阪大学大学院医学系研究科 産科学婦人科学講座 からの制限公開データ（Type I）を公開しました（hum0490）",
-  },
-];
 
 function Index() {
   const navigate = Route.useNavigate();
@@ -76,7 +67,7 @@ function Index() {
         </div>
 
         <Card caption={t("news")} className="w-96 shrink-0">
-          <News news={dummyNews} />
+          <News />
         </Card>
       </section>
       <Card className="overflow-hidden p-0">

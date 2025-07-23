@@ -5,10 +5,13 @@ import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/$lang/_layout/data-usage/")({
   component: RouteComponent,
-  loader: ({ context }) =>
-    getContent({
+  loader: async ({ context }) => {
+    const content = await getContent({
       data: { contentId: "data-usage", lang: context.lang },
-    }),
+    });
+
+    return { ...content };
+  },
 });
 
 function RouteComponent() {
