@@ -1,7 +1,7 @@
 import { Link } from "@/components/Link";
 import { NewsTitleResponse } from "@/serverFunctions/news";
 import { useLoaderData } from "@tanstack/react-router";
-import { useLocale } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   const locale = useLocale();
@@ -30,6 +30,8 @@ function News() {
 
   const lang = useLocale();
 
+  const t = useTranslations("Navbar");
+
   return (
     <div className="flex flex-col gap-2">
       <ul className="space-y-2">
@@ -38,7 +40,7 @@ function News() {
         ))}
       </ul>
       <Link to="/$lang/news" params={{ lang }}>
-        ニュース一覧
+        {t("all-news")}
       </Link>
     </div>
   );

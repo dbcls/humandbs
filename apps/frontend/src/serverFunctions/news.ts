@@ -6,14 +6,13 @@ import {
   newsTranslationUpdateSchema,
 } from "@/db/types";
 import { db } from "@/lib/database";
+import { Locale } from "@/lib/i18n-config";
+import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, getTableColumns, isNotNull } from "drizzle-orm";
 import { z } from "zod";
-import { getLocaleFn } from "./locale";
-import { Locale } from "@/lib/i18n-config";
-import { transformMarkdoc } from "@/markdoc/config";
 
 /**
  * Get paginated list of titles and publication dates
@@ -169,7 +168,7 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
 
     const { id, ...restItem } = data;
 
-    await db.update(newsItem).set(data).where(eq(newsItem.id, id));
+    await db.update(newsItem).set(restItem).where(eq(newsItem.id, id));
   });
 
 export function getNewsItemsQueryOptions({
@@ -238,7 +237,7 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
  */
 export const $createNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-
+  .validator(z.object({}).optional())
   .handler(async ({ context }) => {
     context.checkPermission("news", "create");
 

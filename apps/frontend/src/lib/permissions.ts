@@ -1,9 +1,9 @@
-import { NewsItem } from "@/components/FrontNews";
 import {
   Asset,
   Document,
   DocumentVersion,
   DocumentVersionTranslation,
+  NewsItem,
   UserRole,
 } from "@/db/schema";
 import { SessionUser } from "@/router";

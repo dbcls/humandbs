@@ -44,3 +44,5 @@ export const newsTranslationRelations = relations(
     }),
   })
 );
+
+export type NewsItem = typeof newsItem.$inferSelect;

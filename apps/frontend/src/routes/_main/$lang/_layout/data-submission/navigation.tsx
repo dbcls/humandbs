@@ -5,9 +5,9 @@ export const Route = createFileRoute(
   "/_main/$lang/_layout/data-submission/navigation"
 )({
   component: RouteComponent,
-  loader() {
+  loader({ context }) {
     return {
-      crumb: "navigation",
+      crumb: context.messages.Navbar.navigation,
     };
   },
 });
