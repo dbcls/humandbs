@@ -50,7 +50,11 @@ function Index() {
             <HomeContent />
           </ErrorBoundary>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Button variant={"accent"} size={"lg"}>
+            <Button
+              variant={"accent"}
+              onClick={() => navigate({ to: "/$lang/data-submission" })}
+              size={"lg"}
+            >
               {t("data-submission-button")}
             </Button>
 

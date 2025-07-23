@@ -1,5 +1,5 @@
 {
-  "$schema": "./navigationschema.json",
+  "$schema": "./navigation.schema.json",
   "steps": [
     {
       "id": "step1",

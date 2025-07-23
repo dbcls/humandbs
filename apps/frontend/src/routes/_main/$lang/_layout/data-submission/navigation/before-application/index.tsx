@@ -1,26 +1,26 @@
 import { Card } from "@/components/Card";
-import { NavigationChart, NavigationData } from "@/components/NavigationChart";
-import { useTranslations } from "use-intl";
-import { createFileRoute } from "@tanstack/react-router";
+import { NavigationChart } from "@/components/NavigationChart";
 import { $getNavigationFlowchartData } from "@/serverFunctions/navigationFlowchart";
+import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute(
-  "/_main/$lang/_layout/data-submission/navigation/"
+  "/_main/$lang/_layout/data-submission/navigation/before-application/"
 )({
   component: RouteComponent,
   loader: () =>
-    $getNavigationFlowchartData({ data: { type: "data-submission" } }),
+    $getNavigationFlowchartData({
+      data: { type: "before-application" },
+    }),
 });
 
 function RouteComponent() {
-  const navigate = Route.useNavigate();
-
   const navData = Route.useLoaderData();
-
+  const navigate = Route.useNavigate();
   const t = useTranslations("Data-submission");
 
   return (
-    <Card caption={t("data-submission")} captionSize={"lg"}>
+    <Card caption={t("before-application")} captionSize={"lg"}>
       <NavigationChart data={navData} navigate={navigate} />
     </Card>
   );

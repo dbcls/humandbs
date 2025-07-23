@@ -1,5 +1,5 @@
 {
-  "$schema": "./navigationschema.json",
+  "$schema": "./navigation.schema.json",
   "steps": [
     {
       "id": "step1",
@@ -32,13 +32,13 @@
         {
           "id": "option4",
           "title": "制限公開",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "申請システムの前に"
         },
         {
           "id": "option5",
           "title": "非制限公開＋制限公開",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "申請システムの前に"
         }
       ]
@@ -51,7 +51,7 @@
         {
           "id": "option6",
           "title": "沿っている",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "申請システムの前に"
         },
         {
@@ -69,7 +69,7 @@
         {
           "id": "option8",
           "title": "一般的",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "申請システムの前に"
         },
         {
@@ -87,7 +87,7 @@
         {
           "id": "option10",
           "title": "含む",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "申請システムの前に"
         },
         {

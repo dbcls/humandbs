@@ -17,7 +17,7 @@ interface Step {
   options: Option[];
 }
 
-interface NavigationData {
+export interface NavigationData {
   steps: Step[];
 }
 

@@ -25,19 +25,20 @@ function RouteComponent() {
   const { content, frontmatter } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const t = useTranslations("Data-submission");
+  const tCommon = useTranslations("common");
 
   return (
     <Card caption={frontmatter.title} captionSize={"lg"}>
       <RenderMarkdoc className="mx-auto" content={content} />
       <div className="my-5 text-center">
         <Button
-          className="text-3xl"
+          className="text-3xl lowercase first-letter:capitalize"
           size="lg"
           onClick={() => {
             navigate({ to: "./navigation" });
           }}
         >
-          {t("data-submission")}
+          {tCommon("to-", { place: t("data-submission") })}
         </Button>
       </div>
     </Card>
