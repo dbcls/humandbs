@@ -1,6 +1,7 @@
 {
   "common": {
-    "humandb": "NBDC ヒトデータベース"
+    "humandb": "NBDC ヒトデータベース",
+    "to-": "{place}へ"
   },
   "Footer": {
     "sitemap": "サイトマップ",
