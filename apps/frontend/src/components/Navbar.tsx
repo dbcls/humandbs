@@ -135,7 +135,7 @@ export function Navbar() {
   return (
     <header className="flex items-center justify-between gap-8 rounded-md bg-white p-4">
       <nav className="flex items-center gap-8">
-        <Link className="w-fit shrink-0" to=".">
+        <Link className="w-fit shrink-0" variant={"nav"} to="/$lang">
           <img src={Logo} width={200} height={50} className="block" />
 
           <div className="text-center text-sm font-semibold whitespace-nowrap">

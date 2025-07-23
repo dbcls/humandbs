@@ -20,7 +20,7 @@ function RouteComponent() {
   const t = useTranslations("Data-submission");
 
   return (
-    <Card caption={t("before-submission")} captionSize={"lg"}>
+    <Card caption={t("before-application")} captionSize={"lg"}>
       <NavigationChart data={navData} navigate={navigate} />
     </Card>
   );

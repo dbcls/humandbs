@@ -20,7 +20,7 @@
   "Navbar": {
     "data-submission": "データの提供",
     "navigation": "ナビゲーション",
-    "before-submission": "申請システムの前に",
+    "before-application": "申請システムの前に",
     "application": "申請",
     "data-usage": "データの利用",
     "about-data": "データについて",
@@ -53,6 +53,6 @@
   },
   "Data-submission": {
     "data-submission": "データの提供",
-    "before-submission": "申請システムの前に"
+    "before-application": "申請システムの前に"
   }
 }

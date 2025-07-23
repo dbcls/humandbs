@@ -20,7 +20,7 @@
   "Navbar": {
     "data-submission": "Data submission",
     "navigation": "Navigation",
-    "before-submission": "Before submission system",
+    "before-application": "Before submission system",
     "application": "Application",
     "data-usage": "Data Usage",
     "about-data": "About Data",
@@ -53,6 +53,6 @@
   },
   "Data-submission": {
     "data-submission": "Data submission",
-    "before-submission": "Before submission system"
+    "before-application": "Before submission system"
   }
 }
