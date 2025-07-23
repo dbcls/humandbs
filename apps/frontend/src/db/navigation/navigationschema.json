@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Navigation Data Schema",
+  "description": "Schema for navigation step configuration files",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "steps": {
+      "type": "array",
+      "description": "Array of navigation steps",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the step",
+            "pattern": "^step[0-9]+$"
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title for the step"
+          },
+          "text": {
+            "type": "string",
+            "description": "Explanatory text for the step"
+          },
+          "options": {
+            "type": "array",
+            "description": "Available options for this step",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Unique identifier for the option",
+                  "pattern": "^option[0-9]+$"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Display title for the option"
+                },
+                "nextStep": {
+                  "type": "string",
+                  "description": "ID of the next step to navigate to",
+                  "pattern": "^step[0-9]+$"
+                },
+                "link": {
+                  "type": "string",
+                  "description": "External URL or internal route"
+                },
+                "linkText": {
+                  "type": "string",
+                  "description": "Text to display for the link"
+                }
+              },
+              "required": ["id", "title"],
+              "additionalProperties": false,
+              "anyOf": [
+                {
+                  "required": ["nextStep"]
+                },
+                {
+                  "required": ["link", "linkText"]
+                }
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": ["id", "title", "text", "options"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["steps"],
+  "additionalProperties": false
+}

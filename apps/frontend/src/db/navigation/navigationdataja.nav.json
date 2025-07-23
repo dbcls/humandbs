@@ -1,0 +1,102 @@
+{
+  "$schema": "./navigationschema.json",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "登録するデータのソースについて",
+      "text": "ヒトから取得した試料（組織、細胞、細菌叢など）由来のデータ、あるいは人の健康に関する事象を研究対象にしていますか？",
+      "options": [
+        {
+          "id": "option1",
+          "title": "ヒト由来",
+          "nextStep": "step2"
+        },
+        {
+          "id": "option2",
+          "title": "ヒト以外",
+          "link": "https://www.ddbj.nig.ac.jp/submission-navigation.html",
+          "linkText": "データベースを選ぶ"
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "データの公開種別について",
+      "text": "閲覧者に制限を設けずに公開しますか？",
+      "options": [
+        {
+          "id": "option3",
+          "title": "非制限公開",
+          "nextStep": "step3"
+        },
+        {
+          "id": "option4",
+          "title": "制限公開",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option5",
+          "title": "非制限公開＋制限公開",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        }
+      ]
+    },
+    {
+      "id": "step3",
+      "title": "法令や研究倫理について",
+      "text": "「臨床研究法」や「人を対象とする生命科学・医学系研究に関する倫理指針」など、法令や研究倫理指針に沿って実施された研究に沿っていますか？",
+      "options": [
+        {
+          "id": "option6",
+          "title": "沿っている",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option7",
+          "title": "沿っていない",
+          "nextStep": "step4"
+        }
+      ]
+    },
+    {
+      "id": "step4",
+      "title": "データの一般性について",
+      "text": "既に学術的な価値が定まり、研究用として広く利用され、かつ、一般に入手可能な試料」を対象とした解析データですか？",
+      "options": [
+        {
+          "id": "option8",
+          "title": "一般的",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option9",
+          "title": "一般的でない",
+          "nextStep": "step5"
+        }
+      ]
+    },
+    {
+      "id": "step5",
+      "title": "ヒトの塩基配列について",
+      "text": "人体から分離した細菌、カビ等の微生物及びウイルス自体の分析等により得られたデータ（ヒトの健康に関する事象を研究の対象としない）ですか？",
+      "options": [
+        {
+          "id": "option10",
+          "title": "含む",
+          "link": "before-submission",
+          "linkText": "申請システムの前に"
+        },
+        {
+          "id": "option11",
+          "title": "除去されている",
+          "link": "https://www.ddbj.nig.ac.jp/submission-navigation.html?state=3dMgWWX3tFJcUi2aYAyLk4XgNkCE",
+          "linkText": "データベースを選ぶ"
+        }
+      ]
+    }
+  ]
+}
