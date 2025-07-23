@@ -1,5 +1,5 @@
 {
-  "$schema": "./navigationschema.json",
+  "$schema": "./navigation.schema.json",
   "steps": [
     {
       "id": "step1",
@@ -32,13 +32,13 @@
         {
           "id": "option4",
           "title": "Option 2-2",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "Before submission system"
         },
         {
           "id": "option5",
           "title": "Option 2-3",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "Before submission system"
         }
       ]
@@ -51,7 +51,7 @@
         {
           "id": "option6",
           "title": "Option 3-1",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "Before submission system"
         },
         {
@@ -69,7 +69,7 @@
         {
           "id": "option8",
           "title": "Option 4-1",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "Before submission system"
         },
         {
@@ -87,7 +87,7 @@
         {
           "id": "option10",
           "title": "Option 5-1",
-          "link": "before-submission",
+          "link": "before-application",
           "linkText": "Before submission system"
         },
         {
