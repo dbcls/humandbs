@@ -32,7 +32,7 @@ import { Route as MainLangLayoutAchievementsIndexRouteImport } from './routes/_m
 import { Route as MainLangLayoutAboutDataIndexRouteImport } from './routes/_main/$lang/_layout/about-data/index'
 import { Route as MainLangLayoutNewsNewsItemIdRouteImport } from './routes/_main/$lang/_layout/news/$newsItemId'
 import { Route as MainLangLayoutGuidelinesSlugRouteImport } from './routes/_main/$lang/_layout/guidelines/$slug'
-import { Route as MainLangLayoutDataSubmissionNavigationRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation'
+import { Route as MainLangLayoutDataSubmissionNavigationRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/route'
 import { Route as MainLangLayoutResearchListResearchIdIndexRouteImport } from './routes/_main/$lang/_layout/research-list/$researchId/index'
 import { Route as MainLangLayoutDataSubmissionNavigationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/index'
 import { Route as MainLangLayoutDataSubmissionApplicationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/application/index'
@@ -174,7 +174,7 @@ const MainLangLayoutDataSubmissionNavigationIndexRoute =
   MainLangLayoutDataSubmissionNavigationIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => MainLangLayoutDataSubmissionNavigationRoute,
+    getParentRoute: () => MainLangLayoutDataSubmissionNavigationRouteRoute,
   } as any)
 const MainLangLayoutDataSubmissionApplicationIndexRoute =
   MainLangLayoutDataSubmissionApplicationIndexRouteImport.update({
@@ -194,12 +194,23 @@ const MainLangLayoutGuidelinesRevisionRevRoute =
     path: '/revision/$rev',
     getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
-const MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute =
-  MainLangLayoutDataSubmissionNavigationBeforeSubmissionRouteImport.update({
-    id: '/before-submission',
-    path: '/before-submission',
-    getParentRoute: () => MainLangLayoutDataSubmissionNavigationRoute,
-  } as any)
+const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute =
+  MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport.update(
+    {
+      id: '/before-application',
+      path: '/before-application',
+      getParentRoute: () => MainLangLayoutDataSubmissionNavigationRouteRoute,
+    } as any,
+  )
+const MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute =
+  MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRouteImport.update(
+    {
+      id: '/',
+      path: '/',
+      getParentRoute: () =>
+        MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute,
+    } as any,
+  )
 const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -565,7 +576,7 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/$lang/data-submission/navigation/'
       preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRoute
+      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRoute
     }
     '/_main/$lang/_layout/data-submission/application/': {
       id: '/_main/$lang/_layout/data-submission/application/'
@@ -588,12 +599,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutGuidelinesRevisionRevRouteImport
       parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation/before-submission': {
-      id: '/_main/$lang/_layout/data-submission/navigation/before-submission'
-      path: '/before-submission'
-      fullPath: '/$lang/data-submission/navigation/before-submission'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRoute
+    '/_main/$lang/_layout/data-submission/navigation/before-application': {
+      id: '/_main/$lang/_layout/data-submission/navigation/before-application'
+      path: '/before-application'
+      fullPath: '/$lang/data-submission/navigation/before-application'
+      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport
+      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRoute
     }
     '/_main/$lang/_layout/data-submission/navigation/before-application/': {
       id: '/_main/$lang/_layout/data-submission/navigation/before-application/'
@@ -627,17 +638,14 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
-interface MainLangLayoutDataSubmissionNavigationRouteChildren {
-  MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute
-  MainLangLayoutDataSubmissionNavigationIndexRoute: typeof MainLangLayoutDataSubmissionNavigationIndexRoute
+interface MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren {
+  MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute
 }
 
 const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren: MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren =
   {
-    MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute:
-      MainLangLayoutDataSubmissionNavigationBeforeSubmissionRoute,
-    MainLangLayoutDataSubmissionNavigationIndexRoute:
-      MainLangLayoutDataSubmissionNavigationIndexRoute,
+    MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute:
+      MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute,
   }
 
 const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren =

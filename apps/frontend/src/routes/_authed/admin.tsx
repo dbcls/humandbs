@@ -33,6 +33,7 @@ import { AssetsPanel } from "./-components/Assets";
 import { TranslationDetails } from "./-components/TranslationDetails";
 import {
   $createNewsItem,
+  $deleteNewsItem,
   $deleteNewsTranslation,
   $updateNewsItem,
   $upsertNewsTranslation,
@@ -83,8 +84,8 @@ function ManageNews() {
     useState<GetNewsItemsResponse[number]>();
 
   async function handleAddNewsItem() {
-    await $createNewsItem();
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({}));
+    await $createNewsItem({ data: {} });
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
   }
 
   return (
@@ -159,7 +160,7 @@ function NewsEditor({
       });
     }
 
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({}));
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
   }
 
   async function handleDeleteTranslation() {
@@ -173,7 +174,7 @@ function NewsEditor({
       },
     });
 
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({}));
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
   }
 
   if (!newsItem) return null;
@@ -237,13 +238,22 @@ function ListOfNews({
   selectedNewsItem: GetNewsItemsResponse[number] | undefined;
   onSelectNewsItem: (item: GetNewsItemsResponse[number]) => void;
 }) {
-  const { data: newsItems } = useSuspenseQuery(getNewsItemsQueryOptions({}));
+  const queryClient = useQueryClient();
+  const { data: newsItems } = useSuspenseQuery(
+    getNewsItemsQueryOptions({ limit: 100 })
+  );
 
   const locale = useLocale();
+
+  async function handleDeleteNewsItem(id: string) {
+    await $deleteNewsItem({ data: { id } });
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+  }
 
   return (
     <ul>
       {newsItems.map((item) => {
+        console.log("item.translations", item.translations);
         const title =
           item.translations.find((tr) => tr?.lang === locale)?.title ||
           item.translations[0]?.title ||
@@ -261,18 +271,24 @@ function ListOfNews({
             >
               <p className="text-xs">
                 {item.publishedAt?.toLocaleDateString(locale) || "No data"}
-                {item.translations.map((tr, index) => (
-                  <span
-                    className="bg-secondary-light ml-2 rounded-full px-2 text-xs text-white"
-                    key={`${tr?.lang}-${index}`}
-                  >
-                    {tr?.lang}
-                  </span>
-                ))}
+                {item.translations &&
+                  item.translations[0] &&
+                  item.translations.map((tr, index) => (
+                    <span
+                      className="bg-secondary-light ml-2 rounded-full px-2 text-xs text-white"
+                      key={`${tr?.lang}-${index}`}
+                    >
+                      {tr?.lang}
+                    </span>
+                  ))}
               </p>
               <p className="text-sm">{title}</p>
             </Button>
-            <Button variant={"cms-table-action"} size={"slim"}>
+            <Button
+              variant={"cms-table-action"}
+              size={"slim"}
+              onClick={() => handleDeleteNewsItem(item.id)}
+            >
               <Trash2Icon className="size-5 text-red-700" />
             </Button>
           </li>
