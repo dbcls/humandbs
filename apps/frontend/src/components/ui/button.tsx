@@ -12,6 +12,7 @@ export const buttonVariants = cva(
         lg: "px-8 py-4 text-sm",
         default: "px-4 py-2 text-xs",
         slim: "p-1 text-xs",
+        icon: "p-2 text-sm",
       },
       variant: {
         accent:
@@ -25,6 +26,7 @@ export const buttonVariants = cva(
           "bg-none rounded-xs hover:bg-hover active:bg-foreground-light/30",
         toggle:
           " bg-none text-foreground rounded-md whitespace-normal w-full text-left hover:bg-hover",
+        ghost: "bg-none text-black",
       },
     },
     defaultVariants: {
