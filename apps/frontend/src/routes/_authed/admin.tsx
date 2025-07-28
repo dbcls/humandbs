@@ -257,7 +257,9 @@ function ListOfNews({
   async function handleClickDeleteNewsItem(item: GetNewsItemsResponse[number]) {
     openConfirmation({
       title: t("title"),
-      description: t("message", { itemName: getNewsItemTitle(item, locale) }),
+      description: t("delete-newsItem-message", {
+        itemName: getNewsItemTitle(item, locale),
+      }),
       onAction: async () => {
         await $deleteNewsItem({ data: { id: item.id } });
         queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));

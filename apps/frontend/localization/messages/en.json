@@ -20,7 +20,7 @@
   },
   "DeleteDialog": {
     "title": "Item delete confirmation",
-    "message": "Are you sure you want to delete `{itemName}`?",
+    "delete-newsItem-message": "Are you sure you want to delete `{itemName}`? All news translations for this news item will be deleted.",
     "confirm": "Delete",
     "cancel": "Cancel"
   },

@@ -20,7 +20,7 @@
   },
   "DeleteDialog": {
     "title": "アイテム削除確認",
-    "message": "`{itemName}` を削除してもよろしいですか？",
+    "delete-newsItem-message": "`{itemName}` を削除してもよろしいですか？ このニュースアイテムのすべてのニュース翻訳が削除されます。",
     "confirm": "削除",
     "cancel": "キャンセル"
   },
