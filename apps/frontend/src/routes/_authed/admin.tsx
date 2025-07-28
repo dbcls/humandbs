@@ -289,8 +289,7 @@ function ListOfNews({
             >
               <p className="text-xs">
                 {item.publishedAt?.toLocaleDateString(locale) || "No data"}
-                {item.translations &&
-                  item.translations[0] &&
+                {item.translations?.[0] &&
                   item.translations.map((tr, index) => (
                     <span
                       className="bg-secondary-light ml-2 rounded-full px-2 text-xs text-white"
