@@ -13,7 +13,7 @@ export const $getDocumentVersions = createServerFn({
 })
   .validator(
     z.object({
-      documentId: z.string().uuid(),
+      documentId: z.uuidv4(),
     })
   )
   .handler(async ({ data }) => {
@@ -55,7 +55,7 @@ export const $createDocumentVersion = createServerFn({
 })
   .validator(
     z.object({
-      documentId: z.string().uuid(),
+      documentId: z.uuidv4(),
     })
   )
   .middleware([hasPermissionMiddleware])
@@ -94,7 +94,7 @@ export const $deleteDocumentVersion = createServerFn({
 })
   .validator(
     z.object({
-      documentId: z.string().uuid(),
+      documentId: z.uuidv4(),
       versionNumber: z.number().min(1),
     })
   )
