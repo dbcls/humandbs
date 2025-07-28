@@ -1,4 +1,4 @@
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/Input";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCopyToClipboard } from "@/lib/useColyToClipboard";
+import { useCopyToClipboard } from "@/lib/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 import {
   $deleteAsset,

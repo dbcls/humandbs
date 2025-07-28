@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Button } from "./Button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Option {

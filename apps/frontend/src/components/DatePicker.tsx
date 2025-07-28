@@ -21,7 +21,7 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div>
       <Label htmlFor="date" className="px-1">
         {label ?? "Date"}
       </Label>
@@ -29,11 +29,12 @@ export function DatePicker({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
+            size={"slim"}
             id="date"
-            className="w-48 justify-between font-normal"
+            className="mt-3 font-normal"
           >
             {dateValue ? dateValue.toLocaleDateString() : "Select date"}
-            <ChevronDownIcon />
+            <ChevronDownIcon className="inline-block size-5" />
           </Button>
         </PopoverTrigger>
         <PopoverContent

@@ -19,7 +19,7 @@ import {
 import type { Locale, Messages } from "@/lib/i18n-config";
 import { Link } from "./Link";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "./Button";
+import { Button } from "@/components/ui/button";
 
 type NavLinkId = keyof Messages["Navbar"];
 
@@ -135,7 +135,12 @@ export function Navbar() {
   return (
     <header className="flex items-center justify-between gap-8 rounded-md bg-white p-4">
       <nav className="flex items-center gap-8">
-        <Link className="w-fit shrink-0" variant={"nav"} to="/$lang">
+        <Link
+          className="w-fit shrink-0"
+          variant={"nav"}
+          to="/$lang"
+          params={{ lang }}
+        >
           <img src={Logo} width={200} height={50} className="block" />
 
           <div className="text-center text-sm font-semibold whitespace-nowrap">

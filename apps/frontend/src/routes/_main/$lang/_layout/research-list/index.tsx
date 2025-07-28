@@ -2,7 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
 
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Table } from "@/components/Table";
