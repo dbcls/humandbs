@@ -18,6 +18,12 @@
     "achievements": "Achievements",
     "supported-browsers": "Supported Browsers"
   },
+  "DeleteDialog": {
+    "title": "Item delete confirmation",
+    "message": "Are you sure you want to delete `{itemName}`?",
+    "confirm": "Delete",
+    "cancel": "Cancel"
+  },
   "Navbar": {
     "data-submission": "Data submission",
     "navigation": "Navigation",

@@ -18,6 +18,12 @@
     "achievements": "成果発表",
     "supported-browsers": "対応ブラウザ"
   },
+  "DeleteDialog": {
+    "title": "アイテム削除確認",
+    "message": "`{itemName}` を削除してもよろしいですか？",
+    "confirm": "削除",
+    "cancel": "キャンセル"
+  },
   "Navbar": {
     "data-submission": "データの提供",
     "navigation": "ナビゲーション",

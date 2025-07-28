@@ -1,4 +1,4 @@
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/Card";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContent } from "@/serverFunctions/getContent";

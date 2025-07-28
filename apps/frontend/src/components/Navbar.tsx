@@ -19,7 +19,7 @@ import {
 import type { Locale, Messages } from "@/lib/i18n-config";
 import { Link } from "./Link";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "./Button";
+import { Button } from "@/components/ui/button";
 
 type NavLinkId = keyof Messages["Navbar"];
 

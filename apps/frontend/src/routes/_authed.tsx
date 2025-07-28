@@ -1,4 +1,4 @@
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { authClient } from "@/lib/auth-client";

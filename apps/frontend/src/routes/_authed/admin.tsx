@@ -1,4 +1,7 @@
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/DatePicker";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,24 +16,13 @@ import { UserRole } from "@/db/schema";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { roles } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { transformMarkdoc } from "@/markdoc/config";
+import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentsQueryOptions } from "@/serverFunctions/document";
 import {
   $createDocumentVersion,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
-import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
-import {
-  QueryClient,
-  useMutation,
-  useQueries,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
-import { useLocale, useTranslations } from "use-intl";
-import { AssetsPanel } from "./-components/Assets";
-import { TranslationDetails } from "./-components/TranslationDetails";
 import {
   $createNewsItem,
   $deleteNewsItem,
@@ -40,14 +32,20 @@ import {
   getNewsItemsQueryOptions,
   GetNewsItemsResponse,
 } from "@/serverFunctions/news";
-import { NewsTranslationInsert } from "@/db/types";
+import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Trash2Icon } from "lucide-react";
-import { DatePicker } from "@/components/DatePicker";
+import { Suspense, useEffect, useState } from "react";
+import { useLocale, useTranslations } from "use-intl";
+import { AssetsPanel } from "./-components/Assets";
+import { TranslationDetails } from "./-components/TranslationDetails";
+import useConfirmationStore from "@/stores/confirmationStore";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
@@ -229,6 +227,14 @@ function NewsEditor({
   );
 }
 
+function getNewsItemTitle(item: GetNewsItemsResponse[number], locale: string) {
+  return (
+    item.translations.find((tr) => tr?.lang === locale)?.title ||
+    item.translations[0]?.title ||
+    "No title"
+  );
+}
+
 function ListOfNews({
   onClickAdd,
   selectedNewsItem,
@@ -238,6 +244,9 @@ function ListOfNews({
   selectedNewsItem: GetNewsItemsResponse[number] | undefined;
   onSelectNewsItem: (item: GetNewsItemsResponse[number]) => void;
 }) {
+  const { openConfirmation } = useConfirmationStore();
+  const t = useTranslations("DeleteDialog");
+
   const queryClient = useQueryClient();
   const { data: newsItems } = useSuspenseQuery(
     getNewsItemsQueryOptions({ limit: 100 })
@@ -245,19 +254,28 @@ function ListOfNews({
 
   const locale = useLocale();
 
-  async function handleDeleteNewsItem(id: string) {
-    await $deleteNewsItem({ data: { id } });
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+  async function handleClickDeleteNewsItem(item: GetNewsItemsResponse[number]) {
+    openConfirmation({
+      title: t("title"),
+      description: t("message", { itemName: getNewsItemTitle(item, locale) }),
+      onAction: async () => {
+        await $deleteNewsItem({ data: { id: item.id } });
+        queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+      },
+      onCancel: () => {},
+      cancelLabel: t("cancel"),
+      actionLabel: (
+        <>
+          <Trash2Icon className="mr-2 inline size-5 text-white" />{" "}
+          {t("confirm")}
+        </>
+      ),
+    });
   }
 
   return (
     <ul>
       {newsItems.map((item) => {
-        console.log("item.translations", item.translations);
-        const title =
-          item.translations.find((tr) => tr?.lang === locale)?.title ||
-          item.translations[0]?.title ||
-          "No title";
         return (
           <li key={item.id} className="flex items-start gap-1">
             <Button
@@ -282,12 +300,12 @@ function ListOfNews({
                     </span>
                   ))}
               </p>
-              <p className="text-sm">{title}</p>
+              <p className="text-sm">{getNewsItemTitle(item, locale)}</p>
             </Button>
             <Button
               variant={"cms-table-action"}
               size={"slim"}
-              onClick={() => handleDeleteNewsItem(item.id)}
+              onClick={() => handleClickDeleteNewsItem(item)}
             >
               <Trash2Icon className="size-5 text-red-700" />
             </Button>
@@ -414,7 +432,14 @@ function LocaleSwitcher({
   return (
     <div className="flex flex-col gap-3">
       <Label>Locale</Label>
-      <ToggleGroup type="single" value={locale} onValueChange={onSwitchLocale}>
+      <ToggleGroup
+        type="single"
+        value={locale}
+        onValueChange={(value) => {
+          if (!value) return;
+          onSwitchLocale(value as Locale);
+        }}
+      >
         {i18n.locales.map((loc) => (
           <ToggleGroupItem key={loc} value={loc}>
             {loc}

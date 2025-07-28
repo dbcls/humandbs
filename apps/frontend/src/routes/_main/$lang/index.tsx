@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import InfographicsImg from "@/assets/Infographics.png";
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/Card";
 import { News } from "./-components/FrontNews";
 import { localeSchema } from "@/lib/i18n-config";
