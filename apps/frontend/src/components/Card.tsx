@@ -25,7 +25,12 @@ const cardCaptionVariants = cva(
   }
 );
 
-function Card({ children, className, caption, captionSize }: CardProps) {
+function Card({
+  children,
+  className,
+  caption,
+  captionSize = "default",
+}: CardProps) {
   return (
     <div className={cn("h-fit rounded-md bg-white p-4", className)}>
       {caption ? (
@@ -35,9 +40,9 @@ function Card({ children, className, caption, captionSize }: CardProps) {
       ) : null}
       <div
         className={cn("relative", {
-          "mt-8": !!caption && captionSize === "sm",
-          "mt-10": !!caption && captionSize === "default",
-          "mt-16": !!caption && captionSize === "lg",
+          "mt-4": !!caption && captionSize === "sm",
+          "mt-8": !!caption && captionSize === "default",
+          "mt-10": !!caption && captionSize === "lg",
         })}
       >
         {children}

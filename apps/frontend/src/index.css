@@ -28,6 +28,8 @@
   --color-accent: #eb0075;
   --color-accent-light: #ff618e;
 
+  --color-danger: #d51616;
+
   --color-foreground: black;
   --color-foreground-dark: #002245;
   --color-foreground-light: #abb4c4;
@@ -38,6 +40,7 @@
   --text-base: 1.6rem;
   --text-sm: 1.4rem;
   --text-xs: 1.2rem;
+  --text-2xs: 0.9rem;
 
   --spacing-assets-panel: var(--assets-panel-width);
 

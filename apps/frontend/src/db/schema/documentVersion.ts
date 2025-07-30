@@ -1,6 +1,8 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   integer,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -10,6 +12,15 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import { document } from "./document";
+
+export const documentVersionStatus = pgEnum("status", [
+  "draft",
+  "published",
+  "archived",
+]);
+
+export type DocumentVersionStatus =
+  (typeof documentVersionStatus.enumValues)[number];
 
 export const documentVersion = pgTable(
   "document_version",
@@ -22,6 +33,9 @@ export const documentVersion = pgTable(
     documentId: uuid("document_id")
       .notNull()
       .references(() => document.id),
+    status: documentVersionStatus("status").default("draft"),
+    lastDraftSavedAt: timestamp("last_draft_saved_at"),
+    publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
