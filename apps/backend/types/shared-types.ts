@@ -26,11 +26,11 @@ export interface ResearchProject {
 
 export interface Person {
   name: string
-  affiliation?: string | null
   email?: string | null
   orcid?: string | null
   organization?: Organization | null
   datasetIds?: string[] // IDs of datasets related to this person
+  researchTitle?: string | null // Title of the research this person is involved in
   periodOfDataUse?: string | null // Period during which the person can access the data
 }
 
@@ -81,7 +81,7 @@ export interface Research {
   versions: ResearchVersion[]
 }
 
-// es entry: /researchVersion/{humId}-{lang}-v{versionNum}
+// es entry: /researchVersion/{humId}-{lang}-{versionNum}
 export interface ResearchVersion {
   humId: string
   lang: LangType
@@ -99,16 +99,21 @@ export interface ResearchVersion {
 // - MTBK
 // - hum.v1.rna - seq.v1
 // - PRJDB10452
-// es entry: /dataset/{datasetId}-{lang}
+// es entry: /dataset/{datasetId}-{lang}-{versionNum}
 export interface Dataset {
   datasetId: string
   lang: LangType
-  footers: string[]
-  typeOfData: string[]
-  criteria: string[]
-  releaseDate: string[]
-  experiment: Experiment
+  version: number
+  typeOfData?: string[] | null
+  criteria?: string[] | null
+  releaseDate?: string[] | null
+  experiments: Experiment[]
 }
 
 // Table の中身 (現状は Record<string, string> で定義しているが、将来的にはもっと詳細な型にする)
-export type Experiment = Record<string, string>
+// 解析手法ごと
+export interface Experiment {
+  header: string
+  data: Record<string, string | null>
+  footers: string[]
+}

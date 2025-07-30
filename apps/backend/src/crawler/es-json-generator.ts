@@ -1,14 +1,118 @@
-import { existsSync, mkdirSync, writeFileSync } from "fs"
+import { match } from "assert"
+import fs, { existsSync, fstat, mkdirSync, writeFileSync } from "fs"
 import { JSDOM } from "jsdom"
 import { join } from "path"
+import { pid } from "process"
 
 import { loadDetailJson } from "@/crawler/detail-json-dump"
 import type { MolecularData } from "@/crawler/detail-parser"
 import { humIdToTitle } from "@/crawler/home-parser"
-import type { LangType, Research, Dataset, ResearchVersion } from "@/crawler/types"
+import jgaStudyToDatasetMap from "@/crawler/jga-study-dataset-relation.json"
+import type { LangType, Research, Dataset, ResearchVersion, Person, ResearchProject, Grant } from "@/crawler/types"
 import { findLatestVersionNum, getResultsDirPath } from "@/crawler/utils"
 
-const tmp = []
+const ACCESSION_KEYS = [
+  "DDBJ Accession",
+  "Gene Expression Omnibus Accession",
+  "Genomic Expression Archive Accession",
+  "Japanese Genotype-phenotype Archive Dataset Accession",
+  // "JPOST Accession",
+  "MetaboBank Accession",
+  "NBDC Dataset Accession",
+  "Sequence Read Archive Accession",
+  "Dataset ID of the Processed data by JGA",
+]
+
+const REGEX_MAP = {
+  jgaDataset: /^JGAD\d{5,6}$/,
+  jgaStudy: /^JGAS\d{6}$/,
+  dra: /^DRA\d{6}$/,
+  hum: /^hum\d{4}\.v\d+\.[a-zA-Z0-9_-]+\.[v]\d+$/,
+  humAlt: /^hum\d{4}\.v\d+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[v]\d+$/,
+  gea: /^E-GEAD-\d{3,4}$/,
+  mtbk: /^MTBKS\d{3}$/,
+  bioproject: /^PRJDB\d{5}$/,
+}
+
+const extractAccessionIdFromStr = (text: string | null): string[] => {
+  if (!text) {
+    return []
+  }
+  const tokens = text
+    .split(/[\s\u00A0:：()（）,, 、．/／]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 0)
+
+  const matched = []
+
+  for (let token of tokens) {
+    if (token === "hum0009v1.CpG.v1") {
+      token = "hum0009.v1.CpG.v1" // hum0009 の例外
+    }
+    if (token === "AP023461-AP024084") {
+      token = "PRJDB10452"
+    }
+
+    const isMatch = Object.values(REGEX_MAP).some(regex => regex.test(token))
+    if (isMatch) {
+      const jgaDatasetMatch = token.match(/^JGAD(\d{5,6})$/)
+      if (jgaDatasetMatch) {
+        const num = jgaDatasetMatch[1].padStart(6, "0")
+        matched.push(`JGAD${num}`)
+      } else {
+        matched.push(token)
+      }
+    } else {
+      if (token.includes("hum")) {
+        // e.g., "hum0042.v1", "hum0076.v1", "hum0354.v1",
+        matched.push(token)
+      } else if (token.includes("JGA")) {
+        if (token === "JGAS0000314") {
+          matched.push("JGAS000314")
+        } else if (token === "JGAS000239への追加") {
+          matched.push("JGAS000239")
+        } else if (token === "JGAS000296追加") {
+          matched.push("JGAS000296")
+        } else if (token === "JGA000122") {
+          matched.push("JGAS000122")
+        } else if (token === "JGAS000000") {
+          matched.push("JGAS000000") // hum0082
+        } else {
+          console.warn(`Unmatched JGA token: ${token}`)
+        }
+      } else {
+        // tmp.add(token)
+      }
+    }
+  }
+
+  return matched
+}
+
+const extractAccessionId = (htmlContent: string | null): string[] => {
+  if (!htmlContent) {
+    return []
+  }
+  const dom = new JSDOM(htmlContent)
+  const document = dom.window.document
+
+  const allText = document.body.textContent?.trim() ?? ""
+  return extractAccessionIdFromStr(allText)
+}
+
+// const tmp = new Set<string>()
+
+const jgaStudyToDataset = (id: string): string[] => {
+  if (id.startsWith("JGAS")) {
+    if (id in jgaStudyToDatasetMap) {
+      return jgaStudyToDatasetMap[id]
+    }
+    return []
+  }
+  return [id]
+}
+
+// type DatasetWithoutVersion = Omit<Dataset, "version">
 
 export const generateEsJson = async (humIds: string[], useCache = true): Promise<void> => {
   const esJsonsDir = join(getResultsDirPath(), "es-json")
@@ -16,17 +120,179 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
     mkdirSync(esJsonsDir, { recursive: true })
   }
 
-  const titleMapJa = await humIdToTitle("ja", useCache)
-  const titleMapEn = await humIdToTitle("en", useCache)
+  // === Dataset ===
+  const datasetMap: Record<string, Dataset[]> = {} // key: datasetId-lang, value: Dataset[]
+  const humIdVersionToDatasetIdMap: Record<string, string[]> = {} // key: humId-lang-versionNum, value: datasetId[]
 
   for (const humId of humIds) {
-    if (humId === "hum0003") {
-      continue // TODO Check this
-    }
     const latestVersionNum = await findLatestVersionNum(humId, useCache)
     const langs: LangType[] = ["ja", "en"]
     for (const lang of langs) {
+      const datasetMapPerHumIdLang: Record<string, Dataset[]> = {} // key: datasetId
+      for (let versionNum = 1; versionNum <= latestVersionNum; versionNum++) {
+        // Types における Dataset を作成する
+        // humId 内で同一 datasetId が存在する場合、latest を優先する
+        // humId を超える Dataset があるのか確認する
+        const humVersionId = `${humId}-v${versionNum}`
+        const jsonData = loadDetailJson(humVersionId, lang, useCache)
+
+        // 最上部の Dataset Table の情報 (release date など) 後で参照する
+        const datasetMetadata: Record<string, any> = {}
+        for (const dataset of jsonData.datasets) {
+          const dataIds = dataset.dataId.flatMap(id => extractAccessionIdFromStr(id)).flatMap(jgaStudyToDataset)
+          for (const dataId of dataIds) {
+            if (dataId in datasetMetadata) {
+              // console.warn(`Duplicate datasetId found: ${dataId} in ${humVersionId} ${lang}`)
+              continue
+            }
+            datasetMetadata[dataId] = {
+              typeOfData: dataset.typeOfData,
+              criteria: dataset.criteria,
+              releaseDate: dataset.releaseDate,
+              touched: false,
+            }
+          }
+        }
+
+        const datasetMapPerVersion: Record<string, Dataset> = {}
+        for (const molData of jsonData.molecularData) {
+          // table 単位で考える。
+          const molDataIds = new Set<string>()
+          // table の中の id を取得
+          for (const key of ACCESSION_KEYS) {
+            if (key in molData.data) {
+              const ids = extractAccessionId(molData.data[key])
+              ids.flatMap(jgaStudyToDataset).forEach(id => molDataIds.add(id))
+            }
+          }
+          if (molDataIds.size === 0) {
+            if (molData.id === "JGAD000006の集計情報です。") {
+              molData.id = "hum0009v1.CpG.v1"
+              molDataIds.add("hum0009v1.CpG.v1") // hum0009
+            } else if (molData.id === "hum0009v1.CpG.v1") {
+              molDataIds.add("hum0009v1.CpG.v1") // hum0009
+            } else if (molData.id === "JGAS000143") {
+              molDataIds.add("JGAS000143")
+            } else if (molData.id === "AP023461-AP024084") {
+              molDataIds.add("PRJDB10452")
+            } else {
+              console.warn(`No accession IDs found in ${humId} version ${versionNum} for molecular data: ${molData.id}`)
+            }
+          }
+
+          // header の中の id を取得
+          const headerIds = extractAccessionIdFromStr(molData.id)
+          headerIds.flatMap(jgaStudyToDataset).forEach(id => molDataIds.add(id))
+
+          for (const molDataId of molDataIds) {
+            if (molDataId in datasetMapPerVersion) {
+              // Experiment の追加
+              datasetMapPerVersion[molDataId].experiments.push({
+                header: molData.id,
+                data: molData.data,
+                footers: molData.footers,
+              })
+            } else {
+              // 新規の Dataset を作成
+              if (molDataId in datasetMetadata) {
+                datasetMetadata[molDataId].touched = true
+              }
+              datasetMapPerVersion[molDataId] = {
+                datasetId: molDataId,
+                lang,
+                version: 1,
+                typeOfData: datasetMetadata?.[molDataId]?.typeOfData ?? null,
+                criteria: datasetMetadata?.[molDataId]?.criteria ?? null,
+                releaseDate: datasetMetadata?.[molDataId]?.releaseDate ?? null,
+                experiments: [{
+                  header: molData.id,
+                  data: molData.data,
+                  footers: molData.footers,
+                }],
+              }
+            }
+          }
+        }
+        // for (const [dataId, metadata] of Object.entries(datasetMetadata)) {
+        //   if (!metadata.touched) {
+        //     console.log(`No molecular data found for ${dataId} in ${humId} version ${versionNum} ${lang}`)
+        //   }
+        // }
+
+        // version処理の終わり
+        // datasetMapPerHumIdLang に追加
+        humIdVersionToDatasetIdMap[`${humId}-${lang}-v${versionNum}`] = []
+        for (const [datasetId, dataset] of Object.entries(datasetMapPerVersion)) {
+          const key = `${datasetId}-${lang}`
+          if (key in datasetMapPerHumIdLang) {
+            const prevDataset = datasetMapPerHumIdLang[key][datasetMapPerHumIdLang[key].length - 1]
+            if (JSON.stringify(prevDataset.experiments) !== JSON.stringify(dataset.experiments)) {
+              // 新しい Dataset がある場合、追加
+              dataset.version = prevDataset.version + 1
+              datasetMapPerHumIdLang[key].push(dataset)
+              humIdVersionToDatasetIdMap[`${humId}-${lang}-v${versionNum}`].push(`${key}-${dataset.version}`)
+            }
+          } else {
+            datasetMapPerHumIdLang[key] = [dataset]
+            humIdVersionToDatasetIdMap[`${humId}-${lang}-v${versionNum}`].push(`${key}-1`)
+          }
+        }
+      }
+
+      // hum lang 処理の終わり
+      // datasetMap に追加
+      // 衝突を確認する
+      for (const [datasetIdLang, datasets] of Object.entries(datasetMapPerHumIdLang)) {
+        if (datasetIdLang in datasetMap) {
+          console.warn(`Duplicate datasetIdLang found: ${datasetIdLang} in ${humId} ${lang}`)
+          // console.log(JSON.stringify(datasetMap[datasetIdLang], null, 2))
+        } else {
+          datasetMap[datasetIdLang] = datasets
+        }
+      }
+    }
+  }
+
+  const titleMapJa = await humIdToTitle("ja", useCache)
+  const titleMapEn = await humIdToTitle("en", useCache)
+
+  const researches: Research[] = []
+
+  for (const humId of humIds) {
+    const latestVersionNum = await findLatestVersionNum(humId, useCache)
+    const langs: LangType[] = ["ja", "en"]
+    for (const lang of langs) {
+
       const latestJsonData = loadDetailJson(`${humId}-v${latestVersionNum}`, lang, useCache)
+      const dataProvider: Person[] = []
+      for (let i = 0; i < latestJsonData.dataProvider.principalInvestigator.length; i++) {
+        dataProvider.push({
+          name: latestJsonData.dataProvider.principalInvestigator[i],
+          organization: {
+            name: latestJsonData.dataProvider.affiliation[i],
+          },
+        })
+      }
+      const researchProject: ResearchProject[] = []
+      for (let i = 0; i < latestJsonData.dataProvider.projectName.length; i++) {
+        researchProject.push({
+          name: latestJsonData.dataProvider.projectName[i],
+          url: latestJsonData.dataProvider.projectUrl[i],
+        })
+      }
+      const grant: Grant[] = []
+      for (const parsedGrants of latestJsonData.dataProvider.grants) {
+        for (let i = 0; i < parsedGrants.grantId.length; i++) {
+          grant.push({
+            id: parsedGrants.grantId[i],
+            title: parsedGrants.grantName[i],
+            agency: {
+              name: parsedGrants.projectTitle[i],
+            },
+          })
+        }
+      }
+
       const research: Research = {
         humId,
         lang,
@@ -34,352 +300,75 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
         url: lang === "ja" ?
           `https://humandbs.dbcls.jp/${humId}` :
           `https://humandbs.dbcls.jp/en/${humId}`,
-        dataProvider: {
-          principalInvestigator: latestJsonData.dataProvider.principalInvestigator,
-          affiliation: latestJsonData.dataProvider.affiliation,
-          researchProjectName: latestJsonData.dataProvider.projectName,
-          researchProjectUrl: latestJsonData.dataProvider.projectUrl,
-        },
-        grant: latestJsonData.dataProvider.grants.flatMap(grant => {
-          const length = grant.grantId.length
-          return Array.from({ length }, (_, i) => ({
-            id: grant.grantId[i],
-            title: grant.projectTitle[i],
-            agency: grant.grantName[i],
-          }))
-        }),
-        relatedPublication: latestJsonData.publications,
+        dataProvider,
+        researchProject,
+        grant,
+        relatedPublication: latestJsonData.publications.map(pub => ({
+          title: pub.title,
+          authors: [],
+          consortiums: [],
+          status: "published",
+          year: 2000,
+          datasetIds: pub.datasetIds,
+        })),
         controlledAccessUser: latestJsonData.controlledAccessUsers.map(user => ({
-          name: user.principalInvestigator,
-          affiliation: user.affiliation,
-          country: user.country,
+          name: user.principalInvestigator ?? "TODO: Name",
+          organization: {
+            name: user.affiliation ?? "TODO: Organization Name",
+            address: {
+              country: user.country,
+            },
+          },
+          datasetIds: user.datasetIds,
           researchTitle: user.researchTitle,
-          datasetId: user.datasetIds,
           periodOfDataUse: user.periodOfDataUse,
         })),
+        summary: {
+          aims: latestJsonData.summary.aims,
+          methods: latestJsonData.summary.methods,
+          targets: latestJsonData.summary.targets,
+          url: latestJsonData.summary.url,
+        },
         versions: [],
       }
-      const datasetMap = normalizeDataset(humId, lang, latestVersionNum, useCache)
+
       for (let versionNum = 1; versionNum <= latestVersionNum; versionNum++) {
+        // Types における Dataset を作成する
+        // humId 内で同一 datasetId が存在する場合、latest を優先する
+        // humId を超える Dataset があるのか確認する
         const humVersionId = `${humId}-v${versionNum}`
         const jsonData = loadDetailJson(humVersionId, lang, useCache)
-        const release = jsonData.releases?.filter(r => r.humVersionId === humVersionId)[0]
-        const datasets = Object.values(datasetMap)
-          .flatMap(versions => Object.values(versions))
-          .filter(d => d.humVersionIds.includes(humVersionId))
+        const datasetIds = humIdVersionToDatasetIdMap[`${humId}-${lang}-v${versionNum}`] ?? [] // [`${datasetId}-${lang}-${dataset.version}`]
+        const datasets: Dataset[] = []
+        for (const datasetIdLangVersion of datasetIds) {
+          const [datasetId, datasetLang, version] = datasetIdLangVersion.split("-")
+          const datasetArray = datasetMap[`${datasetId}-${datasetLang}`] ?? []
+          for (const datasetItem of datasetArray) {
+            if (datasetItem.version.toString() === version) {
+              datasets.push(datasetItem)
+            }
+          }
+        }
+        const releaseDate = jsonData.releases?.filter(r => r.humVersionId === humVersionId)[0]?.releaseDate ?? "2000-01-01"
+        const releaseNote = jsonData.releases?.filter(r => r.humVersionId === humVersionId)[0]?.releaseNote ?? []
         const researchVersion: ResearchVersion = {
           humId,
           lang,
           version: `v${versionNum}`,
           humVersionId,
-          datasets: datasets,
-          releaseDate: release?.releaseDate ?? null,
-          releaseNote: release?.releaseNote ?? [],
+          datasets,
+          releaseDate,
+          releaseNote,
         }
         research.versions.push(researchVersion)
       }
-      // write to file
-      const fileName = `research-${humId}-${lang}.json`
-      const filePath = join(esJsonsDir, fileName)
-      writeFileSync(filePath, JSON.stringify(research, null, 2), { encoding: "utf-8" })
-    }
-  }
-  console.log(Array.from(new Set(tmp)).sort().join("\n"))
-}
 
-export const normalizeDataset = (humId: string, lang: LangType, latestVersionNum: number, useCache = true): Record<string, Record<number, Dataset>> => {
-  const datasetMap: Record<string, Record<number, Dataset>> = {}
-  for (let versionNum = 1; versionNum <= latestVersionNum; versionNum++) {
-    const humVersionId = `${humId}-v${versionNum}`
-    const jsonData = loadDetailJson(humVersionId, lang, useCache)
-    const datasetFieldMap = jsonData.datasets.reduce((acc, d) => {
-      d.dataId.forEach(id => {
-        if (!(id in acc)) {
-          acc[id] = { typeOfData: [], criteria: [], releaseDate: [] }
-        }
-        acc[id].typeOfData.push(...d.typeOfData)
-        acc[id].criteria.push(...d.criteria)
-        acc[id].releaseDate.push(...d.releaseDate)
-      })
-      return acc
-    }, {} as Record<string, { typeOfData: string[]; criteria: string[]; releaseDate: string[] }>)
-    molDataToExperiment(humId, jsonData.molecularData)
-    for (const molData of jsonData.molecularData) {
-      for (const datasetId of [molData.id]) {
-        const nowDataset = {
-          data: molData.data,
-          lang,
-          footers: molData.footers,
-          typeOfData: datasetFieldMap[datasetId]?.typeOfData ?? [], // TODO why?
-          criteria: datasetFieldMap[datasetId]?.criteria ?? [], // TODO why?
-          releaseDate: datasetFieldMap[datasetId]?.releaseDate ?? [], // TODO why?
-        }
-        if (datasetId in datasetMap) {
-          const latestVersionId = Math.max(...Object.keys(datasetMap[datasetId]).map(Number))
-          const latestDataset = datasetMap[datasetId][latestVersionId]
-          const { datasetId: _, humDatasetId, humVersionIds, experiments, ...withoutLatestDataset } = latestDataset // eslint-disable-line @typescript-eslint/no-unused-vars
-          if (JSON.stringify(withoutLatestDataset) !== JSON.stringify(nowDataset)) {
-            datasetMap[datasetId][latestVersionId + 1] = {
-              ...nowDataset,
-              datasetId,
-              humDatasetId: `${humId}-${datasetId}-v${latestVersionId + 1}`,
-              version: `v${latestVersionId + 1}`,
-              humVersionIds: [humVersionId],
-              experiments,
-            }
-          } else {
-            datasetMap[datasetId][latestVersionId].humVersionIds.push(humVersionId)
-          }
-        } else {
-          datasetMap[datasetId] = {
-            1: {
-              ...nowDataset,
-              datasetId,
-              humDatasetId: `${humId}-${datasetId}-v${versionNum}`,
-              version: "v1",
-              humVersionIds: [humVersionId],
-              experiments: [],
-            },
-          }
-        }
-      }
+      researches.push(research)
     }
   }
 
-  return datasetMap
-}
-
-// - Pattern1: 1 つの ID が 1 つの table
-//   - これは簡単
-// - Pattern2: 複数の ID で 1 つの table
-//   - 冗長に情報を持っていいなら、楽
-//   - 冗長と重複の使い分け
-// - Pattern3: 1 つの ID で、解析手法ごとに table が作られている
-//   - Dataset ID をまとめて、裏返す
-// - Pattern4: 解析手法ごとに table が作られている
-//   - Pattern2 と 3 の合せ技
-//   - value の中に非構造化 (暗黙的に) で書かれている情報のパースは、将来的に考える
-//   - とりあえず、情報量は落とさず入れておいて、手でいじる
-//
-// - 実装方針:
-//   - 1 id to table の map をともかく作る
-// - footer は、新たに comment (footer) を入れておき value を結合する
-// - header の ID っぽいの(label) も残しておくべき
-const draRegex = /^DRA\d{6}$/
-const draRegexLoose = /DRA\d{6}/
-const egaRegex = /^E-GEAD-\d{3}$/
-const egaRegexLoose = /E-GEAD-\d{3}/
-const jgaRegex = /^JGA[DS]\d{6}$/
-const jgaRegexLoose = /JGA[DS]\d{6}/
-const humRegex = /^hum\d{4}\.v\d+\.[a-zA-Z0-9_]+\.[v]\d+$/
-const humRegexLoose = /hum\d{4}\.v\d+\.[a-zA-Z0-9_]+\.[v]\d+/
-const metaboBankRegex = /^MTBKS\d{3}$/
-const metaboBankRegexLoose = /MTBKS\d{3}/
-
-const molDataObjToExperimentMap = (molDataObj: MolecularData): Record<string, string> => {
-  return {
-    ...molDataObj.data,
-    "Comment (footer)": molDataObj.footers.join("\n"),
-    "Prev Header ID": molDataObj.id,
-  }
-}
-
-const molDataToExperiment = (humId: string, molData: MolecularData[]): void => {
-  const idToTableMap: Record<string, any> = {}
-  for (const molDataObj of molData) {
-    const id = molDataObj.id
-    const experimentMap = molDataObjToExperimentMap(molDataObj)
-    if (draRegex.test(id) || egaRegex.test(id) || jgaRegex.test(id) || humRegex.test(id) || metaboBankRegex.test(id)) {
-      // 一番きれいなパターン
-      idToTableMap[id] = idToTableMap[id] || []
-      idToTableMap[id].push(molDataObj.data)
-    } else {
-      if (id.includes(",") || id.includes("/") || id.includes("、") || id.includes("／")) {
-        if (id.includes("DRA") || id.includes("E-GEAD") || id.includes("JGAS") || id.includes("hum") || id.includes("MTBKS")) {
-          // 複数の ID がカンマ区切りで入ってそうなやつ
-          const ids = id.split(/[,、/]/).map(i => i.trim())
-          for (const subId of ids) {
-            if (draRegex.test(subId) || egaRegex.test(subId) || jgaRegex.test(subId) || humRegex.test(subId) || metaboBankRegex.test(subId)) {
-              // 区切りだがきれいなやつ
-              idToTableMap[subId] = idToTableMap[subId] || []
-              idToTableMap[subId].push(experimentMap)
-            } else {
-              // 区切りだがきれいでないやつ
-              const looseMatch = subId.match(draRegexLoose) || subId.match(egaRegexLoose) || subId.match(jgaRegexLoose) || subId.match(humRegexLoose) || subId.match(metaboBankRegexLoose)
-              if (looseMatch) {
-                const looseId = looseMatch[0]
-                idToTableMap[looseId] = idToTableMap[looseId] || []
-              } else {
-                // きれいでないやつの残り => 情報自体は別で拾えている
-                // AP023461-AP024084 => AP023461-AP024084 / JGAS000259 TODO: Fix this!!!!!!
-                // Exome)*ref3 => JGAS000274 (DNA Amplicon-seq, Exome)*ref3
-                // Exome）*ref3 => JGAS000274（DNA Amplicon-seq、Exome）*ref3
-                // Visium Spatial Gene Expression => Visium Spatial Gene Expression, Histological image (JGAS000202, JGAS000290), Visium Spatial Gene Expression、病理画像 （JGAS000202、JGAS000290）
-                // hum0082.v1.AFFY6.0.v1
-                // hum0354.v1.qRT-PCR.v1
-                // hum0354.v2.qRT-PCR.v1
-                if (subId.startsWith("hum")) {
-                  idToTableMap[subId] = idToTableMap[subId] || []
-                  idToTableMap[subId].push(experimentMap)
-                } else {
-                  // 情報は別で拾えている
-                }
-              }
-            }
-          }
-        } else {
-          if ("Japanese Genotype-phenotype Archive Dataset Accession" in molDataObj.data) {
-            const jgadHtml = molDataObj.data["Japanese Genotype-phenotype Archive Dataset Accession"]
-            const dom = new JSDOM(jgadHtml!)
-            const aTags = Array.from(dom.window.document.querySelectorAll("a"))
-            const jgadIds = aTags.map(a => a.textContent?.trim() ?? "").filter(id => jgaRegex.test(id))
-            if (jgadIds.length !== 0) {
-              for (const jgadId of jgadIds) {
-                idToTableMap[jgadId] = idToTableMap[jgadId] || []
-                idToTableMap[jgadId].push(experimentMap)
-              }
-            } else {
-              // 到達しないはず
-              console.warn(`No JGA Dataset ID found in ${humId}: ${molDataObj.id}`)
-            }
-          } else {
-            // eQTL/pQTL study
-            // eQTL/pQTL解析
-            // eQTL/sQTL study
-            // eQTL/sQTL解析
-            if ("NBDC Dataset Accession" in molDataObj.data) {
-              const nbdcHtml = molDataObj.data["NBDC Dataset Accession"]
-              const dom = new JSDOM(nbdcHtml!)
-              const aTags = Array.from(dom.window.document.querySelectorAll("a"))
-              const nbdcIds = aTags.map(a => a.textContent?.trim() ?? "").filter(id => id.startsWith("hum"))
-              if (nbdcIds.length !== 0) {
-                for (const nbdcId of nbdcIds) {
-                  idToTableMap[nbdcId] = idToTableMap[nbdcId] || []
-                  idToTableMap[nbdcId].push(experimentMap)
-                }
-              } else {
-                // 到達しないはず
-                console.warn(`No NBDC Dataset ID found in ${humId}: ${molDataObj.id}`)
-              }
-            } else {
-              // 到達しないはず
-              console.warn(`No ID found in ${humId}: ${molDataObj.id}`)
-            }
-          }
-        }
-      } else {
-        // 区切りなし
-
-        // looseMatch で引っかかるヤバそうなデータを先に処理する (TODO: 確認！！)
-        const exceptions = {
-          "JGAD000006の集計情報です。": "JGAD000006",
-          "DRA003802（JGAS000006と同じデータセット内容です。）": "JGAS000006",
-          "JGAS000006 （DRA003802[非制限公開]にアクセス制限が変更されました。DRA003802をご参照ください。）": "JGAS000006",
-          "DRA003802(Exactly the same data as JGAS000006)": "JGAS000006",
-          "JGAS000006 （The access level was changed to \"Unrestricted - access\".Please have a look at DRA003802.)": "JGAS000006",
-          "JGAS000159（hum0015.v3.3.5kjpnv2.v1[非制限公開]にアクセス制限が変更されました。hum0015.v3.3.5kjpnv2.v1をご参照ください。）": "hum0015.v3.3.5kjpnv2.v1",
-          "hum0015.v3.3.5kjpnv2.v1（JGAS000159と同じデータセット内容です。）": "hum0015.v3.3.5kjpnv2.v1",
-          "JGAS000159 （The access level was changed to \"Un-restricted Access\".Please have a look at hum0015.v3.3.5kjpnv2.v1.)": "hum0015.v3.3.5kjpnv2.v1",
-          "hum0015.v3.3.5kjpnv2.v1(Exactly the same data as JGAS000159)": "hum0015.v3.3.5kjpnv2.v1",
-        }
-        if (id in exceptions) {
-          const exceptionId = exceptions[id]
-          idToTableMap[exceptionId] = idToTableMap[exceptionId] || []
-          idToTableMap[exceptionId].push(experimentMap)
-          continue
-        }
-
-        const looseMatch = id.match(draRegexLoose) || id.match(egaRegexLoose) || id.match(jgaRegexLoose) || id.match(humRegexLoose) || id.match(metaboBankRegexLoose)
-        if (looseMatch) {
-          if (looseMatch.length !== 1) {
-            console.warn(`Multiple loose matches found for ${id}: ${looseMatch.join(", ")}`)
-          }
-          const looseId = looseMatch[0]
-          idToTableMap[looseId] = idToTableMap[looseId] || []
-        } else {
-          if (id.startsWith("hum")) {
-            // hum0009v1.CpG.v1
-            // hum0042.v1
-            // hum0075.v3.Thai-gwas.v1
-            // hum0076.v1
-            // hum0126.v2.imp-gwas.v1
-            // hum0136.v2.hep-gwas.v1
-            // hum0197.v17.hic-gwas.v1
-            // hum0197.v21.gwas-ehhv6.v1
-            // hum0197.v21.gwas-jomon.v1
-            // hum0197.v23.gwas-nmosd.v1
-            // hum0197.v9.gwas.GCT.v1
-            // hum0354.v1
-            // hum0364.v1.wgs-ms.v1
-            idToTableMap[id] = idToTableMap[id] || []
-            idToTableMap[id].push(experimentMap)
-          } else {
-            // RNA-seq とか WGS のパターン
-            if ("Japanese Genotype-phenotype Archive Dataset Accession" in molDataObj.data) {
-              const jgadHtml = molDataObj.data["Japanese Genotype-phenotype Archive Dataset Accession"]
-              const dom = new JSDOM(jgadHtml!)
-              const aTags = Array.from(dom.window.document.querySelectorAll("a"))
-              const jgadIds = aTags.map(a => a.textContent?.trim() ?? "").filter(id => jgaRegex.test(id))
-              if (jgadIds.length !== 0) {
-                for (const jgadId of jgadIds) {
-                  idToTableMap[jgadId] = idToTableMap[jgadId] || []
-                  idToTableMap[jgadId].push(experimentMap)
-                }
-              } else {
-                // 到達しないはず
-                console.warn(`No JGA Dataset ID found in ${humId}: ${molDataObj.id}`)
-              }
-            } else {
-              // eQTL/pQTL study
-              // eQTL/pQTL解析
-              // eQTL/sQTL study
-              // eQTL/sQTL解析
-              if ("NBDC Dataset Accession" in molDataObj.data) {
-                const nbdcHtml = molDataObj.data["NBDC Dataset Accession"]
-                const dom = new JSDOM(nbdcHtml!)
-                const aTags = Array.from(dom.window.document.querySelectorAll("a"))
-                const nbdcIds = aTags.map(a => a.textContent?.trim() ?? "").filter(id => id.startsWith("hum"))
-                if (nbdcIds.length !== 0) {
-                  for (const nbdcId of nbdcIds) {
-                    idToTableMap[nbdcId] = idToTableMap[nbdcId] || []
-                    idToTableMap[nbdcId].push(experimentMap)
-                  }
-                } else {
-                  // length が 0 のケースが存在する => hum0343 => hum0343.v1.covid19.v1
-                  if (humId === "hum0343") {
-                    // hum0343.v1.covid19.v1 のケース
-                    idToTableMap["hum0343.v1.covid19.v1"] = idToTableMap["hum0343.v1.covid19.v1"] || []
-                    idToTableMap["hum0343.v1.covid19.v1"].push(experimentMap)
-                  } else {
-                    // 到達しないはず
-                    console.warn(`No NBDC Dataset ID found in ${humId}: ${molDataObj.id}`)
-                  }
-                }
-              } else {
-                if ("Sequence Read Archive Accession" in molDataObj.data) {
-                  const draHtml = molDataObj.data["Sequence Read Archive Accession"]
-                  const dom = new JSDOM(draHtml!)
-                  const aTags = Array.from(dom.window.document.querySelectorAll("a"))
-                  const draIds = aTags.map(a => a.textContent?.trim() ?? "").filter(id => draRegex.test(id))
-                  if (draIds.length !== 0) {
-                    for (const draId of draIds) {
-                      idToTableMap[draId] = idToTableMap[draId] || []
-                      idToTableMap[draId].push(experimentMap)
-                    }
-                  } else {
-                    // 到達しないはず
-                    console.warn(`Multiple DRA IDs found in ${molDataObj.id}: ${draIds.join(", ")}`)
-                  }
-                } else {
-                  // 到達しないはず
-                  console.warn(`No ID found in ${humId}: ${molDataObj.id}`)
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  tmp.push(...Object.keys(idToTableMap))
+  // === Write JSON files ===
+  const researchJsonFilePath = join(esJsonsDir, "research.json")
+  const researchJsonData = JSON.stringify(researches, null, 2)
+  writeFileSync(researchJsonFilePath, researchJsonData, "utf8")
 }
