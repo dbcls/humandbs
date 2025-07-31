@@ -1,6 +1,8 @@
 import { Client, HttpConnection } from "@elastic/elasticsearch"
-import { readFileSync, readdirSync } from "fs"
+import { readFileSync } from "fs"
 import { join } from "path"
+
+import { type Research, type Dataset, type ResearchVersion } from "@/crawler/types"
 
 const INDEXES = [
   "research",
@@ -8,34 +10,42 @@ const INDEXES = [
   "dataset",
 ]
 
+type ResearchDoc = Omit<Research, "versions"> & {
+  versions: string[]
+}
+type ResearchVersionDoc = Omit<ResearchVersion, "datasets"> & {
+  datasets: string[]
+}
+
 const main = async () => {
-  const researches = []
-  const researchVersions = []
-  const datasets = []
-  const jsonDir = join(__dirname, "../../crawler-results/es-json")
-  const files = readdirSync(jsonDir)
-  const jsonFiles = files.filter(file => file.endsWith(".json")).sort()
-  for (const file of jsonFiles) {
-    const filePath = join(jsonDir, file)
-    const jsonData = JSON.parse(readFileSync(filePath, "utf-8"))
-    const researchDoc = Object.assign({}, jsonData)
-    researchDoc.versions = researchDoc.versions.map((version) => version.humVersionId)
+  const researches: ResearchDoc[] = []
+  const researchVersions: ResearchVersionDoc[] = []
+  const datasets: Dataset[] = []
+
+  const jsonFile = join(__dirname, "../../crawler-results/es-json/research.json")
+  const jsonData: Research[] = JSON.parse(readFileSync(jsonFile, "utf-8"))
+  for (const research of jsonData) {
+    const researchDoc: ResearchDoc = {
+      ...research,
+      versions: research.versions.map((version) => `${version.humVersionId}-${version.lang}`),
+    }
     researches.push(researchDoc)
 
-    const researchVersionDocs = jsonData.versions.map((version) => {
-      const researchVersionDoc = Object.assign({}, version)
-      researchVersionDoc.datasets = version.datasets.map((dataset) => dataset.humDatasetId)
-      return researchVersionDoc
-    })
-    researchVersions.push(...researchVersionDocs)
+    for (const researchVersion of research.versions) {
+      const researchVersionDoc = {
+        ...researchVersion,
+        datasets: researchVersion.datasets.map((dataset) => `${dataset.datasetId}-${dataset.version}-${dataset.lang}`),
+      }
+      researchVersions.push(researchVersionDoc)
 
-    const datasetDocs = jsonData.versions.flatMap((version) => {
-      return version.datasets.map((dataset) => {
-        const datasetDoc = Object.assign({}, dataset)
-        return datasetDoc
-      })
-    })
-    datasets.push(...datasetDocs)
+      for (const datasetDoc of researchVersion.datasets) {
+        const dataset = {
+          ...datasetDoc,
+          humDatasetId: `${datasetDoc.datasetId}-${datasetDoc.version}-${datasetDoc.lang}`,
+        }
+        datasets.push(dataset)
+      }
+    }
   }
 
   const client = new Client({
@@ -59,10 +69,23 @@ const main = async () => {
     }
   }
 
-  const bulkIndex = async (index: string, documents: any[], idField: string) => {
+  const genId = (index: "research" | "research-version" | "dataset", doc: ResearchDoc | ResearchVersionDoc | Dataset) => {
+    switch (index) {
+      case "research":
+        return `${doc.humId}-${doc.lang}`
+      case "research-version":
+        return `${doc.humId}-${doc.version}-${doc.lang}`
+      case "dataset":
+        return `${doc.datasetId}-${doc.version}-${doc.lang}`
+      default:
+        throw new Error(`Unknown document type: ${index}`)
+    }
+  }
+
+  const bulkIndex = async (index: string, documents: any[]) => {
     try {
       const operations = documents.flatMap(doc => [
-        { index: { _index: index, _id: `${doc[idField]}-${doc.lang}` } },
+        { index: { _index: index, _id: genId(index, doc) } },
         doc,
       ])
 
@@ -90,9 +113,9 @@ const main = async () => {
     }
   }
 
-  await bulkIndex("research", researches, "humId")
-  await bulkIndex("research-version", researchVersions, "humVersionId")
-  await bulkIndex("dataset", datasets, "humDatasetId")
+  await bulkIndex("research", researches)
+  await bulkIndex("research-version", researchVersions)
+  await bulkIndex("dataset", datasets)
 }
 
 if (require.main === module) {

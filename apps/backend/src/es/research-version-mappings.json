@@ -1,5 +1,6 @@
 {
   "mappings": {
+    "dynamic": false,
     "properties": {
       "humId": {
         "type": "keyword"
@@ -13,14 +14,19 @@
       "humVersionId": {
         "type": "keyword"
       },
+      "datasets": {
+        "type": "keyword"
+      },
       "releaseDate": {
-        "type": "date"
+        "type": "text",
+        "fields": {
+          "kw": {
+            "type": "keyword"
+          }
+        }
       },
       "releaseNote": {
         "type": "text"
-      },
-      "datasets": {
-        "type": "keyword"
       }
     }
   }

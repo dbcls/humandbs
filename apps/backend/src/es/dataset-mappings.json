@@ -1,5 +1,6 @@
 {
   "mappings": {
+    "dynamic": false,
     "properties": {
       "datasetId": {
         "type": "keyword"
@@ -7,40 +8,36 @@
       "lang": {
         "type": "keyword"
       },
-      "datasetVersion": {
-        "type": "keyword"
-      },
-      "humDatasetId": {
-        "type": "keyword"
-      },
-      "humVersionIds": {
-        "type": "keyword"
-      },
-      "data": {
-        "type": "nested",
-        "properties": {}
-      },
-      "footers": {
-        "type": "text"
+      "version": {
+        "type": "integer"
       },
       "typeOfData": {
-        "type": "text",
-        "fields": {
-          "raw": {
-            "type": "keyword"
-          }
-        }
+        "type": "keyword"
       },
       "criteria": {
-        "type": "text",
-        "fields": {
-          "raw": {
-            "type": "keyword"
-          }
-        }
+        "type": "keyword"
       },
       "releaseDate": {
-        "type": "date"
+        "type": "keyword"
+      },
+      "experiments": {
+        "type": "nested",
+        "properties": {
+          "header": {
+            "type": "text",
+            "fields": {
+              "kw": {
+                "type": "keyword"
+              }
+            }
+          },
+          "data": {
+            "type": "flattened"
+          },
+          "footers": {
+            "type": "text"
+          }
+        }
       }
     }
   }

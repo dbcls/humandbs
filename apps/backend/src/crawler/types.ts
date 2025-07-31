@@ -81,7 +81,7 @@ export interface Research {
   versions: ResearchVersion[]
 }
 
-// es entry: /researchVersion/{humId}-{lang}-{versionNum}
+// es entry: /researchVersion/{humId}-{versionNum}-{lang}
 export interface ResearchVersion {
   humId: string
   lang: LangType
@@ -99,7 +99,7 @@ export interface ResearchVersion {
 // - MTBK
 // - hum.v1.rna - seq.v1
 // - PRJDB10452
-// es entry: /dataset/{datasetId}-{lang}-{versionNum}
+// es entry: /dataset/{datasetId}-{versionNum}-{lang}
 export interface Dataset {
   datasetId: string
   lang: LangType

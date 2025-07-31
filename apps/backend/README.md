@@ -35,6 +35,16 @@
 # ./crawler-results 内に中間 file などが生成される
 root@e7e83a1678b7:/app/apps/backend# bun run crawler -- -p detail
 root@e7e83a1678b7:/app/apps/backend# bun run crawler -- -p elasticsearch
+root@0272ff98f17e:/app/apps/backend# bun run es:loadMappings
+$ node src/es/loadMappings.ts
+Index research created successfully
+Index research-version already exists
+Index dataset already exists
+root@0272ff98f17e:/app/apps/backend# bun run es:loadDocs
+$ node src/es/loadDocs.ts
+Successfully indexed 670 documents into research
+Successfully indexed 986 documents into research-version
+Successfully indexed 1734 documents into dataset
 ```
 
 ## Crawler memo

@@ -8,6 +8,8 @@ const INDEXES = [
   "dataset",
 ]
 
+// curl -X DELETE "http://humandbs-elasticsearch-dev:9200/research,research-version,dataset"
+
 const main = async () => {
   const client = new Client({
     node: "http://humandbs-elasticsearch-dev:9200",
@@ -26,20 +28,20 @@ const main = async () => {
       }
       const mappingsFilePath = join(__dirname, `${index}-mappings.json`)
       const mappings = JSON.parse(readFileSync(mappingsFilePath, "utf-8"))
-      if (index === "dataset") {
-        const molDataKeysFilePath = join(__dirname, "mol-data-keys.txt")
-        const molDataKeys = readFileSync(molDataKeysFilePath, "utf-8").trim().split("\n")
-        for (const key of molDataKeys) {
-          mappings.mappings.properties.data.properties[key] = {
-            "type": "text",
-            "fields": {
-              "raw": {
-                "type": "keyword",
-              },
-            },
-          }
-        }
-      }
+      // if (index === "dataset") {
+      //   const molDataKeysFilePath = join(__dirname, "mol-data-keys.txt")
+      //   const molDataKeys = readFileSync(molDataKeysFilePath, "utf-8").trim().split("\n")
+      //   for (const key of molDataKeys) {
+      //     mappings.mappings.properties.data.properties[key] = {
+      //       "type": "text",
+      //       "fields": {
+      //         "raw": {
+      //           "type": "keyword",
+      //         },
+      //       },
+      //     }
+      //   }
+      // }
       const response = await client.indices.create({
         index,
         body: mappings,
