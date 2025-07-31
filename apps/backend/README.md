@@ -45,6 +45,13 @@ $ node src/es/loadDocs.ts
 Successfully indexed 670 documents into research
 Successfully indexed 986 documents into research-version
 Successfully indexed 1734 documents into dataset
+
+root@0272ff98f17e:/app/apps/backend# bun run dev        
+$ bun run src/app.ts
+Server is running on http://0.0.0.0:8080
+
+
+$ curl localhost:8080/research/hum0012-en
 ```
 
 ## Crawler memo
