@@ -27,7 +27,10 @@
     "paths": {
       "@/*": [
         "src/*",
-      ]
+      ],
+      "@/types": [
+        "types/shared-types.ts",
+      ],
     }
   }
 }

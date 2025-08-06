@@ -1,5 +1,27 @@
 # HumanDBs Backend
 
+## 2024/08/07
+
+**API Server を使いたい人はこれのみを見てください。**
+
+Joomla! の HTML を parse して、Elasticsearch に読み込ませる。
+
+```bash
+# Container の中
+root@e7e83a1678b7:/app/apps/backend# bun run crawler -- -p detail
+root@e7e83a1678b7:/app/apps/backend# bun run crawler -- -p elasticsearch
+# crawler の結果が `./crawler-results` 内に生成される
+
+root@0272ff98f17e:/app/apps/backend# bun run es:load-mappings
+root@0272ff98f17e:/app/apps/backend# bun run es:load-docs
+# Elasticsearch にデータが読み込まれる
+
+root@0272ff98f17e:/app/apps/backend# bun run dev
+# API Server が起動する
+```
+
+OpenAPI 仕様は、`localhost:8080/docs` で確認できる。
+
 ## 2025/07/17
 
 - ともかく、現状を書いて push して、frontend 側に伝える
@@ -52,6 +74,8 @@ Server is running on http://0.0.0.0:8080
 
 
 $ curl localhost:8080/research/hum0012-en
+$ curl localhost:8080/research-version/hum0012-v1-en
+$ curl localhost:8080/dataset/JGAD000012-1-en
 ```
 
 ## Crawler memo

@@ -1,119 +1,162 @@
+import { z } from "zod"
+
+// === Original Types ===
+
+export const langType = ["ja", "en"]
 export type LangType = "ja" | "en"
 
-// === Schema for Elasticsearch JSON ===
+export const AddressSchema = z.object({
+  country: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  street: z.string().nullable().optional(),
+  postalCode: z.string().nullable().optional(),
+}).strict()
+export type Address = z.infer<typeof AddressSchema>
 
-export interface Address {
-  country?: string | null
-  state?: string | null
-  city?: string | null
-  street?: string | null
-  postalCode?: string | null
-}
+export const OrganizationSchema = z.object({
+  name: z.string(),
+  abbreviation: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  type: z.enum([
+    "institution",
+    "company",
+    "government",
+    "non-profit",
+    "consortium",
+    "agency",
+    "other",
+  ]).nullable().optional(),
+  address: AddressSchema.nullable().optional(),
+  rorId: z.string().nullable().optional(),
+}).strict()
+export type Organization = z.infer<typeof OrganizationSchema>
 
-export interface Organization {
-  name: string
-  abbreviation?: string | null
-  url?: string | null
-  type?: "institution" | "company" | "government" | "non-profit" | "consortium" | "agency" | "other" | null
-  address?: Address | null
-  rorId?: string | null // Research Organization Registry ID
-}
+export const PersonSchema = z.object({
+  name: z.string(),
+  email: z.string().nullable().optional(),
+  orcid: z.string().nullable().optional(),
+  organization: OrganizationSchema.nullable().optional(),
+  datasetIds: z.array(z.string()).optional(), // IDs of datasets related to this person
+  researchTitle: z.string().nullable().optional(), // Title of the research this person is involved in
+  periodOfDataUse: z.string().nullable().optional(), // Period during which the person can access the data
+}).strict()
+export type Person = z.infer<typeof PersonSchema>
 
-export interface ResearchProject {
-  name: string
-  url?: string | null
-}
+export const ResearchProjectSchema = z.object({
+  name: z.string(),
+  url: z.string().nullable().optional(),
+}).strict()
+export type ResearchProject = z.infer<typeof ResearchProjectSchema>
 
-export interface Person {
-  name: string
-  email?: string | null
-  orcid?: string | null
-  organization?: Organization | null
-  datasetIds?: string[] // IDs of datasets related to this person
-  researchTitle?: string | null // Title of the research this person is involved in
-  periodOfDataUse?: string | null // Period during which the person can access the data
-}
+export const GrantSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  agency: OrganizationSchema,
+}).strict()
+export type Grant = z.infer<typeof GrantSchema>
 
-export interface Grant {
-  id: string
-  title: string
-  agency: Organization
-}
-
-export interface Publication {
-  title: string
-  authors: Person[]
-  consortiums: Organization[]
-  status: "published" | "unpublished" | "in-press"
-  year: number
-  journal?: string | null
-  volume?: string | null
-  issue?: string | null
-  startPage?: string | null
-  endPage?: string | null
-  datePublished?: string | null
-  doi?: string | null
-  url?: string | null
-  pubMedId?: string | null
-  datasetIds?: string[] // IDs of datasets related to this publication
-}
-
-// es entry: /research/{humId}-{lang}
-export interface Research {
-  humId: string
-  lang: LangType
-  title: string
-  url: string
-  dataProvider: Person[]
-  researchProject: ResearchProject[]
-  grant: Grant[]
-  relatedPublication: Publication[]
-  controlledAccessUser: Person[]
-  summary: {
-    aims: string
-    methods: string
-    targets: string
-    url: {
-      url: string
-      text: string
-    }[]
-  }
-  versions: ResearchVersion[]
-}
-
-// es entry: /researchVersion/{humId}-{lang}-{versionNum}
-export interface ResearchVersion {
-  humId: string
-  lang: LangType
-  version: string
-  humVersionId: string
-  datasets: Dataset[]
-  releaseDate: string
-  releaseNote: string[]
-}
-
-// datasetId として用いるもの
-// - JGAD
-// - DRA
-// - E-GEAD
-// - MTBK
-// - hum.v1.rna - seq.v1
-// - PRJDB10452
-// es entry: /dataset/{datasetId}-{lang}-{versionNum}
-export interface Dataset {
-  datasetId: string
-  lang: LangType
-  version: number
-  typeOfData?: string[] | null
-  criteria?: string[] | null
-  releaseDate?: string[] | null
-  experiments: Experiment[]
-}
+export const PublicationSchema = z.object({
+  title: z.string(),
+  authors: z.array(PersonSchema),
+  consortiums: z.array(OrganizationSchema),
+  status: z.enum(["published", "unpublished", "in-press"]),
+  year: z.number(),
+  journal: z.string().nullable().optional(),
+  volume: z.string().nullable().optional(),
+  issue: z.string().nullable().optional(),
+  startPage: z.string().nullable().optional(),
+  endPage: z.string().nullable().optional(),
+  datePublished: z.string().nullable().optional(), // ISO 8601 format (e.g., "2023-10-01")
+  doi: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  pubMedId: z.string().nullable().optional(),
+  datasetIds: z.array(z.string()).optional(), // IDs of datasets related to this publication
+}).strict()
+export type Publication = z.infer<typeof PublicationSchema>
 
 // Table の中身 (現状は Record<string, string> で定義しているが、将来的にはもっと詳細な型にする)
 // 解析手法ごと
-export interface Experiment {
-  header: string
-  data: Record<string, string | null>
-  footers: string[]
-}
+export const ExperimentSchema = z.object({
+  header: z.string(),
+  data: z.record(z.string(), z.string().nullable()),
+  footers: z.array(z.string()),
+}).strict()
+export type Experiment = z.infer<typeof ExperimentSchema>
+
+// es entry: /dataset/{datasetId}-{lang}-{versionNum}
+export const DatasetSchema = z.object({
+  datasetId: z.string(), // e.g., "JGAD", "DRA", "E-GEAD", "MTBK", "hum.v1.rna-seq.v1", "PRJDB10452"
+  lang: z.enum(langType),
+  version: z.number(),
+  typeOfData: z.array(z.string()).nullable().optional(),
+  criteria: z.array(z.string()).nullable().optional(),
+  releaseDate: z.array(z.string()).nullable().optional(),
+  experiments: z.array(ExperimentSchema),
+}).strict()
+export type Dataset = z.infer<typeof DatasetSchema>
+
+// es entry: /researchVersion/{humId}-{lang}-{versionNum}
+export const ResearchVersionSchema = z.object({
+  humId: z.string(),
+  lang: z.enum(langType),
+  version: z.string(),
+  humVersionId: z.string(),
+  datasets: z.array(DatasetSchema),
+  releaseDate: z.string(), // ISO 8601 format (e.g., "2023-10-01")
+  releaseNote: z.array(z.string()),
+}).strict()
+export type ResearchVersion = z.infer<typeof ResearchVersionSchema>
+
+// es entry: /research/{humId}-{lang}
+export const ResearchSchema = z.object({
+  humId: z.string(),
+  lang: z.enum(langType),
+  title: z.string(),
+  url: z.string(),
+  dataProvider: z.array(PersonSchema),
+  researchProject: z.array(ResearchProjectSchema),
+  grant: z.array(GrantSchema),
+  relatedPublication: z.array(PublicationSchema),
+  controlledAccessUser: z.array(PersonSchema),
+  summary: z.object({
+    aims: z.string(),
+    methods: z.string(),
+    targets: z.string(),
+    url: z.array(z.object({
+      url: z.string(),
+      text: z.string(),
+    })),
+  }),
+  versions: z.array(ResearchVersionSchema),
+}).strict()
+export type Research = z.infer<typeof ResearchSchema>
+
+// === ES Types ===
+
+export const DatasetDocSchema = DatasetSchema
+export type DatasetDoc = z.infer<typeof DatasetDocSchema>
+
+export const ResearchVersionDocSchema = ResearchVersionSchema.omit({ datasets: true }).extend({
+  datasets: z.array(z.string()), // Store dataset IDs instead of full objects
+}).strict()
+export type ResearchVersionDoc = z.infer<typeof ResearchVersionDocSchema>
+
+export const ResearchDocSchema = ResearchSchema.omit({ versions: true }).extend({
+  versions: z.array(z.string()), // Store version IDs instead of full objects
+}).strict()
+export type ResearchDoc = z.infer<typeof ResearchDocSchema>
+
+// === API Requests/Responses ===
+
+export const HealthResponseSchema = z.object({
+  status: z.string(),
+  timestamp: z.string(), // ISO 8601 format (e.g., "2023-10-01T12:00:00Z")
+}).strict()
+export type HealthResponse = z.infer<typeof HealthResponseSchema>
+
+export const ErrorResponseSchema = z.object({
+  error: z.string(),
+  message: z.string().nullable().optional(),
+}).strict()
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
