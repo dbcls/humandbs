@@ -31,7 +31,7 @@ export type Permissions = {
   };
   documentVersions: {
     dataType: DocumentVersion;
-    action: "view" | "publish" | "archive" | "create" | "delete";
+    action: "view" | "publish" | "update" | "create" | "delete";
   };
   documentVersionTranslations: {
     dataType: DocumentVersionTranslation;
@@ -61,7 +61,7 @@ const ROLES = {
       view: true,
       create: true,
       publish: true,
-      archive: true,
+      update: true,
       delete: true,
     },
     documentVersionTranslations: {
@@ -91,7 +91,7 @@ const ROLES = {
       view: true,
       create: true,
       publish: true,
-      archive: true,
+      update: true,
       delete: false,
     },
     documentVersionTranslations: {

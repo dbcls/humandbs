@@ -38,7 +38,7 @@ export function AssetsPanel() {
   return (
     <div
       className={cn(
-        "flex min-h-0 w-12 flex-col rounded-sm bg-white transition-all",
+        "relative flex min-h-0 w-12 flex-col rounded-sm bg-white transition-all",
         {
           "w-assets-panel": assetsOpen,
         }
@@ -54,7 +54,7 @@ export function AssetsPanel() {
 
         <Label
           className={cn("origin-left", {
-            "translate-x-5 -translate-y-2 rotate-90": !assetsOpen,
+            "translate-x-8 -translate-y-2 rotate-90": !assetsOpen,
           })}
         >
           Assets
@@ -125,6 +125,38 @@ function Assets() {
 
   return (
     <section className="flex flex-1 flex-col gap-2 p-4">
+      <Button
+        variant={"toggle"}
+        onClick={() => setAddingNewAsset(!addingNewAsset)}
+      >
+        {addingNewAsset ? (
+          "Cancel"
+        ) : (
+          <>
+            <PlusIcon className="mr-2 inline size-4" /> Add new asset
+          </>
+        )}
+      </Button>
+      {addingNewAsset ? (
+        <form onSubmit={onSubmit} className="space-y-1">
+          <Input name="file" type="file" onChange={handleChangeFile} />
+          <Input
+            name="name"
+            placeholder="Name"
+            value={newAssetName}
+            onChange={(e) => setNewAssetName(e.target.value)}
+          />
+          <Input name="description" placeholder="Description" />
+          <Button
+            disabled={!assetFile || !newAssetName}
+            type="submit"
+            className="ml-auto"
+          >
+            <UploadIcon className="mr-2 inline size-4" />
+            Upload
+          </Button>
+        </form>
+      ) : null}
       <Label>
         <span className="text-sm font-normal whitespace-nowrap">
           Search filter
@@ -173,33 +205,6 @@ function Assets() {
           </TableBody>
         </Table>
       </div>
-      <Button
-        disabled={addingNewAsset}
-        variant={"toggle"}
-        onClick={() => setAddingNewAsset(true)}
-      >
-        <PlusIcon className="mr-2 inline size-4" /> Add new asset
-      </Button>
-      {addingNewAsset ? (
-        <form onSubmit={onSubmit} className="space-y-1">
-          <Input name="file" type="file" onChange={handleChangeFile} />
-          <Input
-            name="name"
-            placeholder="Name"
-            value={newAssetName}
-            onChange={(e) => setNewAssetName(e.target.value)}
-          />
-          <Input name="description" placeholder="Description" />
-          <Button
-            disabled={!assetFile || !newAssetName}
-            type="submit"
-            className="ml-auto"
-          >
-            <UploadIcon className="mr-2 inline size-4" />
-            Upload
-          </Button>
-        </form>
-      ) : null}
     </section>
   );
 }

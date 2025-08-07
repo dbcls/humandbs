@@ -7,6 +7,7 @@ interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof cardCaptionVariants> {
   caption?: ReactNode;
+  containerClassName?: string;
 }
 
 const cardCaptionVariants = cva(
@@ -28,6 +29,7 @@ const cardCaptionVariants = cva(
 function Card({
   children,
   className,
+  containerClassName,
   caption,
   captionSize = "default",
 }: CardProps) {
@@ -39,11 +41,15 @@ function Card({
         </div>
       ) : null}
       <div
-        className={cn("relative", {
-          "mt-4": !!caption && captionSize === "sm",
-          "mt-8": !!caption && captionSize === "default",
-          "mt-10": !!caption && captionSize === "lg",
-        })}
+        className={cn(
+          "relative",
+          {
+            "mt-4": !!caption && captionSize === "sm",
+            "mt-8": !!caption && captionSize === "default",
+            "mt-10": !!caption && captionSize === "lg",
+          },
+          containerClassName
+        )}
       >
         {children}
       </div>

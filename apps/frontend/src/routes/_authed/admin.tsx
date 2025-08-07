@@ -26,23 +26,32 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, useState } from "react";
 import { AssetsPanel } from "./-components/Assets";
 import { DocumentsList } from "./-components/DocumentsList";
+import { DocumentVersionContent } from "./-components/DocumentVersionContent";
 import { DocumentVersionsList } from "./-components/DocumentVersionsList";
-import { DocumentVersionTranslation } from "./-components/DocumentVersionTranslation";
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
+import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
 });
 
+type MainTab = "news" | "documents" | "users";
+
 function RouteComponent() {
+  const [selectedTab, setSelectedTab] = useState<MainTab>("news");
   return (
-    <Tabs defaultValue="news" className="flex-1">
-      <TabsList>
-        <TabsTrigger value="news">News</TabsTrigger>
-        <TabsTrigger value="documents">Documents</TabsTrigger>
-        <TabsTrigger value="users">Users</TabsTrigger>
-      </TabsList>
+    <Tabs value={selectedTab} className="flex-1">
+      <ToggleGroup
+        type="single"
+        value={selectedTab}
+        onValueChange={(value) => setSelectedTab(value as MainTab)}
+      >
+        <ToggleGroupItem value="news">News</ToggleGroupItem>
+        <ToggleGroupItem value="documents">Documents</ToggleGroupItem>
+        <ToggleGroupItem value="users">Users</ToggleGroupItem>
+      </ToggleGroup>
       <TabsContent className="flex items-stretch gap-2" value="news">
         <AssetsPanel />
         <ManageNews />
@@ -91,12 +100,8 @@ function ManageNews() {
 function ManageDocuments() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
 
-  const [selectedLocale, setSelectedLocale] = useState<Locale>(
-    i18n.defaultLocale
-  );
-
   const [selectedVersion, setSelectedVersion] =
-    useState<DocumentVersion | null>(null);
+    useState<DocumentVersionListItemResponse | null>(null);
 
   function handleSelectDoc(docId: string) {
     setSelectedDocumentId(docId);
@@ -105,7 +110,12 @@ function ManageDocuments() {
 
   return (
     <>
-      <Card className="w-96" captionSize={"sm"} caption="Documents">
+      <Card
+        className="flex h-full w-96 flex-col"
+        captionSize={"sm"}
+        caption="Documents"
+        containerClassName="overflow-auto flex-1 max-h-full"
+      >
         <Suspense fallback={<Skeleton />}>
           <DocumentsList
             onSelectDoc={handleSelectDoc}
@@ -116,7 +126,7 @@ function ManageDocuments() {
 
       {selectedDocumentId ? (
         <>
-          <Card className="w-64" captionSize={"sm"} caption="Versions">
+          <Card className="w-80" captionSize={"sm"} caption="Versions">
             <Suspense
               fallback={
                 <div>
@@ -125,19 +135,13 @@ function ManageDocuments() {
               }
             >
               <DocumentVersionsList
-                selectedVersionId={selectedVersion?.id}
-                onSelect={setSelectedVersion}
                 documentId={selectedDocumentId}
+                onSelect={setSelectedVersion}
               />
             </Suspense>
           </Card>
-          {selectedVersion ? (
-            <Suspense fallback={<Skeleton />}>
-              <DocumentVersionTranslation
-                locale={selectedLocale}
-                documentVersion={selectedVersion}
-              />
-            </Suspense>
+          {selectedVersion?.versionNumber ? (
+            <DocumentVersionContent documentVersionItem={selectedVersion} />
           ) : (
             <Card className="flex-1" captionSize={"sm"} caption="Content">
               Select a version

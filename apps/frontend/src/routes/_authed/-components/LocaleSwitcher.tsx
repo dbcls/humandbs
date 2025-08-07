@@ -10,22 +10,19 @@ export function LocaleSwitcher({
   onSwitchLocale: (locale: Locale) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <Label>Locale</Label>
-      <ToggleGroup
-        type="single"
-        value={locale}
-        onValueChange={(value) => {
-          if (!value) return;
-          onSwitchLocale(value as Locale);
-        }}
-      >
-        {i18n.locales.map((loc) => (
-          <ToggleGroupItem key={loc} value={loc}>
-            {loc}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </div>
+    <ToggleGroup
+      type="single"
+      value={locale}
+      onValueChange={(value) => {
+        if (!value) return;
+        onSwitchLocale(value as Locale);
+      }}
+    >
+      {i18n.locales.map((loc) => (
+        <ToggleGroupItem className="capitalize" key={loc} value={loc}>
+          {loc}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }

@@ -1,6 +1,5 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
   integer,
   pgEnum,
   pgTable,
@@ -13,14 +12,10 @@ import {
 import { user } from "./auth-schema";
 import { document } from "./document";
 
-export const documentVersionStatus = pgEnum("status", [
+export const documentVersionStatus = pgEnum("document_version_status", [
   "draft",
   "published",
-  "archived",
 ]);
-
-export type DocumentVersionStatus =
-  (typeof documentVersionStatus.enumValues)[number];
 
 export const documentVersion = pgTable(
   "document_version",
@@ -33,13 +28,16 @@ export const documentVersion = pgTable(
     documentId: uuid("document_id")
       .notNull()
       .references(() => document.id),
-    status: documentVersionStatus("status").default("draft"),
+    status: documentVersionStatus("status").notNull().default("draft"),
     lastDraftSavedAt: timestamp("last_draft_saved_at"),
     publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [uniqueIndex().on(table.documentId, table.versionNumber)]
+  (table) => [
+    // Each version number can have at most one draft and one published version
+    uniqueIndex().on(table.documentId, table.versionNumber, table.status),
+  ]
 );
 
 export type DocumentVersion = typeof documentVersion.$inferSelect;

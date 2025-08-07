@@ -9,7 +9,7 @@ import {
 } from "@/db/types";
 import { db } from "@/lib/database";
 import { Locale, localeSchema } from "@/lib/i18n-config";
-import { collectHeadings, transformMarkdoc } from "@/markdoc/config";
+import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -66,6 +66,8 @@ export function getDocumentVersionTranslationQueryOptions({
     staleTime: 1000 * 60 * 10,
   });
 }
+
+/** Upsert document version translation */
 
 /** Create document version translation */
 export const $createDocumentVersionTranslation = createServerFn({
