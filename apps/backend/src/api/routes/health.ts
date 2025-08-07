@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { HealthResponseSchema, ErrorResponseSchema } from "@/types"
+import { ErrorSpec500 } from "@/api/routes/errors"
+import { HealthResponseSchema } from "@/types"
 
 const healthRoute = createRoute({
   method: "get",
@@ -16,14 +17,7 @@ const healthRoute = createRoute({
       },
       description: "API is healthy",
     },
-    500: {
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-      description: "Internal Server Error",
-    },
+    500: ErrorSpec500,
   },
 })
 

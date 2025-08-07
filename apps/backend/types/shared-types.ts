@@ -149,11 +149,49 @@ export type ResearchDoc = z.infer<typeof ResearchDocSchema>
 
 // === API Requests/Responses ===
 
+// Response of GET /health
 export const HealthResponseSchema = z.object({
   status: z.string(),
   timestamp: z.string(), // ISO 8601 format (e.g., "2023-10-01T12:00:00Z")
 }).strict()
 export type HealthResponse = z.infer<typeof HealthResponseSchema>
+
+export const ResearchSummarySchema = z.object({
+  humId: z.string(),
+  lang: z.enum(langType),
+  title: z.string(),
+  versions: z.array(z.object({
+    version: z.string(),
+    releaseDate: z.string(), // ISO 8601 format (e.g., "2023-10-01")
+  })),
+  // 露出させる dataset の情報は要 discussion
+  // experimentalMethods: z.string().nullable().optional(),
+}).strict()
+export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
+
+// Query parameters for GET /researches
+export const ResearchesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  lang: z.enum(langType).default("en"),
+  sort: z.enum(["humId", "title"]).default("humId"),
+  order: z.enum(["asc", "desc"]).default("asc"),
+}).strict()
+export type ResearchesQuery = z.infer<typeof ResearchesQuerySchema>
+
+// Response of GET /researches
+export const ResearchesResponseSchema = z.object({
+  data: z.array(ResearchSummarySchema),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+    hasNext: z.boolean(),
+    hasPrev: z.boolean(),
+  }),
+}).strict()
+export type ResearchesResponse = z.infer<typeof ResearchesResponseSchema>
 
 export const ErrorResponseSchema = z.object({
   error: z.string(),

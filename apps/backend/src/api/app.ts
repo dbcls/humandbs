@@ -4,6 +4,7 @@ import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 
 import { healthRouter } from "@/api/routes/health"
+import { researchesRouter } from "@/api/routes/researches"
 
 export const createApp = () => {
   const app = new OpenAPIHono()
@@ -13,6 +14,7 @@ export const createApp = () => {
 
   // routes
   app.route("/health", healthRouter)
+  app.route("/researches", researchesRouter)
 
   // OpenAPI docs
   app.doc("/docs/openapi.json", {
