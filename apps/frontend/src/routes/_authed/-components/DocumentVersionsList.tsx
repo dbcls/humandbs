@@ -6,7 +6,7 @@ import {
   $cloneDocumentVersion,
   $createDocumentVersion,
   $deleteDocumentVersion,
-  DocumentVersionListItemResponse,
+  type DocumentVersionListItemResponse,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -16,8 +16,8 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { CopyIcon, Trash2Icon } from "lucide-react";
-import { StatusTag } from "./StatusTag";
 import { useEffect, useRef, useState } from "react";
+import { StatusTag } from "./StatusTag";
 
 export function DocumentVersionsList({
   documentId,
@@ -26,40 +26,24 @@ export function DocumentVersionsList({
   documentId: string;
   onSelect: (documentVersionItem: DocumentVersionListItemResponse) => void;
 }) {
-  const [selectedVersionNumber, setSelectedVersionNumber] = useState<
-    number | undefined
-  >(undefined);
-
-  const docIdRef = useRef(documentId);
-
-  const queryClient = useQueryClient();
-
   const documentVersionsListQO = getDocumentVersionsListQueryOptions({
     documentId,
   });
 
-  const { openConfirmation } = useConfirmationStore();
-
   const { data: versions } = useSuspenseQuery(documentVersionsListQO);
 
+  const [selectedVersion, setSelectedVersion] = useState<
+    DocumentVersionListItemResponse | undefined
+  >(versions[0]);
+
+  const queryClient = useQueryClient();
+
+  const { openConfirmation } = useConfirmationStore();
+
   useEffect(() => {
-    if (!selectedVersionNumber) {
-      // select first one
-      setSelectedVersionNumber(versions?.[0]?.versionNumber);
-      onSelect(versions?.[0]);
-    } else {
-      const selectedVersion = versions?.find(
-        (v) => v.versionNumber === selectedVersionNumber
-      );
-      if (selectedVersion) {
-        onSelect(selectedVersion);
-      }
-    }
-    if (documentId !== docIdRef.current) {
-      docIdRef.current = documentId;
-      setSelectedVersionNumber(undefined);
-    }
-  }, [versions, selectedVersionNumber, documentId]);
+    setSelectedVersion(versions[0]);
+    onSelect(versions[0]);
+  }, [versions, onSelect]);
 
   async function handleAddNewVersion() {
     await $createDocumentVersion({ data: { documentId } });
@@ -107,14 +91,54 @@ export function DocumentVersionsList({
   const { mutate: cloneDocumentVersion } = useMutation({
     mutationFn: (versionNumber: number) =>
       $cloneDocumentVersion({ data: { versionNumber, documentId } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries(documentVersionsListQO);
+    onMutate: async (versionNumber) => {
+      await queryClient.cancelQueries(documentVersionsListQO);
+
+      const previousVersions = queryClient.getQueryData(
+        documentVersionsListQO.queryKey
+      );
+
+      queryClient.setQueryData(documentVersionsListQO.queryKey, (prev) => {
+        if (!prev) return;
+
+        const versionToClone = prev.find(
+          (v) => v.versionNumber === versionNumber
+        );
+
+        const newVersionNumber =
+          Math.max(...prev.map((v) => v.versionNumber)) + 1;
+
+        if (!versionToClone) return;
+
+        return [
+          { ...versionToClone, versionNumber: newVersionNumber },
+          ...prev,
+        ];
+      });
+
+      return { previousVersions };
+    },
+    onError: (_, __, context) => {
+      if (context) {
+        queryClient.setQueryData(
+          documentVersionsListQO.queryKey,
+          context.previousVersions
+        );
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(documentVersionsListQO);
     },
   });
 
   const canCloneVersion = (version: DocumentVersionListItemResponse) => {
     return version.statuses.includes("draft") && version.statuses.length === 1;
   };
+
+  function handleSelectVersion(version: DocumentVersionListItemResponse) {
+    setSelectedVersion(version);
+    onSelect(version);
+  }
 
   return (
     <ul>
@@ -126,12 +150,12 @@ export function DocumentVersionsList({
         Add new
       </Button>
       {versions.map((v, index) => {
-        const isActive = selectedVersionNumber === v.versionNumber;
+        const isActive = selectedVersion?.versionNumber === v.versionNumber;
         return (
           <ListItem
             key={v.versionNumber + v.statuses.join()}
             isActive={isActive}
-            onClick={() => setSelectedVersionNumber(v.versionNumber)}
+            onClick={() => handleSelectVersion(v)}
           >
             <span>{v.versionNumber}</span>
             <span className="ml-4 flex items-center gap-1">

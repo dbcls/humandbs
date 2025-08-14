@@ -1,9 +1,11 @@
 import { Card } from "@/components/Card";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { DocumentVersionStatus } from "@/db/types";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
@@ -13,19 +15,18 @@ import {
   $deleteDocumentVersionDraft,
   $publishDocumentVersionDraft,
   $saveDocumentVersion,
-  DocumentVersionContentResponse,
-  DocumentVersionListItemResponse,
+  type DocumentVersionContentResponse,
+  type DocumentVersionListItemResponse,
   getDocumentVersionQueryOptions,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MDEditor from "@uiw/react-md-editor";
+import { Save, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { StatusTag } from "./StatusTag";
-import { Save, Trash2, Undo2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 
 type FormMeta = {
   submitAction:
@@ -60,42 +61,242 @@ export function DocumentVersionContent({
     i18n.defaultLocale
   );
 
-  const documentVersionsListQO = getDocumentVersionsListQueryOptions({
-    documentId: documentVersionItem.documentId,
-  });
+  const documentVersionsListQO =
+    getDocumentVersionsListQueryOptions(documentVersionItem);
+
+  const documentVersionQO = getDocumentVersionQueryOptions(documentVersionItem);
 
   const queryClient = useQueryClient();
 
-  const { data: documentVersion } = useQuery(
-    getDocumentVersionQueryOptions({
-      documentId: documentVersionItem.documentId,
-      versionNumber: documentVersionItem.versionNumber,
-    })
-  );
+  const { data: documentVersion } = useQuery(documentVersionQO);
 
   const { mutate: saveVersion } = useMutation({
-    mutationFn: (value: DocumentVersionContentResponse) =>
-      $saveDocumentVersion({
+    mutationFn: ({
+      version,
+      action,
+    }: {
+      version: DocumentVersionContentResponse;
+      action: Exclude<FormMeta["submitAction"], "publishDraft">;
+    }) => {
+      if (!action) throw new Error("Invalid submit action");
+
+      if (action === "updatePublished") {
+        return $saveDocumentVersion({
+          data: {
+            documentId: documentVersionItem.documentId,
+            ...version,
+            status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+          },
+        });
+      }
+
+      return $saveDocumentVersion({
         data: {
           documentId: documentVersionItem.documentId,
-          ...value,
+          ...version,
+          status: DOCUMENT_VERSION_STATUS.DRAFT,
         },
-      }),
-    onMutate: (values) => {
-      //
+      });
+    },
+    onMutate: async ({ version, action }) => {
+      await queryClient.cancelQueries(documentVersionQO);
+      await queryClient.cancelQueries(documentVersionsListQO);
+
+      const prevDocumentVersionsList = queryClient.getQueryData(
+        documentVersionsListQO.queryKey
+      );
+
+      const prevDocumentVersion = queryClient.getQueryData(
+        documentVersionQO.queryKey
+      );
+
+      switch (action) {
+        case "saveAsDraft":
+          {
+            const updated = {
+              [DOCUMENT_VERSION_STATUS.DRAFT]: {
+                ...version,
+                status: DOCUMENT_VERSION_STATUS.DRAFT,
+              },
+            };
+            // optimistically set draft as input `version`, reset the `published` back
+            queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
+              if (!prev) return prev;
+
+              return {
+                ...prev,
+                ...updated,
+              };
+            });
+
+            form.reset({
+              ...form.state.values,
+              ...updated,
+            });
+
+            // add "draft" to statuses
+            queryClient.setQueryData(
+              documentVersionsListQO.queryKey,
+              (prev) => {
+                if (!prev) return prev;
+
+                return prev.map((p) =>
+                  p.versionNumber === version.versionNumber
+                    ? {
+                        ...p,
+                        statuses: [
+                          DOCUMENT_VERSION_STATUS.DRAFT,
+                          DOCUMENT_VERSION_STATUS.PUBLISHED,
+                        ].sort(),
+                      }
+                    : p
+                );
+              }
+            );
+          }
+
+          break;
+        case "saveDraft":
+          {
+            const docVerOptValue = {
+              [DOCUMENT_VERSION_STATUS.DRAFT]: {
+                ...version,
+
+                status: DOCUMENT_VERSION_STATUS.DRAFT,
+              },
+            };
+            // optimistically set the draft
+            queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                ...docVerOptValue,
+              };
+            });
+
+            // because of that, it makes sense to separate draft nd published into two different forms.
+            form.reset({
+              ...form.state.values,
+              ...docVerOptValue,
+            });
+          }
+
+          break;
+
+        case "updatePublished":
+          {
+            const docVerOptValue = {
+              [DOCUMENT_VERSION_STATUS.PUBLISHED]: {
+                ...version,
+                status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+              },
+            };
+            // optimistically update published
+            queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
+              if (!prev) return prev;
+              return docVerOptValue;
+            });
+
+            form.reset({
+              ...form.state.values,
+              ...docVerOptValue,
+            });
+          }
+          break;
+      }
+
+      return { prevDocumentVersion, prevDocumentVersionsList };
     },
 
-    onSuccess: () => {
+    onError: (_, __, context) => {
+      if (context?.prevDocumentVersion) {
+        queryClient.setQueryData(
+          documentVersionQO.queryKey,
+          context.prevDocumentVersion
+        );
+        form.reset(context.prevDocumentVersion);
+      }
+
+      if (context?.prevDocumentVersionsList) {
+        queryClient.setQueryData(
+          documentVersionsListQO.queryKey,
+          context.prevDocumentVersionsList
+        );
+      }
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries(documentVersionsListQO);
+
+      queryClient.invalidateQueries(documentVersionQO);
     },
   });
 
   const { mutate: publishDraft } = useMutation({
     mutationFn: (value: DocumentVersionContentResponse) =>
       $publishDocumentVersionDraft({
-        data: { ...value, documentId: documentVersionItem.documentId },
+        data: {
+          ...value,
+
+          documentId: documentVersionItem.documentId,
+        },
       }),
-    onSuccess: () => {
+    onMutate: async (value) => {
+      await queryClient.cancelQueries(documentVersionQO);
+      await queryClient.cancelQueries(documentVersionsListQO);
+
+      const prevDocumentVersion = queryClient.getQueryData(
+        documentVersionQO.queryKey
+      );
+
+      const prevDocumentVersionsList = queryClient.getQueryData(
+        documentVersionsListQO.queryKey
+      );
+
+      queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
+        if (!prev) return prev;
+        return {
+          published: {
+            ...prev.draft!,
+            status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+          },
+        };
+      });
+
+      queryClient.setQueryData(documentVersionsListQO.queryKey, (prev) => {
+        if (!prev) return prev;
+        return prev.map((p) =>
+          p.versionNumber === value.versionNumber
+            ? { ...p, statuses: [DOCUMENT_VERSION_STATUS.PUBLISHED] }
+            : p
+        );
+      });
+
+      form.reset({
+        [DOCUMENT_VERSION_STATUS.PUBLISHED]: {
+          ...value,
+          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+        },
+      });
+
+      return { prevDocumentVersion, prevDocumentVersionsList };
+    },
+    onError: (_, __, context) => {
+      if (context?.prevDocumentVersion) {
+        queryClient.setQueryData(
+          documentVersionQO.queryKey,
+          context.prevDocumentVersion
+        );
+        form.reset(context.prevDocumentVersion);
+      }
+      if (context?.prevDocumentVersionsList) {
+        queryClient.setQueryData(
+          documentVersionsListQO.queryKey,
+          context.prevDocumentVersionsList
+        );
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries(documentVersionsListQO);
     },
   });
@@ -119,28 +320,23 @@ export function DocumentVersionContent({
   const form = useForm({
     defaultValues: documentVersion,
     onSubmitMeta: defaultMeta,
-    onSubmit: ({ value, meta }) => {
+    onSubmit: ({ value, meta, formApi }) => {
       switch (meta.submitAction) {
         case "publishDraft":
-          publishDraft(value.draft);
+          publishDraft(value.draft!);
           break;
-        case "saveAsDraft":
-          saveVersion({ ...value.published, status: "draft" });
-          break;
+
         case "saveDraft":
-          saveVersion({ ...value.draft, status: "draft" });
+          saveVersion({ version: value.draft!, action: meta.submitAction });
+
           break;
-        case "updatePublished":
-          saveVersion({ ...value.published, status: "published" });
+        default:
+          saveVersion({ version: value.published!, action: meta.submitAction });
+
           break;
       }
     },
   });
-
-  // reset form if selectes another version
-  useEffect(() => {
-    form.reset();
-  }, [form.reset, documentVersionItem]);
 
   return (
     <Card
@@ -259,7 +455,7 @@ export function DocumentVersionContent({
                   >
                     <Undo2 className="size-5" /> Reset
                   </Button>
-                  {selectedStatus === "draft" ? (
+                  {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
                     <Button onClick={() => deleteVersion(documentVersionItem)}>
                       <Trash2 className="size-5" /> Delete draft
                     </Button>
@@ -267,7 +463,7 @@ export function DocumentVersionContent({
                 </div>
 
                 <div className="flex gap-2">
-                  {selectedStatus === "draft" ? (
+                  {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
                     <>
                       <Button
                         disabled={!isDirty}

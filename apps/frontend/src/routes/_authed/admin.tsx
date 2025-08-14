@@ -141,7 +141,10 @@ function ManageDocuments() {
             </Suspense>
           </Card>
           {selectedVersion?.versionNumber ? (
-            <DocumentVersionContent documentVersionItem={selectedVersion} />
+            <DocumentVersionContent
+              key={selectedVersion.documentId + selectedVersion.versionNumber}
+              documentVersionItem={selectedVersion}
+            />
           ) : (
             <Card className="flex-1" captionSize={"sm"} caption="Content">
               Select a version

@@ -7,7 +7,6 @@ import {
   documentVersionSchema,
   DocumentVersionStatus,
   InsertDocumentVersionTranslationParams,
-  insertDocumentVersionTranslationSchema,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { db } from "@/lib/database";
@@ -105,8 +104,8 @@ export const $getDocumentVersions = createServerFn({
 
     // Convert grouped results back to array format
     return Object.values(groupedVersions).map((group) => ({
-      statuses: Array.from(group.statuses),
-      locales: Array.from(group.locales),
+      statuses: Array.from(group.statuses).sort(),
+      locales: Array.from(group.locales).sort(),
       versionNumber: group.versionNumber,
       documentId: group.documentId,
     })) satisfies DocumentVersionListItemResponse[];
@@ -140,9 +139,8 @@ interface Author {
 }
 
 /** CMS document version response */
-export type DocumentVersionResponse = Record<
-  DocumentVersionStatus,
-  DocumentVersionContentResponse
+export type DocumentVersionResponse = Partial<
+  Record<DocumentVersionStatus, DocumentVersionContentResponse>
 >;
 
 export type DocumentVersionContentResponse = {
@@ -191,7 +189,7 @@ export const $getDocumentVersion = createServerFn({
             acc[translation.locale as Locale] = translation;
             return acc;
           },
-          {} as DocumentVersionResponse[keyof DocumentVersionResponse]["translations"]
+          {} as DocumentVersionContentResponse["translations"]
         ),
       };
       return acc;
@@ -355,19 +353,37 @@ export const $deleteDocumentVersion = createServerFn({
     return result;
   });
 
-const versionTranslationUpdateSchema =
-  insertDocumentVersionTranslationSchema.pick({
-    locale: true,
-    title: true,
-    content: true,
-  });
+// Define schemas for translation fields based on status
+const draftTranslationSchema = z.object({
+  title: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
+});
 
-const versionUpdateSchema = selectDocumentVersionSchema.extend({
+const publishedTranslationSchema = z.object({
+  title: z.string().nullable(),
+  content: z.string().nullable(),
+});
+
+// Draft document version schema
+const draftVersionSchema = selectDocumentVersionSchema.extend({
+  status: z.literal("draft"),
+  translations: z.record(unionOfLiterals(i18n.locales), draftTranslationSchema),
+});
+
+// Published document version schema
+const publishedVersionSchema = selectDocumentVersionSchema.extend({
+  status: z.literal("published"),
   translations: z.record(
     unionOfLiterals(i18n.locales),
-    versionTranslationUpdateSchema.pick({ title: true, content: true })
+    publishedTranslationSchema
   ),
 });
+
+// Create a discriminated union based on status
+const versionUpdateSchema = z.discriminatedUnion("status", [
+  draftVersionSchema,
+  publishedVersionSchema,
+]);
 
 /**
  * Save/Update document version.
@@ -388,12 +404,21 @@ export const $saveDocumentVersion = createServerFn({
  */
 export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(versionUpdateSchema.omit({ status: true }))
+  .validator(draftVersionSchema.omit({ status: true }))
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "publish");
 
+    // We received a draft but need to validate the content as if it were published
+    // Check if any required fields are missing before proceeding
+    const validatedData = publishedVersionSchema.parse({
+      ...data,
+      status: "published",
+    });
+
     await upsertDocVersion({
-      data: { ...data, status: "published" },
+      data: { ...validatedData, status: "published" } as z.infer<
+        typeof publishedVersionSchema
+      >,
       user: context.user,
     });
 
@@ -413,11 +438,14 @@ async function upsertDocVersion({
   data,
   user,
 }: {
-  data: z.infer<typeof versionUpdateSchema>;
+  data:
+    | z.infer<typeof draftVersionSchema>
+    | z.infer<typeof publishedVersionSchema>;
   user: User | undefined;
 }) {
   const { documentId, versionNumber, translations, status } = data;
 
+  console.log("upsertDocVersion data", data);
   await db.transaction(async (tx) => {
     // Upsert the document version
 

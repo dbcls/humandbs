@@ -179,7 +179,7 @@ function Assets() {
             {filteredAssets.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
-                  <img src={row.url} />
+                  <img src={row.url} alt={row.name} />
                 </TableCell>
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{row.mimeType}</TableCell>
