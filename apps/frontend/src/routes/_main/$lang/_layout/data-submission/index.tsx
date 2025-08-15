@@ -39,7 +39,7 @@ function RouteComponent() {
   return (
     <Card caption={title} captionSize={"lg"}>
       <RenderMarkdoc className="mx-auto" content={content} />
-      <ul>
+      <ul className="mx-auto">
         {versions.map((version) => (
           <li key={version.versionNumber}>
             <Link
@@ -55,7 +55,7 @@ function RouteComponent() {
           </li>
         ))}
       </ul>
-      <div className="my-5 text-center">
+      <div className="mx-auto my-5 flex justify-center">
         <Button
           className="text-3xl lowercase first-letter:capitalize"
           size="lg"
