@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import {
+  DOCUMENT_VERSION_STATUS,
+  DocumentVersionTranslation,
+} from "@/db/schema";
 import { DocumentVersionStatus } from "@/db/types";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
@@ -17,7 +20,8 @@ import {
   $saveDocumentVersion,
   type DocumentVersionContentResponse,
   type DocumentVersionListItemResponse,
-  getDocumentVersionQueryOptions,
+  getDocumentVersionDraftQueryOptions,
+  getDocumentVersionPublishedQueryOptions,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import { useForm } from "@tanstack/react-form";
@@ -36,6 +40,48 @@ type FormMeta = {
     | "saveAsDraft"
     | null;
 };
+
+type DraftMeta = {
+  submitAction:
+    | "saveDraft"
+    | "publishDraft"
+    | "updatePublished"
+    | "saveAsDraft"
+    | null;
+};
+
+function getFormDataFromApiResponse<T extends DocumentVersionContentResponse>(
+  response: T | undefined
+): DocumentVersionContentResponse {
+  if (!response) {
+    return {
+      id: "",
+      author: {
+        name: "",
+        email: "",
+        id: "",
+      },
+      translations: i18n.locales.reduce(
+        (acc, locale) => {
+          acc[locale] = {} as DocumentVersionTranslation;
+          return acc;
+        },
+        {} as Record<Locale, DocumentVersionTranslation>
+      ),
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
+      versionNumber: 0,
+    };
+  }
+
+  const { author, translations, status, versionNumber, id } = response;
+  return {
+    id,
+    author,
+    translations,
+    status,
+    versionNumber,
+  };
+}
 
 export function DocumentVersionContent({
   documentVersionItem,
@@ -64,11 +110,17 @@ export function DocumentVersionContent({
   const documentVersionsListQO =
     getDocumentVersionsListQueryOptions(documentVersionItem);
 
-  const documentVersionQO = getDocumentVersionQueryOptions(documentVersionItem);
+  const documentVersionDraftQO =
+    getDocumentVersionDraftQueryOptions(documentVersionItem);
+  const documentVersionPublishedQO =
+    getDocumentVersionPublishedQueryOptions(documentVersionItem);
 
   const queryClient = useQueryClient();
 
-  const { data: documentVersion } = useQuery(documentVersionQO);
+  const { data: documentVersionDraft } = useQuery(documentVersionDraftQO);
+  const { data: documentVersionPublished } = useQuery(
+    documentVersionPublishedQO
+  );
 
   const { mutate: saveVersion } = useMutation({
     mutationFn: ({
@@ -99,40 +151,37 @@ export function DocumentVersionContent({
       });
     },
     onMutate: async ({ version, action }) => {
-      await queryClient.cancelQueries(documentVersionQO);
+      await queryClient.cancelQueries(documentVersionDraftQO);
+      await queryClient.cancelQueries(documentVersionPublishedQO);
       await queryClient.cancelQueries(documentVersionsListQO);
 
       const prevDocumentVersionsList = queryClient.getQueryData(
         documentVersionsListQO.queryKey
       );
 
-      const prevDocumentVersion = queryClient.getQueryData(
-        documentVersionQO.queryKey
+      const prevDocumentVersionDraft = queryClient.getQueryData(
+        documentVersionDraftQO.queryKey
+      );
+      const prevDocumentVersionPublished = queryClient.getQueryData(
+        documentVersionPublishedQO.queryKey
       );
 
       switch (action) {
         case "saveAsDraft":
           {
             const updated = {
-              [DOCUMENT_VERSION_STATUS.DRAFT]: {
-                ...version,
-                status: DOCUMENT_VERSION_STATUS.DRAFT,
-              },
+              ...version,
+              status: DOCUMENT_VERSION_STATUS.DRAFT,
             };
             // optimistically set draft as input `version`, reset the `published` back
-            queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
-              if (!prev) return prev;
+            queryClient.setQueryData(
+              documentVersionDraftQO.queryKey,
+              (prev) => {
+                if (!prev) return prev;
 
-              return {
-                ...prev,
-                ...updated,
-              };
-            });
-
-            form.reset({
-              ...form.state.values,
-              ...updated,
-            });
+                return { ...prev, ...updated };
+              }
+            );
 
             // add "draft" to statuses
             queryClient.setQueryData(
@@ -153,68 +202,81 @@ export function DocumentVersionContent({
                 );
               }
             );
+
+            form.setFieldValue(DOCUMENT_VERSION_STATUS.DRAFT, updated);
+            // form.reset({
+            //   [DOCUMENT_VERSION_STATUS.DRAFT]: updated,
+            //   [DOCUMENT_VERSION_STATUS.PUBLISHED]: version,
+            // }, {keepDefaultValues: true});
           }
 
           break;
         case "saveDraft":
           {
-            const docVerOptValue = {
-              [DOCUMENT_VERSION_STATUS.DRAFT]: {
-                ...version,
-
-                status: DOCUMENT_VERSION_STATUS.DRAFT,
-              },
-            };
             // optimistically set the draft
-            queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                ...docVerOptValue,
-              };
-            });
+            queryClient.setQueryData(
+              documentVersionDraftQO.queryKey,
+              (prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  ...version,
+                };
+              }
+            );
 
-            // because of that, it makes sense to separate draft nd published into two different forms.
-            form.reset({
-              ...form.state.values,
-              ...docVerOptValue,
-            });
+            // form.reset();
           }
 
           break;
 
         case "updatePublished":
           {
-            const docVerOptValue = {
-              [DOCUMENT_VERSION_STATUS.PUBLISHED]: {
-                ...version,
-                status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-              },
-            };
             // optimistically update published
-            queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
-              if (!prev) return prev;
-              return docVerOptValue;
-            });
+            queryClient.setQueryData(
+              documentVersionPublishedQO.queryKey,
+              (prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  ...version,
+                };
+              }
+            );
 
-            form.reset({
-              ...form.state.values,
-              ...docVerOptValue,
-            });
+            // form.reset({
+            //   ...form.options.defaultValues,
+            //   [DOCUMENT_VERSION_STATUS.PUBLISHED]: version,
+            // });
           }
           break;
       }
 
-      return { prevDocumentVersion, prevDocumentVersionsList };
+      return {
+        prevDocumentVersionDraft,
+        prevDocumentVersionPublished,
+        prevDocumentVersionsList,
+      };
     },
 
     onError: (_, __, context) => {
-      if (context?.prevDocumentVersion) {
+      if (context?.prevDocumentVersionDraft) {
         queryClient.setQueryData(
-          documentVersionQO.queryKey,
-          context.prevDocumentVersion
+          documentVersionDraftQO.queryKey,
+          context.prevDocumentVersionDraft
         );
-        form.reset(context.prevDocumentVersion);
+
+        form.setFieldValue(
+          DOCUMENT_VERSION_STATUS.DRAFT,
+          context.prevDocumentVersionDraft
+        );
+      }
+
+      if (context?.prevDocumentVersionPublished) {
+        queryClient.setQueryData(
+          documentVersionPublishedQO.queryKey,
+          context.prevDocumentVersionPublished
+        );
       }
 
       if (context?.prevDocumentVersionsList) {
@@ -225,10 +287,18 @@ export function DocumentVersionContent({
       }
     },
 
-    onSettled: () => {
-      queryClient.invalidateQueries(documentVersionsListQO);
+    onSettled: (_, __, { action }) => {
+      if (action === "saveDraft" || action === "saveAsDraft") {
+        queryClient.invalidateQueries(documentVersionDraftQO);
 
-      queryClient.invalidateQueries(documentVersionQO);
+        if (action === "saveAsDraft") {
+          queryClient.invalidateQueries(documentVersionsListQO);
+        }
+      }
+
+      if (action === "updatePublished") {
+        queryClient.invalidateQueries(documentVersionPublishedQO);
+      }
     },
   });
 
@@ -242,24 +312,22 @@ export function DocumentVersionContent({
         },
       }),
     onMutate: async (value) => {
-      await queryClient.cancelQueries(documentVersionQO);
+      await queryClient.cancelQueries(documentVersionPublishedQO);
       await queryClient.cancelQueries(documentVersionsListQO);
 
-      const prevDocumentVersion = queryClient.getQueryData(
-        documentVersionQO.queryKey
+      const prevDocumentPublishedVersion = queryClient.getQueryData(
+        documentVersionPublishedQO.queryKey
       );
 
       const prevDocumentVersionsList = queryClient.getQueryData(
         documentVersionsListQO.queryKey
       );
 
-      queryClient.setQueryData(documentVersionQO.queryKey, (prev) => {
+      queryClient.setQueryData(documentVersionPublishedQO.queryKey, (prev) => {
         if (!prev) return prev;
         return {
-          published: {
-            ...prev.draft!,
-            status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-          },
+          ...prev,
+          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
         };
       });
 
@@ -272,22 +340,19 @@ export function DocumentVersionContent({
         );
       });
 
-      form.reset({
-        [DOCUMENT_VERSION_STATUS.PUBLISHED]: {
-          ...value,
-          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-        },
+      form.setFieldValue(DOCUMENT_VERSION_STATUS.PUBLISHED, {
+        ...value,
+        status: DOCUMENT_VERSION_STATUS.PUBLISHED,
       });
 
-      return { prevDocumentVersion, prevDocumentVersionsList };
+      return { prevDocumentPublishedVersion, prevDocumentVersionsList };
     },
     onError: (_, __, context) => {
-      if (context?.prevDocumentVersion) {
+      if (context?.prevDocumentPublishedVersion) {
         queryClient.setQueryData(
-          documentVersionQO.queryKey,
-          context.prevDocumentVersion
+          documentVersionPublishedQO.queryKey,
+          context.prevDocumentPublishedVersion
         );
-        form.reset(context.prevDocumentVersion);
       }
       if (context?.prevDocumentVersionsList) {
         queryClient.setQueryData(
@@ -295,9 +360,11 @@ export function DocumentVersionContent({
           context.prevDocumentVersionsList
         );
       }
+      form.reset();
     },
     onSettled: () => {
       queryClient.invalidateQueries(documentVersionsListQO);
+      queryClient.invalidateQueries(documentVersionPublishedQO);
     },
   });
 
@@ -318,7 +385,13 @@ export function DocumentVersionContent({
   };
 
   const form = useForm({
-    defaultValues: documentVersion,
+    defaultValues: {
+      [DOCUMENT_VERSION_STATUS.DRAFT]:
+        getFormDataFromApiResponse(documentVersionDraft),
+      [DOCUMENT_VERSION_STATUS.PUBLISHED]: getFormDataFromApiResponse(
+        documentVersionPublished
+      ),
+    },
     onSubmitMeta: defaultMeta,
     onSubmit: ({ value, meta, formApi }) => {
       switch (meta.submitAction) {
@@ -372,7 +445,7 @@ export function DocumentVersionContent({
           className="h-full"
         >
           {i18n.locales.map((locale) => {
-            const translator = documentVersion?.[selectedStatus]?.author;
+            const translator = form.state.values[selectedStatus]?.author;
 
             return (
               <TabsContent
@@ -443,80 +516,88 @@ export function DocumentVersionContent({
 
         <div className="flex h-fit justify-between gap-5">
           <form.Subscribe
-            selector={(state) => [state.isDirty, state.values.draft]}
+            selector={(state) => [
+              state.isDirty,
+              state.values.draft,
+              state.values.published,
+            ]}
           >
-            {([isDirty, draft]) => (
-              <>
-                <div className="flex items-center gap-2">
-                  <Button
-                    disabled={!isDirty}
-                    variant={"outline"}
-                    onClick={() => form.reset()}
-                  >
-                    <Undo2 className="size-5" /> Reset
-                  </Button>
-                  {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                    <Button onClick={() => deleteVersion(documentVersionItem)}>
-                      <Trash2 className="size-5" /> Delete draft
+            {([isDirty, draft, published]) => {
+              return (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      disabled={!isDirty}
+                      variant={"outline"}
+                      onClick={() => form.reset()}
+                    >
+                      <Undo2 className="size-5" /> Reset
                     </Button>
-                  ) : null}
-                </div>
+                    {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
+                      <Button
+                        onClick={() => deleteVersion(documentVersionItem)}
+                      >
+                        <Trash2 className="size-5" /> Delete draft
+                      </Button>
+                    ) : null}
+                  </div>
 
-                <div className="flex gap-2">
-                  {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                    <>
-                      <Button
-                        disabled={!isDirty}
-                        onClick={() =>
-                          form.handleSubmit({ submitAction: "saveDraft" })
-                        }
-                        size={"lg"}
-                        variant={"action"}
-                      >
-                        <Save className="size-5" />
-                        Save draft
-                      </Button>
-                      <Button
-                        disabled={!draft}
-                        onClick={() =>
-                          form.handleSubmit({ submitAction: "publishDraft" })
-                        }
-                        size={"lg"}
-                        variant={"accent"}
-                      >
-                        Publish draft
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        disabled={!isDirty}
-                        onClick={() =>
-                          form.handleSubmit({ submitAction: "saveAsDraft" })
-                        }
-                        size={"lg"}
-                        variant={"action"}
-                      >
-                        <Save className="size-8 [&_path]:stroke-[1.5px]" />
-                        Save as draft
-                      </Button>
-                      <Button
-                        disabled={!isDirty}
-                        onClick={() =>
-                          form.handleSubmit({
-                            submitAction: "updatePublished",
-                          })
-                        }
-                        size={"lg"}
-                        variant={"accent"}
-                      >
-                        Update published
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+                  <div className="flex gap-2">
+                    {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
+                      <>
+                        <Button
+                          disabled={!isDirty}
+                          onClick={() =>
+                            form.handleSubmit({ submitAction: "saveDraft" })
+                          }
+                          size={"lg"}
+                          variant={"action"}
+                        >
+                          <Save className="size-5" />
+                          Save draft
+                        </Button>
+                        <Button
+                          disabled={!draft}
+                          onClick={() =>
+                            form.handleSubmit({ submitAction: "publishDraft" })
+                          }
+                          size={"lg"}
+                          variant={"accent"}
+                        >
+                          Publish draft
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          disabled={!isDirty}
+                          onClick={() =>
+                            form.handleSubmit({ submitAction: "saveAsDraft" })
+                          }
+                          size={"lg"}
+                          variant={"action"}
+                        >
+                          <Save className="size-8 [&_path]:stroke-[1.5px]" />
+                          Save as draft
+                        </Button>
+                        <Button
+                          disabled={!isDirty}
+                          onClick={() =>
+                            form.handleSubmit({
+                              submitAction: "updatePublished",
+                            })
+                          }
+                          size={"lg"}
+                          variant={"accent"}
+                        >
+                          Update published
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </>
+              );
+            }}
           </form.Subscribe>
         </div>
       </form>

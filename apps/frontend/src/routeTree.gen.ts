@@ -38,6 +38,7 @@ import { Route as MainLangLayoutDataSubmissionNavigationIndexRouteImport } from 
 import { Route as MainLangLayoutDataSubmissionApplicationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/application/index'
 import { Route as MainLangLayoutResearchListResearchIdResearchVerRouteImport } from './routes/_main/$lang/_layout/research-list/$researchId/$researchVer'
 import { Route as MainLangLayoutGuidelinesRevisionRevRouteImport } from './routes/_main/$lang/_layout/guidelines/revision/$rev'
+import { Route as MainLangLayoutDataSubmissionVersionVersionRouteImport } from './routes/_main/$lang/_layout/data-submission/version/$version'
 import { Route as MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/before-application/route'
 import { Route as MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/before-application/index'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth.$'
@@ -194,6 +195,12 @@ const MainLangLayoutGuidelinesRevisionRevRoute =
     path: '/revision/$rev',
     getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
+const MainLangLayoutDataSubmissionVersionVersionRoute =
+  MainLangLayoutDataSubmissionVersionVersionRouteImport.update({
+    id: '/version/$version',
+    path: '/version/$version',
+    getParentRoute: () => MainLangLayoutDataSubmissionRouteRoute,
+  } as any)
 const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute =
   MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport.update(
     {
@@ -238,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/$lang/news/': typeof MainLangLayoutNewsIndexRoute
   '/$lang/research-list': typeof MainLangLayoutResearchListIndexRoute
   '/$lang/data-submission/navigation/before-application': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
+  '/$lang/data-submission/version/$version': typeof MainLangLayoutDataSubmissionVersionVersionRoute
   '/$lang/guidelines/revision/$rev': typeof MainLangLayoutGuidelinesRevisionRevRoute
   '/$lang/research-list/$researchId/$researchVer': typeof MainLangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/data-submission/application': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
@@ -259,6 +267,7 @@ export interface FileRoutesByTo {
   '/$lang/guidelines': typeof MainLangLayoutGuidelinesIndexRoute
   '/$lang/news': typeof MainLangLayoutNewsIndexRoute
   '/$lang/research-list': typeof MainLangLayoutResearchListIndexRoute
+  '/$lang/data-submission/version/$version': typeof MainLangLayoutDataSubmissionVersionVersionRoute
   '/$lang/guidelines/revision/$rev': typeof MainLangLayoutGuidelinesRevisionRevRoute
   '/$lang/research-list/$researchId/$researchVer': typeof MainLangLayoutResearchListResearchIdResearchVerRoute
   '/$lang/data-submission/application': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
@@ -291,6 +300,7 @@ export interface FileRoutesById {
   '/_main/$lang/_layout/news/': typeof MainLangLayoutNewsIndexRoute
   '/_main/$lang/_layout/research-list/': typeof MainLangLayoutResearchListIndexRoute
   '/_main/$lang/_layout/data-submission/navigation/before-application': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
+  '/_main/$lang/_layout/data-submission/version/$version': typeof MainLangLayoutDataSubmissionVersionVersionRoute
   '/_main/$lang/_layout/guidelines/revision/$rev': typeof MainLangLayoutGuidelinesRevisionRevRoute
   '/_main/$lang/_layout/research-list/$researchId/$researchVer': typeof MainLangLayoutResearchListResearchIdResearchVerRoute
   '/_main/$lang/_layout/data-submission/application/': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/$lang/news/'
     | '/$lang/research-list'
     | '/$lang/data-submission/navigation/before-application'
+    | '/$lang/data-submission/version/$version'
     | '/$lang/guidelines/revision/$rev'
     | '/$lang/research-list/$researchId/$researchVer'
     | '/$lang/data-submission/application'
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/$lang/guidelines'
     | '/$lang/news'
     | '/$lang/research-list'
+    | '/$lang/data-submission/version/$version'
     | '/$lang/guidelines/revision/$rev'
     | '/$lang/research-list/$researchId/$researchVer'
     | '/$lang/data-submission/application'
@@ -373,6 +385,7 @@ export interface FileRouteTypes {
     | '/_main/$lang/_layout/news/'
     | '/_main/$lang/_layout/research-list/'
     | '/_main/$lang/_layout/data-submission/navigation/before-application'
+    | '/_main/$lang/_layout/data-submission/version/$version'
     | '/_main/$lang/_layout/guidelines/revision/$rev'
     | '/_main/$lang/_layout/research-list/$researchId/$researchVer'
     | '/_main/$lang/_layout/data-submission/application/'
@@ -599,6 +612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutGuidelinesRevisionRevRouteImport
       parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
     }
+    '/_main/$lang/_layout/data-submission/version/$version': {
+      id: '/_main/$lang/_layout/data-submission/version/$version'
+      path: '/version/$version'
+      fullPath: '/$lang/data-submission/version/$version'
+      preLoaderRoute: typeof MainLangLayoutDataSubmissionVersionVersionRouteImport
+      parentRoute: typeof MainLangLayoutDataSubmissionRouteRoute
+    }
     '/_main/$lang/_layout/data-submission/navigation/before-application': {
       id: '/_main/$lang/_layout/data-submission/navigation/before-application'
       path: '/before-application'
@@ -674,6 +694,7 @@ const MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren =
 interface MainLangLayoutDataSubmissionRouteRouteChildren {
   MainLangLayoutDataSubmissionNavigationRouteRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
   MainLangLayoutDataSubmissionIndexRoute: typeof MainLangLayoutDataSubmissionIndexRoute
+  MainLangLayoutDataSubmissionVersionVersionRoute: typeof MainLangLayoutDataSubmissionVersionVersionRoute
   MainLangLayoutDataSubmissionApplicationIndexRoute: typeof MainLangLayoutDataSubmissionApplicationIndexRoute
 }
 
@@ -683,6 +704,8 @@ const MainLangLayoutDataSubmissionRouteRouteChildren: MainLangLayoutDataSubmissi
       MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren,
     MainLangLayoutDataSubmissionIndexRoute:
       MainLangLayoutDataSubmissionIndexRoute,
+    MainLangLayoutDataSubmissionVersionVersionRoute:
+      MainLangLayoutDataSubmissionVersionVersionRoute,
     MainLangLayoutDataSubmissionApplicationIndexRoute:
       MainLangLayoutDataSubmissionApplicationIndexRoute,
   }

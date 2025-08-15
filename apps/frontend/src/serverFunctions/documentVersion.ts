@@ -1,4 +1,5 @@
 import {
+  DOCUMENT_VERSION_STATUS,
   documentVersion,
   DocumentVersionTranslation,
   documentVersionTranslation,
@@ -158,15 +159,16 @@ export const $getDocumentVersion = createServerFn({
   method: "GET",
 })
   .middleware([hasPermissionMiddleware])
-  .validator(selectDocumentVersionSchema.omit({ status: true }))
+  .validator(selectDocumentVersionSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "view");
 
-    const result = await db.query.documentVersion.findMany({
+    const result = await db.query.documentVersion.findFirst({
       where: (table) =>
         and(
           eq(table.documentId, data.documentId),
-          eq(table.versionNumber, data.versionNumber)
+          eq(table.versionNumber, data.versionNumber),
+          eq(table.status, data.status)
         ),
       with: {
         translations: true,
@@ -178,43 +180,140 @@ export const $getDocumentVersion = createServerFn({
           },
         },
       },
+      columns: {
+        authorId: false,
+      },
     });
 
-    // group by status and by language
-    const groupedResult = result.reduce((acc, item) => {
-      acc[item.status] = {
-        ...item,
-        translations: item.translations.reduce(
+    if (!result) {
+      return result;
+    }
+
+    return {
+      ...result,
+      translations:
+        result?.translations.reduce(
           (acc, translation) => {
             acc[translation.locale as Locale] = translation;
             return acc;
           },
           {} as DocumentVersionContentResponse["translations"]
-        ),
-      };
-      return acc;
-    }, {} as DocumentVersionResponse);
-
-    return groupedResult satisfies DocumentVersionResponse;
+        ) || ({} as DocumentVersionContentResponse["translations"]),
+    } satisfies DocumentVersionContentResponse;
   });
 
-export const getDocumentVersionQueryOptions = ({
+export const getDocumentVersionDraftQueryOptions = ({
   documentId,
   versionNumber,
 }: {
   documentId: string;
   versionNumber: number;
-}) => {
-  return queryOptions({
-    queryKey: ["documents", documentId, "versions", versionNumber],
-    queryFn: () =>
-      $getDocumentVersion({
-        data: { documentId, versionNumber },
-      }),
+}) =>
+  queryOptions({
+    queryKey: [
+      "documents",
+      documentId,
+      "versions",
+      versionNumber,
+      DOCUMENT_VERSION_STATUS.DRAFT,
+    ],
+    queryFn: async () => {
+      const res = await $getDocumentVersion({
+        data: {
+          documentId,
+          versionNumber,
+          status: DOCUMENT_VERSION_STATUS.DRAFT,
+        },
+      });
+
+      if (!res) {
+        throw new Error("Document version not found");
+      }
+
+      return res;
+    },
     staleTime: 5 * 1000 * 60,
     enabled: !!documentId && !!versionNumber,
   });
-};
+
+export const getDocumentVersionPublishedQueryOptions = ({
+  documentId,
+  versionNumber,
+}: {
+  documentId: string;
+  versionNumber: number;
+}) =>
+  queryOptions({
+    queryKey: [
+      "documents",
+      documentId,
+      "versions",
+      versionNumber,
+      DOCUMENT_VERSION_STATUS.PUBLISHED,
+    ],
+    queryFn: async () => {
+      const res = await $getDocumentVersion({
+        data: {
+          documentId,
+          versionNumber,
+          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+        },
+      });
+
+      if (!res) {
+        throw new Error("Document version not found");
+      }
+
+      return res;
+    },
+    staleTime: 5 * 1000 * 60,
+    enabled: !!documentId && !!versionNumber,
+  });
+
+// export const getDocumentVersionQueryOptions = ({
+//   documentId,
+//   versionNumber,
+// }: {
+//   documentId: string;
+//   versionNumber: number;
+// }) => {
+//   return queryOptions({
+//     queryKey: ["documents", documentId, "versions", versionNumber],
+//     queryFn: () =>
+//       $getDocumentVersion({
+//         data: { documentId, versionNumber },
+//       }),
+//     staleTime: 5 * 1000 * 60,
+//     enabled: !!documentId && !!versionNumber,
+//   });
+// };
+
+// export const getDocumentVersionStatusQueryOptions = ({
+//   documentId,
+//   versionNumber,
+//   status,
+// }: {
+//   documentId: string;
+//   versionNumber: number;
+//   status: DocumentVersionStatus;
+// }) => {
+//   return queryOptions({
+//     queryKey: [
+//       "documents",
+//       documentId,
+//       "versions",
+//       versionNumber,
+//       "status",
+//       status,
+//     ],
+//     queryFn: () =>
+//       $getDocumentVersion({
+//         data: { documentId, versionNumber },
+//       }).then((res) => res[status]),
+//     staleTime: 5 * 1000 * 60,
+//     enabled: !!documentId && !!versionNumber && !!status,
+//   });
+// };
 
 /** Create new document version */
 export const $createDocumentVersion = createServerFn({
