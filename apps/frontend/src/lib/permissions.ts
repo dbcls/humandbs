@@ -27,7 +27,7 @@ export type Permissions = {
   };
   documents: {
     dataType: Document;
-    action: "view";
+    action: "view" | "create" | "update" | "delete";
   };
   documentVersions: {
     dataType: DocumentVersion;
@@ -56,6 +56,9 @@ const ROLES = {
     },
     documents: {
       view: true,
+      create: true,
+      update: true,
+      delete: true,
     },
     documentVersions: {
       view: true,
@@ -86,6 +89,9 @@ const ROLES = {
   editor: {
     documents: {
       view: true,
+      create: true,
+      update: true,
+      delete: true,
     },
     documentVersions: {
       view: true,

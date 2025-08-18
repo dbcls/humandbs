@@ -33,9 +33,9 @@ export const documentVersion = pgTable(
     authorId: text("author_id")
       .notNull()
       .references(() => user.id),
-    documentId: uuid("document_id")
+    contentId: text("content_id")
       .notNull()
-      .references(() => document.id),
+      .references(() => document.contentId, { onDelete: "cascade" }),
     status: documentVersionStatus("status").notNull().default("draft"),
     lastDraftSavedAt: timestamp("last_draft_saved_at"),
     publishedAt: timestamp("published_at"),
@@ -44,7 +44,7 @@ export const documentVersion = pgTable(
   },
   (table) => [
     // Each version number can have at most one draft and one published version
-    uniqueIndex().on(table.documentId, table.versionNumber, table.status),
+    uniqueIndex().on(table.contentId, table.versionNumber, table.status),
   ]
 );
 

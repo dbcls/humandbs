@@ -1,12 +1,13 @@
 import { Card } from "@/components/Card";
+import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import { Button } from "@/components/ui/button";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   getDocumentLatestPublishedVersionTranslationQueryOptions,
   getDocumentPublishedVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersionTranslation";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useLocale, useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/_main/$lang/_layout/data-submission/")({
   component: RouteComponent,
@@ -31,7 +32,6 @@ export const Route = createFileRoute("/_main/$lang/_layout/data-submission/")({
 
 function RouteComponent() {
   const { content, title, versions } = Route.useLoaderData();
-  const lang = Route.useRouteContext().lang;
   const navigate = Route.useNavigate();
   const t = useTranslations("Data-submission");
   const tCommon = useTranslations("common");
@@ -39,22 +39,12 @@ function RouteComponent() {
   return (
     <Card caption={title} captionSize={"lg"}>
       <RenderMarkdoc className="mx-auto" content={content} />
-      <ul className="mx-auto">
-        {versions.map((version) => (
-          <li key={version.versionNumber}>
-            <Link
-              to="/$lang/data-submission/version/$version"
-              params={{
-                lang,
-                version: version.versionNumber.toString(),
-              }}
-            >
-              <span>v. {version.versionNumber}</span>
-              <span>{version.title}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <PreviousVersionsList
+        documentName={t("data-submission")}
+        slug="/$lang/data-submission"
+        versions={versions}
+      />
+
       <div className="mx-auto my-5 flex justify-center">
         <Button
           className="text-3xl lowercase first-letter:capitalize"

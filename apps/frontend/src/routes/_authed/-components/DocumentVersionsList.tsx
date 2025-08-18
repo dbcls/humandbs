@@ -16,18 +16,18 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { CopyIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusTag } from "./StatusTag";
 
 export function DocumentVersionsList({
-  documentId,
+  contentId,
   onSelect,
 }: {
-  documentId: string;
+  contentId: string;
   onSelect: (documentVersionItem: DocumentVersionListItemResponse) => void;
 }) {
   const documentVersionsListQO = getDocumentVersionsListQueryOptions({
-    documentId,
+    contentId,
   });
 
   const { data: versions } = useSuspenseQuery(documentVersionsListQO);
@@ -46,14 +46,14 @@ export function DocumentVersionsList({
   }, [versions, onSelect]);
 
   async function handleAddNewVersion() {
-    await $createDocumentVersion({ data: { documentId } });
+    await $createDocumentVersion({ data: { contentId } });
 
     await queryClient.invalidateQueries(documentVersionsListQO);
   }
 
   const { mutate: deleteDocumentVersion } = useMutation({
     mutationFn: (versionNumber: number) =>
-      $deleteDocumentVersion({ data: { documentId, versionNumber } }),
+      $deleteDocumentVersion({ data: { contentId, versionNumber } }),
     onMutate: async (versionNumber) => {
       await queryClient.cancelQueries(documentVersionsListQO);
 
@@ -90,7 +90,7 @@ export function DocumentVersionsList({
 
   const { mutate: cloneDocumentVersion } = useMutation({
     mutationFn: (versionNumber: number) =>
-      $cloneDocumentVersion({ data: { versionNumber, documentId } }),
+      $cloneDocumentVersion({ data: { versionNumber, contentId } }),
     onMutate: async (versionNumber) => {
       await queryClient.cancelQueries(documentVersionsListQO);
 

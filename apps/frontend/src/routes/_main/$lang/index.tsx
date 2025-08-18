@@ -34,6 +34,8 @@ export const Route = createFileRoute("/_main/$lang/")({
 
     return { content, newsTitles };
   },
+
+  errorComponent: ({ error }) => <div>{error.message}</div>,
 });
 
 function Index() {

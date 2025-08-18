@@ -28,7 +28,7 @@ export interface DocumentVersionListItemResponse {
   statuses: DocumentVersionStatus[];
   locales: Locale[];
   versionNumber: number;
-  documentId: string;
+  contentId: string;
 }
 
 /** Read a document version list */
@@ -39,11 +39,11 @@ export const $getDocumentVersions = createServerFn({
   .middleware([authMiddleware])
   .validator(
     z.object({
-      documentId: z.uuidv4(),
+      contentId: z.string(),
     })
   )
   .handler(async ({ data, context }) => {
-    const { documentId } = data;
+    const { contentId } = data;
 
     // if just public user, filter out drafts
     const filterOutDrafts = !(
@@ -53,13 +53,10 @@ export const $getDocumentVersions = createServerFn({
     const versions = await db.query.documentVersion.findMany({
       where: (table) => {
         if (filterOutDrafts) {
-          return and(
-            eq(table.documentId, documentId),
-            ne(table.status, "draft")
-          );
+          return and(eq(table.contentId, contentId), ne(table.status, "draft"));
         }
 
-        return eq(table.documentId, documentId);
+        return eq(table.contentId, contentId);
       },
       with: {
         translations: {
@@ -75,13 +72,13 @@ export const $getDocumentVersions = createServerFn({
     // Group by documentId and versionNumber
     const groupedVersions = versions.reduce(
       (acc, version) => {
-        const key = `${version.documentId}-${version.versionNumber}`;
+        const key = `${version.contentId}-${version.versionNumber}`;
         if (!acc[key]) {
           acc[key] = {
             statuses: new Set(),
             locales: new Set(),
             versionNumber: version.versionNumber,
-            documentId: version.documentId,
+            contentId: version.contentId,
           };
         }
 
@@ -98,7 +95,7 @@ export const $getDocumentVersions = createServerFn({
           statuses: Set<DocumentVersionStatus>;
           locales: Set<Locale>;
           versionNumber: number;
-          documentId: string;
+          contentId: string;
         }
       >
     );
@@ -108,27 +105,27 @@ export const $getDocumentVersions = createServerFn({
       statuses: Array.from(group.statuses).sort(),
       locales: Array.from(group.locales).sort(),
       versionNumber: group.versionNumber,
-      documentId: group.documentId,
+      contentId: group.contentId,
     })) satisfies DocumentVersionListItemResponse[];
   });
 
 export const getDocumentVersionsListQueryOptions = ({
-  documentId,
+  contentId,
 }: {
-  documentId: string | null;
+  contentId: string | null;
 }) =>
   queryOptions({
-    queryKey: ["documents", documentId, "versions"],
+    queryKey: ["documents", contentId, "versions"],
     queryFn: () => {
-      if (!documentId) return Promise.resolve([]);
-      return $getDocumentVersions({ data: { documentId } });
+      if (!contentId) return Promise.resolve([]);
+      return $getDocumentVersions({ data: { contentId } });
     },
     staleTime: 5 * 1000 * 60,
-    enabled: !!documentId,
+    enabled: !!contentId,
   });
 
 const selectDocumentVersionSchema = documentVersionSchema.pick({
-  documentId: true,
+  contentId: true,
   versionNumber: true,
   status: true,
 });
@@ -166,7 +163,7 @@ export const $getDocumentVersion = createServerFn({
     const result = await db.query.documentVersion.findFirst({
       where: (table) =>
         and(
-          eq(table.documentId, data.documentId),
+          eq(table.contentId, data.contentId),
           eq(table.versionNumber, data.versionNumber),
           eq(table.status, data.status)
         ),
@@ -203,16 +200,16 @@ export const $getDocumentVersion = createServerFn({
   });
 
 export const getDocumentVersionDraftQueryOptions = ({
-  documentId,
+  contentId,
   versionNumber,
 }: {
-  documentId: string;
+  contentId: string;
   versionNumber: number;
 }) =>
   queryOptions({
     queryKey: [
       "documents",
-      documentId,
+      contentId,
       "versions",
       versionNumber,
       DOCUMENT_VERSION_STATUS.DRAFT,
@@ -220,7 +217,7 @@ export const getDocumentVersionDraftQueryOptions = ({
     queryFn: async () => {
       const res = await $getDocumentVersion({
         data: {
-          documentId,
+          contentId,
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
         },
@@ -233,20 +230,20 @@ export const getDocumentVersionDraftQueryOptions = ({
       return res;
     },
     staleTime: 5 * 1000 * 60,
-    enabled: !!documentId && !!versionNumber,
+    enabled: !!contentId && !!versionNumber,
   });
 
 export const getDocumentVersionPublishedQueryOptions = ({
-  documentId,
+  contentId,
   versionNumber,
 }: {
-  documentId: string;
+  contentId: string;
   versionNumber: number;
 }) =>
   queryOptions({
     queryKey: [
       "documents",
-      documentId,
+      contentId,
       "versions",
       versionNumber,
       DOCUMENT_VERSION_STATUS.PUBLISHED,
@@ -254,7 +251,7 @@ export const getDocumentVersionPublishedQueryOptions = ({
     queryFn: async () => {
       const res = await $getDocumentVersion({
         data: {
-          documentId,
+          contentId,
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
         },
@@ -267,53 +264,8 @@ export const getDocumentVersionPublishedQueryOptions = ({
       return res;
     },
     staleTime: 5 * 1000 * 60,
-    enabled: !!documentId && !!versionNumber,
+    enabled: !!contentId && !!versionNumber,
   });
-
-// export const getDocumentVersionQueryOptions = ({
-//   documentId,
-//   versionNumber,
-// }: {
-//   documentId: string;
-//   versionNumber: number;
-// }) => {
-//   return queryOptions({
-//     queryKey: ["documents", documentId, "versions", versionNumber],
-//     queryFn: () =>
-//       $getDocumentVersion({
-//         data: { documentId, versionNumber },
-//       }),
-//     staleTime: 5 * 1000 * 60,
-//     enabled: !!documentId && !!versionNumber,
-//   });
-// };
-
-// export const getDocumentVersionStatusQueryOptions = ({
-//   documentId,
-//   versionNumber,
-//   status,
-// }: {
-//   documentId: string;
-//   versionNumber: number;
-//   status: DocumentVersionStatus;
-// }) => {
-//   return queryOptions({
-//     queryKey: [
-//       "documents",
-//       documentId,
-//       "versions",
-//       versionNumber,
-//       "status",
-//       status,
-//     ],
-//     queryFn: () =>
-//       $getDocumentVersion({
-//         data: { documentId, versionNumber },
-//       }).then((res) => res[status]),
-//     staleTime: 5 * 1000 * 60,
-//     enabled: !!documentId && !!versionNumber && !!status,
-//   });
-// };
 
 /** Create new document version */
 export const $createDocumentVersion = createServerFn({
@@ -322,7 +274,7 @@ export const $createDocumentVersion = createServerFn({
 })
   .validator(
     z.object({
-      documentId: z.uuidv4(),
+      contentId: z.string(),
     })
   )
   .middleware([hasPermissionMiddleware])
@@ -331,11 +283,11 @@ export const $createDocumentVersion = createServerFn({
 
     const user = context.user!;
 
-    const { documentId } = data;
+    const { contentId } = data;
 
     // Find the latest version number for this document
     const latestVersion = await db.query.documentVersion.findFirst({
-      where: (table) => eq(table.documentId, documentId),
+      where: (table) => eq(table.contentId, contentId),
       orderBy: (table, { desc }) => [desc(table.versionNumber)],
       columns: { versionNumber: true },
     });
@@ -346,7 +298,7 @@ export const $createDocumentVersion = createServerFn({
       .insert(documentVersion)
       .values({
         authorId: user.id,
-        documentId,
+        contentId,
         versionNumber: newVersionNumber,
       })
       .returning();
@@ -364,13 +316,13 @@ export const $cloneDocumentVersion = createServerFn({
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "create");
-    const { documentId, versionNumber } = data;
+    const { contentId, versionNumber } = data;
 
     const existingVersionWithTranslations =
       await db.query.documentVersion.findFirst({
         where: (table) =>
           and(
-            eq(table.documentId, documentId),
+            eq(table.contentId, contentId),
             eq(table.versionNumber, versionNumber),
             eq(table.status, "published")
           ),
@@ -388,7 +340,7 @@ export const $cloneDocumentVersion = createServerFn({
 
     // Find the latest version number for this document
     const latestVersion = await db.query.documentVersion.findFirst({
-      where: (table) => eq(table.documentId, documentId),
+      where: (table) => eq(table.contentId, contentId),
       orderBy: (table, { desc }) => [desc(table.versionNumber)],
       columns: { versionNumber: true },
     });
@@ -437,13 +389,13 @@ export const $deleteDocumentVersion = createServerFn({
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
 
-    const { documentId, versionNumber } = data;
+    const { contentId, versionNumber } = data;
 
     const [result] = await db
       .delete(documentVersion)
       .where(
         and(
-          eq(documentVersion.documentId, documentId),
+          eq(documentVersion.contentId, contentId),
           eq(documentVersion.versionNumber, versionNumber)
         )
       )
@@ -526,7 +478,7 @@ export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
       .delete(documentVersion)
       .where(
         and(
-          eq(documentVersion.documentId, data.documentId),
+          eq(documentVersion.contentId, data.contentId),
           eq(documentVersion.versionNumber, data.versionNumber),
           eq(documentVersion.status, "draft")
         )
@@ -542,7 +494,7 @@ async function upsertDocVersion({
     | z.infer<typeof publishedVersionSchema>;
   user: User | undefined;
 }) {
-  const { documentId, versionNumber, translations, status } = data;
+  const { contentId, versionNumber, translations, status } = data;
 
   console.log("upsertDocVersion data", data);
   await db.transaction(async (tx) => {
@@ -551,7 +503,7 @@ async function upsertDocVersion({
     const [upsertedDocVersion] = await tx
       .insert(documentVersion)
       .values({
-        documentId,
+        contentId,
         versionNumber,
         status,
         authorId: user?.id!,
@@ -559,7 +511,7 @@ async function upsertDocVersion({
       })
       .onConflictDoUpdate({
         target: [
-          documentVersion.documentId,
+          documentVersion.contentId,
           documentVersion.versionNumber,
           documentVersion.status,
         ],
@@ -614,7 +566,7 @@ export const $deleteDocumentVersionDraft = createServerFn({ method: "POST" })
       .delete(documentVersion)
       .where(
         and(
-          eq(documentVersion.documentId, data.documentId),
+          eq(documentVersion.contentId, data.contentId),
           eq(documentVersion.versionNumber, data.versionNumber),
           eq(documentVersion.status, "draft")
         )

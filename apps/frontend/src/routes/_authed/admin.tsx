@@ -98,13 +98,13 @@ function ManageNews() {
 }
 
 function ManageDocuments() {
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
+  const [selectedContentId, setSelectedContentId] = useState<string>();
 
   const [selectedVersion, setSelectedVersion] =
     useState<DocumentVersionListItemResponse | null>(null);
 
-  function handleSelectDoc(docId: string) {
-    setSelectedDocumentId(docId);
+  function handleSelectDoc(contentId: string) {
+    setSelectedContentId(contentId);
     setSelectedVersion(null);
   }
 
@@ -119,12 +119,12 @@ function ManageDocuments() {
         <Suspense fallback={<Skeleton />}>
           <DocumentsList
             onSelectDoc={handleSelectDoc}
-            selectedDocId={selectedDocumentId}
+            selectedContentId={selectedContentId}
           />
         </Suspense>
       </Card>
 
-      {selectedDocumentId ? (
+      {selectedContentId ? (
         <>
           <Card className="w-80" captionSize={"sm"} caption="Versions">
             <Suspense
@@ -135,14 +135,14 @@ function ManageDocuments() {
               }
             >
               <DocumentVersionsList
-                documentId={selectedDocumentId}
+                contentId={selectedContentId}
                 onSelect={setSelectedVersion}
               />
             </Suspense>
           </Card>
           {selectedVersion?.versionNumber ? (
             <DocumentVersionContent
-              key={selectedVersion.documentId + selectedVersion.versionNumber}
+              key={selectedVersion.contentId + selectedVersion.versionNumber}
               documentVersionItem={selectedVersion}
             />
           ) : (

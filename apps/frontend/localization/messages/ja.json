@@ -1,7 +1,8 @@
 {
   "common": {
     "humandb": "NBDC ヒトデータベース",
-    "to-": "{place}へ"
+    "to-": "{place}へ",
+    "previous-versions": "{documentName}の改定"
   },
   "Footer": {
     "sitemap": "サイトマップ",
@@ -26,6 +27,7 @@
   },
   "Navbar": {
     "data-submission": "データの提供",
+    "data-submission-application": "データ提供申請",
     "navigation": "ナビゲーション",
     "before-application": "申請システムの前に",
     "application": "申請",

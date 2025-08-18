@@ -135,7 +135,7 @@ export function DocumentVersionContent({
       if (action === "updatePublished") {
         return $saveDocumentVersion({
           data: {
-            documentId: documentVersionItem.documentId,
+            contentId: documentVersionItem.contentId,
             ...version,
             status: DOCUMENT_VERSION_STATUS.PUBLISHED,
           },
@@ -144,7 +144,7 @@ export function DocumentVersionContent({
 
       return $saveDocumentVersion({
         data: {
-          documentId: documentVersionItem.documentId,
+          contentId: documentVersionItem.contentId,
           ...version,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
         },
@@ -307,8 +307,7 @@ export function DocumentVersionContent({
       $publishDocumentVersionDraft({
         data: {
           ...value,
-
-          documentId: documentVersionItem.documentId,
+          contentId: documentVersionItem.contentId,
         },
       }),
     onMutate: async (value) => {
@@ -372,7 +371,7 @@ export function DocumentVersionContent({
     mutationFn: (
       value: Pick<
         DocumentVersionListItemResponse,
-        "documentId" | "versionNumber"
+        "contentId" | "versionNumber"
       >
     ) => $deleteDocumentVersionDraft({ data: value }),
     onSuccess: () => {

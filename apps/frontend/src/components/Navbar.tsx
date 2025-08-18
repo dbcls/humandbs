@@ -56,7 +56,7 @@ const getNavConfig = (lang: Locale): NavConfig => {
     },
     {
       id: "guidelines",
-      linkOptions: { to: "/$lang/guidelines" },
+      linkOptions: { to: "/$lang/guidelines", params: { lang } },
       children: [
         {
           id: "data-sharing-guidelines",

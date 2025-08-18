@@ -4,7 +4,7 @@ import { getDocumentVersionTranslationQueryOptions } from "@/serverFunctions/doc
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
-  "/_main/$lang/_layout/data-submission/version/$version"
+  "/_main/$lang/_layout/data-submission/revision/$revision"
 )({
   component: RouteComponent,
 
@@ -12,12 +12,12 @@ export const Route = createFileRoute(
     const version = await context.queryClient.ensureQueryData(
       getDocumentVersionTranslationQueryOptions({
         contentId: "data-submission",
-        versionNumber: Number(params.version),
+        versionNumber: Number(params.revision),
         locale: context.lang,
       })
     );
 
-    return { version, crumb: `version ${params.version}` };
+    return { version, crumb: `version ${params.revision}` };
   },
 });
 

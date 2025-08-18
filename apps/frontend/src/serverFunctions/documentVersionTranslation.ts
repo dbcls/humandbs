@@ -2,6 +2,7 @@ import {
   document,
   DOCUMENT_VERSION_STATUS,
   documentVersion,
+  DocumentVersionTranslation,
   documentVersionTranslation,
 } from "@/db/schema";
 import { db } from "@/lib/database";
@@ -22,6 +23,7 @@ export const $getDocumentVersionTranslation = createServerFn({
       contentId: z.string(),
       locale: localeSchema,
       versionNumber: z.number(),
+      generateTOC: z.boolean().default(false),
     })
   )
   .handler(async ({ data }) => {
@@ -34,7 +36,7 @@ export const $getDocumentVersionTranslation = createServerFn({
         documentVersion,
         eq(documentVersionTranslation.documentVersionId, documentVersion.id)
       )
-      .innerJoin(document, eq(documentVersion.documentId, document.id))
+      .innerJoin(document, eq(documentVersion.contentId, document.contentId))
       .where(
         and(
           eq(document.contentId, contentId),
@@ -47,6 +49,7 @@ export const $getDocumentVersionTranslation = createServerFn({
 
     const content = transformMarkdoc({
       rawContent: versionTranslation.documentVersionTranslation.content ?? "",
+      generateTOC: data.generateTOC,
     });
 
     return {
@@ -60,10 +63,12 @@ export function getDocumentVersionTranslationQueryOptions({
   versionNumber,
   contentId,
   locale,
+  generateTOC = false,
 }: {
   versionNumber: number;
   contentId: string;
   locale: Locale;
+  generateTOC?: boolean;
 }) {
   return queryOptions({
     queryKey: ["documentVersionTranslation", contentId, locale, versionNumber],
@@ -73,6 +78,7 @@ export function getDocumentVersionTranslationQueryOptions({
           contentId,
           locale,
           versionNumber,
+          generateTOC,
         },
       }),
 
@@ -107,7 +113,7 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
         documentVersion,
         eq(documentVersionTranslation.documentVersionId, documentVersion.id)
       )
-      .innerJoin(document, eq(documentVersion.documentId, document.id))
+      .innerJoin(document, eq(documentVersion.contentId, document.contentId))
       .where(
         and(
           eq(document.contentId, contentId),
@@ -140,18 +146,25 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
 export function getDocumentLatestPublishedVersionTranslationQueryOptions({
   contentId,
   locale,
+  generateTOC,
 }: {
   contentId: string;
   locale: Locale;
+  generateTOC?: boolean;
 }) {
   return queryOptions({
     queryKey: ["latestDocumentVersionTranslation", contentId, locale],
     queryFn: () =>
       $getDocumentLatestPublishedVersionTranslation({
-        data: { contentId, locale },
+        data: { contentId, locale, generateTOC },
       }),
   });
 }
+
+export type DocumentPublishedVersionsListItemResponse =
+  DocumentVersionTranslation & {
+    versionNumber: number;
+  };
 
 export const $getDocumentPublishedVersionsList = createServerFn({
   method: "GET",
@@ -175,7 +188,7 @@ export const $getDocumentPublishedVersionsList = createServerFn({
         documentVersion,
         eq(documentVersionTranslation.documentVersionId, documentVersion.id)
       )
-      .innerJoin(document, eq(documentVersion.documentId, document.id))
+      .innerJoin(document, eq(documentVersion.contentId, document.contentId))
       .where(
         and(
           eq(document.contentId, contentId),
@@ -188,7 +201,7 @@ export const $getDocumentPublishedVersionsList = createServerFn({
     return versions.map((v) => ({
       ...v.documentVersionTranslation,
       versionNumber: v.versionNumber,
-    }));
+    })) satisfies DocumentPublishedVersionsListItemResponse[];
   });
 
 export function getDocumentPublishedVersionsListQueryOptions({

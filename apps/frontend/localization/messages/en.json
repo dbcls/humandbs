@@ -1,7 +1,8 @@
 {
   "common": {
     "humandb": "NBDC HumanDB",
-    "to-": "To {place}"
+    "to-": "To {place}",
+    "previous-versions": "Previous versions of {documentName}:"
   },
   "Footer": {
     "sitemap": "Sitemap",
@@ -26,6 +27,7 @@
   },
   "Navbar": {
     "data-submission": "Data submission",
+    "data-submission-application": "Data submission application",
     "navigation": "Navigation",
     "before-application": "Before application system",
     "application": "Application",

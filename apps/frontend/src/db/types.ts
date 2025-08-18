@@ -6,6 +6,8 @@ import {
 import * as schema from "./schema";
 import { z } from "zod";
 
+export const insertDocumentSchema = createInsertSchema(schema.document);
+
 export const userSelectSchema = createSelectSchema(schema.user);
 
 export const userRoleSchema = userSelectSchema.pick({ role: true });
