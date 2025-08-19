@@ -41,7 +41,8 @@
     "security-guidelines-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
     "security-guidelines-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）",
     "home": "ホーム",
-    "all-news": "ニュース一覧"
+    "all-news": "ニュース一覧",
+    "privacy-policy": "プライバシーポリシー"
   },
   "Markdoc": {
     "version": "Ver.",
