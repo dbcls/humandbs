@@ -15,6 +15,13 @@
       "when": 1751971647840,
       "tag": "0001_fearless_nightcrawler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1754272853470,
+      "tag": "0002_broad_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

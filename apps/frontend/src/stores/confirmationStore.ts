@@ -14,10 +14,10 @@ interface ConfirmationActions {
   openConfirmation: (data: {
     title: string;
     description?: React.ReactNode;
-    cancelLabel: React.ReactNode;
+    cancelLabel?: React.ReactNode;
     actionLabel: React.ReactNode;
     onAction: () => void;
-    onCancel: () => void;
+    onCancel?: () => void;
   }) => void;
   closeConfirmation: () => void;
 }
@@ -36,10 +36,10 @@ const useConfirmationStore = create<ConfirmationState & ConfirmationActions>(
         open: true,
         title: data.title,
         description: data.description,
-        cancelLabel: data.cancelLabel,
+        cancelLabel: data.cancelLabel ?? "Cancel",
         actionLabel: data.actionLabel,
         onAction: data.onAction,
-        onCancel: data.onCancel,
+        onCancel: data.onCancel || (() => {}),
       })),
     closeConfirmation: () => {
       set((state) => ({
