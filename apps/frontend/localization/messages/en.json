@@ -1,7 +1,8 @@
 {
   "common": {
     "humandb": "NBDC HumanDB",
-    "to-": "To {place}"
+    "to-": "To {place}",
+    "previous-versions": "Previous versions of {documentName}:"
   },
   "Footer": {
     "sitemap": "Sitemap",
@@ -26,6 +27,7 @@
   },
   "Navbar": {
     "data-submission": "Data submission",
+    "data-submission-application": "Data submission application",
     "navigation": "Navigation",
     "before-application": "Before application system",
     "application": "Application",
@@ -39,7 +41,8 @@
     "security-guidelines-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
     "security-guidelines-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)",
     "home": "Home",
-    "all-news": "All News"
+    "all-news": "All News",
+    "privacy-policy": "Privacy Policy"
   },
   "Markdoc": {
     "version": "Version",

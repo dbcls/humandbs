@@ -6,7 +6,7 @@ import { Card } from "@/components/Card";
 import { News } from "./-components/FrontNews";
 import { localeSchema } from "@/lib/i18n-config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getDocumentLatestVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
+import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
 import { ErrorBoundary } from "react-error-boundary";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_main/$lang/")({
     const lang = params.lang;
 
     const { content } = await context.queryClient.ensureQueryData(
-      getDocumentLatestVersionTranslationQueryOptions({
+      getDocumentLatestPublishedVersionTranslationQueryOptions({
         locale: lang,
         contentId: "home",
       })
@@ -34,6 +34,8 @@ export const Route = createFileRoute("/_main/$lang/")({
 
     return { content, newsTitles };
   },
+
+  errorComponent: ({ error }) => <div>{error.message}</div>,
 });
 
 function Index() {

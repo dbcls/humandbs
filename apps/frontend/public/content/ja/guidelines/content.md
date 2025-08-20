@@ -10,12 +10,11 @@ title: ガイドライン
 
   　ヒトに関するデータを外部に漏えいすることなく安全に研究活動に利用するために最低限遵守すべきシステムセキュリティについて示したものです。
 
-  　[NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）](/guidelines/security-guidelines-for-users)
-  　[NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）](/guidelines/security-guidelines-for-submitters)
-  　[NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）](/guidelines/security-guidelines-for-dbcenters)
+  　- [NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）](/guidelines/security-guidelines-for-users)
+  　- [NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）](/guidelines/security-guidelines-for-submitters)
+  　- [NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）](/guidelines/security-guidelines-for-dbcenters)
 
   ガイドラインの改定
-
   1.  [２０１５年２月２７日改定](/guideline-revision2)
 
       →[新旧対照表](/files/revision_guidelines_150225.xlsx)

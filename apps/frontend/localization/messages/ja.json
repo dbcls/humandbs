@@ -1,7 +1,8 @@
 {
   "common": {
     "humandb": "NBDC ヒトデータベース",
-    "to-": "{place}へ"
+    "to-": "{place}へ",
+    "previous-versions": "{documentName}の改定"
   },
   "Footer": {
     "sitemap": "サイトマップ",
@@ -26,6 +27,7 @@
   },
   "Navbar": {
     "data-submission": "データの提供",
+    "data-submission-application": "データ提供申請",
     "navigation": "ナビゲーション",
     "before-application": "申請システムの前に",
     "application": "申請",
@@ -39,7 +41,8 @@
     "security-guidelines-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
     "security-guidelines-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）",
     "home": "ホーム",
-    "all-news": "ニュース一覧"
+    "all-news": "ニュース一覧",
+    "privacy-policy": "プライバシーポリシー"
   },
   "Markdoc": {
     "version": "Ver.",

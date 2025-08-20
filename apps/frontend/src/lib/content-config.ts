@@ -15,6 +15,8 @@ export const CONTENT_IDS = {
     "data-submission",
     "data-submission-application",
     "data-usage",
+    "achievements",
+    "contact",
   ],
 } as const;
 

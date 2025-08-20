@@ -27,11 +27,11 @@ export type Permissions = {
   };
   documents: {
     dataType: Document;
-    action: "view";
+    action: "view" | "create" | "update" | "delete";
   };
   documentVersions: {
     dataType: DocumentVersion;
-    action: "view" | "update" | "create" | "delete";
+    action: "view" | "publish" | "update" | "create" | "delete";
   };
   documentVersionTranslations: {
     dataType: DocumentVersionTranslation;
@@ -56,11 +56,15 @@ const ROLES = {
     },
     documents: {
       view: true,
+      create: true,
+      update: true,
+      delete: true,
     },
     documentVersions: {
       view: true,
-      update: true,
       create: true,
+      publish: true,
+      update: true,
       delete: true,
     },
     documentVersionTranslations: {
@@ -85,12 +89,16 @@ const ROLES = {
   editor: {
     documents: {
       view: true,
+      create: true,
+      update: true,
+      delete: true,
     },
     documentVersions: {
       view: true,
-      update: true,
       create: true,
-      delete: true,
+      publish: true,
+      update: true,
+      delete: false,
     },
     documentVersionTranslations: {
       view: true,

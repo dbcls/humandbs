@@ -16,7 +16,7 @@ const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 export const $getAsset = createServerFn({ method: "GET" })
   .validator(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuidv4(),
     })
   )
   .handler(({ data }) =>
@@ -103,7 +103,7 @@ export const $uploadAsset = createServerFn({ method: "POST" })
 
 export const $deleteAsset = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(z.object({ id: z.string().uuid() }))
+  .validator(z.object({ id: z.uuidv4() }))
   .handler(async ({ context, data }) => {
     context.checkPermission("assets", "delete");
 
