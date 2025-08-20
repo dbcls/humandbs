@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_main/$lang/_layout/data-submission/")({
 function RouteComponent() {
   const { content, title, versions } = Route.useLoaderData();
   const navigate = Route.useNavigate();
-  const t = useTranslations("Data-submission");
+  const t = useTranslations("Navbar");
   const tCommon = useTranslations("common");
 
   return (
@@ -47,13 +47,13 @@ function RouteComponent() {
 
       <div className="mx-auto my-5 flex justify-center">
         <Button
-          className="text-3xl lowercase first-letter:capitalize"
+          className="text-3xl"
           size="lg"
           onClick={() => {
             navigate({ to: "./navigation" });
           }}
         >
-          {tCommon("to-", { place: t("data-submission") })}
+          {tCommon("to-", { place: t("data-submission").toLowerCase() })}
         </Button>
       </div>
     </Card>
