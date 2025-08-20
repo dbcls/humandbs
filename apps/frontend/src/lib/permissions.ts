@@ -1,7 +1,9 @@
 import {
+  Asset,
   Document,
   DocumentVersion,
   DocumentVersionTranslation,
+  NewsItem,
   UserRole,
 } from "@/db/schema";
 import { SessionUser } from "@/router";
@@ -35,6 +37,14 @@ export type Permissions = {
     dataType: DocumentVersionTranslation;
     action: "view" | "update" | "create" | "delete";
   };
+  assets: {
+    dataType: Asset;
+    action: "view" | "list" | "create" | "delete";
+  };
+  news: {
+    dataType: NewsItem;
+    action: "view" | "update" | "create" | "delete";
+  };
 };
 
 const ROLES = {
@@ -59,6 +69,18 @@ const ROLES = {
       create: true,
       delete: true,
     },
+    assets: {
+      view: true,
+      create: true,
+      delete: true,
+      list: true,
+    },
+    news: {
+      view: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
   },
   editor: {
     documents: {
@@ -71,6 +93,18 @@ const ROLES = {
       delete: true,
     },
     documentVersionTranslations: {
+      view: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
+    assets: {
+      view: true,
+      create: true,
+      delete: true,
+      list: true,
+    },
+    news: {
       view: true,
       update: true,
       create: true,

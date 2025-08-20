@@ -1,4 +1,7 @@
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/DatePicker";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -6,60 +9,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UserRole } from "@/db/schema";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { roles } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import {
-  $getDocuments,
-  getDocumentsQueryOptions,
-} from "@/serverFunctions/document";
+import { getDocumentsQueryOptions } from "@/serverFunctions/document";
 import {
   $createDocumentVersion,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import {
-  $createDocumentVersionTranslation,
-  $deleteDocumentVersionTranslation,
-  $updateDocumentVersionTranslation,
-  getDocumentVersionTranslationQueryOptions,
-} from "@/serverFunctions/documentVersionTranslation";
-import { config, processTokens, tokenizer } from "@/serverFunctions/getContent";
+  $createNewsItem,
+  $deleteNewsItem,
+  $deleteNewsTranslation,
+  $updateNewsItem,
+  $upsertNewsTranslation,
+  getNewsItemsQueryOptions,
+  GetNewsItemsResponse,
+} from "@/serverFunctions/news";
 import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
-import { markdown } from "@codemirror/lang-markdown";
-import Markdoc from "@markdoc/markdoc";
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import CodeMirror, { EditorView } from "@uiw/react-codemirror";
-import { LucideTrash2 } from "lucide-react";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "use-intl";
+import MDEditor from "@uiw/react-md-editor";
+import { Trash2Icon } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
+import { useLocale, useTranslations } from "use-intl";
+import { AssetsPanel } from "./-components/Assets";
+import { TranslationDetails } from "./-components/TranslationDetails";
+import useConfirmationStore from "@/stores/confirmationStore";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
-  loader: async () => await $getDocuments(),
 });
 
 function RouteComponent() {
   return (
-    <Tabs defaultValue="news">
+    <Tabs defaultValue="news" className="flex-1">
       <TabsList>
         <TabsTrigger value="news">News</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="users">Users</TabsTrigger>
       </TabsList>
-      <TabsContent value="news"></TabsContent>
-      <TabsContent value="documents">
-        <Suspense fallback={<div>Loading...</div>}>
-          <ManageDocuments />
-        </Suspense>
+      <TabsContent className="flex items-stretch gap-2" value="news">
+        <AssetsPanel />
+        <ManageNews />
+      </TabsContent>
+      <TabsContent className="flex items-stretch gap-2" value="documents">
+        <AssetsPanel />
+        <ManageDocuments />
       </TabsContent>
       <TabsContent value="users">
         <Suspense fallback={<div>Loading...</div>}>
@@ -70,12 +76,254 @@ function RouteComponent() {
   );
 }
 
-function ManageDocuments() {
-  const { data: documents } = useSuspenseQuery(getDocumentsQueryOptions());
+function ManageNews() {
+  const queryClient = useQueryClient();
+  const [selectedNewsItem, setSelectedNewsItem] =
+    useState<GetNewsItemsResponse[number]>();
 
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
-    null
+  async function handleAddNewsItem() {
+    await $createNewsItem({ data: {} });
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+  }
+
+  return (
+    <>
+      <div className="bg-primary w-md rounded-md p-4">
+        <Suspense fallback={<Skeleton />}>
+          <ListOfNews
+            onClickAdd={handleAddNewsItem}
+            selectedNewsItem={selectedNewsItem}
+            onSelectNewsItem={setSelectedNewsItem}
+          />
+        </Suspense>
+      </div>
+      <div className="bg-primary flex flex-1 flex-col gap-5 rounded-md p-4">
+        <NewsEditor newsItem={selectedNewsItem} />
+      </div>
+    </>
   );
+}
+
+function NewsEditor({
+  newsItem,
+}: {
+  newsItem: GetNewsItemsResponse[number] | undefined;
+}) {
+  const queryClient = useQueryClient();
+  const [selectedLocale, setSelectedLocale] = useState<Locale>(
+    i18n.defaultLocale
+  );
+
+  const translation = newsItem?.translations.find(
+    (tr) => tr?.lang === selectedLocale
+  );
+
+  const [value, setValue] = useState(() => translation?.content);
+
+  const [title, setTitle] = useState(() => translation?.title);
+
+  const [publishedDate, setPublishedDate] = useState<Date>();
+
+  useEffect(() => {
+    setValue(
+      newsItem?.translations?.find((tr) => tr?.lang === selectedLocale)?.content
+    );
+    setTitle(
+      newsItem?.translations?.find((tr) => tr?.lang === selectedLocale)?.title
+    );
+
+    setPublishedDate(newsItem?.publishedAt ?? undefined);
+  }, [newsItem, selectedLocale]);
+
+  async function handleSave() {
+    if (!newsItem) return;
+
+    if (publishedDate) {
+      await $updateNewsItem({
+        data: {
+          publishedAt: publishedDate,
+          id: newsItem.id,
+        },
+      });
+    }
+
+    if (value && title) {
+      await $upsertNewsTranslation({
+        data: {
+          title,
+          content: value,
+          lang: selectedLocale,
+          newsId: newsItem.id,
+        },
+      });
+    }
+
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+  }
+
+  async function handleDeleteTranslation() {
+    if (!newsItem) return;
+    if (!selectedLocale) return;
+
+    await $deleteNewsTranslation({
+      data: {
+        newsId: newsItem.id,
+        lang: selectedLocale,
+      },
+    });
+
+    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+  }
+
+  if (!newsItem) return null;
+
+  return (
+    <>
+      <DatePicker
+        label="Publication date"
+        dateValue={publishedDate}
+        onChangeDateValue={setPublishedDate}
+      />
+      <LocaleSwitcher
+        locale={selectedLocale}
+        onSwitchLocale={setSelectedLocale}
+      />
+      <div>
+        <Label>Title</Label>
+        <Input
+          value={title ?? ""}
+          className="bg-white"
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-1 flex-col">
+        <Label className="mb-2">Content</Label>
+        <div data-color-mode="light" className="flex-1">
+          <MDEditor
+            highlightEnable={true}
+            value={value ?? ""}
+            onChange={setValue}
+            height="100%"
+            className="md-editor flex-1"
+            components={{
+              preview: (source) => {
+                const { content } = transformMarkdoc({ rawContent: source });
+
+                return <RenderMarkdoc content={content} />;
+              },
+            }}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <Button onClick={handleDeleteTranslation} variant={"plain"}>
+          <Trash2Icon className="text-red-600" />
+        </Button>
+        <Button size="lg" onClick={handleSave}>
+          Update
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function getNewsItemTitle(item: GetNewsItemsResponse[number], locale: string) {
+  return (
+    item.translations.find((tr) => tr?.lang === locale)?.title ||
+    item.translations[0]?.title ||
+    "No title"
+  );
+}
+
+function ListOfNews({
+  onClickAdd,
+  selectedNewsItem,
+  onSelectNewsItem,
+}: {
+  onClickAdd: () => void;
+  selectedNewsItem: GetNewsItemsResponse[number] | undefined;
+  onSelectNewsItem: (item: GetNewsItemsResponse[number]) => void;
+}) {
+  const { openConfirmation } = useConfirmationStore();
+  const t = useTranslations("DeleteDialog");
+
+  const queryClient = useQueryClient();
+  const { data: newsItems } = useSuspenseQuery(
+    getNewsItemsQueryOptions({ limit: 100 })
+  );
+
+  const locale = useLocale();
+
+  async function handleClickDeleteNewsItem(item: GetNewsItemsResponse[number]) {
+    openConfirmation({
+      title: t("title"),
+      description: t("delete-newsItem-message", {
+        itemName: getNewsItemTitle(item, locale),
+      }),
+      onAction: async () => {
+        await $deleteNewsItem({ data: { id: item.id } });
+        queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+      },
+      onCancel: () => {},
+      cancelLabel: t("cancel"),
+      actionLabel: (
+        <>
+          <Trash2Icon className="mr-2 inline size-5 text-white" />{" "}
+          {t("confirm")}
+        </>
+      ),
+    });
+  }
+
+  return (
+    <ul>
+      {newsItems.map((item) => {
+        return (
+          <li key={item.id} className="flex items-start gap-1">
+            <Button
+              size={"slim"}
+              className={cn({
+                "border-secondary-light border":
+                  item.id === selectedNewsItem?.id,
+              })}
+              onClick={() => onSelectNewsItem(item)}
+              variant={"toggle"}
+            >
+              <p className="text-xs">
+                {item.publishedAt?.toLocaleDateString(locale) || "No data"}
+                {item.translations?.[0] &&
+                  item.translations.map((tr, index) => (
+                    <span
+                      className="bg-secondary-light ml-2 rounded-full px-2 text-xs text-white"
+                      key={`${tr?.lang}-${index}`}
+                    >
+                      {tr?.lang}
+                    </span>
+                  ))}
+              </p>
+              <p className="text-sm">{getNewsItemTitle(item, locale)}</p>
+            </Button>
+            <Button
+              variant={"cms-table-action"}
+              size={"slim"}
+              onClick={() => handleClickDeleteNewsItem(item)}
+            >
+              <Trash2Icon className="size-5 text-red-700" />
+            </Button>
+          </li>
+        );
+      })}
+      <li>
+        <Button onClick={onClickAdd} variant={"toggle"}>
+          + Add news
+        </Button>
+      </li>
+    </ul>
+  );
+}
+
+function ManageDocuments() {
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
 
   const [selectedLocale, setSelectedLocale] = useState<Locale>(
     i18n.defaultLocale
@@ -90,54 +338,116 @@ function ManageDocuments() {
     setSelectedVersionId(null);
   }
 
+  return (
+    <>
+      <div className="bg-primary w-md rounded-md p-4">
+        <Suspense fallback={<Skeleton />}>
+          <DocumentsList
+            onSelectDoc={handleSelectDoc}
+            selectedDocId={selectedDocumentId}
+          />
+        </Suspense>
+      </div>
+
+      {selectedDocumentId ? (
+        <>
+          <div className="bg-primary rounded-sm p-2">
+            <Suspense
+              fallback={
+                <div>
+                  <Skeleton />
+                  <Button variant={"action"} disabled>
+                    Add new
+                  </Button>
+                </div>
+              }
+            >
+              <ListOfVersions
+                selectedVersionId={selectedVersionId}
+                onSelect={setSelectedVersionId}
+                documentId={selectedDocumentId}
+              />
+            </Suspense>
+          </div>
+          {selectedVersionId ? (
+            <div className="flex-1 rounded-sm bg-white p-4">
+              <LocaleSwitcher
+                locale={selectedLocale}
+                onSwitchLocale={setSelectedLocale}
+              />
+              <Suspense fallback={<Skeleton />}>
+                <TranslationDetails
+                  locale={selectedLocale}
+                  documentVersionId={selectedVersionId}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <div>Select a version</div>
+          )}
+        </>
+      ) : (
+        <div> No document selected </div>
+      )}
+    </>
+  );
+}
+
+function DocumentsList({
+  onSelectDoc,
+  selectedDocId,
+}: {
+  onSelectDoc: (id: string) => void;
+  selectedDocId: string | undefined;
+}) {
+  const { data: documents } = useSuspenseQuery(getDocumentsQueryOptions());
+
   const t = useTranslations("Navbar");
 
   return (
-    <section className="flex items-stretch gap-2">
-      <ul className="bg-primary max-w-md space-y-4 rounded-sm p-4">
-        {documents.map((doc) => (
-          <li key={doc.id}>
-            <Button
-              className={cn({
-                "border-secondary-light border": doc.id === selectedDocumentId,
-              })}
-              onClick={() => handleSelectDoc(doc.id)}
-              variant={"toggle"}
-            >
-              {t(doc.contentId as any)}
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <Suspense fallback={<div>Loading...</div>}>
-        {!selectedDocumentId ? (
-          <p>No document selected</p>
-        ) : (
-          <ListOfVersions
-            selectedVersionId={selectedVersionId}
-            onSelect={setSelectedVersionId}
-            documentId={selectedDocumentId}
-          />
-        )}
-      </Suspense>
+    <ul className="space-y-4">
+      {documents.map((doc) => (
+        <li key={doc.id}>
+          <Button
+            className={cn({
+              "border-secondary-light border": doc.id === selectedDocId,
+            })}
+            onClick={() => onSelectDoc(doc.id)}
+            variant={"toggle"}
+          >
+            {t(doc.contentId as any)}
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-      <div className="flex-1 rounded-sm bg-white p-4">
-        <LocaleSwitcher
-          locale={selectedLocale}
-          onSwitchLocale={setSelectedLocale}
-        />
-        <Suspense fallback={<div>Loading...</div>}>
-          {selectedVersionId ? (
-            <TranslationDetails
-              locale={selectedLocale}
-              documentVersionId={selectedVersionId}
-            />
-          ) : (
-            <p>Select a version</p>
-          )}
-        </Suspense>
-      </div>
-    </section>
+function LocaleSwitcher({
+  locale,
+  onSwitchLocale,
+}: {
+  locale: Locale;
+  onSwitchLocale: (locale: Locale) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Label>Locale</Label>
+      <ToggleGroup
+        type="single"
+        value={locale}
+        onValueChange={(value) => {
+          if (!value) return;
+          onSwitchLocale(value as Locale);
+        }}
+      >
+        {i18n.locales.map((loc) => (
+          <ToggleGroupItem key={loc} value={loc}>
+            {loc}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
   );
 }
 
@@ -165,9 +475,9 @@ function ListOfVersions({
   }
 
   return (
-    <ul className="space-y-2 rounded-sm bg-white p-2">
+    <ul className="space-y-2">
       {versions.map((v) => (
-        <li className="" key={v.id}>
+        <li key={v.id}>
           <Button
             className={cn({
               "border-secondary-light border": selectedVersionId === v.id,
@@ -185,154 +495,6 @@ function ListOfVersions({
         </Button>
       </li>
     </ul>
-  );
-}
-
-function LocaleSwitcher({
-  locale,
-  onSwitchLocale,
-}: {
-  locale: Locale;
-  onSwitchLocale: (locale: Locale) => void;
-}) {
-  return (
-    <ToggleGroup type="single" value={locale} onValueChange={onSwitchLocale}>
-      {i18n.locales.map((loc) => (
-        <ToggleGroupItem key={loc} value={loc}>
-          {loc}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  );
-}
-
-function TranslationDetails({
-  documentVersionId,
-  locale,
-}: {
-  documentVersionId: string;
-  locale: Locale;
-}) {
-  const documentVersionTranslationQO =
-    getDocumentVersionTranslationQueryOptions({
-      documentVersionId,
-      locale,
-    });
-
-  const queryClient = useQueryClient();
-
-  const { data: versionDetails } = useSuspenseQuery(
-    documentVersionTranslationQO
-  );
-
-  const [value, setValue] = useState(versionDetails?.content);
-
-  useEffect(() => {
-    setValue(versionDetails?.content ?? "");
-  }, [versionDetails?.content]);
-
-  const { mutate: createTranslation } = useMutation({
-    mutationFn: $createDocumentVersionTranslation,
-    onSuccess: () => {
-      queryClient.invalidateQueries(documentVersionTranslationQO);
-    },
-  });
-
-  const { mutate: updateTranslation } = useMutation({
-    mutationFn: $updateDocumentVersionTranslation,
-    onSuccess: () => {
-      queryClient.invalidateQueries(documentVersionTranslationQO);
-    },
-  });
-
-  const { mutate: deleteTranslation } = useMutation({
-    mutationFn: $deleteDocumentVersionTranslation,
-    onSuccess: () => {
-      queryClient.invalidateQueries();
-    },
-  });
-
-  function handleSubmit() {
-    if (!value) return;
-    if (!versionDetails) {
-      createTranslation({
-        data: { documentVersionId, locale, content: value, title: "" },
-      });
-    } else {
-      updateTranslation({
-        data: {
-          documentVersionId,
-          locale,
-          content: value,
-        },
-      });
-    }
-  }
-
-  function handleDelete() {
-    deleteTranslation({
-      data: {
-        documentVersionId,
-        locale,
-      },
-    });
-  }
-
-  const onChange = useCallback((val: string) => {
-    setValue(val);
-  }, []);
-
-  const content = useMemo(() => {
-    if (!value) return null;
-    const tokens = tokenizer.tokenize(value);
-    const processed = processTokens(tokens);
-    const ast = Markdoc.parse(processed);
-
-    config.variables = {
-      ...config.variables,
-      locale,
-      updatedAt: versionDetails?.updatedAt.toLocaleDateString(),
-      version: `${versionDetails?.version.versionNumber}` || "Unknown",
-    };
-    return Markdoc.transform(ast, config);
-  }, [value, versionDetails]);
-
-  return (
-    <div className="flex h-full flex-col gap-1">
-      <Tabs defaultValue="edit">
-        <TabsList>
-          <TabsTrigger value="edit">Edit</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="edit">
-          <p>Locale: {versionDetails?.locale}</p>
-          <p> Author: {versionDetails?.translator?.name || "Unknown"} </p>
-          <CodeMirror
-            value={value}
-            onChange={onChange}
-            className="flex-1 rounded-sm"
-            extensions={[markdown(), EditorView.lineWrapping]}
-            basicSetup={{
-              lineNumbers: false,
-              foldGutter: false,
-              highlightActiveLine: false,
-            }}
-          />
-        </TabsContent>
-        <TabsContent value="preview">
-          <RenderMarkdoc className="mx-auto" content={content} />
-        </TabsContent>
-      </Tabs>
-      <div className="flex justify-end gap-5">
-        <Button onClick={handleDelete} variant={"plain"} className="bg-white">
-          <LucideTrash2 className="text-red-600" />
-        </Button>
-        <Button onClick={handleSubmit} size={"lg"}>
-          {versionDetails ? "Update" : "Create"}
-        </Button>
-      </div>
-    </div>
   );
 }
 

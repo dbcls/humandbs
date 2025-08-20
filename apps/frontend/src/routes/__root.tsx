@@ -1,8 +1,6 @@
-import { Footer } from "@/components/Footer";
-import { Navbar } from "@/components/Navbar";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import css from "@/index.css?url";
 import { auth } from "@/lib/auth";
-import { authClient } from "@/lib/auth-client";
 import { i18n as i18nConfig } from "@/lib/i18n-config";
 import { Context } from "@/router";
 import {
@@ -106,14 +104,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-family-sans text-foreground main-bg relative">
-        <main className="flex flex-col gap-2 p-4">
-          <Navbar />
-          {children}
-          <TanStackRouterDevtools position="bottom-right" />
-          <ReactQueryDevtools buttonPosition="bottom-left" />
-          <Footer />
-          <Scripts />
-        </main>
+        {children}
+        <TanStackRouterDevtools position="bottom-right" />
+        <ReactQueryDevtools buttonPosition="bottom-left" />
+        <ConfirmationDialog />
+        <Scripts />
       </body>
     </html>
   );

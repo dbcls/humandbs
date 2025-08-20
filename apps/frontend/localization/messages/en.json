@@ -1,6 +1,7 @@
 {
   "common": {
-    "humandb": "NDBC HumanDB"
+    "humandb": "NBDC HumanDB",
+    "to-": "To {place}"
   },
   "Footer": {
     "sitemap": "Sitemap",
@@ -17,9 +18,16 @@
     "achievements": "Achievements",
     "supported-browsers": "Supported Browsers"
   },
+  "DeleteDialog": {
+    "title": "Item delete confirmation",
+    "delete-newsItem-message": "Are you sure you want to delete `{itemName}`? All news translations for this news item will be deleted.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
+  },
   "Navbar": {
     "data-submission": "Data submission",
     "navigation": "Navigation",
+    "before-application": "Before application system",
     "application": "Application",
     "data-usage": "Data Usage",
     "about-data": "About Data",
@@ -30,7 +38,8 @@
     "security-guidelines-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
     "security-guidelines-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
     "security-guidelines-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)",
-    "home": "Home"
+    "home": "Home",
+    "all-news": "All News"
   },
   "Markdoc": {
     "version": "Version",
@@ -48,5 +57,10 @@
   },
   "Research-list": {
     "research-list": "Research list"
+  },
+  "Data-submission": {
+    "data-submission": "Data submission",
+
+    "before-application": "Before application system"
   }
 }

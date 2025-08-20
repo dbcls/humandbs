@@ -23,10 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 
-
+# Uploads
+public/assets
 
 .tanstack
 
 .output
 
 .nitro
+
+
+Log.md

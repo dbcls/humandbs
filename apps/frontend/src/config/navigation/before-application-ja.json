@@ -1,0 +1,42 @@
+{
+  "$schema": "./navigation.schema.json",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "D-wayアカウントについて",
+      "text": "D-wayアカウントはお持ちですか？",
+      "options": [
+        {
+          "id": "option1",
+          "title": "持っている",
+          "nextStep": "step2"
+        },
+        {
+          "id": "option2",
+          "title": "持っていない",
+          "link": "https://www.example.com/create-account",
+          "linkText": "D-wayアカウント登録"
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "申請状態について",
+      "text": "同じ研究計画のもとで実施された解析データについて、既にNBDCヒトデータベースに提供申請をしていまか？",
+      "options": [
+        {
+          "id": "option3",
+          "title": "申請中",
+          "link": "https://www.example.com/enter-id",
+          "linkText": "データ提供申請IDの入力"
+        },
+        {
+          "id": "option4",
+          "title": "新規に申請",
+          "link": "https://www.example.com/make-submission",
+          "linkText": "申請に進む"
+        }
+      ]
+    }
+  ]
+}

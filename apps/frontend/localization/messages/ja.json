@@ -1,6 +1,7 @@
 {
   "common": {
-    "humandb": "NDBC ヒトデータベース"
+    "humandb": "NBDC ヒトデータベース",
+    "to-": "{place}へ"
   },
   "Footer": {
     "sitemap": "サイトマップ",
@@ -17,9 +18,16 @@
     "achievements": "成果発表",
     "supported-browsers": "対応ブラウザ"
   },
+  "DeleteDialog": {
+    "title": "アイテム削除確認",
+    "delete-newsItem-message": "`{itemName}` を削除してもよろしいですか？ このニュースアイテムのすべてのニュース翻訳が削除されます。",
+    "confirm": "削除",
+    "cancel": "キャンセル"
+  },
   "Navbar": {
     "data-submission": "データの提供",
     "navigation": "ナビゲーション",
+    "before-application": "申請システムの前に",
     "application": "申請",
     "data-usage": "データの利用",
     "about-data": "データについて",
@@ -30,7 +38,8 @@
     "security-guidelines-for-users": "NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）",
     "security-guidelines-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
     "security-guidelines-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）",
-    "home": "ホーム"
+    "home": "ホーム",
+    "all-news": "ニュース一覧"
   },
   "Markdoc": {
     "version": "Ver.",
@@ -48,5 +57,9 @@
   },
   "Research-list": {
     "research-list": "研究一覧"
+  },
+  "Data-submission": {
+    "data-submission": "データの提供",
+    "before-application": "申請システムの前に"
   }
 }
