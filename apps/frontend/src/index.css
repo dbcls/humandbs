@@ -113,11 +113,6 @@
       position: absolute;
     }
 
-    /*.w-md-editor-text {
-      position: absolute !important;
-      inset: 0;
-    }*/
-
     .w-md-editor-fullscreen {
       position: fixed;
       top: 0;

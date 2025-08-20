@@ -1,4 +1,5 @@
 import { Card } from "@/components/Card";
+import { CONTENT_IDS } from "@/lib/content-config";
 import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
@@ -15,7 +16,7 @@ export const Route = createFileRoute(
   loader: async ({ context, params }) => {
     const data = await context.queryClient.ensureQueryData(
       getDocumentVersionTranslationQueryOptions({
-        contentId: "quidelines",
+        contentId: CONTENT_IDS.guidelines[0],
         locale: context.lang,
         versionNumber: params.revision,
         generateTOC: true,

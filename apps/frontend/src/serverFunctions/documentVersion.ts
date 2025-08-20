@@ -499,7 +499,6 @@ async function upsertDocVersion({
 }) {
   const { contentId, versionNumber, translations, status } = data;
 
-  console.log("upsertDocVersion data", data);
   await db.transaction(async (tx) => {
     // Upsert the document version
 

@@ -132,7 +132,9 @@ export function DocumentVersionsList({
   });
 
   const canCloneVersion = (version: DocumentVersionListItemResponse) => {
-    return version.statuses.includes("draft") && version.statuses.length === 1;
+    return !(
+      version.statuses.includes("draft") && version.statuses.length === 1
+    );
   };
 
   function handleSelectVersion(version: DocumentVersionListItemResponse) {
