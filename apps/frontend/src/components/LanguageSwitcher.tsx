@@ -5,13 +5,15 @@ import { useRouter } from "@tanstack/react-router";
 import { useLocale } from "use-intl";
 
 export function LangSwitcher() {
-  const { navigate } = useRouter();
+  const router = useRouter();
   const currentLang = useLocale();
 
   async function handleSwitch(lang: Locale) {
     await saveLocaleFn({ data: { lang } });
 
-    await navigate({ to: ".", params: { lang } });
+    await router.invalidate({ filter: (r) => r.fullPath !== "/admin" });
+
+    await router.navigate({ to: ".", params: { lang } });
   }
 
   return (

@@ -4,7 +4,7 @@ import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { routerWithQueryClient } from "@tanstack/react-router-with-query";
 import { routeTree } from "./routeTree.gen";
 import { authClient } from "./lib/auth-client";
-import { UserRole } from "./db/schema";
+import { AlertTranslation, UserRole } from "./db/schema";
 
 export type SessionUser = typeof authClient.$Infer.Session.user & {
   role: UserRole;
@@ -16,6 +16,7 @@ export type Context = {
   lang: Locale;
   messages: Messages;
   user: SessionUser | null | undefined;
+  alerts: AlertTranslation[] | undefined;
 };
 
 export function createRouter() {

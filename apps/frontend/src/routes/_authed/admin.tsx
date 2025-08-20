@@ -32,12 +32,20 @@ import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
 import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AlertsList } from "./-components/AlertsList";
+import { AlertContent } from "./-components/AlertContent";
+import {
+  getAlertsQueryOptions,
+  GetAlertsResponse,
+  $createAlert,
+} from "@/serverFunctions/alert";
+import { useRouteContext } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
 });
 
-type MainTab = "news" | "documents" | "users";
+type MainTab = "news" | "documents" | "users" | "alerts";
 
 function RouteComponent() {
   const [selectedTab, setSelectedTab] = useState<MainTab>("news");
@@ -51,6 +59,7 @@ function RouteComponent() {
         <ToggleGroupItem value="news">News</ToggleGroupItem>
         <ToggleGroupItem value="documents">Documents</ToggleGroupItem>
         <ToggleGroupItem value="users">Users</ToggleGroupItem>
+        <ToggleGroupItem value="alerts">Alerts</ToggleGroupItem>
       </ToggleGroup>
       <TabsContent className="flex items-stretch gap-2" value="news">
         <AssetsPanel />
@@ -64,6 +73,9 @@ function RouteComponent() {
         <Suspense fallback={<div>Loading...</div>}>
           <ManageUsers />
         </Suspense>
+      </TabsContent>
+      <TabsContent className="flex items-stretch gap-2" value="alerts">
+        <ManageAlerts />
       </TabsContent>
     </Tabs>
   );
@@ -197,5 +209,41 @@ function ManageUsers() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function ManageAlerts() {
+  const queryClient = useQueryClient();
+  const { user } = useRouteContext({ from: "__root__" });
+  const [selectedAlert, setSelectedAlert] =
+    useState<GetAlertsResponse[number]>();
+
+  async function handleAddAlert() {
+    if (!user?.id) {
+      alert("Please log in to create alerts");
+      return;
+    }
+
+    await $createAlert({
+      data: {
+        authorId: user.id,
+        translations: [],
+      },
+    });
+    queryClient.invalidateQueries(getAlertsQueryOptions({ limit: 100 }));
+  }
+
+  return (
+    <>
+      <Suspense fallback={<Skeleton />}>
+        <AlertsList
+          onClickAdd={handleAddAlert}
+          selectedAlert={selectedAlert}
+          onSelectAlert={setSelectedAlert}
+        />
+      </Suspense>
+
+      <AlertContent alert={selectedAlert} />
+    </>
   );
 }

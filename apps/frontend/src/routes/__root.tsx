@@ -3,6 +3,7 @@ import css from "@/index.css?url";
 import { auth } from "@/lib/auth";
 import { i18n as i18nConfig } from "@/lib/i18n-config";
 import { Context } from "@/router";
+import { getActiveAlertsQueryOptions } from "@/serverFunctions/alert";
 import {
   getLocaleFn,
   getMessagesFn,
