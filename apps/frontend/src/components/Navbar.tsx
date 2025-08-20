@@ -102,17 +102,32 @@ const getNavConfig = (lang: Locale): NavConfig => {
     },
     {
       id: "data-usage",
-      linkOptions: { to: "/$lang/data-usage", params: { lang } },
+      linkOptions: {
+        to: "/$lang/$contentId",
+        params: { lang, contentId: "data-usage" },
+      },
     },
     {
       id: "about-data",
-      linkOptions: { to: "/$lang/about-data", params: { lang } },
+      linkOptions: {
+        to: "/$lang/$contentId",
+        params: { lang, contentId: "about-data" },
+      },
     },
     {
       id: "achievements",
-      linkOptions: { to: "/$lang/achievements", params: { lang } },
+      linkOptions: {
+        to: "/$lang/$contentId",
+        params: { lang, contentId: "achievements" },
+      },
     },
-    { id: "contact", linkOptions: { to: "/$lang/contact", params: { lang } } },
+    {
+      id: "contact",
+      linkOptions: {
+        to: "/$lang/$contentId",
+        params: { lang, contentId: "contact" },
+      },
+    },
   ];
 };
 
