@@ -156,6 +156,12 @@ export const HealthResponseSchema = z.object({
 }).strict()
 export type HealthResponse = z.infer<typeof HealthResponseSchema>
 
+// Response of GET /users/is-admin
+export const IsAdminResponseSchema = z.object({
+  isAdmin: z.boolean(),
+}).strict()
+export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
+
 export const ResearchSummarySchema = z.object({
   humId: z.string(),
   lang: z.enum(langType),

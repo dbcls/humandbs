@@ -33,9 +33,9 @@ researchesRouter.openapi(listResearchesRoute, async (c) => {
   try {
     const query = ResearchesQuerySchema.parse(c.req.query())
     const researches = await searchResearches(query)
-    const validatedResponse = ResearchesResponseSchema.parse(researches)
+    const response = ResearchesResponseSchema.parse(researches)
 
-    return c.json(validatedResponse, 200)
+    return c.json(response, 200)
   } catch (error) {
     console.error("Error fetching research summaries:", error)
     return c.json({
