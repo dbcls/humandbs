@@ -418,7 +418,10 @@ const publishedTranslationSchema = z.object({
 // Draft document version schema
 const draftVersionSchema = selectDocumentVersionSchema.extend({
   status: z.literal("draft"),
-  translations: z.record(unionOfLiterals(i18n.locales), draftTranslationSchema),
+  translations: z.partialRecord(
+    unionOfLiterals(i18n.locales),
+    draftTranslationSchema
+  ),
 });
 
 // Published document version schema

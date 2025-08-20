@@ -104,8 +104,10 @@ function ManageDocuments() {
     useState<DocumentVersionListItemResponse | null>(null);
 
   function handleSelectDoc(contentId: string) {
+    if (selectedContentId !== contentId) {
+      setSelectedVersion(null);
+    }
     setSelectedContentId(contentId);
-    setSelectedVersion(null);
   }
 
   return (

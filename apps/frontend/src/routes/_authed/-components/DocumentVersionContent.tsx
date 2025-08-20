@@ -204,10 +204,6 @@ export function DocumentVersionContent({
             );
 
             form.setFieldValue(DOCUMENT_VERSION_STATUS.DRAFT, updated);
-            // form.reset({
-            //   [DOCUMENT_VERSION_STATUS.DRAFT]: updated,
-            //   [DOCUMENT_VERSION_STATUS.PUBLISHED]: version,
-            // }, {keepDefaultValues: true});
           }
 
           break;
@@ -224,8 +220,6 @@ export function DocumentVersionContent({
                 };
               }
             );
-
-            // form.reset();
           }
 
           break;
@@ -243,11 +237,6 @@ export function DocumentVersionContent({
                 };
               }
             );
-
-            // form.reset({
-            //   ...form.options.defaultValues,
-            //   [DOCUMENT_VERSION_STATUS.PUBLISHED]: version,
-            // });
           }
           break;
       }
@@ -383,16 +372,18 @@ export function DocumentVersionContent({
     submitAction: null,
   };
 
+  const formDefaultValues = {
+    [DOCUMENT_VERSION_STATUS.DRAFT]:
+      getFormDataFromApiResponse(documentVersionDraft),
+    [DOCUMENT_VERSION_STATUS.PUBLISHED]: getFormDataFromApiResponse(
+      documentVersionPublished
+    ),
+  };
+
   const form = useForm({
-    defaultValues: {
-      [DOCUMENT_VERSION_STATUS.DRAFT]:
-        getFormDataFromApiResponse(documentVersionDraft),
-      [DOCUMENT_VERSION_STATUS.PUBLISHED]: getFormDataFromApiResponse(
-        documentVersionPublished
-      ),
-    },
+    defaultValues: formDefaultValues,
     onSubmitMeta: defaultMeta,
-    onSubmit: ({ value, meta, formApi }) => {
+    onSubmit: ({ value, meta }) => {
       switch (meta.submitAction) {
         case "publishDraft":
           publishDraft(value.draft!);
@@ -409,6 +400,8 @@ export function DocumentVersionContent({
       }
     },
   });
+
+  const author = formDefaultValues[selectedStatus].author;
 
   return (
     <Card
@@ -444,8 +437,6 @@ export function DocumentVersionContent({
           className="h-full"
         >
           {i18n.locales.map((locale) => {
-            const translator = form.state.values[selectedStatus]?.author;
-
             return (
               <TabsContent
                 hidden={selectedLocale !== locale}
@@ -455,7 +446,7 @@ export function DocumentVersionContent({
                 className="flex flex-col gap-3"
               >
                 <>
-                  <p> Author: {translator?.name} </p>
+                  <p> Author: {author.name} </p>
 
                   <form.Field
                     key={locale}
