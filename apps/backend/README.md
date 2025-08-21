@@ -22,6 +22,12 @@ root@0272ff98f17e:/app/apps/backend# bun run dev
 
 OpenAPI 仕様は、`localhost:8080/docs` で確認できる。
 
+## Ollama model の容易
+
+```
+docker compose -f compose.dev.yml exec ollama ollama pull qwen3:8b
+```
+
 ## 2025/07/17
 
 - ともかく、現状を書いて push して、frontend 側に伝える

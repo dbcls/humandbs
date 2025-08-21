@@ -162,6 +162,17 @@ export const IsAdminResponseSchema = z.object({
 }).strict()
 export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
 
+// Request body for POST /translate
+export const TranslateRequestSchema = z.object({
+  text: z.string(),
+  targetLang: z.enum(langType),
+}).strict()
+
+// Response of POST /translate
+export const TranslateResponseSchema = z.object({
+  translatedText: z.string(),
+}).strict()
+
 export const ResearchSummarySchema = z.object({
   humId: z.string(),
   lang: z.enum(langType),
