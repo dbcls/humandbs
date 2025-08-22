@@ -15,6 +15,7 @@ const linkVariants = cva("text-secondary underline", {
   },
   defaultVariants: {
     variant: "default",
+    size: "default",
   },
 });
 

@@ -5,6 +5,7 @@ import {
   DocumentVersionTranslation,
   NewsItem,
   UserRole,
+  Alert,
 } from "@/db/schema";
 import { SessionUser } from "@/router";
 
@@ -44,6 +45,10 @@ export type Permissions = {
   news: {
     dataType: NewsItem;
     action: "view" | "update" | "create" | "delete";
+  };
+  alerts: {
+    dataType: Alert;
+    action: "list" | "update" | "create" | "delete";
   };
 };
 
@@ -85,6 +90,12 @@ const ROLES = {
       create: true,
       delete: true,
     },
+    alerts: {
+      list: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
   },
   editor: {
     documents: {
@@ -114,6 +125,12 @@ const ROLES = {
     },
     news: {
       view: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
+    alerts: {
+      list: true,
       update: true,
       create: true,
       delete: true,

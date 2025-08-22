@@ -1,29 +1,37 @@
-import { DatePicker } from "@/components/DatePicker";
+import { Card } from "@/components/Card";
+import { DatePicker, DateRangePicker } from "@/components/DatePicker";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NewsTranslationSelect } from "@/db/types";
 import { i18n } from "@/lib/i18n-config";
+import { cn } from "@/lib/utils";
+import { transformMarkdoc } from "@/markdoc/config";
+import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   $deleteNewsTranslation,
   $updateNewsItem,
   $upsertNewsTranslation,
   getNewsItemsQueryOptions,
-  GetNewsItemsResponse,
+  NewsItemResponse,
 } from "@/serverFunctions/news";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Locale } from "use-intl";
-import { LocaleSwitcher } from "./LocaleSwitcher";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import MDEditor from "@uiw/react-md-editor";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { Button } from "@/components/ui/button";
-import { Trash2Icon } from "lucide-react";
+import { LucideBell, Trash2Icon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Locale, useLocale } from "use-intl";
+import { LocaleSwitcher } from "./LocaleSwitcher";
+import { DateRange } from "react-day-picker";
 
 export function NewsItemContent({
   newsItem,
+  className,
 }: {
-  newsItem: GetNewsItemsResponse[number] | undefined;
+  newsItem: NewsItemResponse | undefined;
+  className?: string;
 }) {
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const [selectedLocale, setSelectedLocale] = useState<Locale>(
     i18n.defaultLocale
@@ -39,6 +47,10 @@ export function NewsItemContent({
 
   const [publishedDate, setPublishedDate] = useState<Date>();
 
+  const [isAlert, setIsAlert] = useState(false);
+
+  const [dateRange, setDateRange] = useState<DateRange>();
+
   useEffect(() => {
     setValue(
       newsItem?.translations?.find((tr) => tr?.lang === selectedLocale)?.content
@@ -46,6 +58,15 @@ export function NewsItemContent({
     setTitle(
       newsItem?.translations?.find((tr) => tr?.lang === selectedLocale)?.title
     );
+
+    setIsAlert(!!newsItem?.alert);
+
+    if (newsItem?.alert) {
+      setDateRange({
+        from: newsItem?.alert?.from,
+        to: newsItem?.alert?.to,
+      });
+    }
 
     setPublishedDate(newsItem?.publishedAt ?? undefined);
   }, [newsItem, selectedLocale]);
@@ -58,6 +79,10 @@ export function NewsItemContent({
         data: {
           publishedAt: publishedDate,
           id: newsItem.id,
+          alert:
+            isAlert && dateRange && dateRange?.from && dateRange?.to
+              ? (dateRange as { from: Date; to: Date })
+              : undefined,
         },
       });
     }
@@ -90,29 +115,68 @@ export function NewsItemContent({
     queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
   }
 
+  const selectedTranslation =
+    newsItem?.translations.find((t) => t?.lang === selectedLocale) ??
+    ({} as NewsTranslationSelect);
+
   if (!newsItem) return null;
 
   return (
-    <>
-      <DatePicker
-        label="Publication date"
-        dateValue={publishedDate}
-        onChangeDateValue={setPublishedDate}
-      />
-      <LocaleSwitcher
-        locale={selectedLocale}
-        onSwitchLocale={setSelectedLocale}
-      />
-      <div>
-        <Label>Title</Label>
-        <Input
-          value={title ?? ""}
-          className="bg-white"
-          onChange={(e) => setTitle(e.target.value)}
+    <Card
+      caption={
+        <span className="flex items-center gap-5">
+          <span>Content</span>
+
+          <LocaleSwitcher
+            locale={selectedLocale}
+            onSwitchLocale={setSelectedLocale}
+          />
+        </span>
+      }
+      className={cn("flex h-full flex-1 flex-col", className)}
+      containerClassName="flex flex-col flex-1 gap-4"
+    >
+      <div className="flex items-start gap-6">
+        <DatePicker
+          label="Publication date"
+          dateValue={publishedDate}
+          onChangeDateValue={setPublishedDate}
         />
+        <TitleValue
+          title="Created at:"
+          value={newsItem.createdAt.toLocaleDateString(locale)}
+        />
+        <TitleValue
+          title="Updated at:"
+          value={selectedTranslation?.updatedAt?.toLocaleDateString(locale)}
+        />
+        <TitleValue title="Author:" value={newsItem.author.name} />
       </div>
-      <div className="flex flex-1 flex-col">
-        <Label className="mb-2">Content</Label>
+
+      <Label className="cursor-pointer">
+        <Checkbox
+          checked={isAlert}
+          onCheckedChange={(value) => setIsAlert(!!value)}
+        />
+        <LucideBell className="size-4" />
+        Set as alert
+      </Label>
+
+      {isAlert ? (
+        <DateRangePicker
+          label="Alert active date range"
+          value={dateRange}
+          onSelect={setDateRange}
+        />
+      ) : null}
+
+      <Label className="flex flex-col items-start gap-2">
+        <span>Title</span>
+        <Input value={title ?? ""} onChange={(e) => setTitle(e.target.value)} />
+      </Label>
+
+      <div className="flex flex-1 flex-col gap-2 text-sm font-medium">
+        <span>Content</span>
         <div data-color-mode="light" className="flex-1">
           <MDEditor
             highlightEnable={true}
@@ -138,6 +202,21 @@ export function NewsItemContent({
           Update
         </Button>
       </div>
-    </>
+    </Card>
+  );
+}
+
+function TitleValue({
+  title,
+  value,
+}: {
+  title: string;
+  value: string | undefined;
+}) {
+  return (
+    <p className="flex flex-col items-start gap-2">
+      <span className="text-sm leading-none font-medium">{title}</span>
+      <span className="text-xs">{value}</span>
+    </p>
   );
 }

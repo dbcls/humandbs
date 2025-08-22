@@ -169,7 +169,7 @@ export function Navbar() {
               <NavigationMenuItem key={item.id}>
                 {item.children ? (
                   <>
-                    <NavigationMenuTrigger>
+                    <NavigationMenuTrigger className="text-sm">
                       <Link variant={"nav"} {...item.linkOptions}>
                         {t(item.id)}
                       </Link>
@@ -200,14 +200,14 @@ export function Navbar() {
       </nav>
 
       <div className="flex items-center gap-2">
+        <LangSwitcher />
+        <Search />
         {user ? (
           <div className="flex items-center gap-2">
             <span className="text-xs">{user.name}</span>
             <Button onClick={handleLogout}>Logout</Button>
           </div>
         ) : null}
-        <LangSwitcher />
-        <Search />
       </div>
     </header>
   );

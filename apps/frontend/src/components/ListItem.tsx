@@ -16,7 +16,7 @@ export function ListItem({
       className={cn(
         "flex cursor-pointer items-center justify-between gap-2 rounded-sm px-3 py-1 text-sm transition-colors",
         {
-          "bg-secondary-light text-white [&>svg>path]:stroke-white": isActive,
+          "bg-secondary-light text-white [&_svg>path]:stroke-white": isActive,
           "hover:bg-hover": !isActive,
         },
         className

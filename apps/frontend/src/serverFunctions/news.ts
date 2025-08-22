@@ -1,4 +1,4 @@
-import { newsItem, newsTranslation } from "@/db/schema";
+import { alert, newsItem, newsTranslation } from "@/db/schema";
 import {
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
@@ -34,6 +34,7 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
         locale: newsTranslation.lang,
         title: newsTranslation.title,
         publishedAt: newsItem.publishedAt,
+        alert: alert.newsId,
       })
       .from(newsTranslation)
       .where(eq(newsTranslation.lang, locale))
@@ -44,11 +45,12 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
           isNotNull(newsItem.publishedAt)
         )
       )
+      .innerJoin(alert, eq(alert.newsId, newsItem.id))
       .orderBy(desc(newsItem.publishedAt))
       .limit(data.limit)
       .offset(data.offset);
 
-    return news;
+    return news.map((n) => ({ ...n, alert: !!n.alert }));
   });
 
 export type NewsTitleResponse = Awaited<
@@ -131,34 +133,39 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
 
-    const newsItems = await db
-      .select({ ...getTableColumns(newsItem), newsTranslation })
-      .from(newsItem)
-      .leftJoin(newsTranslation, eq(newsItem.id, newsTranslation.newsId))
-      .limit(data.limit)
-      .offset(data.offset);
+    const news = await db.query.newsItem.findMany({
+      with: {
+        translations: true,
+        alert: {
+          columns: {
+            from: true,
+            to: true,
+          },
+        },
+        author: {
+          columns: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      columns: {
+        authorId: false,
+      },
+      limit: data.limit,
+      offset: data.offset,
+    });
 
-    const indexMap = new Map<string, number>();
+    type T = typeof news;
 
-    const groupedNews = [];
-
-    for (let i = 0; i < newsItems.length; i++) {
-      const item = newsItems[i];
-      if (!item.id) continue;
-      const index = indexMap.get(item.id);
-      const { newsTranslation, ...restItem } = item;
-      if (index === undefined) {
-        groupedNews.push({ ...restItem, translations: [item.newsTranslation] });
-        indexMap.set(item.id, groupedNews.length - 1);
-      } else {
-        groupedNews[index].translations.push(item.newsTranslation);
-      }
-    }
-
-    return groupedNews;
+    return news as (Omit<T[number], "alert"> & {
+      alert: Pick<T[number], "alert">["alert"] | null;
+    })[];
   });
 
-export type GetNewsItemsResponse = Awaited<ReturnType<typeof $getNewsItems>>;
+export type NewsItemResponse = Awaited<
+  ReturnType<typeof $getNewsItems>
+>[number];
 
 export const $updateNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
@@ -169,6 +176,18 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
     const { id, ...restItem } = data;
 
     await db.update(newsItem).set(restItem).where(eq(newsItem.id, id));
+
+    if (data.alert) {
+      await db
+        .insert(alert)
+        .values({ newsId: id, ...data.alert })
+        .onConflictDoUpdate({
+          target: [alert.newsId],
+          set: data.alert,
+        });
+    } else {
+      await db.delete(alert).where(eq(alert.newsId, id));
+    }
   });
 
 export function getNewsItemsQueryOptions({
@@ -201,6 +220,7 @@ export const $upsertNewsTranslation = createServerFn({ method: "POST" })
         set: {
           title: data.title,
           content: data.content,
+          updatedAt: new Date(),
         },
       })
       .returning();

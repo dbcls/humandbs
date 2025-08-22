@@ -7,10 +7,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DocumentVersion, UserRole } from "@/db/schema";
-import { i18n, Locale } from "@/lib/i18n-config";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { UserRole } from "@/db/schema";
 import { roles } from "@/lib/permissions";
+import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
 import {
   $createNewsItem,
   getNewsItemsQueryOptions,
@@ -30,16 +31,6 @@ import { DocumentVersionContent } from "./-components/DocumentVersionContent";
 import { DocumentVersionsList } from "./-components/DocumentVersionsList";
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
-import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { AlertsList } from "./-components/AlertsList";
-import { AlertContent } from "./-components/AlertContent";
-import {
-  getAlertsQueryOptions,
-  GetAlertsResponse,
-  $createAlert,
-} from "@/serverFunctions/alert";
-import { useRouteContext } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
@@ -59,7 +50,6 @@ function RouteComponent() {
         <ToggleGroupItem value="news">News</ToggleGroupItem>
         <ToggleGroupItem value="documents">Documents</ToggleGroupItem>
         <ToggleGroupItem value="users">Users</ToggleGroupItem>
-        <ToggleGroupItem value="alerts">Alerts</ToggleGroupItem>
       </ToggleGroup>
       <TabsContent className="flex items-stretch gap-2" value="news">
         <AssetsPanel />
@@ -73,9 +63,6 @@ function RouteComponent() {
         <Suspense fallback={<div>Loading...</div>}>
           <ManageUsers />
         </Suspense>
-      </TabsContent>
-      <TabsContent className="flex items-stretch gap-2" value="alerts">
-        <ManageAlerts />
       </TabsContent>
     </Tabs>
   );
@@ -93,18 +80,15 @@ function ManageNews() {
 
   return (
     <>
-      <div className="bg-primary w-md rounded-md p-4">
-        <Suspense fallback={<Skeleton />}>
-          <NewsItemsList
-            onClickAdd={handleAddNewsItem}
-            selectedNewsItem={selectedNewsItem}
-            onSelectNewsItem={setSelectedNewsItem}
-          />
-        </Suspense>
-      </div>
-      <div className="bg-primary flex flex-1 flex-col gap-5 rounded-md p-4">
-        <NewsItemContent newsItem={selectedNewsItem} />
-      </div>
+      <Suspense fallback={<Skeleton />}>
+        <NewsItemsList
+          onClickAdd={handleAddNewsItem}
+          selectedNewsItem={selectedNewsItem}
+          onSelectNewsItem={setSelectedNewsItem}
+        />
+      </Suspense>
+
+      <NewsItemContent newsItem={selectedNewsItem} />
     </>
   );
 }
@@ -126,7 +110,6 @@ function ManageDocuments() {
     <>
       <Card
         className="flex h-full w-96 flex-col"
-        captionSize={"sm"}
         caption="Documents"
         containerClassName="overflow-auto flex-1 max-h-full"
       >
@@ -140,7 +123,7 @@ function ManageDocuments() {
 
       {selectedContentId ? (
         <>
-          <Card className="w-80" captionSize={"sm"} caption="Versions">
+          <Card className="w-80" caption="Versions">
             <Suspense
               fallback={
                 <div>
@@ -209,41 +192,5 @@ function ManageUsers() {
         </li>
       ))}
     </ul>
-  );
-}
-
-function ManageAlerts() {
-  const queryClient = useQueryClient();
-  const { user } = useRouteContext({ from: "__root__" });
-  const [selectedAlert, setSelectedAlert] =
-    useState<GetAlertsResponse[number]>();
-
-  async function handleAddAlert() {
-    if (!user?.id) {
-      alert("Please log in to create alerts");
-      return;
-    }
-
-    await $createAlert({
-      data: {
-        authorId: user.id,
-        translations: [],
-      },
-    });
-    queryClient.invalidateQueries(getAlertsQueryOptions({ limit: 100 }));
-  }
-
-  return (
-    <>
-      <Suspense fallback={<Skeleton />}>
-        <AlertsList
-          onClickAdd={handleAddAlert}
-          selectedAlert={selectedAlert}
-          onSelectAlert={setSelectedAlert}
-        />
-      </Suspense>
-
-      <AlertContent alert={selectedAlert} />
-    </>
   );
 }

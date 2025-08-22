@@ -36,3 +36,28 @@ export function StatusTag({ className, isActive, ...props }: StatusProps) {
     </div>
   );
 }
+
+export function Tag({
+  tag,
+  isActive,
+  className,
+}: {
+  tag: string;
+  isActive: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        statusTagVariants({ status: "current" }),
+        "w-10 text-center",
+        className,
+        {
+          "border-white text-white": isActive,
+        }
+      )}
+    >
+      {tag}
+    </div>
+  );
+}

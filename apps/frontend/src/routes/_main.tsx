@@ -5,6 +5,7 @@ import {
   $getHiddenAlertIds,
   getActiveAlertsQueryOptions,
 } from "@/serverFunctions/alert";
+
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main")({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/_main")({
 
     return {
       alerts: activeAlertTranslations.filter(
-        (alert) => !hiddenAlerts.includes(alert.alertId)
+        (alert) => !hiddenAlerts.includes(alert.newsId)
       ),
     };
   },

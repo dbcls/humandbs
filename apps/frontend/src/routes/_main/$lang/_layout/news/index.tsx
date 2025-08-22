@@ -3,7 +3,8 @@ import { Link } from "@/components/Link";
 import { Locale } from "@/lib/i18n-config";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 import { createFileRoute } from "@tanstack/react-router";
-import { useLocale } from "use-intl";
+import { LucideBell } from "lucide-react";
+import { useLocale, useTranslations } from "use-intl";
 import { z } from "zod";
 export const Route = createFileRoute("/_main/$lang/_layout/news/")({
   component: RouteComponent,
@@ -35,12 +36,21 @@ function RouteComponent() {
 
   const locale = useLocale();
 
+  const t = useTranslations("Navbar");
+
   return (
-    <Card caption="All news">
+    <Card caption={t("all-news")}>
       <ul>
         {newsTitles.map((item) => (
           <li key={item.id}>
-            <span>{item.publishedAt?.toLocaleDateString(locale)}</span>
+            {item.alert && (
+              <LucideBell className="text-accent mr-1 inline size-5 align-baseline" />
+            )}
+            <span className="text-sm">
+              {item.publishedAt?.toLocaleDateString(locale, {
+                timeZone: "UTC",
+              })}
+            </span>
             <Link
               to={"/$lang/news/$newsItemId"}
               params={{

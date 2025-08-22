@@ -1,6 +1,7 @@
 import { Link } from "@/components/Link";
 import { NewsTitleResponse } from "@/serverFunctions/news";
 import { useLoaderData } from "@tanstack/react-router";
+import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
@@ -8,8 +9,11 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
 
   return (
     <li>
+      {newsItem.alert && (
+        <LucideBell className="text-accent mr-1 inline size-4" />
+      )}
       <span className="text-xs">
-        {newsItem.publishedAt?.toLocaleDateString(locale)}
+        {newsItem.publishedAt?.toLocaleDateString(locale, { timeZone: "UTC" })}
       </span>
       <Link
         className="text-secondary text-sm underline"

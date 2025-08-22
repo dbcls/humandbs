@@ -58,11 +58,21 @@ export const updateDocumentVersionTranslationSchema = createUpdateSchema(
 export type CreateDocumentVersionTranslationParams =
   typeof schema.documentVersionTranslation.$inferInsert;
 
-export const newsItemUpdateSchema = createUpdateSchema(
-  schema.newsItem
-).required({
-  id: true,
+export const selectAlertSchema = createSelectSchema(schema.alert);
+export const createAlertSchema = createInsertSchema(schema.alert);
+export const updateAlertSchema = createUpdateSchema(schema.alert).required({
+  newsId: true,
 });
+
+export type UpdateAlert = z.infer<typeof updateAlertSchema>;
+
+export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
+  .required({
+    id: true,
+  })
+  .extend({
+    alert: createAlertSchema.omit({ newsId: true }).optional(),
+  });
 
 export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
 
@@ -79,3 +89,5 @@ export const newsTranslationInsertSchema = createInsertSchema(
 );
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;
+
+export type NewsTranslationSelect = typeof schema.newsTranslation.$inferSelect;

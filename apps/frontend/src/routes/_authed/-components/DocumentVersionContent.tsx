@@ -419,7 +419,6 @@ export function DocumentVersionContent({
           />
         </div>
       }
-      captionSize={"sm"}
       className={cn("flex h-full flex-1 flex-col", className)}
       containerClassName="flex flex-col flex-1"
     >
