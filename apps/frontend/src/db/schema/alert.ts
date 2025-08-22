@@ -5,10 +5,10 @@ import { relations } from "drizzle-orm";
 export const alert = pgTable("alert", {
   newsId: uuid("news_id")
     .notNull()
-    .references(() => newsItem.id)
+    .references(() => newsItem.id, { onDelete: "cascade" })
     .unique("alert_news_id_key"),
-  from: timestamp("from").notNull(),
-  to: timestamp("to").notNull(),
+  from: timestamp("from"),
+  to: timestamp("to"),
 });
 
 export const alertRelations = relations(alert, ({ one }) => ({

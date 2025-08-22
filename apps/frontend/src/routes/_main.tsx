@@ -18,6 +18,8 @@ export const Route = createFileRoute("/_main")({
 
     const hiddenAlerts = await $getHiddenAlertIds();
 
+    console.log("activeAlertTranslations", activeAlertTranslations);
+    console.log("hiddenAlerts", hiddenAlerts);
     return {
       alerts: activeAlertTranslations.filter(
         (alert) => !hiddenAlerts.includes(alert.newsId)

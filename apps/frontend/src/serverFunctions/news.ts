@@ -2,8 +2,10 @@ import { alert, newsItem, newsTranslation } from "@/db/schema";
 import {
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
+  NewsTranslationSelect,
   newsTranslationSelectSchema,
   newsTranslationUpdateSchema,
+  NewsTranslationUpsert,
 } from "@/db/types";
 import { db } from "@/lib/database";
 import { Locale } from "@/lib/i18n-config";
@@ -11,7 +13,7 @@ import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, getTableColumns, isNotNull } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 /**
@@ -158,9 +160,31 @@ export const $getNewsItems = createServerFn({ method: "GET" })
 
     type T = typeof news;
 
-    return news as (Omit<T[number], "alert"> & {
+    type News = (Omit<T[number], "alert"> & {
       alert: Pick<T[number], "alert">["alert"] | null;
     })[];
+
+    const response = news.map((item) => ({
+      ...(item as Omit<News[number], "translations">),
+      translations: item.translations.reduce(
+        (acc, curr) => {
+          acc[curr.lang as Locale] = {
+            content: curr.content,
+            title: curr.title,
+            updatedAt: curr.updatedAt,
+          };
+          return acc;
+        },
+        {} as Partial<
+          Record<
+            Locale,
+            Pick<NewsTranslationSelect, "content" | "title" | "updatedAt">
+          >
+        >
+      ),
+    }));
+
+    return response;
   });
 
 export type NewsItemResponse = Awaited<
@@ -175,19 +199,50 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
 
     const { id, ...restItem } = data;
 
-    await db.update(newsItem).set(restItem).where(eq(newsItem.id, id));
+    await db.transaction(async (tx) => {
+      // update publication date
+      await tx
+        .update(newsItem)
+        .set({ publishedAt: restItem.publishedAt })
+        .where(eq(newsItem.id, id));
 
-    if (data.alert) {
-      await db
-        .insert(alert)
-        .values({ newsId: id, ...data.alert })
+      const translations = Object.entries(data.translations) as [
+        Locale,
+        NewsTranslationUpsert[keyof NewsTranslationUpsert],
+      ][];
+
+      const translationsToInsert = translations.map(
+        ([locale, translation]) => ({
+          newsId: id,
+          lang: locale,
+          title: translation?.title!,
+          content: translation?.content!,
+        })
+      );
+      //upsert translations
+      await tx
+        .insert(newsTranslation)
+        .values(translationsToInsert)
         .onConflictDoUpdate({
-          target: [alert.newsId],
-          set: data.alert,
+          target: [newsTranslation.newsId, newsTranslation.lang],
+          set: {
+            title: sql.raw(`excluded.${newsTranslation.title.name}`),
+            content: sql.raw(`excluded.${newsTranslation.content.name}`),
+            updatedAt: new Date(),
+          },
         });
-    } else {
-      await db.delete(alert).where(eq(alert.newsId, id));
-    }
+      if (data.alert) {
+        await tx
+          .insert(alert)
+          .values({ newsId: id, ...data.alert })
+          .onConflictDoUpdate({
+            target: [alert.newsId],
+            set: data.alert,
+          });
+      } else {
+        await tx.delete(alert).where(eq(alert.newsId, id));
+      }
+    });
   });
 
 export function getNewsItemsQueryOptions({
@@ -253,11 +308,10 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   });
 
 /**
- * Create newsItem
+ * Create empty newsItem
  */
 export const $createNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(z.object({}).optional())
   .handler(async ({ context }) => {
     context.checkPermission("news", "create");
 

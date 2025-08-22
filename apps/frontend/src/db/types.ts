@@ -5,6 +5,8 @@ import {
 } from "drizzle-zod";
 import * as schema from "./schema";
 import { z } from "zod";
+import { enumFromStringArray } from "@/lib/utils";
+import { localeSchema } from "@/lib/i18n-config";
 
 export const insertDocumentSchema = createInsertSchema(schema.document);
 
@@ -66,16 +68,6 @@ export const updateAlertSchema = createUpdateSchema(schema.alert).required({
 
 export type UpdateAlert = z.infer<typeof updateAlertSchema>;
 
-export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
-  .required({
-    id: true,
-  })
-  .extend({
-    alert: createAlertSchema.omit({ newsId: true }).optional(),
-  });
-
-export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
-
 export const newsTranslationSelectSchema = createSelectSchema(
   schema.newsTranslation
 );
@@ -87,6 +79,26 @@ export const newsTranslationUpdateSchema = createUpdateSchema(
 export const newsTranslationInsertSchema = createInsertSchema(
   schema.newsTranslation
 );
+
+export const newsTranslationUpsertSchema = z.partialRecord(
+  localeSchema,
+  newsTranslationSelectSchema.pick({ title: true, content: true })
+);
+
+export type NewsTranslationUpsert = z.infer<typeof newsTranslationUpsertSchema>;
+
+export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
+  .required({
+    id: true,
+  })
+  .extend({
+    alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
+    translations: newsTranslationUpsertSchema,
+  });
+
+export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
+  alert: createAlertSchema.omit({ newsId: true }).optional(),
+});
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;
 

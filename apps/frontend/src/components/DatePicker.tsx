@@ -16,7 +16,7 @@ export function DatePicker({
   onChangeDateValue,
   label,
 }: {
-  dateValue?: Date;
+  dateValue?: Date | null;
   onChangeDateValue: (date: Date | undefined) => void;
   label?: string;
 }) {
@@ -40,7 +40,7 @@ export function DatePicker({
           <Calendar
             required={false}
             mode="single"
-            selected={dateValue}
+            selected={dateValue || undefined}
             captionLayout="dropdown"
             onSelect={(date) => {
               onChangeDateValue(date);

@@ -20,8 +20,8 @@ export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
 /** Alerts list for CMS */
 interface AlertListItemResponse {
   newsId: string;
-  from: Date;
-  to: Date;
+  from: Date | null;
+  to: Date | null;
   translations: {
     title: string;
     lang: Locale;

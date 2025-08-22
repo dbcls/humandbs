@@ -9,7 +9,7 @@ import {
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { LucideBell, LucideBellElectric, Trash2Icon } from "lucide-react";
+import { LucideBell, Trash2Icon } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { Tag } from "./StatusTag";
 
@@ -36,7 +36,7 @@ export function NewsItemsList({
     openConfirmation({
       title: t("title"),
       description: t("delete-newsItem-message", {
-        itemName: getNewsItemTitle(item, locale),
+        itemName: item.translations[locale]?.title || "Unknown",
       }),
       onAction: async () => {
         await $deleteNewsItem({ data: { id: item.id } });
@@ -79,21 +79,23 @@ export function NewsItemsList({
                     <div className="text-xs">
                       <LucideBell className="text-accent mr-1 inline size-4" />
                       <span>
-                        {`${item.alert.from.toLocaleDateString(locale, { timeZone: "UTC" })} - ${item.alert.to.toLocaleDateString(locale, { timeZone: "UTC" })}`}
+                        {`${item.alert.from?.toLocaleDateString(locale, { timeZone: "UTC" })} - ${item.alert.to?.toLocaleDateString(locale, { timeZone: "UTC" })}`}
                       </span>
                     </div>
                   ) : null}
                   <ul className="space-y-1">
-                    {item.translations?.[0] &&
-                      item.translations.map((tr, index) => (
-                        <li
-                          key={`${tr?.lang}-${index}`}
-                          className="flex items-center gap-1 text-xs"
-                        >
-                          <Tag tag={tr.lang} isActive={isActive} />
-                          <span>{tr.title}</span>
-                        </li>
-                      ))}
+                    {item.translations &&
+                      Object.entries(item.translations).map(
+                        ([lang, tr], index) => (
+                          <li
+                            key={`${lang}-${index}`}
+                            className="flex items-center gap-1 text-xs"
+                          >
+                            <Tag tag={lang} isActive={isActive} />
+                            <span>{tr.title}</span>
+                          </li>
+                        )
+                      )}
                   </ul>
                 </div>
 
@@ -122,13 +124,5 @@ export function NewsItemsList({
         </li>
       </ul>
     </Card>
-  );
-}
-
-function getNewsItemTitle(item: NewsItemResponse, locale: string) {
-  return (
-    item.translations.find((tr) => tr?.lang === locale)?.title ||
-    item.translations[0]?.title ||
-    "No title"
   );
 }
