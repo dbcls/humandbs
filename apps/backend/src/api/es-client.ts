@@ -1,6 +1,6 @@
 import { Client, HttpConnection } from "@elastic/elasticsearch"
 
-import { type ResearchDoc, ResearchDocSchema, type ResearchesQuery, type ResearchesResponse, type ResearchVersionDoc } from "@/types"
+import { type DatasetDoc, type ResearchDoc, ResearchDocSchema, type ResearchesQuery, type ResearchesResponse, type ResearchVersionDoc } from "@/types"
 
 const createEsClient = () => {
   const ES_HOST = "http://humandbs-elasticsearch-dev:9200" // TODO: use env variable
@@ -104,4 +104,17 @@ export const searchResearches = async (params: ResearchesQuery): Promise<Researc
       hasPrev: from > 0,
     },
   }
+}
+
+export const getDatasetById = async (datasetId: string, lang: string, version: number) => {
+  const response = await esClient.get<DatasetDoc>({
+    index: "dataset",
+    id: `${datasetId}-${version}-${lang}`,
+  }, {
+    ignore: [404],
+  })
+  if (!response.found) {
+    return null
+  }
+  return response._source as DatasetDoc
 }

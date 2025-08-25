@@ -3,6 +3,7 @@ import { OpenAPIHono } from "@hono/zod-openapi"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 
+import { datasetsRouter } from "@/api/routes/datasets"
 import { healthRouter } from "@/api/routes/health"
 import { researchesRouter } from "@/api/routes/researches"
 import { translateRouter } from "@/api/routes/translate"
@@ -19,6 +20,7 @@ export const createApp = () => {
   app.route("/users", usersRouter)
   app.route("/translate", translateRouter)
   app.route("/researches", researchesRouter)
+  app.route("/datasets", datasetsRouter)
 
   // OpenAPI docs
   app.doc("/docs/openapi.json", {

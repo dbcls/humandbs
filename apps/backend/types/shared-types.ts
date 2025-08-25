@@ -84,7 +84,7 @@ export const ExperimentSchema = z.object({
 }).strict()
 export type Experiment = z.infer<typeof ExperimentSchema>
 
-// es entry: /dataset/{datasetId}-{lang}-{versionNum}
+// es entry: /dataset/{datasetId}-{versionNum}-{lang}
 export const DatasetSchema = z.object({
   datasetId: z.string(), // e.g., "JGAD", "DRA", "E-GEAD", "MTBK", "hum.v1.rna-seq.v1", "PRJDB10452"
   lang: z.enum(langType),
@@ -96,7 +96,7 @@ export const DatasetSchema = z.object({
 }).strict()
 export type Dataset = z.infer<typeof DatasetSchema>
 
-// es entry: /researchVersion/{humId}-{lang}-{versionNum}
+// es entry: /researchVersion/{humId}-{versionNum}-{lang}
 export const ResearchVersionSchema = z.object({
   humId: z.string(),
   lang: z.enum(langType),
@@ -209,6 +209,12 @@ export const ResearchesResponseSchema = z.object({
   }),
 }).strict()
 export type ResearchesResponse = z.infer<typeof ResearchesResponseSchema>
+
+export const DatasetRequestQuerySchema = z.object({
+  lang: z.enum(langType).default("en"),
+  version: z.coerce.number().int().positive().default(1),
+}).strict()
+export type DatasetRequestQuery = z.infer<typeof DatasetRequestQuerySchema>
 
 export const ErrorResponseSchema = z.object({
   error: z.string(),
