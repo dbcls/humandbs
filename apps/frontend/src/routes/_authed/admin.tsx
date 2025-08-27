@@ -15,7 +15,7 @@ import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersi
 import {
   $createNewsItem,
   getNewsItemsQueryOptions,
-  GetNewsItemsResponse,
+  NewsItemResponse,
 } from "@/serverFunctions/news";
 import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
 import {
@@ -70,11 +70,10 @@ function RouteComponent() {
 
 function ManageNews() {
   const queryClient = useQueryClient();
-  const [selectedNewsItem, setSelectedNewsItem] =
-    useState<GetNewsItemsResponse[number]>();
+  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemResponse>();
 
   async function handleAddNewsItem() {
-    await $createNewsItem({ data: {} });
+    await $createNewsItem({});
     queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
   }
 

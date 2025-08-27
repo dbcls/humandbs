@@ -16,7 +16,8 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import MDEditor from "@uiw/react-md-editor";
-import { LucideBell, Trash2Icon } from "lucide-react";
+import { LucideBell } from "lucide-react";
+import { useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import { Locale, useLocale } from "use-intl";
 import { LocaleSwitcher } from "./LocaleSwitcher";
@@ -44,7 +45,6 @@ export function NewsItemContent({
   const { mutate: updateNewsItem } = useMutation({
     mutationFn: async (values: FormDataType) => {
       if (!newsItem?.id) return;
-      console.log("client send values", values);
       await $updateNewsItem({
         data: {
           id: newsItem.id,
@@ -123,6 +123,10 @@ export function NewsItemContent({
       updateNewsItem(value);
     },
   });
+
+  useEffect(() => {
+    form.reset();
+  }, [form, newsItem]);
 
   if (!newsItem) return null;
 

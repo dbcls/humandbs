@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { z } from "zod";
+
 export const Route = createFileRoute("/_main/$lang/_layout/news/")({
   component: RouteComponent,
   validateSearch: z.object({
@@ -52,6 +53,7 @@ function RouteComponent() {
               })}
             </span>
             <Link
+              className="ml-2"
               to={"/$lang/news/$newsItemId"}
               params={{
                 lang: item.locale,

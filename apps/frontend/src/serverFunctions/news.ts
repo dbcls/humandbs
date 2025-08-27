@@ -43,11 +43,11 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
       .innerJoin(
         newsItem,
         and(
-          eq(newsItem.id, newsTranslation.newsId),
+          eq(newsTranslation.newsId, newsItem.id),
           isNotNull(newsItem.publishedAt)
         )
       )
-      .innerJoin(alert, eq(alert.newsId, newsItem.id))
+      .leftJoin(alert, eq(alert.newsId, newsItem.id))
       .orderBy(desc(newsItem.publishedAt))
       .limit(data.limit)
       .offset(data.offset);
@@ -154,6 +154,7 @@ export const $getNewsItems = createServerFn({ method: "GET" })
       columns: {
         authorId: false,
       },
+      orderBy: (table, { desc }) => [desc(table.createdAt)],
       limit: data.limit,
       offset: data.offset,
     });

@@ -6,6 +6,7 @@ import { useLoaderData, useRouter } from "@tanstack/react-router";
 import { LucideX } from "lucide-react";
 import { Button } from "./ui/button";
 import { useLocale } from "use-intl";
+import { Link } from "./Link";
 
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/_main" });
@@ -34,10 +35,20 @@ export function AlertMessage({
 }: ActiveAlertsItemResponse & {
   onHide?: (alertId: string) => void;
 }) {
+  const locale = useLocale();
   return (
     <div className="flex items-center justify-between gap-2 rounded-sm border border-yellow-600 bg-yellow-100 px-4 py-2 text-yellow-950">
       <div>
-        <h2>{title}</h2>
+        <Link
+          variant={"alert"}
+          to="/$lang/news/$newsItemId"
+          params={{
+            lang: locale,
+            newsItemId: newsId,
+          }}
+        >
+          {title}
+        </Link>
       </div>
       <Button
         onClick={() => onHide?.(newsId)}

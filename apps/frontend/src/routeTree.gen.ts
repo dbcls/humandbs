@@ -28,7 +28,6 @@ import { Route as MainLangLayoutDataSubmissionIndexRouteImport } from './routes/
 import { Route as MainLangLayoutContentIdIndexRouteImport } from './routes/_main/$lang/_layout/$contentId/index'
 import { Route as MainLangLayoutNewsNewsItemIdRouteImport } from './routes/_main/$lang/_layout/news/$newsItemId'
 import { Route as MainLangLayoutGuidelinesSlugRouteImport } from './routes/_main/$lang/_layout/guidelines/$slug'
-import { Route as MainLangLayoutGuidelinesRevisionRouteRouteImport } from './routes/_main/$lang/_layout/guidelines/revision/route'
 import { Route as MainLangLayoutDataSubmissionNavigationRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/route'
 import { Route as MainLangLayoutResearchListResearchIdIndexRouteImport } from './routes/_main/$lang/_layout/research-list/$researchId/index'
 import { Route as MainLangLayoutDataSubmissionNavigationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/index'
@@ -132,12 +131,6 @@ const MainLangLayoutGuidelinesSlugRoute =
     path: '/$slug',
     getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
-const MainLangLayoutGuidelinesRevisionRouteRoute =
-  MainLangLayoutGuidelinesRevisionRouteRouteImport.update({
-    id: '/revision',
-    path: '/revision',
-    getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
-  } as any)
 const MainLangLayoutDataSubmissionNavigationRouteRoute =
   MainLangLayoutDataSubmissionNavigationRouteRouteImport.update({
     id: '/navigation',
@@ -170,9 +163,9 @@ const MainLangLayoutResearchListResearchIdResearchVerRoute =
   } as any)
 const MainLangLayoutGuidelinesRevisionRevisionRoute =
   MainLangLayoutGuidelinesRevisionRevisionRouteImport.update({
-    id: '/$revision',
-    path: '/$revision',
-    getParentRoute: () => MainLangLayoutGuidelinesRevisionRouteRoute,
+    id: '/revision/$revision',
+    path: '/revision/$revision',
+    getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
 const MainLangLayoutDataSubmissionRevisionRevisionRoute =
   MainLangLayoutDataSubmissionRevisionRevisionRouteImport.update({
@@ -212,7 +205,6 @@ export interface FileRoutesByFullPath {
   '/$lang/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
   '/$lang/news': typeof MainLangLayoutNewsRouteRouteWithChildren
   '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
-  '/$lang/guidelines/revision': typeof MainLangLayoutGuidelinesRevisionRouteRouteWithChildren
   '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/$lang/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
   '/$lang/$contentId': typeof MainLangLayoutContentIdIndexRoute
@@ -233,7 +225,6 @@ export interface FileRoutesByTo {
   '/login-error': typeof LoginErrorRoute
   '/admin': typeof AuthedAdminRoute
   '/$lang': typeof MainLangIndexRoute
-  '/$lang/guidelines/revision': typeof MainLangLayoutGuidelinesRevisionRouteRouteWithChildren
   '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/$lang/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
   '/$lang/$contentId': typeof MainLangLayoutContentIdIndexRoute
@@ -262,7 +253,6 @@ export interface FileRoutesById {
   '/_main/$lang/_layout/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
   '/_main/$lang/_layout/news': typeof MainLangLayoutNewsRouteRouteWithChildren
   '/_main/$lang/_layout/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
-  '/_main/$lang/_layout/guidelines/revision': typeof MainLangLayoutGuidelinesRevisionRouteRouteWithChildren
   '/_main/$lang/_layout/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/_main/$lang/_layout/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
   '/_main/$lang/_layout/$contentId/': typeof MainLangLayoutContentIdIndexRoute
@@ -290,7 +280,6 @@ export interface FileRouteTypes {
     | '/$lang/guidelines'
     | '/$lang/news'
     | '/$lang/data-submission/navigation'
-    | '/$lang/guidelines/revision'
     | '/$lang/guidelines/$slug'
     | '/$lang/news/$newsItemId'
     | '/$lang/$contentId'
@@ -311,7 +300,6 @@ export interface FileRouteTypes {
     | '/login-error'
     | '/admin'
     | '/$lang'
-    | '/$lang/guidelines/revision'
     | '/$lang/guidelines/$slug'
     | '/$lang/news/$newsItemId'
     | '/$lang/$contentId'
@@ -339,7 +327,6 @@ export interface FileRouteTypes {
     | '/_main/$lang/_layout/guidelines'
     | '/_main/$lang/_layout/news'
     | '/_main/$lang/_layout/data-submission/navigation'
-    | '/_main/$lang/_layout/guidelines/revision'
     | '/_main/$lang/_layout/guidelines/$slug'
     | '/_main/$lang/_layout/news/$newsItemId'
     | '/_main/$lang/_layout/$contentId/'
@@ -505,13 +492,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainLangLayoutGuidelinesSlugRouteImport
       parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
     }
-    '/_main/$lang/_layout/guidelines/revision': {
-      id: '/_main/$lang/_layout/guidelines/revision'
-      path: '/revision'
-      fullPath: '/$lang/guidelines/revision'
-      preLoaderRoute: typeof MainLangLayoutGuidelinesRevisionRouteRouteImport
-      parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
-    }
     '/_main/$lang/_layout/data-submission/navigation': {
       id: '/_main/$lang/_layout/data-submission/navigation'
       path: '/navigation'
@@ -549,10 +529,10 @@ declare module '@tanstack/react-router' {
     }
     '/_main/$lang/_layout/guidelines/revision/$revision': {
       id: '/_main/$lang/_layout/guidelines/revision/$revision'
-      path: '/$revision'
+      path: '/revision/$revision'
       fullPath: '/$lang/guidelines/revision/$revision'
       preLoaderRoute: typeof MainLangLayoutGuidelinesRevisionRevisionRouteImport
-      parentRoute: typeof MainLangLayoutGuidelinesRevisionRouteRoute
+      parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
     }
     '/_main/$lang/_layout/data-submission/revision/$revision': {
       id: '/_main/$lang/_layout/data-submission/revision/$revision'
@@ -657,33 +637,18 @@ const MainLangLayoutDataSubmissionRouteRouteWithChildren =
     MainLangLayoutDataSubmissionRouteRouteChildren,
   )
 
-interface MainLangLayoutGuidelinesRevisionRouteRouteChildren {
-  MainLangLayoutGuidelinesRevisionRevisionRoute: typeof MainLangLayoutGuidelinesRevisionRevisionRoute
-}
-
-const MainLangLayoutGuidelinesRevisionRouteRouteChildren: MainLangLayoutGuidelinesRevisionRouteRouteChildren =
-  {
-    MainLangLayoutGuidelinesRevisionRevisionRoute:
-      MainLangLayoutGuidelinesRevisionRevisionRoute,
-  }
-
-const MainLangLayoutGuidelinesRevisionRouteRouteWithChildren =
-  MainLangLayoutGuidelinesRevisionRouteRoute._addFileChildren(
-    MainLangLayoutGuidelinesRevisionRouteRouteChildren,
-  )
-
 interface MainLangLayoutGuidelinesRouteRouteChildren {
-  MainLangLayoutGuidelinesRevisionRouteRoute: typeof MainLangLayoutGuidelinesRevisionRouteRouteWithChildren
   MainLangLayoutGuidelinesSlugRoute: typeof MainLangLayoutGuidelinesSlugRoute
   MainLangLayoutGuidelinesIndexRoute: typeof MainLangLayoutGuidelinesIndexRoute
+  MainLangLayoutGuidelinesRevisionRevisionRoute: typeof MainLangLayoutGuidelinesRevisionRevisionRoute
 }
 
 const MainLangLayoutGuidelinesRouteRouteChildren: MainLangLayoutGuidelinesRouteRouteChildren =
   {
-    MainLangLayoutGuidelinesRevisionRouteRoute:
-      MainLangLayoutGuidelinesRevisionRouteRouteWithChildren,
     MainLangLayoutGuidelinesSlugRoute: MainLangLayoutGuidelinesSlugRoute,
     MainLangLayoutGuidelinesIndexRoute: MainLangLayoutGuidelinesIndexRoute,
+    MainLangLayoutGuidelinesRevisionRevisionRoute:
+      MainLangLayoutGuidelinesRevisionRevisionRoute,
   }
 
 const MainLangLayoutGuidelinesRouteRouteWithChildren =

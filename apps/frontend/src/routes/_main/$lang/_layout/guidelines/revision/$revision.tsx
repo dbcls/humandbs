@@ -4,26 +4,22 @@ import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
 import { createFileRoute } from "@tanstack/react-router";
-import z from "zod";
 
 export const Route = createFileRoute(
   "/_main/$lang/_layout/guidelines/revision/$revision"
 )({
   component: RouteComponent,
-  params: z.object({
-    revision: z.number(),
-  }),
   loader: async ({ context, params }) => {
     const data = await context.queryClient.ensureQueryData(
       getDocumentVersionTranslationQueryOptions({
         contentId: CONTENT_IDS.guidelines[0],
         locale: context.lang,
-        versionNumber: params.revision,
+        versionNumber: Number(params.revision),
         generateTOC: true,
       })
     );
 
-    return { ...data, crumb: data.title };
+    return { ...data, crumb: `Revision ${params.revision}` };
   },
 });
 
