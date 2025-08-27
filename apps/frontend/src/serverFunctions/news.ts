@@ -178,7 +178,6 @@ export const $getNewsItems = createServerFn({ method: "GET" })
 
     const response = news.map((item) => ({
       ...(item as Omit<News[number], "translations">),
-
       translations: item.translations.reduce(
         (acc, curr) => {
           acc[curr.lang as Locale] = {

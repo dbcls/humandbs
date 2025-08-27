@@ -9,9 +9,10 @@ import {
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { LucideBell, Trash2Icon } from "lucide-react";
+import { LucideBell, LucidePlus, Trash2Icon } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { Tag } from "./StatusTag";
+import { AddNewButton } from "./AddNewButton";
 
 export function NewsItemsList({
   onClickAdd,
@@ -60,6 +61,9 @@ export function NewsItemsList({
       containerClassName="overflow-auto flex-1 max-h-full"
     >
       <ul>
+        <li className="mb-5">
+          <AddNewButton onClick={onClickAdd} />
+        </li>
         {newsItems.map((item) => {
           const isActive = item.id === selectedNewsItem?.id;
           return (
@@ -111,11 +115,6 @@ export function NewsItemsList({
             </ListItem>
           );
         })}
-        <li>
-          <Button onClick={onClickAdd} variant={"toggle"}>
-            + Add news
-          </Button>
-        </li>
       </ul>
     </Card>
   );

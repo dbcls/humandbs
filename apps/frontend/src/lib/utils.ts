@@ -22,12 +22,12 @@ export function unionOfLiterals<T extends string | number>(
 }
 
 export interface DateStringRange {
-  from: string | undefined;
+  from?: string | undefined;
   to?: string | undefined;
 }
 
 export interface DateRange {
-  from: Date | undefined;
+  from?: Date | undefined;
   to?: Date | undefined;
 }
 
