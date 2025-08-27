@@ -5,16 +5,12 @@ import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
-  const locale = useLocale();
-
   return (
     <li>
       {newsItem.alert && (
         <LucideBell className="text-accent mr-1 inline size-4" />
       )}
-      <span className="text-xs">
-        {newsItem.publishedAt?.toLocaleDateString(locale, { timeZone: "UTC" })}
-      </span>
+      <span className="text-xs">{newsItem.publishedAt}</span>
       <Link
         className="text-secondary text-sm underline"
         to={"/$lang/news/$newsItemId"}

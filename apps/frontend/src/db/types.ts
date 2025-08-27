@@ -72,6 +72,12 @@ export const newsTranslationSelectSchema = createSelectSchema(
   schema.newsTranslation
 );
 
+export const newsTranslationSelectWithDateStringSchema =
+  newsTranslationSelectSchema.transform((v) => ({
+    ...v,
+    updatedAt: v.updatedAt?.toLocaleDateString(),
+  }));
+
 export const newsTranslationUpdateSchema = createUpdateSchema(
   schema.newsTranslation
 );
@@ -86,6 +92,8 @@ export const newsTranslationUpsertSchema = z.partialRecord(
 );
 
 export type NewsTranslationUpsert = z.infer<typeof newsTranslationUpsertSchema>;
+
+export const newsItemSelectSchema = createSelectSchema(schema.newsItem);
 
 export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
   .required({
@@ -102,4 +110,8 @@ export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;
 
-export type NewsTranslationSelect = typeof schema.newsTranslation.$inferSelect;
+export type NewsTranslationSelect = z.infer<typeof newsTranslationSelectSchema>;
+
+export type NewsItem = z.infer<typeof newsItemSelectSchema>;
+
+export type Alert = z.infer<typeof selectAlertSchema>;

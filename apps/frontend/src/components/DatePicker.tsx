@@ -6,18 +6,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DateStringRange,
+  toDate,
+  toDateRange,
+  toDateString,
+  toDateStringRange,
+} from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
-import { useLocale } from "use-intl";
 
 export function DatePicker({
   dateValue,
   onChangeDateValue,
   label,
 }: {
-  dateValue?: Date | null;
-  onChangeDateValue: (date: Date | undefined) => void;
+  dateValue?: string | null;
+  onChangeDateValue: (date: string | undefined) => void;
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -29,7 +35,7 @@ export function DatePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" size={"slim"} className="font-normal">
-            {dateValue ? dateValue.toLocaleDateString() : "Select date"}
+            {dateValue ?? "Select date"}
             <ChevronDownIcon className="inline-block size-5" />
           </Button>
         </PopoverTrigger>
@@ -40,10 +46,10 @@ export function DatePicker({
           <Calendar
             required={false}
             mode="single"
-            selected={dateValue || undefined}
+            selected={toDate(dateValue)}
             captionLayout="dropdown"
             onSelect={(date) => {
-              onChangeDateValue(date);
+              onChangeDateValue(toDateString(date));
               setOpen(false);
             }}
           />
@@ -59,12 +65,14 @@ export function DateRangePicker({
   onSelect,
 }: {
   label: string;
-  value: DateRange | undefined;
-  onSelect: (value: DateRange) => void;
+  value: DateStringRange | undefined;
+  onSelect: (value: DateStringRange | undefined) => void;
 }) {
   const [open, setOpen] = useState(false);
 
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(value);
+  const [dateRange, setDateRange] = useState<DateStringRange | undefined>(
+    value
+  );
 
   useEffect(() => {
     setDateRange(value);
@@ -79,17 +87,15 @@ export function DateRangePicker({
         ? { from: selectedDay }
         : (nextRange as DateRange);
 
-    setDateRange(newRange);
+    setDateRange(toDateStringRange(newRange));
 
     if (
       (newRange?.from && newRange?.to) ||
       (!newRange?.from && !newRange?.to)
     ) {
-      onSelect(newRange);
+      onSelect(toDateStringRange(newRange));
     }
   };
-
-  const locale = useLocale();
 
   return (
     <Label className="flex w-fit flex-col items-start gap-2">
@@ -98,9 +104,7 @@ export function DateRangePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" size={"slim"} className="font-normal">
-            {value
-              ? `${value.from?.toLocaleDateString(locale, { timeZone: "UTC" })} - ${value.to?.toLocaleDateString(locale, { timeZone: "UTC" })}`
-              : "Select date range"}
+            {value ? `${value.from} - ${value.to}` : "Select date range"}
             <ChevronDownIcon className="inline-block size-5" />
           </Button>
         </PopoverTrigger>
@@ -111,8 +115,8 @@ export function DateRangePicker({
           <Calendar
             numberOfMonths={2}
             mode="range"
-            selected={dateRange}
-            defaultMonth={dateRange?.from}
+            selected={toDateRange(dateRange)}
+            defaultMonth={toDateRange(dateRange)?.from}
             captionLayout="dropdown"
             onSelect={handleSelect}
           />

@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { i18n } from "@/lib/i18n-config";
-import { cn } from "@/lib/utils";
+import { cn, DateStringRange } from "@/lib/utils";
 import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
@@ -25,9 +25,9 @@ import { LocaleSwitcher } from "./LocaleSwitcher";
 type FormDataType = {
   translations: Record<Locale, { title: string; content: string }>;
   isAlert: boolean;
-  alertRange: DateRange | null;
+  alertRange: DateStringRange | null;
   locale: Locale;
-  publishedAt: Date | null;
+  publishedAt: string | null;
 };
 
 export function NewsItemContent({
@@ -66,7 +66,7 @@ export function NewsItemContent({
             return {
               ...item,
               ...inputValues,
-              alert: inputValues.alertRange,
+
               translations: Object.entries(item.translations).reduce(
                 (acc, curr) => {
                   const [key, value] = curr as [
@@ -74,7 +74,7 @@ export function NewsItemContent({
                     {
                       title: string;
                       content: string;
-                      updatedAt: Date | null;
+                      updatedAt: string | null;
                     },
                   ];
 
@@ -86,7 +86,7 @@ export function NewsItemContent({
                   {
                     title: string;
                     content: string;
-                    updatedAt: Date | null;
+                    updatedAt: string | null;
                   }
                 >
               ),
@@ -110,6 +110,8 @@ export function NewsItemContent({
       queryClient.invalidateQueries(newsItemsListQO);
     },
   });
+
+  console.log("newsItem1", newsItem);
 
   const form = useForm({
     defaultValues: {
@@ -153,6 +155,7 @@ export function NewsItemContent({
         <form.Field name="publishedAt">
           {(field) => {
             return (
+              // Date here because it is more convenient to use with this component directly.
               <DatePicker
                 label="Publication date"
                 dateValue={field.state.value}
@@ -164,15 +167,13 @@ export function NewsItemContent({
 
         <TitleValue
           title="Created at:"
-          value={newsItem.createdAt.toLocaleDateString(locale, {
-            timeZone: "UTC",
-          })}
+          value={newsItem.createdAt.toLocaleDateString(locale)}
         />
         <TitleValue
           title="Updated at:"
           value={newsItem.translations[
             form.state.values.locale
-          ]?.updatedAt?.toLocaleDateString(locale, { timeZone: "UTC" })}
+          ]?.updatedAt?.toLocaleDateString()}
         />
         <TitleValue title="Author:" value={newsItem.author.name} />
       </div>
@@ -208,6 +209,7 @@ export function NewsItemContent({
             <form.Field name={"alertRange"}>
               {(field) => {
                 if (!isAlert) return null;
+
                 return (
                   <DateRangePicker
                     label="Alert active date range"

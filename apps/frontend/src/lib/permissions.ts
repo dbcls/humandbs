@@ -3,10 +3,9 @@ import {
   Document,
   DocumentVersion,
   DocumentVersionTranslation,
-  NewsItem,
   UserRole,
-  Alert,
 } from "@/db/schema";
+import { Alert, NewsItem } from "@/db/types";
 import { SessionUser } from "@/router";
 
 type PermissionCheck<Key extends keyof Permissions> =

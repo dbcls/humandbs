@@ -35,8 +35,6 @@ export const Route = createFileRoute("/_main/$lang/_layout/news/")({
 function RouteComponent() {
   const { newsTitles } = Route.useLoaderData();
 
-  const locale = useLocale();
-
   const t = useTranslations("Navbar");
 
   return (
@@ -47,11 +45,7 @@ function RouteComponent() {
             {item.alert && (
               <LucideBell className="text-accent mr-1 inline size-5 align-baseline" />
             )}
-            <span className="text-sm">
-              {item.publishedAt?.toLocaleDateString(locale, {
-                timeZone: "UTC",
-              })}
-            </span>
+            <span className="text-sm">{item.publishedAt}</span>
             <Link
               className="ml-2"
               to={"/$lang/news/$newsItemId"}

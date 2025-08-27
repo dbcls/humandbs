@@ -13,8 +13,9 @@ import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, getTableColumns, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { getLocaleFn } from "./locale";
 
 /**
  * Get paginated list of titles and publication dates
@@ -52,7 +53,10 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
       .limit(data.limit)
       .offset(data.offset);
 
-    return news.map((n) => ({ ...n, alert: !!n.alert }));
+    return news.map((n) => ({
+      ...n,
+      alert: !!n.alert,
+    }));
   });
 
 export type NewsTitleResponse = Awaited<
@@ -103,8 +107,13 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
       },
     });
 
+    if (!result) {
+      throw new Error("News translation not found");
+    }
+
     return {
       ...result,
+
       content: JSON.stringify(
         transformMarkdoc({ rawContent: result?.content ?? "" }).content
       ),
@@ -134,6 +143,8 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
+
+    const locale = await getLocaleFn();
 
     const news = await db.query.newsItem.findMany({
       with: {
@@ -167,6 +178,7 @@ export const $getNewsItems = createServerFn({ method: "GET" })
 
     const response = news.map((item) => ({
       ...(item as Omit<News[number], "translations">),
+
       translations: item.translations.reduce(
         (acc, curr) => {
           acc[curr.lang as Locale] = {

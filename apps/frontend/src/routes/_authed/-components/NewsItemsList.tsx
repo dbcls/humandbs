@@ -70,17 +70,11 @@ export function NewsItemsList({
             >
               <>
                 <div className="text-sm font-medium">
-                  <span>
-                    {item.publishedAt?.toLocaleDateString(locale, {
-                      timeZone: "UTC",
-                    }) || "No data"}
-                  </span>
+                  <span>{item.publishedAt || "No data"}</span>
                   {item.alert ? (
                     <div className="text-xs">
                       <LucideBell className="text-accent mr-1 inline size-4" />
-                      <span>
-                        {`${item.alert.from?.toLocaleDateString(locale, { timeZone: "UTC" })} - ${item.alert.to?.toLocaleDateString(locale, { timeZone: "UTC" })}`}
-                      </span>
+                      <span>{`${item.alert.from} - ${item.alert.to}`}</span>
                     </div>
                   ) : null}
                   <ul className="space-y-1">

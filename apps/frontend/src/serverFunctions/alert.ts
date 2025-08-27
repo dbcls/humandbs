@@ -3,12 +3,13 @@ import { localeSchema } from "@/lib/i18n-config";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
-import { and, desc, eq, gt, lt, lte } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { Locale } from "use-intl";
 import { z } from "zod";
 import { alert } from "@/db/schema";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createAlertSchema, updateAlertSchema } from "@/db/types";
+import { toDateString } from "@/lib/utils";
 
 // Query options
 export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
@@ -20,8 +21,8 @@ export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
 /** Alerts list for CMS */
 interface AlertListItemResponse {
   newsId: string;
-  from: Date | null;
-  to: Date | null;
+  from: string | null;
+  to: string | null;
   translations: {
     title: string;
     lang: Locale;
@@ -118,7 +119,10 @@ export const $getActiveAlerts = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const now = new Date();
     const alerts = await db.query.alert.findMany({
-      where: (table) => and(lte(table.from, now), gt(table.to, now)),
+      where: and(
+        sql`${alert.from} <= ${toDateString(now)}`,
+        sql`${alert.to} >= ${toDateString(now)}`
+      ),
       with: {
         newsItem: {
           columns: {},

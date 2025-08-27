@@ -12,7 +12,7 @@ import { alert } from "./alert";
 export const newsItem = pgTable("news_item", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  publishedAt: timestamp("published_at"),
+  publishedAt: text("published_at"),
   authorId: text("author_id")
     .notNull()
     .references(() => user.id),
@@ -53,5 +53,3 @@ export const newsTranslationRelations = relations(
     }),
   })
 );
-
-export type NewsItem = typeof newsItem.$inferSelect;
