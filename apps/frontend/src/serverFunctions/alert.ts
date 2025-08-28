@@ -1,22 +1,15 @@
+import { alert } from "@/db/schema";
+import { createAlertSchema, updateAlertSchema } from "@/db/types";
 import { db } from "@/lib/database";
 import { localeSchema } from "@/lib/i18n-config";
+import { toDateString } from "@/lib/utils";
+import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
-import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { Locale } from "use-intl";
 import { z } from "zod";
-import { alert } from "@/db/schema";
-import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { createAlertSchema, updateAlertSchema } from "@/db/types";
-import { toDateString } from "@/lib/utils";
-
-// Query options
-export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
-  queryOptions({
-    queryKey: ["alerts", params],
-    queryFn: () => $getAllAlerts({ data: params }),
-  });
 
 /** Alerts list for CMS */
 interface AlertListItemResponse {
@@ -65,6 +58,13 @@ export const $getAllAlerts = createServerFn({ method: "GET" })
     }));
 
     return response;
+  });
+
+// Query options
+export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
+  queryOptions({
+    queryKey: ["alerts", params],
+    queryFn: () => $getAllAlerts({ data: params }),
   });
 
 export const $createAlert = createServerFn({ method: "POST" })
@@ -126,6 +126,7 @@ export const $getActiveAlerts = createServerFn({ method: "GET" })
       with: {
         newsItem: {
           columns: {},
+
           with: {
             translations: {
               where: (translation, { eq }) => eq(translation.lang, data.locale),

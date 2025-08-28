@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
 });
 
-type MainTab = "news" | "documents" | "users" | "alerts";
+type MainTab = "news" | "documents" | "users";
 
 function RouteComponent() {
   const [selectedTab, setSelectedTab] = useState<MainTab>("news");
@@ -53,6 +53,7 @@ function RouteComponent() {
       </ToggleGroup>
       <TabsContent className="flex items-stretch gap-2" value="news">
         <AssetsPanel />
+
         <ManageNews />
       </TabsContent>
       <TabsContent className="flex items-stretch gap-2" value="documents">

@@ -20,53 +20,47 @@ import { DateRange } from "react-day-picker";
 export function DatePicker({
   dateValue,
   onChangeDateValue,
-  label,
 }: {
   dateValue?: string | null;
   onChangeDateValue: (date: string | undefined) => void;
-  label?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Label className="flex flex-col items-start gap-2">
-      <span>{label ?? "Date"}</span>
-
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size={"slim"} className="font-normal">
-            {dateValue ?? "Select date"}
-            <ChevronDownIcon className="inline-block size-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-auto overflow-hidden bg-white p-0"
-          align="start"
-        >
-          <Calendar
-            required={false}
-            mode="single"
-            selected={toDate(dateValue)}
-            captionLayout="dropdown"
-            onSelect={(date) => {
-              onChangeDateValue(toDateString(date));
-              setOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    </Label>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size={"slim"} className="font-normal">
+          {dateValue ?? "Select date"}
+          <ChevronDownIcon className="inline-block size-5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto overflow-hidden bg-white p-0"
+        align="start"
+      >
+        <Calendar
+          required={false}
+          mode="single"
+          selected={toDate(dateValue)}
+          captionLayout="dropdown"
+          onSelect={(date) => {
+            onChangeDateValue(toDateString(date));
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
 export function DateRangePicker({
-  label,
+  // label,
   value,
   onSelect,
 }: {
-  label: string;
+  // label: string;
   value: DateStringRange | undefined;
-  onSelect: (value: DateStringRange | undefined) => void;
+  onSelect: (value: DateStringRange) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -93,35 +87,36 @@ export function DateRangePicker({
       (newRange?.from && newRange?.to) ||
       (!newRange?.from && !newRange?.to)
     ) {
-      onSelect(toDateStringRange(newRange));
+      const dateStringRange = toDateStringRange(newRange);
+      dateStringRange && onSelect(dateStringRange);
     }
   };
 
   return (
-    <Label className="flex w-fit flex-col items-start gap-2">
-      <span>{label ?? "Date"}</span>
+    // <Label className="flex w-fit flex-col items-start gap-2">
+    //   <span>{label ?? "Date"}</span>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size={"slim"} className="font-normal">
-            {value ? `${value.from} - ${value.to}` : "Select date range"}
-            <ChevronDownIcon className="inline-block size-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-auto overflow-hidden bg-white p-0"
-          align="start"
-        >
-          <Calendar
-            numberOfMonths={2}
-            mode="range"
-            selected={toDateRange(dateRange)}
-            defaultMonth={toDateRange(dateRange)?.from}
-            captionLayout="dropdown"
-            onSelect={handleSelect}
-          />
-        </PopoverContent>
-      </Popover>
-    </Label>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size={"slim"} className="font-normal">
+          {value ? `${value.from} - ${value.to}` : "Select date range"}
+          <ChevronDownIcon className="inline-block size-5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto overflow-hidden bg-white p-0"
+        align="start"
+      >
+        <Calendar
+          numberOfMonths={2}
+          mode="range"
+          selected={toDateRange(dateRange)}
+          defaultMonth={toDateRange(dateRange)?.from}
+          captionLayout="dropdown"
+          onSelect={handleSelect}
+        />
+      </PopoverContent>
+    </Popover>
+    // </Label>
   );
 }

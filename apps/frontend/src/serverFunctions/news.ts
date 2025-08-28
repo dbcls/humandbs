@@ -13,9 +13,10 @@ import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getLocaleFn } from "./locale";
+import { toDateString } from "@/lib/utils";
 
 /**
  * Get paginated list of titles and publication dates
@@ -31,6 +32,8 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const locale = data.locale;
 
+    const nowStr = toDateString(new Date()) as string;
+
     const news = await db
       .select({
         id: newsItem.id,
@@ -45,7 +48,7 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
         newsItem,
         and(
           eq(newsTranslation.newsId, newsItem.id),
-          isNotNull(newsItem.publishedAt)
+          lte(newsItem.publishedAt, nowStr)
         )
       )
       .leftJoin(alert, eq(alert.newsId, newsItem.id))
@@ -143,8 +146,6 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
-
-    const locale = await getLocaleFn();
 
     const news = await db.query.newsItem.findMany({
       with: {

@@ -1,26 +1,17 @@
 import { Card } from "@/components/Card";
-import { DatePicker, DateRangePicker } from "@/components/DatePicker";
+import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { i18n } from "@/lib/i18n-config";
 import { cn, DateStringRange } from "@/lib/utils";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   $updateNewsItem,
   getNewsItemsQueryOptions,
   NewsItemResponse,
 } from "@/serverFunctions/news";
-import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import MDEditor from "@uiw/react-md-editor";
 import { LucideBell } from "lucide-react";
-import { useEffect } from "react";
-import { DateRange } from "react-day-picker";
+import { Suspense, useEffect } from "react";
 import { Locale, useLocale } from "use-intl";
-import { LocaleSwitcher } from "./LocaleSwitcher";
 
 type FormDataType = {
   translations: Record<Locale, { title: string; content: string }>;
@@ -67,29 +58,17 @@ export function NewsItemContent({
               ...item,
               ...inputValues,
 
-              translations: Object.entries(item.translations).reduce(
-                (acc, curr) => {
-                  const [key, value] = curr as [
-                    Locale,
-                    {
-                      title: string;
-                      content: string;
-                      updatedAt: string | null;
-                    },
-                  ];
+              translations: Object.entries(item.translations).reduce<
+                NewsItemResponse["translations"]
+              >((acc, curr) => {
+                const [key, value] = curr;
 
-                  acc[key] = { ...value, ...inputValues.translations[key] };
-                  return acc;
-                },
-                {} as Record<
-                  Locale,
-                  {
-                    title: string;
-                    content: string;
-                    updatedAt: string | null;
-                  }
-                >
-              ),
+                acc[key as Locale] = {
+                  ...value,
+                  ...inputValues.translations[key as Locale],
+                };
+                return acc;
+              }, {}),
             };
           }
           return item;
@@ -98,7 +77,7 @@ export function NewsItemContent({
 
       return { prevNewsItems };
     },
-    onError: (error, variables, context) => {
+    onError: (_, __, context) => {
       if (context?.prevNewsItems) {
         queryClient.setQueryData(
           newsItemsListQO.queryKey,
@@ -111,9 +90,7 @@ export function NewsItemContent({
     },
   });
 
-  console.log("newsItem1", newsItem);
-
-  const form = useForm({
+  const form = useAppForm({
     defaultValues: {
       translations: newsItem?.translations || {},
       isAlert: !!newsItem?.alert,
@@ -138,32 +115,29 @@ export function NewsItemContent({
         <span className="flex items-center gap-5">
           <span>Content</span>
 
-          <form.Field name="locale">
+          <form.AppField name="locale">
             {(field) => (
-              <LocaleSwitcher
-                locale={field.state.value}
-                onSwitchLocale={field.setValue}
+              <field.SwitchField
+                options={i18n.locales.map((loc) => ({
+                  label: <span className="capitalize">{loc}</span>,
+                  value: loc,
+                }))}
               />
             )}
-          </form.Field>
+          </form.AppField>
         </span>
       }
       className={cn("flex h-full flex-1 flex-col", className)}
       containerClassName="flex flex-col flex-1 gap-4"
     >
       <div className="flex items-start gap-6">
-        <form.Field name="publishedAt">
-          {(field) => {
-            return (
-              // Date here because it is more convenient to use with this component directly.
-              <DatePicker
-                label="Publication date"
-                dateValue={field.state.value}
-                onChangeDateValue={(value) => value && field.setValue(value)}
-              />
-            );
-          }}
-        </form.Field>
+        <form.AppField name="publishedAt">
+          {(field) => (
+            <Suspense fallback={<div>Loading...</div>}>
+              <field.DateField label="Published At" />
+            </Suspense>
+          )}
+        </form.AppField>
 
         <TitleValue
           title="Created at:"
@@ -178,7 +152,7 @@ export function NewsItemContent({
         <TitleValue title="Author:" value={newsItem.author.name} />
       </div>
 
-      <form.Field
+      <form.AppField
         name="isAlert"
         listeners={{
           onChange: ({ value }) => {
@@ -190,37 +164,30 @@ export function NewsItemContent({
         }}
       >
         {(field) => (
-          <Label className="cursor-pointer">
-            <Checkbox
-              checked={field.state.value}
-              onCheckedChange={(value) => {
-                field.handleChange(!!value);
-              }}
-            />
-            <LucideBell className="size-4" />
-            Set as alert
-          </Label>
+          <field.CheckboxField
+            label={
+              <>
+                <LucideBell className="size-4" />
+                Set as alert
+              </>
+            }
+          />
         )}
-      </form.Field>
-
+      </form.AppField>
       <form.Subscribe selector={(state) => state.values.isAlert}>
         {(isAlert) => {
+          if (!isAlert) return null;
           return (
-            <form.Field name={"alertRange"}>
-              {(field) => {
-                if (!isAlert) return null;
-
-                return (
-                  <DateRangePicker
-                    label="Alert active date range"
-                    value={field.state.value ?? undefined}
-                    onSelect={(value) =>
-                      field.handleChange((old) => ({ ...old, ...value }))
-                    }
+            <Suspense fallback={<div>Loading...</div>}>
+              <form.AppField name={"alertRange"}>
+                {(field) => (
+                  <field.DateRangeField
+                    className="ml-5"
+                    label="Alert date range"
                   />
-                );
-              }}
-            </form.Field>
+                )}
+              </form.AppField>
+            </Suspense>
           );
         }}
       </form.Subscribe>
@@ -228,51 +195,31 @@ export function NewsItemContent({
       <form.Subscribe selector={(state) => state.values.locale}>
         {(locale) => (
           <>
-            <form.Field name={`translations.${locale}.title`}>
+            <form.AppField name={`translations.${locale}.title`}>
+              {(field) => <field.TextField label="Title" />}
+            </form.AppField>
+            <form.AppField name={`translations.${locale}.content`}>
               {(field) => (
-                <Label className="flex flex-col items-start gap-2">
-                  <span>Title</span>
-                  <Input
-                    value={field.state.value ?? ""}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                  />
-                </Label>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <field.ContentAreaField label="Content" />
+                </Suspense>
               )}
-            </form.Field>
-            <form.Field name={`translations.${locale}.content`}>
-              {(field) => (
-                <div className="flex flex-1 flex-col gap-2 text-sm font-medium">
-                  <span>Content</span>
-                  <div data-color-mode="light" className="flex-1">
-                    <MDEditor
-                      highlightEnable={true}
-                      value={field.state.value ?? ""}
-                      onChange={(value) => field.handleChange(value || "")}
-                      height="100%"
-                      className="md-editor flex-1"
-                      components={{
-                        preview: (source) => {
-                          const { content } = transformMarkdoc({
-                            rawContent: source,
-                          });
-
-                          return <RenderMarkdoc content={content} />;
-                        },
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </form.Field>
+            </form.AppField>
           </>
         )}
       </form.Subscribe>
 
       <div className="flex items-center justify-end">
-        <form.Subscribe selector={(state) => state.isDirty}>
-          {(isDirty) => (
+        <form.Subscribe
+          selector={(state) => [
+            state.isSubmitting,
+            state.isTouched,
+            state.isValid,
+          ]}
+        >
+          {([isSubmitting, isTouched, isValid]) => (
             <Button
-              disabled={!isDirty}
+              disabled={isSubmitting || !isTouched || !isValid}
               size="lg"
               onClick={() => form.handleSubmit()}
             >
