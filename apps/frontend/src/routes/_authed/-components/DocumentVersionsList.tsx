@@ -41,6 +41,7 @@ export function DocumentVersionsList({
 
   const { openConfirmation } = useConfirmationStore();
 
+  // TODO fix jiggling on document select, cause maybe here
   useEffect(() => {
     setSelectedVersion(versions[0]);
     onSelect(versions[0]);

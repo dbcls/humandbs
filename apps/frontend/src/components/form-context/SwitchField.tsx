@@ -12,8 +12,8 @@ export default function SwitchField<V extends string>({
     <ToggleGroup
       type="single"
       value={field.state.value}
-      onValueChange={(value: V) => {
-        field.setValue(value);
+      onValueChange={(value) => {
+        value && field.setValue(value as V);
       }}
     >
       {options.map((opt) => (

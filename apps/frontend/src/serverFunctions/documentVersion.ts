@@ -183,7 +183,7 @@ export const $getDocumentVersion = createServerFn({
     });
 
     if (!result) {
-      return result;
+      return null;
     }
 
     return {
@@ -214,21 +214,15 @@ export const getDocumentVersionDraftQueryOptions = ({
       versionNumber,
       DOCUMENT_VERSION_STATUS.DRAFT,
     ],
-    queryFn: async () => {
-      const res = await $getDocumentVersion({
+    queryFn: () =>
+      $getDocumentVersion({
         data: {
           contentId,
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
         },
-      });
+      }),
 
-      if (!res) {
-        throw new Error("Document version not found");
-      }
-
-      return res;
-    },
     staleTime: 5 * 1000 * 60,
     enabled: !!contentId && !!versionNumber,
   });
@@ -248,21 +242,14 @@ export const getDocumentVersionPublishedQueryOptions = ({
       versionNumber,
       DOCUMENT_VERSION_STATUS.PUBLISHED,
     ],
-    queryFn: async () => {
-      const res = await $getDocumentVersion({
+    queryFn: () =>
+      $getDocumentVersion({
         data: {
           contentId,
           versionNumber,
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
         },
-      });
-
-      if (!res) {
-        throw new Error("Document version not found");
-      }
-
-      return res;
-    },
+      }),
     staleTime: 5 * 1000 * 60,
     enabled: !!contentId && !!versionNumber,
   });
@@ -449,6 +436,7 @@ export const $saveDocumentVersion = createServerFn({
   .middleware([hasPermissionMiddleware])
   .validator(versionUpdateSchema)
   .handler(async ({ data, context }) => {
+    data.translations;
     context.checkPermission("documentVersions", "update");
     await upsertDocVersion({ data, user: context.user });
   });

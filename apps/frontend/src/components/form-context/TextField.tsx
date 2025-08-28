@@ -9,7 +9,7 @@ export default function TextField({ label }: { label: string }) {
     <Label>
       <span>{label}</span>
       <Input
-        value={field.state.value}
+        value={field.state.value ?? ""}
         onChange={(e) => field.handleChange(e.target.value)}
         onBlur={() => field.handleBlur()}
       />
