@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (
-    <li>
+    <li className="flex items-center gap-2">
       {newsItem.alert && (
         <LucideBell className="text-accent mr-1 inline size-4" />
       )}
