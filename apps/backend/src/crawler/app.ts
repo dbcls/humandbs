@@ -56,6 +56,22 @@ const FILTER_HUM_IDS = [
   "hum0396", // 健康調査
   "hum0397", // 健康調査
   "hum0398", // 健康調査
+  "hum0375", // hot fix... (多分手作業で html が修正され、html の構造がまた変わっている。。。)
+  "hum0499", // hot fix...
+  "hum0501", // hot fix...
+  "hum0505", // hot fix...
+  "hum0003", // 例外が多すぎる
+  "hum0009", // 例外が多すぎる
+  "hum0014", // 例外が多すぎる
+  "hum0197", // 例外が多すぎる
+  "hum0015", // 例外が多すぎる
+  "hum0082", // 例外が多すぎる
+  //
+  "hum0158", // Duplicate datasetIdLang found
+  "hum0160", // Duplicate datasetIdLang found
+  "hum0184", // Duplicate datasetIdLang found
+  "hum0214", // Duplicate datasetIdLang found
+  "hum0319", // Duplicate datasetIdLang found
 ]
 
 const main = async () => {

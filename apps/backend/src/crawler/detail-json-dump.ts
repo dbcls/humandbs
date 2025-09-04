@@ -31,6 +31,14 @@ export const dumpDetailJson = async (humVersionId: string, lang: LangType, useCa
     mkdirSync(detailJsonDir, { recursive: true })
   }
 
+  const jsonFilePath = join(detailJsonDir, `${humVersionId}-${lang}.json`)
+  if (existsSync(jsonFilePath) && useCache) {
+    console.log(`Detail JSON for ${humVersionId} in ${lang} already exists, skipping...`)
+    return
+  }
+
+  console.log(`Dumping detail JSON for ${humVersionId} in ${lang}...`)
+
   const detailPageUrl = lang === "ja" ?
     `${DETAIL_PAGE_BASE_URL}${humVersionId}` :
     `${DETAIL_PAGE_BASE_URL}en/${humVersionId}`
@@ -56,7 +64,6 @@ export const dumpDetailJson = async (humVersionId: string, lang: LangType, useCa
     parseResult.releases = releaseParseResult.releases
   }
 
-  const jsonFilePath = join(detailJsonDir, `${humVersionId}-${lang}.json`)
   const jsonData = JSON.stringify(parseResult, null, 2)
   writeFileSync(jsonFilePath, jsonData, "utf8")
 }

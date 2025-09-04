@@ -8,27 +8,30 @@
     "./types": "./types/shared-types.ts"
   },
   "scripts": {
-    "dev": "bun run src/app.ts",
+    "dev": "bun run --watch src/api/run-server.ts",
     "crawler": "bun run src/crawler/app.ts",
-    "es:loadMappings": "node src/es/loadMappings.ts",
-    "es:loadDocs": "node src/es/loadDocs.ts"
+    "es:load-mappings": "node src/es/load-mappings.ts",
+    "es:load-docs": "node src/es/load-docs.ts"
   },
   "devDependencies": {
     "@humandbs/eslint-config": "workspace:*",
     "@types/bun": "latest",
-    "@types/express": "^5.0.0",
     "@types/jsdom": "^21.1.7",
-    "eslint": "^9.19.0",
-    "nodemon": "^3.1.9"
+    "eslint": "^9.19.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "8",
+    "@elastic/elasticsearch": "^8.17.0",
+    "@hono/node-server": "^1.18.1",
+    "@hono/swagger-ui": "^0.5.2",
+    "@hono/zod-openapi": "^1.1.0",
     "@types/yargs": "^17.0.33",
-    "express": "^4.21.2",
+    "hono": "^4.8.12",
+    "jose": "^6.0.12",
     "jsdom": "^26.0.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zod": "^4.0.15"
   }
 }

@@ -63,7 +63,7 @@ Visiumデータ解析ソフトウェア	Software	解析方法	Analysis Methods
 CRISPR配列構築方法	CRISPR contsruction	CRISPR配列構築方法	CRISPR contsruction
 データのダウンロード	Data Download	データのダウンロード	Data Download
 NBDCおよび生命情報・DDBJ センターによる加工データのID	Dataset ID of the Processed data by JGA	DBCLSおよび生命情報・DDBJ センターによる加工データのID	Dataset ID of the Processed data by JGA
-Mass Submission System ID	Mass Submission System ID	DDBJ Accession	DDBJ Accession
+Mass Submission System ID	Mass Submission System ID	Assembled Sequence	Assembled Sequence
 実験変数	Experiment variables	実験変数	Experiment Variables
 規模	Targets	実験手法	Experimental Method
 フィルタリング	Filtering	フィルタリング	Filtering

@@ -51,7 +51,7 @@ export const humIdToTitle = async (lang: LangType, useCache = true): Promise<Rec
   const humIdToTitle: Record<string, string> = {}
   for (const row of rows) {
     const firstCell = row.querySelector("th")
-    const firstCellContent = firstCell?.textContent?.trim()
+    const firstCellContent = firstCell?.textContent?.trim().toLowerCase()
     const humVersionIdMatch = firstCellContent!.match(/hum\d{4}\.v\d+/)
     if (!humVersionIdMatch) {
       throw new Error(`Failed to extract humVersionId from: "${firstCellContent}"`)

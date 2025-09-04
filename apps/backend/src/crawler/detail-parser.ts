@@ -112,6 +112,7 @@ const SECTION_LABELS: Record<LangType, string[][]> = {
     ["研究内容の概要", "分子データ", "提供者情報", "関連論文"],
     ["研究内容の概要", "分子データ", "提供者情報", "関連論文", "制限公開データの利用者一覧"],
     ["研究内容の概要", "データ概要", "提供者情報", "関連論文", "制限公開データの利用者一覧"], // TODO hum0043
+    ["研究内容の概要", "提供者情報", "関連論文", "制限公開データの利用者一覧"], // hum0375
   ],
   en: [
     ["SUMMARY", "MOLECULAR DATA", "DATA PROVIDER", "PUBLICATIONS"], // hum0009
@@ -217,6 +218,20 @@ export const splitToSection = (humVersionId: string, html: string, lang: LangTyp
       throw new Error(`Failed to find PUBLICATIONS in ${humVersionId}`)
     }
     articleBody.replaceChild(newH1, articleBody.children[prevPIndex])
+    // Update
+    sectionLabels = Array.from(articleBody.querySelectorAll("h1"))
+      .map(h1 => h1.textContent)
+      .filter((label) => label !== null)
+      .map((label) => label.trim())
+  }
+
+  if (humVersionId === "hum0375-v1") {
+    // no 分子データ header
+    const tags = extractTagsFromElement(articleBody)
+    const secondTableIndex = tags.indexOf("TABLE", tags.indexOf("TABLE") + 1)
+    const newH1 = dom.window.document.createElement("h1")
+    newH1.textContent = "分子データ"
+    articleBody.insertBefore(newH1, articleBody.children[secondTableIndex - 1])
     // Update
     sectionLabels = Array.from(articleBody.querySelectorAll("h1"))
       .map(h1 => h1.textContent)
@@ -796,7 +811,11 @@ export const parsePublications = (humVersionId: string, dom: JSDOM, lang: LangTy
   const tags = extractTagsFromElement(body)
   const tagsString = tags.join("")
   if (!["TABLE", "TABLEP"].includes(tagsString)) {
-    throw new Error(`Unexpected tags in publications section of ${humVersionId}: ${tags}`)
+    if (humVersionId === "hum0018-v2") {
+      // do nothing
+    } else {
+      throw new Error(`Unexpected tags in publications section of ${humVersionId}: ${tags}`)
+    }
   }
 
   const TABLE_HEADERS: Record<LangType, string[]> = {
