@@ -436,7 +436,6 @@ export const $saveDocumentVersion = createServerFn({
   .middleware([hasPermissionMiddleware])
   .validator(versionUpdateSchema)
   .handler(async ({ data, context }) => {
-    data.translations;
     context.checkPermission("documentVersions", "update");
     await upsertDocVersion({ data, user: context.user });
   });
