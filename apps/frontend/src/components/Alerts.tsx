@@ -37,7 +37,7 @@ export function AlertMessage({
 }) {
   const locale = useLocale();
   return (
-    <div className="flex items-center justify-between gap-2 rounded-sm border border-yellow-600 bg-yellow-100 px-4 py-2 text-yellow-950">
+    <div className="border-secondary text-foreground-dark flex items-center justify-between gap-2 rounded-sm border bg-white px-4 py-2">
       <div>
         <Link
           variant={"alert"}
