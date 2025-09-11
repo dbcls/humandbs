@@ -185,3 +185,6 @@ apps/backend/crawler-results-prev
 apps/backend/jga-example
 es-data
 ollama-data
+
+# === memos etc. ===
+memos

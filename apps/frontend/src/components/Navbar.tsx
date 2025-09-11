@@ -106,6 +106,17 @@ const getNavConfig = (lang: Locale): NavConfig => {
         to: "/$lang/$contentId",
         params: { lang, contentId: "data-usage" },
       },
+      children: [
+        {
+          id: "research-list",
+          linkOptions: {
+            to: "/$lang/data-usage/research-list",
+            params: {
+              lang,
+            },
+          },
+        },
+      ],
     },
     {
       id: "about-data",

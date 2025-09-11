@@ -1,16 +1,18 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Button } from "@/components/ui/button";
 import { FA_ICONS } from "@/lib/faIcons";
 import { useTranslations } from "use-intl";
 
-export const Route = createFileRoute("/_main/$lang/_layout/research-list/")({
+export const Route = createFileRoute(
+  "/_main/$lang/_layout/data-usage/research-list/"
+)({
   component: RouteComponent,
 });
 
