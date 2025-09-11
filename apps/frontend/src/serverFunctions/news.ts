@@ -1,9 +1,11 @@
-import { newsItem, newsTranslation } from "@/db/schema";
+import { alert, newsItem, newsTranslation } from "@/db/schema";
 import {
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
+  NewsTranslationSelect,
   newsTranslationSelectSchema,
   newsTranslationUpdateSchema,
+  NewsTranslationUpsert,
 } from "@/db/types";
 import { db } from "@/lib/database";
 import { Locale } from "@/lib/i18n-config";
@@ -11,8 +13,10 @@ import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, getTableColumns, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
+import { getLocaleFn } from "./locale";
+import { toDateString } from "@/lib/utils";
 
 /**
  * Get paginated list of titles and publication dates
@@ -28,27 +32,34 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const locale = data.locale;
 
+    const nowStr = toDateString(new Date()) as string;
+
     const news = await db
       .select({
         id: newsItem.id,
         locale: newsTranslation.lang,
         title: newsTranslation.title,
         publishedAt: newsItem.publishedAt,
+        alert: alert.newsId,
       })
       .from(newsTranslation)
       .where(eq(newsTranslation.lang, locale))
       .innerJoin(
         newsItem,
         and(
-          eq(newsItem.id, newsTranslation.newsId),
-          isNotNull(newsItem.publishedAt)
+          eq(newsTranslation.newsId, newsItem.id),
+          lte(newsItem.publishedAt, nowStr)
         )
       )
+      .leftJoin(alert, eq(alert.newsId, newsItem.id))
       .orderBy(desc(newsItem.publishedAt))
       .limit(data.limit)
       .offset(data.offset);
 
-    return news;
+    return news.map((n) => ({
+      ...n,
+      alert: !!n.alert,
+    }));
   });
 
 export type NewsTitleResponse = Awaited<
@@ -99,8 +110,13 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
       },
     });
 
+    if (!result) {
+      throw new Error("News translation not found");
+    }
+
     return {
       ...result,
+
       content: JSON.stringify(
         transformMarkdoc({ rawContent: result?.content ?? "" }).content
       ),
@@ -131,34 +147,62 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
 
-    const newsItems = await db
-      .select({ ...getTableColumns(newsItem), newsTranslation })
-      .from(newsItem)
-      .leftJoin(newsTranslation, eq(newsItem.id, newsTranslation.newsId))
-      .limit(data.limit)
-      .offset(data.offset);
+    const news = await db.query.newsItem.findMany({
+      with: {
+        translations: true,
+        alert: {
+          columns: {
+            from: true,
+            to: true,
+          },
+        },
+        author: {
+          columns: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      columns: {
+        authorId: false,
+      },
+      orderBy: (table, { desc }) => [desc(table.createdAt)],
+      limit: data.limit,
+      offset: data.offset,
+    });
 
-    const indexMap = new Map<string, number>();
+    type T = typeof news;
 
-    const groupedNews = [];
+    type News = (Omit<T[number], "alert"> & {
+      alert: Pick<T[number], "alert">["alert"] | null;
+    })[];
 
-    for (let i = 0; i < newsItems.length; i++) {
-      const item = newsItems[i];
-      if (!item.id) continue;
-      const index = indexMap.get(item.id);
-      const { newsTranslation, ...restItem } = item;
-      if (index === undefined) {
-        groupedNews.push({ ...restItem, translations: [item.newsTranslation] });
-        indexMap.set(item.id, groupedNews.length - 1);
-      } else {
-        groupedNews[index].translations.push(item.newsTranslation);
-      }
-    }
+    const response = news.map((item) => ({
+      ...(item as Omit<News[number], "translations">),
+      translations: item.translations.reduce(
+        (acc, curr) => {
+          acc[curr.lang as Locale] = {
+            content: curr.content,
+            title: curr.title,
+            updatedAt: curr.updatedAt,
+          };
+          return acc;
+        },
+        {} as Partial<
+          Record<
+            Locale,
+            Pick<NewsTranslationSelect, "content" | "title" | "updatedAt">
+          >
+        >
+      ),
+    }));
 
-    return groupedNews;
+    return response;
   });
 
-export type GetNewsItemsResponse = Awaited<ReturnType<typeof $getNewsItems>>;
+export type NewsItemResponse = Awaited<
+  ReturnType<typeof $getNewsItems>
+>[number];
 
 export const $updateNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
@@ -168,7 +212,50 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
 
     const { id, ...restItem } = data;
 
-    await db.update(newsItem).set(restItem).where(eq(newsItem.id, id));
+    await db.transaction(async (tx) => {
+      // update publication date
+      await tx
+        .update(newsItem)
+        .set({ publishedAt: restItem.publishedAt })
+        .where(eq(newsItem.id, id));
+
+      const translations = Object.entries(data.translations) as [
+        Locale,
+        NewsTranslationUpsert[keyof NewsTranslationUpsert],
+      ][];
+
+      const translationsToInsert = translations.map(
+        ([locale, translation]) => ({
+          newsId: id,
+          lang: locale,
+          title: translation?.title!,
+          content: translation?.content!,
+        })
+      );
+      //upsert translations
+      await tx
+        .insert(newsTranslation)
+        .values(translationsToInsert)
+        .onConflictDoUpdate({
+          target: [newsTranslation.newsId, newsTranslation.lang],
+          set: {
+            title: sql.raw(`excluded.${newsTranslation.title.name}`),
+            content: sql.raw(`excluded.${newsTranslation.content.name}`),
+            updatedAt: new Date(),
+          },
+        });
+      if (data.alert) {
+        await tx
+          .insert(alert)
+          .values({ newsId: id, ...data.alert })
+          .onConflictDoUpdate({
+            target: [alert.newsId],
+            set: data.alert,
+          });
+      } else {
+        await tx.delete(alert).where(eq(alert.newsId, id));
+      }
+    });
   });
 
 export function getNewsItemsQueryOptions({
@@ -201,6 +288,7 @@ export const $upsertNewsTranslation = createServerFn({ method: "POST" })
         set: {
           title: data.title,
           content: data.content,
+          updatedAt: new Date(),
         },
       })
       .returning();
@@ -233,11 +321,10 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   });
 
 /**
- * Create newsItem
+ * Create empty newsItem
  */
 export const $createNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(z.object({}).optional())
   .handler(async ({ context }) => {
     context.checkPermission("news", "create");
 

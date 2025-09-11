@@ -18,6 +18,7 @@ import {
 import { CopyIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StatusTag } from "./StatusTag";
+import { AddNewButton } from "./AddNewButton";
 
 export function DocumentVersionsList({
   contentId,
@@ -40,6 +41,7 @@ export function DocumentVersionsList({
 
   const { openConfirmation } = useConfirmationStore();
 
+  // TODO fix jiggling on document select, cause maybe here
   useEffect(() => {
     setSelectedVersion(versions[0]);
     onSelect(versions[0]);
@@ -144,13 +146,10 @@ export function DocumentVersionsList({
 
   return (
     <ul>
-      <Button
-        variant={"accent"}
-        className="mb-5 w-full"
-        onClick={handleAddNewVersion}
-      >
-        Add new
-      </Button>
+      <li className="mb-5">
+        <AddNewButton onClick={handleAddNewVersion} />
+      </li>
+
       {versions.map((v, index) => {
         const isActive = selectedVersion?.versionNumber === v.versionNumber;
         return (

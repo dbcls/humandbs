@@ -3,9 +3,9 @@ import {
   Document,
   DocumentVersion,
   DocumentVersionTranslation,
-  NewsItem,
   UserRole,
 } from "@/db/schema";
+import { Alert, NewsItem } from "@/db/types";
 import { SessionUser } from "@/router";
 
 type PermissionCheck<Key extends keyof Permissions> =
@@ -44,6 +44,10 @@ export type Permissions = {
   news: {
     dataType: NewsItem;
     action: "view" | "update" | "create" | "delete";
+  };
+  alerts: {
+    dataType: Alert;
+    action: "list" | "update" | "create" | "delete";
   };
 };
 
@@ -85,6 +89,12 @@ const ROLES = {
       create: true,
       delete: true,
     },
+    alerts: {
+      list: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
   },
   editor: {
     documents: {
@@ -114,6 +124,12 @@ const ROLES = {
     },
     news: {
       view: true,
+      update: true,
+      create: true,
+      delete: true,
+    },
+    alerts: {
+      list: true,
       update: true,
       create: true,
       delete: true,

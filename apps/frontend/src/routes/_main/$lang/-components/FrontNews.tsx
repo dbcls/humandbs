@@ -1,16 +1,16 @@
 import { Link } from "@/components/Link";
 import { NewsTitleResponse } from "@/serverFunctions/news";
 import { useLoaderData } from "@tanstack/react-router";
+import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
-  const locale = useLocale();
-
   return (
-    <li>
-      <span className="text-xs">
-        {newsItem.publishedAt?.toLocaleDateString(locale)}
-      </span>
+    <li className="flex items-center gap-2">
+      {newsItem.alert && (
+        <LucideBell className="text-accent mr-1 inline size-4" />
+      )}
+      <span className="text-xs">{newsItem.publishedAt}</span>
       <Link
         className="text-secondary text-sm underline"
         to={"/$lang/news/$newsItemId"}

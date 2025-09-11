@@ -5,6 +5,8 @@ import {
 } from "drizzle-zod";
 import * as schema from "./schema";
 import { z } from "zod";
+import { enumFromStringArray } from "@/lib/utils";
+import { localeSchema } from "@/lib/i18n-config";
 
 export const insertDocumentSchema = createInsertSchema(schema.document);
 
@@ -58,17 +60,23 @@ export const updateDocumentVersionTranslationSchema = createUpdateSchema(
 export type CreateDocumentVersionTranslationParams =
   typeof schema.documentVersionTranslation.$inferInsert;
 
-export const newsItemUpdateSchema = createUpdateSchema(
-  schema.newsItem
-).required({
-  id: true,
+export const selectAlertSchema = createSelectSchema(schema.alert);
+export const createAlertSchema = createInsertSchema(schema.alert);
+export const updateAlertSchema = createUpdateSchema(schema.alert).required({
+  newsId: true,
 });
 
-export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
+export type UpdateAlert = z.infer<typeof updateAlertSchema>;
 
 export const newsTranslationSelectSchema = createSelectSchema(
   schema.newsTranslation
 );
+
+export const newsTranslationSelectWithDateStringSchema =
+  newsTranslationSelectSchema.transform((v) => ({
+    ...v,
+    updatedAt: v.updatedAt?.toLocaleDateString(),
+  }));
 
 export const newsTranslationUpdateSchema = createUpdateSchema(
   schema.newsTranslation
@@ -78,4 +86,32 @@ export const newsTranslationInsertSchema = createInsertSchema(
   schema.newsTranslation
 );
 
+export const newsTranslationUpsertSchema = z.partialRecord(
+  localeSchema,
+  newsTranslationSelectSchema.pick({ title: true, content: true })
+);
+
+export type NewsTranslationUpsert = z.infer<typeof newsTranslationUpsertSchema>;
+
+export const newsItemSelectSchema = createSelectSchema(schema.newsItem);
+
+export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
+  .required({
+    id: true,
+  })
+  .extend({
+    alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
+    translations: newsTranslationUpsertSchema,
+  });
+
+export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
+  alert: createAlertSchema.omit({ newsId: true }).optional(),
+});
+
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;
+
+export type NewsTranslationSelect = z.infer<typeof newsTranslationSelectSchema>;
+
+export type NewsItem = z.infer<typeof newsItemSelectSchema>;
+
+export type Alert = z.infer<typeof selectAlertSchema>;

@@ -1,143 +1,248 @@
-import { DatePicker } from "@/components/DatePicker";
-import { i18n } from "@/lib/i18n-config";
-import {
-  $deleteNewsTranslation,
-  $updateNewsItem,
-  $upsertNewsTranslation,
-  getNewsItemsQueryOptions,
-  GetNewsItemsResponse,
-} from "@/serverFunctions/news";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Locale } from "use-intl";
-import { LocaleSwitcher } from "./LocaleSwitcher";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import MDEditor from "@uiw/react-md-editor";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import { Card } from "@/components/Card";
+import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import { Trash2Icon } from "lucide-react";
+import { i18n } from "@/lib/i18n-config";
+import { cn, DateStringRange } from "@/lib/utils";
+import {
+  $updateNewsItem,
+  getNewsItemsQueryOptions,
+  NewsItemResponse,
+} from "@/serverFunctions/news";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LucideBell } from "lucide-react";
+import { Suspense, useEffect } from "react";
+import { Locale, useLocale } from "use-intl";
+
+type FormDataType = {
+  translations: Record<Locale, { title: string; content: string }>;
+  isAlert: boolean;
+  alertRange: DateStringRange | null;
+  locale: Locale;
+  publishedAt: string | null;
+};
 
 export function NewsItemContent({
   newsItem,
+  className,
 }: {
-  newsItem: GetNewsItemsResponse[number] | undefined;
+  newsItem: NewsItemResponse | undefined;
+  className?: string;
 }) {
+  const locale = useLocale();
   const queryClient = useQueryClient();
-  const [selectedLocale, setSelectedLocale] = useState<Locale>(
-    i18n.defaultLocale
-  );
 
-  const translation = newsItem?.translations.find(
-    (tr) => tr?.lang === selectedLocale
-  );
+  const newsItemsListQO = getNewsItemsQueryOptions({ limit: 100 });
 
-  const [value, setValue] = useState(() => translation?.content);
-
-  const [title, setTitle] = useState(() => translation?.title);
-
-  const [publishedDate, setPublishedDate] = useState<Date>();
-
-  useEffect(() => {
-    setValue(
-      newsItem?.translations?.find((tr) => tr?.lang === selectedLocale)?.content
-    );
-    setTitle(
-      newsItem?.translations?.find((tr) => tr?.lang === selectedLocale)?.title
-    );
-
-    setPublishedDate(newsItem?.publishedAt ?? undefined);
-  }, [newsItem, selectedLocale]);
-
-  async function handleSave() {
-    if (!newsItem) return;
-
-    if (publishedDate) {
+  const { mutate: updateNewsItem } = useMutation({
+    mutationFn: async (values: FormDataType) => {
+      if (!newsItem?.id) return;
       await $updateNewsItem({
         data: {
-          publishedAt: publishedDate,
           id: newsItem.id,
+          ...values,
+          alert: values.alertRange,
         },
       });
-    }
+    },
+    onMutate: async (inputValues) => {
+      await queryClient.cancelQueries(newsItemsListQO);
 
-    if (value && title) {
-      await $upsertNewsTranslation({
-        data: {
-          title,
-          content: value,
-          lang: selectedLocale,
-          newsId: newsItem.id,
-        },
+      const prevNewsItems = queryClient.getQueryData(newsItemsListQO.queryKey);
+
+      queryClient.setQueryData(newsItemsListQO.queryKey, (prev) => {
+        if (!prev) return prev;
+
+        return prev.map((item) => {
+          if (item.id === newsItem?.id) {
+            return {
+              ...item,
+              ...inputValues,
+
+              translations: Object.entries(item.translations).reduce<
+                NewsItemResponse["translations"]
+              >((acc, curr) => {
+                const [key, value] = curr;
+
+                acc[key as Locale] = {
+                  ...value,
+                  ...inputValues.translations[key as Locale],
+                };
+                return acc;
+              }, {}),
+            };
+          }
+          return item;
+        });
       });
-    }
 
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
-  }
+      return { prevNewsItems };
+    },
+    onError: (_, __, context) => {
+      if (context?.prevNewsItems) {
+        queryClient.setQueryData(
+          newsItemsListQO.queryKey,
+          context.prevNewsItems
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(newsItemsListQO);
+    },
+  });
 
-  async function handleDeleteTranslation() {
-    if (!newsItem) return;
-    if (!selectedLocale) return;
+  const form = useAppForm({
+    defaultValues: {
+      translations: newsItem?.translations || {},
+      isAlert: !!newsItem?.alert,
+      alertRange: newsItem?.alert,
+      locale: i18n.defaultLocale,
+      publishedAt: newsItem?.publishedAt,
+    } as FormDataType,
+    onSubmit: ({ value }) => {
+      updateNewsItem(value);
+    },
+  });
 
-    await $deleteNewsTranslation({
-      data: {
-        newsId: newsItem.id,
-        lang: selectedLocale,
-      },
-    });
-
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
-  }
+  useEffect(() => {
+    form.reset();
+  }, [form, newsItem]);
 
   if (!newsItem) return null;
 
   return (
-    <>
-      <DatePicker
-        label="Publication date"
-        dateValue={publishedDate}
-        onChangeDateValue={setPublishedDate}
-      />
-      <LocaleSwitcher
-        locale={selectedLocale}
-        onSwitchLocale={setSelectedLocale}
-      />
-      <div>
-        <Label>Title</Label>
-        <Input
-          value={title ?? ""}
-          className="bg-white"
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-1 flex-col">
-        <Label className="mb-2">Content</Label>
-        <div data-color-mode="light" className="flex-1">
-          <MDEditor
-            highlightEnable={true}
-            value={value ?? ""}
-            onChange={setValue}
-            height="100%"
-            className="md-editor flex-1"
-            components={{
-              preview: (source) => {
-                const { content } = transformMarkdoc({ rawContent: source });
+    <Card
+      caption={
+        <span className="flex items-center gap-5">
+          <span>Content</span>
 
-                return <RenderMarkdoc content={content} />;
-              },
-            }}
+          <form.AppField name="locale">
+            {(field) => (
+              <field.SwitchField
+                options={i18n.locales.map((loc) => ({
+                  label: <span className="capitalize">{loc}</span>,
+                  value: loc,
+                }))}
+              />
+            )}
+          </form.AppField>
+        </span>
+      }
+      className={cn("flex h-full flex-1 flex-col", className)}
+      containerClassName="flex flex-col flex-1 gap-4"
+    >
+      <div className="flex items-start gap-6">
+        <form.AppField name="publishedAt">
+          {(field) => (
+            <Suspense fallback={<div>Loading...</div>}>
+              <field.DateField label="Published At" />
+            </Suspense>
+          )}
+        </form.AppField>
+
+        <TitleValue
+          title="Created at:"
+          value={newsItem.createdAt.toLocaleDateString(locale)}
+        />
+        <TitleValue
+          title="Updated at:"
+          value={newsItem.translations[
+            form.state.values.locale
+          ]?.updatedAt?.toLocaleDateString()}
+        />
+        <TitleValue title="Author:" value={newsItem.author.name} />
+      </div>
+
+      <form.AppField
+        name="isAlert"
+        listeners={{
+          onChange: ({ value }) => {
+            // set range to null if checkbox is unchecked
+            if (!value) {
+              form.setFieldValue("alertRange", null);
+            }
+          },
+        }}
+      >
+        {(field) => (
+          <field.CheckboxField
+            label={
+              <>
+                <LucideBell className="size-4" />
+                Set as alert
+              </>
+            }
           />
-        </div>
+        )}
+      </form.AppField>
+      <form.Subscribe selector={(state) => state.values.isAlert}>
+        {(isAlert) => {
+          if (!isAlert) return null;
+          return (
+            <Suspense fallback={<div>Loading...</div>}>
+              <form.AppField name={"alertRange"}>
+                {(field) => (
+                  <field.DateRangeField
+                    className="ml-5"
+                    label="Alert date range"
+                  />
+                )}
+              </form.AppField>
+            </Suspense>
+          );
+        }}
+      </form.Subscribe>
+
+      <form.Subscribe selector={(state) => state.values.locale}>
+        {(locale) => (
+          <>
+            <form.AppField name={`translations.${locale}.title`}>
+              {(field) => <field.TextField label="Title" />}
+            </form.AppField>
+            <form.AppField name={`translations.${locale}.content`}>
+              {(field) => (
+                <Suspense fallback={<div>Loading...</div>}>
+                  <field.ContentAreaField label="Content" />
+                </Suspense>
+              )}
+            </form.AppField>
+          </>
+        )}
+      </form.Subscribe>
+
+      <div className="flex items-center justify-end">
+        <form.Subscribe
+          selector={(state) => [
+            state.isSubmitting,
+            state.isTouched,
+            state.isValid,
+          ]}
+        >
+          {([isSubmitting, isTouched, isValid]) => (
+            <Button
+              disabled={isSubmitting || !isTouched || !isValid}
+              size="lg"
+              onClick={() => form.handleSubmit()}
+            >
+              Update
+            </Button>
+          )}
+        </form.Subscribe>
       </div>
-      <div className="flex items-center justify-between">
-        <Button onClick={handleDeleteTranslation} variant={"plain"}>
-          <Trash2Icon className="text-red-600" />
-        </Button>
-        <Button size="lg" onClick={handleSave}>
-          Update
-        </Button>
-      </div>
-    </>
+    </Card>
+  );
+}
+
+function TitleValue({
+  title,
+  value,
+}: {
+  title: string;
+  value: string | undefined;
+}) {
+  return (
+    <p className="flex flex-col items-start gap-2">
+      <span className="text-sm leading-none font-medium">{title}</span>
+      <span className="text-xs">{value}</span>
+    </p>
   );
 }

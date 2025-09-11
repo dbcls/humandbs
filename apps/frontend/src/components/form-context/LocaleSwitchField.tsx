@@ -1,20 +1,17 @@
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { i18n, Locale } from "@/lib/i18n-config";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { useFieldContext } from "./FormContext";
 
-export function LocaleSwitcher({
-  locale,
-  onSwitchLocale,
-}: {
-  locale: Locale;
-  onSwitchLocale: (locale: Locale) => void;
-}) {
+export default function LocaleSwitchField() {
+  const field = useFieldContext<Locale>();
+
   return (
     <ToggleGroup
       type="single"
-      value={locale}
+      value={field.state.value}
       onValueChange={(value) => {
         if (!value) return;
-        onSwitchLocale(value as Locale);
+        field.setValue(value as Locale);
       }}
     >
       {i18n.locales.map((loc) => (

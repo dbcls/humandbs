@@ -17,7 +17,7 @@ export const Route = createFileRoute(
       })
     );
 
-    return { version, crumb: `version ${params.revision}` };
+    return { version, crumb: `Revision ${params.revision}` };
   },
 });
 

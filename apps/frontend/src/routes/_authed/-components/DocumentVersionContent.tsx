@@ -1,10 +1,6 @@
 import { Card } from "@/components/Card";
-
+import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   DOCUMENT_VERSION_STATUS,
   DocumentVersionTranslation,
@@ -12,8 +8,6 @@ import {
 import { DocumentVersionStatus } from "@/db/types";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   $deleteDocumentVersionDraft,
   $publishDocumentVersionDraft,
@@ -24,12 +18,9 @@ import {
   getDocumentVersionPublishedQueryOptions,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
-import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import MDEditor from "@uiw/react-md-editor";
 import { Save, Trash2, Undo2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { LocaleSwitcher } from "./LocaleSwitcher";
+import { Suspense, useEffect, useState } from "react";
 import { StatusTag } from "./StatusTag";
 
 type FormMeta = {
@@ -41,47 +32,22 @@ type FormMeta = {
     | null;
 };
 
-type DraftMeta = {
-  submitAction:
-    | "saveDraft"
-    | "publishDraft"
-    | "updatePublished"
-    | "saveAsDraft"
-    | null;
+const defaultMeta: FormMeta = {
+  submitAction: null,
 };
 
-function getFormDataFromApiResponse<T extends DocumentVersionContentResponse>(
-  response: T | undefined
-): DocumentVersionContentResponse {
-  if (!response) {
-    return {
-      id: "",
-      author: {
-        name: "",
-        email: "",
-        id: "",
-      },
-      translations: i18n.locales.reduce(
-        (acc, locale) => {
-          acc[locale] = {} as DocumentVersionTranslation;
-          return acc;
-        },
-        {} as Record<Locale, DocumentVersionTranslation>
-      ),
-      status: DOCUMENT_VERSION_STATUS.DRAFT,
-      versionNumber: 0,
-    };
-  }
+type Status = "draft" | "published";
 
-  const { author, translations, status, versionNumber, id } = response;
-  return {
-    id,
-    author,
-    translations,
-    status,
-    versionNumber,
+type FormData = {
+  translations: {
+    [status in Status]: Record<
+      Locale,
+      Pick<DocumentVersionTranslation, "title" | "content">
+    >;
   };
-}
+  status: Status;
+  locale: Locale;
+};
 
 export function DocumentVersionContent({
   documentVersionItem,
@@ -90,28 +56,12 @@ export function DocumentVersionContent({
   documentVersionItem: DocumentVersionListItemResponse;
   className?: string;
 }) {
-  const [selectedStatus, setSelectedStatus] = useState<DocumentVersionStatus>(
-    documentVersionItem.statuses[0]
-  );
-
-  useEffect(() => {
-    setSelectedStatus((prev) => {
-      if (documentVersionItem.statuses.includes(prev)) {
-        return prev;
-      }
-      return documentVersionItem.statuses[0];
-    });
-  }, [documentVersionItem]);
-
-  const [selectedLocale, setSelectedLocale] = useState<Locale>(
-    i18n.defaultLocale
-  );
-
   const documentVersionsListQO =
     getDocumentVersionsListQueryOptions(documentVersionItem);
 
   const documentVersionDraftQO =
     getDocumentVersionDraftQueryOptions(documentVersionItem);
+
   const documentVersionPublishedQO =
     getDocumentVersionPublishedQueryOptions(documentVersionItem);
 
@@ -124,10 +74,10 @@ export function DocumentVersionContent({
 
   const { mutate: saveVersion } = useMutation({
     mutationFn: ({
-      version,
+      translations,
       action,
     }: {
-      version: DocumentVersionContentResponse;
+      translations: FormData["translations"][keyof FormData["translations"]];
       action: Exclude<FormMeta["submitAction"], "publishDraft">;
     }) => {
       if (!action) throw new Error("Invalid submit action");
@@ -135,8 +85,9 @@ export function DocumentVersionContent({
       if (action === "updatePublished") {
         return $saveDocumentVersion({
           data: {
+            translations,
+            versionNumber: documentVersionItem.versionNumber,
             contentId: documentVersionItem.contentId,
-            ...version,
             status: DOCUMENT_VERSION_STATUS.PUBLISHED,
           },
         });
@@ -144,13 +95,14 @@ export function DocumentVersionContent({
 
       return $saveDocumentVersion({
         data: {
+          translations,
           contentId: documentVersionItem.contentId,
-          ...version,
+          versionNumber: documentVersionItem.versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
         },
       });
     },
-    onMutate: async ({ version, action }) => {
+    onMutate: async ({ translations, action }) => {
       await queryClient.cancelQueries(documentVersionDraftQO);
       await queryClient.cancelQueries(documentVersionPublishedQO);
       await queryClient.cancelQueries(documentVersionsListQO);
@@ -169,17 +121,16 @@ export function DocumentVersionContent({
       switch (action) {
         case "saveAsDraft":
           {
-            const updated = {
-              ...version,
-              status: DOCUMENT_VERSION_STATUS.DRAFT,
-            };
             // optimistically set draft as input `version`, reset the `published` back
             queryClient.setQueryData(
               documentVersionDraftQO.queryKey,
               (prev) => {
                 if (!prev) return prev;
 
-                return { ...prev, ...updated };
+                return {
+                  ...prev,
+                  translations: Object.assign(prev.translations, translations),
+                };
               }
             );
 
@@ -190,7 +141,7 @@ export function DocumentVersionContent({
                 if (!prev) return prev;
 
                 return prev.map((p) =>
-                  p.versionNumber === version.versionNumber
+                  p.versionNumber === documentVersionItem.versionNumber
                     ? {
                         ...p,
                         statuses: [
@@ -203,7 +154,10 @@ export function DocumentVersionContent({
               }
             );
 
-            form.setFieldValue(DOCUMENT_VERSION_STATUS.DRAFT, updated);
+            form.setFieldValue(
+              `translations.${DOCUMENT_VERSION_STATUS.DRAFT}`,
+              translations
+            );
           }
 
           break;
@@ -216,7 +170,7 @@ export function DocumentVersionContent({
                 if (!prev) return prev;
                 return {
                   ...prev,
-                  ...version,
+                  translations: Object.assign(prev.translations, translations),
                 };
               }
             );
@@ -233,7 +187,7 @@ export function DocumentVersionContent({
                 if (!prev) return prev;
                 return {
                   ...prev,
-                  ...version,
+                  ...translations,
                 };
               }
             );
@@ -256,8 +210,8 @@ export function DocumentVersionContent({
         );
 
         form.setFieldValue(
-          DOCUMENT_VERSION_STATUS.DRAFT,
-          context.prevDocumentVersionDraft
+          `translations.${DOCUMENT_VERSION_STATUS.DRAFT}`,
+          context.prevDocumentVersionDraft.translations
         );
       }
 
@@ -292,14 +246,17 @@ export function DocumentVersionContent({
   });
 
   const { mutate: publishDraft } = useMutation({
-    mutationFn: (value: DocumentVersionContentResponse) =>
+    mutationFn: (
+      value: FormData["translations"][typeof DOCUMENT_VERSION_STATUS.DRAFT]
+    ) =>
       $publishDocumentVersionDraft({
         data: {
-          ...value,
+          translations: value,
           contentId: documentVersionItem.contentId,
+          versionNumber: documentVersionItem.versionNumber,
         },
       }),
-    onMutate: async (value) => {
+    onMutate: async (translations) => {
       await queryClient.cancelQueries(documentVersionPublishedQO);
       await queryClient.cancelQueries(documentVersionsListQO);
 
@@ -322,15 +279,14 @@ export function DocumentVersionContent({
       queryClient.setQueryData(documentVersionsListQO.queryKey, (prev) => {
         if (!prev) return prev;
         return prev.map((p) =>
-          p.versionNumber === value.versionNumber
+          p.versionNumber === documentVersionItem.versionNumber
             ? { ...p, statuses: [DOCUMENT_VERSION_STATUS.PUBLISHED] }
             : p
         );
       });
 
-      form.setFieldValue(DOCUMENT_VERSION_STATUS.PUBLISHED, {
-        ...value,
-        status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+      form.setFieldValue(`translations.${DOCUMENT_VERSION_STATUS.PUBLISHED}`, {
+        ...translations,
       });
 
       return { prevDocumentPublishedVersion, prevDocumentVersionsList };
@@ -356,70 +312,86 @@ export function DocumentVersionContent({
     },
   });
 
-  const { mutate: deleteVersion } = useMutation({
+  const { mutate: deleteDraft } = useMutation({
     mutationFn: (
       value: Pick<
         DocumentVersionListItemResponse,
         "contentId" | "versionNumber"
       >
     ) => $deleteDocumentVersionDraft({ data: value }),
-    onSuccess: () => {
-      queryClient.invalidateQueries(documentVersionsListQO);
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries(documentVersionsListQO);
+
+      form.resetField(`translations.${DOCUMENT_VERSION_STATUS.DRAFT}`);
+      form.resetField("status");
     },
   });
 
-  const defaultMeta: FormMeta = {
-    submitAction: null,
-  };
-
-  const formDefaultValues = {
-    [DOCUMENT_VERSION_STATUS.DRAFT]:
-      getFormDataFromApiResponse(documentVersionDraft),
-    [DOCUMENT_VERSION_STATUS.PUBLISHED]: getFormDataFromApiResponse(
-      documentVersionPublished
-    ),
-  };
-
-  const form = useForm({
-    defaultValues: formDefaultValues,
+  const form = useAppForm({
+    defaultValues: {
+      translations: {
+        [DOCUMENT_VERSION_STATUS.DRAFT]: documentVersionDraft?.translations,
+        [DOCUMENT_VERSION_STATUS.PUBLISHED]:
+          documentVersionPublished?.translations,
+      },
+      status: documentVersionItem.statuses[0],
+      locale: i18n.defaultLocale,
+    } as FormData,
     onSubmitMeta: defaultMeta,
     onSubmit: ({ value, meta }) => {
       switch (meta.submitAction) {
         case "publishDraft":
-          publishDraft(value.draft!);
+          publishDraft(value.translations[DOCUMENT_VERSION_STATUS.DRAFT]);
           break;
 
         case "saveDraft":
-          saveVersion({ version: value.draft!, action: meta.submitAction });
+          saveVersion({
+            translations: value.translations[DOCUMENT_VERSION_STATUS.DRAFT],
+            action: meta.submitAction,
+          });
 
           break;
         default:
-          saveVersion({ version: value.published!, action: meta.submitAction });
+          saveVersion({
+            translations: value.translations[DOCUMENT_VERSION_STATUS.PUBLISHED],
+            action: meta.submitAction,
+          });
 
           break;
       }
     },
   });
 
-  const author = formDefaultValues[selectedStatus].author;
+  useEffect(() => {
+    form.reset();
+  }, [form, documentVersionItem]);
 
   return (
     <Card
       caption={
         <div className="flex items-center gap-5">
           <span>Content</span>
-          <DraftPublishedSwitcher
-            options={documentVersionItem.statuses}
-            value={selectedStatus}
-            onValueChange={setSelectedStatus}
-          />
-          <LocaleSwitcher
-            locale={selectedLocale}
-            onSwitchLocale={setSelectedLocale}
-          />
+          <form.Subscribe selector={(state) => state.values.status}>
+            {(status) => (
+              <form.AppField name="status">
+                {(field) => (
+                  <field.SwitchField
+                    options={documentVersionItem.statuses.map((st) => ({
+                      value: st,
+                      label: <StatusTag isActive={st === status} status={st} />,
+                    }))}
+                  />
+                )}
+              </form.AppField>
+            )}
+          </form.Subscribe>
+
+          <form.AppField name="locale">
+            {(field) => <field.LocaleSwitchField />}
+          </form.AppField>
         </div>
       }
-      captionSize={"sm"}
       className={cn("flex h-full flex-1 flex-col", className)}
       containerClassName="flex flex-col flex-1"
     >
@@ -431,193 +403,158 @@ export function DocumentVersionContent({
           form.handleSubmit();
         }}
       >
-        <Tabs
-          value={selectedLocale}
-          onValueChange={(value) => setSelectedLocale(value as Locale)}
-          className="h-full"
-        >
-          {i18n.locales.map((locale) => {
-            return (
-              <TabsContent
-                hidden={selectedLocale !== locale}
-                forceMount={true}
-                key={locale + selectedStatus}
-                value={locale}
-                className="flex flex-col gap-3"
-              >
-                <>
-                  <p> Author: {author.name} </p>
-
-                  <form.Field
-                    key={locale}
-                    name={`${selectedStatus}.translations.${locale}.title`}
-                  >
-                    {(field) => {
-                      return (
-                        <>
-                          <Label className="mb-2">
-                            Title
-                            <Input
-                              value={field.state.value ?? ""}
-                              onBlur={field.handleBlur}
-                              onChange={(e) =>
-                                field.handleChange(e.target.value)
-                              }
-                            />
-                          </Label>
-                        </>
-                      );
-                    }}
-                  </form.Field>
-                  <div data-color-mode="light" className="relative flex-1">
-                    <form.Field
-                      name={`${selectedStatus}.translations.${locale}.content`}
+        <form.Subscribe selector={(state) => state.values.status}>
+          {(status) => (
+            <>
+              <p>
+                Author:
+                {status === DOCUMENT_VERSION_STATUS.DRAFT
+                  ? documentVersionDraft?.author.name
+                  : documentVersionPublished?.author.name}
+              </p>
+              <form.Subscribe selector={(state) => state.values.locale}>
+                {(locale) => (
+                  <>
+                    <form.AppField
+                      name={`translations.${status}.${locale}.title`}
                     >
                       {(field) => {
-                        return (
-                          <MDEditor
-                            id="content"
-                            className="md-editor"
-                            highlightEnable={true}
-                            value={field.state.value ?? ""}
-                            onChange={(value) =>
-                              field.handleChange(value ?? "")
-                            }
-                            height={"100%"}
-                            components={{
-                              preview: (source) => {
-                                const { content } = transformMarkdoc({
-                                  rawContent: source,
-                                });
-
-                                return <RenderMarkdoc content={content} />;
-                              },
-                            }}
-                          />
-                        );
+                        return <field.TextField label="Title" />;
                       }}
-                    </form.Field>
-                  </div>
-                </>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+                    </form.AppField>
+                    <form.AppField
+                      name={`translations.${status}.${locale}.content`}
+                    >
+                      {(field) => (
+                        <Suspense fallback={<div>Loading...</div>}>
+                          <field.ContentAreaField label="Content" />
+                        </Suspense>
+                      )}
+                    </form.AppField>
+                  </>
+                )}
+              </form.Subscribe>
+            </>
+          )}
+        </form.Subscribe>
 
         <div className="flex h-fit justify-between gap-5">
-          <form.Subscribe
-            selector={(state) => [
-              state.isDirty,
-              state.values.draft,
-              state.values.published,
-            ]}
-          >
-            {([isDirty, draft, published]) => {
-              return (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      disabled={!isDirty}
-                      variant={"outline"}
-                      onClick={() => form.reset()}
-                    >
-                      <Undo2 className="size-5" /> Reset
-                    </Button>
-                    {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
+          <form.AppForm>
+            <form.Subscribe
+              selector={(state) => ({
+                isDirty: state.isDirty,
+                status: state.values.status,
+              })}
+            >
+              {({ isDirty, status }) => {
+                return (
+                  <>
+                    <div className="flex items-center gap-2">
                       <Button
-                        onClick={() => deleteVersion(documentVersionItem)}
+                        disabled={!isDirty}
+                        variant={"outline"}
+                        onClick={() =>
+                          form.resetField(`translations.${status}`)
+                        }
                       >
-                        <Trash2 className="size-5" /> Delete draft
+                        <Undo2 className="size-5" /> Reset
                       </Button>
-                    ) : null}
-                  </div>
+                      {status === DOCUMENT_VERSION_STATUS.DRAFT ? (
+                        <Button
+                          onClick={() => deleteDraft(documentVersionItem)}
+                        >
+                          <Trash2 className="size-5" /> Delete draft
+                        </Button>
+                      ) : null}
+                    </div>
 
-                  <div className="flex gap-2">
-                    {selectedStatus === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                      <>
-                        <Button
-                          disabled={!isDirty}
-                          onClick={() =>
-                            form.handleSubmit({ submitAction: "saveDraft" })
-                          }
-                          size={"lg"}
-                          variant={"action"}
-                        >
-                          <Save className="size-5" />
-                          Save draft
-                        </Button>
-                        <Button
-                          disabled={!draft}
-                          onClick={() =>
-                            form.handleSubmit({ submitAction: "publishDraft" })
-                          }
-                          size={"lg"}
-                          variant={"accent"}
-                        >
-                          Publish draft
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          disabled={!isDirty}
-                          onClick={() =>
-                            form.handleSubmit({ submitAction: "saveAsDraft" })
-                          }
-                          size={"lg"}
-                          variant={"action"}
-                        >
-                          <Save className="size-8 [&_path]:stroke-[1.5px]" />
-                          Save as draft
-                        </Button>
-                        <Button
-                          disabled={!isDirty}
-                          onClick={() =>
-                            form.handleSubmit({
-                              submitAction: "updatePublished",
-                            })
-                          }
-                          size={"lg"}
-                          variant={"accent"}
-                        >
-                          Update published
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </>
-              );
-            }}
-          </form.Subscribe>
+                    <div className="flex gap-2">
+                      {status === DOCUMENT_VERSION_STATUS.DRAFT ? (
+                        <>
+                          <Button
+                            disabled={!isDirty}
+                            onClick={() =>
+                              form.handleSubmit({ submitAction: "saveDraft" })
+                            }
+                            size={"lg"}
+                            variant={"action"}
+                          >
+                            <Save className="size-5" />
+                            Save draft
+                          </Button>
+                          <Button
+                            disabled={!isDirty}
+                            onClick={() =>
+                              form.handleSubmit({
+                                submitAction: "publishDraft",
+                              })
+                            }
+                            size={"lg"}
+                            variant={"accent"}
+                          >
+                            Publish draft
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            disabled={!isDirty}
+                            onClick={() =>
+                              form.handleSubmit({ submitAction: "saveAsDraft" })
+                            }
+                            size={"lg"}
+                            variant={"action"}
+                          >
+                            <Save className="size-8 [&_path]:stroke-[1.5px]" />
+                            Save as draft
+                          </Button>
+                          <Button
+                            disabled={!isDirty}
+                            onClick={() =>
+                              form.handleSubmit({
+                                submitAction: "updatePublished",
+                              })
+                            }
+                            size={"lg"}
+                            variant={"accent"}
+                          >
+                            Update published
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              }}
+            </form.Subscribe>
+          </form.AppForm>
         </div>
       </form>
     </Card>
   );
 }
 
-function DraftPublishedSwitcher({
-  value,
-  options,
-  onValueChange,
-}: {
-  value: DocumentVersionStatus;
-  options: DocumentVersionStatus[];
-  onValueChange: (value: DocumentVersionStatus) => void;
-}) {
-  return (
-    <ToggleGroup
-      variant={"blue"}
-      value={value}
-      type="single"
-      onValueChange={(value) =>
-        value && onValueChange(value as DocumentVersionStatus)
-      }
-    >
-      {options.map((option) => (
-        <ToggleGroupItem key={option} value={option}>
-          <StatusTag status={option} isActive={option === value} />
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  );
-}
+// function DraftPublishedSwitcher({
+//   value,
+//   options,
+//   onValueChange,
+// }: {
+//   value: DocumentVersionStatus;
+//   options: DocumentVersionStatus[];
+//   onValueChange: (value: DocumentVersionStatus) => void;
+// }) {
+//   return (
+//     <ToggleGroup
+//       variant={"blue"}
+//       value={value}
+//       type="single"
+//       onValueChange={(value) =>
+//         value && onValueChange(value as DocumentVersionStatus)
+//       }
+//     >
+//       {options.map((option) => (
+//         <ToggleGroupItem key={option} value={option}></ToggleGroupItem>
+//       ))}
+//     </ToggleGroup>
+//   );
+// }

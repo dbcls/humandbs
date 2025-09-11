@@ -7,14 +7,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DocumentVersion, UserRole } from "@/db/schema";
-import { i18n, Locale } from "@/lib/i18n-config";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { UserRole } from "@/db/schema";
 import { roles } from "@/lib/permissions";
+import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
 import {
   $createNewsItem,
   getNewsItemsQueryOptions,
-  GetNewsItemsResponse,
+  NewsItemResponse,
 } from "@/serverFunctions/news";
 import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
 import {
@@ -30,8 +31,6 @@ import { DocumentVersionContent } from "./-components/DocumentVersionContent";
 import { DocumentVersionsList } from "./-components/DocumentVersionsList";
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
-import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
@@ -54,6 +53,7 @@ function RouteComponent() {
       </ToggleGroup>
       <TabsContent className="flex items-stretch gap-2" value="news">
         <AssetsPanel />
+
         <ManageNews />
       </TabsContent>
       <TabsContent className="flex items-stretch gap-2" value="documents">
@@ -71,28 +71,24 @@ function RouteComponent() {
 
 function ManageNews() {
   const queryClient = useQueryClient();
-  const [selectedNewsItem, setSelectedNewsItem] =
-    useState<GetNewsItemsResponse[number]>();
+  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemResponse>();
 
   async function handleAddNewsItem() {
-    await $createNewsItem({ data: {} });
+    await $createNewsItem({});
     queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
   }
 
   return (
     <>
-      <div className="bg-primary w-md rounded-md p-4">
-        <Suspense fallback={<Skeleton />}>
-          <NewsItemsList
-            onClickAdd={handleAddNewsItem}
-            selectedNewsItem={selectedNewsItem}
-            onSelectNewsItem={setSelectedNewsItem}
-          />
-        </Suspense>
-      </div>
-      <div className="bg-primary flex flex-1 flex-col gap-5 rounded-md p-4">
-        <NewsItemContent newsItem={selectedNewsItem} />
-      </div>
+      <Suspense fallback={<Skeleton />}>
+        <NewsItemsList
+          onClickAdd={handleAddNewsItem}
+          selectedNewsItem={selectedNewsItem}
+          onSelectNewsItem={setSelectedNewsItem}
+        />
+      </Suspense>
+
+      <NewsItemContent newsItem={selectedNewsItem} />
     </>
   );
 }
@@ -114,7 +110,6 @@ function ManageDocuments() {
     <>
       <Card
         className="flex h-full w-96 flex-col"
-        captionSize={"sm"}
         caption="Documents"
         containerClassName="overflow-auto flex-1 max-h-full"
       >
@@ -128,7 +123,7 @@ function ManageDocuments() {
 
       {selectedContentId ? (
         <>
-          <Card className="w-80" captionSize={"sm"} caption="Versions">
+          <Card className="w-80" caption="Versions">
             <Suspense
               fallback={
                 <div>

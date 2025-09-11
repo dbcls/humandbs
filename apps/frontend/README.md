@@ -1,16 +1,18 @@
 # humandbs　フロントエンド
 
-## 動的にMarkdownファイルをimportする方法
+静的なコンテンツはCMSで管理される
 
-`src/content/xxx.md` に保存されたMarkdownファイルを置くと
+## 静的なPages
 
-```tsx
-import markdown from '@content/xxx.md';
-```
+- Document - 静的なドキュメント
+- DocumentVersion - 静的なドキュメントのバージョン。 `published` か `draft`、二つの状態がある。`published` は、公開済みで、`draft` は、未公開の状態である。
+- DocumentVersionTranslation - 静的なドキュメントのバージョンの翻訳。
 
-のようにして、動的にMarkdownファイルをimportして表示することができる。
+## ニュース
 
-## 静的なMarkdownファイルを表示する方法
+- News - ニュースアイテム。
 
-GitHub に保存されたMarkdownファイルを表示することもできる。
-[/contact](/contact) にアクセスすると、公的のGitHub レポ（tailwindcss のリポ）に保存された `readme.md` が表示される。
+## アラート
+
+- Alert - アラートアイテム。　active なアラートがNavbar のすぐ下に表示される。
+- AlertTranslation - アラートアイテムの翻訳。

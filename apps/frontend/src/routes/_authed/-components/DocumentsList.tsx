@@ -26,6 +26,7 @@ import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "use-intl";
 import z from "zod";
+import { AddNewButton } from "./AddNewButton";
 
 export function DocumentsList({
   onSelectDoc,
@@ -119,9 +120,7 @@ export function DocumentsList({
       <li className="mb-5">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button variant={"accent"} className="w-full">
-              Add new
-            </Button>
+            <AddNewButton />
           </DialogTrigger>
           <DialogContent>
             <DialogTitle className="text-base">Add Document</DialogTitle>
