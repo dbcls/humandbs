@@ -2,11 +2,11 @@ import { auth } from "@/lib/auth";
 import { hasPermission, Permissions } from "@/lib/permissions";
 import { SessionUser } from "@/router";
 import { createMiddleware } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 
 export const authMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const req = getWebRequest()!;
+    const req = getRequest();
 
     const session = await auth.api.getSession({ headers: req.headers });
 

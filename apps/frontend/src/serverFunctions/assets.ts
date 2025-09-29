@@ -14,7 +14,7 @@ const ASSET_DIR = `${PUBLIC_DIR}/${ASSETS_SUBDIR}`;
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
 export const $getAsset = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       id: z.uuidv4(),
     })
@@ -34,7 +34,7 @@ export const $listAssets = createServerFn({ method: "GET" })
   });
 
 export const $searchAssets = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       query: z.string().min(1).max(100).default(""),
       limit: z.number().min(1).max(100).default(10),
@@ -68,7 +68,7 @@ async function deleteAssetFile(id: string | undefined) {
 
 export const $uploadAsset = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(z.instanceof(FormData))
+  .inputValidator(z.instanceof(FormData))
   .handler(async ({ context, data }) => {
     context.checkPermission("assets", "create");
 
@@ -103,7 +103,7 @@ export const $uploadAsset = createServerFn({ method: "POST" })
 
 export const $deleteAsset = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(z.object({ id: z.uuidv4() }))
+  .inputValidator(z.object({ id: z.uuidv4() }))
   .handler(async ({ context, data }) => {
     context.checkPermission("assets", "delete");
 

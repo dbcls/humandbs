@@ -148,8 +148,8 @@ function collectHeadings(
   return sections;
 }
 
-export const getContent = createServerFn({ method: "GET", response: "data" })
-  .validator(contentReqSchema)
+export const getContent = createServerFn({ method: "GET" })
+  .inputValidator(contentReqSchema)
   .handler(async ({ data }) => {
     const raw = await getFileContent(data);
     const tokens = tokenizer.tokenize(raw);

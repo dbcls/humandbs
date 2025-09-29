@@ -18,12 +18,12 @@ if (Bun.env.NODE_ENV === "production") {
   if (!global.db) {
     global.db = drizzle(DATABASE_URL, {
       schema,
-      logger: {
-        logQuery: (query) => {
-          // to remove quotes on query string, to make it more readable
-          console.log({ query: query.replace(/\"/g, "") });
-        },
-      },
+      // logger: {
+      //   logQuery: (query) => {
+      //     // to remove quotes on query string, to make it more readable
+      //     console.log({ query: query.replace(/\"/g, "") });
+      //   },
+      // },
     });
   }
 

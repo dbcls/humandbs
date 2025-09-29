@@ -22,7 +22,7 @@ import { toDateString } from "@/lib/utils";
  * Get paginated list of titles and publication dates
  */
 export const $getNewsTitles = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
@@ -86,7 +86,9 @@ export function getNewsTitlesQueryOptions({
  * Get specific news translation by newsItemId and lang, for public-facing
  */
 export const $getNewsTranslation = createServerFn({ method: "GET" })
-  .validator(newsTranslationSelectSchema.pick({ lang: true, newsId: true }))
+  .inputValidator(
+    newsTranslationSelectSchema.pick({ lang: true, newsId: true })
+  )
   .handler(async ({ data }) => {
     const newsItemId = data.newsId;
 
@@ -138,7 +140,7 @@ export function getNewsTranslationQueryOptions({
 
 export const $getNewsItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
-  .validator(
+  .inputValidator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
@@ -206,7 +208,7 @@ export type NewsItemResponse = Awaited<
 
 export const $updateNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsItemUpdateSchema)
+  .inputValidator(newsItemUpdateSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("news", "update");
 
@@ -276,7 +278,7 @@ export function getNewsItemsQueryOptions({
  */
 export const $upsertNewsTranslation = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsTranslationInsertSchema)
+  .inputValidator(newsTranslationInsertSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "update");
 
@@ -301,7 +303,7 @@ export const $upsertNewsTranslation = createServerFn({ method: "POST" })
  */
 export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(
+  .inputValidator(
     newsTranslationUpdateSchema.pick({ newsId: true, lang: true }).required()
   )
   .handler(async ({ data, context }) => {
@@ -343,7 +345,7 @@ export const $createNewsItem = createServerFn({ method: "POST" })
  */
 export const $deleteNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsItemUpdateSchema.pick({ id: true }).required())
+  .inputValidator(newsItemUpdateSchema.pick({ id: true }).required())
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
 

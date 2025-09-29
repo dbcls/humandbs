@@ -110,7 +110,7 @@ const getNavConfig = (lang: Locale): NavConfig => {
         {
           id: "research-list",
           linkOptions: {
-            to: "/$lang/data-usage/research-list",
+            to: "/$lang/data-usage/researches",
             params: {
               lang,
             },

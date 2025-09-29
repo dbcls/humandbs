@@ -18,11 +18,11 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import { IntlProvider } from "use-intl";
 
 const getUser = createServerFn({ method: "GET" }).handler(async () => {
-  const { headers } = getWebRequest()!;
+  const { headers } = getRequest();
   try {
     const session = await auth.api.getSession({ headers });
     return session?.user || null;
@@ -32,11 +32,7 @@ const getUser = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const Route = createRootRouteWithContext<Context>()({
-  head: ({
-    match: {
-      context: { lang },
-    },
-  }) => {
+  head: () => {
     return {
       meta: [
         {
@@ -46,7 +42,7 @@ export const Route = createRootRouteWithContext<Context>()({
           name: "viewport",
           content: "width=device-width, initial-scale=1",
         },
-        { title: `シン NBDCヒトデータベース ${lang}` },
+        // { title: `シン NBDCヒトデータベース` },
         { rel: "icon", href: "/favicon.ico" },
       ],
 
@@ -54,6 +50,7 @@ export const Route = createRootRouteWithContext<Context>()({
     };
   },
   component: RootComponent,
+
   beforeLoad: async (ctx) => {
     const locale = await getLocaleFn();
     const user = await getUser();
@@ -69,8 +66,7 @@ export const Route = createRootRouteWithContext<Context>()({
 
     if (pathnameIsMissingLocale && !pathname.startsWith("/admin")) {
       throw redirect({
-        //@ts-expect-error
-        to: `/${locale}${pathname}`,
+        to: `/${locale}/${pathname}`,
       });
     }
 
@@ -88,18 +84,25 @@ function RootComponent() {
   const { messages, lang } = Route.useRouteContext();
 
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   return (
     <IntlProvider locale={lang} messages={messages} timeZone={timeZone}>
-      <RootDocument>
+      <RootDocument lang={lang}>
         <Outlet />
       </RootDocument>
     </IntlProvider>
   );
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({
+  children,
+  lang,
+}: {
+  children: React.ReactNode;
+  lang: string;
+}) {
   return (
-    <html>
+    <html lang={lang}>
       <head>
         <HeadContent />
       </head>

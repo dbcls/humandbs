@@ -24,7 +24,7 @@ interface AlertListItemResponse {
 
 /** Get alerts list for CMS */
 export const $getAllAlerts = createServerFn({ method: "GET" })
-  .validator(z.object({ limit: z.number().optional() }).optional())
+  .inputValidator(z.object({ limit: z.number().optional() }).optional())
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "list");
@@ -68,7 +68,7 @@ export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
   });
 
 export const $createAlert = createServerFn({ method: "POST" })
-  .validator(createAlertSchema)
+  .inputValidator(createAlertSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "create");
@@ -79,7 +79,7 @@ export const $createAlert = createServerFn({ method: "POST" })
   });
 
 export const $updateAlert = createServerFn({ method: "POST" })
-  .validator(updateAlertSchema)
+  .inputValidator(updateAlertSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "update");
@@ -94,7 +94,7 @@ export const $updateAlert = createServerFn({ method: "POST" })
   });
 
 export const $deleteAlert = createServerFn({ method: "POST" })
-  .validator(z.object({ newsId: z.string() }))
+  .inputValidator(z.object({ newsId: z.string() }))
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "delete");
@@ -115,7 +115,7 @@ export interface ActiveAlertsItemResponse {
 
 /** Get list of active alerts for the client, based on locale */
 export const $getActiveAlerts = createServerFn({ method: "GET" })
-  .validator(z.object({ locale: localeSchema }))
+  .inputValidator(z.object({ locale: localeSchema }))
   .handler(async ({ data }) => {
     const now = new Date();
     const alerts = await db.query.alert.findMany({
@@ -164,7 +164,7 @@ const hiddenAlerts = "hiddenAlerts";
 
 //* server function to set hidden alert ids (newsIds) */
 export const $saveHiddenAlertIds = createServerFn({ method: "POST" })
-  .validator(z.object({ newsId: z.string(), locale: localeSchema }))
+  .inputValidator(z.object({ newsId: z.string(), locale: localeSchema }))
   .handler(async ({ data }) => {
     // secretly reset the cookie to empty array if there are no active alerts
     const activeAlerts = await $getActiveAlerts({

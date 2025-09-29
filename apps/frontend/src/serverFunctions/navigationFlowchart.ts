@@ -6,7 +6,7 @@ import { getLocaleFn } from "./locale";
 export const $getNavigationFlowchartData = createServerFn({
   method: "GET",
 })
-  .validator(
+  .inputValidator(
     z.object({
       type: z.union([
         z.literal("data-submission"),

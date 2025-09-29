@@ -16,9 +16,8 @@ import { z } from "zod";
 /** Get document version translation */
 export const $getDocumentVersionTranslation = createServerFn({
   method: "GET",
-  response: "data",
 })
-  .validator(
+  .inputValidator(
     z.object({
       contentId: z.string(),
       locale: localeSchema,
@@ -92,9 +91,8 @@ export function getDocumentVersionTranslationQueryOptions({
  */
 export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
   method: "GET",
-  response: "data",
 })
-  .validator(
+  .inputValidator(
     z.object({
       contentId: z.string(),
       locale: localeSchema,
@@ -169,7 +167,7 @@ export type DocumentPublishedVersionsListItemResponse =
 export const $getDocumentPublishedVersionsList = createServerFn({
   method: "GET",
 })
-  .validator(
+  .inputValidator(
     z.object({
       contentId: z.string(),
       locale: localeSchema,

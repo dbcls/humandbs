@@ -6,7 +6,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { count, eq } from "drizzle-orm";
 
-export const $getUsers = createServerFn({ method: "GET", response: "data" })
+export const $getUsers = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context }) => {
     context.checkPermission("users", "view");
@@ -18,10 +18,9 @@ export const $getUsers = createServerFn({ method: "GET", response: "data" })
 
 export const $changeUserRole = createServerFn({
   method: "POST",
-  response: "data",
 })
   .middleware([hasPermissionMiddleware])
-  .validator(userSelectSchema.pick({ role: true, id: true }))
+  .inputValidator(userSelectSchema.pick({ role: true, id: true }))
   .handler(async ({ context, data }) => {
     context.checkPermission("users", "changeRole");
 
@@ -52,7 +51,7 @@ export function getUsersQueryOptions() {
 
 export const $deleteUser = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(userSelectSchema.pick({ id: true }))
+  .inputValidator(userSelectSchema.pick({ id: true }))
   .handler(async ({ context, data }) => {
     context.checkPermission("users", "delete");
 

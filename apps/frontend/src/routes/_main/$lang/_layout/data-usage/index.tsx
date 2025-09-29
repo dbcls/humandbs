@@ -1,7 +1,9 @@
 import { Card } from "@/components/Card";
+import { Button } from "@/components/ui/button";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/_main/$lang/_layout/data-usage/")({
   component: RouteComponent,
@@ -20,9 +22,21 @@ export const Route = createFileRoute("/_main/$lang/_layout/data-usage/")({
 function RouteComponent() {
   const { content, title } = Route.useLoaderData();
 
+  const navigate = Route.useNavigate();
+  const t = useTranslations("Front");
   return (
     <Card caption={title} captionSize={"lg"}>
       <RenderMarkdoc className="mx-auto" content={content} />
+      <div className="flexjustify-center">
+        <Button
+          asChild
+          variant={"action"}
+          size={"lg"}
+          onClick={() => navigate({ to: "./researches" })}
+        >
+          {t("data-usage-button")}
+        </Button>
+      </div>
     </Card>
   );
 }

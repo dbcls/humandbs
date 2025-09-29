@@ -9,9 +9,7 @@ import z from "zod";
 
 /** List all documents */
 export const $getDocuments = createServerFn({
-  type: "dynamic",
   method: "GET",
-  response: "data",
 }).handler(async () => {
   const documents = await db.query.document.findMany();
 
@@ -31,7 +29,7 @@ export function getDocumentsQueryOptions() {
  */
 export const $createDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(insertDocumentSchema)
+  .inputValidator(insertDocumentSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "create");
 
@@ -41,7 +39,7 @@ export const $createDocument = createServerFn({ method: "POST" })
   });
 
 export const $validateDocumentContentId = createServerFn({ method: "POST" })
-  .validator(z.string())
+  .inputValidator(z.string())
   .handler(async ({ data }) => {
     const existingDoc = await db.query.document.findFirst({
       where: eq(document.contentId, data),
@@ -55,7 +53,7 @@ export const $validateDocumentContentId = createServerFn({ method: "POST" })
  */
 export const $deleteDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(z.object({ contentId: z.string() }))
+  .inputValidator(z.object({ contentId: z.string() }))
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "delete");
 
