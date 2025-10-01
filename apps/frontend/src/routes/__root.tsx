@@ -3,6 +3,7 @@ import css from "@/index.css?url";
 import { auth } from "@/lib/auth";
 import { i18n as i18nConfig } from "@/lib/i18n-config";
 import { Context } from "@/router";
+import { FileRouteTypes } from "@/routeTree.gen";
 import {
   getLocaleFn,
   getMessagesFn,
@@ -66,7 +67,7 @@ export const Route = createRootRouteWithContext<Context>()({
 
     if (pathnameIsMissingLocale && !pathname.startsWith("/admin")) {
       throw redirect({
-        to: `/${locale}/${pathname}`,
+        to: `/${locale}/${pathname}` as FileRouteTypes["to"],
       });
     }
 

@@ -28,6 +28,7 @@ import { Route as MainLangLayoutDataSubmissionIndexRouteImport } from './routes/
 import { Route as MainLangLayoutContentIdIndexRouteImport } from './routes/_main/$lang/_layout/$contentId/index'
 import { Route as MainLangLayoutNewsNewsItemIdRouteImport } from './routes/_main/$lang/_layout/news/$newsItemId'
 import { Route as MainLangLayoutGuidelinesSlugRouteImport } from './routes/_main/$lang/_layout/guidelines/$slug'
+import { Route as MainLangLayoutContentSplatRouteImport } from './routes/_main/$lang/_layout/content/$'
 import { Route as MainLangLayoutDataUsageResearchesRouteRouteImport } from './routes/_main/$lang/_layout/data-usage/researches/route'
 import { Route as MainLangLayoutDataSubmissionNavigationRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/route'
 import { Route as MainLangLayoutDataUsageResearchesIndexRouteImport } from './routes/_main/$lang/_layout/data-usage/researches/index'
@@ -141,6 +142,12 @@ const MainLangLayoutGuidelinesSlugRoute =
     path: '/$slug',
     getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
   } as any)
+const MainLangLayoutContentSplatRoute =
+  MainLangLayoutContentSplatRouteImport.update({
+    id: '/content/$',
+    path: '/content/$',
+    getParentRoute: () => MainLangLayoutRoute,
+  } as any)
 const MainLangLayoutDataUsageResearchesRouteRoute =
   MainLangLayoutDataUsageResearchesRouteRouteImport.update({
     id: '/researches',
@@ -225,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/$lang/news': typeof MainLangLayoutNewsRouteRouteWithChildren
   '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
   '/$lang/data-usage/researches': typeof MainLangLayoutDataUsageResearchesRouteRouteWithChildren
+  '/$lang/content/$': typeof MainLangLayoutContentSplatRoute
   '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/$lang/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
   '/$lang/$contentId': typeof MainLangLayoutContentIdIndexRoute
@@ -247,6 +255,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthedAdminRoute
   '/$lang': typeof MainLangIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/$lang/content/$': typeof MainLangLayoutContentSplatRoute
   '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/$lang/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
   '/$lang/$contentId': typeof MainLangLayoutContentIdIndexRoute
@@ -279,6 +288,7 @@ export interface FileRoutesById {
   '/_main/$lang/_layout/news': typeof MainLangLayoutNewsRouteRouteWithChildren
   '/_main/$lang/_layout/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
   '/_main/$lang/_layout/data-usage/researches': typeof MainLangLayoutDataUsageResearchesRouteRouteWithChildren
+  '/_main/$lang/_layout/content/$': typeof MainLangLayoutContentSplatRoute
   '/_main/$lang/_layout/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
   '/_main/$lang/_layout/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
   '/_main/$lang/_layout/$contentId/': typeof MainLangLayoutContentIdIndexRoute
@@ -310,6 +320,7 @@ export interface FileRouteTypes {
     | '/$lang/news'
     | '/$lang/data-submission/navigation'
     | '/$lang/data-usage/researches'
+    | '/$lang/content/$'
     | '/$lang/guidelines/$slug'
     | '/$lang/news/$newsItemId'
     | '/$lang/$contentId'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/$lang'
     | '/api/auth/$'
+    | '/$lang/content/$'
     | '/$lang/guidelines/$slug'
     | '/$lang/news/$newsItemId'
     | '/$lang/$contentId'
@@ -363,6 +375,7 @@ export interface FileRouteTypes {
     | '/_main/$lang/_layout/news'
     | '/_main/$lang/_layout/data-submission/navigation'
     | '/_main/$lang/_layout/data-usage/researches'
+    | '/_main/$lang/_layout/content/$'
     | '/_main/$lang/_layout/guidelines/$slug'
     | '/_main/$lang/_layout/news/$newsItemId'
     | '/_main/$lang/_layout/$contentId/'
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$lang/guidelines/$slug'
       preLoaderRoute: typeof MainLangLayoutGuidelinesSlugRouteImport
       parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
+    }
+    '/_main/$lang/_layout/content/$': {
+      id: '/_main/$lang/_layout/content/$'
+      path: '/content/$'
+      fullPath: '/$lang/content/$'
+      preLoaderRoute: typeof MainLangLayoutContentSplatRouteImport
+      parentRoute: typeof MainLangLayoutRoute
     }
     '/_main/$lang/_layout/data-usage/researches': {
       id: '/_main/$lang/_layout/data-usage/researches'
@@ -749,6 +769,7 @@ interface MainLangLayoutRouteChildren {
   MainLangLayoutDataUsageRouteRoute: typeof MainLangLayoutDataUsageRouteRouteWithChildren
   MainLangLayoutGuidelinesRouteRoute: typeof MainLangLayoutGuidelinesRouteRouteWithChildren
   MainLangLayoutNewsRouteRoute: typeof MainLangLayoutNewsRouteRouteWithChildren
+  MainLangLayoutContentSplatRoute: typeof MainLangLayoutContentSplatRoute
   MainLangLayoutContentIdIndexRoute: typeof MainLangLayoutContentIdIndexRoute
 }
 
@@ -760,6 +781,7 @@ const MainLangLayoutRouteChildren: MainLangLayoutRouteChildren = {
   MainLangLayoutGuidelinesRouteRoute:
     MainLangLayoutGuidelinesRouteRouteWithChildren,
   MainLangLayoutNewsRouteRoute: MainLangLayoutNewsRouteRouteWithChildren,
+  MainLangLayoutContentSplatRoute: MainLangLayoutContentSplatRoute,
   MainLangLayoutContentIdIndexRoute: MainLangLayoutContentIdIndexRoute,
 }
 
