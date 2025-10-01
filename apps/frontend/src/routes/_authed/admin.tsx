@@ -45,7 +45,7 @@ function RouteComponent() {
       <ToggleGroup
         type="single"
         value={selectedTab}
-        onValueChange={(value) => setSelectedTab(value as MainTab)}
+        onValueChange={(value) => value && setSelectedTab(value as MainTab)}
       >
         <ToggleGroupItem value="news">News</ToggleGroupItem>
         <ToggleGroupItem value="documents">Documents</ToggleGroupItem>
