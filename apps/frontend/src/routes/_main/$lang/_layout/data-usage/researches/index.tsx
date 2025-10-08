@@ -282,7 +282,7 @@ const columns = [
     header: "Versions",
     cell: (ctx) =>
       ctx.renderValue()?.map((version) => (
-        <span className="flex gap-2">
+        <span className="flex gap-2" key={version.version}>
           <span>{version.version}:</span>
           <span>{version.releaseDate.replaceAll(/-/g, "/")}</span>
         </span>
