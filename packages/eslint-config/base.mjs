@@ -1,59 +1,45 @@
-import js from "@eslint/js";
-import eslintPluginImportX from "eslint-plugin-import-x";
-import globals from "globals";
-import tseslint, { configs as tsLintConfigs } from "typescript-eslint";
+import js from "@eslint/js"
+import { defineConfig } from "eslint/config"
+import eslintPluginImport from "eslint-plugin-import"
+import tseslint from "typescript-eslint"
 
 /**
  * A shared ESLint configuration for the repository.
- *
- * @type {import("eslint").Linter.Config}
+ * Note: files, ignores, languageOptions are omitted here (should be defined in each project (i.e., frontend.mjs, backend.mjs)).
  * */
-export const config = tseslint.config([
+export default defineConfig([
   {
     extends: [
       js.configs.recommended,
-      ...tsLintConfigs.strict,
-      ...tsLintConfigs.stylistic,
-      eslintPluginImportX.flatConfigs.recommended,
-      eslintPluginImportX.flatConfigs.typescript,
+      ...tseslint.configs.strict,
+      ...tseslint.configs.stylistic,
+      eslintPluginImport.flatConfigs.recommended,
+      eslintPluginImport.flatConfigs.typescript,
     ],
-    files: ["**/*.{js,ts,tsx}"],
-    ignores: ["dist"],
-    languageOptions: { ecmaVersion: 2020, globals: globals.browser },
-
     rules: {
-      // Our rules
+      // TypeScript
       "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-unused-vars": ["error", {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+      }],
 
-      // Import rules
-      "import-x/first": "error",
-      "import-x/order": [
-        "error",
-        {
-          "newlines-between": "always",
-          groups: [
-            ["builtin", "external", "internal"],
-            "parent",
-            "sibling",
-            "index",
-          ],
-          pathGroups: [
-            {
-              pattern: "@/**",
-              group: "internal",
-              position: "after",
-            },
-          ],
-          pathGroupsExcludedImportTypes: ["builtin"],
-          alphabetize: {
-            order: "asc",
-            caseInsensitive: true,
-          },
-        },
-      ],
-      "import-x/newline-after-import": "error",
-      "import-x/no-duplicates": "error",
-      "import-x/no-unresolved": "off",
+      // Import
+      "import/first": "error",
+      "import/order": ["error", {
+        "newlines-between": "always",
+        "groups": [["builtin", "external", "internal"], "parent", "sibling", "index"],
+        "pathGroups": [{ pattern: "@/**", group: "internal", position: "after" }],
+        "pathGroupsExcludedImportTypes": ["builtin"],
+        "alphabetize": { order: "asc", caseInsensitive: true },
+      }],
+      "import/newline-after-import": "error",
+      "import/no-duplicates": "error",
+      "import/no-unresolved": "off",
+      "import/named": "off",
+      "import/default": "off",
+      "import/namespace": "off",
     },
   },
-]);
+])

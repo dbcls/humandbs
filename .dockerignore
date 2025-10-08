@@ -4,7 +4,6 @@
 !.prettierignore
 !apps
 !bun.lock
-!index.ts
 !package.json
 !packages
 !README.md

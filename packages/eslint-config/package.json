@@ -2,21 +2,14 @@
     "name": "@humandbs/eslint-config",
     "private": true,
     "exports": {
-        "./base": "./base.mjs",
-        "./react": "./react.mjs",
-        "./formatter": "./format-with-linter.mjs"
+        ".": "./index.mjs",
+        "./base": "./base.mjs"
     },
     "devDependencies": {
-        "@eslint/js": "^9.19.0",
-        "@stylistic/eslint-plugin-js": "^3.0.1",
-        "eslint": "^9.19.0",
-        "eslint-config-prettier": "^10.0.1",
-        "eslint-import-resolver-typescript": "^3.7.0",
-        "eslint-plugin-import-x": "^4.6.1",
-        "eslint-plugin-react": "^7.37.4",
-        "eslint-plugin-react-hooks": "^5.1.0",
-        "eslint-plugin-react-refresh": "^0.4.18",
-        "globals": "^15.14.0",
-        "typescript-eslint": "^8.23.0"
+        "@eslint/js": "^9.35.0",
+        "eslint": "^9.35.0",
+        "eslint-plugin-import": "^2.32.0",
+        "globals": "^16.4.0",
+        "typescript-eslint": "^8.43.0"
     }
 }
