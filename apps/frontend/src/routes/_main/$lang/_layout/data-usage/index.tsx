@@ -27,7 +27,7 @@ function RouteComponent() {
   return (
     <Card caption={title} captionSize={"lg"}>
       <RenderMarkdoc className="mx-auto" content={content} />
-      <div className="flexjustify-center">
+      <div className="flex justify-center">
         <Button
           asChild
           variant={"action"}
