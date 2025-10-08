@@ -29,7 +29,6 @@ function RouteComponent() {
       <RenderMarkdoc className="mx-auto" content={content} />
       <div className="flex justify-center">
         <Button
-          asChild
           variant={"action"}
           size={"lg"}
           onClick={() => navigate({ to: "./researches" })}
