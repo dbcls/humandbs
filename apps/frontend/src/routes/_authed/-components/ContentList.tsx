@@ -170,7 +170,7 @@ function AddNewDialog() {
         <AddNewButton />
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="text-base">Add Document</DialogTitle>
+        <DialogTitle className="text-base">Add Content</DialogTitle>
         <form
           onSubmit={(e) => {
             e.preventDefault();
