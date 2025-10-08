@@ -196,7 +196,7 @@ function AddNewDialog() {
                     return !isExisting;
                   },
                   {
-                    message: "Document with this contentId already exists",
+                    message: "Content with this contentId already exists",
                   }
                 ),
             }}
