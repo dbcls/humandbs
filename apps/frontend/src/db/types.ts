@@ -1,12 +1,11 @@
+import { localeSchema } from "@/lib/i18n-config";
 import {
   createInsertSchema,
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
-import * as schema from "./schema";
 import { z } from "zod";
-import { enumFromStringArray } from "@/lib/utils";
-import { localeSchema } from "@/lib/i18n-config";
+import * as schema from "./schema";
 
 export const insertDocumentSchema = createInsertSchema(schema.document);
 
@@ -107,6 +106,19 @@ export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
 export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
   alert: createAlertSchema.omit({ newsId: true }).optional(),
 });
+
+export type ContentItem = typeof schema.contentItem.$inferSelect;
+
+export const contentTranslationInsertSchema = createInsertSchema(
+  schema.contentTranslation
+);
+
+export type ContentTranslationSelect =
+  typeof schema.contentTranslation.$inferSelect;
+
+export type ContentTranslationInsert = z.infer<
+  typeof contentTranslationInsertSchema
+>;
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;
 

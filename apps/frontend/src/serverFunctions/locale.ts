@@ -1,22 +1,20 @@
 import { match as matchLocale } from "@formatjs/intl-localematcher";
 import { createServerFn } from "@tanstack/react-start";
-import {
-  getCookie,
-  getWebRequest,
-  setCookie,
-} from "@tanstack/react-start/server";
+import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
 import Negotiator from "negotiator";
 import { z } from "zod";
 import { i18n as i18nConfig, Locale, localeSchema } from "../lib/i18n-config";
 
 const localeKey = "locale";
 
-export const getMessagesFn = createServerFn({ response: "data" })
-  .validator(localeSchema)
+export const getMessagesFn = createServerFn()
+  .inputValidator(localeSchema)
   .handler(async ({ data }) => {
     const locale = data as Locale;
-    const content = (await import(`../../localization/messages/${locale}.json`))
-      .default;
+
+    const jsonFile = Bun.file(`./localization/messages/${locale}.json`);
+
+    const content = await jsonFile.json();
     return content;
   });
 
@@ -40,7 +38,9 @@ function getLocale(request: Request): Locale {
     // Negotiator expects plain object so we need to transform headers
     const negotiatorHeaders: Record<string, string> = {};
 
-    request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
+    request.headers.forEach((value, key) => {
+      negotiatorHeaders[key] = value;
+    });
 
     // @ts-expect-error locales are readonly
     const locales: string[] = i18nConfig.locales;
@@ -61,13 +61,13 @@ function getLocale(request: Request): Locale {
 }
 
 export const getLocaleFn = createServerFn().handler(async () => {
-  const request = getWebRequest();
+  const request = getRequest();
 
   return getLocale(request);
 });
 
 export const saveLocaleFn = createServerFn({ method: "POST" })
-  .validator(z.object({ lang: z.string().min(2).max(2) }))
+  .inputValidator(z.object({ lang: z.string().min(2).max(2) }))
   .handler((ctx) => {
     setCookie(localeKey, ctx.data.lang, {
       path: "/",

@@ -8,21 +8,20 @@ import {
   NewsTranslationUpsert,
 } from "@/db/types";
 import { db } from "@/lib/database";
-import { Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/lib/i18n-config";
+import { toDateString } from "@/lib/utils";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from "zod";
-import { getLocaleFn } from "./locale";
-import { toDateString } from "@/lib/utils";
 
 /**
  * Get paginated list of titles and publication dates
  */
 export const $getNewsTitles = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
@@ -86,13 +85,15 @@ export function getNewsTitlesQueryOptions({
  * Get specific news translation by newsItemId and lang, for public-facing
  */
 export const $getNewsTranslation = createServerFn({ method: "GET" })
-  .validator(newsTranslationSelectSchema.pick({ lang: true, newsId: true }))
+  .inputValidator(
+    newsTranslationSelectSchema.pick({ lang: true, newsId: true })
+  )
   .handler(async ({ data }) => {
     const newsItemId = data.newsId;
 
     const lang = data.lang;
 
-    const result = await db.query.newsTranslation.findFirst({
+    let result = await db.query.newsTranslation.findFirst({
       where: and(
         eq(newsTranslation.newsId, newsItemId),
         eq(newsTranslation.lang, lang)
@@ -109,6 +110,26 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
         },
       },
     });
+
+    if (!result) {
+      result = await db.query.newsTranslation.findFirst({
+        where: and(
+          eq(newsTranslation.newsId, newsItemId),
+          eq(newsTranslation.lang, i18n.defaultLocale)
+        ),
+        columns: {
+          title: true,
+          content: true,
+          newsId: true,
+          lang: true,
+        },
+        with: {
+          newsItem: {
+            columns: { publishedAt: true },
+          },
+        },
+      });
+    }
 
     if (!result) {
       throw new Error("News translation not found");
@@ -138,7 +159,7 @@ export function getNewsTranslationQueryOptions({
 
 export const $getNewsItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
-  .validator(
+  .inputValidator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
@@ -206,7 +227,7 @@ export type NewsItemResponse = Awaited<
 
 export const $updateNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsItemUpdateSchema)
+  .inputValidator(newsItemUpdateSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("news", "update");
 
@@ -276,7 +297,7 @@ export function getNewsItemsQueryOptions({
  */
 export const $upsertNewsTranslation = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsTranslationInsertSchema)
+  .inputValidator(newsTranslationInsertSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "update");
 
@@ -301,7 +322,7 @@ export const $upsertNewsTranslation = createServerFn({ method: "POST" })
  */
 export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(
+  .inputValidator(
     newsTranslationUpdateSchema.pick({ newsId: true, lang: true }).required()
   )
   .handler(async ({ data, context }) => {
@@ -343,7 +364,7 @@ export const $createNewsItem = createServerFn({ method: "POST" })
  */
 export const $deleteNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(newsItemUpdateSchema.pick({ id: true }).required())
+  .inputValidator(newsItemUpdateSchema.pick({ id: true }).required())
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
 

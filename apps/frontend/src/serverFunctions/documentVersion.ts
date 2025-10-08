@@ -34,10 +34,9 @@ export interface DocumentVersionListItemResponse {
 /** Read a document version list */
 export const $getDocumentVersions = createServerFn({
   method: "GET",
-  response: "data",
 })
   .middleware([authMiddleware])
-  .validator(
+  .inputValidator(
     z.object({
       contentId: z.string(),
     })
@@ -83,9 +82,9 @@ export const $getDocumentVersions = createServerFn({
         }
 
         acc[key].statuses.add(version.status);
-        version.translations.forEach((t) =>
-          acc[key].locales.add(t.locale as Locale)
-        );
+        version.translations.forEach((t) => {
+          acc[key].locales.add(t.locale as Locale);
+        });
 
         return acc;
       },
@@ -156,7 +155,7 @@ export const $getDocumentVersion = createServerFn({
   method: "GET",
 })
   .middleware([hasPermissionMiddleware])
-  .validator(selectDocumentVersionSchema)
+  .inputValidator(selectDocumentVersionSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "view");
 
@@ -257,9 +256,8 @@ export const getDocumentVersionPublishedQueryOptions = ({
 /** Create new document version */
 export const $createDocumentVersion = createServerFn({
   method: "POST",
-  response: "data",
 })
-  .validator(
+  .inputValidator(
     z.object({
       contentId: z.string(),
     })
@@ -299,7 +297,7 @@ export const $createDocumentVersion = createServerFn({
 export const $cloneDocumentVersion = createServerFn({
   method: "POST",
 })
-  .validator(selectDocumentVersionSchema.omit({ status: true }))
+  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "create");
@@ -369,9 +367,8 @@ export const $cloneDocumentVersion = createServerFn({
 /** Delete document version */
 export const $deleteDocumentVersion = createServerFn({
   method: "POST",
-  response: "data",
 })
-  .validator(selectDocumentVersionSchema.omit({ status: true }))
+  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
@@ -434,7 +431,7 @@ export const $saveDocumentVersion = createServerFn({
   method: "POST",
 })
   .middleware([hasPermissionMiddleware])
-  .validator(versionUpdateSchema)
+  .inputValidator(versionUpdateSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "update");
     await upsertDocVersion({ data, user: context.user });
@@ -445,7 +442,7 @@ export const $saveDocumentVersion = createServerFn({
  */
 export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(draftVersionSchema.omit({ status: true }))
+  .inputValidator(draftVersionSchema.omit({ status: true }))
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "publish");
 
@@ -547,7 +544,7 @@ async function upsertDocVersion({
  */
 export const $deleteDocumentVersionDraft = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .validator(selectDocumentVersionSchema.omit({ status: true }))
+  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "update");
 

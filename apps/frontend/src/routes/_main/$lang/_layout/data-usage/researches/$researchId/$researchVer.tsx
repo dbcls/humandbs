@@ -10,7 +10,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
 
 export const Route = createFileRoute(
-  "/_main/$lang/_layout/research-list/$researchId/$researchVer"
+  "/_main/$lang/_layout/data-usage/researches/$researchId/$researchVer"
 )({
   component: RouteComponent,
 });

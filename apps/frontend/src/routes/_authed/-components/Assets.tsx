@@ -40,7 +40,7 @@ export function AssetsPanel() {
       className={cn(
         "relative flex min-h-0 w-12 flex-col rounded-sm bg-white transition-all",
         {
-          "w-assets-panel": assetsOpen,
+          "w-cms-assets-panel": assetsOpen,
         }
       )}
     >

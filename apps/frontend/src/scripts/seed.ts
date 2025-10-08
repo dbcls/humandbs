@@ -38,7 +38,6 @@ async function main() {
     });
   } catch (error) {
     console.error("Error during seeding:", error);
-    throw error;
   }
 
   console.log("Seed data inserted successfully!");

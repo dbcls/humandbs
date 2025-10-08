@@ -103,27 +103,16 @@ export function NewsItemContent({
     },
   });
 
-  useEffect(() => {
-    form.reset();
-  }, [form, newsItem]);
-
   if (!newsItem) return null;
 
   return (
     <Card
       caption={
         <span className="flex items-center gap-5">
-          <span>Content</span>
+          <span>Details</span>
 
           <form.AppField name="locale">
-            {(field) => (
-              <field.SwitchField
-                options={i18n.locales.map((loc) => ({
-                  label: <span className="capitalize">{loc}</span>,
-                  value: loc,
-                }))}
-              />
-            )}
+            {(field) => <field.LocaleSwitchField />}
           </form.AppField>
         </span>
       }

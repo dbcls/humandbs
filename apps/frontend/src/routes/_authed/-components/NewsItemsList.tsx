@@ -9,10 +9,11 @@ import {
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { LucideBell, LucidePlus, Trash2Icon } from "lucide-react";
+import { LucideBell, Trash2Icon } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 import { Tag } from "./StatusTag";
 import { AddNewButton } from "./AddNewButton";
+import { TrashButton } from "@/components/TrashButton";
 
 export function NewsItemsList({
   onClickAdd,
@@ -57,7 +58,7 @@ export function NewsItemsList({
   return (
     <Card
       caption="News"
-      className="flex h-full w-96 flex-col"
+      className="w-cms-list-panel flex h-full flex-col"
       containerClassName="overflow-auto flex-1 max-h-full"
     >
       <ul>
@@ -72,46 +73,37 @@ export function NewsItemsList({
               onClick={() => onSelectNewsItem(item)}
               isActive={isActive}
             >
-              <>
-                <div className="text-sm font-medium">
-                  <span>{item.publishedAt || "No data"}</span>
-                  {item.alert ? (
-                    <div className="text-xs">
-                      <LucideBell className="text-accent mr-1 inline size-4" />
-                      <span>{`${item.alert.from} - ${item.alert.to}`}</span>
-                    </div>
-                  ) : null}
-                  <ul className="space-y-1">
-                    {item.translations &&
-                      Object.entries(item.translations).map(
-                        ([lang, tr], index) => (
-                          <li
-                            key={`${lang}-${index}`}
-                            className="flex items-center gap-1 text-xs"
-                          >
-                            <Tag tag={lang} isActive={isActive} />
-                            <span>{tr.title}</span>
-                          </li>
-                        )
-                      )}
-                  </ul>
-                </div>
+              <div className="text-sm font-medium">
+                <span>{item.publishedAt || "No data"}</span>
+                {item.alert ? (
+                  <div className="text-xs">
+                    <LucideBell className="text-accent mr-1 inline size-4" />
+                    <span>{`${item.alert.from} - ${item.alert.to}`}</span>
+                  </div>
+                ) : null}
+                <ul className="space-y-1">
+                  {item.translations &&
+                    Object.entries(item.translations).map(
+                      ([lang, tr], index) => (
+                        <li
+                          key={`${lang}-${index}`}
+                          className="flex items-center gap-1 text-xs"
+                        >
+                          <Tag tag={lang} isActive={isActive} />
+                          <span>{tr.title}</span>
+                        </li>
+                      )
+                    )}
+                </ul>
+              </div>
 
-                <Button
-                  variant={"ghost"}
-                  size={"slim"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClickDeleteNewsItem(item);
-                  }}
-                >
-                  <Trash2Icon
-                    className={cn("text-danger size-5 transition-colors", {
-                      "text-white": isActive,
-                    })}
-                  />
-                </Button>
-              </>
+              <TrashButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClickDeleteNewsItem(item);
+                }}
+                isActive={isActive}
+              />
             </ListItem>
           );
         })}

@@ -5,14 +5,12 @@ import {
   DOCUMENT_VERSION_STATUS,
   DocumentVersionTranslation,
 } from "@/db/schema";
-import { DocumentVersionStatus } from "@/db/types";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
 import {
   $deleteDocumentVersionDraft,
   $publishDocumentVersionDraft,
   $saveDocumentVersion,
-  type DocumentVersionContentResponse,
   type DocumentVersionListItemResponse,
   getDocumentVersionDraftQueryOptions,
   getDocumentVersionPublishedQueryOptions,
@@ -20,7 +18,7 @@ import {
 } from "@/serverFunctions/documentVersion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Trash2, Undo2 } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { StatusTag } from "./StatusTag";
 
 type FormMeta = {
@@ -363,15 +361,11 @@ export function DocumentVersionContent({
     },
   });
 
-  useEffect(() => {
-    form.reset();
-  }, [form, documentVersionItem]);
-
   return (
     <Card
       caption={
         <div className="flex items-center gap-5">
-          <span>Content</span>
+          <span>Details</span>
           <form.Subscribe selector={(state) => state.values.status}>
             {(status) => (
               <form.AppField name="status">
@@ -533,28 +527,3 @@ export function DocumentVersionContent({
     </Card>
   );
 }
-
-// function DraftPublishedSwitcher({
-//   value,
-//   options,
-//   onValueChange,
-// }: {
-//   value: DocumentVersionStatus;
-//   options: DocumentVersionStatus[];
-//   onValueChange: (value: DocumentVersionStatus) => void;
-// }) {
-//   return (
-//     <ToggleGroup
-//       variant={"blue"}
-//       value={value}
-//       type="single"
-//       onValueChange={(value) =>
-//         value && onValueChange(value as DocumentVersionStatus)
-//       }
-//     >
-//       {options.map((option) => (
-//         <ToggleGroupItem key={option} value={option}></ToggleGroupItem>
-//       ))}
-//     </ToggleGroup>
-//   );
-// }
