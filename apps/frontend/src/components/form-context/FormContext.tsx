@@ -13,7 +13,7 @@ const ContentAreaField = lazy(() => import("./ContentAreaField"));
 const DateField = lazy(() => import("./DateField"));
 const DateRangeField = lazy(() => import("./DateRangeField"));
 
-export const { useAppForm } = createFormHook({
+export const { useAppForm, withForm } = createFormHook({
   fieldContext,
   formContext,
 

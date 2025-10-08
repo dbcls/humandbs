@@ -8,15 +8,14 @@ import {
   NewsTranslationUpsert,
 } from "@/db/types";
 import { db } from "@/lib/database";
-import { Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/lib/i18n-config";
+import { toDateString } from "@/lib/utils";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from "zod";
-import { getLocaleFn } from "./locale";
-import { toDateString } from "@/lib/utils";
 
 /**
  * Get paginated list of titles and publication dates
@@ -94,7 +93,7 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
 
     const lang = data.lang;
 
-    const result = await db.query.newsTranslation.findFirst({
+    let result = await db.query.newsTranslation.findFirst({
       where: and(
         eq(newsTranslation.newsId, newsItemId),
         eq(newsTranslation.lang, lang)
@@ -111,6 +110,26 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
         },
       },
     });
+
+    if (!result) {
+      result = await db.query.newsTranslation.findFirst({
+        where: and(
+          eq(newsTranslation.newsId, newsItemId),
+          eq(newsTranslation.lang, i18n.defaultLocale)
+        ),
+        columns: {
+          title: true,
+          content: true,
+          newsId: true,
+          lang: true,
+        },
+        with: {
+          newsItem: {
+            columns: { publishedAt: true },
+          },
+        },
+      });
+    }
 
     if (!result) {
       throw new Error("News translation not found");

@@ -5,7 +5,7 @@ import {
   DocumentVersionTranslation,
   UserRole,
 } from "@/db/schema";
-import { Alert, NewsItem } from "@/db/types";
+import { Alert, ContentItem, NewsItem } from "@/db/types";
 import { SessionUser } from "@/router";
 
 type PermissionCheck<Key extends keyof Permissions> =
@@ -28,6 +28,10 @@ export type Permissions = {
   documents: {
     dataType: Document;
     action: "view" | "create" | "update" | "delete";
+  };
+  contents: {
+    dataType: ContentItem;
+    action: "list" | "view" | "create" | "update" | "delete";
   };
   documentVersions: {
     dataType: DocumentVersion;
@@ -77,6 +81,13 @@ const ROLES = {
       create: true,
       delete: true,
     },
+    contents: {
+      list: true,
+      view: true,
+      create: true,
+      update: true,
+      delete: true,
+    },
     assets: {
       view: true,
       create: true,
@@ -114,6 +125,13 @@ const ROLES = {
       view: true,
       update: true,
       create: true,
+      delete: true,
+    },
+    contents: {
+      list: true,
+      view: true,
+      create: true,
+      update: true,
       delete: true,
     },
     assets: {

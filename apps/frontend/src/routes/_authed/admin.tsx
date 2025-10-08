@@ -26,17 +26,20 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, useState } from "react";
 import { AssetsPanel } from "./-components/Assets";
+import { ContentList } from "./-components/ContentList";
 import { DocumentsList } from "./-components/DocumentsList";
 import { DocumentVersionContent } from "./-components/DocumentVersionContent";
 import { DocumentVersionsList } from "./-components/DocumentVersionsList";
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
+import { ContentItemDetails } from "./-components/ContentItemDetails";
+import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 
 export const Route = createFileRoute("/_authed/admin")({
   component: RouteComponent,
 });
 
-type MainTab = "news" | "documents" | "users";
+type MainTab = "news" | "documents" | "content" | "users";
 
 function RouteComponent() {
   const [selectedTab, setSelectedTab] = useState<MainTab>("news");
@@ -49,16 +52,20 @@ function RouteComponent() {
       >
         <ToggleGroupItem value="news">News</ToggleGroupItem>
         <ToggleGroupItem value="documents">Documents</ToggleGroupItem>
+        <ToggleGroupItem value="content">Content</ToggleGroupItem>
         <ToggleGroupItem value="users">Users</ToggleGroupItem>
       </ToggleGroup>
       <TabsContent className="flex items-stretch gap-2" value="news">
         <AssetsPanel />
-
         <ManageNews />
       </TabsContent>
       <TabsContent className="flex items-stretch gap-2" value="documents">
         <AssetsPanel />
         <ManageDocuments />
+      </TabsContent>
+      <TabsContent className="flex items-stretch gap-2" value="content">
+        <AssetsPanel />
+        <ManageContent />
       </TabsContent>
       <TabsContent value="users">
         <Suspense fallback={<div>Loading...</div>}>
@@ -88,7 +95,7 @@ function ManageNews() {
         />
       </Suspense>
 
-      <NewsItemContent newsItem={selectedNewsItem} />
+      <NewsItemContent key={selectedNewsItem?.id} newsItem={selectedNewsItem} />
     </>
   );
 }
@@ -109,7 +116,7 @@ function ManageDocuments() {
   return (
     <>
       <Card
-        className="flex h-full w-96 flex-col"
+        className="w-cms-list-panel flex h-full flex-col"
         caption="Documents"
         containerClassName="overflow-auto flex-1 max-h-full"
       >
@@ -143,13 +150,36 @@ function ManageDocuments() {
               documentVersionItem={selectedVersion}
             />
           ) : (
-            <Card className="flex-1" captionSize={"sm"} caption="Content">
+            <Card className="flex-1" captionSize={"sm"} caption="Details">
               Select a version
             </Card>
           )}
         </>
       ) : (
         <div> No document selected </div>
+      )}
+    </>
+  );
+}
+
+function ManageContent() {
+  const [selectedContentId, setSelectedContentId] = useState("");
+
+  return (
+    <>
+      <Card className="w-cms-list-panel flex h-full flex-col" caption="Content">
+        <Suspense fallback={<Skeleton />}>
+          <ContentList
+            onClickAdd={() => {}}
+            selectedContentId={selectedContentId}
+            onSelectContent={setSelectedContentId}
+          />
+        </Suspense>
+      </Card>
+      {selectedContentId && (
+        <Suspense fallback={<FallbackDetailsCard />}>
+          <ContentItemDetails key={selectedContentId} id={selectedContentId} />
+        </Suspense>
       )}
     </>
   );

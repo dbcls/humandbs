@@ -6,7 +6,7 @@ import {
   documentVersionTranslation,
 } from "@/db/schema";
 import { db } from "@/lib/database";
-import { Locale, localeSchema } from "@/lib/i18n-config";
+import { i18n, Locale, localeSchema } from "@/lib/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -102,7 +102,7 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
   .handler(async ({ data }) => {
     const { contentId, locale } = data;
 
-    const translation = await db
+    let translation = await db
       .select({
         documentVersionTranslation,
       })
@@ -121,6 +121,28 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
       )
       .orderBy(desc(documentVersion.versionNumber))
       .limit(1);
+
+    if (!translation || !translation[0]) {
+      translation = await db
+        .select({
+          documentVersionTranslation,
+        })
+        .from(documentVersionTranslation)
+        .innerJoin(
+          documentVersion,
+          eq(documentVersionTranslation.documentVersionId, documentVersion.id)
+        )
+        .innerJoin(document, eq(documentVersion.contentId, document.contentId))
+        .where(
+          and(
+            eq(document.contentId, contentId),
+            eq(documentVersionTranslation.locale, i18n.defaultLocale),
+            eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+          )
+        )
+        .orderBy(desc(documentVersion.versionNumber))
+        .limit(1);
+    }
 
     if (!translation || !translation[0]) {
       throw new Error(

@@ -41,7 +41,7 @@ function Caption() {
     <div className="flex items-center justify-between">
       <h3 className="text-lg">{t("research-list")}</h3>
 
-      <div className="flex gap-4">
+      <div className="flex items-center gap-4">
         <div className="flex gap-1">
           <Button variant={"tableAction"}>Copy</Button>
           <Button variant={"tableAction"}>CSV</Button>

@@ -9,8 +9,8 @@
   --info: "\f05a";
   --tip: "\f0eb";
   --warning: "\f071";
-
-  --assets-panel-width: 500px;
+  --cms-assets-panel-width: 500px;
+  --cms-list-panel-width: 30rem;
 }
 
 @theme {
@@ -44,7 +44,8 @@
   --text-xs: 1.2rem;
   --text-2xs: 0.9rem;
 
-  --spacing-assets-panel: var(--assets-panel-width);
+  --spacing-cms-assets-panel: var(--cms-assets-panel-width);
+  --spacing-cms-list-panel: var(--cms-list-panel-width);
 
   --font-sans:
     i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
