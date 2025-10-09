@@ -162,17 +162,6 @@ export const IsAdminResponseSchema = z.object({
 }).strict()
 export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
 
-// Request body for POST /translate
-export const TranslateRequestSchema = z.object({
-  text: z.string(),
-  targetLang: z.enum(langType),
-}).strict()
-
-// Response of POST /translate
-export const TranslateResponseSchema = z.object({
-  translatedText: z.string(),
-}).strict()
-
 export const ResearchSummarySchema = z.object({
   humId: z.string(),
   lang: z.enum(langType),
@@ -181,12 +170,17 @@ export const ResearchSummarySchema = z.object({
     version: z.string(),
     releaseDate: z.string(), // ISO 8601 format (e.g., "2023-10-01")
   })),
-  // 露出させる dataset の情報は要 discussion
-  // experimentalMethods: z.string().nullable().optional(),
+  methods: z.string(),
+  datasetIds: z.array(z.string()),
+  typeOfData: z.array(z.string()),
+  platforms: z.array(z.string()),
+  targets: z.string(),
+  dataProvider: z.array(z.string()),
+  criteria: z.string(),
 }).strict()
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
 
-// Query parameters for GET /researches
+// Query parameters for GET /researches and /research-summaries
 export const ResearchesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),

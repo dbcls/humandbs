@@ -1,6 +1,12 @@
 # HumanDBs Backend
 
-## 2024/08/07
+## 2025/10/09
+
+- crawler の refactoring を行わなければならない
+- 対応済みの humId の list を作る
+- molData の中を rawHtml にする
+
+## 2025/08/07
 
 **API Server を使いたい人はこれのみを見てください。**
 
@@ -22,7 +28,7 @@ root@0272ff98f17e:/app/apps/backend# bun run dev
 
 OpenAPI 仕様は、`localhost:8080/docs` で確認できる。
 
-## Ollama model の容易
+## Ollama model の用意
 
 ```
 docker compose -f compose.dev.yml exec ollama ollama pull qwen3:8b

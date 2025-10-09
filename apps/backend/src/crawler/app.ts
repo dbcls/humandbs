@@ -1,3 +1,4 @@
+import { readFileSync } from "fs"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
@@ -77,7 +78,14 @@ const FILTER_HUM_IDS = [
 const main = async () => {
   const args = parseArgs()
   const useCache = !args.noCache
-  let humIds = args.humId ? [args.humId] : await parseAllHumIds(useCache)
+  // let humIds = args.humId ? [args.humId] : await parseAllHumIds(useCache)
+  // TODO: for debug
+  const PAIR_PATH = "/app/apps/backend/src/crawler/hum-id-pair.json"
+  const raw = readFileSync(PAIR_PATH, "utf-8")
+  const pairs = JSON.parse(raw) as { humId: string; version: string }[]
+  let humIds = Array.from(new Set(pairs.map((p) => p.humId)))
+  // for debug done
+
   console.log(`Processing ${humIds.length} humIds...`)
   humIds = humIds.filter(humId => !FILTER_HUM_IDS.includes(humId))
 

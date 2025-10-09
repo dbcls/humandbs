@@ -501,7 +501,7 @@ const getCleanInnerHTML = (node: Element): string => {
     ["SPAN", "P"].includes(cloned.children[0].tagName) &&
     cloned.childNodes.length === 1
   ) {
-    return cloned.children[0].innerHTML.trim()
+    return (cloned.children[0] as HTMLElement).outerHTML.trim()
   }
 
   return cloned.innerHTML.trim()
@@ -636,12 +636,16 @@ export const parseMolecularData = (humVersionId: string, dom: JSDOM, lang: LangT
 
       const key = cells[0].textContent?.trim() ?? ""
       const valueNode = cells[1]
-      const value = valueNode.textContent?.trim() ?? ""
-      if (value === "-") {
-        data[key] = null
-      } else {
-        data[key] = getCleanInnerHTML(valueNode)
-      }
+      const html = getCleanInnerHTML(valueNode)
+      const text = valueNode.textContent?.trim() ?? ""
+
+      data[key] = (html === "" || text === "-") ? null : html
+      // const value = valueNode.textContent?.trim() ?? ""
+      // if (value === "-") {
+      //   data[key] = null
+      // } else {
+      //   data[key] = getCleanInnerHTML(valueNode)
+      // }
     }
     molecularData.push({ id, data, footers })
   }
