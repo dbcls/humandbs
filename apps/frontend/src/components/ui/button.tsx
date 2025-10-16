@@ -10,6 +10,7 @@ export const buttonVariants = cva(
     variants: {
       size: {
         lg: "px-8 py-4 text-sm",
+        tableAction: "px-8 py-3 text-sm",
         default: "px-4 py-2 text-xs",
         slim: "p-1 text-xs",
         icon: "p-2 text-sm",

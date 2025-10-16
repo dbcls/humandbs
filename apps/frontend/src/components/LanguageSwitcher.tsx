@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { i18n as i18nConfig, Locale } from "@/lib/i18n-config";
+import { i18n, i18n as i18nConfig, Locale } from "@/lib/i18n-config";
 import { saveLocaleFn } from "@/serverFunctions/locale";
 import { useRouter } from "@tanstack/react-router";
 import { useLocale } from "use-intl";
@@ -11,9 +11,14 @@ export function LangSwitcher() {
   async function handleSwitch(lang: Locale) {
     await saveLocaleFn({ data: { lang } });
 
-    await router.invalidate({ filter: (r) => r.fullPath !== "/admin" });
+    await router.invalidate({
+      filter: (r) => r.fullPath !== "/{-$lang}/admin",
+    });
 
-    await router.navigate({ to: ".", params: { lang } });
+    await router.navigate({
+      to: ".",
+      params: { lang: lang === i18n.defaultLocale ? undefined : lang },
+    });
   }
 
   return (

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { FileRoutesByTo } from "@/routeTree.gen";
 import { Slot } from "@radix-ui/react-slot";
+import { isMatch, useMatches } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { Home, MoreHorizontal } from "lucide-react";
 import * as React from "react";
@@ -110,21 +111,28 @@ export interface BreadcroumbsPath {
   href: keyof FileRoutesByTo;
 }
 
-function Breacrumbs({
-  breadcrumbsPath,
-}: {
-  breadcrumbsPath: BreadcroumbsPath[];
-}) {
+function Breadcrumbs() {
+  const matches = useMatches();
+
+  const crumbs = React.useMemo(() => {
+    return matches
+      .filter((match) => isMatch(match, "loaderData.crumb"))
+      .map((match) => ({
+        label: (match.loaderData?.crumb ?? "") as string,
+        href: match.fullPath,
+      }));
+  }, [matches]);
+
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {breadcrumbsPath.map(({ label, href }, index) => (
+        {crumbs.map(({ label, href }, index) => (
           <React.Fragment key={href}>
             <BreadcrumbItem>
               <Link
                 to={href}
                 className={cn("text-foreground-light", {
-                  "text-secondary": index === breadcrumbsPath.length - 1,
+                  "text-secondary": index === crumbs.length - 1,
                 })}
               >
                 {index === 0 ? (
@@ -133,7 +141,7 @@ function Breacrumbs({
                 {label}
               </Link>
             </BreadcrumbItem>
-            {index < breadcrumbsPath.length - 1 && <BreadcrumbSeparator />}
+            {index < crumbs.length - 1 && <BreadcrumbSeparator />}
           </React.Fragment>
         ))}
       </BreadcrumbList>
@@ -142,7 +150,7 @@ function Breacrumbs({
 }
 
 export {
-  Breacrumbs,
+  Breadcrumbs,
   Breadcrumb,
   BreadcrumbEllipsis,
   BreadcrumbItem,

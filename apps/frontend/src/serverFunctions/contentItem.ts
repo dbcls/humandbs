@@ -1,3 +1,4 @@
+import { getNavConfig } from "@/config/navbar-config";
 import { contentItem, contentTranslation } from "@/db/schema";
 import {
   ContentTranslationInsert,
@@ -161,7 +162,7 @@ export const $getContentItemTranslation = createServerFn({
     };
   });
 
-export const $validateContentId = createServerFn({ method: "GET" })
+export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
   .inputValidator(z.string())
   .handler(async ({ data }) => {
     const contentId = data;
@@ -170,6 +171,22 @@ export const $validateContentId = createServerFn({ method: "GET" })
     });
 
     return !!content;
+  });
+
+export const $validateContentId = createServerFn({ method: "GET" })
+  .inputValidator(z.string().min(3))
+  .handler(async ({ data }) => {
+    const contentId = data;
+
+    const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map(
+      (c) => c.id
+    ) as string[];
+
+    const content = await db.query.contentItem.findFirst({
+      where: (content, { eq }) => eq(content.id, contentId),
+    });
+
+    return !content && !reservedPathPrefixes.includes(contentId.split("/")[0]);
   });
 
 export const $createContentItem = createServerFn({ method: "POST" })

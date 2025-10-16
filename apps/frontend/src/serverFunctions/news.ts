@@ -17,6 +17,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 
+export interface NewsTitleResponse {
+  alert: boolean;
+  id: string;
+  locale: Locale;
+  title: string;
+  publishedAt: string | null;
+}
+
 /**
  * Get paginated list of titles and publication dates
  */
@@ -28,7 +36,7 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
       locale: z.string(),
     })
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
     const locale = data.locale;
 
     const nowStr = toDateString(new Date()) as string;
@@ -57,13 +65,10 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
 
     return news.map((n) => ({
       ...n,
+      locale: n.locale as Locale,
       alert: !!n.alert,
     }));
   });
-
-export type NewsTitleResponse = Awaited<
-  ReturnType<typeof $getNewsTitles>
->[number];
 
 export function getNewsTitlesQueryOptions({
   limit,
