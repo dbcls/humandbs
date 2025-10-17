@@ -17,7 +17,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
     offset,
     limit,
   }),
-  loader: async ({ context, deps, params }) => {
+  loader: async ({ context, deps }) => {
     const { offset, limit } = deps;
 
     const newsTitles = await context.queryClient.ensureQueryData(

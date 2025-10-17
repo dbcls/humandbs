@@ -33,15 +33,15 @@ function localeRewrite(): LocationRewrite {
   return {
     input: ({ url }) => {
       const parts = url.pathname.split("/").filter(Boolean);
-      if (!parts.length) return url;
 
       const [maybeLocale] = parts;
 
       if (
-        maybeLocale.startsWith(".") ||
-        maybeLocale === "api" ||
-        maybeLocale === "assets" ||
-        maybeLocale === "favicon.ico"
+        maybeLocale &&
+        (maybeLocale.startsWith(".") ||
+          maybeLocale === "api" ||
+          maybeLocale === "assets" ||
+          maybeLocale === "favicon.ico")
       ) {
         return url;
       }
@@ -49,6 +49,7 @@ function localeRewrite(): LocationRewrite {
       if (!i18n.locales.includes(maybeLocale as Locale)) {
         url.pathname = `/${i18n.defaultLocale}/${parts.join("/")}`;
       }
+
       return url;
     },
     output: ({ url }) => {

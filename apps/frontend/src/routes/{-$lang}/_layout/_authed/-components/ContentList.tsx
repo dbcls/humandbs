@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { useServerFn } from "@tanstack/react-start";
+import { localeSchema } from "@/lib/i18n-config";
 
 export function ContentList({
   selectedContentId,
@@ -164,39 +166,54 @@ function AddNewDialog() {
     },
   });
 
+  const validateContentId = useServerFn($validateContentId);
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        if (!open) form.reset();
+        setOpen(open);
+      }}
+    >
       <DialogTrigger asChild>
         <AddNewButton />
       </DialogTrigger>
       <DialogContent>
         <DialogTitle className="text-base">Add Content</DialogTitle>
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            form.handleSubmit();
-            setOpen(false);
+            await form.handleSubmit();
+            console.log("onSubmit", form.state.fieldMeta.contentId.errors);
+            if (form.state.fieldMeta.contentId.errors.length === 0) {
+              setOpen(false);
+            }
           }}
           className="flex flex-col gap-2"
         >
           <form.Field
             name="contentId"
             validators={{
-              onChangeAsyncDebounceMs: 500,
+              onSubmit: z
+                .string()
+                .min(3)
+                .refine((val) => !!localeSchema.safeParse(val).success, {
+                  message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
+                }),
+              onChange: z
+                .string()
+                .max(100)
+                .refine((val) => !val.startsWith("/") && !val.endsWith("/"), {
+                  message: "Id should not start or end with '/'",
+                }),
+              onChangeAsyncDebounceMs: 1000,
               onChangeAsync: z
                 .string()
-                .min(1)
-                .max(100)
-                .refine(
-                  (value) =>
-                    $validateContentId({
-                      data: value,
-                    }),
-                  {
-                    message: "Content with this contentId already exists",
-                  }
-                ),
+                .refine((val) => validateContentId({ data: val }), {
+                  message: "Content with this contentId already exists",
+                }),
             }}
           >
             {(field) => {
@@ -209,10 +226,13 @@ function AddNewDialog() {
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
                   {!field.state.meta.isValid && (
-                    <em role="alert" className="text-danger text-xs">
-                      {field.state.meta.errors
-                        .map((e) => e?.message)
-                        .join(", ")}
+                    <em
+                      role="alert"
+                      className="text-danger space-y-1.5 text-xs"
+                    >
+                      {field.state.meta.errors.map((e) => (
+                        <p key={e?.message}>{e?.message}</p>
+                      ))}
                     </em>
                   )}
                 </Label>

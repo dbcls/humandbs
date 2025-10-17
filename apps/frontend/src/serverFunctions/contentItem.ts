@@ -107,7 +107,7 @@ export const $getContentItem = createServerFn({ method: "GET" })
   });
 
 export function getContentTranslationQueryOptions(data: {
-  id: string;
+  id: string | undefined;
   lang: Locale;
 }) {
   return queryOptions({
@@ -173,9 +173,14 @@ export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
     return !!content;
   });
 
+// interface ContentIdValidationResponse {
+//   error: boolean;
+//   message?: string;
+// }
+
 export const $validateContentId = createServerFn({ method: "GET" })
-  .inputValidator(z.string().min(3))
-  .handler(async ({ data }) => {
+  .inputValidator(z.string())
+  .handler(async ({ data }): Promise<boolean> => {
     const contentId = data;
 
     const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map(
@@ -187,6 +192,23 @@ export const $validateContentId = createServerFn({ method: "GET" })
     });
 
     return !content && !reservedPathPrefixes.includes(contentId.split("/")[0]);
+    // if (i18n.locales.includes(contentId.split("/")[0] as Locale)) {
+    //   return {
+    //     error: true,
+    //     message: `Please use CMS locale feature. Instead of setting id as "/en/hogehoge", set id "/hogehoge" and use Locale tab of the Details panel to set the locale.`,
+    //   };
+    // }
+
+    // if (!content && !reservedPathPrefixes.includes(contentId.split("/")[0])) {
+    //   return {
+    //     error: true,
+    //     message: `Page with path ${contentId} already exists`,
+    //   };
+    // }
+
+    // return {
+    //   error: false,
+    // };
   });
 
 export const $createContentItem = createServerFn({ method: "POST" })

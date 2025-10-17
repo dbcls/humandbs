@@ -10,33 +10,15 @@ import { IntlProvider } from "use-intl";
 import z from "zod";
 
 export const Route = createFileRoute("/{-$lang}")({
-  params: z.object({ lang: localeSchema.optional() }),
+  params: z.object({ lang: localeSchema }),
   beforeLoad: async ({ params }) => {
-    console.log("route");
+    // const { lang } = resolveLang(params);
 
-    const { lang, wasLocalePrefix } = resolveLang(params);
-
-    console.log({ lang, wasLocalePrefix });
-
-    // if no path lang, and supposed by the server lang is not default, switch to that supposed lang
-    // i.e. `example.com/news`, but say, "en" in cookies -> `example.com/en/news`
-    // if (context.lang !== i18n.defaultLocale) {
-    //   console.log("redirecting");
-    //   throw redirect({ to: ".", params: { lang: context.lang } });
-    // }
-    // if (!!params.lang && !i18n.locales.includes(params.lang as Locale)) {
-    //   throw redirect({
-    //     to: "/{-$lang}/$",
-    //     params: { lang: undefined, _splat: params.lang },
-    //   });
-    // }
-
-    const messages = await getMessagesFn({ data: lang });
+    const messages = await getMessagesFn({ data: params.lang });
     //
     return {
       messages,
-      lang,
-      wasLocalePrefix,
+      lang: params.lang,
     };
   },
   loader: async ({ context }) => {

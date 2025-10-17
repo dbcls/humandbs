@@ -13,7 +13,7 @@ import { News } from "../../-components/FrontNews";
 export const Route = createFileRoute("/{-$lang}/_layout/_main/")({
   component: Index,
 
-  loader: async ({ context, params }) => {
+  loader: async ({ context }) => {
     const { content } = await context.queryClient.ensureQueryData(
       getDocumentLatestPublishedVersionTranslationQueryOptions({
         locale: context.lang,
