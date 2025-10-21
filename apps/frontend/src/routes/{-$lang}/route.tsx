@@ -1,5 +1,4 @@
 import { localeSchema } from "@/lib/i18n-config";
-import { resolveLang } from "@/lib/router-utils";
 import {
   $getHiddenAlertIds,
   getActiveAlertsQueryOptions,
@@ -12,8 +11,6 @@ import z from "zod";
 export const Route = createFileRoute("/{-$lang}")({
   params: z.object({ lang: localeSchema }),
   beforeLoad: async ({ params }) => {
-    // const { lang } = resolveLang(params);
-
     const messages = await getMessagesFn({ data: params.lang });
     //
     return {

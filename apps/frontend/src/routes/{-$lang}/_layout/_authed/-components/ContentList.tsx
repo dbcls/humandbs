@@ -199,9 +199,13 @@ function AddNewDialog() {
               onSubmit: z
                 .string()
                 .min(3)
-                .refine((val) => !!localeSchema.safeParse(val).success, {
-                  message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
-                }),
+                .refine(
+                  (val) => !localeSchema.safeParse(val.split("/")?.[0]).success,
+                  {
+                    message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
+                  }
+                ),
+              // TODO - quietly strip slashes instead of error
               onChange: z
                 .string()
                 .max(100)

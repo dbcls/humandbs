@@ -1,5 +1,4 @@
 import { Card } from "@/components/Card";
-import { normalizeSplat } from "@/lib/router-utils";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContentTranslationQueryOptions } from "@/serverFunctions/contentItem";
 import { createFileRoute } from "@tanstack/react-router";
