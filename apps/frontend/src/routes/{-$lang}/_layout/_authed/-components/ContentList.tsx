@@ -162,7 +162,7 @@ function AddNewDialog() {
     },
 
     onSubmit: async ({ value }) => {
-      createContent(value.contentId);
+      createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
     },
   });
 
@@ -205,13 +205,7 @@ function AddNewDialog() {
                     message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
                   }
                 ),
-              // TODO - quietly strip slashes instead of error
-              onChange: z
-                .string()
-                .max(100)
-                .refine((val) => !val.startsWith("/") && !val.endsWith("/"), {
-                  message: "Id should not start or end with '/'",
-                }),
+
               onChangeAsyncDebounceMs: 1000,
               onChangeAsync: z
                 .string()
@@ -227,7 +221,7 @@ function AddNewDialog() {
                   <Input
                     name={field.name}
                     value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
+                    onChange={(e) => field.handleChange(e.target.value.trim())}
                   />
                   {!field.state.meta.isValid && (
                     <em
