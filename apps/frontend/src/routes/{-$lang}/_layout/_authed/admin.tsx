@@ -23,7 +23,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, useState } from "react";
 import { AssetsPanel } from "./-components/Assets";
 import { ContentList } from "./-components/ContentList";
@@ -34,21 +34,30 @@ import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
 import { ContentItemDetails } from "./-components/ContentItemDetails";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
+import z from "zod";
+
+const tabSearchParamSchema = z.enum(["news", "documents", "content", "users"]);
+
+type MainTab = z.infer<typeof tabSearchParamSchema>;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin")({
   component: RouteComponent,
+  validateSearch: z.object({ tab: tabSearchParamSchema.default("news") }),
 });
 
-type MainTab = "news" | "documents" | "content" | "users";
-
 function RouteComponent() {
-  const [selectedTab, setSelectedTab] = useState<MainTab>("news");
+  const { tab: selectedTab } = Route.useSearch();
+
+  const navigate = Route.useNavigate();
+
   return (
     <Tabs value={selectedTab} className="flex-1">
       <ToggleGroup
         type="single"
         value={selectedTab}
-        onValueChange={(value) => value && setSelectedTab(value as MainTab)}
+        onValueChange={(value) =>
+          value && navigate({ search: { tab: value as MainTab } })
+        }
       >
         <ToggleGroupItem value="news">News</ToggleGroupItem>
         <ToggleGroupItem value="documents">Documents</ToggleGroupItem>
