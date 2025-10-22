@@ -42,7 +42,9 @@ type MainTab = z.infer<typeof tabSearchParamSchema>;
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin")({
   component: RouteComponent,
-  validateSearch: z.object({ tab: tabSearchParamSchema.default("news") }),
+  validateSearch: z.object({
+    tab: tabSearchParamSchema.default("news"),
+  }),
 });
 
 function RouteComponent() {
@@ -87,6 +89,7 @@ function RouteComponent() {
 
 function ManageNews() {
   const queryClient = useQueryClient();
+
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemResponse>();
 
   async function handleAddNewsItem() {

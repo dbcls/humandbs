@@ -9,7 +9,7 @@
     "auth:generate": "bunx --bun @better-auth/cli@latest generate --config ./src/lib/auth.ts --y --output ./src/db/schema/auth-schema.ts && prettier --write ./src/db/schema/auth-schema.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
-    "db:push": "bunx --bun drizzle-kit push",
+    "db:push": "POSTGRES_HOST=localhost bunx --bun drizzle-kit push",
     "start": "bun ./.output/server/index.mjs",
     "get-md": "bun ./src/scripts/parsePageToMarkdown.js \"$@\"",
     "db:studio": "POSTGRES_HOST=localhost bunx drizzle-kit studio",

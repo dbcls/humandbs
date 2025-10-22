@@ -1,6 +1,9 @@
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { DocumentVersionStatus } from "@/db/types";
 import { i18n, Locale } from "@/lib/i18n-config";
 import {
   $getContentItem,
@@ -21,6 +24,7 @@ type ContentItem = NonNullable<Awaited<ReturnType<typeof $getContentItem>>>;
 type FormData = {
   translations: ContentItem["translations"];
   locale: Locale;
+  status: DocumentVersionStatus;
 };
 
 export function ContentItemDetails({ id }: { id: string }) {
@@ -98,6 +102,7 @@ export function ContentItemDetails({ id }: { id: string }) {
   const form = useAppForm({
     defaultValues: {
       locale: i18n.defaultLocale,
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
       translations: data?.translations || {},
     } as FormData,
     onSubmit: ({ value }) => {
@@ -122,18 +127,44 @@ export function ContentItemDetails({ id }: { id: string }) {
           <form.AppField name="locale">
             {(field) => <field.LocaleSwitchField />}
           </form.AppField>
+          <form.Subscribe selector={(state) => state.values.locale}>
+            {(locale) => (
+              <form.AppField name="status">
+                {(field) => (
+                  <Tabs>
+                    <TabsList>
+                      {Object.keys(data.translations[locale] || {}).map(
+                        (status) => (
+                          <TabsTrigger key={status} value={status}>
+                            {status}
+                          </TabsTrigger>
+                        )
+                      )}
+                    </TabsList>
+                  </Tabs>
+                )}
+              </form.AppField>
+            )}
+          </form.Subscribe>
         </span>
       }
     >
       <div className="flex flex-1 flex-col gap-2">
-        <form.Subscribe selector={(state) => state.values.locale}>
-          {(locale) => {
+        <form.Subscribe
+          selector={(state) => ({
+            locale: state.values.locale,
+            status: state.values.status,
+          })}
+        >
+          {({ locale, status }) => {
             return (
               <>
-                <form.AppField name={`translations.${locale}.title`}>
+                <form.AppField name={`translations.${locale}.${status}.title`}>
                   {(field) => <field.TextField label="Title" />}
                 </form.AppField>
-                <form.AppField name={`translations.${locale}.content`}>
+                <form.AppField
+                  name={`translations.${locale}.${status}.content`}
+                >
                   {(field) => <field.ContentAreaField label="Content" />}
                 </form.AppField>
               </>

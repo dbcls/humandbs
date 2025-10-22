@@ -1,8 +1,8 @@
 import { localeSchema } from "@/lib/i18n-config";
 import { filterStringSchema, paginationSchema } from "@/utils/searchParams";
-import {
+import type {
   ResearchesResponse,
-  type ResearchSummary,
+  ResearchSummary,
 } from "@humandbs/backend/types";
 import { createServerFn } from "@tanstack/react-start";
 import path from "node:path";

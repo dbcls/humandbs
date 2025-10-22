@@ -8,11 +8,13 @@ import { ResearchData } from "../index";
 import { useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Table } from "@/components/Table";
+import type { Research, ResearchSummary } from "@humandbs/backend/types";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer"
 )({
   component: RouteComponent,
+  loader: async ({ context }) => {},
 });
 
 interface Sequence {

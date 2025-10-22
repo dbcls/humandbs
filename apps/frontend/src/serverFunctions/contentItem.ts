@@ -1,9 +1,16 @@
 import { getNavConfig } from "@/config/navbar-config";
-import { contentItem, contentTranslation } from "@/db/schema";
+import {
+  contentItem,
+  contentTranslation,
+  DOCUMENT_VERSION_STATUS,
+  documentVersionStatus,
+} from "@/db/schema";
 import {
   ContentTranslationInsert,
   contentTranslationInsertSchema,
   ContentTranslationSelect,
+  DocumentVersionStatus,
+  statusSchema,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { db } from "@/lib/database";
@@ -60,9 +67,14 @@ type ContentTranslationResponse = Omit<
   ContentTranslationSelect,
   "lang" | "contentId"
 >;
+
 type ContentItemResponse = {
   author?: Pick<User, "name" | "email">;
-  translations: Partial<Record<Locale, ContentTranslationResponse>>;
+  translations: {
+    [loc in Locale]?: {
+      [ver in DocumentVersionStatus]?: ContentTranslationResponse;
+    };
+  };
 };
 
 export const $getContentItem = createServerFn({ method: "GET" })
@@ -84,6 +96,7 @@ export const $getContentItem = createServerFn({ method: "GET" })
             content: true,
             lang: true,
             updatedAt: true,
+            status: true,
           },
         },
       },
@@ -97,40 +110,73 @@ export const $getContentItem = createServerFn({ method: "GET" })
       translations:
         content?.translations.reduce(
           (acc, curr) => {
-            const { title, content, updatedAt } = curr;
-            acc[curr.lang as Locale] = { title, content, updatedAt };
+            const { title, content, updatedAt, status } = curr;
+            const locale = curr.lang as Locale;
+            if (!acc[locale]) acc[locale] = {};
+
+            acc[locale]![status] = {
+              title,
+              content,
+              updatedAt,
+              status,
+            };
             return acc;
           },
-          {} as Record<Locale, ContentTranslationResponse>
-        ) || {},
+          {} as ContentItemResponse["translations"]
+        ) || ({} as ContentItemResponse["translations"]),
     };
   });
 
 export function getContentTranslationQueryOptions(data: {
-  id: string | undefined;
+  id: string;
   lang: Locale;
+  status?: DocumentVersionStatus;
 }) {
   return queryOptions({
-    queryKey: ["contents", data.id, data.lang],
-    queryFn: () => $getContentItemTranslation({ data }),
+    queryKey: [
+      "contents",
+      data.id,
+      data.lang,
+      data.status || DOCUMENT_VERSION_STATUS.PUBLISHED,
+    ],
+    queryFn: () =>
+      $getContentItemTranslation({
+        data: {
+          id: data.id,
+          lang: data.lang,
+          status: data.status || DOCUMENT_VERSION_STATUS.PUBLISHED,
+        },
+      }),
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
 }
 
+const getContentItemTranslationParamsSchema = z.object({
+  id: z.string(),
+  lang: localeSchema,
+  status: statusSchema,
+});
+
+export type GetContentItemTranslationParams = z.infer<
+  typeof getContentItemTranslationParamsSchema
+>;
+
+/**
+ * Get content published translation
+ */
 export const $getContentItemTranslation = createServerFn({
   method: "GET",
 })
-  .inputValidator(
-    z.object({
-      id: z.string(),
-      lang: localeSchema,
-    })
-  )
+  .inputValidator(getContentItemTranslationParamsSchema)
   .handler(async ({ data }) => {
-    const { id, lang } = data;
+    const { id, lang, status } = data;
     let translation = await db.query.contentTranslation.findFirst({
       where: (table, { and, eq }) =>
-        and(eq(table.contentId, id), eq(table.lang, lang)),
+        and(
+          eq(table.contentId, id),
+          eq(table.lang, lang),
+          eq(table.status, status)
+        ),
       columns: {
         title: true,
         content: true,
@@ -138,18 +184,11 @@ export const $getContentItemTranslation = createServerFn({
     });
 
     if (!translation) {
-      translation = await db.query.contentTranslation.findFirst({
-        where: (table, { and, eq }) =>
-          and(eq(table.contentId, data.id), eq(table.lang, i18n.defaultLocale)),
-        columns: {
-          title: true,
-          content: true,
-        },
-      });
+      throw new Error(
+        `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`
+      );
     }
-    if (!translation) {
-      throw new Error(`Content with id "${data.id}" not found`);
-    }
+
     const { content, toc } = transformMarkdoc({
       rawContent: translation?.content || "",
       generateTOC: true,
@@ -192,23 +231,6 @@ export const $validateContentId = createServerFn({ method: "GET" })
     });
 
     return !content && !reservedPathPrefixes.includes(contentId.split("/")[0]);
-    // if (i18n.locales.includes(contentId.split("/")[0] as Locale)) {
-    //   return {
-    //     error: true,
-    //     message: `Please use CMS locale feature. Instead of setting id as "/en/hogehoge", set id "/hogehoge" and use Locale tab of the Details panel to set the locale.`,
-    //   };
-    // }
-
-    // if (!content && !reservedPathPrefixes.includes(contentId.split("/")[0])) {
-    //   return {
-    //     error: true,
-    //     message: `Page with path ${contentId} already exists`,
-    //   };
-    // }
-
-    // return {
-    //   error: false,
-    // };
   });
 
 export const $createContentItem = createServerFn({ method: "POST" })
@@ -259,13 +281,20 @@ export const $deleteContentItem = createServerFn({ method: "POST" })
 const upsertContentItemTranslationSchema = z.object({
   translations: z.partialRecord(
     localeSchema,
-    contentTranslationInsertSchema.pick({
-      title: true,
-      content: true,
-    })
+    z.partialRecord(
+      statusSchema,
+      contentTranslationInsertSchema.pick({
+        title: true,
+        content: true,
+      })
+    )
   ),
   id: z.string(),
 });
+
+type UpsertContentTranslationParams = z.infer<
+  typeof upsertContentItemTranslationSchema
+>;
 
 export const $upsertContentItemTranslation = createServerFn({ method: "POST" })
   .inputValidator(upsertContentItemTranslationSchema)
@@ -275,17 +304,24 @@ export const $upsertContentItemTranslation = createServerFn({ method: "POST" })
 
     const dataToUpsert: ContentTranslationInsert[] = Object.entries(
       data.translations
-    ).map(([lang, translation]) => ({
-      lang,
-      contentId: data.id,
-      ...translation,
-    }));
+    ).flatMap(([lang, translationStatuses]) =>
+      Object.entries(translationStatuses).map(([status, translation]) => ({
+        ...translation,
+        status: status as DocumentVersionStatus,
+        lang,
+        contentId: data.id,
+      }))
+    );
 
     const result = await db
       .insert(contentTranslation)
       .values(dataToUpsert)
       .onConflictDoUpdate({
-        target: [contentTranslation.contentId, contentTranslation.lang],
+        target: [
+          contentTranslation.contentId,
+          contentTranslation.lang,
+          contentTranslation.status,
+        ],
         set: buildConflictUpdateColumns(contentTranslation, [
           "content",
           "title",
