@@ -9,7 +9,7 @@
         "type": "keyword"
       },
       "version": {
-        "type": "integer"
+        "type": "keyword"
       },
       "typeOfData": {
         "type": "keyword"

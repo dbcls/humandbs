@@ -2,122 +2,94 @@ import { Client, HttpConnection } from "@elastic/elasticsearch"
 import { readFileSync } from "fs"
 import { join } from "path"
 
-import { type Research, type Dataset, type ResearchVersion } from "@/crawler/types"
+import type { DatasetDoc, Research, ResearchDoc, ResearchVersionDoc } from "@/types"
 
-const INDEXES = [
-  "research",
-  "research-version",
-  "dataset",
-]
+// === utils ===
+const ES_NODE = process.env.ES_HOST ?? "http://humandbs-elasticsearch-dev:9200"
 
-type ResearchDoc = Omit<Research, "versions"> & {
-  versions: string[]
+const INDEX = {
+  research: "research",
+  researchVersion: "research-version",
+  dataset: "dataset",
+} as const
+
+const normVersion = (v: string | number): string => {
+  if (typeof v === "number") return `v${v}`
+  const s = String(v).trim()
+  if (/^v\d+/.test(s)) return s
+  if (/^\d+/.test(s)) return `v${s}`
+  throw new Error(`Invalid version format: ${v}`)
 }
-type ResearchVersionDoc = Omit<ResearchVersion, "datasets"> & {
-  datasets: string[]
-}
+
+const idResearch = (humId: string, lang: string): string => `${humId}-${lang}`
+const idResearchVersion = (humId: string, version: string, lang: string): string => `${humId}-${normVersion(version)}-${lang}`
+const idDataset = (datasetId: string, version: string, lang: string): string => `${datasetId}-${normVersion(version)}-${lang}`
+
+// === main ===
 
 const main = async () => {
-  const researches: ResearchDoc[] = []
-  const researchVersions: ResearchVersionDoc[] = []
-  const datasets: Dataset[] = []
-
   const jsonFile = join(__dirname, "../../crawler-results/es-json/research.json")
-  const jsonData: Research[] = JSON.parse(readFileSync(jsonFile, "utf-8"))
-  for (const research of jsonData) {
-    const researchDoc: ResearchDoc = {
-      ...research,
-      versions: research.versions.map((version) => `${version.humVersionId}-${version.lang}`),
-    }
-    researches.push(researchDoc)
+  const researchData: Research[] = JSON.parse(readFileSync(jsonFile, "utf-8"))
 
-    for (const researchVersion of research.versions) {
-      const researchVersionDoc = {
-        ...researchVersion,
-        datasets: researchVersion.datasets.map((dataset) => `${dataset.datasetId}-${dataset.version}-${dataset.lang}`),
-      }
-      researchVersions.push(researchVersionDoc)
+  const researchDocs: ResearchDoc[] = []
+  const researchVersionDocs: ResearchVersionDoc[] = []
+  const datasetDocs: DatasetDoc[] = []
 
-      for (const datasetDoc of researchVersion.datasets) {
-        const dataset = {
-          ...datasetDoc,
-          humDatasetId: `${datasetDoc.datasetId}-${datasetDoc.version}-${datasetDoc.lang}`,
-        }
-        datasets.push(dataset)
+  for (const r of researchData) {
+    const versionIds = r.versions.map((v) => idResearchVersion(r.humId, v.version, v.lang))
+    researchDocs.push({
+      ...r,
+      versions: versionIds,
+    })
+
+    for (const rv of r.versions) {
+      const dsIds = rv.datasets.map((d) => idDataset(d.datasetId, d.version, d.lang))
+      researchVersionDocs.push({
+        ...rv,
+        datasets: dsIds,
+      })
+
+      for (const d of rv.datasets) {
+        datasetDocs.push(d)
       }
     }
   }
 
   const client = new Client({
-    node: "http://humandbs-elasticsearch-dev:9200",
-    // auth: {
-    //   username: "elastic",
-    //   password: "humandbs-elasticsearch-dev-password",
-    // },
+    node: ES_NODE,
     Connection: HttpConnection,
   })
-  for (const index of INDEXES) {
-    try {
-      const exists = await client.indices.exists({ index })
-      if (!exists) {
-        console.log(`Index ${index} does not exist`)
-        continue
-      }
 
-    } catch (error) {
-      console.error(`Error creating index ${index}:`, error)
+  for (const idx of Object.values(INDEX)) {
+    const exists = await client.indices.exists({ index: idx })
+    if (!exists) {
+      console.log(`Index ${idx} does not exist`)
+      continue
     }
   }
 
-  const genId = (index: "research" | "research-version" | "dataset", doc: ResearchDoc | ResearchVersionDoc | Dataset) => {
-    switch (index) {
-      case "research":
-        return `${doc.humId}-${doc.lang}`
-      case "research-version":
-        return `${doc.humId}-${doc.version}-${doc.lang}`
-      case "dataset":
-        return `${doc.datasetId}-${doc.version}-${doc.lang}`
-      default:
-        throw new Error(`Unknown document type: ${index}`)
+  const bulkIndex = async <T>(index: keyof typeof INDEX, docs: T[], genId: (doc: T) => string) => {
+    if (docs.length === 0) return
+    const ops = docs.flatMap(doc => [{ index: { _index: INDEX[index], _id: genId(doc) } }, doc])
+    const res = await client.bulk({ refresh: true, body: ops })
+    if (res.errors) {
+      const errors = res.items
+        .map((it, i) => ({ it, i }))
+        .filter(({ it }) => Object.values(it)[0].error)
+        .map(({ it, i }) => ({
+          status: Object.values(it)[0].status,
+          error: Object.values(it)[0].error,
+          op: ops[i * 2],
+          doc: ops[i * 2 + 1],
+        }))
+      console.error(`Bulk errors: ${INDEX[index]}`, errors)
+    } else {
+      console.log(`Indexed ${docs.length} -> ${INDEX[index]}`)
     }
   }
 
-  const bulkIndex = async (index: string, documents: any[]) => {
-    try {
-      const operations = documents.flatMap(doc => [
-        { index: { _index: index, _id: genId(index, doc) } },
-        doc,
-      ])
-
-      const bulkResponse = await client.bulk({ refresh: true, body: operations })
-
-      if (bulkResponse.errors) {
-        const erroredDocuments = []
-        bulkResponse.items.forEach((action: any, i: number) => {
-          const operation = Object.keys(action)[0]
-          if (action[operation].error) {
-            erroredDocuments.push({
-              status: action[operation].status,
-              error: action[operation].error,
-              operation: operations[i * 2],
-              document: operations[i * 2 + 1],
-            })
-          }
-        })
-        console.error(`Errors occurred while indexing documents into ${index}:`, erroredDocuments)
-      } else {
-        console.log(`Successfully indexed ${documents.length} documents into ${index}`)
-      }
-    } catch (error) {
-      console.error(`Error indexing documents into ${index}:`, error)
-    }
-  }
-
-  await bulkIndex("research", researches)
-  await bulkIndex("research-version", researchVersions)
-  await bulkIndex("dataset", datasets)
+  await bulkIndex("research", researchDocs, (d: ResearchDoc) => idResearch(d.humId, d.lang))
+  await bulkIndex("researchVersion", researchVersionDocs, (d: ResearchVersionDoc) => idResearchVersion(d.humId, d.version, d.lang))
+  await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version, d.lang))
 }
 
-if (require.main === module) {
-  await main()
-}

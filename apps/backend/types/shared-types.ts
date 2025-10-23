@@ -2,8 +2,8 @@ import { z } from "zod"
 
 // === Original Types ===
 
-export const langType = ["ja", "en"]
-export type LangType = "ja" | "en"
+export const langType = ["ja", "en"] as const
+export type LangType = typeof langType[number]
 
 export const AddressSchema = z.object({
   country: z.string().nullable().optional(),
@@ -84,11 +84,11 @@ export const ExperimentSchema = z.object({
 }).strict()
 export type Experiment = z.infer<typeof ExperimentSchema>
 
-// es entry: /dataset/{datasetId}-{versionNum}-{lang}
+// es entry: /dataset/{datasetId}-{version}-{lang}
 export const DatasetSchema = z.object({
   datasetId: z.string(), // e.g., "JGAD", "DRA", "E-GEAD", "MTBK", "hum.v1.rna-seq.v1", "PRJDB10452"
   lang: z.enum(langType),
-  version: z.number(),
+  version: z.string(),
   typeOfData: z.array(z.string()).nullable().optional(),
   criteria: z.array(z.string()).nullable().optional(),
   releaseDate: z.array(z.string()).nullable().optional(),
@@ -96,7 +96,7 @@ export const DatasetSchema = z.object({
 }).strict()
 export type Dataset = z.infer<typeof DatasetSchema>
 
-// es entry: /researchVersion/{humId}-{versionNum}-{lang}
+// es entry: /researchVersion/{humId}-{version}-{lang}
 export const ResearchVersionSchema = z.object({
   humId: z.string(),
   lang: z.enum(langType),
@@ -180,7 +180,18 @@ export const ResearchSummarySchema = z.object({
 }).strict()
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
 
-// Query parameters for GET /researches and /research-summaries
+export const ResearchDetailSchema = ResearchDocSchema
+  .omit({ versions: true })
+  .extend({
+    humVersionId: z.string(),
+    version: z.string(),
+    releaseDate: z.string(), // ISO 8601 format (e.g., "2023-10-01")
+    releaseNote: z.array(z.string()),
+    datasets: z.array(DatasetSchema),
+  }).strict()
+export type ResearchDetail = z.infer<typeof ResearchDetailSchema>
+
+// Query parameters for GET /researches
 export const ResearchesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -204,11 +215,71 @@ export const ResearchesResponseSchema = z.object({
 }).strict()
 export type ResearchesResponse = z.infer<typeof ResearchesResponseSchema>
 
-export const DatasetRequestQuerySchema = z.object({
-  lang: z.enum(langType).default("en"),
-  version: z.coerce.number().int().positive().default(1),
+export const HumIdParamsSchema = z.object({
+  humId: z.string(),
 }).strict()
-export type DatasetRequestQuery = z.infer<typeof DatasetRequestQuerySchema>
+export type HumIdParams = z.infer<typeof HumIdParamsSchema>
+
+// Query parameter for GET /researches/{humId}/versions
+export const LangQuerySchema = z.object({
+  lang: z.enum(langType).default("en"),
+}).strict()
+export type LangQuery = z.infer<typeof LangQuerySchema>
+
+// Response of GET /researches/{humId}/versions
+export const ResearchVersionsResponseSchema = z.object({
+  data: z.array(ResearchVersionDocSchema),
+}).strict()
+export type ResearchVersionsResponse = z.infer<typeof ResearchVersionsResponseSchema>
+
+// Query parameter for GET /researches/{humId} and /datasets/{datasetId}
+export const LangVersionQuerySchema = z.object({
+  lang: z.enum(langType).default("en"),
+  version: z.string().regex(/^v\d+$/).nullable().optional(),
+}).strict()
+export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>
+
+export const DatasetIdParamsSchema = z.object({
+  datasetId: z.string(),
+}).strict()
+export type DatasetIdParams = z.infer<typeof DatasetIdParamsSchema>
+
+// Query parameters for GET /datasets
+export const DatasetsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  lang: z.enum(langType).default("en"),
+  sort: z.enum(["humId", "title"]).default("humId"),
+  order: z.enum(["asc", "desc"]).default("asc"),
+}).strict()
+export type DatasetsQuery = z.infer<typeof DatasetsQuerySchema>
+
+// Response of GET /datasets
+export const DatasetsResponseSchema = z.object({
+  data: z.array(DatasetSchema),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+    hasNext: z.boolean(),
+    hasPrev: z.boolean(),
+  }),
+}).strict()
+export type DatasetsResponse = z.infer<typeof DatasetsResponseSchema>
+
+// Response of GET /datasets/{datasetId}/versions
+export const DatasetVersionItem = DatasetSchema.pick({
+  "version": true,
+  "typeOfData": true,
+  "criteria": true,
+  "releaseDate": true,
+})
+export const DatasetVersionsResponseSchema = z.object({
+  data: z.array(DatasetVersionItem),
+}).strict()
+export type DatasetVersionItem = z.infer<typeof DatasetVersionItem>
+export type DatasetVersionsResponse = z.infer<typeof DatasetVersionsResponseSchema>
 
 export const ErrorResponseSchema = z.object({
   error: z.string(),
