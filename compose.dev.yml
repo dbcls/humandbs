@@ -21,7 +21,7 @@ services:
       - humandbs-dev-network
 
   cms-db-migrator:
-    image: oven/bun:1.3-debian
+    image: oven/bun:1.2.23
     working_dir: /app
     # Mount your app (so drizzle.config.ts, migrations folder, etc. are available)
     volumes:
@@ -53,9 +53,14 @@ services:
     volumes:
       - ${PWD}:/app
       - node_modules:/app/node_modules
+      - frontend_node_modules:/app/apps/frontend/node_modules
+      - backend_node_modules:/app/apps/backend/node_modules
+      - eslint_config_node_modules:/app/packages/eslint-config/node_modules
     environment:
       - HUMANDBS_FRONTEND_HOST=0.0.0.0
       - HUMANDBS_FRONTEND_PORT=3000
+      - POSTGRES_HOST=cms-db
+      - POSTGRES_PORT=5432
       - POSTGRES_USER=myuser
       - POSTGRES_PASSWORD=mysecretpassword
       - POSTGRES_DB=mydb
@@ -76,6 +81,9 @@ services:
     volumes:
       - ${PWD}:/app
       - node_modules:/app/node_modules
+      - frontend_node_modules:/app/apps/frontend/node_modules
+      - backend_node_modules:/app/apps/backend/node_modules
+      - eslint_config_node_modules:/app/packages/eslint-config/node_modules
       # - /lustre9/open/database/ddbjshare/private/ddbj.nig.ac.jp/jga/metadata:/mount/jga-metadata:ro
     environment:
       - HUMANDBS_BACKEND_HOST=0.0.0.0
@@ -141,6 +149,9 @@ services:
 
 volumes:
   node_modules: {}
+  frontend_node_modules: {}
+  backend_node_modules: {}
+  eslint_config_node_modules: {}
   pgdata: {}
 
 networks:

@@ -20,17 +20,20 @@ export const Route = createFileRoute("/{-$lang}")({
   },
   loader: async ({ context }) => {
     console.log("loader lang", context.lang);
-    const activeAlertTranslations = await context.queryClient.ensureQueryData(
-      getActiveAlertsQueryOptions({ locale: context.lang })
-    );
+   //  const activeAlertTranslations =
+    //   await context.queryClient.ensureQueryData(
+    //   getActiveAlertsQueryOptions({ locale: context.lang })
+    // );
 
-    const hiddenAlerts = await $getHiddenAlertIds();
+    // const hiddenAlerts = await $getHiddenAlertIds();
 
     return {
       crumb: context.messages.Navbar.home,
-      alerts: activeAlertTranslations.filter(
-        (alert) => !hiddenAlerts.includes(alert.newsId)
-      ),
+      alerts: []
+
+      // activeAlertTranslations.filter(
+      //   (alert) => !hiddenAlerts.includes(alert.newsId)
+      // ),
     };
   },
   component: () => {

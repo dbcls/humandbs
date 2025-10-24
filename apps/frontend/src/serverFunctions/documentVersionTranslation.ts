@@ -1,3 +1,8 @@
+import { queryOptions } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+
 import {
   document,
   DOCUMENT_VERSION_STATUS,
@@ -8,10 +13,6 @@ import {
 import { db } from "@/lib/database";
 import { i18n, Locale, localeSchema } from "@/lib/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
-import { queryOptions } from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq } from "drizzle-orm";
-import { z } from "zod";
 
 /** Get document version translation */
 export const $getDocumentVersionTranslation = createServerFn({
@@ -102,46 +103,39 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
   .handler(async ({ data }) => {
     const { contentId, locale } = data;
 
-    let translation = await db
+    const translationQuery = db
       .select({
-        documentVersionTranslation,
+        title: documentVersionTranslation.title,
+        documentVersionId: documentVersionTranslation.documentVersionId,
+        locale: documentVersionTranslation.locale,
+        content: documentVersionTranslation.content,
+        translatedBy: documentVersionTranslation.translatedBy,
+        createdAt: documentVersionTranslation.createdAt,
+        updatedAt: documentVersionTranslation.updatedAt,
+        versionNumber: documentVersion.versionNumber,
       })
       .from(documentVersionTranslation)
       .innerJoin(
         documentVersion,
         eq(documentVersionTranslation.documentVersionId, documentVersion.id)
       )
-      .innerJoin(document, eq(documentVersion.contentId, document.contentId))
       .where(
         and(
-          eq(document.contentId, contentId),
-          eq(documentVersionTranslation.locale, locale),
+          eq(documentVersion.contentId, contentId),
+          eq(documentVersionTranslation.locale, sql.placeholder("locale")),
           eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
         )
       )
       .orderBy(desc(documentVersion.versionNumber))
-      .limit(1);
+      .limit(1)
+      .prepare("q1");
+
+    let translation = await translationQuery.execute({ locale });
 
     if (!translation || !translation[0]) {
-      translation = await db
-        .select({
-          documentVersionTranslation,
-        })
-        .from(documentVersionTranslation)
-        .innerJoin(
-          documentVersion,
-          eq(documentVersionTranslation.documentVersionId, documentVersion.id)
-        )
-        .innerJoin(document, eq(documentVersion.contentId, document.contentId))
-        .where(
-          and(
-            eq(document.contentId, contentId),
-            eq(documentVersionTranslation.locale, i18n.defaultLocale),
-            eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
-          )
-        )
-        .orderBy(desc(documentVersion.versionNumber))
-        .limit(1);
+      translation = await translationQuery.execute({
+        locale: i18n.defaultLocale,
+      });
     }
 
     if (!translation || !translation[0]) {
@@ -151,7 +145,7 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
     }
 
     const { content, toc } = transformMarkdoc({
-      rawContent: translation[0]?.documentVersionTranslation.content ?? "",
+      rawContent: translation[0]?.content ?? "",
       includeFrontmatter: true,
       generateTOC: data?.generateTOC ?? false,
     });
@@ -159,7 +153,7 @@ export const $getDocumentLatestPublishedVersionTranslation = createServerFn({
     return {
       content: JSON.stringify(content),
       toc,
-      title: translation[0]?.documentVersionTranslation.title,
+      title: translation[0]?.title,
     };
   });
 
@@ -195,7 +189,7 @@ export const $getDocumentPublishedVersionsList = createServerFn({
       locale: localeSchema,
     })
   )
-  .handler(async ({ context, data }) => {
+  .handler(async ({ data }) => {
     const { contentId, locale } = data;
 
     const versions = await db

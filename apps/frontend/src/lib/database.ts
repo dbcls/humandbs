@@ -1,30 +1,17 @@
+// import { config } from "dotenv";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+
 import * as schema from "@/db/schema";
-import { type BunSQLDatabase, drizzle } from "drizzle-orm/bun-sql";
+
+// config();
 
 const DATABASE_URL = `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`;
 
-declare namespace global {
-  var db: BunSQLDatabase<typeof schema> | undefined;
-}
-
-let db: BunSQLDatabase<typeof schema>;
-
-if (Bun.env.NODE_ENV === "production") {
-  db = drizzle(DATABASE_URL, { schema });
-} else {
-  if (!global.db) {
-    global.db = drizzle(DATABASE_URL, {
-      schema,
-      // logger: {
-      //   logQuery: (query) => {
-      //     // to remove quotes on query string, to make it more readable
-      //     console.log({ query: query.replace(/\"/g, "") });
-      //   },
-      // },
-    });
-  }
-
-  db = global.db;
-}
-
-export { db };
+console.log("process.env.POSTGRES_HOST", process.env.POSTGRES_HOST);
+console.log("Bun env", Bun.env.POSTGRES_HOST);
+console.log("DATABASE_URL", DATABASE_URL);
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+});
+export const db = drizzle(pool, { schema });

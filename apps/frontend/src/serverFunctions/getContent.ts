@@ -1,13 +1,14 @@
-import { ContentId, contentIdSchema } from "@/lib/content-config";
-import * as nodes from "@/markdoc/nodes/index";
-import * as tags from "@/markdoc/tags/index";
 import Markdoc, { type Config, type Tag } from "@markdoc/markdoc";
 import { createServerFn } from "@tanstack/react-start";
 import fs from "fs/promises";
 import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
 import { z } from "zod";
-import { localeSchema } from "../lib/i18n-config";
+
+import { ContentId, contentIdSchema } from "@/lib/content-config";
+import { localeSchema } from "@/lib/i18n-config";
+import * as nodes from "@/markdoc/nodes/index";
+import * as tags from "@/markdoc/tags/index";
 
 type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
 
@@ -101,7 +102,7 @@ export function processTokens(tokens: Tokens) {
       continue;
     }
 
-    // @ts-expect-error
+    // @ts-expect-error hoge123456s
     if (token.type === "inline") token.children = processTokens(token.children);
 
     output.push(token);

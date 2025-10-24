@@ -9,15 +9,19 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/guidelines/")({
+export const Route = createFileRoute(
+  "/{-$lang}/_layout/_main/_other/guidelines/"
+)({
   component: RouteComponent,
   loader: async ({ context }) => {
+    console.log("1");
     const data = await context.queryClient.ensureQueryData(
       getDocumentLatestPublishedVersionTranslationQueryOptions({
         contentId: "guidelines",
         locale: context.lang,
       })
     );
+    console.log("2");
 
     const versions = await context.queryClient.ensureQueryData(
       getDocumentPublishedVersionsListQueryOptions({
@@ -25,6 +29,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/guidelines/
         locale: context.lang,
       })
     );
+    console.log("3");
 
     return { data, versions };
   },

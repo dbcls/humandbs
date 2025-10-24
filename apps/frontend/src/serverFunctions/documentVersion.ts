@@ -1,3 +1,10 @@
+import { queryOptions } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
+import { User } from "better-auth";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { Locale } from "use-intl";
+import { z } from "zod";
+
 import {
   DOCUMENT_VERSION_STATUS,
   documentVersion,
@@ -17,12 +24,6 @@ import {
   authMiddleware,
   hasPermissionMiddleware,
 } from "@/middleware/authMiddleware";
-import { queryOptions } from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
-import { User } from "better-auth";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
-import { Locale } from "use-intl";
-import { z } from "zod";
 
 export interface DocumentVersionListItemResponse {
   statuses: DocumentVersionStatus[];
@@ -140,13 +141,13 @@ export type DocumentVersionResponse = Partial<
   Record<DocumentVersionStatus, DocumentVersionContentResponse>
 >;
 
-export type DocumentVersionContentResponse = {
+export interface DocumentVersionContentResponse {
   id: string;
   translations: Record<Locale, DocumentVersionTranslation>;
   versionNumber: number;
   status: DocumentVersionStatus;
   author: Author;
-};
+}
 
 /**
  * Get document version with content
@@ -339,7 +340,7 @@ export const $cloneDocumentVersion = createServerFn({
           ...restExistingVersion,
           versionNumber: newVersionNumber,
           createdAt: new Date(),
-          authorId: context.user?.id!,
+          authorId: context.user!.id,
           status: "draft",
         })
         .returning();
@@ -492,7 +493,7 @@ async function upsertDocVersion({
         contentId,
         versionNumber,
         status,
-        authorId: user?.id!,
+        authorId: user!.id,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -516,7 +517,7 @@ async function upsertDocVersion({
         documentVersionId: upsertedDocVersion.id,
         updatedAt: new Date(),
         locale,
-        translatedBy: user?.id!,
+        translatedBy: user!.id,
       }));
 
     // upsert  doc ver translations

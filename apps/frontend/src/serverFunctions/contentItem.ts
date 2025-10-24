@@ -1,9 +1,14 @@
+import { queryOptions } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
+import { User } from "better-auth";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
 import { getNavConfig } from "@/config/navbar-config";
 import {
   contentItem,
   contentTranslation,
   DOCUMENT_VERSION_STATUS,
-  documentVersionStatus,
 } from "@/db/schema";
 import {
   ContentTranslationInsert,
@@ -17,11 +22,6 @@ import { db } from "@/lib/database";
 import { i18n, Locale, localeSchema } from "@/lib/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { queryOptions } from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
-import { User } from "better-auth";
-import { eq } from "drizzle-orm";
-import z from "zod";
 
 export function getContentsListQueryOptions() {
   return queryOptions({
@@ -68,14 +68,13 @@ type ContentTranslationResponse = Omit<
   "lang" | "contentId"
 >;
 
-type ContentItemResponse = {
+interface ContentItemResponse {
   author?: Pick<User, "name" | "email">;
-  translations: {
-    [loc in Locale]?: {
-      [ver in DocumentVersionStatus]?: ContentTranslationResponse;
-    };
-  };
-};
+  translations: Record<
+    Locale,
+    Record<DocumentVersionStatus, ContentTranslationResponse>
+  >;
+}
 
 export const $getContentItem = createServerFn({ method: "GET" })
   .inputValidator(z.string())
@@ -170,7 +169,7 @@ export const $getContentItemTranslation = createServerFn({
   .inputValidator(getContentItemTranslationParamsSchema)
   .handler(async ({ data }) => {
     const { id, lang, status } = data;
-    let translation = await db.query.contentTranslation.findFirst({
+    const translation = await db.query.contentTranslation.findFirst({
       where: (table, { and, eq }) =>
         and(
           eq(table.contentId, id),

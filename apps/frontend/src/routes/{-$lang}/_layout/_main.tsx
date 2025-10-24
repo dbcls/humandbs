@@ -11,16 +11,17 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main")({
 
   loader: async ({ context }) => {
     const locale = context.lang;
-    const activeAlertTranslations = await context.queryClient.ensureQueryData(
-      getActiveAlertsQueryOptions({ locale })
-    );
+    // const activeAlertTranslations = await context.queryClient.ensureQueryData(
+    //   getActiveAlertsQueryOptions({ locale })
+    // );
 
-    const hiddenAlerts = await $getHiddenAlertIds();
+    // const hiddenAlerts = await $getHiddenAlertIds();
 
     return {
-      alerts: activeAlertTranslations.filter(
-        (alert) => !hiddenAlerts.includes(alert.newsId)
-      ),
+      // alerts: activeAlertTranslations.filter(
+      //   (alert) => !hiddenAlerts.includes(alert.newsId)
+      // ),
+      alerts: []
     };
   },
 });
