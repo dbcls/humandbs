@@ -64,6 +64,8 @@ services:
       - POSTGRES_USER=myuser
       - POSTGRES_PASSWORD=mysecretpassword
       - POSTGRES_DB=mydb
+      - HUMANDBS_BACKEND_PORT=8080
+      - HUMANDBS_BACKEND=backend
     ports:
       - 127.0.0.1:3000:3000
     working_dir: /app

@@ -1,5 +1,9 @@
 import Logo from "@/assets/Logo.png";
-import { useRouteContext, useRouter } from "@tanstack/react-router";
+import {
+  useNavigate,
+  useRouteContext,
+  useRouter,
+} from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
@@ -14,23 +18,21 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { getNavConfig } from "@/config/navbar-config";
-import { authClient } from "@/lib/auth-client";
 import { Link } from "./Link";
 
 export function Navbar() {
   const t = useTranslations("Navbar");
 
-  const { user } = useRouteContext({ from: "__root__" });
-
-  const router = useRouter();
-
   const lang = useLocale();
 
   const tCommon = useTranslations("common");
 
-  async function handleLogout() {
-    await authClient.signOut();
-    router.invalidate();
+  const { user } = useRouteContext({ from: "__root__" });
+
+  const navigate = useNavigate();
+
+  async function login() {
+    await navigate({ to: "/api/auth/login", reloadDocument: true });
   }
 
   return (
@@ -88,12 +90,17 @@ export function Navbar() {
       <div className="flex items-center gap-2">
         <LangSwitcher />
         <Search />
+
         {user ? (
           <div className="flex items-center gap-2">
             <span className="text-xs">{user.name}</span>
-            <Button onClick={handleLogout}>Logout</Button>
+            <form method="post" action={"/api/auth/logout"}>
+              <Button type="submit">Logout</Button>
+            </form>
           </div>
-        ) : null}
+        ) : (
+          <Button onClick={login}> Login </Button>
+        )}
       </div>
     </header>
   );

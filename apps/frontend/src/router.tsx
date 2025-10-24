@@ -3,16 +3,12 @@ import { QueryClient } from "@tanstack/react-query";
 import { createRouter, LocationRewrite } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
-import type { UserRole } from "./db/schema";
-import type { authClient } from "./lib/auth-client";
 import { routeTree } from "./routeTree.gen";
-
-export type SessionUser = typeof authClient.$Infer.Session.user & {
-  role: UserRole;
-};
+import { SessionUser } from "./serverFunctions/user";
 
 export type Context = {
   queryClient: QueryClient;
+  // auth: Auth;
   crumb: string;
   lang: Locale;
   messages: Messages;
@@ -63,7 +59,7 @@ function localeRewrite(): LocationRewrite {
   };
 }
 
-export function getRouter() {
+export async function getRouter() {
   const queryClient = new QueryClient();
 
   const router = createRouter({

@@ -1,9 +1,11 @@
-import { user } from "@/db/schema";
+import { user, UserRole } from "@/db/schema";
 import { userSelectSchema } from "@/db/types";
 import { db } from "@/lib/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { getJWT, verifyAccessToken } from "@/utils/jwt-helpers";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { getCookies } from "@tanstack/react-start/server";
 import { count, eq } from "drizzle-orm";
 
 export const $getUsers = createServerFn({ method: "GET" })
@@ -49,6 +51,13 @@ export function getUsersQueryOptions() {
   });
 }
 
+export type Session = {
+  access_token: string;
+  refresh_token?: string;
+  id_token?: string;
+  expires_in?: number;
+};
+
 export const $deleteUser = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(userSelectSchema.pick({ id: true }))
@@ -69,3 +78,31 @@ export const $deleteUser = createServerFn({ method: "POST" })
 
     return result;
   });
+
+export type SessionUser = {
+  role?: UserRole;
+  username: string | undefined;
+  name: string | undefined;
+  email: string | undefined;
+};
+
+export const $getAuthUser = createServerFn({ method: "GET" }).handler<
+  Promise<SessionUser | null>
+>(async () => {
+  try {
+    const jwt = getJWT();
+
+    if (!jwt) return null;
+
+    const claims = await verifyAccessToken(jwt);
+
+    const user = {
+      name: claims?.name,
+      email: claims?.email,
+      username: claims?.preferred_username,
+    };
+    return user;
+  } catch {
+    return null;
+  }
+});

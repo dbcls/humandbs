@@ -10,9 +10,10 @@ import z from "zod";
 
 export const Route = createFileRoute("/{-$lang}")({
   params: z.object({ lang: localeSchema }),
-  beforeLoad: async ({ params }) => {
+  beforeLoad: async ({ params, context }) => {
     const messages = await getMessagesFn({ data: params.lang });
-    //
+
+    console.log("context.auth.isLoggendIn");
     return {
       messages,
       lang: params.lang,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/{-$lang}")({
   },
   loader: async ({ context }) => {
     console.log("loader lang", context.lang);
-   //  const activeAlertTranslations =
+    //  const activeAlertTranslations =
     //   await context.queryClient.ensureQueryData(
     //   getActiveAlertsQueryOptions({ locale: context.lang })
     // );
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/{-$lang}")({
 
     return {
       crumb: context.messages.Navbar.home,
-      alerts: []
+      alerts: [],
 
       // activeAlertTranslations.filter(
       //   (alert) => !hiddenAlerts.includes(alert.newsId)

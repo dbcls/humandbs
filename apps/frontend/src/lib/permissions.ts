@@ -6,7 +6,7 @@ import {
   UserRole,
 } from "@/db/schema";
 import { Alert, ContentItem, NewsItem } from "@/db/types";
-import { SessionUser } from "@/router";
+import { SessionUser } from "@/serverFunctions/user";
 
 type PermissionCheck<Key extends keyof Permissions> =
   | boolean
@@ -164,9 +164,9 @@ export function hasPermission<Resource extends keyof Permissions>(
   action: Permissions[Resource]["action"],
   data?: Permissions[Resource]["dataType"]
 ) {
-  const permission = (ROLES as RolesWithPermissions)[user.role][resource]?.[
-    action
-  ];
+  const permission = (ROLES as RolesWithPermissions)[user?.role || "user"][
+    resource
+  ]?.[action];
 
   if (permission === null || permission === undefined) return false;
 

@@ -25,4 +25,9 @@ export default defineConfig({
     }),
     react(),
   ],
+
+  // define: {
+  //   VITE_OIDC_ISSUER_URL: process.env.OIDC_ISSUER_URL,
+  //   VITE_OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
+  // },
 });

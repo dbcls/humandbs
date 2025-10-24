@@ -1,13 +1,16 @@
 import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { Button } from "@/components/ui/button";
 import css from "@/index.css?url";
 import { auth } from "@/lib/auth";
 import { Context } from "@/router";
+import { $getAuthUser, SessionUser } from "@/serverFunctions/user";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
   Scripts,
+  useRouter,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { createServerFn } from "@tanstack/react-start";
@@ -43,29 +46,33 @@ export const Route = createRootRouteWithContext<Context>()({
   },
   component: RootComponent,
 
-  beforeLoad: async ({ matches }) => {
-    console.log(
-      "matches",
-      matches.map((m) => m.fullPath)
-    );
-
-    // const locale = await getLocaleFn();
-
-    // console.log("locale detected:", locale);
-
-    // console.log("");
-    const user = await getUser();
-
-    // // await saveLocaleFn({ data: { lang: locale } });
-
-    // const messages = await getMessagesFn({ data: locale });
+  beforeLoad: async () => {
+    const user = await $getAuthUser();
 
     return {
-      // lang: locale,
-      // messages,
       user,
     };
   },
+  // beforeLoad: async ({  }) => {
+
+  //   // const locale = await getLocaleFn();
+
+  //   // console.log("locale detected:", locale);
+
+  //   // console.log("");
+  //   // const user = await getUser();
+
+  //   // // await saveLocaleFn({ data: { lang: locale } });
+
+  //   // const messages = await getMessagesFn({ data: locale });
+
+  //   return {
+  //     // lang: locale,
+  //     // messages,
+  //     user,
+  //   };
+  // },
+  //
 });
 
 function RootComponent() {
@@ -85,6 +92,7 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { lang } = Route.useRouteContext();
 
+  const route = useRouter();
   return (
     <html lang={lang}>
       <head>

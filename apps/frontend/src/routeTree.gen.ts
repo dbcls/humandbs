@@ -14,6 +14,9 @@ import { Route as Char123LangChar125RouteRouteImport } from './routes/{-$lang}/r
 import { Route as Char123LangChar125LayoutRouteImport } from './routes/{-$lang}/_layout'
 import { Route as Char123LangChar125LayoutMainRouteImport } from './routes/{-$lang}/_layout/_main'
 import { Route as Char123LangChar125LayoutAuthedRouteImport } from './routes/{-$lang}/_layout/_authed'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth.logout'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth.callback'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as Char123LangChar125LayoutMainIndexRouteImport } from './routes/{-$lang}/_layout/_main/index'
 import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/{-$lang}/_layout/_main/_other'
@@ -67,6 +70,21 @@ const Char123LangChar125LayoutAuthedRoute =
     id: '/_authed',
     getParentRoute: () => Char123LangChar125LayoutRoute,
   } as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -261,6 +279,9 @@ export interface FileRoutesByFullPath {
   '/{-$lang}': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
   '/login-error': typeof LoginErrorRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRoute
   '/{-$lang}/': typeof Char123LangChar125LayoutMainIndexRoute
   '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren
@@ -291,6 +312,9 @@ export interface FileRoutesByTo {
   '/{-$lang}': typeof Char123LangChar125LayoutMainIndexRoute
   '/login-error': typeof LoginErrorRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
@@ -315,6 +339,9 @@ export interface FileRoutesById {
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}/_layout': typeof Char123LangChar125LayoutRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/{-$lang}/_layout/_authed': typeof Char123LangChar125LayoutAuthedRouteWithChildren
   '/{-$lang}/_layout/_main': typeof Char123LangChar125LayoutMainRouteWithChildren
   '/{-$lang}/_layout/_authed/admin': typeof Char123LangChar125LayoutAuthedAdminRoute
@@ -350,6 +377,9 @@ export interface FileRouteTypes {
     | '/{-$lang}'
     | '/login-error'
     | '/api/auth/$'
+    | '/api/auth/callback'
+    | '/api/auth/login'
+    | '/api/auth/logout'
     | '/{-$lang}/admin'
     | '/{-$lang}/'
     | '/{-$lang}/data-submission'
@@ -380,6 +410,9 @@ export interface FileRouteTypes {
     | '/{-$lang}'
     | '/login-error'
     | '/api/auth/$'
+    | '/api/auth/callback'
+    | '/api/auth/login'
+    | '/api/auth/logout'
     | '/{-$lang}/admin'
     | '/{-$lang}/$'
     | '/{-$lang}/guidelines/$slug'
@@ -403,6 +436,9 @@ export interface FileRouteTypes {
     | '/login-error'
     | '/{-$lang}/_layout'
     | '/api/auth/$'
+    | '/api/auth/callback'
+    | '/api/auth/login'
+    | '/api/auth/logout'
     | '/{-$lang}/_layout/_authed'
     | '/{-$lang}/_layout/_main'
     | '/{-$lang}/_layout/_authed/admin'
@@ -437,6 +473,9 @@ export interface RootRouteChildren {
   Char123LangChar125RouteRoute: typeof Char123LangChar125RouteRouteWithChildren
   LoginErrorRoute: typeof LoginErrorRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -475,6 +514,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedRouteImport
       parentRoute: typeof Char123LangChar125LayoutRoute
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -902,6 +962,9 @@ const rootRouteChildren: RootRouteChildren = {
   Char123LangChar125RouteRoute: Char123LangChar125RouteRouteWithChildren,
   LoginErrorRoute: LoginErrorRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthLoginRoute: ApiAuthLoginRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
