@@ -2,7 +2,7 @@ import { getConfig } from "@/lib/oidc";
 import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
 import * as oidc from "openid-client";
-import { redirectWithCookies } from "./-utils";
+import { redirectWithCookies, sanitizeRedirectPath } from "./-utils";
 import {
   buildSessionFromTokenResponse,
   createSessionCookie,
@@ -42,7 +42,10 @@ export const Route = createFileRoute("/api/auth/callback")({
 
         setCookies.push(createSessionCookie(session));
 
-        return redirectWithCookies("/", setCookies, 302);
+        const redirectTarget =
+          sanitizeRedirectPath(stash.redirect_to) ?? "/";
+
+        return redirectWithCookies(redirectTarget, setCookies, 302);
       },
     },
   },

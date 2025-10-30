@@ -7,23 +7,30 @@ export default function TextField({
   label,
   type = "inline",
   className,
+  afterField,
 }: {
   label?: string;
   type?: "inline" | "col";
   className?: string;
+  afterField?: React.ReactNode;
 }) {
   const field = useFieldContext<string>();
 
   return (
     <Label
-      className={cn(className, { "flex flex-col items-start": type === "col" })}
+      className={cn("flex items-center", className, {
+        "flex-col items-stretch": type === "col",
+      })}
     >
       {label ? <span className="whitespace-nowrap">{label}</span> : null}
-      <Input
-        value={field.state.value ?? ""}
-        onChange={(e) => field.handleChange(e.target.value)}
-        onBlur={() => field.handleBlur()}
-      />
+      <div className="flex items-center gap-1">
+        <Input
+          value={field.state.value ?? ""}
+          onChange={(e) => field.handleChange(e.target.value)}
+          onBlur={() => field.handleBlur()}
+        />
+        {afterField}
+      </div>
     </Label>
   );
 }

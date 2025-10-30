@@ -39,13 +39,72 @@ function getTabRoute(tabFromPath: string | undefined): TabType | null {
   return null;
 }
 
+function stringifySearch(
+  search: Record<string, string | number> | undefined | null
+) {
+  if (!search) return "";
+
+  const params = new URLSearchParams();
+
+  const appendValue = (key: string, value: unknown) => {
+    if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach((entry) => appendValue(key, entry));
+      return;
+    }
+    params.append(key, String(value));
+  };
+
+  Object.entries(search as Record<string, unknown>).forEach(([key, value]) => {
+    appendValue(key, value);
+  });
+
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+function buildRedirectTarget(
+  location: {
+    pathname: string;
+    search?: Record<string, string | number>;
+    hash?: string;
+  },
+  fallback: string
+) {
+  try {
+    const pathname =
+      typeof location.pathname === "string" && location.pathname.startsWith("/")
+        ? location.pathname
+        : "";
+
+    if (!pathname) return fallback;
+
+    const search = stringifySearch(location.search);
+
+    const target = `${pathname}${search}${location.hash}`;
+
+    if (!target.startsWith("/")) return fallback;
+
+    return target || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
-  beforeLoad: async ({ context, matches }) => {
+  beforeLoad: async ({ context, matches, location }) => {
     if (!context.user) {
+      const fallback =
+        typeof context.lang === "string" && context.lang.length > 0
+          ? `/${context.lang}`
+          : "/";
+
+      const target = buildRedirectTarget(location, fallback);
+
       throw redirect({
-        to: "/{-$lang}",
-        params: {
-          lang: context.lang,
+        to: "/api/auth/login",
+        search: {
+          redirect: target,
         },
       });
     }
@@ -80,7 +139,7 @@ function NavPanel() {
           <PanelItem
             title={
               <span>
-                <PenTool className="inline size-5 align-middle leading-normal" />
+                <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
                 Content
               </span>
             }
@@ -89,7 +148,7 @@ function NavPanel() {
           <PanelItem
             title={
               <span>
-                <Files className="inline size-5 align-middle leading-normal" />
+                <Files className="mr-2 inline size-5 align-middle leading-normal" />
                 Documents
               </span>
             }
@@ -98,7 +157,7 @@ function NavPanel() {
           <PanelItem
             title={
               <span>
-                <Newspaper className="inline size-5 align-middle leading-normal" />
+                <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
                 News
               </span>
             }
@@ -107,7 +166,7 @@ function NavPanel() {
           <PanelItem
             title={
               <span>
-                <Cuboid className="inline size-5 align-middle leading-normal" />
+                <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
                 Assets
               </span>
             }
@@ -119,7 +178,7 @@ function NavPanel() {
       <PanelItem
         title={
           <span>
-            <LibraryBig className="inline size-5 align-middle leading-normal" />
+            <LibraryBig className="mr-2 inline size-5 align-middle leading-normal" />
             Researches
           </span>
         }
@@ -128,7 +187,7 @@ function NavPanel() {
       <PanelItem
         title={
           <span>
-            <User2 className="inline size-5 align-middle leading-normal" />
+            <User2 className="mr-2 inline size-5 align-middle leading-normal" />
             Users
           </span>
         }

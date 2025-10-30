@@ -37,6 +37,7 @@ function RouteComponent() {
   });
 
   const [accordion, setAccordion] = useState<string>("1");
+  const [dataProvValues, setDataProvValues] = useState<string[]>([]);
 
   return (
     <Card
@@ -49,8 +50,19 @@ function RouteComponent() {
           <section className="flex flex-col gap-4">
             <div className="flex gap-3">
               <form.AppField name="humId">
-                {(field) => <field.TextField type="col" label="HumID" />}
+                {(field) => (
+                  <field.TextField
+                    type="col"
+                    label="HumID"
+                    afterField={
+                      <Button variant={"outline"} size={"slim"}>
+                        Next available
+                      </Button>
+                    }
+                  />
+                )}
               </form.AppField>
+
               <form.AppField name="url">
                 {(field) => <field.TextField type="col" label="URL" />}
               </form.AppField>
@@ -155,7 +167,11 @@ function RouteComponent() {
                         <p>Data provider(s) info</p>
                       </AccordionTrigger>
                       <AccordionContent asChild>
-                        <Accordion type="multiple">
+                        <Accordion
+                          type="multiple"
+                          value={dataProvValues}
+                          onValueChange={setDataProvValues}
+                        >
                           {field.state.value.map((val, i) => {
                             return (
                               <AccordionItem

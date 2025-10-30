@@ -2,11 +2,12 @@ import { getConfig } from "@/lib/oidc";
 import { createFileRoute } from "@tanstack/react-router";
 import * as oidc from "openid-client";
 import { serialize } from "cookie";
+import { sanitizeRedirectPath } from "./-utils";
 
 export const Route = createFileRoute("/api/auth/login")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         const cfg = await getConfig();
         const code_verifier = oidc.randomPKCECodeVerifier();
         const code_challenge =
@@ -14,7 +15,11 @@ export const Route = createFileRoute("/api/auth/login")({
         // (Optional) still use state alongside PKCE
         const state = oidc.randomState();
 
-        const stash = { code_verifier, state };
+        const requestUrl = new URL(request.url);
+        const redirectParam = requestUrl.searchParams.get("redirect");
+        const redirect_to = sanitizeRedirectPath(redirectParam) ?? "/";
+
+        const stash = { code_verifier, state, redirect_to };
         const cookie = serialize("oidc_pkce", JSON.stringify(stash), {
           httpOnly: true,
           secure: true,
