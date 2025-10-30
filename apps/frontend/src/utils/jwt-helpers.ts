@@ -4,16 +4,26 @@ import { serialize } from "cookie";
 import * as jose from "jose";
 import * as oidc from "openid-client";
 
+export const SESSION_COOKIE_NAME = "session_tokens";
+const PROACTIVE_REFRESH_WINDOW_SEC = 60;
+const DEFAULT_MAX_AGE = 3600;
+
 export type Session = {
   access_token: string;
   refresh_token?: string;
   id_token?: string;
   expires_in?: number;
+  expires_at?: string;
+  refresh_expires_in?: number;
+  refresh_expires_at?: string;
+  scope?: string;
+  token_type?: string;
 };
 
-const JWKS = jose.createRemoteJWKSet(
-  new URL(`${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/certs`)
-);
+export type SessionMeta = Pick<
+  Session,
+  "expires_at" | "refresh_expires_at" | "expires_in" | "refresh_expires_in"
+>;
 
 export type AccessTokenClaims = {
   sub: string;
@@ -30,32 +40,89 @@ export type AccessTokenClaims = {
   [k: string]: unknown;
 };
 
-export function getJWT() {
-  const cookies = getCookies();
+export type EnsureFreshSessionResult = {
+  session: Session | null;
+  claims: AccessTokenClaims | null;
+  refreshed: boolean;
+  shouldClear: boolean;
+};
 
-  const raw = cookies["session_tokens"];
+const JWKS = jose.createRemoteJWKSet(
+  new URL(`${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/certs`)
+);
 
-  if (!raw) return null;
+function computeAbsoluteExpiry(expiresIn?: number): string | undefined {
+  if (!expiresIn || Number.isNaN(expiresIn)) {
+    return undefined;
+  }
+  return new Date(Date.now() + expiresIn * 1000).toISOString();
+}
 
+function computeCookieMaxAge(session: Session): number {
+  if (session.expires_at) {
+    const diff = Math.floor(
+      (Date.parse(session.expires_at) - Date.now()) / 1000
+    );
+    if (diff > 0) return diff;
+  }
+  if (session.expires_in && session.expires_in > 0) {
+    return session.expires_in;
+  }
+  return DEFAULT_MAX_AGE;
+}
+
+export function parseSession(raw: string): Session | null {
   try {
-    const { access_token } = JSON.parse(raw);
-    return access_token as string;
-  } catch (e) {
+    const parsed = JSON.parse(raw) as Session;
+    return parsed?.access_token ? parsed : null;
+  } catch (error) {
     return null;
   }
 }
 
+export function stringifySession(session: Session): string {
+  return JSON.stringify(session);
+}
+
 export function getSession(): Session | null {
   const cookies = getCookies();
-  const raw = cookies["session_tokens"];
-
+  const raw = cookies[SESSION_COOKIE_NAME];
   if (!raw) return null;
+  return parseSession(raw);
+}
 
-  try {
-    return JSON.parse(raw) as Session;
-  } catch (e) {
+export function getJWT(): string | null {
+  const session = getSession();
+  return session?.access_token ?? null;
+}
+
+export function buildSessionFromTokenResponse(
+  tokens: oidc.TokenEndpointResponse,
+  fallbackRefreshToken?: string
+): Session | null {
+  if (!tokens.access_token) {
     return null;
   }
+
+  const refreshExpiresIn = (tokens as { refresh_expires_in?: number })
+    .refresh_expires_in;
+
+  const session: Session = {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token ?? fallbackRefreshToken,
+    id_token: tokens.id_token,
+    expires_in: tokens.expires_in,
+    expires_at: computeAbsoluteExpiry(tokens.expires_in),
+    token_type: tokens.token_type,
+    scope: tokens.scope,
+  };
+
+  if (typeof refreshExpiresIn === "number") {
+    session.refresh_expires_in = refreshExpiresIn;
+    session.refresh_expires_at = computeAbsoluteExpiry(refreshExpiresIn);
+  }
+
+  return session;
 }
 
 /** Refreshes the access token using the refresh token */
@@ -64,15 +131,8 @@ export async function refreshAccessToken(
 ): Promise<Session | null> {
   try {
     const cfg = await getConfig();
-
     const tokens = await oidc.refreshTokenGrant(cfg, refreshToken);
-
-    return {
-      access_token: tokens.access_token!,
-      refresh_token: tokens.refresh_token || refreshToken, // Use new refresh token if provided
-      id_token: tokens.id_token,
-      expires_in: tokens.expires_in,
-    };
+    return buildSessionFromTokenResponse(tokens, refreshToken);
   } catch (error) {
     console.error("Failed to refresh token:", error);
     return null;
@@ -88,121 +148,154 @@ export async function verifyAccessToken(token: string, clockToleranceSec = 60) {
       clockTolerance: clockToleranceSec,
     });
 
-    // Optional defense-in-depth: ensure azp (authorized party) matches your client
     if (payload.azp && payload.azp !== process.env.OIDC_CLIENT_ID) {
       throw new Error("Unexpected azp");
     }
     return payload as AccessTokenClaims;
-  } catch (e) {
-    console.log("error ", e);
+  } catch (error) {
+    console.log("error ", error);
     return null;
   }
 }
 
-/**
- * Verifies access token and attempts to refresh if expired
- * Returns { claims, newSession } where newSession is provided if token was refreshed
- */
-export async function verifyOrRefreshToken(clockToleranceSec = 60): Promise<{
-  claims: AccessTokenClaims | null;
-  newSession?: Session;
-}> {
-  const session = getSession();
+export async function ensureFreshSession(
+  options: {
+    clockToleranceSec?: number;
+    session?: Session | null;
+  } = {}
+): Promise<EnsureFreshSessionResult> {
+  const { clockToleranceSec = 60, session: providedSession } = options;
+  const session = providedSession ?? getSession();
 
-  if (!session?.access_token) {
-    return { claims: null };
+  if (!session) {
+    return {
+      session: null,
+      claims: null,
+      refreshed: false,
+      shouldClear: false,
+    };
   }
 
-  // Try to verify the current token
+  if (!session.access_token) {
+    return {
+      session: null,
+      claims: null,
+      refreshed: false,
+      shouldClear: true,
+    };
+  }
+
+  const expiresAtMs = session.expires_at
+    ? Date.parse(session.expires_at)
+    : undefined;
+  const shouldAttemptProactiveRefresh =
+    typeof expiresAtMs === "number" &&
+    !Number.isNaN(expiresAtMs) &&
+    expiresAtMs - Date.now() <= PROACTIVE_REFRESH_WINDOW_SEC * 1000;
+
   const claims = await verifyAccessToken(
     session.access_token,
     clockToleranceSec
   );
 
-  if (claims) {
-    return { claims };
+  if (claims && !shouldAttemptProactiveRefresh) {
+    return {
+      session,
+      claims,
+      refreshed: false,
+      shouldClear: false,
+    };
   }
 
-  // Token verification failed, try to refresh if we have a refresh token
-  if (session.refresh_token) {
-    const newSession = await refreshAccessToken(session.refresh_token);
-
-    if (newSession) {
-      // Verify the new access token
-      const newClaims = await verifyAccessToken(
-        newSession.access_token,
-        clockToleranceSec
-      );
+  if (!session.refresh_token) {
+    if (claims) {
       return {
-        claims: newClaims,
-        newSession: newClaims ? newSession : undefined,
+        session,
+        claims,
+        refreshed: false,
+        shouldClear: false,
       };
     }
+
+    return {
+      session: null,
+      claims: null,
+      refreshed: false,
+      shouldClear: true,
+    };
   }
 
-  return { claims: null };
+  const refreshedSession = await refreshAccessToken(session.refresh_token);
+  if (!refreshedSession) {
+    if (claims) {
+      return {
+        session,
+        claims,
+        refreshed: false,
+        shouldClear: false,
+      };
+    }
+    return {
+      session: null,
+      claims: null,
+      refreshed: false,
+      shouldClear: true,
+    };
+  }
+
+  const refreshedClaims = await verifyAccessToken(
+    refreshedSession.access_token,
+    clockToleranceSec
+  );
+
+  if (!refreshedClaims) {
+    return {
+      session: null,
+      claims: null,
+      refreshed: false,
+      shouldClear: true,
+    };
+  }
+
+  return {
+    session: refreshedSession,
+    claims: refreshedClaims,
+    refreshed: true,
+    shouldClear: false,
+  };
 }
 
-/**
- * Makes an authenticated request to your backend API with automatic token refresh
- * Returns the response or null if authentication fails completely
- */
-export async function authenticatedBackendRequest(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<{ response: Response | null; newSession?: Session }> {
-  const session = getSession();
+export function getSessionCookieOptions(session: Session) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: computeCookieMaxAge(session),
+  };
+}
 
-  if (!session?.access_token) {
-    return { response: null };
-  }
-
-  const baseUrl = `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}`;
-
-  // Try the request with current token
-  let response = await fetch(`${baseUrl}${endpoint}`, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
-
-  // If 401, try to refresh token and retry
-  if (response.status === 401 && session.refresh_token) {
-    const newSession = await refreshAccessToken(session.refresh_token);
-
-    if (newSession) {
-      // Retry with new token
-      response = await fetch(`${baseUrl}${endpoint}`, {
-        ...options,
-        headers: {
-          ...options.headers,
-          Authorization: `Bearer ${newSession.access_token}`,
-        },
-      });
-
-      if (response.ok || response.status !== 401) {
-        return { response, newSession };
-      }
-    }
-
-    // Refresh failed or still getting 401
-    return { response: null };
-  }
-
-  return { response };
+export function getClearSessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 0,
+  };
 }
 
 /**
  * Creates a cookie header for setting a new session
  */
 export function createSessionCookie(session: Session): string {
-  return serialize("session_tokens", JSON.stringify(session), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: session.expires_in || 3600,
-  });
+  return serialize(
+    SESSION_COOKIE_NAME,
+    stringifySession(session),
+    getSessionCookieOptions(session)
+  );
+}
+
+export function createClearSessionCookie(): string {
+  return serialize(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
 }

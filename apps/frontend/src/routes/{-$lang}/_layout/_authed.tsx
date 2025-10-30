@@ -5,7 +5,14 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
-import { Files, LibraryBig, Newspaper, PenTool, User2 } from "lucide-react";
+import {
+  Cuboid,
+  Files,
+  LibraryBig,
+  Newspaper,
+  PenTool,
+  User2,
+} from "lucide-react";
 import z from "zod";
 
 export const tabParamSchema = z.enum([
@@ -17,10 +24,19 @@ export const tabParamSchema = z.enum([
   "assets",
 ]);
 
-type TabType = z.infer<typeof tabParamSchema>;
+export type TabType = z.infer<typeof tabParamSchema>;
 
-function isTabRoute(lastSegment: string | undefined): lastSegment is TabType {
-  return tabParamSchema.safeParse(lastSegment).success;
+function getTabRoute(tabFromPath: string | undefined): TabType | null {
+  if (!tabFromPath) return null;
+
+  const afterAdminSegment = [
+    ...(tabFromPath?.match(/\/admin\/([^\/]+)/i) || []),
+  ]?.[1];
+
+  if (tabParamSchema.safeParse(afterAdminSegment).success)
+    return afterAdminSegment as TabType;
+
+  return null;
 }
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
@@ -34,23 +50,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
       });
     }
 
-    const lastSegment = matches
-      .at(-1)
-      ?.fullPath.split("/")
-      .filter(Boolean)
-      .at(-1) as string | undefined;
-
-    if (!isTabRoute(lastSegment)) {
-      throw redirect({
-        to: "/{-$lang}/admin/news",
-        params: {
-          lang: context.lang,
-        },
-      });
-    }
+    const tab = getTabRoute(matches.at(-1)?.fullPath);
 
     return {
-      tab: lastSegment,
+      tab,
     };
   },
 
@@ -71,37 +74,52 @@ function RouteComponent() {
 function NavPanel() {
   return (
     <aside className="flex flex-col gap-5 rounded-md bg-white px-4 py-3">
+      <section className="flex flex-col gap-5">
+        <p>Static Pages</p>
+        <div className="flex flex-col gap-5 pl-5">
+          <PanelItem
+            title={
+              <span>
+                <PenTool className="inline size-5 align-middle leading-normal" />
+                Content
+              </span>
+            }
+            tab="content"
+          />
+          <PanelItem
+            title={
+              <span>
+                <Files className="inline size-5 align-middle leading-normal" />
+                Documents
+              </span>
+            }
+            tab="documents"
+          />
+          <PanelItem
+            title={
+              <span>
+                <Newspaper className="inline size-5 align-middle leading-normal" />
+                News
+              </span>
+            }
+            tab="news"
+          />
+          <PanelItem
+            title={
+              <span>
+                <Cuboid className="inline size-5 align-middle leading-normal" />
+                Assets
+              </span>
+            }
+            tab="assets"
+          />
+        </div>
+      </section>
+
       <PanelItem
         title={
           <span>
-            <PenTool className="inline size-5 align-middle leading-normal" />{" "}
-            Content
-          </span>
-        }
-        tab="content"
-      />
-      <PanelItem
-        title={
-          <span>
-            <Files className="inline size-5 align-middle leading-normal" />{" "}
-            Documents
-          </span>
-        }
-        tab="documents"
-      />
-      <PanelItem
-        title={
-          <span>
-            <Newspaper className="inline size-5 align-middle leading-normal" />{" "}
-            News
-          </span>
-        }
-        tab="news"
-      />
-      <PanelItem
-        title={
-          <span>
-            <LibraryBig className="inline size-5 align-middle leading-normal" />{" "}
+            <LibraryBig className="inline size-5 align-middle leading-normal" />
             Researches
           </span>
         }
@@ -110,7 +128,7 @@ function NavPanel() {
       <PanelItem
         title={
           <span>
-            <User2 className="inline size-5 align-middle leading-normal" />{" "}
+            <User2 className="inline size-5 align-middle leading-normal" />
             Users
           </span>
         }
@@ -121,13 +139,12 @@ function NavPanel() {
 }
 
 function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
-  const { tab: activeTab } = Route.useRouteContext();
-  const { lang } = Route.useRouteContext();
+  const { tab: activeTab, lang } = Route.useRouteContext();
 
   return (
     <Link
-      className={cn("px-3 py-2", {
-        "bg-accent-light/20": activeTab === tab,
+      className={cn("hover:bg-hover rounded-sm px-3 py-2 transition-colors", {
+        "bg-secondary/20 hover:bg-secondary/30": activeTab === tab,
       })}
       to={`/{-$lang}/admin/${tab}`}
       params={{ lang }}

@@ -5,6 +5,7 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 
 import { routeTree } from "./routeTree.gen";
 import { SessionUser } from "./serverFunctions/user";
+import type { SessionMeta } from "@/utils/jwt-helpers";
 
 export type Context = {
   queryClient: QueryClient;
@@ -13,6 +14,7 @@ export type Context = {
   lang: Locale;
   messages: Messages;
   user: SessionUser | null | undefined;
+  session: SessionMeta | null | undefined;
 };
 
 /**

@@ -21,14 +21,13 @@ import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth.callback'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as Char123LangChar125LayoutMainIndexRouteImport } from './routes/{-$lang}/_layout/_main/index'
 import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/{-$lang}/_layout/_main/_other'
-import { Route as Char123LangChar125LayoutAuthedAdminRouteRouteImport } from './routes/{-$lang}/_layout/_authed/admin.route'
+import { Route as Char123LangChar125LayoutAuthedAdminRouteRouteImport } from './routes/{-$lang}/_layout/_authed/admin/route'
 import { Route as Char123LangChar125LayoutMainOtherSplatRouteImport } from './routes/{-$lang}/_layout/_main/_other/$'
-import { Route as Char123LangChar125LayoutAuthedAdminUsersRouteImport } from './routes/{-$lang}/_layout/_authed/admin.users'
-import { Route as Char123LangChar125LayoutAuthedAdminResearchesRouteImport } from './routes/{-$lang}/_layout/_authed/admin.researches'
-import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin.news'
-import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin.documents'
-import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin.content'
-import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin.assets'
+import { Route as Char123LangChar125LayoutAuthedAdminUsersRouteImport } from './routes/{-$lang}/_layout/_authed/admin/users'
+import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/news'
+import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
+import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin/content'
+import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
 import { Route as Char123LangChar125LayoutMainOtherNewsRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/route'
 import { Route as Char123LangChar125LayoutMainOtherGuidelinesRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/route'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/route'
@@ -38,8 +37,11 @@ import { Route as Char123LangChar125LayoutMainOtherGuidelinesIndexRouteImport } 
 import { Route as Char123LangChar125LayoutMainOtherDataUsageIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/index'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/index'
 import { Route as Char123LangChar125LayoutMainOtherContentIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/$contentId/index'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/index'
 import { Route as Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/$newsItemId'
 import { Route as Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/$slug'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/create'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/route'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/route'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/index'
@@ -131,12 +133,6 @@ const Char123LangChar125LayoutAuthedAdminUsersRoute =
     path: '/users',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
-const Char123LangChar125LayoutAuthedAdminResearchesRoute =
-  Char123LangChar125LayoutAuthedAdminResearchesRouteImport.update({
-    id: '/researches',
-    path: '/researches',
-    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
-  } as any)
 const Char123LangChar125LayoutAuthedAdminNewsRoute =
   Char123LangChar125LayoutAuthedAdminNewsRouteImport.update({
     id: '/news',
@@ -216,6 +212,12 @@ const Char123LangChar125LayoutMainOtherContentIdIndexRoute =
     path: '/$contentId/',
     getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
+const Char123LangChar125LayoutAuthedAdminResearchesIndexRoute =
+  Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport.update({
+    id: '/researches/',
+    path: '/researches/',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
 const Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute =
   Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport.update({
     id: '/$newsItemId',
@@ -227,6 +229,20 @@ const Char123LangChar125LayoutMainOtherGuidelinesSlugRoute =
     id: '/$slug',
     path: '/$slug',
     getParentRoute: () => Char123LangChar125LayoutMainOtherGuidelinesRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route =
+  Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport.update(
+    {
+      id: '/researches/{$humId}-{$ver}-{$lang}',
+      path: '/researches/{$humId}-{$ver}-{$lang}',
+      getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutAuthedAdminResearchesCreateRoute =
+  Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport.update({
+    id: '/researches/create',
+    path: '/researches/create',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
 const Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute =
   Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteImport.update({
@@ -341,13 +357,15 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
-  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesRoute
   '/{-$lang}/admin/users': typeof Char123LangChar125LayoutAuthedAdminUsersRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   '/{-$lang}/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
+  '/{-$lang}/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/$contentId': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
   '/{-$lang}/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
@@ -376,11 +394,13 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
-  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesRoute
   '/{-$lang}/admin/users': typeof Char123LangChar125LayoutAuthedAdminUsersRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/$contentId': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
   '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/data-usage': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
@@ -418,13 +438,15 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/_layout/_authed/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
-  '/{-$lang}/_layout/_authed/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesRoute
   '/{-$lang}/_layout/_authed/admin/users': typeof Char123LangChar125LayoutAuthedAdminUsersRoute
   '/{-$lang}/_layout/_main/_other/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/_layout/_main/_other/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
+  '/{-$lang}/_layout/_authed/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/_layout/_main/_other/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/_layout/_main/_other/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  '/{-$lang}/_layout/_authed/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/_layout/_main/_other/$contentId/': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
   '/{-$lang}/_layout/_main/_other/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
@@ -460,13 +482,15 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/content'
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/news'
-    | '/{-$lang}/admin/researches'
     | '/{-$lang}/admin/users'
     | '/{-$lang}/$'
     | '/{-$lang}/data-submission/navigation'
     | '/{-$lang}/data-usage/researches'
+    | '/{-$lang}/admin/researches/create'
+    | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
+    | '/{-$lang}/admin/researches'
     | '/{-$lang}/$contentId'
     | '/{-$lang}/data-submission/'
     | '/{-$lang}/data-usage/'
@@ -495,11 +519,13 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/content'
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/news'
-    | '/{-$lang}/admin/researches'
     | '/{-$lang}/admin/users'
     | '/{-$lang}/$'
+    | '/{-$lang}/admin/researches/create'
+    | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
+    | '/{-$lang}/admin/researches'
     | '/{-$lang}/$contentId'
     | '/{-$lang}/data-submission'
     | '/{-$lang}/data-usage'
@@ -536,13 +562,15 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/content'
     | '/{-$lang}/_layout/_authed/admin/documents'
     | '/{-$lang}/_layout/_authed/admin/news'
-    | '/{-$lang}/_layout/_authed/admin/researches'
     | '/{-$lang}/_layout/_authed/admin/users'
     | '/{-$lang}/_layout/_main/_other/$'
     | '/{-$lang}/_layout/_main/_other/data-submission/navigation'
     | '/{-$lang}/_layout/_main/_other/data-usage/researches'
+    | '/{-$lang}/_layout/_authed/admin/researches/create'
+    | '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/_layout/_main/_other/guidelines/$slug'
     | '/{-$lang}/_layout/_main/_other/news/$newsItemId'
+    | '/{-$lang}/_layout/_authed/admin/researches/'
     | '/{-$lang}/_layout/_main/_other/$contentId/'
     | '/{-$lang}/_layout/_main/_other/data-submission/'
     | '/{-$lang}/_layout/_main/_other/data-usage/'
@@ -676,13 +704,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminUsersRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
-    '/{-$lang}/_layout/_authed/admin/researches': {
-      id: '/{-$lang}/_layout/_authed/admin/researches'
-      path: '/researches'
-      fullPath: '/{-$lang}/admin/researches'
-      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesRouteImport
-      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
-    }
     '/{-$lang}/_layout/_authed/admin/news': {
       id: '/{-$lang}/_layout/_authed/admin/news'
       path: '/news'
@@ -774,6 +795,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherContentIdIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
+    '/{-$lang}/_layout/_authed/admin/researches/': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/'
+      path: '/researches'
+      fullPath: '/{-$lang}/admin/researches'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
     '/{-$lang}/_layout/_main/_other/news/$newsItemId': {
       id: '/{-$lang}/_layout/_main/_other/news/$newsItemId'
       path: '/$newsItemId'
@@ -787,6 +815,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}/guidelines/$slug'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
+      path: '/researches/{$humId}-{$ver}-{$lang}'
+      fullPath: '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/researches/create': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/create'
+      path: '/researches/create'
+      fullPath: '/{-$lang}/admin/researches/create'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
     '/{-$lang}/_layout/_main/_other/data-usage/researches': {
       id: '/{-$lang}/_layout/_main/_other/data-usage/researches'
@@ -873,8 +915,10 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminContentRoute: typeof Char123LangChar125LayoutAuthedAdminContentRoute
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   Char123LangChar125LayoutAuthedAdminNewsRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRoute
-  Char123LangChar125LayoutAuthedAdminResearchesRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesRoute
   Char123LangChar125LayoutAuthedAdminUsersRoute: typeof Char123LangChar125LayoutAuthedAdminUsersRoute
+  Char123LangChar125LayoutAuthedAdminResearchesCreateRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
+  Char123LangChar125LayoutAuthedAdminResearchesIndexRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
 }
 
 const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125LayoutAuthedAdminRouteRouteChildren =
@@ -887,10 +931,14 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminDocumentsRoute,
     Char123LangChar125LayoutAuthedAdminNewsRoute:
       Char123LangChar125LayoutAuthedAdminNewsRoute,
-    Char123LangChar125LayoutAuthedAdminResearchesRoute:
-      Char123LangChar125LayoutAuthedAdminResearchesRoute,
     Char123LangChar125LayoutAuthedAdminUsersRoute:
       Char123LangChar125LayoutAuthedAdminUsersRoute,
+    Char123LangChar125LayoutAuthedAdminResearchesCreateRoute:
+      Char123LangChar125LayoutAuthedAdminResearchesCreateRoute,
+    Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route:
+      Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route,
+    Char123LangChar125LayoutAuthedAdminResearchesIndexRoute:
+      Char123LangChar125LayoutAuthedAdminResearchesIndexRoute,
   }
 
 const Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren =

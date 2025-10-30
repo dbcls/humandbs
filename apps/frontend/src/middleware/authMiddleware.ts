@@ -1,14 +1,47 @@
 import { hasPermission, Permissions } from "@/lib/permissions";
-import { $getAuthUser, SessionUser } from "@/serverFunctions/user";
-import { getJWT } from "@/utils/jwt-helpers";
-
+import { SessionUser } from "@/serverFunctions/user";
+import {
+  ensureFreshSession,
+  getClearSessionCookieOptions,
+  getSessionCookieOptions,
+  SESSION_COOKIE_NAME,
+  stringifySession,
+} from "@/utils/jwt-helpers";
+import type { Session } from "@/utils/jwt-helpers";
 import { createMiddleware } from "@tanstack/react-start";
+import { setCookie } from "@tanstack/react-start/server";
 
 export const authMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const user = await $getAuthUser();
+    const { session, claims, refreshed, shouldClear } =
+      await ensureFreshSession();
 
-    return next({ context: { user } });
+    if (shouldClear) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+    }
+
+    let contextUser: SessionUser | null = null;
+    let contextSession: Session | null = null;
+
+    if (session && claims?.sub) {
+      if (refreshed) {
+        setCookie(
+          SESSION_COOKIE_NAME,
+          stringifySession(session),
+          getSessionCookieOptions(session)
+        );
+      }
+
+      contextSession = session;
+      contextUser = {
+        id: claims.sub,
+        name: claims.name,
+        email: claims.email,
+        username: claims.preferred_username,
+      };
+    }
+
+    return next({ context: { user: contextUser, session: contextSession } });
   }
 );
 
@@ -17,12 +50,16 @@ export const hasPermissionMiddleware = createMiddleware({
 })
   .middleware([authMiddleware])
   .server(async ({ next, context }) => {
-    const { user } = context;
+    const typedContext = (context ?? {}) as {
+      user?: SessionUser | null;
+      session?: Session | null;
+    };
+    const user = typedContext.user ?? null;
+    const session = typedContext.session ?? null;
 
-    if (!user) {
+    if (!user || !session?.access_token) {
       throw new Error("Unauthorized");
     }
-    const jwt = getJWT();
 
     const userWithRole = { ...user };
 
@@ -31,10 +68,15 @@ export const hasPermissionMiddleware = createMiddleware({
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${jwt}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
       }
     );
+
+    if (isAdminRes.status === 401 || isAdminRes.status === 403) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+      throw new Error("Unauthorized");
+    }
 
     if (!isAdminRes.ok) {
       userWithRole.role = "user";
@@ -50,6 +92,8 @@ export const hasPermissionMiddleware = createMiddleware({
 
     return next({
       context: {
+        user: userWithRole,
+        session,
         checkPermission: <Resource extends keyof Permissions>(
           resource: Resource,
           action: Permissions[Resource]["action"],

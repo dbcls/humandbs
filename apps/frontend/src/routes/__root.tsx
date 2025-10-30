@@ -1,30 +1,16 @@
 import ConfirmationDialog from "@/components/ConfirmationDialog";
-import { Button } from "@/components/ui/button";
+import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
 import css from "@/index.css?url";
-import { auth } from "@/lib/auth";
 import { Context } from "@/router";
-import { $getAuthUser, SessionUser } from "@/serverFunctions/user";
+import { $getAuthUser } from "@/serverFunctions/user";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
   Scripts,
-  useRouter,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-
-const getUser = createServerFn({ method: "GET" }).handler(async () => {
-  const { headers } = getRequest();
-  try {
-    const session = await auth.api.getSession({ headers });
-    return session?.user || null;
-  } catch (error) {
-    return null;
-  }
-});
 
 export const Route = createRootRouteWithContext<Context>()({
   head: () => {
@@ -47,32 +33,13 @@ export const Route = createRootRouteWithContext<Context>()({
   component: RootComponent,
 
   beforeLoad: async () => {
-    const user = await $getAuthUser();
+    const { user, session } = await $getAuthUser();
 
     return {
       user,
+      session,
     };
   },
-  // beforeLoad: async ({  }) => {
-
-  //   // const locale = await getLocaleFn();
-
-  //   // console.log("locale detected:", locale);
-
-  //   // console.log("");
-  //   // const user = await getUser();
-
-  //   // // await saveLocaleFn({ data: { lang: locale } });
-
-  //   // const messages = await getMessagesFn({ data: locale });
-
-  //   return {
-  //     // lang: locale,
-  //     // messages,
-  //     user,
-  //   };
-  // },
-  //
 });
 
 function RootComponent() {
@@ -90,9 +57,8 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { lang } = Route.useRouteContext();
+  const { lang, session } = Route.useRouteContext();
 
-  const route = useRouter();
   return (
     <html lang={lang}>
       <head>
@@ -102,6 +68,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <ReactQueryDevtools buttonPosition="bottom-left" />
+        <SessionRefreshHandler session={session} />
         <ConfirmationDialog />
         <Scripts />
       </body>

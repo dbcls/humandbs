@@ -1,6 +1,7 @@
+import { getLogoutUrl } from "@/lib/oidc";
+import { createClearSessionCookie } from "@/utils/jwt-helpers";
 import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
-import { getLogoutUrl } from "@/lib/oidc";
 import { redirectWithCookies } from "./-utils";
 
 export const Route = createFileRoute("/api/auth/logout")({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/api/auth/logout")({
         const endSession = await getLogoutUrl(idTokenHint, postLogoutRedirect);
 
         const clears = [
-          serialize("session_tokens", "", { path: "/", maxAge: 0 }),
+          createClearSessionCookie(),
           serialize("oidc_pkce", "", { path: "/", maxAge: 0 }),
         ];
 

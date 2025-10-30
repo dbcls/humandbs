@@ -3,6 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
 import * as oidc from "openid-client";
 import { redirectWithCookies } from "./-utils";
+import {
+  buildSessionFromTokenResponse,
+  createSessionCookie,
+} from "@/utils/jwt-helpers";
 
 export const Route = createFileRoute("/api/auth/callback")({
   server: {
@@ -30,24 +34,13 @@ export const Route = createFileRoute("/api/auth/callback")({
 
         const setCookies: string[] = [];
         setCookies.push(serialize("oidc_pkce", "", { path: "/", maxAge: 0 }));
-        setCookies.push(
-          serialize(
-            "session_tokens",
-            JSON.stringify({
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token,
-              id_token: tokens.id_token,
-              expires_in: tokens.expires_in,
-            }),
-            {
-              httpOnly: true,
-              secure: true,
-              sameSite: "lax",
-              path: "/",
-              maxAge: 60 * 60 * 8,
-            }
-          )
-        );
+
+        const session = buildSessionFromTokenResponse(tokens);
+        if (!session) {
+          return new Response("Missing access token", { status: 400 });
+        }
+
+        setCookies.push(createSessionCookie(session));
 
         return redirectWithCookies("/", setCookies, 302);
       },

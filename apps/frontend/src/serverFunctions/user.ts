@@ -3,15 +3,16 @@ import { userSelectSchema } from "@/db/types";
 import { db } from "@/lib/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
-  createSessionCookie,
-  getJWT,
-  verifyAccessToken,
-  verifyOrRefreshToken,
+  ensureFreshSession,
+  getClearSessionCookieOptions,
+  getSessionCookieOptions,
+  SESSION_COOKIE_NAME,
+  SessionMeta,
+  stringifySession,
 } from "@/utils/jwt-helpers";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { getCookies } from "@tanstack/react-start/server";
-import { serialize } from "cookie";
+import { setCookie } from "@tanstack/react-start/server";
 import { count, eq } from "drizzle-orm";
 
 export const $getUsers = createServerFn({ method: "GET" })
@@ -57,13 +58,6 @@ export function getUsersQueryOptions() {
   });
 }
 
-export type Session = {
-  access_token: string;
-  refresh_token?: string;
-  id_token?: string;
-  expires_in?: number;
-};
-
 export const $deleteUser = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(userSelectSchema.pick({ id: true }))
@@ -86,44 +80,59 @@ export const $deleteUser = createServerFn({ method: "POST" })
   });
 
 export type SessionUser = {
+  id: string;
   role?: UserRole;
-  username: string | undefined;
-  name: string | undefined;
-  email: string | undefined;
+  username?: string;
+  name?: string;
+  email?: string;
+};
+
+type AuthUserResponse = {
+  user: SessionUser | null;
+  session: SessionMeta | null;
 };
 
 export const $getAuthUser = createServerFn({ method: "GET" }).handler<
-  Promise<{
-    user: SessionUser | null;
-    setCookie?: string;
-  }>
+  Promise<AuthUserResponse>
 >(async () => {
   try {
-    const { claims, newSession } = await verifyOrRefreshToken();
+    const { session, claims, refreshed, shouldClear } =
+      await ensureFreshSession();
 
-    if (!claims) {
-      return {
-        user: null,
-      };
+    if (shouldClear) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+    }
+
+    if (!session || !claims?.sub) {
+      return { user: null, session: null };
+    }
+
+    if (refreshed) {
+      setCookie(
+        SESSION_COOKIE_NAME,
+        stringifySession(session),
+        getSessionCookieOptions(session)
+      );
     }
 
     const user: SessionUser = {
-      name: claims?.name,
-      email: claims?.email,
-      username: claims?.preferred_username,
+      id: claims.sub,
+      name: claims.name,
+      email: claims.email,
+      username: claims.preferred_username,
     };
 
-    // If we refreshed the token, return the new cookie to be set
-    if (newSession) {
-      return {
-        user,
-        setCookie: createSessionCookie(newSession),
-      };
-    }
+    const sessionMeta: SessionMeta = {
+      expires_at: session.expires_at,
+      refresh_expires_at: session.refresh_expires_at,
+      expires_in: session.expires_in,
+      refresh_expires_in: session.refresh_expires_in,
+    };
 
-    return { user };
+    return { user, session: sessionMeta };
   } catch (error) {
     console.error("Error in $getAuthUser:", error);
-    return { user: null };
+    setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+    return { user: null, session: null };
   }
 });

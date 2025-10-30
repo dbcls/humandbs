@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/auth/login")({
         });
 
         const redirect_uri = process.env.OIDC_REDIRECT_URI!;
-        const scope = "openid profile email";
+        const scope = "openid profile email offline_access";
 
         const url = oidc.buildAuthorizationUrl(cfg, {
           redirect_uri,
