@@ -10,26 +10,32 @@ import { Button } from "@/components/ui/button";
 import { FA_ICONS } from "@/lib/faIcons";
 import { useTranslations } from "use-intl";
 import { $getResearchList } from "@/serverFunctions/mock/research";
-import { ResearchSummary } from "@humandbs/backend/types";
+import {
+  Research,
+  ResearchesQuerySchema,
+  ResearchSummary,
+} from "@humandbs/backend/types";
 import { filterStringSchema, paginationSchema } from "@/utils/searchParams";
+import { api } from "@/services/backend";
 
-export const tablePageSearchSchema = paginationSchema.extend(
-  filterStringSchema.shape
-);
+export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
+  lang: true,
+});
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches/"
 )({
   component: RouteComponent,
-  validateSearch: tablePageSearchSchema,
-  loaderDeps: ({ search: { page, limit, filter } }) => ({
+  validateSearch: researchesSearchParamsSchema,
+  loaderDeps: ({ search: { page, limit, sort, order } }) => ({
     page,
     limit,
-    filter,
+    sort,
+    order,
   }),
 
-  loader: ({ deps: { page, limit, filter } }) =>
-    $getResearchList({ data: { page, limit, filter } }),
+  loader: ({ deps, context }) =>
+    api.getResearchListPaginated({ search: { ...deps, lang: context.lang } }),
 });
 
 function Caption() {
@@ -58,33 +64,21 @@ function Caption() {
           type="text"
           placeholder="検索"
           beforeIcon={<Search size={22} />}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              // Handle search logic here
-              navigate({
-                search: { filter: (e.target as HTMLInputElement).value },
-              });
-            }
-          }}
+          // onKeyDown={(e) => {
+          //   if (e.key === "Enter") {
+          //     // Handle search logic here
+          //     navigate({
+          //       search: { filter: (e.target as HTMLInputElement).value },
+          //     });
+          //   }
+          // }}
         />
       </div>
     </div>
   );
 }
 
-export interface ResearchData {
-  researchId: string;
-
-  datasets: string[];
-  title: string;
-  publicationDate: string;
-  dataType: string;
-  methodology: string;
-  instrument: string;
-  subjects: { content: string[]; type: string | null }[];
-}
-
-const columnHelper = createColumnHelper<ResearchSummary>();
+const columnHelper = createColumnHelper<Research>();
 
 const columns = [
   columnHelper.accessor("humId", {

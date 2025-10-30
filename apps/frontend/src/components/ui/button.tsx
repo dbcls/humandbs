@@ -22,7 +22,7 @@ export const buttonVariants = cva(
         outline:
           "border border-tetriary bg-transparent text-black hover:bg-white/50",
         tableAction: "bg-secondary-light rounded-full ",
-        plain: " bg-none",
+        plain: "bg-none",
         "cms-table-action":
           "bg-none rounded-xs hover:bg-hover active:bg-foreground-light/30",
         toggle:

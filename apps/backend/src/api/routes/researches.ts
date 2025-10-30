@@ -79,6 +79,7 @@ export const researchesRouter = new OpenAPIHono()
 researchesRouter.openapi(listResearchSummariesRoute, async (c) => {
   try {
     const query = c.req.query() as unknown as ResearchesQuery
+    console.log("query",query)
     const researches = await listResearchSummaries(query)
     return c.json(researches, 200)
   } catch (error) {

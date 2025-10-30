@@ -78,11 +78,13 @@ export const listResearchSummaries = async (params: ResearchesQuery): Promise<Re
       humId: true, lang: true, title: true, versions: true, dataProvider: true, summary: true,
     }).parse(doc))
 
+  console.log("1")
   const rvIds = base.flatMap(doc => doc.versions)
   const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, ResearchVersionDocSchema.parse)
-
+  console.log("2")
   const dsIds = uniq(Array.from(rvMap.values()).flatMap(rv => rv.datasets))
   const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, DatasetDocSchema.parse)
+  console.log("3")
 
   const data = base.map(d => {
     const rvs = d.versions.map(id => rvMap.get(id)).filter((x): x is ResearchVersionDoc => !!x)

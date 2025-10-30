@@ -2,10 +2,16 @@ import { user, UserRole } from "@/db/schema";
 import { userSelectSchema } from "@/db/types";
 import { db } from "@/lib/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { getJWT, verifyAccessToken } from "@/utils/jwt-helpers";
+import {
+  createSessionCookie,
+  getJWT,
+  verifyAccessToken,
+  verifyOrRefreshToken,
+} from "@/utils/jwt-helpers";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookies } from "@tanstack/react-start/server";
+import { serialize } from "cookie";
 import { count, eq } from "drizzle-orm";
 
 export const $getUsers = createServerFn({ method: "GET" })
@@ -87,22 +93,37 @@ export type SessionUser = {
 };
 
 export const $getAuthUser = createServerFn({ method: "GET" }).handler<
-  Promise<SessionUser | null>
+  Promise<{
+    user: SessionUser | null;
+    setCookie?: string;
+  }>
 >(async () => {
   try {
-    const jwt = getJWT();
+    const { claims, newSession } = await verifyOrRefreshToken();
 
-    if (!jwt) return null;
+    if (!claims) {
+      return {
+        user: null,
+      };
+    }
 
-    const claims = await verifyAccessToken(jwt);
-
-    const user = {
+    const user: SessionUser = {
       name: claims?.name,
       email: claims?.email,
       username: claims?.preferred_username,
     };
-    return user;
-  } catch {
-    return null;
+
+    // If we refreshed the token, return the new cookie to be set
+    if (newSession) {
+      return {
+        user,
+        setCookie: createSessionCookie(newSession),
+      };
+    }
+
+    return { user };
+  } catch (error) {
+    console.error("Error in $getAuthUser:", error);
+    return { user: null };
   }
 });
