@@ -6,8 +6,8 @@ import { parseDetailPage, type ParseResult } from "@/crawler/detail-parser"
 import { normalizeMolDataHeader } from "@/crawler/normalizeHeader"
 import { normalizer, normalizeDate } from "@/crawler/normalizer"
 import { parseReleasePage } from "@/crawler/release-parser"
-import type { LangType } from "@/crawler/types"
 import { findLatestVersionNum, readHtml, getResultsDirPath } from "@/crawler/utils"
+import type { LangType } from "@/types"
 
 export const dumpDetailJsons = async (humIds: string[], useCache = true): Promise<void> => {
   for (const humId of humIds) {

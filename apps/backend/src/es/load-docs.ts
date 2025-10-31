@@ -93,3 +93,6 @@ const main = async () => {
   await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version, d.lang))
 }
 
+if (require.main === module) {
+  await main()
+}

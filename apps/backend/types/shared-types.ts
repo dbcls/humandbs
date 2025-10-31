@@ -249,7 +249,7 @@ export const DatasetsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   lang: z.enum(langType).default("en"),
-  sort: z.enum(["humId", "title"]).default("humId"),
+  sort: z.enum(["datasetId", "releaseDate"]).default("datasetId"),
   order: z.enum(["asc", "desc"]).default("asc"),
 }).strict()
 export type DatasetsQuery = z.infer<typeof DatasetsQuerySchema>

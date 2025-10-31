@@ -1,15 +1,12 @@
-import { match } from "assert"
-import fs, { existsSync, fstat, mkdirSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, writeFileSync } from "fs"
 import { JSDOM } from "jsdom"
 import { join } from "path"
-import { pid } from "process"
 
 import { loadDetailJson } from "@/crawler/detail-json-dump"
-import type { MolecularData } from "@/crawler/detail-parser"
 import { humIdToTitle } from "@/crawler/home-parser"
 import jgaStudyToDatasetMap from "@/crawler/jga-study-dataset-relation.json"
-import type { LangType, Research, Dataset, ResearchVersion, Person, ResearchProject, Grant } from "@/crawler/types"
 import { findLatestVersionNum, getResultsDirPath } from "@/crawler/utils"
+import type { LangType, Research, Dataset, ResearchVersion, Person, ResearchProject, Grant } from "@/types"
 
 const ACCESSION_KEYS = [
   "DDBJ Accession",
@@ -200,7 +197,7 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
               datasetMapPerVersion[molDataId] = {
                 datasetId: molDataId,
                 lang,
-                version: 1,
+                version: "v1",
                 typeOfData: datasetMetadata?.[molDataId]?.typeOfData ?? null,
                 criteria: datasetMetadata?.[molDataId]?.criteria ?? null,
                 releaseDate: datasetMetadata?.[molDataId]?.releaseDate ?? null,
@@ -228,7 +225,8 @@ export const generateEsJson = async (humIds: string[], useCache = true): Promise
             const prevDataset = datasetMapPerHumIdLang[key][datasetMapPerHumIdLang[key].length - 1]
             if (JSON.stringify(prevDataset.experiments) !== JSON.stringify(dataset.experiments)) {
               // 新しい Dataset がある場合、追加
-              dataset.version = prevDataset.version + 1
+              const prevNum = Number((prevDataset.version ?? "v0").replace(/^v/, "")) || 0
+              dataset.version = `v${prevNum + 1}`
               datasetMapPerHumIdLang[key].push(dataset)
               humIdVersionToDatasetIdMap[`${humId}-${lang}-v${versionNum}`].push(`${key}-${dataset.version}`)
             }

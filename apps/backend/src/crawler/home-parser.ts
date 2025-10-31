@@ -1,8 +1,8 @@
 import { JSDOM } from "jsdom"
 
 import { HOME_HTML, HOME_URL, HOME_HTML_EN, HOME_URL_EN } from "@/crawler/const"
-import type { LangType } from "@/crawler/types"
 import { readHtml } from "@/crawler/utils"
+import type { LangType } from "@/types"
 
 export const parseAllHumIds = async (useCache = true): Promise<string[]> => {
   const html = await readHtml(HOME_URL, HOME_HTML, useCache)

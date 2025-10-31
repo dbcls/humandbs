@@ -4,7 +4,6 @@ import { hideBin } from "yargs/helpers"
 
 import { dumpDetailJsons } from "@/crawler/detail-json-dump"
 import { generateEsJson } from "@/crawler/es-json-generator"
-import { parseAllHumIds } from "@/crawler/home-parser"
 import { dumpSummaryFiles } from "@/crawler/summary-dump"
 
 interface Args {

@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom"
 
-import type { LangType } from "@/crawler/types"
 import { extractTagsFromElement, sameArray, cleanJapaneseText } from "@/crawler/utils"
+import type { LangType } from "@/types"
 
 interface SummaryUrl {
   url: string

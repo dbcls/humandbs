@@ -1,10 +1,9 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import { getResearchDetail, listResearchSummaries, listResearchVersionsSorted } from "@/api/es-client"
+import { ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import { LangVersionQuerySchema, HumIdParamsSchema, ResearchesQuerySchema, ResearchesResponseSchema, LangQuerySchema, ResearchVersionsResponseSchema, ResearchDetailSchema } from "@/types"
 import type { ResearchesQuery, HumIdParams, LangVersionQuery, LangQuery } from "@/types"
-
-import { ErrorSpec404, ErrorSpec500 } from "./errors"
 
 const listResearchSummariesRoute = createRoute({
   method: "get",

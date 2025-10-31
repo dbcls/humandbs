@@ -1,5 +1,5 @@
 import type { ParseResult } from "@/crawler/detail-parser"
-import type { LangType } from "@/crawler/types"
+import type { LangType } from "@/types"
 
 export const normalizer = ((lang: LangType, parserResult: ParseResult): void => {
   if (lang === "en") {

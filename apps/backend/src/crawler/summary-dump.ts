@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, writeFileSync } from "fs"
 import { join } from "path"
 
 import { loadDetailJson } from "@/crawler/detail-json-dump"
-import type { LangType } from "@/crawler/types"
 import { findLatestVersionNum, getResultsDirPath } from "@/crawler/utils"
+import type { LangType } from "@/types"
 
 export const dumpSummaryFiles = async (humIds: string[], useCache = true): Promise<void> => {
   const summaryFilesDir = join(getResultsDirPath(), "summary-json")

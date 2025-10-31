@@ -18,6 +18,7 @@ root@e7e83a1678b7:/app/apps/backend# bun run crawler -- -p detail
 root@e7e83a1678b7:/app/apps/backend# bun run crawler -- -p elasticsearch
 # crawler の結果が `./crawler-results` 内に生成される
 
+# curl -X DELETE "http://humandbs-elasticsearch-dev:9200/research,research-version,dataset"
 root@0272ff98f17e:/app/apps/backend# bun run es:load-mappings
 root@0272ff98f17e:/app/apps/backend# bun run es:load-docs
 # Elasticsearch にデータが読み込まれる

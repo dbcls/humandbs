@@ -18,12 +18,8 @@
         "type": "keyword"
       },
       "releaseDate": {
-        "type": "text",
-        "fields": {
-          "kw": {
-            "type": "keyword"
-          }
-        }
+        "type": "date",
+        "format": "strict_date||strict_date_time"
       },
       "releaseNote": {
         "type": "text"
