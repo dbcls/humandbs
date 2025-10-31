@@ -1,10 +1,12 @@
+import { localeSchema } from "@/lib/i18n-config";
 import { filterStringSchema, paginationSchema } from "@/utils/searchParams";
-import {
+import type {
   ResearchesResponse,
-  type ResearchSummary,
+  ResearchSummary,
 } from "@humandbs/backend/types";
 import { createServerFn } from "@tanstack/react-start";
 import path from "node:path";
+import z from "zod";
 
 const getResearchListInputSchema = paginationSchema;
 
@@ -53,3 +55,13 @@ export const $getResearchList = createServerFn({ method: "GET" })
 
     return result;
   });
+
+export const $getResearch = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      humId: z.string(),
+      lang: localeSchema,
+      ver: z.string(),
+    })
+  )
+  .handler(async ({ data }) => {});

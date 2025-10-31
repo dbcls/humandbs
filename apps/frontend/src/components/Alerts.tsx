@@ -9,13 +9,15 @@ import { useLocale } from "use-intl";
 import { Link } from "./Link";
 
 export function Alerts() {
-  const { alerts } = useLoaderData({ from: "/_main" });
+  const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });
   const locale = useLocale();
   const router = useRouter();
 
   async function handleHideAlert(newsId: string) {
     await $saveHiddenAlertIds({ data: { newsId, locale } });
-    await router.invalidate({ filter: (r) => r.fullPath !== "/admin" });
+    await router.invalidate({
+      filter: (r) => r.fullPath !== "/{-$lang}/admin",
+    });
   }
 
   if (!alerts || alerts.length === 0) return null;
@@ -41,7 +43,7 @@ export function AlertMessage({
       <div>
         <Link
           variant={"alert"}
-          to="/$lang/news/$newsItemId"
+          to="/{-$lang}/news/$newsItemId"
           params={{
             lang: locale,
             newsItemId: newsId,

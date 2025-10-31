@@ -1,6 +1,6 @@
 import Logo from "@/assets/Logo.png";
 import {
-  LinkOptions,
+  useNavigate,
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
 
+import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -16,146 +17,22 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import type { Locale, Messages } from "@/lib/i18n-config";
+import { getNavConfig } from "@/config/navbar-config";
 import { Link } from "./Link";
-import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-
-type NavLinkId = keyof Messages["Navbar"];
-
-// First let's define our types
-type BaseNavItem = {
-  id: NavLinkId;
-  linkOptions: LinkOptions;
-};
-
-type NavItemWithChildren = BaseNavItem & {
-  children?: BaseNavItem[];
-};
-
-// const l = linkOptions({ to: "/$lang/guidelines/$slug", params: { lang: "en", slug: "guidelines" } });
-
-type NavConfig = NavItemWithChildren[];
-
-const getNavConfig = (lang: Locale): NavConfig => {
-  return [
-    {
-      id: "data-submission",
-      linkOptions: { to: "/$lang/data-submission", params: { lang } },
-      children: [
-        {
-          id: "application",
-          linkOptions: {
-            to: "/$lang/data-submission/application",
-            params: {
-              lang,
-            },
-          },
-        },
-      ],
-    },
-    {
-      id: "guidelines",
-      linkOptions: { to: "/$lang/guidelines", params: { lang } },
-      children: [
-        {
-          id: "data-sharing-guidelines",
-          linkOptions: {
-            to: "/$lang/guidelines/$slug",
-            params: {
-              lang,
-              slug: "data-sharing-guidelines",
-            },
-          },
-        },
-        {
-          id: "security-guidelines-for-users",
-          linkOptions: {
-            to: "/$lang/guidelines/$slug",
-            params: {
-              lang,
-              slug: "security-guidelines-for-users",
-            },
-          },
-        },
-        {
-          id: "security-guidelines-for-submitters",
-          linkOptions: {
-            to: "/$lang/guidelines/$slug",
-            params: {
-              lang,
-              slug: "security-guidelines-for-submitters",
-            },
-          },
-        },
-        {
-          id: "security-guidelines-for-dbcenters",
-          linkOptions: {
-            to: "/$lang/guidelines/$slug",
-            params: {
-              lang,
-              slug: "security-guidelines-for-dbcenters",
-            },
-          },
-        },
-      ],
-    },
-    {
-      id: "data-usage",
-      linkOptions: {
-        to: "/$lang/$contentId",
-        params: { lang, contentId: "data-usage" },
-      },
-      children: [
-        {
-          id: "research-list",
-          linkOptions: {
-            to: "/$lang/data-usage/researches",
-            params: {
-              lang,
-            },
-          },
-        },
-      ],
-    },
-    {
-      id: "about-data",
-      linkOptions: {
-        to: "/$lang/$contentId",
-        params: { lang, contentId: "about-data" },
-      },
-    },
-    {
-      id: "achievements",
-      linkOptions: {
-        to: "/$lang/$contentId",
-        params: { lang, contentId: "achievements" },
-      },
-    },
-    {
-      id: "contact",
-      linkOptions: {
-        to: "/$lang/$contentId",
-        params: { lang, contentId: "contact" },
-      },
-    },
-  ];
-};
 
 export function Navbar() {
   const t = useTranslations("Navbar");
-
-  const { user } = useRouteContext({ from: "__root__" });
-
-  const router = useRouter();
 
   const lang = useLocale();
 
   const tCommon = useTranslations("common");
 
-  async function handleLogout() {
-    await authClient.signOut();
-    router.invalidate();
+  const { user } = useRouteContext({ from: "__root__" });
+
+  const navigate = useNavigate();
+
+  async function login() {
+    await navigate({ to: "/api/auth/login", reloadDocument: true });
   }
 
   return (
@@ -164,7 +41,7 @@ export function Navbar() {
         <Link
           className="w-fit shrink-0"
           variant={"nav"}
-          to="/$lang"
+          to="/{-$lang}"
           params={{ lang }}
         >
           <img src={Logo} width={200} height={50} className="block" />
@@ -213,12 +90,17 @@ export function Navbar() {
       <div className="flex items-center gap-2">
         <LangSwitcher />
         <Search />
+
         {user ? (
           <div className="flex items-center gap-2">
             <span className="text-xs">{user.name}</span>
-            <Button onClick={handleLogout}>Logout</Button>
+            <form method="post" action={"/api/auth/logout"}>
+              <Button type="submit">Logout</Button>
+            </form>
           </div>
-        ) : null}
+        ) : (
+          <Button onClick={login}> Login </Button>
+        )}
       </div>
     </header>
   );

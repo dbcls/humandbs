@@ -10,6 +10,7 @@ export const buttonVariants = cva(
     variants: {
       size: {
         lg: "px-8 py-4 text-sm",
+        tableAction: "px-8 py-3 text-sm",
         default: "px-4 py-2 text-xs",
         slim: "p-1 text-xs",
         icon: "p-2 text-sm",
@@ -21,7 +22,7 @@ export const buttonVariants = cva(
         outline:
           "border border-tetriary bg-transparent text-black hover:bg-white/50",
         tableAction: "bg-secondary-light rounded-full ",
-        plain: " bg-none",
+        plain: "bg-none",
         "cms-table-action":
           "bg-none rounded-xs hover:bg-hover active:bg-foreground-light/30",
         toggle:

@@ -1,18 +1,47 @@
-import { auth } from "@/lib/auth";
 import { hasPermission, Permissions } from "@/lib/permissions";
-import { SessionUser } from "@/router";
+import { SessionUser } from "@/serverFunctions/user";
+import {
+  ensureFreshSession,
+  getClearSessionCookieOptions,
+  getSessionCookieOptions,
+  SESSION_COOKIE_NAME,
+  stringifySession,
+} from "@/utils/jwt-helpers";
+import type { Session } from "@/utils/jwt-helpers";
 import { createMiddleware } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
+import { setCookie } from "@tanstack/react-start/server";
 
 export const authMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const req = getRequest();
+    const { session, claims, refreshed, shouldClear } =
+      await ensureFreshSession();
 
-    const session = await auth.api.getSession({ headers: req.headers });
+    if (shouldClear) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+    }
 
-    const user = session?.user as SessionUser | undefined;
+    let contextUser: SessionUser | null = null;
+    let contextSession: Session | null = null;
 
-    return next({ context: { user } });
+    if (session && claims?.sub) {
+      if (refreshed) {
+        setCookie(
+          SESSION_COOKIE_NAME,
+          stringifySession(session),
+          getSessionCookieOptions(session)
+        );
+      }
+
+      contextSession = session;
+      contextUser = {
+        id: claims.sub,
+        name: claims.name,
+        email: claims.email,
+        username: claims.preferred_username,
+      };
+    }
+
+    return next({ context: { user: contextUser, session: contextSession } });
   }
 );
 
@@ -21,22 +50,58 @@ export const hasPermissionMiddleware = createMiddleware({
 })
   .middleware([authMiddleware])
   .server(async ({ next, context }) => {
-    const { user } = context;
+    const typedContext = (context ?? {}) as {
+      user?: SessionUser | null;
+      session?: Session | null;
+    };
+    const user = typedContext.user ?? null;
+    const session = typedContext.session ?? null;
 
-    if (!user) {
+    if (!user || !session?.access_token) {
       throw new Error("Unauthorized");
+    }
+
+    const userWithRole = { ...user };
+
+    const isAdminRes = await fetch(
+      `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}/users/is-admin`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }
+    );
+
+    if (isAdminRes.status === 401 || isAdminRes.status === 403) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+      throw new Error("Unauthorized");
+    }
+
+    if (!isAdminRes.ok) {
+      userWithRole.role = "user";
+    } else {
+      const { isAdmin } = (await isAdminRes.json()) as { isAdmin: boolean };
+
+      if (isAdmin) {
+        userWithRole.role = "admin";
+      } else {
+        userWithRole.role = "user";
+      }
     }
 
     return next({
       context: {
+        user: userWithRole,
+        session,
         checkPermission: <Resource extends keyof Permissions>(
           resource: Resource,
           action: Permissions[Resource]["action"],
           data?: Permissions[Resource]["dataType"]
         ) => {
-          if (!hasPermission(user, resource, action, data)) {
+          if (!hasPermission(userWithRole, resource, action, data)) {
             throw new Error("Forbidden", {
-              cause: `Trying to ${action} ${resource} for user ${user.name}`,
+              cause: `Trying to ${action} ${resource} for user ${userWithRole.name}`,
             });
           }
         },

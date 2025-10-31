@@ -1,12 +1,15 @@
-import { drizzle } from "drizzle-orm/bun-sql";
-import * as schema from "@/db/schema";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+
+import * as schema from "@/db/schema";
 
 async function resetDatabase() {
   if (process.env.NODE_ENV === "production") {
     console.error("❌ Cannot reset database in production environment");
     process.exit(1);
   }
+
+  console.log("process.env.POSTGRES_HOST", process.env.POSTGRES_HOST);
 
   const db = drizzle(
     `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`,

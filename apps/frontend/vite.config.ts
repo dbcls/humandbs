@@ -1,7 +1,8 @@
+import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
-import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   server: {
@@ -10,15 +11,23 @@ export default defineConfig({
   },
 
   plugins: [
+    tailwindcss(),
+
     tsConfigPaths({
       projects: ["./tsconfig.json"],
     }),
 
     tanstackStart({
-      public: {
-        dir: "assets",
-      },
+      srcDirectory: "src",
+      // public: {
+      //   dir: "assets",
+      // },
     }),
     react(),
   ],
+
+  // define: {
+  //   VITE_OIDC_ISSUER_URL: process.env.OIDC_ISSUER_URL,
+  //   VITE_OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
+  // },
 });

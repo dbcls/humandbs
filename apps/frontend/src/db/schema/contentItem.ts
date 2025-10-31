@@ -1,6 +1,7 @@
 import { pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import { relations } from "drizzle-orm";
+import { documentVersionStatus } from "./documentVersion";
 
 export const contentItem = pgTable("content_item", {
   id: text("id").notNull().primaryKey(),
@@ -29,8 +30,11 @@ export const contentTranslation = pgTable(
     lang: text("locale").notNull(),
     updatedAt: timestamp("updated_at"),
     content: text("content").notNull(),
+    status: documentVersionStatus("status").notNull().default("draft"),
   },
-  (table) => [primaryKey({ columns: [table.contentId, table.lang] })]
+  (table) => [
+    primaryKey({ columns: [table.contentId, table.lang, table.status] }),
+  ]
 );
 
 export const contentTranslationRelations = relations(

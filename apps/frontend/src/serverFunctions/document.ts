@@ -1,11 +1,12 @@
-import { document } from "@/db/schema";
-import { insertDocumentSchema } from "@/db/types";
-import { db } from "@/lib/database";
-import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
-import z from "zod";
+import { z } from "zod";
+
+import { document } from "@/db/schema";
+import { insertDocumentSchema } from "@/db/types";
+import { db } from "@/db/database";
+import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 /** List all documents */
 export const $getDocuments = createServerFn({

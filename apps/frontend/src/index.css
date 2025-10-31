@@ -136,6 +136,22 @@
 }
 
 @layer utilities {
+  .nested-form {
+    position: relative;
+    @apply pl-5;
+
+    &::before {
+      position: absolute;
+      display: block;
+      content: "";
+      width: 0.5rem;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      background-color: var(--color-hover);
+    }
+  }
+
   .content-inline-icon {
     @apply my-0 inline h-4;
   }

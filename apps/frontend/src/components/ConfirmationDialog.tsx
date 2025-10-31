@@ -15,18 +15,11 @@ import useConfirmationStore from "@/stores/confirmationStore";
  * Use `useConfirmationStore` hook for that.
  */
 function ConfirmationDialog() {
-  const {
-    open,
-    title,
-    description,
-    cancelLabel,
-    actionLabel,
-    onAction,
-    closeConfirmation,
-  } = useConfirmationStore();
+  const { open, title, description, cancelLabel, actionLabel, onAction } =
+    useConfirmationStore();
 
   return (
-    <AlertDialog open={open} onOpenChange={closeConfirmation}>
+    <AlertDialog open={open}>
       <AlertDialogContent className="bg-primary">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base">{title}</AlertDialogTitle>

@@ -15,7 +15,7 @@ export const getMessagesFn = createServerFn()
     const jsonFile = Bun.file(`./localization/messages/${locale}.json`);
 
     const content = await jsonFile.json();
-    return content;
+    return content as Record<string, any>;
   });
 
 /**
@@ -60,7 +60,7 @@ function getLocale(request: Request): Locale {
   return locale;
 }
 
-export const getLocaleFn = createServerFn().handler(async () => {
+export const getLocaleFn = createServerFn().handler(async (ctx) => {
   const request = getRequest();
 
   return getLocale(request);

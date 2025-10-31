@@ -12,15 +12,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div
         role="textbox"
-        className="bg-primary flex h-9 items-center gap-1 rounded-full p-1 text-base transition-colors focus-visible:ring-1"
+        className="bg-primary flex items-center gap-1 rounded-full p-1 text-base transition-colors focus-visible:ring-1"
       >
         {beforeIcon ? (
-          <div className="pointer-events-none flex items-center pl-1">
+          <div className="pointer-events-none flex items-center pl-2">
             {beforeIcon}
           </div>
         ) : null}
         {afterIcon ? (
-          <div className="pointer-events-none flex items-center pr-1">
+          <div className="pointer-events-none flex items-center pr-2">
             {afterIcon}
           </div>
         ) : null}

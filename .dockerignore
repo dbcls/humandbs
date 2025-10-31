@@ -8,3 +8,6 @@
 !packages
 !README.md
 !tsconfig.json
+
+apps/**/node_modules
+packages/**/node_modules

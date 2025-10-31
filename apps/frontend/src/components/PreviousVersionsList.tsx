@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 type LinksWithVersionLists = keyof Pick<
   FileRoutesByTo,
-  "/$lang/data-submission" | "/$lang/guidelines"
+  "/{-$lang}/data-submission" | "/{-$lang}/guidelines"
 >;
 
 export function PreviousVersionsList({

@@ -1,13 +1,13 @@
-import { alert } from "@/db/schema";
+import { alert, newsItem, newsTranslation } from "@/db/schema";
 import { createAlertSchema, updateAlertSchema } from "@/db/types";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { localeSchema } from "@/lib/i18n-config";
 import { toDateString } from "@/lib/utils";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { Locale } from "use-intl";
 import { z } from "zod";
 
@@ -118,33 +118,31 @@ export const $getActiveAlerts = createServerFn({ method: "GET" })
   .inputValidator(z.object({ locale: localeSchema }))
   .handler(async ({ data }) => {
     const now = new Date();
-    const alerts = await db.query.alert.findMany({
-      where: and(
-        sql`${alert.from} <= ${toDateString(now)}`,
-        sql`${alert.to} >= ${toDateString(now)}`
-      ),
-      with: {
-        newsItem: {
-          columns: {},
-
-          with: {
-            translations: {
-              where: (translation, { eq }) => eq(translation.lang, data.locale),
-              columns: {
-                title: true,
-              },
-            },
-          },
-        },
-      },
-      columns: {
-        newsId: true,
-      },
-    });
+    const nowStr = toDateString(now);
+    const alerts = await db
+      .select({
+        newsId: alert.newsId,
+        title: newsTranslation.title,
+      })
+      .from(alert)
+      .innerJoin(newsItem, eq(alert.newsId, newsItem.id))
+      .innerJoin(
+        newsTranslation,
+        and(
+          eq(newsTranslation.newsId, newsItem.id),
+          eq(newsTranslation.lang, data.locale)
+        )
+      )
+      .where(
+        and(
+          or(isNull(alert.from), lte(alert.from, nowStr)),
+          or(isNull(alert.to), gte(alert.to, nowStr))
+        )
+      );
 
     const response: ActiveAlertsItemResponse[] = alerts.map((alert) => ({
       newsId: alert.newsId,
-      title: alert.newsItem.translations[0].title,
+      title: alert.title,
     }));
 
     return response;

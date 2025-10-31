@@ -10,395 +10,605 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginErrorRouteImport } from './routes/login-error'
-import { Route as MainRouteImport } from './routes/_main'
-import { Route as AuthedRouteImport } from './routes/_authed'
-import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
-import { Route as MainLangRouteRouteImport } from './routes/_main/$lang/route'
-import { Route as MainLangIndexRouteImport } from './routes/_main/$lang/index'
+import { Route as Char123LangChar125RouteRouteImport } from './routes/{-$lang}/route'
+import { Route as Char123LangChar125LayoutRouteImport } from './routes/{-$lang}/_layout'
+import { Route as Char123LangChar125LayoutMainRouteImport } from './routes/{-$lang}/_layout/_main'
+import { Route as Char123LangChar125LayoutAuthedRouteImport } from './routes/{-$lang}/_layout/_authed'
+import { Route as ApiAuthRefreshRouteImport } from './routes/api/auth.refresh'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth.logout'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth.callback'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
-import { Route as MainLangLayoutRouteImport } from './routes/_main/$lang/_layout'
-import { Route as MainLangLayoutNewsRouteRouteImport } from './routes/_main/$lang/_layout/news/route'
-import { Route as MainLangLayoutGuidelinesRouteRouteImport } from './routes/_main/$lang/_layout/guidelines/route'
-import { Route as MainLangLayoutDataUsageRouteRouteImport } from './routes/_main/$lang/_layout/data-usage/route'
-import { Route as MainLangLayoutDataSubmissionRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/route'
-import { Route as MainLangLayoutNewsIndexRouteImport } from './routes/_main/$lang/_layout/news/index'
-import { Route as MainLangLayoutGuidelinesIndexRouteImport } from './routes/_main/$lang/_layout/guidelines/index'
-import { Route as MainLangLayoutDataUsageIndexRouteImport } from './routes/_main/$lang/_layout/data-usage/index'
-import { Route as MainLangLayoutDataSubmissionIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/index'
-import { Route as MainLangLayoutContentIdIndexRouteImport } from './routes/_main/$lang/_layout/$contentId/index'
-import { Route as MainLangLayoutNewsNewsItemIdRouteImport } from './routes/_main/$lang/_layout/news/$newsItemId'
-import { Route as MainLangLayoutGuidelinesSlugRouteImport } from './routes/_main/$lang/_layout/guidelines/$slug'
-import { Route as MainLangLayoutContentSplatRouteImport } from './routes/_main/$lang/_layout/content/$'
-import { Route as MainLangLayoutDataUsageResearchesRouteRouteImport } from './routes/_main/$lang/_layout/data-usage/researches/route'
-import { Route as MainLangLayoutDataSubmissionNavigationRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/route'
-import { Route as MainLangLayoutDataUsageResearchesIndexRouteImport } from './routes/_main/$lang/_layout/data-usage/researches/index'
-import { Route as MainLangLayoutDataSubmissionNavigationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/index'
-import { Route as MainLangLayoutDataSubmissionApplicationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/application/index'
-import { Route as MainLangLayoutGuidelinesRevisionRevisionRouteImport } from './routes/_main/$lang/_layout/guidelines/revision/$revision'
-import { Route as MainLangLayoutDataSubmissionRevisionRevisionRouteImport } from './routes/_main/$lang/_layout/data-submission/revision/$revision'
-import { Route as MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/before-application/route'
-import { Route as MainLangLayoutDataUsageResearchesResearchIdIndexRouteImport } from './routes/_main/$lang/_layout/data-usage/researches/$researchId/index'
-import { Route as MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRouteImport } from './routes/_main/$lang/_layout/data-submission/navigation/before-application/index'
-import { Route as MainLangLayoutDataUsageResearchesResearchIdResearchVerRouteImport } from './routes/_main/$lang/_layout/data-usage/researches/$researchId/$researchVer'
+import { Route as Char123LangChar125LayoutMainIndexRouteImport } from './routes/{-$lang}/_layout/_main/index'
+import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/{-$lang}/_layout/_main/_other'
+import { Route as Char123LangChar125LayoutAuthedAdminRouteRouteImport } from './routes/{-$lang}/_layout/_authed/admin/route'
+import { Route as Char123LangChar125LayoutMainOtherSplatRouteImport } from './routes/{-$lang}/_layout/_main/_other/$'
+import { Route as Char123LangChar125LayoutAuthedAdminUsersRouteImport } from './routes/{-$lang}/_layout/_authed/admin/users'
+import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/news'
+import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
+import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin/content'
+import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
+import { Route as Char123LangChar125LayoutMainOtherNewsRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/route'
+import { Route as Char123LangChar125LayoutMainOtherGuidelinesRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/route'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/route'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/route'
+import { Route as Char123LangChar125LayoutMainOtherNewsIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/index'
+import { Route as Char123LangChar125LayoutMainOtherGuidelinesIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/index'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/index'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/index'
+import { Route as Char123LangChar125LayoutMainOtherContentIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/$contentId/index'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/index'
+import { Route as Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/$newsItemId'
+import { Route as Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/$slug'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
+import { Route as Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/create'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/route'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/route'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/index'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/index'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/application/index'
+import { Route as Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/route'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/route'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/index'
+import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/index'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer'
 
 const LoginErrorRoute = LoginErrorRouteImport.update({
   id: '/login-error',
   path: '/login-error',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MainRoute = MainRouteImport.update({
-  id: '/_main',
+const Char123LangChar125RouteRoute = Char123LangChar125RouteRouteImport.update({
+  id: '/{-$lang}',
+  path: '/{-$lang}',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedRoute = AuthedRouteImport.update({
-  id: '/_authed',
+const Char123LangChar125LayoutRoute =
+  Char123LangChar125LayoutRouteImport.update({
+    id: '/_layout',
+    getParentRoute: () => Char123LangChar125RouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainRoute =
+  Char123LangChar125LayoutMainRouteImport.update({
+    id: '/_main',
+    getParentRoute: () => Char123LangChar125LayoutRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedRoute =
+  Char123LangChar125LayoutAuthedRouteImport.update({
+    id: '/_authed',
+    getParentRoute: () => Char123LangChar125LayoutRoute,
+  } as any)
+const ApiAuthRefreshRoute = ApiAuthRefreshRouteImport.update({
+  id: '/api/auth/refresh',
+  path: '/api/auth/refresh',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedAdminRoute = AuthedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthedRoute,
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const MainLangRouteRoute = MainLangRouteRouteImport.update({
-  id: '/$lang',
-  path: '/$lang',
-  getParentRoute: () => MainRoute,
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const MainLangIndexRoute = MainLangIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MainLangRouteRoute,
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MainLangLayoutRoute = MainLangLayoutRouteImport.update({
-  id: '/_layout',
-  getParentRoute: () => MainLangRouteRoute,
-} as any)
-const MainLangLayoutNewsRouteRoute = MainLangLayoutNewsRouteRouteImport.update({
-  id: '/news',
-  path: '/news',
-  getParentRoute: () => MainLangLayoutRoute,
-} as any)
-const MainLangLayoutGuidelinesRouteRoute =
-  MainLangLayoutGuidelinesRouteRouteImport.update({
+const Char123LangChar125LayoutMainIndexRoute =
+  Char123LangChar125LayoutMainIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LangChar125LayoutMainRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherRoute =
+  Char123LangChar125LayoutMainOtherRouteImport.update({
+    id: '/_other',
+    getParentRoute: () => Char123LangChar125LayoutMainRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminRouteRoute =
+  Char123LangChar125LayoutAuthedAdminRouteRouteImport.update({
+    id: '/admin',
+    path: '/admin',
+    getParentRoute: () => Char123LangChar125LayoutAuthedRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherSplatRoute =
+  Char123LangChar125LayoutMainOtherSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminUsersRoute =
+  Char123LangChar125LayoutAuthedAdminUsersRouteImport.update({
+    id: '/users',
+    path: '/users',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminNewsRoute =
+  Char123LangChar125LayoutAuthedAdminNewsRouteImport.update({
+    id: '/news',
+    path: '/news',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminDocumentsRoute =
+  Char123LangChar125LayoutAuthedAdminDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminContentRoute =
+  Char123LangChar125LayoutAuthedAdminContentRouteImport.update({
+    id: '/content',
+    path: '/content',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminAssetsRoute =
+  Char123LangChar125LayoutAuthedAdminAssetsRouteImport.update({
+    id: '/assets',
+    path: '/assets',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherNewsRouteRoute =
+  Char123LangChar125LayoutMainOtherNewsRouteRouteImport.update({
+    id: '/news',
+    path: '/news',
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherGuidelinesRouteRoute =
+  Char123LangChar125LayoutMainOtherGuidelinesRouteRouteImport.update({
     id: '/guidelines',
     path: '/guidelines',
-    getParentRoute: () => MainLangLayoutRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
-const MainLangLayoutDataUsageRouteRoute =
-  MainLangLayoutDataUsageRouteRouteImport.update({
+const Char123LangChar125LayoutMainOtherDataUsageRouteRoute =
+  Char123LangChar125LayoutMainOtherDataUsageRouteRouteImport.update({
     id: '/data-usage',
     path: '/data-usage',
-    getParentRoute: () => MainLangLayoutRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
-const MainLangLayoutDataSubmissionRouteRoute =
-  MainLangLayoutDataSubmissionRouteRouteImport.update({
+const Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteImport.update({
     id: '/data-submission',
     path: '/data-submission',
-    getParentRoute: () => MainLangLayoutRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
-const MainLangLayoutNewsIndexRoute = MainLangLayoutNewsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MainLangLayoutNewsRouteRoute,
-} as any)
-const MainLangLayoutGuidelinesIndexRoute =
-  MainLangLayoutGuidelinesIndexRouteImport.update({
+const Char123LangChar125LayoutMainOtherNewsIndexRoute =
+  Char123LangChar125LayoutMainOtherNewsIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherNewsRouteRoute,
   } as any)
-const MainLangLayoutDataUsageIndexRoute =
-  MainLangLayoutDataUsageIndexRouteImport.update({
+const Char123LangChar125LayoutMainOtherGuidelinesIndexRoute =
+  Char123LangChar125LayoutMainOtherGuidelinesIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => MainLangLayoutDataUsageRouteRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherGuidelinesRouteRoute,
   } as any)
-const MainLangLayoutDataSubmissionIndexRoute =
-  MainLangLayoutDataSubmissionIndexRouteImport.update({
+const Char123LangChar125LayoutMainOtherDataUsageIndexRoute =
+  Char123LangChar125LayoutMainOtherDataUsageIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => MainLangLayoutDataSubmissionRouteRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherDataUsageRouteRoute,
   } as any)
-const MainLangLayoutContentIdIndexRoute =
-  MainLangLayoutContentIdIndexRouteImport.update({
+const Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherContentIdIndexRoute =
+  Char123LangChar125LayoutMainOtherContentIdIndexRouteImport.update({
     id: '/$contentId/',
     path: '/$contentId/',
-    getParentRoute: () => MainLangLayoutRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
-const MainLangLayoutNewsNewsItemIdRoute =
-  MainLangLayoutNewsNewsItemIdRouteImport.update({
+const Char123LangChar125LayoutAuthedAdminResearchesIndexRoute =
+  Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport.update({
+    id: '/researches/',
+    path: '/researches/',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute =
+  Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport.update({
     id: '/$newsItemId',
     path: '/$newsItemId',
-    getParentRoute: () => MainLangLayoutNewsRouteRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherNewsRouteRoute,
   } as any)
-const MainLangLayoutGuidelinesSlugRoute =
-  MainLangLayoutGuidelinesSlugRouteImport.update({
+const Char123LangChar125LayoutMainOtherGuidelinesSlugRoute =
+  Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport.update({
     id: '/$slug',
     path: '/$slug',
-    getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
+    getParentRoute: () => Char123LangChar125LayoutMainOtherGuidelinesRouteRoute,
   } as any)
-const MainLangLayoutContentSplatRoute =
-  MainLangLayoutContentSplatRouteImport.update({
-    id: '/content/$',
-    path: '/content/$',
-    getParentRoute: () => MainLangLayoutRoute,
-  } as any)
-const MainLangLayoutDataUsageResearchesRouteRoute =
-  MainLangLayoutDataUsageResearchesRouteRouteImport.update({
-    id: '/researches',
-    path: '/researches',
-    getParentRoute: () => MainLangLayoutDataUsageRouteRoute,
-  } as any)
-const MainLangLayoutDataSubmissionNavigationRouteRoute =
-  MainLangLayoutDataSubmissionNavigationRouteRouteImport.update({
-    id: '/navigation',
-    path: '/navigation',
-    getParentRoute: () => MainLangLayoutDataSubmissionRouteRoute,
-  } as any)
-const MainLangLayoutDataUsageResearchesIndexRoute =
-  MainLangLayoutDataUsageResearchesIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => MainLangLayoutDataUsageResearchesRouteRoute,
-  } as any)
-const MainLangLayoutDataSubmissionNavigationIndexRoute =
-  MainLangLayoutDataSubmissionNavigationIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => MainLangLayoutDataSubmissionNavigationRouteRoute,
-  } as any)
-const MainLangLayoutDataSubmissionApplicationIndexRoute =
-  MainLangLayoutDataSubmissionApplicationIndexRouteImport.update({
-    id: '/application/',
-    path: '/application/',
-    getParentRoute: () => MainLangLayoutDataSubmissionRouteRoute,
-  } as any)
-const MainLangLayoutGuidelinesRevisionRevisionRoute =
-  MainLangLayoutGuidelinesRevisionRevisionRouteImport.update({
-    id: '/revision/$revision',
-    path: '/revision/$revision',
-    getParentRoute: () => MainLangLayoutGuidelinesRouteRoute,
-  } as any)
-const MainLangLayoutDataSubmissionRevisionRevisionRoute =
-  MainLangLayoutDataSubmissionRevisionRevisionRouteImport.update({
-    id: '/revision/$revision',
-    path: '/revision/$revision',
-    getParentRoute: () => MainLangLayoutDataSubmissionRouteRoute,
-  } as any)
-const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute =
-  MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport.update(
+const Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route =
+  Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport.update(
     {
-      id: '/before-application',
-      path: '/before-application',
-      getParentRoute: () => MainLangLayoutDataSubmissionNavigationRouteRoute,
+      id: '/researches/{$humId}-{$ver}-{$lang}',
+      path: '/researches/{$humId}-{$ver}-{$lang}',
+      getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
     } as any,
   )
-const MainLangLayoutDataUsageResearchesResearchIdIndexRoute =
-  MainLangLayoutDataUsageResearchesResearchIdIndexRouteImport.update({
-    id: '/$researchId/',
-    path: '/$researchId/',
-    getParentRoute: () => MainLangLayoutDataUsageResearchesRouteRoute,
+const Char123LangChar125LayoutAuthedAdminResearchesCreateRoute =
+  Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport.update({
+    id: '/researches/create',
+    path: '/researches/create',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
-const MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute =
-  MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRouteImport.update(
+const Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteImport.update({
+    id: '/researches',
+    path: '/researches',
+    getParentRoute: () => Char123LangChar125LayoutMainOtherDataUsageRouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport.update(
+    {
+      id: '/navigation',
+      path: '/navigation',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport.update(
     {
       id: '/',
       path: '/',
       getParentRoute: () =>
-        MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute,
+        Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute,
     } as any,
   )
-const MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute =
-  MainLangLayoutDataUsageResearchesResearchIdResearchVerRouteImport.update({
-    id: '/$researchId/$researchVer',
-    path: '/$researchId/$researchVer',
-    getParentRoute: () => MainLangLayoutDataUsageResearchesRouteRoute,
-  } as any)
+const Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport.update(
+    {
+      id: '/application/',
+      path: '/application/',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute =
+  Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRouteImport.update(
+    {
+      id: '/revision/$revision',
+      path: '/revision/$revision',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherGuidelinesRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRouteImport.update(
+    {
+      id: '/revision/$revision',
+      path: '/revision/$revision',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteImport.update(
+    {
+      id: '/$researchId',
+      path: '/$researchId',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport.update(
+    {
+      id: '/before-application',
+      path: '/before-application',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRouteImport.update(
+    {
+      id: '/',
+      path: '/',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute =
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport.update(
+    {
+      id: '/',
+      path: '/',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute,
+    } as any,
+  )
+const Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRouteImport.update(
+    {
+      id: '/$researchVer',
+      path: '/$researchVer',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute,
+    } as any,
+  )
 
 export interface FileRoutesByFullPath {
+  '/{-$lang}': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
   '/login-error': typeof LoginErrorRoute
-  '/$lang': typeof MainLangLayoutRouteWithChildren
-  '/admin': typeof AuthedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/$lang/': typeof MainLangIndexRoute
-  '/$lang/data-submission': typeof MainLangLayoutDataSubmissionRouteRouteWithChildren
-  '/$lang/data-usage': typeof MainLangLayoutDataUsageRouteRouteWithChildren
-  '/$lang/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
-  '/$lang/news': typeof MainLangLayoutNewsRouteRouteWithChildren
-  '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
-  '/$lang/data-usage/researches': typeof MainLangLayoutDataUsageResearchesRouteRouteWithChildren
-  '/$lang/content/$': typeof MainLangLayoutContentSplatRoute
-  '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
-  '/$lang/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
-  '/$lang/$contentId': typeof MainLangLayoutContentIdIndexRoute
-  '/$lang/data-submission/': typeof MainLangLayoutDataSubmissionIndexRoute
-  '/$lang/data-usage/': typeof MainLangLayoutDataUsageIndexRoute
-  '/$lang/guidelines/': typeof MainLangLayoutGuidelinesIndexRoute
-  '/$lang/news/': typeof MainLangLayoutNewsIndexRoute
-  '/$lang/data-submission/navigation/before-application': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
-  '/$lang/data-submission/revision/$revision': typeof MainLangLayoutDataSubmissionRevisionRevisionRoute
-  '/$lang/guidelines/revision/$revision': typeof MainLangLayoutGuidelinesRevisionRevisionRoute
-  '/$lang/data-submission/application': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
-  '/$lang/data-submission/navigation/': typeof MainLangLayoutDataSubmissionNavigationIndexRoute
-  '/$lang/data-usage/researches/': typeof MainLangLayoutDataUsageResearchesIndexRoute
-  '/$lang/data-usage/researches/$researchId/$researchVer': typeof MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute
-  '/$lang/data-submission/navigation/before-application/': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute
-  '/$lang/data-usage/researches/$researchId': typeof MainLangLayoutDataUsageResearchesResearchIdIndexRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/refresh': typeof ApiAuthRefreshRoute
+  '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
+  '/{-$lang}/': typeof Char123LangChar125LayoutMainIndexRoute
+  '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren
+  '/{-$lang}/data-usage': typeof Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren
+  '/{-$lang}/guidelines': typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren
+  '/{-$lang}/news': typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
+  '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
+  '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
+  '/{-$lang}/admin/users': typeof Char123LangChar125LayoutAuthedAdminUsersRoute
+  '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
+  '/{-$lang}/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
+  '/{-$lang}/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
+  '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
+  '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
+  '/{-$lang}/$contentId': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
+  '/{-$lang}/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
+  '/{-$lang}/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
+  '/{-$lang}/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
+  '/{-$lang}/news/': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
+  '/{-$lang}/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
+  '/{-$lang}/data-usage/researches/$researchId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteWithChildren
+  '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
+  '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
+  '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
+  '/{-$lang}/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
+  '/{-$lang}/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
+  '/{-$lang}/data-usage/researches/$researchId/$researchVer': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute
+  '/{-$lang}/data-submission/navigation/before-application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
+  '/{-$lang}/data-usage/researches/$researchId/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/{-$lang}': typeof Char123LangChar125LayoutMainIndexRoute
   '/login-error': typeof LoginErrorRoute
-  '/admin': typeof AuthedAdminRoute
-  '/$lang': typeof MainLangIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/$lang/content/$': typeof MainLangLayoutContentSplatRoute
-  '/$lang/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
-  '/$lang/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
-  '/$lang/$contentId': typeof MainLangLayoutContentIdIndexRoute
-  '/$lang/data-submission': typeof MainLangLayoutDataSubmissionIndexRoute
-  '/$lang/data-usage': typeof MainLangLayoutDataUsageIndexRoute
-  '/$lang/guidelines': typeof MainLangLayoutGuidelinesIndexRoute
-  '/$lang/news': typeof MainLangLayoutNewsIndexRoute
-  '/$lang/data-submission/revision/$revision': typeof MainLangLayoutDataSubmissionRevisionRevisionRoute
-  '/$lang/guidelines/revision/$revision': typeof MainLangLayoutGuidelinesRevisionRevisionRoute
-  '/$lang/data-submission/application': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
-  '/$lang/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationIndexRoute
-  '/$lang/data-usage/researches': typeof MainLangLayoutDataUsageResearchesIndexRoute
-  '/$lang/data-usage/researches/$researchId/$researchVer': typeof MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute
-  '/$lang/data-submission/navigation/before-application': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute
-  '/$lang/data-usage/researches/$researchId': typeof MainLangLayoutDataUsageResearchesResearchIdIndexRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/refresh': typeof ApiAuthRefreshRoute
+  '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
+  '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
+  '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
+  '/{-$lang}/admin/users': typeof Char123LangChar125LayoutAuthedAdminUsersRoute
+  '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
+  '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
+  '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
+  '/{-$lang}/$contentId': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
+  '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
+  '/{-$lang}/data-usage': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
+  '/{-$lang}/guidelines': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
+  '/{-$lang}/news': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
+  '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
+  '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
+  '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
+  '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
+  '/{-$lang}/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
+  '/{-$lang}/data-usage/researches/$researchId/$researchVer': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute
+  '/{-$lang}/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
+  '/{-$lang}/data-usage/researches/$researchId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_authed': typeof AuthedRouteWithChildren
-  '/_main': typeof MainRouteWithChildren
+  '/{-$lang}': typeof Char123LangChar125RouteRouteWithChildren
   '/login-error': typeof LoginErrorRoute
-  '/_main/$lang': typeof MainLangRouteRouteWithChildren
-  '/_authed/admin': typeof AuthedAdminRoute
-  '/_main/$lang/_layout': typeof MainLangLayoutRouteWithChildren
+  '/{-$lang}/_layout': typeof Char123LangChar125LayoutRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/_main/$lang/': typeof MainLangIndexRoute
-  '/_main/$lang/_layout/data-submission': typeof MainLangLayoutDataSubmissionRouteRouteWithChildren
-  '/_main/$lang/_layout/data-usage': typeof MainLangLayoutDataUsageRouteRouteWithChildren
-  '/_main/$lang/_layout/guidelines': typeof MainLangLayoutGuidelinesRouteRouteWithChildren
-  '/_main/$lang/_layout/news': typeof MainLangLayoutNewsRouteRouteWithChildren
-  '/_main/$lang/_layout/data-submission/navigation': typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
-  '/_main/$lang/_layout/data-usage/researches': typeof MainLangLayoutDataUsageResearchesRouteRouteWithChildren
-  '/_main/$lang/_layout/content/$': typeof MainLangLayoutContentSplatRoute
-  '/_main/$lang/_layout/guidelines/$slug': typeof MainLangLayoutGuidelinesSlugRoute
-  '/_main/$lang/_layout/news/$newsItemId': typeof MainLangLayoutNewsNewsItemIdRoute
-  '/_main/$lang/_layout/$contentId/': typeof MainLangLayoutContentIdIndexRoute
-  '/_main/$lang/_layout/data-submission/': typeof MainLangLayoutDataSubmissionIndexRoute
-  '/_main/$lang/_layout/data-usage/': typeof MainLangLayoutDataUsageIndexRoute
-  '/_main/$lang/_layout/guidelines/': typeof MainLangLayoutGuidelinesIndexRoute
-  '/_main/$lang/_layout/news/': typeof MainLangLayoutNewsIndexRoute
-  '/_main/$lang/_layout/data-submission/navigation/before-application': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
-  '/_main/$lang/_layout/data-submission/revision/$revision': typeof MainLangLayoutDataSubmissionRevisionRevisionRoute
-  '/_main/$lang/_layout/guidelines/revision/$revision': typeof MainLangLayoutGuidelinesRevisionRevisionRoute
-  '/_main/$lang/_layout/data-submission/application/': typeof MainLangLayoutDataSubmissionApplicationIndexRoute
-  '/_main/$lang/_layout/data-submission/navigation/': typeof MainLangLayoutDataSubmissionNavigationIndexRoute
-  '/_main/$lang/_layout/data-usage/researches/': typeof MainLangLayoutDataUsageResearchesIndexRoute
-  '/_main/$lang/_layout/data-usage/researches/$researchId/$researchVer': typeof MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute
-  '/_main/$lang/_layout/data-submission/navigation/before-application/': typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute
-  '/_main/$lang/_layout/data-usage/researches/$researchId/': typeof MainLangLayoutDataUsageResearchesResearchIdIndexRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/refresh': typeof ApiAuthRefreshRoute
+  '/{-$lang}/_layout/_authed': typeof Char123LangChar125LayoutAuthedRouteWithChildren
+  '/{-$lang}/_layout/_main': typeof Char123LangChar125LayoutMainRouteWithChildren
+  '/{-$lang}/_layout/_authed/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
+  '/{-$lang}/_layout/_main/': typeof Char123LangChar125LayoutMainIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other/data-usage': typeof Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other/guidelines': typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other/news': typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
+  '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
+  '/{-$lang}/_layout/_authed/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/_layout/_authed/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
+  '/{-$lang}/_layout/_authed/admin/users': typeof Char123LangChar125LayoutAuthedAdminUsersRoute
+  '/{-$lang}/_layout/_main/_other/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/_layout/_main/_other/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
+  '/{-$lang}/_layout/_authed/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
+  '/{-$lang}/_layout/_main/_other/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
+  '/{-$lang}/_layout/_main/_other/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  '/{-$lang}/_layout/_authed/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
+  '/{-$lang}/_layout/_main/_other/$contentId/': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
+  '/{-$lang}/_layout/_main/_other/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
+  '/{-$lang}/_layout/_main/_other/news/': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteWithChildren
+  '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
+  '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
+  '/{-$lang}/_layout/_main/_other/data-submission/application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute
+  '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/{-$lang}'
     | '/login-error'
-    | '/$lang'
-    | '/admin'
     | '/api/auth/$'
-    | '/$lang/'
-    | '/$lang/data-submission'
-    | '/$lang/data-usage'
-    | '/$lang/guidelines'
-    | '/$lang/news'
-    | '/$lang/data-submission/navigation'
-    | '/$lang/data-usage/researches'
-    | '/$lang/content/$'
-    | '/$lang/guidelines/$slug'
-    | '/$lang/news/$newsItemId'
-    | '/$lang/$contentId'
-    | '/$lang/data-submission/'
-    | '/$lang/data-usage/'
-    | '/$lang/guidelines/'
-    | '/$lang/news/'
-    | '/$lang/data-submission/navigation/before-application'
-    | '/$lang/data-submission/revision/$revision'
-    | '/$lang/guidelines/revision/$revision'
-    | '/$lang/data-submission/application'
-    | '/$lang/data-submission/navigation/'
-    | '/$lang/data-usage/researches/'
-    | '/$lang/data-usage/researches/$researchId/$researchVer'
-    | '/$lang/data-submission/navigation/before-application/'
-    | '/$lang/data-usage/researches/$researchId'
+    | '/api/auth/callback'
+    | '/api/auth/login'
+    | '/api/auth/logout'
+    | '/api/auth/refresh'
+    | '/{-$lang}/admin'
+    | '/{-$lang}/'
+    | '/{-$lang}/data-submission'
+    | '/{-$lang}/data-usage'
+    | '/{-$lang}/guidelines'
+    | '/{-$lang}/news'
+    | '/{-$lang}/admin/assets'
+    | '/{-$lang}/admin/content'
+    | '/{-$lang}/admin/documents'
+    | '/{-$lang}/admin/news'
+    | '/{-$lang}/admin/users'
+    | '/{-$lang}/$'
+    | '/{-$lang}/data-submission/navigation'
+    | '/{-$lang}/data-usage/researches'
+    | '/{-$lang}/admin/researches/create'
+    | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
+    | '/{-$lang}/guidelines/$slug'
+    | '/{-$lang}/news/$newsItemId'
+    | '/{-$lang}/admin/researches'
+    | '/{-$lang}/$contentId'
+    | '/{-$lang}/data-submission/'
+    | '/{-$lang}/data-usage/'
+    | '/{-$lang}/guidelines/'
+    | '/{-$lang}/news/'
+    | '/{-$lang}/data-submission/navigation/before-application'
+    | '/{-$lang}/data-usage/researches/$researchId'
+    | '/{-$lang}/data-submission/revision/$revision'
+    | '/{-$lang}/guidelines/revision/$revision'
+    | '/{-$lang}/data-submission/application'
+    | '/{-$lang}/data-submission/navigation/'
+    | '/{-$lang}/data-usage/researches/'
+    | '/{-$lang}/data-usage/researches/$researchId/$researchVer'
+    | '/{-$lang}/data-submission/navigation/before-application/'
+    | '/{-$lang}/data-usage/researches/$researchId/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/{-$lang}'
     | '/login-error'
-    | '/admin'
-    | '/$lang'
     | '/api/auth/$'
-    | '/$lang/content/$'
-    | '/$lang/guidelines/$slug'
-    | '/$lang/news/$newsItemId'
-    | '/$lang/$contentId'
-    | '/$lang/data-submission'
-    | '/$lang/data-usage'
-    | '/$lang/guidelines'
-    | '/$lang/news'
-    | '/$lang/data-submission/revision/$revision'
-    | '/$lang/guidelines/revision/$revision'
-    | '/$lang/data-submission/application'
-    | '/$lang/data-submission/navigation'
-    | '/$lang/data-usage/researches'
-    | '/$lang/data-usage/researches/$researchId/$researchVer'
-    | '/$lang/data-submission/navigation/before-application'
-    | '/$lang/data-usage/researches/$researchId'
+    | '/api/auth/callback'
+    | '/api/auth/login'
+    | '/api/auth/logout'
+    | '/api/auth/refresh'
+    | '/{-$lang}/admin'
+    | '/{-$lang}/admin/assets'
+    | '/{-$lang}/admin/content'
+    | '/{-$lang}/admin/documents'
+    | '/{-$lang}/admin/news'
+    | '/{-$lang}/admin/users'
+    | '/{-$lang}/$'
+    | '/{-$lang}/admin/researches/create'
+    | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
+    | '/{-$lang}/guidelines/$slug'
+    | '/{-$lang}/news/$newsItemId'
+    | '/{-$lang}/admin/researches'
+    | '/{-$lang}/$contentId'
+    | '/{-$lang}/data-submission'
+    | '/{-$lang}/data-usage'
+    | '/{-$lang}/guidelines'
+    | '/{-$lang}/news'
+    | '/{-$lang}/data-submission/revision/$revision'
+    | '/{-$lang}/guidelines/revision/$revision'
+    | '/{-$lang}/data-submission/application'
+    | '/{-$lang}/data-submission/navigation'
+    | '/{-$lang}/data-usage/researches'
+    | '/{-$lang}/data-usage/researches/$researchId/$researchVer'
+    | '/{-$lang}/data-submission/navigation/before-application'
+    | '/{-$lang}/data-usage/researches/$researchId'
   id:
     | '__root__'
-    | '/_authed'
-    | '/_main'
+    | '/{-$lang}'
     | '/login-error'
-    | '/_main/$lang'
-    | '/_authed/admin'
-    | '/_main/$lang/_layout'
+    | '/{-$lang}/_layout'
     | '/api/auth/$'
-    | '/_main/$lang/'
-    | '/_main/$lang/_layout/data-submission'
-    | '/_main/$lang/_layout/data-usage'
-    | '/_main/$lang/_layout/guidelines'
-    | '/_main/$lang/_layout/news'
-    | '/_main/$lang/_layout/data-submission/navigation'
-    | '/_main/$lang/_layout/data-usage/researches'
-    | '/_main/$lang/_layout/content/$'
-    | '/_main/$lang/_layout/guidelines/$slug'
-    | '/_main/$lang/_layout/news/$newsItemId'
-    | '/_main/$lang/_layout/$contentId/'
-    | '/_main/$lang/_layout/data-submission/'
-    | '/_main/$lang/_layout/data-usage/'
-    | '/_main/$lang/_layout/guidelines/'
-    | '/_main/$lang/_layout/news/'
-    | '/_main/$lang/_layout/data-submission/navigation/before-application'
-    | '/_main/$lang/_layout/data-submission/revision/$revision'
-    | '/_main/$lang/_layout/guidelines/revision/$revision'
-    | '/_main/$lang/_layout/data-submission/application/'
-    | '/_main/$lang/_layout/data-submission/navigation/'
-    | '/_main/$lang/_layout/data-usage/researches/'
-    | '/_main/$lang/_layout/data-usage/researches/$researchId/$researchVer'
-    | '/_main/$lang/_layout/data-submission/navigation/before-application/'
-    | '/_main/$lang/_layout/data-usage/researches/$researchId/'
+    | '/api/auth/callback'
+    | '/api/auth/login'
+    | '/api/auth/logout'
+    | '/api/auth/refresh'
+    | '/{-$lang}/_layout/_authed'
+    | '/{-$lang}/_layout/_main'
+    | '/{-$lang}/_layout/_authed/admin'
+    | '/{-$lang}/_layout/_main/_other'
+    | '/{-$lang}/_layout/_main/'
+    | '/{-$lang}/_layout/_main/_other/data-submission'
+    | '/{-$lang}/_layout/_main/_other/data-usage'
+    | '/{-$lang}/_layout/_main/_other/guidelines'
+    | '/{-$lang}/_layout/_main/_other/news'
+    | '/{-$lang}/_layout/_authed/admin/assets'
+    | '/{-$lang}/_layout/_authed/admin/content'
+    | '/{-$lang}/_layout/_authed/admin/documents'
+    | '/{-$lang}/_layout/_authed/admin/news'
+    | '/{-$lang}/_layout/_authed/admin/users'
+    | '/{-$lang}/_layout/_main/_other/$'
+    | '/{-$lang}/_layout/_main/_other/data-submission/navigation'
+    | '/{-$lang}/_layout/_main/_other/data-usage/researches'
+    | '/{-$lang}/_layout/_authed/admin/researches/create'
+    | '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
+    | '/{-$lang}/_layout/_main/_other/guidelines/$slug'
+    | '/{-$lang}/_layout/_main/_other/news/$newsItemId'
+    | '/{-$lang}/_layout/_authed/admin/researches/'
+    | '/{-$lang}/_layout/_main/_other/$contentId/'
+    | '/{-$lang}/_layout/_main/_other/data-submission/'
+    | '/{-$lang}/_layout/_main/_other/data-usage/'
+    | '/{-$lang}/_layout/_main/_other/guidelines/'
+    | '/{-$lang}/_layout/_main/_other/news/'
+    | '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application'
+    | '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId'
+    | '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
+    | '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
+    | '/{-$lang}/_layout/_main/_other/data-submission/application/'
+    | '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
+    | '/{-$lang}/_layout/_main/_other/data-usage/researches/'
+    | '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer'
+    | '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/'
+    | '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthedRoute: typeof AuthedRouteWithChildren
-  MainRoute: typeof MainRouteWithChildren
+  Char123LangChar125RouteRoute: typeof Char123LangChar125RouteRouteWithChildren
   LoginErrorRoute: typeof LoginErrorRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthRefreshRoute: typeof ApiAuthRefreshRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -410,40 +620,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_main': {
-      id: '/_main'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof MainRouteImport
+    '/{-$lang}': {
+      id: '/{-$lang}'
+      path: '/{-$lang}'
+      fullPath: '/{-$lang}'
+      preLoaderRoute: typeof Char123LangChar125RouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed': {
-      id: '/_authed'
+    '/{-$lang}/_layout': {
+      id: '/{-$lang}/_layout'
       path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthedRouteImport
+      fullPath: '/{-$lang}'
+      preLoaderRoute: typeof Char123LangChar125LayoutRouteImport
+      parentRoute: typeof Char123LangChar125RouteRoute
+    }
+    '/{-$lang}/_layout/_main': {
+      id: '/{-$lang}/_layout/_main'
+      path: ''
+      fullPath: '/{-$lang}'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainRouteImport
+      parentRoute: typeof Char123LangChar125LayoutRoute
+    }
+    '/{-$lang}/_layout/_authed': {
+      id: '/{-$lang}/_layout/_authed'
+      path: ''
+      fullPath: '/{-$lang}'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedRouteImport
+      parentRoute: typeof Char123LangChar125LayoutRoute
+    }
+    '/api/auth/refresh': {
+      id: '/api/auth/refresh'
+      path: '/api/auth/refresh'
+      fullPath: '/api/auth/refresh'
+      preLoaderRoute: typeof ApiAuthRefreshRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/admin': {
-      id: '/_authed/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthedAdminRouteImport
-      parentRoute: typeof AuthedRoute
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_main/$lang': {
-      id: '/_main/$lang'
-      path: '/$lang'
-      fullPath: '/$lang'
-      preLoaderRoute: typeof MainLangRouteRouteImport
-      parentRoute: typeof MainRoute
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_main/$lang/': {
-      id: '/_main/$lang/'
-      path: '/'
-      fullPath: '/$lang/'
-      preLoaderRoute: typeof MainLangIndexRouteImport
-      parentRoute: typeof MainLangRouteRoute
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -452,372 +683,543 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_main/$lang/_layout': {
-      id: '/_main/$lang/_layout'
+    '/{-$lang}/_layout/_main/': {
+      id: '/{-$lang}/_layout/_main/'
+      path: '/'
+      fullPath: '/{-$lang}/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainRoute
+    }
+    '/{-$lang}/_layout/_main/_other': {
+      id: '/{-$lang}/_layout/_main/_other'
       path: ''
-      fullPath: '/$lang'
-      preLoaderRoute: typeof MainLangLayoutRouteImport
-      parentRoute: typeof MainLangRouteRoute
+      fullPath: '/{-$lang}'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainRoute
     }
-    '/_main/$lang/_layout/news': {
-      id: '/_main/$lang/_layout/news'
+    '/{-$lang}/_layout/_authed/admin': {
+      id: '/{-$lang}/_layout/_authed/admin'
+      path: '/admin'
+      fullPath: '/{-$lang}/admin'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedRoute
+    }
+    '/{-$lang}/_layout/_main/_other/$': {
+      id: '/{-$lang}/_layout/_main/_other/$'
+      path: '/$'
+      fullPath: '/{-$lang}/$'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherSplatRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/users': {
+      id: '/{-$lang}/_layout/_authed/admin/users'
+      path: '/users'
+      fullPath: '/{-$lang}/admin/users'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminUsersRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/news': {
+      id: '/{-$lang}/_layout/_authed/admin/news'
       path: '/news'
-      fullPath: '/$lang/news'
-      preLoaderRoute: typeof MainLangLayoutNewsRouteRouteImport
-      parentRoute: typeof MainLangLayoutRoute
+      fullPath: '/{-$lang}/admin/news'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
-    '/_main/$lang/_layout/guidelines': {
-      id: '/_main/$lang/_layout/guidelines'
+    '/{-$lang}/_layout/_authed/admin/documents': {
+      id: '/{-$lang}/_layout/_authed/admin/documents'
+      path: '/documents'
+      fullPath: '/{-$lang}/admin/documents'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/content': {
+      id: '/{-$lang}/_layout/_authed/admin/content'
+      path: '/content'
+      fullPath: '/{-$lang}/admin/content'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminContentRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/assets': {
+      id: '/{-$lang}/_layout/_authed/admin/assets'
+      path: '/assets'
+      fullPath: '/{-$lang}/admin/assets'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/news': {
+      id: '/{-$lang}/_layout/_main/_other/news'
+      path: '/news'
+      fullPath: '/{-$lang}/news'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
+    }
+    '/{-$lang}/_layout/_main/_other/guidelines': {
+      id: '/{-$lang}/_layout/_main/_other/guidelines'
       path: '/guidelines'
-      fullPath: '/$lang/guidelines'
-      preLoaderRoute: typeof MainLangLayoutGuidelinesRouteRouteImport
-      parentRoute: typeof MainLangLayoutRoute
+      fullPath: '/{-$lang}/guidelines'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
-    '/_main/$lang/_layout/data-usage': {
-      id: '/_main/$lang/_layout/data-usage'
+    '/{-$lang}/_layout/_main/_other/data-usage': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage'
       path: '/data-usage'
-      fullPath: '/$lang/data-usage'
-      preLoaderRoute: typeof MainLangLayoutDataUsageRouteRouteImport
-      parentRoute: typeof MainLangLayoutRoute
+      fullPath: '/{-$lang}/data-usage'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
-    '/_main/$lang/_layout/data-submission': {
-      id: '/_main/$lang/_layout/data-submission'
+    '/{-$lang}/_layout/_main/_other/data-submission': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission'
       path: '/data-submission'
-      fullPath: '/$lang/data-submission'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionRouteRouteImport
-      parentRoute: typeof MainLangLayoutRoute
+      fullPath: '/{-$lang}/data-submission'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
-    '/_main/$lang/_layout/news/': {
-      id: '/_main/$lang/_layout/news/'
+    '/{-$lang}/_layout/_main/_other/news/': {
+      id: '/{-$lang}/_layout/_main/_other/news/'
       path: '/'
-      fullPath: '/$lang/news/'
-      preLoaderRoute: typeof MainLangLayoutNewsIndexRouteImport
-      parentRoute: typeof MainLangLayoutNewsRouteRoute
+      fullPath: '/{-$lang}/news/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherNewsIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRoute
     }
-    '/_main/$lang/_layout/guidelines/': {
-      id: '/_main/$lang/_layout/guidelines/'
+    '/{-$lang}/_layout/_main/_other/guidelines/': {
+      id: '/{-$lang}/_layout/_main/_other/guidelines/'
       path: '/'
-      fullPath: '/$lang/guidelines/'
-      preLoaderRoute: typeof MainLangLayoutGuidelinesIndexRouteImport
-      parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
+      fullPath: '/{-$lang}/guidelines/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRoute
     }
-    '/_main/$lang/_layout/data-usage/': {
-      id: '/_main/$lang/_layout/data-usage/'
+    '/{-$lang}/_layout/_main/_other/data-usage/': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/'
       path: '/'
-      fullPath: '/$lang/data-usage/'
-      preLoaderRoute: typeof MainLangLayoutDataUsageIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataUsageRouteRoute
+      fullPath: '/{-$lang}/data-usage/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/': {
-      id: '/_main/$lang/_layout/data-submission/'
+    '/{-$lang}/_layout/_main/_other/data-submission/': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/'
       path: '/'
-      fullPath: '/$lang/data-submission/'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionRouteRoute
+      fullPath: '/{-$lang}/data-submission/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
-    '/_main/$lang/_layout/$contentId/': {
-      id: '/_main/$lang/_layout/$contentId/'
+    '/{-$lang}/_layout/_main/_other/$contentId/': {
+      id: '/{-$lang}/_layout/_main/_other/$contentId/'
       path: '/$contentId'
-      fullPath: '/$lang/$contentId'
-      preLoaderRoute: typeof MainLangLayoutContentIdIndexRouteImport
-      parentRoute: typeof MainLangLayoutRoute
+      fullPath: '/{-$lang}/$contentId'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherContentIdIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
-    '/_main/$lang/_layout/news/$newsItemId': {
-      id: '/_main/$lang/_layout/news/$newsItemId'
-      path: '/$newsItemId'
-      fullPath: '/$lang/news/$newsItemId'
-      preLoaderRoute: typeof MainLangLayoutNewsNewsItemIdRouteImport
-      parentRoute: typeof MainLangLayoutNewsRouteRoute
-    }
-    '/_main/$lang/_layout/guidelines/$slug': {
-      id: '/_main/$lang/_layout/guidelines/$slug'
-      path: '/$slug'
-      fullPath: '/$lang/guidelines/$slug'
-      preLoaderRoute: typeof MainLangLayoutGuidelinesSlugRouteImport
-      parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
-    }
-    '/_main/$lang/_layout/content/$': {
-      id: '/_main/$lang/_layout/content/$'
-      path: '/content/$'
-      fullPath: '/$lang/content/$'
-      preLoaderRoute: typeof MainLangLayoutContentSplatRouteImport
-      parentRoute: typeof MainLangLayoutRoute
-    }
-    '/_main/$lang/_layout/data-usage/researches': {
-      id: '/_main/$lang/_layout/data-usage/researches'
+    '/{-$lang}/_layout/_authed/admin/researches/': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/'
       path: '/researches'
-      fullPath: '/$lang/data-usage/researches'
-      preLoaderRoute: typeof MainLangLayoutDataUsageResearchesRouteRouteImport
-      parentRoute: typeof MainLangLayoutDataUsageRouteRoute
+      fullPath: '/{-$lang}/admin/researches'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation': {
-      id: '/_main/$lang/_layout/data-submission/navigation'
+    '/{-$lang}/_layout/_main/_other/news/$newsItemId': {
+      id: '/{-$lang}/_layout/_main/_other/news/$newsItemId'
+      path: '/$newsItemId'
+      fullPath: '/{-$lang}/news/$newsItemId'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/guidelines/$slug': {
+      id: '/{-$lang}/_layout/_main/_other/guidelines/$slug'
+      path: '/$slug'
+      fullPath: '/{-$lang}/guidelines/$slug'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
+      path: '/researches/{$humId}-{$ver}-{$lang}'
+      fullPath: '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/researches/create': {
+      id: '/{-$lang}/_layout/_authed/admin/researches/create'
+      path: '/researches/create'
+      fullPath: '/{-$lang}/admin/researches/create'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/data-usage/researches': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/researches'
+      path: '/researches'
+      fullPath: '/{-$lang}/data-usage/researches'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/data-submission/navigation': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation'
       path: '/navigation'
-      fullPath: '/$lang/data-submission/navigation'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionRouteRoute
+      fullPath: '/{-$lang}/data-submission/navigation'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
-    '/_main/$lang/_layout/data-usage/researches/': {
-      id: '/_main/$lang/_layout/data-usage/researches/'
+    '/{-$lang}/_layout/_main/_other/data-usage/researches/': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/researches/'
       path: '/'
-      fullPath: '/$lang/data-usage/researches/'
-      preLoaderRoute: typeof MainLangLayoutDataUsageResearchesIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataUsageResearchesRouteRoute
+      fullPath: '/{-$lang}/data-usage/researches/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation/': {
-      id: '/_main/$lang/_layout/data-submission/navigation/'
+    '/{-$lang}/_layout/_main/_other/data-submission/navigation/': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
       path: '/'
-      fullPath: '/$lang/data-submission/navigation/'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRoute
+      fullPath: '/{-$lang}/data-submission/navigation/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/application/': {
-      id: '/_main/$lang/_layout/data-submission/application/'
+    '/{-$lang}/_layout/_main/_other/data-submission/application/': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/application/'
       path: '/application'
-      fullPath: '/$lang/data-submission/application'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionApplicationIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionRouteRoute
+      fullPath: '/{-$lang}/data-submission/application'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
-    '/_main/$lang/_layout/guidelines/revision/$revision': {
-      id: '/_main/$lang/_layout/guidelines/revision/$revision'
+    '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision': {
+      id: '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
       path: '/revision/$revision'
-      fullPath: '/$lang/guidelines/revision/$revision'
-      preLoaderRoute: typeof MainLangLayoutGuidelinesRevisionRevisionRouteImport
-      parentRoute: typeof MainLangLayoutGuidelinesRouteRoute
+      fullPath: '/{-$lang}/guidelines/revision/$revision'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/revision/$revision': {
-      id: '/_main/$lang/_layout/data-submission/revision/$revision'
+    '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
       path: '/revision/$revision'
-      fullPath: '/$lang/data-submission/revision/$revision'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionRevisionRevisionRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionRouteRoute
+      fullPath: '/{-$lang}/data-submission/revision/$revision'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation/before-application': {
-      id: '/_main/$lang/_layout/data-submission/navigation/before-application'
-      path: '/before-application'
-      fullPath: '/$lang/data-submission/navigation/before-application'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRoute
-    }
-    '/_main/$lang/_layout/data-usage/researches/$researchId/': {
-      id: '/_main/$lang/_layout/data-usage/researches/$researchId/'
+    '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId'
       path: '/$researchId'
-      fullPath: '/$lang/data-usage/researches/$researchId'
-      preLoaderRoute: typeof MainLangLayoutDataUsageResearchesResearchIdIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataUsageResearchesRouteRoute
+      fullPath: '/{-$lang}/data-usage/researches/$researchId'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute
     }
-    '/_main/$lang/_layout/data-submission/navigation/before-application/': {
-      id: '/_main/$lang/_layout/data-submission/navigation/before-application/'
+    '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application'
+      path: '/before-application'
+      fullPath: '/{-$lang}/data-submission/navigation/before-application'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/'
       path: '/'
-      fullPath: '/$lang/data-submission/navigation/before-application/'
-      preLoaderRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRouteImport
-      parentRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute
+      fullPath: '/{-$lang}/data-usage/researches/$researchId/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute
     }
-    '/_main/$lang/_layout/data-usage/researches/$researchId/$researchVer': {
-      id: '/_main/$lang/_layout/data-usage/researches/$researchId/$researchVer'
-      path: '/$researchId/$researchVer'
-      fullPath: '/$lang/data-usage/researches/$researchId/$researchVer'
-      preLoaderRoute: typeof MainLangLayoutDataUsageResearchesResearchIdResearchVerRouteImport
-      parentRoute: typeof MainLangLayoutDataUsageResearchesRouteRoute
+    '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/': {
+      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/'
+      path: '/'
+      fullPath: '/{-$lang}/data-submission/navigation/before-application/'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer'
+      path: '/$researchVer'
+      fullPath: '/{-$lang}/data-usage/researches/$researchId/$researchVer'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute
     }
   }
 }
 
-interface AuthedRouteChildren {
-  AuthedAdminRoute: typeof AuthedAdminRoute
+interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
+  Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
+  Char123LangChar125LayoutAuthedAdminContentRoute: typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  Char123LangChar125LayoutAuthedAdminNewsRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRoute
+  Char123LangChar125LayoutAuthedAdminUsersRoute: typeof Char123LangChar125LayoutAuthedAdminUsersRoute
+  Char123LangChar125LayoutAuthedAdminResearchesCreateRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
+  Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
+  Char123LangChar125LayoutAuthedAdminResearchesIndexRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
 }
 
-const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedAdminRoute: AuthedAdminRoute,
-}
-
-const AuthedRouteWithChildren =
-  AuthedRoute._addFileChildren(AuthedRouteChildren)
-
-interface MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren {
-  MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute
-}
-
-const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren: MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren =
+const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125LayoutAuthedAdminRouteRouteChildren =
   {
-    MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute:
-      MainLangLayoutDataSubmissionNavigationBeforeApplicationIndexRoute,
+    Char123LangChar125LayoutAuthedAdminAssetsRoute:
+      Char123LangChar125LayoutAuthedAdminAssetsRoute,
+    Char123LangChar125LayoutAuthedAdminContentRoute:
+      Char123LangChar125LayoutAuthedAdminContentRoute,
+    Char123LangChar125LayoutAuthedAdminDocumentsRoute:
+      Char123LangChar125LayoutAuthedAdminDocumentsRoute,
+    Char123LangChar125LayoutAuthedAdminNewsRoute:
+      Char123LangChar125LayoutAuthedAdminNewsRoute,
+    Char123LangChar125LayoutAuthedAdminUsersRoute:
+      Char123LangChar125LayoutAuthedAdminUsersRoute,
+    Char123LangChar125LayoutAuthedAdminResearchesCreateRoute:
+      Char123LangChar125LayoutAuthedAdminResearchesCreateRoute,
+    Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route:
+      Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route,
+    Char123LangChar125LayoutAuthedAdminResearchesIndexRoute:
+      Char123LangChar125LayoutAuthedAdminResearchesIndexRoute,
   }
 
-const MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren =
-  MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute._addFileChildren(
-    MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteChildren,
+const Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren =
+  Char123LangChar125LayoutAuthedAdminRouteRoute._addFileChildren(
+    Char123LangChar125LayoutAuthedAdminRouteRouteChildren,
   )
 
-interface MainLangLayoutDataSubmissionNavigationRouteRouteChildren {
-  MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute: typeof MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
-  MainLangLayoutDataSubmissionNavigationIndexRoute: typeof MainLangLayoutDataSubmissionNavigationIndexRoute
+interface Char123LangChar125LayoutAuthedRouteChildren {
+  Char123LangChar125LayoutAuthedAdminRouteRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
 }
 
-const MainLangLayoutDataSubmissionNavigationRouteRouteChildren: MainLangLayoutDataSubmissionNavigationRouteRouteChildren =
+const Char123LangChar125LayoutAuthedRouteChildren: Char123LangChar125LayoutAuthedRouteChildren =
   {
-    MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRoute:
-      MainLangLayoutDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren,
-    MainLangLayoutDataSubmissionNavigationIndexRoute:
-      MainLangLayoutDataSubmissionNavigationIndexRoute,
+    Char123LangChar125LayoutAuthedAdminRouteRoute:
+      Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren,
   }
 
-const MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren =
-  MainLangLayoutDataSubmissionNavigationRouteRoute._addFileChildren(
-    MainLangLayoutDataSubmissionNavigationRouteRouteChildren,
+const Char123LangChar125LayoutAuthedRouteWithChildren =
+  Char123LangChar125LayoutAuthedRoute._addFileChildren(
+    Char123LangChar125LayoutAuthedRouteChildren,
   )
 
-interface MainLangLayoutDataSubmissionRouteRouteChildren {
-  MainLangLayoutDataSubmissionNavigationRouteRoute: typeof MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren
-  MainLangLayoutDataSubmissionIndexRoute: typeof MainLangLayoutDataSubmissionIndexRoute
-  MainLangLayoutDataSubmissionRevisionRevisionRoute: typeof MainLangLayoutDataSubmissionRevisionRevisionRoute
-  MainLangLayoutDataSubmissionApplicationIndexRoute: typeof MainLangLayoutDataSubmissionApplicationIndexRoute
+interface Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
 }
 
-const MainLangLayoutDataSubmissionRouteRouteChildren: MainLangLayoutDataSubmissionRouteRouteChildren =
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren =
   {
-    MainLangLayoutDataSubmissionNavigationRouteRoute:
-      MainLangLayoutDataSubmissionNavigationRouteRouteWithChildren,
-    MainLangLayoutDataSubmissionIndexRoute:
-      MainLangLayoutDataSubmissionIndexRoute,
-    MainLangLayoutDataSubmissionRevisionRevisionRoute:
-      MainLangLayoutDataSubmissionRevisionRevisionRoute,
-    MainLangLayoutDataSubmissionApplicationIndexRoute:
-      MainLangLayoutDataSubmissionApplicationIndexRoute,
+    Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute,
   }
 
-const MainLangLayoutDataSubmissionRouteRouteWithChildren =
-  MainLangLayoutDataSubmissionRouteRoute._addFileChildren(
-    MainLangLayoutDataSubmissionRouteRouteChildren,
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren,
   )
 
-interface MainLangLayoutDataUsageResearchesRouteRouteChildren {
-  MainLangLayoutDataUsageResearchesIndexRoute: typeof MainLangLayoutDataUsageResearchesIndexRoute
-  MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute: typeof MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute
-  MainLangLayoutDataUsageResearchesResearchIdIndexRoute: typeof MainLangLayoutDataUsageResearchesResearchIdIndexRoute
+interface Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
 }
 
-const MainLangLayoutDataUsageResearchesRouteRouteChildren: MainLangLayoutDataUsageResearchesRouteRouteChildren =
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren =
   {
-    MainLangLayoutDataUsageResearchesIndexRoute:
-      MainLangLayoutDataUsageResearchesIndexRoute,
-    MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute:
-      MainLangLayoutDataUsageResearchesResearchIdResearchVerRoute,
-    MainLangLayoutDataUsageResearchesResearchIdIndexRoute:
-      MainLangLayoutDataUsageResearchesResearchIdIndexRoute,
+    Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute,
   }
 
-const MainLangLayoutDataUsageResearchesRouteRouteWithChildren =
-  MainLangLayoutDataUsageResearchesRouteRoute._addFileChildren(
-    MainLangLayoutDataUsageResearchesRouteRouteChildren,
+const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren,
   )
 
-interface MainLangLayoutDataUsageRouteRouteChildren {
-  MainLangLayoutDataUsageResearchesRouteRoute: typeof MainLangLayoutDataUsageResearchesRouteRouteWithChildren
-  MainLangLayoutDataUsageIndexRoute: typeof MainLangLayoutDataUsageIndexRoute
+interface Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
+  Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
+  Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
 }
 
-const MainLangLayoutDataUsageRouteRouteChildren: MainLangLayoutDataUsageRouteRouteChildren =
+const Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren =
   {
-    MainLangLayoutDataUsageResearchesRouteRoute:
-      MainLangLayoutDataUsageResearchesRouteRouteWithChildren,
-    MainLangLayoutDataUsageIndexRoute: MainLangLayoutDataUsageIndexRoute,
+    Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute,
+    Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute,
+    Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute,
   }
 
-const MainLangLayoutDataUsageRouteRouteWithChildren =
-  MainLangLayoutDataUsageRouteRoute._addFileChildren(
-    MainLangLayoutDataUsageRouteRouteChildren,
+const Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren,
   )
 
-interface MainLangLayoutGuidelinesRouteRouteChildren {
-  MainLangLayoutGuidelinesSlugRoute: typeof MainLangLayoutGuidelinesSlugRoute
-  MainLangLayoutGuidelinesIndexRoute: typeof MainLangLayoutGuidelinesIndexRoute
-  MainLangLayoutGuidelinesRevisionRevisionRoute: typeof MainLangLayoutGuidelinesRevisionRevisionRoute
+interface Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute
 }
 
-const MainLangLayoutGuidelinesRouteRouteChildren: MainLangLayoutGuidelinesRouteRouteChildren =
+const Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteChildren: Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteChildren =
   {
-    MainLangLayoutGuidelinesSlugRoute: MainLangLayoutGuidelinesSlugRoute,
-    MainLangLayoutGuidelinesIndexRoute: MainLangLayoutGuidelinesIndexRoute,
-    MainLangLayoutGuidelinesRevisionRevisionRoute:
-      MainLangLayoutGuidelinesRevisionRevisionRoute,
+    Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute:
+      Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdResearchVerRoute,
+    Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute:
+      Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdIndexRoute,
   }
 
-const MainLangLayoutGuidelinesRouteRouteWithChildren =
-  MainLangLayoutGuidelinesRouteRoute._addFileChildren(
-    MainLangLayoutGuidelinesRouteRouteChildren,
+const Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteChildren,
   )
 
-interface MainLangLayoutNewsRouteRouteChildren {
-  MainLangLayoutNewsNewsItemIdRoute: typeof MainLangLayoutNewsNewsItemIdRoute
-  MainLangLayoutNewsIndexRoute: typeof MainLangLayoutNewsIndexRoute
+interface Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
 }
 
-const MainLangLayoutNewsRouteRouteChildren: MainLangLayoutNewsRouteRouteChildren =
+const Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteChildren: Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteChildren =
   {
-    MainLangLayoutNewsNewsItemIdRoute: MainLangLayoutNewsNewsItemIdRoute,
-    MainLangLayoutNewsIndexRoute: MainLangLayoutNewsIndexRoute,
+    Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRoute:
+      Char123LangChar125LayoutMainOtherDataUsageResearchesResearchIdRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute:
+      Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute,
   }
 
-const MainLangLayoutNewsRouteRouteWithChildren =
-  MainLangLayoutNewsRouteRoute._addFileChildren(
-    MainLangLayoutNewsRouteRouteChildren,
+const Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteChildren,
   )
 
-interface MainLangLayoutRouteChildren {
-  MainLangLayoutDataSubmissionRouteRoute: typeof MainLangLayoutDataSubmissionRouteRouteWithChildren
-  MainLangLayoutDataUsageRouteRoute: typeof MainLangLayoutDataUsageRouteRouteWithChildren
-  MainLangLayoutGuidelinesRouteRoute: typeof MainLangLayoutGuidelinesRouteRouteWithChildren
-  MainLangLayoutNewsRouteRoute: typeof MainLangLayoutNewsRouteRouteWithChildren
-  MainLangLayoutContentSplatRoute: typeof MainLangLayoutContentSplatRoute
-  MainLangLayoutContentIdIndexRoute: typeof MainLangLayoutContentIdIndexRoute
+interface Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherDataUsageIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
 }
 
-const MainLangLayoutRouteChildren: MainLangLayoutRouteChildren = {
-  MainLangLayoutDataSubmissionRouteRoute:
-    MainLangLayoutDataSubmissionRouteRouteWithChildren,
-  MainLangLayoutDataUsageRouteRoute:
-    MainLangLayoutDataUsageRouteRouteWithChildren,
-  MainLangLayoutGuidelinesRouteRoute:
-    MainLangLayoutGuidelinesRouteRouteWithChildren,
-  MainLangLayoutNewsRouteRoute: MainLangLayoutNewsRouteRouteWithChildren,
-  MainLangLayoutContentSplatRoute: MainLangLayoutContentSplatRoute,
-  MainLangLayoutContentIdIndexRoute: MainLangLayoutContentIdIndexRoute,
+const Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren: Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren =
+  {
+    Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute:
+      Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherDataUsageIndexRoute:
+      Char123LangChar125LayoutMainOtherDataUsageIndexRoute,
+  }
+
+const Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherDataUsageRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren,
+  )
+
+interface Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherGuidelinesSlugRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
+  Char123LangChar125LayoutMainOtherGuidelinesIndexRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
+  Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
 }
 
-const MainLangLayoutRouteWithChildren = MainLangLayoutRoute._addFileChildren(
-  MainLangLayoutRouteChildren,
-)
+const Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren: Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren =
+  {
+    Char123LangChar125LayoutMainOtherGuidelinesSlugRoute:
+      Char123LangChar125LayoutMainOtherGuidelinesSlugRoute,
+    Char123LangChar125LayoutMainOtherGuidelinesIndexRoute:
+      Char123LangChar125LayoutMainOtherGuidelinesIndexRoute,
+    Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute:
+      Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute,
+  }
 
-interface MainLangRouteRouteChildren {
-  MainLangLayoutRoute: typeof MainLangLayoutRouteWithChildren
-  MainLangIndexRoute: typeof MainLangIndexRoute
+const Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherGuidelinesRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren,
+  )
+
+interface Char123LangChar125LayoutMainOtherNewsRouteRouteChildren {
+  Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute: typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
+  Char123LangChar125LayoutMainOtherNewsIndexRoute: typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
 }
 
-const MainLangRouteRouteChildren: MainLangRouteRouteChildren = {
-  MainLangLayoutRoute: MainLangLayoutRouteWithChildren,
-  MainLangIndexRoute: MainLangIndexRoute,
+const Char123LangChar125LayoutMainOtherNewsRouteRouteChildren: Char123LangChar125LayoutMainOtherNewsRouteRouteChildren =
+  {
+    Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute:
+      Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute,
+    Char123LangChar125LayoutMainOtherNewsIndexRoute:
+      Char123LangChar125LayoutMainOtherNewsIndexRoute,
+  }
+
+const Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren =
+  Char123LangChar125LayoutMainOtherNewsRouteRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherNewsRouteRouteChildren,
+  )
+
+interface Char123LangChar125LayoutMainOtherRouteChildren {
+  Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherDataUsageRouteRoute: typeof Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherGuidelinesRouteRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherNewsRouteRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
+  Char123LangChar125LayoutMainOtherSplatRoute: typeof Char123LangChar125LayoutMainOtherSplatRoute
+  Char123LangChar125LayoutMainOtherContentIdIndexRoute: typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
 }
 
-const MainLangRouteRouteWithChildren = MainLangRouteRoute._addFileChildren(
-  MainLangRouteRouteChildren,
-)
+const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMainOtherRouteChildren =
+  {
+    Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute:
+      Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherDataUsageRouteRoute:
+      Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherGuidelinesRouteRoute:
+      Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherNewsRouteRoute:
+      Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren,
+    Char123LangChar125LayoutMainOtherSplatRoute:
+      Char123LangChar125LayoutMainOtherSplatRoute,
+    Char123LangChar125LayoutMainOtherContentIdIndexRoute:
+      Char123LangChar125LayoutMainOtherContentIdIndexRoute,
+  }
 
-interface MainRouteChildren {
-  MainLangRouteRoute: typeof MainLangRouteRouteWithChildren
+const Char123LangChar125LayoutMainOtherRouteWithChildren =
+  Char123LangChar125LayoutMainOtherRoute._addFileChildren(
+    Char123LangChar125LayoutMainOtherRouteChildren,
+  )
+
+interface Char123LangChar125LayoutMainRouteChildren {
+  Char123LangChar125LayoutMainOtherRoute: typeof Char123LangChar125LayoutMainOtherRouteWithChildren
+  Char123LangChar125LayoutMainIndexRoute: typeof Char123LangChar125LayoutMainIndexRoute
 }
 
-const MainRouteChildren: MainRouteChildren = {
-  MainLangRouteRoute: MainLangRouteRouteWithChildren,
+const Char123LangChar125LayoutMainRouteChildren: Char123LangChar125LayoutMainRouteChildren =
+  {
+    Char123LangChar125LayoutMainOtherRoute:
+      Char123LangChar125LayoutMainOtherRouteWithChildren,
+    Char123LangChar125LayoutMainIndexRoute:
+      Char123LangChar125LayoutMainIndexRoute,
+  }
+
+const Char123LangChar125LayoutMainRouteWithChildren =
+  Char123LangChar125LayoutMainRoute._addFileChildren(
+    Char123LangChar125LayoutMainRouteChildren,
+  )
+
+interface Char123LangChar125LayoutRouteChildren {
+  Char123LangChar125LayoutAuthedRoute: typeof Char123LangChar125LayoutAuthedRouteWithChildren
+  Char123LangChar125LayoutMainRoute: typeof Char123LangChar125LayoutMainRouteWithChildren
 }
 
-const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
+const Char123LangChar125LayoutRouteChildren: Char123LangChar125LayoutRouteChildren =
+  {
+    Char123LangChar125LayoutAuthedRoute:
+      Char123LangChar125LayoutAuthedRouteWithChildren,
+    Char123LangChar125LayoutMainRoute:
+      Char123LangChar125LayoutMainRouteWithChildren,
+  }
+
+const Char123LangChar125LayoutRouteWithChildren =
+  Char123LangChar125LayoutRoute._addFileChildren(
+    Char123LangChar125LayoutRouteChildren,
+  )
+
+interface Char123LangChar125RouteRouteChildren {
+  Char123LangChar125LayoutRoute: typeof Char123LangChar125LayoutRouteWithChildren
+}
+
+const Char123LangChar125RouteRouteChildren: Char123LangChar125RouteRouteChildren =
+  {
+    Char123LangChar125LayoutRoute: Char123LangChar125LayoutRouteWithChildren,
+  }
+
+const Char123LangChar125RouteRouteWithChildren =
+  Char123LangChar125RouteRoute._addFileChildren(
+    Char123LangChar125RouteRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
-  AuthedRoute: AuthedRouteWithChildren,
-  MainRoute: MainRouteWithChildren,
+  Char123LangChar125RouteRoute: Char123LangChar125RouteRouteWithChildren,
   LoginErrorRoute: LoginErrorRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthLoginRoute: ApiAuthLoginRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthRefreshRoute: ApiAuthRefreshRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
