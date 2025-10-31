@@ -1,4 +1,4 @@
-import { Locale, Messages } from "@/lib/i18n-config";
+import { Locale, Messages } from "@/config/i18n-config";
 import { LinkOptions } from "@tanstack/react-router";
 type NavLinkId = keyof Messages["Navbar"];
 

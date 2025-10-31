@@ -1,4 +1,4 @@
-import { localeSchema } from "@/lib/i18n-config";
+import { localeSchema } from "@/config/i18n-config";
 import {
   createInsertSchema,
   createSelectSchema,

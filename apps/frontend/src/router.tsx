@@ -1,4 +1,4 @@
-import { i18n, type Locale, type Messages } from "@/lib/i18n-config";
+import { i18n, type Locale, type Messages } from "@/config/i18n-config";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, LocationRewrite } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";

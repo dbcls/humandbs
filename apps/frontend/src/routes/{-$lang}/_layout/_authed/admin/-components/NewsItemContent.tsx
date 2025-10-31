@@ -1,7 +1,7 @@
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
-import { i18n } from "@/lib/i18n-config";
+import { i18n } from "@/config/i18n-config";
 import { cn, DateStringRange } from "@/lib/utils";
 import {
   $updateNewsItem,

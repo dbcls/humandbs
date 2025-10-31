@@ -3,10 +3,17 @@ import {
   Document,
   DocumentVersion,
   DocumentVersionTranslation,
-  UserRole,
 } from "@/db/schema";
 import { Alert, ContentItem, NewsItem } from "@/db/types";
 import { SessionUser } from "@/serverFunctions/user";
+
+export const USER_ROLES = {
+  ADMIN: "admin",
+  EDITOR: "editor",
+  USER: "user",
+} as const;
+
+type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 type PermissionCheck<Key extends keyof Permissions> =
   | boolean

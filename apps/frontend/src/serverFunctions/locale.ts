@@ -3,7 +3,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
 import Negotiator from "negotiator";
 import { z } from "zod";
-import { i18n as i18nConfig, Locale, localeSchema } from "../lib/i18n-config";
+import {
+  i18n as i18nConfig,
+  Locale,
+  localeSchema,
+} from "../config/i18n-config";
 
 const localeKey = "locale";
 

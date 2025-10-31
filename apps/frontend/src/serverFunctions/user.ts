@@ -14,6 +14,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 import { count, eq } from "drizzle-orm";
+import { USER_ROLES } from "@/config/permissions";
 
 export const $getUsers = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
@@ -36,7 +37,7 @@ export const $changeUserRole = createServerFn({
     const [amountOfAdmins] = await db
       .select({ count: count() })
       .from(user)
-      .where(eq(user.role, "admin"));
+      .where(eq(user.role, USER_ROLES.ADMIN));
 
     if (amountOfAdmins.count < 2)
       throw new Error("Cannot change role of last admin");
@@ -67,7 +68,7 @@ export const $deleteUser = createServerFn({ method: "POST" })
     const [amountOfAdmins] = await db
       .select({ count: count() })
       .from(user)
-      .where(eq(user.role, "admin"));
+      .where(eq(user.role, USER_ROLES.ADMIN));
 
     if (amountOfAdmins.count < 2) throw new Error("Cannot delete last admin");
 

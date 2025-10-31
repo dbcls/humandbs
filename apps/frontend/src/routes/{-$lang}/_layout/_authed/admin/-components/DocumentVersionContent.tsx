@@ -5,7 +5,7 @@ import {
   DOCUMENT_VERSION_STATUS,
   DocumentVersionTranslation,
 } from "@/db/schema";
-import { i18n, Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/config/i18n-config";
 import { cn } from "@/lib/utils";
 import {
   $deleteDocumentVersionDraft,

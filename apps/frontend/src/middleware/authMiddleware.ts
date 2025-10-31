@@ -1,4 +1,4 @@
-import { hasPermission, Permissions } from "@/lib/permissions";
+import { hasPermission, Permissions, USER_ROLES } from "@/config/permissions";
 import { SessionUser } from "@/serverFunctions/user";
 import {
   ensureFreshSession,
@@ -84,9 +84,9 @@ export const hasPermissionMiddleware = createMiddleware({
       const { isAdmin } = (await isAdminRes.json()) as { isAdmin: boolean };
 
       if (isAdmin) {
-        userWithRole.role = "admin";
+        userWithRole.role = USER_ROLES.ADMIN;
       } else {
-        userWithRole.role = "user";
+        userWithRole.role = USER_ROLES.USER;
       }
     }
 

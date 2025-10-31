@@ -5,8 +5,8 @@ import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
 import { z } from "zod";
 
-import { ContentId, contentIdSchema } from "@/lib/content-config";
-import { localeSchema } from "@/lib/i18n-config";
+import { ContentId, contentIdSchema } from "@/config/content-config";
+import { localeSchema } from "@/config/i18n-config";
 import * as nodes from "@/markdoc/nodes/index";
 import * as tags from "@/markdoc/tags/index";
 

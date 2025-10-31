@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { DocumentVersionStatus } from "@/db/types";
-import { i18n, Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/config/i18n-config";
 import {
   $getContentItem,
   $upsertContentItemTranslation,

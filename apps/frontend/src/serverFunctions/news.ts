@@ -8,7 +8,7 @@ import {
   NewsTranslationUpsert,
 } from "@/db/types";
 import { db } from "@/db/database";
-import { i18n, Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/config/i18n-config";
 import { toDateString } from "@/lib/utils";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";

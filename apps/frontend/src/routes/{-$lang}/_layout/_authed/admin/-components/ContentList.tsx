@@ -27,7 +27,7 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { useServerFn } from "@tanstack/react-start";
-import { localeSchema } from "@/lib/i18n-config";
+import { localeSchema } from "@/config/i18n-config";
 
 export function ContentList({
   selectedContentId,

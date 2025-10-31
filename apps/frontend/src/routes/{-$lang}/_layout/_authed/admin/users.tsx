@@ -13,7 +13,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { roles } from "@/lib/permissions";
+import { roles } from "@/config/permissions";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/users")({
   component: RouteComponent,

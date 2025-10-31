@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/Navbar";
+import { USER_ROLES } from "@/config/permissions";
 import { cn } from "@/lib/utils";
 import {
   createFileRoute,
@@ -94,7 +95,7 @@ function buildRedirectTarget(
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
   beforeLoad: async ({ context, matches, location }) => {
-    if (!context.user) {
+    if (context.user?.role !== USER_ROLES.ADMIN) {
       const fallback =
         typeof context.lang === "string" && context.lang.length > 0
           ? `/${context.lang}`
