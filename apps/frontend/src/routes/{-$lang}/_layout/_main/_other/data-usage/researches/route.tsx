@@ -4,6 +4,6 @@ export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches"
 )({
   loader: () => ({
-    crumb: "Research list route",
+    crumb: "研究一覧",
   }),
 });

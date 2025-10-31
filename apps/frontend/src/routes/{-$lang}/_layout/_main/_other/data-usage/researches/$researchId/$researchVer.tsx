@@ -14,7 +14,9 @@ export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId/$researchVer"
 )({
   component: RouteComponent,
-  loader: async ({ context }) => {},
+  loader: async ({ params }) => {
+    return { crumb: params.researchVer };
+  },
 });
 
 interface Sequence {

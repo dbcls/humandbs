@@ -1,3 +1,4 @@
+import { $getResearchList } from "@/serverFunctions/mock/research";
 import {
   Dataset,
   DatasetIdParams,
@@ -45,7 +46,13 @@ interface APIService {
 
 const api: APIService = {
   async getResearchListPaginated(query) {
-    return axiosInstance.get("/researches", { params: query.search });
+    return $getResearchList({
+      data: {
+        page: query.search.page,
+        limit: query.search.limit,
+      },
+    });
+    // return axiosInstance.get("/researches", { params: query.search });
   },
   async getResearchDetail(query) {
     return axiosInstance.get(`/researches/${query.params.humId}`, {

@@ -1,6 +1,6 @@
 import { user, UserRole } from "@/db/schema";
 import { userSelectSchema } from "@/db/types";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
   ensureFreshSession,

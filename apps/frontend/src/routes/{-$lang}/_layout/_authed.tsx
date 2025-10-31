@@ -1,3 +1,4 @@
+import { Navbar } from "@/components/Navbar";
 import { cn } from "@/lib/utils";
 import {
   createFileRoute,
@@ -122,6 +123,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
 function RouteComponent() {
   return (
     <main className="flex h-screen flex-col gap-2 p-4">
+      <Navbar />
       <section className="flex flex-1 items-stretch gap-3">
         <NavPanel />
         <Outlet />

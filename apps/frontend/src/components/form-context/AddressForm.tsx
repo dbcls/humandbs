@@ -27,13 +27,23 @@ export const AddressForm = withFieldGroup({
 
           <div className="flex gap-3">
             <group.AppField name="state">
-              {(field) => <field.TextField label="State" type="col" />}
+              {(field) => (
+                <field.TextField className="flex-1" label="State" type="col" />
+              )}
             </group.AppField>
             <group.AppField name="city">
-              {(field) => <field.TextField label="City" type="col" />}
+              {(field) => (
+                <field.TextField className="flex-1" label="City" type="col" />
+              )}
             </group.AppField>
             <group.AppField name="postalCode">
-              {(field) => <field.TextField label="Postal code" type="col" />}
+              {(field) => (
+                <field.TextField
+                  className="flex-1"
+                  label="Postal code"
+                  type="col"
+                />
+              )}
             </group.AppField>
           </div>
           <group.AppField name="street">

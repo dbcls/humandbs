@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { i18n } from "@/lib/i18n-config";
 import { ResearchSchema } from "@humandbs/backend/types";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
@@ -68,7 +69,13 @@ function RouteComponent() {
               </form.AppField>
 
               <form.AppField name="lang">
-                {(field) => <field.LocaleSwitchField />}
+                {(field) => (
+                  <field.SelectField
+                    type="col"
+                    label="Language"
+                    items={i18n.locales as unknown as string[]}
+                  />
+                )}
               </form.AppField>
             </div>
             <form.AppField name="title">
@@ -113,7 +120,9 @@ function RouteComponent() {
                                         key={i}
                                         name={`summary.url[${i}].url`}
                                       >
-                                        {(subField) => <subField.TextField />}
+                                        {(subField) => (
+                                          <subField.TextField className="w-full" />
+                                        )}
                                       </form.AppField>
                                     </TableCell>
                                     <TableCell>
@@ -192,7 +201,10 @@ function RouteComponent() {
                                         </span>
                                         <span
                                           role="button"
-                                          onClick={() => field.removeValue(i)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            field.removeValue(i);
+                                          }}
                                         >
                                           <Trash2 className="text-danger size-5 cursor-pointer" />
                                         </span>
@@ -200,7 +212,7 @@ function RouteComponent() {
                                     )}
                                   </form.Subscribe>
                                 </AccordionTrigger>
-                                <AccordionContent className="flex flex-col gap-4 pl-5">
+                                <AccordionContent className="nested-form flex flex-col gap-4 pl-5">
                                   <div className="flex gap-5">
                                     <form.AppField
                                       name={`dataProvider[${i}].name`}
@@ -280,7 +292,7 @@ function RouteComponent() {
                                           )}
                                         </form.AppField>
                                       </div>
-                                      <div className="flex gap-2">
+                                      <div className="flex gap-3">
                                         <form.AppField
                                           name={`dataProvider[${i}].organization.abbreviation`}
                                         >
@@ -397,6 +409,11 @@ function RouteComponent() {
             </form.AppField>
           </section>
         </form.AppForm>
+        <div className="flex flex-row-reverse gap-4">
+          <Button variant={"accent"} size={"lg"}>
+            Save
+          </Button>
+        </div>
       </section>
     </Card>
   );

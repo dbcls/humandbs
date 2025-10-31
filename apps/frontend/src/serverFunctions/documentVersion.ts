@@ -17,7 +17,7 @@ import {
   InsertDocumentVersionTranslationParams,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { i18n } from "@/lib/i18n-config";
 import { unionOfLiterals } from "@/lib/utils";
 import {

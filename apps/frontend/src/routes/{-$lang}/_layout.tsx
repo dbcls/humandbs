@@ -9,9 +9,9 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
 function RouteComponent() {
   return (
     <CatchBoundary getResetKey={() => "reset"}>
-      <Navbar />
+      {/*<Navbar />*/}
       <Outlet />
-      <Footer />
+      {/*<Footer />*/}
     </CatchBoundary>
   );
 }

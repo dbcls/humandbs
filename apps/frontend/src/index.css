@@ -144,12 +144,11 @@
       position: absolute;
       display: block;
       content: "";
-      width: 5px;
+      width: 0.5rem;
       top: 0;
       bottom: 0;
       left: 0;
-      background-color: var(--color-secondary);
-      opacity: 0.5;
+      background-color: var(--color-hover);
     }
   }
 

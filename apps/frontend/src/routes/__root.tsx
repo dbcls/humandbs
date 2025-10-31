@@ -64,10 +64,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="font-family-sans text-foreground main-bg relative">
+      <body className="font-family-sans main-bg text-foreground relative h-fit">
         {children}
-        <TanStackRouterDevtools position="bottom-right" />
-        <ReactQueryDevtools buttonPosition="bottom-left" />
+        <TanStackRouterDevtools position="bottom-left" />
+        {/*<ReactQueryDevtools buttonPosition="bottom-left" />*/}
         <SessionRefreshHandler session={session} />
         <ConfirmationDialog />
         <Scripts />

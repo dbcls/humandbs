@@ -1,4 +1,6 @@
 import { Alerts } from "@/components/Alerts";
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 import {
   $getHiddenAlertIds,
   getActiveAlertsQueryOptions,
@@ -21,17 +23,21 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main")({
       // alerts: activeAlertTranslations.filter(
       //   (alert) => !hiddenAlerts.includes(alert.newsId)
       // ),
-      alerts: []
+      alerts: [],
     };
   },
 });
 
 function RouteComponent() {
   return (
-    <main className="flex flex-col gap-2 p-4">
-      <Alerts />
+    <>
+      <main className="z-10 flex flex-col gap-2 p-4">
+        <Navbar />
+        <Alerts />
 
-      <Outlet />
-    </main>
+        <Outlet />
+      </main>
+      <Footer />
+    </>
   );
 }

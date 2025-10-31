@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 import { asset } from "@/db/schema";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 const PUBLIC_DIR = "./public";

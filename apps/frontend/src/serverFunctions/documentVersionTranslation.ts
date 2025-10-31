@@ -10,7 +10,7 @@ import {
   DocumentVersionTranslation,
   documentVersionTranslation,
 } from "@/db/schema";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { i18n, Locale, localeSchema } from "@/lib/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 

@@ -48,6 +48,7 @@ export function useSessionRefresh({
 
   const refresh = useCallback(async () => {
     try {
+      console.log("Refreshing session...");
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -69,9 +70,7 @@ export function useSessionRefresh({
 
       const data = (await response.json()) as RefreshResponse;
       const nextExpiresAt =
-        data?.session?.expires_at ??
-        data?.session?.expiresAt ??
-        null;
+        data?.session?.expires_at ?? data?.session?.expiresAt ?? null;
 
       if (nextExpiresAt) {
         setExpiresAt(nextExpiresAt);

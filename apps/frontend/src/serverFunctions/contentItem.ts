@@ -18,7 +18,7 @@ import {
   statusSchema,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { i18n, Locale, localeSchema } from "@/lib/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";

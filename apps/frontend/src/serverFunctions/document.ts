@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { document } from "@/db/schema";
 import { insertDocumentSchema } from "@/db/types";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 /** List all documents */

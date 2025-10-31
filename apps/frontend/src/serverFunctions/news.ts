@@ -7,7 +7,7 @@ import {
   newsTranslationUpdateSchema,
   NewsTranslationUpsert,
 } from "@/db/types";
-import { db } from "@/lib/database";
+import { db } from "@/db/database";
 import { i18n, Locale } from "@/lib/i18n-config";
 import { toDateString } from "@/lib/utils";
 import { transformMarkdoc } from "@/markdoc/config";

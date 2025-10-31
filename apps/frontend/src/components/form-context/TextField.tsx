@@ -23,7 +23,7 @@ export default function TextField({
       })}
     >
       {label ? <span className="whitespace-nowrap">{label}</span> : null}
-      <div className="flex items-center gap-1">
+      <div className="flex w-full items-center gap-1">
         <Input
           value={field.state.value ?? ""}
           onChange={(e) => field.handleChange(e.target.value)}
