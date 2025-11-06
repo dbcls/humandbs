@@ -1,4 +1,3 @@
-import { $getResearchList } from "@/serverFunctions/mock/research";
 import {
   Dataset,
   DatasetIdParams,
@@ -9,14 +8,15 @@ import {
   LangQuery,
   LangVersionQuery,
   Research,
+  ResearchDetail,
   ResearchesQuery,
   ResearchesResponse,
   ResearchVersionsResponse,
 } from "@humandbs/backend/types";
-import axios from "axios";
+import axios, { AxiosPromise } from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: `${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}`,
+  baseURL: `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}`,
 });
 
 interface APIService {
@@ -26,7 +26,7 @@ interface APIService {
   getResearchDetail(query: {
     params: HumIdParams;
     search: LangVersionQuery;
-  }): Promise<Research>;
+  }): Promise<ResearchDetail>;
   getResearchVersions(query: {
     params: HumIdParams;
     search: LangQuery;
@@ -46,17 +46,27 @@ interface APIService {
 
 const api: APIService = {
   async getResearchListPaginated(query) {
-    return axiosInstance.get("/researches", { params: query.search });
+    const res = await axiosInstance.get("/researches", {
+      params: query.search,
+    });
+    return res.data;
   },
   async getResearchDetail(query) {
-    return axiosInstance.get(`/researches/${query.params.humId}`, {
+    const res = await axiosInstance.get(`/researches/${query.params.humId}`, {
       params: query.search,
     });
+
+    return res.data;
   },
   async getResearchVersions(query) {
-    return axiosInstance.get(`/researches/${query.params.humId}/versions`, {
-      params: query.search,
-    });
+    const res = await axiosInstance.get(
+      `/researches/${query.params.humId}/versions`,
+      {
+        params: query.search,
+      }
+    );
+
+    return res.data;
   },
 
   async getDatasetsPaginated(query) {
@@ -69,9 +79,14 @@ const api: APIService = {
   },
 
   async getDatasetVersions(query) {
-    return axiosInstance.get(`/datasets/${query.params.datasetId}`, {
-      params: query.search,
-    });
+    const res = await axiosInstance.get(
+      `/datasets/${query.params.datasetId}/versions`,
+      {
+        params: query.search,
+      }
+    );
+
+    return res.data;
   },
 };
 

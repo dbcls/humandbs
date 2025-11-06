@@ -30,9 +30,14 @@ export type Context = {
 function localeRewrite(): LocationRewrite {
   return {
     input: ({ url }) => {
-      const parts = url.pathname.split("/").filter(Boolean);
+      // console.log("input href", url.href, url.pathname);
+      const parts = url.pathname.split("/").slice(1);
+
+      console.log("parts", parts, parts.join("/"));
 
       const [maybeLocale] = parts;
+
+      console.log("maybeLocale", maybeLocale);
 
       if (
         maybeLocale &&
@@ -51,7 +56,7 @@ function localeRewrite(): LocationRewrite {
       return url;
     },
     output: ({ url }) => {
-      const parts = url.pathname.split("/").filter(Boolean);
+      const parts = url.pathname.split("/").slice(1);
       if (parts[0] === i18n.defaultLocale) {
         parts.shift();
         url.pathname = parts.length ? `/${parts.join("/")}` : "/";

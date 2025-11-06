@@ -1,5 +1,5 @@
 import { Card } from "@/components/Card";
-import { CONTENT_IDS } from "@/lib/content-config";
+import { CONTENT_IDS } from "@/config/content-config";
 import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";

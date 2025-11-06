@@ -1,6 +1,12 @@
 {
   "name": "app",
   "module": "index.ts",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "scripts": {
     "frontend:dev": "bun run --filter @humandbs/frontend dev",
     "frontend:build": "bun run --filter @humandbs/frontend build",
@@ -10,17 +16,8 @@
     "dc:up": "docker compose -f compose.dev.yml up -d",
     "backend:dev": "bun run --filter @humandbs/backend dev"
   },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "dependencies": {
-    "keycloak-js": "^26.2.1"
-  }
+  ]
 }

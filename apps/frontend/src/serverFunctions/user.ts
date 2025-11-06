@@ -116,11 +116,37 @@ export const $getAuthUser = createServerFn({ method: "GET" }).handler<
       );
     }
 
+    let role: UserRole = USER_ROLES.USER;
+
+    const isAdminRes = await fetch(
+      `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}/users/is-admin`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }
+    );
+
+    if (isAdminRes.status === 401 || isAdminRes.status === 403) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+      throw new Error("Unauthorized");
+    }
+
+    if (isAdminRes.ok) {
+      const { isAdmin } = (await isAdminRes.json()) as { isAdmin: boolean };
+
+      if (isAdmin) {
+        role = USER_ROLES.ADMIN;
+      }
+    }
+
     const user: SessionUser = {
       id: claims.sub,
       name: claims.name,
       email: claims.email,
       username: claims.preferred_username,
+      role,
     };
 
     const sessionMeta: SessionMeta = {

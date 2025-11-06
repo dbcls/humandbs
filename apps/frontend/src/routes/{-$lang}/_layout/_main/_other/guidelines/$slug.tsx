@@ -1,5 +1,5 @@
 import { Card } from "@/components/Card";
-import { CONTENT_IDS } from "@/lib/content-config";
+import { CONTENT_IDS } from "@/config/content-config";
 import { enumFromStringArray } from "@/lib/utils";
 import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
@@ -7,7 +7,9 @@ import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serv
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
-export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/guidelines/$slug")({
+export const Route = createFileRoute(
+  "/{-$lang}/_layout/_main/_other/guidelines/$slug"
+)({
   component: RouteComponent,
   params: z.object({ slug: enumFromStringArray(CONTENT_IDS.guidelines) }),
   loader: async ({ context, params }) => {

@@ -3,7 +3,6 @@ import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
 import css from "@/index.css?url";
 import { Context } from "@/router";
 import { $getAuthUser } from "@/serverFunctions/user";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -32,9 +31,10 @@ export const Route = createRootRouteWithContext<Context>()({
   },
   component: RootComponent,
 
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { user, session } = await $getAuthUser();
 
+    console.log("__root location", location.pathname);
     return {
       user,
       session,

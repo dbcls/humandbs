@@ -17,7 +17,7 @@ type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 type PermissionCheck<Key extends keyof Permissions> =
   | boolean
-  | ((user: SessionUser, data: Permissions[Key]["dataType"]) => boolean);
+  | ((user: SessionUser | null, data: Permissions[Key]["dataType"]) => boolean);
 
 type RolesWithPermissions = {
   [R in UserRole]: Partial<{
@@ -166,14 +166,14 @@ const ROLES = {
 export const roles = Object.keys(ROLES) as Array<keyof RolesWithPermissions>;
 
 export function hasPermission<Resource extends keyof Permissions>(
-  user: SessionUser,
+  user: SessionUser | null,
   resource: Resource,
   action: Permissions[Resource]["action"],
   data?: Permissions[Resource]["dataType"]
 ) {
-  const permission = (ROLES as RolesWithPermissions)[user?.role || "user"][
-    resource
-  ]?.[action];
+  const permission = (ROLES as RolesWithPermissions)[
+    user?.role || USER_ROLES.USER
+  ][resource]?.[action];
 
   if (permission === null || permission === undefined) return false;
 

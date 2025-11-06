@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import * as schema from "@/db/schema";
-import { CONTENT_IDS } from "@/lib/content-config";
+import { CONTENT_IDS } from "@/config/content-config";
 
 async function main() {
   const db = drizzle(

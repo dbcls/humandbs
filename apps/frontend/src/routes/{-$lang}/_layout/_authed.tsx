@@ -95,6 +95,7 @@ function buildRedirectTarget(
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
   beforeLoad: async ({ context, matches, location }) => {
+    console.log("context.user", context.user);
     if (context.user?.role !== USER_ROLES.ADMIN) {
       const fallback =
         typeof context.lang === "string" && context.lang.length > 0

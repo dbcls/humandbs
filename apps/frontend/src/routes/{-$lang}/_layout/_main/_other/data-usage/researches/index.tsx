@@ -4,19 +4,19 @@ import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
 
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
+import { SkeletonLoading } from "@/components/Skeleton";
 import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { FA_ICONS } from "@/lib/faIcons";
-import { useTranslations } from "use-intl";
-import { $getResearchList } from "@/serverFunctions/mock/research";
+import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import {
-  Research,
   ResearchesQuerySchema,
   ResearchSummary,
 } from "@humandbs/backend/types";
-import { filterStringSchema, paginationSchema } from "@/utils/searchParams";
-import { api } from "@/services/backend";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Suspense, useCallback, useMemo } from "react";
+import { useTranslations } from "use-intl";
 
 export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
   lang: true,
@@ -34,14 +34,18 @@ export const Route = createFileRoute(
     order,
   }),
 
-  loader: ({ deps, context }) =>
-    api.getResearchListPaginated({ search: { ...deps, lang: context.lang } }),
+  loader: async ({ deps, context }) => {
+    await context.queryClient.ensureQueryData(
+      getResearchesQueryOptions({ ...deps, lang: context.lang })
+    );
+  },
+  errorComponent: ({ error }) => {
+    return <div>{error.message}</div>;
+  },
 });
 
 function Caption() {
   const t = useTranslations("Research-list");
-
-  const navigate = Route.useNavigate();
 
   return (
     <div className="flex items-center justify-between">
@@ -78,7 +82,7 @@ function Caption() {
   );
 }
 
-const columnHelper = createColumnHelper<Research>();
+const columnHelper = createColumnHelper<ResearchSummary>();
 
 const columns = [
   columnHelper.accessor("humId", {
@@ -93,6 +97,7 @@ const columns = [
         ) : (
           <ChevronsUpDown size={18} />
         );
+
       return (
         <div className="flex items-center whitespace-nowrap">
           <div>Research ID </div>
@@ -112,10 +117,7 @@ const columns = [
       const researchVer = researchIdWithVer.split(".")[1];
       return (
         <div>
-          <Route.Link
-            to="$researchId/$researchVer"
-            params={{ researchId, researchVer }}
-          >
+          <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
             <TextWithIcon
               className="text-foreground-dark"
               icon={FA_ICONS.books}
@@ -124,8 +126,7 @@ const columns = [
             </TextWithIcon>
           </Route.Link>
           <ul>
-            <p> Datasets here ... </p>
-            {/*{ctx.row.original.datasets.map((dataset) => (
+            {ctx.row.original.datasetIds.map((dataset) => (
               <li key={dataset}>
                 <TextWithIcon
                   className="text-secondary"
@@ -134,7 +135,7 @@ const columns = [
                   {dataset}
                 </TextWithIcon>
               </li>
-            ))}*/}
+            ))}
           </ul>
         </div>
       );
@@ -157,57 +158,108 @@ const columns = [
         </span>
       )),
   }),
-  columnHelper.accessor(() => {}, {
-    id: "publicationDate",
-    header: "公開日",
-    cell: (ctx) => <> ... </>,
-  }),
-  columnHelper.accessor(() => {}, {
-    id: "dataType",
+
+  columnHelper.accessor("typeOfData", {
+    id: "typeOfData",
     header: "データタイプ",
-    cell: (ctx) => <>...</>,
+    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
   }),
-  columnHelper.accessor(() => {}, {
-    id: "methodology",
+  columnHelper.accessor("methods", {
+    id: "methods",
     header: "手法",
-    cell: (ctx) => <>...</>,
+    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
   }),
-  columnHelper.accessor(() => {}, {
-    id: "instrument",
-    header: "機器",
-    cell: (ctx) => <>...</>,
+  columnHelper.accessor("platforms", {
+    id: "platforms",
+    header: "プラットホーム",
+    cell: (ctx) => (
+      <ul>
+        {ctx.getValue().map((p) => (
+          <li
+            key={p}
+            className="text-sm"
+            dangerouslySetInnerHTML={{ __html: p }}
+          />
+        ))}
+      </ul>
+    ),
   }),
-  columnHelper.accessor(() => {}, {
-    id: "subjects",
-    header: "被験者",
-    cell: (ctx) => <> ... </>,
-    // ctx.getValue().map((participant) => (
-    //   <div key={participant.content.join(",")}>
-    //     <ul>
-    //       {participant.content.map((content) => (
-    //         <li key={content}>{content}</li>
-    //       ))}
-    //     </ul>
-    //     {participant.type && (
-    //       <p className="text-secondary text-sm">{participant.type}</p>
-    //     )}
-    //   </div>
-    // )),
+  columnHelper.accessor("targets", {
+    id: "targets",
+    header: "目的",
+    cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
   }),
 ];
 // table using Tanstack table:
 
 function RouteComponent() {
-  const { data, pagination } = Route.useLoaderData();
-
-  const { page } = Route.useSearch();
-
   return (
     <Card caption={<Caption />}>
-      <Table className="mt-4" columns={columns} data={data} />
-      {/*Pagination*/}
-      <Pagination totalPages={pagination.totalPages} page={page} />
+      <Suspense fallback={<SkeletonLoading />}>
+        <CardContent />
+      </Suspense>
     </Card>
+  );
+}
+
+function CardContent() {
+  const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
+  const navigate = Route.useNavigate();
+
+  const { data: researchesData } = useSuspenseQuery(
+    getResearchesQueryOptions({ ...search, lang })
+  );
+
+  const sorting = useMemo(() => {
+    if (!search.sort) return [];
+    return [{ id: search.sort, desc: search.order === "desc" }];
+  }, [search.sort, search.order]);
+
+  const handleSortingChange = useCallback(
+    (updater: any) => {
+      const newSorting =
+        typeof updater === "function" ? updater(sorting) : updater;
+
+      if (newSorting.length === 0) {
+        // Clear sorting
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            sort: "humId",
+            order: "asc",
+            page: 1,
+          }),
+        });
+      } else {
+        const { id, desc } = newSorting[0];
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            sort: id,
+            order: desc ? "desc" : "asc",
+            page: 1,
+          }),
+        });
+      }
+    },
+    [navigate, sorting]
+  );
+
+  return (
+    <>
+      <Table
+        className="mt-4"
+        columns={columns}
+        data={researchesData.data}
+        sorting={sorting}
+        onSortingChange={handleSortingChange}
+      />
+      <Pagination
+        totalPages={researchesData.pagination.totalPages}
+        page={researchesData.pagination.page}
+      />
+    </>
   );
 }
 

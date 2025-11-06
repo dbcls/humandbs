@@ -5,7 +5,9 @@ import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serv
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/data-usage/")({
+export const Route = createFileRoute(
+  "/{-$lang}/_layout/_main/_other/data-usage/"
+)({
   component: RouteComponent,
   loader: async ({ context }) => {
     const { content, title } = await context.queryClient.ensureQueryData(

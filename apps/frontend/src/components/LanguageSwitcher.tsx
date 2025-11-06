@@ -9,7 +9,7 @@ export function LangSwitcher() {
   const currentLang = useLocale();
 
   async function handleSwitch(lang: Locale) {
-    await saveLocaleFn({ data: { lang } });
+    //await saveLocaleFn({ data: { lang } });
 
     await router.invalidate({
       filter: (r) => r.fullPath !== "/{-$lang}/admin",

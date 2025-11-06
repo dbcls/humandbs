@@ -4,6 +4,9 @@ import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  OnChangeFn,
+  SortingState,
+  TableMeta,
   useReactTable,
 } from "@tanstack/react-table";
 
@@ -11,16 +14,33 @@ function Table<T extends Record<string, any>>({
   className,
   columns,
   data,
+  sorting,
+  onSortingChange,
+  meta,
 }: {
   className?: string;
   columns: ColumnDef<T, any>[];
   data: T[];
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  meta?: TableMeta<T>;
 }) {
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    meta,
+    ...(sorting !== undefined && onSortingChange !== undefined
+      ? {
+          // Server-side sorting configuration
+          state: { sorting },
+          onSortingChange,
+          manualSorting: true,
+        }
+      : {
+          // Client-side sorting (default behavior)
+        }),
   });
 
   return (
