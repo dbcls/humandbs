@@ -38,10 +38,10 @@
     "@tanstack/react-form": "^1.23.6",
     "@tanstack/react-query": "^5.90.3",
     "@tanstack/react-query-devtools": "^5.90.2",
-    "@tanstack/react-router": "^1.134.12",
-    "@tanstack/react-router-devtools": "^1.134.12",
-    "@tanstack/react-router-ssr-query": "^1.134.12",
-    "@tanstack/react-start": "^1.134.12",
+    "@tanstack/react-router": "1.134.13",
+    "@tanstack/react-router-devtools": "1.134.13",
+    "@tanstack/react-router-ssr-query": "1.134.13",
+    "@tanstack/react-start": "1.134.13",
     "@tanstack/react-table": "^8.20.6",
     "@uiw/react-md-editor": "^4.0.7",
     "@vitejs/plugin-react": "^4.7.0",
@@ -104,5 +104,9 @@
     "vite-tsconfig-paths": "^5.1.4",
     "yargs": "^18.0.0",
     "zod-schema-faker": "^2.0.0-beta.6"
+  },
+  "patchedDependencies": {
+    "@tanstack/router-core@1.134.13": "apps/frontend/patches/@tanstack%2Frouter-core@1.134.13.patch",
+    "@tanstack/react-router@1.134.13": "apps/frontend/patches/@tanstack%2Freact-router@1.134.13.patch"
   }
 }

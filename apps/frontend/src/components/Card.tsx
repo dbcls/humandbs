@@ -99,6 +99,7 @@ function CardWithCaption({
   caption,
   size,
   variant,
+  containerClassName,
   ...rest
 }: CardWithCaptionProps) {
   return (
@@ -108,7 +109,9 @@ function CardWithCaption({
           {caption}
         </div>
       ) : null}
-      <div className={cn(contentVariants({ size }))}>{children}</div>
+      <div className={cn(contentVariants({ size }), containerClassName)}>
+        {children}
+      </div>
     </div>
   );
 }

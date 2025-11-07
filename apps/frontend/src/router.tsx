@@ -42,6 +42,7 @@ function localeRewrite(): LocationRewrite {
       if (
         maybeLocale &&
         (maybeLocale.startsWith(".") ||
+          maybeLocale.startsWith("{") ||
           maybeLocale === "api" ||
           maybeLocale === "assets" ||
           maybeLocale === "favicon.ico")
@@ -76,7 +77,7 @@ export async function getRouter() {
     } as Context,
     defaultPreload: "intent",
     scrollRestoration: true,
-    rewrite: localeRewrite(),
+    // rewrite: localeRewrite(),
   });
 
   setupRouterSsrQueryIntegration({
