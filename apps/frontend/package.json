@@ -43,6 +43,7 @@
     "@tanstack/react-router-ssr-query": "^1.136.8",
     "@tanstack/react-start": "^1.136.8",
     "@tanstack/react-table": "^8.20.6",
+    "@tanstack/zod-adapter": "^1.136.8",
     "@uiw/react-md-editor": "^4.0.7",
     "@vitejs/plugin-react": "^4.7.0",
     "axios": "^1.13.0",

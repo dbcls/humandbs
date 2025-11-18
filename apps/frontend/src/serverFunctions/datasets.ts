@@ -6,7 +6,11 @@ import z from "zod";
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
   .inputValidator(DatasetsQuerySchema)
-  .handler(({ data }) => api.getDatasetsPaginated({ search: data }));
+  .handler(async ({ data }) => {
+    const paginated = await api.getDatasetsPaginated({ search: data });
+
+    return paginated;
+  });
 
 export function getDatasetsPaginatedQueryOptions(
   query: z.infer<typeof DatasetsQuerySchema>

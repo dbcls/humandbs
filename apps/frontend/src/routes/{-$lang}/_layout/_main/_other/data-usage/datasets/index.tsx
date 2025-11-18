@@ -8,12 +8,14 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useTranslations } from "use-intl";
+import z from "zod";
+import { zodValidator } from "@tanstack/zod-adapter";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/datasets/"
 )({
   component: RouteComponent,
-  validateSearch: DatasetsQuerySchema,
+  validateSearch: zodValidator(DatasetsQuerySchema),
   loaderDeps: ({ search: { page, limit, sort, order } }) => {
     return {
       page,
@@ -40,6 +42,7 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const search = Route.useSearch();
+
   const { lang } = Route.useRouteContext();
   const { data } = useSuspenseQuery(
     getDatasetsPaginatedQueryOptions({ ...search, lang })
@@ -53,6 +56,7 @@ function RouteComponent() {
       <Pagination
         totalPages={data.pagination.totalPages}
         page={data.pagination.page}
+        itemsPerPage={data.pagination.limit}
       />
     </Card>
   );
