@@ -98,6 +98,7 @@ export function Pagination({
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, page: 1, limit: newItemsPerPage }),
+      resetScroll: false,
     });
   };
 

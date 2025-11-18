@@ -1,6 +1,6 @@
 import { api } from "@/services/backend";
 import { DatasetsQuerySchema } from "@humandbs/backend/types";
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import z from "zod";
 
@@ -20,6 +20,7 @@ export function getDatasetsPaginatedQueryOptions(
     queryFn: async () => {
       return await $getDatasetsPaginated({ data: query });
     },
+    placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 60,
   });
 }

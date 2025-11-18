@@ -6,7 +6,7 @@ import {
   ResearchesQuery,
   ResearchesQuerySchema,
 } from "@humandbs/backend/types";
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import z from "zod";
 
@@ -18,7 +18,8 @@ export function getResearchesQueryOptions(query: ResearchesQuery) {
   return queryOptions({
     queryKey: ["researches", "list", query],
     queryFn: () => $getResearches({ data: query }),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes,
+    placeholderData: keepPreviousData,
   });
 }
 

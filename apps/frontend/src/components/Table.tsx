@@ -30,6 +30,7 @@ function Table<T extends Record<string, any>>({
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+
     meta,
     ...(sorting !== undefined && onSortingChange !== undefined
       ? {
