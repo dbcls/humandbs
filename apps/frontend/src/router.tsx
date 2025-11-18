@@ -30,19 +30,15 @@ export type Context = {
 function localeRewrite(): LocationRewrite {
   return {
     input: ({ url }) => {
-      // console.log("input href", url.href, url.pathname);
+      console.log("input href", url.href, url.pathname);
       const parts = url.pathname.split("/").slice(1);
-
-      console.log("parts", parts, parts.join("/"));
 
       const [maybeLocale] = parts;
 
       console.log("maybeLocale", maybeLocale);
-
       if (
         maybeLocale &&
         (maybeLocale.startsWith(".") ||
-          maybeLocale.startsWith("{") ||
           maybeLocale === "api" ||
           maybeLocale === "assets" ||
           maybeLocale === "favicon.ico")
@@ -53,6 +49,8 @@ function localeRewrite(): LocationRewrite {
       if (!i18n.locales.includes(maybeLocale as Locale)) {
         url.pathname = `/${i18n.defaultLocale}/${parts.join("/")}`;
       }
+
+      console.log("returnint url", url.pathname);
 
       return url;
     },

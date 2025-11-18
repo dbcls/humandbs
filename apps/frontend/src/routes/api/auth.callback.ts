@@ -12,6 +12,7 @@ export const Route = createFileRoute("/api/auth/callback")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        console.log("callback");
         const cfg = await getConfig();
         const url = new URL(request.url);
 
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/api/auth/callback")({
         const stash = cookies["oidc_pkce"]
           ? JSON.parse(cookies["oidc_pkce"])
           : null;
+
         if (!stash) return new Response("Missing PKCE stash", { status: 400 });
 
         const tokens: oidc.TokenEndpointResponse =
@@ -33,17 +35,22 @@ export const Route = createFileRoute("/api/auth/callback")({
           );
 
         const setCookies: string[] = [];
+
+        console.log("1");
         setCookies.push(serialize("oidc_pkce", "", { path: "/", maxAge: 0 }));
+        console.log("2");
 
         const session = buildSessionFromTokenResponse(tokens);
+        console.log("3");
         if (!session) {
           return new Response("Missing access token", { status: 400 });
         }
 
         setCookies.push(createSessionCookie(session));
 
-        const redirectTarget =
-          sanitizeRedirectPath(stash.redirect_to) ?? "/";
+        const redirectTarget = sanitizeRedirectPath(stash.redirect_to) ?? "/";
+
+        console.log("redirectTarget", redirectTarget);
 
         return redirectWithCookies(redirectTarget, setCookies, 302);
       },

@@ -1,9 +1,5 @@
 import Logo from "@/assets/Logo.png";
-import {
-  useNavigate,
-  useRouteContext,
-  useRouter,
-} from "@tanstack/react-router";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";

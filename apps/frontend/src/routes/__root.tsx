@@ -34,7 +34,6 @@ export const Route = createRootRouteWithContext<Context>()({
   beforeLoad: async ({ location }) => {
     const { user, session } = await $getAuthUser();
 
-    console.log("__root location", location.pathname);
     return {
       user,
       session,

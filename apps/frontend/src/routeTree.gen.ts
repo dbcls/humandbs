@@ -19,7 +19,6 @@ import { Route as ApiAuthRefreshRouteImport } from './routes/api/auth.refresh'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth.logout'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth.callback'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as Char123LangChar125LayoutMainIndexRouteImport } from './routes/{-$lang}/_layout/_main/index'
 import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/{-$lang}/_layout/_main/_other'
 import { Route as Char123LangChar125LayoutAuthedAdminRouteRouteImport } from './routes/{-$lang}/_layout/_authed/admin/route'
@@ -37,7 +36,6 @@ import { Route as Char123LangChar125LayoutMainOtherNewsIndexRouteImport } from '
 import { Route as Char123LangChar125LayoutMainOtherGuidelinesIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/index'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/index'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/index'
-import { Route as Char123LangChar125LayoutMainOtherContentIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/$contentId/index'
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/index'
 import { Route as Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/$newsItemId'
 import { Route as Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/$slug'
@@ -46,6 +44,7 @@ import { Route as Char123LangChar125LayoutAuthedAdminResearchesCreateRouteImport
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/route'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/route'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/index'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/datasets/index'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/index'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/application/index'
 import { Route as Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
@@ -54,6 +53,7 @@ import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRoute
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/route'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/index'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/index'
+import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version'
 
 const Char123LangChar125RouteImport = createFileRoute('/{-$lang}')()
@@ -101,11 +101,6 @@ const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
 const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   id: '/api/auth/callback',
   path: '/api/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char123LangChar125LayoutMainIndexRoute =
@@ -210,12 +205,6 @@ const Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute =
     getParentRoute: () =>
       Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute,
   } as any)
-const Char123LangChar125LayoutMainOtherContentIdIndexRoute =
-  Char123LangChar125LayoutMainOtherContentIdIndexRouteImport.update({
-    id: '/$contentId/',
-    path: '/$contentId/',
-    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
-  } as any)
 const Char123LangChar125LayoutAuthedAdminResearchesIndexRoute =
   Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport.update({
     id: '/researches/',
@@ -269,6 +258,12 @@ const Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute =
     path: '/',
     getParentRoute: () =>
       Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute =
+  Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRouteImport.update({
+    id: '/datasets/',
+    path: '/datasets/',
+    getParentRoute: () => Char123LangChar125LayoutMainOtherDataUsageRouteRoute,
   } as any)
 const Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute =
   Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport.update(
@@ -342,6 +337,15 @@ const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplication
         Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute,
     } as any,
   )
+const Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute =
+  Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRouteImport.update(
+    {
+      id: '/versions',
+      path: '/versions',
+      getParentRoute: () =>
+        Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRoute,
+    } as any,
+  )
 const Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute =
   Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRouteImport.update(
     {
@@ -355,7 +359,6 @@ const Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute =
 export interface FileRoutesByFullPath {
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -379,7 +382,6 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
-  '/{-$lang}/$contentId': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
   '/{-$lang}/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
   '/{-$lang}/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
@@ -390,15 +392,16 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
   '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
+  '/{-$lang}/data-usage/datasets': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
   '/{-$lang}/data-usage/researches/$humId/$version': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute
+  '/{-$lang}/data-usage/researches/$humId/versions': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute
   '/{-$lang}/data-submission/navigation/before-application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
   '/{-$lang}/data-usage/researches/$humId/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainIndexRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -415,7 +418,6 @@ export interface FileRoutesByTo {
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
-  '/{-$lang}/$contentId': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
   '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/data-usage': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
   '/{-$lang}/guidelines': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
@@ -424,8 +426,10 @@ export interface FileRoutesByTo {
   '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
   '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
+  '/{-$lang}/data-usage/datasets': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
   '/{-$lang}/data-usage/researches/$humId/$version': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute
+  '/{-$lang}/data-usage/researches/$humId/versions': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute
   '/{-$lang}/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
   '/{-$lang}/data-usage/researches/$humId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute
 }
@@ -434,7 +438,6 @@ export interface FileRoutesById {
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}': typeof Char123LangChar125RouteWithChildren
   '/{-$lang}/_layout': typeof Char123LangChar125LayoutRouteWithChildren
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -461,7 +464,6 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/_layout/_main/_other/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/_layout/_authed/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
-  '/{-$lang}/_layout/_main/_other/$contentId/': typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
   '/{-$lang}/_layout/_main/_other/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
   '/{-$lang}/_layout/_main/_other/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
@@ -472,8 +474,10 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
   '/{-$lang}/_layout/_main/_other/data-submission/application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/_layout/_main/_other/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
+  '/{-$lang}/_layout/_main/_other/data-usage/datasets/': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute
+  '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute
   '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute
 }
@@ -482,7 +486,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/login-error'
     | '/{-$lang}'
-    | '/api/auth/$'
     | '/api/auth/callback'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -506,7 +509,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches'
-    | '/{-$lang}/$contentId'
     | '/{-$lang}/data-submission/'
     | '/{-$lang}/data-usage/'
     | '/{-$lang}/guidelines/'
@@ -517,15 +519,16 @@ export interface FileRouteTypes {
     | '/{-$lang}/guidelines/revision/$revision'
     | '/{-$lang}/data-submission/application'
     | '/{-$lang}/data-submission/navigation/'
+    | '/{-$lang}/data-usage/datasets'
     | '/{-$lang}/data-usage/researches/'
     | '/{-$lang}/data-usage/researches/$humId/$version'
+    | '/{-$lang}/data-usage/researches/$humId/versions'
     | '/{-$lang}/data-submission/navigation/before-application/'
     | '/{-$lang}/data-usage/researches/$humId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login-error'
     | '/{-$lang}'
-    | '/api/auth/$'
     | '/api/auth/callback'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -542,7 +545,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches'
-    | '/{-$lang}/$contentId'
     | '/{-$lang}/data-submission'
     | '/{-$lang}/data-usage'
     | '/{-$lang}/guidelines'
@@ -551,8 +553,10 @@ export interface FileRouteTypes {
     | '/{-$lang}/guidelines/revision/$revision'
     | '/{-$lang}/data-submission/application'
     | '/{-$lang}/data-submission/navigation'
+    | '/{-$lang}/data-usage/datasets'
     | '/{-$lang}/data-usage/researches'
     | '/{-$lang}/data-usage/researches/$humId/$version'
+    | '/{-$lang}/data-usage/researches/$humId/versions'
     | '/{-$lang}/data-submission/navigation/before-application'
     | '/{-$lang}/data-usage/researches/$humId'
   id:
@@ -560,7 +564,6 @@ export interface FileRouteTypes {
     | '/login-error'
     | '/{-$lang}'
     | '/{-$lang}/_layout'
-    | '/api/auth/$'
     | '/api/auth/callback'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -587,7 +590,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/guidelines/$slug'
     | '/{-$lang}/_layout/_main/_other/news/$newsItemId'
     | '/{-$lang}/_layout/_authed/admin/researches/'
-    | '/{-$lang}/_layout/_main/_other/$contentId/'
     | '/{-$lang}/_layout/_main/_other/data-submission/'
     | '/{-$lang}/_layout/_main/_other/data-usage/'
     | '/{-$lang}/_layout/_main/_other/guidelines/'
@@ -598,8 +600,10 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
     | '/{-$lang}/_layout/_main/_other/data-submission/application/'
     | '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
+    | '/{-$lang}/_layout/_main/_other/data-usage/datasets/'
     | '/{-$lang}/_layout/_main/_other/data-usage/researches/'
     | '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version'
+    | '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions'
     | '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/'
     | '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/'
   fileRoutesById: FileRoutesById
@@ -607,7 +611,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   LoginErrorRoute: typeof LoginErrorRoute
   Char123LangChar125Route: typeof Char123LangChar125RouteWithChildren
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -677,13 +680,6 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/callback'
       fullPath: '/api/auth/callback'
       preLoaderRoute: typeof ApiAuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/_layout/_main/': {
@@ -805,13 +801,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
-    '/{-$lang}/_layout/_main/_other/$contentId/': {
-      id: '/{-$lang}/_layout/_main/_other/$contentId/'
-      path: '/$contentId'
-      fullPath: '/{-$lang}/$contentId'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherContentIdIndexRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
-    }
     '/{-$lang}/_layout/_authed/admin/researches/': {
       id: '/{-$lang}/_layout/_authed/admin/researches/'
       path: '/researches'
@@ -868,6 +857,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute
     }
+    '/{-$lang}/_layout/_main/_other/data-usage/datasets/': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/datasets/'
+      path: '/datasets'
+      fullPath: '/{-$lang}/data-usage/datasets'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageRouteRoute
+    }
     '/{-$lang}/_layout/_main/_other/data-submission/navigation/': {
       id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
       path: '/'
@@ -923,6 +919,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}/data-submission/navigation/before-application/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute
+    }
+    '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions': {
+      id: '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions'
+      path: '/versions'
+      fullPath: '/{-$lang}/data-usage/researches/$humId/versions'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRoute
     }
     '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version': {
       id: '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version'
@@ -1044,6 +1047,7 @@ const Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren =
 
 interface Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteChildren {
   Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute
+  Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute
   Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute
 }
 
@@ -1051,6 +1055,8 @@ const Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteChildre
   {
     Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute:
       Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionRoute,
+    Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute:
+      Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersionsRoute,
     Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute:
       Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute,
   }
@@ -1081,6 +1087,7 @@ const Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
 interface Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren {
   Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRoute: typeof Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherDataUsageIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
+  Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute: typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
 }
 
 const Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren: Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren =
@@ -1089,6 +1096,8 @@ const Char123LangChar125LayoutMainOtherDataUsageRouteRouteChildren: Char123LangC
       Char123LangChar125LayoutMainOtherDataUsageResearchesRouteRouteWithChildren,
     Char123LangChar125LayoutMainOtherDataUsageIndexRoute:
       Char123LangChar125LayoutMainOtherDataUsageIndexRoute,
+    Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute:
+      Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute,
   }
 
 const Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren =
@@ -1141,7 +1150,6 @@ interface Char123LangChar125LayoutMainOtherRouteChildren {
   Char123LangChar125LayoutMainOtherGuidelinesRouteRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherNewsRouteRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherSplatRoute: typeof Char123LangChar125LayoutMainOtherSplatRoute
-  Char123LangChar125LayoutMainOtherContentIdIndexRoute: typeof Char123LangChar125LayoutMainOtherContentIdIndexRoute
 }
 
 const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMainOtherRouteChildren =
@@ -1156,8 +1164,6 @@ const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMa
       Char123LangChar125LayoutMainOtherNewsRouteRouteWithChildren,
     Char123LangChar125LayoutMainOtherSplatRoute:
       Char123LangChar125LayoutMainOtherSplatRoute,
-    Char123LangChar125LayoutMainOtherContentIdIndexRoute:
-      Char123LangChar125LayoutMainOtherContentIdIndexRoute,
   }
 
 const Char123LangChar125LayoutMainOtherRouteWithChildren =
@@ -1215,7 +1221,6 @@ const Char123LangChar125RouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   LoginErrorRoute: LoginErrorRoute,
   Char123LangChar125Route: Char123LangChar125RouteWithChildren,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,

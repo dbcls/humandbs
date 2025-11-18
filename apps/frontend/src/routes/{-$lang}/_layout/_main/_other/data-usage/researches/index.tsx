@@ -17,6 +17,7 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
+import { Pagination } from "@/components/Pagination";
 
 export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
   lang: true,
@@ -260,41 +261,5 @@ function CardContent() {
         page={researchesData.pagination.page}
       />
     </>
-  );
-}
-
-function Pagination({
-  totalPages,
-  page,
-}: {
-  totalPages: number;
-  page: number;
-}) {
-  const navigate = Route.useNavigate();
-
-  return (
-    <div className="mt-4 flex justify-center gap-5">
-      <button
-        className="btn btn-sm btn-outline"
-        onClick={() =>
-          navigate({ search: (prev) => ({ page: prev.page - 1 }) })
-        }
-        disabled={page === 1}
-      >
-        Previous
-      </button>
-      <span>
-        {page} / {totalPages}
-      </span>
-      <button
-        className="btn btn-sm btn-outline"
-        onClick={() =>
-          navigate({ search: (prev) => ({ page: prev.page + 1 }) })
-        }
-        disabled={page === totalPages}
-      >
-        Next
-      </button>
-    </div>
   );
 }

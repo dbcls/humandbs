@@ -43,7 +43,8 @@
     "home": "Home",
     "all-news": "All News",
     "privacy-policy": "Privacy Policy",
-    "research-list": "Research List"
+    "research-list": "Research List",
+    "dataset-list": "Dataset List"
   },
   "Markdoc": {
     "version": "Version",
@@ -62,6 +63,14 @@
   "Research-list": {
     "research-list": "Research list"
   },
+  "Dataset-list": {
+    "dataset-list": "Dataset List",
+    "dataset-id": "Dataset ID",
+    "version": "Version",
+    "release-date": "Release date",
+    "type-of-data": "Type of data"
+  },
+
   "Data-submission": {
     "data-submission": "Data submission",
 

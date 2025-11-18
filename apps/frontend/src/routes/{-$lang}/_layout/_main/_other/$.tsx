@@ -11,6 +11,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
+    console.log("document id", params._splat);
     const content = await context.queryClient.ensureQueryData(
       getContentTranslationQueryOptions({
         id: params._splat,
@@ -21,7 +22,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     return content;
   },
-  errorComponent: ({ error }) => <div>{error.message}</div>,
+  errorComponent: ({ error }) => (
+    <div>
+      <h3>Page not found</h3>
+      {error.message}
+    </div>
+  ),
 });
 
 function RouteComponent() {

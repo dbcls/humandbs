@@ -52,8 +52,15 @@ const api: APIService = {
     return res.data;
   },
   async getResearchDetail(query) {
+    let params = {} as LangVersionQuery;
+    if (query.search.version) {
+      params = { ...query.search };
+    } else {
+      params = { lang: query.search.lang };
+    }
+
     const res = await axiosInstance.get(`/researches/${query.params.humId}`, {
-      params: query.search,
+      params: params,
     });
 
     return res.data;
@@ -70,8 +77,10 @@ const api: APIService = {
   },
 
   async getDatasetsPaginated(query) {
-    return axiosInstance.get(`/datasets`, { params: query.search });
+    const res = await axiosInstance.get(`/datasets`, { params: query.search });
+    return res.data;
   },
+
   async getDataset(query) {
     return axiosInstance.get(`/datasets.${query.params.datasetId}`, {
       params: query.search,

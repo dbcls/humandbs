@@ -8,6 +8,7 @@ import { getResearchQueryOptions } from "@/serverFunctions/researches";
 import { Dataset, Person, Publication } from "@humandbs/backend/types";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
+import { VersionCard } from "./-VersionCard";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version"
@@ -27,113 +28,9 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
-  const params = Route.useParams();
+  const { data } = Route.useLoaderData();
 
-  const context = Route.useRouteContext();
-
-  const { data: versionData } = useQuery(
-    getResearchQueryOptions({
-      humId: params.humId,
-      version: params.version,
-      lang: context.lang,
-    })
-  );
-
-  return (
-    <CardWithCaption
-      size={"lg"}
-      variant={"dark"}
-      caption={
-        <div className="flex items-end gap-4">
-          <div>
-            <span className="text-xs">NDBC Research ID:</span>
-
-            <h2 className="text-2xl leading-8">
-              {FA_ICONS.books}
-              <span className="ml-1">{versionData?.humVersionId}</span>
-            </h2>
-          </div>
-          <Badge> リリース情報 </Badge>
-        </div>
-      }
-    >
-      <article className="mb-4">
-        <ContentHeader>研究概要</ContentHeader>
-        <div className="columns-2 [&>p]:mb-2 [&>p>span]:font-bold">
-          <p>
-            <span>目的:</span>
-            {versionData?.summary.aims}
-          </p>
-          <p>
-            <span>方法:</span>
-            {versionData?.summary.methods}
-          </p>
-          <p>
-            <span>対象:</span>
-            {versionData?.summary.targets}
-          </p>
-        </div>
-      </article>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
-      <section>
-        <ContentHeader>データセット</ContentHeader>
-
-        <ul>
-          {versionData?.datasets.map((dataset) => (
-            <li key={dataset.datasetId} className="mb-2">
-              <DatasetCard dataset={dataset} />
-            </li>
-          ))}
-        </ul>
-      </section>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
-      <section>
-        <ContentHeader>提供者情報</ContentHeader>
-
-        <ul>
-          {versionData?.dataProvider.map((p) => {
-            return (
-              <dl key={p.name} className="columns-2">
-                <KeyValueCard title="代表者" value={p.name} />
-
-                <KeyValueCard title="所属機関" value={p.organization?.name} />
-
-                <KeyValueCard
-                  title="プロジェクト/研究グループ名"
-                  value={p.researchTitle}
-                />
-
-                <KeyValueCard title="ORCID" value={p.orcid} />
-                <KeyValueCard
-                  title="Dataset IDs"
-                  value={p.datasetIds?.join(", ")}
-                />
-                <KeyValueCard title="ORCID" value={p.organization?.url} />
-              </dl>
-            );
-          })}
-        </ul>
-      </section>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
-
-      <section>
-        <ContentHeader>関連論文</ContentHeader>
-        <Table
-          columns={publicationColumns}
-          data={versionData?.relatedPublication || []}
-          className="mt-4"
-        />
-      </section>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
-      <section>
-        <ContentHeader>制限公開データの利用者一覧</ContentHeader>
-        <Table
-          columns={dataUsedByColumns}
-          data={versionData?.controlledAccessUser || []}
-        ></Table>
-      </section>
-    </CardWithCaption>
-  );
+  return <VersionCard versionData={data} />;
 }
 
 const publicationsColumnHelper = createColumnHelper<Publication>();

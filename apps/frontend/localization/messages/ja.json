@@ -43,7 +43,8 @@
     "home": "ホーム",
     "all-news": "ニュース一覧",
     "privacy-policy": "プライバシーポリシー",
-    "research-list": "研究一覧"
+    "research-list": "研究一覧",
+    "dataset-list": "デーセット一覧"
   },
   "Markdoc": {
     "version": "Ver.",
@@ -61,6 +62,13 @@
   },
   "Research-list": {
     "research-list": "研究一覧"
+  },
+  "Dataset-list": {
+    "dataset-list": "デーセット一覧",
+    "dataset-id": "デーセット ID",
+    "version": "バージョン",
+    "release-date": "公開日付",
+    "type-of-data": "データの種類"
   },
   "Data-submission": {
     "data-submission": "データの提供",
