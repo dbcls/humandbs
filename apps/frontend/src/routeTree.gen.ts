@@ -12,6 +12,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginErrorRouteImport } from './routes/login-error'
+import { Route as HumChar123humIdNumAndRestChar125RouteImport } from './routes/hum{$humIdNumAndRest}'
 import { Route as Char123LangChar125LayoutRouteImport } from './routes/{-$lang}/_layout'
 import { Route as Char123LangChar125LayoutMainRouteImport } from './routes/{-$lang}/_layout/_main'
 import { Route as Char123LangChar125LayoutAuthedRouteImport } from './routes/{-$lang}/_layout/_authed'
@@ -73,6 +74,12 @@ const LoginErrorRoute = LoginErrorRouteImport.update({
   path: '/login-error',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HumChar123humIdNumAndRestChar125Route =
+  HumChar123humIdNumAndRestChar125RouteImport.update({
+    id: '/hum{$humIdNumAndRest}',
+    path: '/hum{$humIdNumAndRest}',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const Char123LangChar125LayoutRoute =
   Char123LangChar125LayoutRouteImport.update({
     id: '/_layout',
@@ -405,6 +412,7 @@ const Char123LangChar125LayoutMainOtherDataUsageDatasetsDatasetIdVersionRoute =
   )
 
 export interface FileRoutesByFullPath {
+  '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -453,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/data-usage/researches/$humId/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -491,6 +500,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
   '/{-$lang}': typeof Char123LangChar125RouteWithChildren
   '/{-$lang}/_layout': typeof Char123LangChar125LayoutRouteWithChildren
@@ -545,6 +555,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/hum{$humIdNumAndRest}'
     | '/login-error'
     | '/{-$lang}'
     | '/api/auth/callback'
@@ -593,6 +604,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-usage/researches/$humId/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/hum{$humIdNumAndRest}'
     | '/login-error'
     | '/{-$lang}'
     | '/api/auth/callback'
@@ -630,6 +642,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-usage/researches/$humId'
   id:
     | '__root__'
+    | '/hum{$humIdNumAndRest}'
     | '/login-error'
     | '/{-$lang}'
     | '/{-$lang}/_layout'
@@ -683,6 +696,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  HumChar123humIdNumAndRestChar125Route: typeof HumChar123humIdNumAndRestChar125Route
   LoginErrorRoute: typeof LoginErrorRoute
   Char123LangChar125Route: typeof Char123LangChar125RouteWithChildren
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
@@ -705,6 +719,13 @@ declare module '@tanstack/react-router' {
       path: '/login-error'
       fullPath: '/login-error'
       preLoaderRoute: typeof LoginErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hum{$humIdNumAndRest}': {
+      id: '/hum{$humIdNumAndRest}'
+      path: '/hum{$humIdNumAndRest}'
+      fullPath: '/hum{$humIdNumAndRest}'
+      preLoaderRoute: typeof HumChar123humIdNumAndRestChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/_layout': {
@@ -1367,6 +1388,7 @@ const Char123LangChar125RouteWithChildren =
   Char123LangChar125Route._addFileChildren(Char123LangChar125RouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  HumChar123humIdNumAndRestChar125Route: HumChar123humIdNumAndRestChar125Route,
   LoginErrorRoute: LoginErrorRoute,
   Char123LangChar125Route: Char123LangChar125RouteWithChildren,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
