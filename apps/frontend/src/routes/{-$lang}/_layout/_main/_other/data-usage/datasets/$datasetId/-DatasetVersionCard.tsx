@@ -1,11 +1,13 @@
+import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
-import { KeyValueCard, ListOfKeyValues } from "@/components/KeyValueCard";
+import { ListOfKeyValues } from "@/components/KeyValueCard";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/useCart";
 import { Dataset } from "@humandbs/backend/types";
 import { Separator } from "@radix-ui/react-select";
 import { getRouteApi } from "@tanstack/react-router";
-import ArrowIcon from "@/assets/icons/arrow.svg?react";
 
 export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
   const Route = getRouteApi(
@@ -18,6 +20,7 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
     Criteria: versionData.criteria,
   };
 
+  const { add } = useCart();
   return (
     <CardWithCaption
       size={"lg"}
@@ -28,10 +31,24 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
           icon="dataset"
           badge={"リリース情報"}
           right={
-            <Route.Link className="link-button" to="versions">
-              <span>All versions</span>
-              <ArrowIcon />
-            </Route.Link>
+            <div className="flex gap-5">
+              <Button
+                variant={"accent"}
+                className="rounded-full"
+                onClick={() =>
+                  add({
+                    datasetId: versionData.datasetId,
+                    version: versionData.version,
+                  })
+                }
+              >
+                Add to cart
+              </Button>
+              <Route.Link className="link-button" to="versions">
+                <span>All versions</span>
+                <ArrowIcon />
+              </Route.Link>
+            </div>
           }
         >
           {versionData.datasetId}.{versionData.version}
