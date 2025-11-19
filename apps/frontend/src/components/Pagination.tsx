@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useFilters } from "@/hooks/useFilters";
 
 // Export function for testing
 export const getVisiblePages = (currentPage: number, totalPages: number) => {
@@ -114,6 +115,7 @@ export function Pagination({
                 page: Math.max(1, page - 1),
               })}
               className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              resetScroll={false}
             />
           </PaginationItem>
 
@@ -132,6 +134,7 @@ export function Pagination({
                   to="."
                   search={(prev) => ({ ...prev, page: pageNum })}
                   isActive={pageNum === page}
+                  resetScroll={false}
                 >
                   {pageNum}
                 </PaginationLink>
@@ -149,18 +152,19 @@ export function Pagination({
               className={
                 page === totalPages ? "pointer-events-none opacity-50" : ""
               }
+              resetScroll={false}
             />
           </PaginationItem>
         </PaginationContent>
       </PaginationBase>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 whitespace-nowrap">
         <span className="text-muted-foreground text-sm">Items per page:</span>
         <Select
           value={itemsPerPage.toString()}
           onValueChange={handleItemsPerPageChange}
         >
-          <SelectTrigger className="w-20">
+          <SelectTrigger className="w-fit">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

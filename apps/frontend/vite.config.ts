@@ -24,7 +24,14 @@ export default defineConfig({
       //   dir: "assets",
       // },
     }),
-    svgr(),
+    svgr({
+      svgrOptions: {
+        expandProps: "start",
+        svgProps: {
+          className: `{props.className ? props.className : ''}`,
+        },
+      },
+    }),
     react(),
   ],
 

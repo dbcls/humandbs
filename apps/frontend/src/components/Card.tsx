@@ -7,6 +7,7 @@ interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof cardCaptionVariants> {
   caption?: ReactNode;
+  captionClassName?: string;
   containerClassName?: string;
 }
 
@@ -31,12 +32,15 @@ function Card({
   className,
   containerClassName,
   caption,
+  captionClassName,
   captionSize = "default",
 }: CardProps) {
   return (
     <div className={cn("h-fit rounded-md bg-white p-4", className)}>
       {caption ? (
-        <div className={cn(cardCaptionVariants({ captionSize }))}>
+        <div
+          className={cn(cardCaptionVariants({ captionSize }), captionClassName)}
+        >
           {caption}
         </div>
       ) : null}
@@ -67,7 +71,7 @@ const cardWithColorCaptionVariants = cva(
       },
       size: {
         sm: "p-2",
-        lg: " px-3 pb-2 pt-5",
+        lg: " px-7 pb-4 pt-5",
       },
     },
     defaultVariants: {
@@ -77,11 +81,11 @@ const cardWithColorCaptionVariants = cva(
   }
 );
 
-const contentVariants = cva("text-inherit", {
+const contentVariants = cva("text-inherit flex flex-col", {
   variants: {
     size: {
-      lg: "p-4",
-      sm: "p-2",
+      lg: "p-7 gap-5",
+      sm: "p-3 gap-3",
     },
   },
   defaultVariants: {
@@ -100,12 +104,18 @@ function CardWithCaption({
   size,
   variant,
   containerClassName,
+  captionClassName,
   ...rest
 }: CardWithCaptionProps) {
   return (
     <div className={cn("h-fit rounded-md bg-white", className)} {...rest}>
       {caption ? (
-        <div className={cn(cardWithColorCaptionVariants({ size, variant }))}>
+        <div
+          className={cn(
+            cardWithColorCaptionVariants({ size, variant }),
+            captionClassName
+          )}
+        >
           {caption}
         </div>
       ) : null}

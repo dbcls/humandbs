@@ -3,6 +3,8 @@ import { filterDefined } from "@/utils/filterDefined";
 import {
   DatasetIdParamsSchema,
   DatasetsQuerySchema,
+  DatasetVersionItem,
+  LangQuerySchema,
   LangVersionQuerySchema,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
@@ -51,6 +53,32 @@ export function getDatasetQueryOptions(query: DatasetQuery) {
   return queryOptions({
     queryKey: ["dataset", "byId", query],
     queryFn: () => $getDataset({ data: query }),
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+const DatasetVersionsQuerySchema = z.object({
+  ...DatasetIdParamsSchema.shape,
+  ...LangQuerySchema.shape,
+});
+
+export type DatasetVersionsQuery = z.infer<typeof DatasetVersionsQuerySchema>;
+
+export const $getDatasetVersions = createServerFn({
+  method: "GET",
+})
+  .inputValidator(DatasetVersionsQuerySchema)
+  .handler(({ data }) =>
+    api.getDatasetVersions({
+      params: { datasetId: data.datasetId },
+      search: { lang: data.lang },
+    })
+  );
+
+export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {
+  return queryOptions({
+    queryKey: ["dataset", "versions", query],
+    queryFn: () => $getDatasetVersions({ data: query }),
     staleTime: 1000 * 60 * 60,
   });
 }

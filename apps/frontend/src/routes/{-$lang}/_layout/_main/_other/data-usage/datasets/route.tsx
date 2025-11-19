@@ -5,7 +5,7 @@ export const Route = createFileRoute(
 )({
   loader: async ({ context }) => {
     return {
-      crumbs: context.messages.Navbar["dataset-list"],
+      crumb: context.messages.Navbar["dataset-list"],
     };
   },
 });

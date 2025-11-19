@@ -1,9 +1,11 @@
 import { Card } from "@/components/Card";
 import { Pagination } from "@/components/Pagination";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { Table } from "@/components/Table";
+import { SortHeader, Table } from "@/components/Table";
+import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { useFilters } from "@/hooks/useFilters";
+import { FA_ICONS } from "@/lib/faIcons";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { Dataset, DatasetsQuerySchema } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -61,8 +63,13 @@ function RouteComponent() {
   const t = useTranslations("Dataset-list");
 
   return (
-    <Card caption={t("dataset-list")} captionSize={"lg"}>
+    <Card
+      caption={t("dataset-list")}
+      captionSize={"lg"}
+      containerClassName="overflow-x-auto"
+    >
       <Table
+        className="text-sm"
         onSortingChange={(updater) => {
           const newState = functionalUpdate(updater, sortingState);
 
@@ -87,42 +94,22 @@ function RouteComponent() {
   );
 }
 
-function SortButton<T extends RowData, V extends DeepValue<T, T>>({
-  ctx,
-  label,
-}: {
-  ctx: HeaderContext<T, V>;
-  label: React.ReactNode;
-}) {
-  const sortingState = ctx.column.getIsSorted();
-
-  return (
-    <p className="flex gap-2 text-white">
-      <span>{label}</span>
-      <Button
-        variant={"ghost"}
-        onClick={(e) =>
-          startTransition(() => ctx.column.getToggleSortingHandler()?.(e))
-        }
-      >
-        {sortingState ? (
-          <>{sortingState === "asc" ? <ChevronUp /> : <ChevronDown />}</>
-        ) : (
-          <ChevronsUpDown />
-        )}
-      </Button>
-    </p>
-  );
-}
 const datasetsColumnHelper = createColumnHelper<Dataset>();
 
 const datasetsColumns = [
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => (
-      <SortButton ctx={ctx} label={ctx.table.options.meta?.t?.("dataset-id")} />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("dataset-id")} />
     ),
-    cell: (ctx) => ctx.getValue(),
+    cell: (ctx) => (
+      <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
+        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+          {ctx.getValue()}
+        </TextWithIcon>
+      </Route.Link>
+    ),
+    maxSize: 10,
   }),
   datasetsColumnHelper.accessor("version", {
     id: "version",
@@ -130,11 +117,12 @@ const datasetsColumns = [
       return <p>{ctx.table.options.meta?.t?.("version")}</p>;
     },
     cell: (ctx) => ctx.getValue(),
+    size: 10,
   }),
   datasetsColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
     header: (ctx) => (
-      <SortButton
+      <SortHeader
         ctx={ctx}
         label={ctx.table.options.meta?.t?.("release-date")}
       />

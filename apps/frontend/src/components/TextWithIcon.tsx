@@ -10,10 +10,10 @@ function TextWithIcon({
   className?: string;
 }) {
   return (
-    <div className={cn("inline-flex items-center gap-2", className)}>
+    <span className={cn("flex items-center gap-1", className)}>
       {icon}
-      {children}
-    </div>
+      <span>{children}</span>
+    </span>
   );
 }
 

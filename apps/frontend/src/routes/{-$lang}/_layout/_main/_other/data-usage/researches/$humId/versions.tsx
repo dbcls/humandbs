@@ -1,7 +1,6 @@
 import { CardWithCaption } from "@/components/Card";
-import { ContentHeader } from "@/components/ContentHeader";
-import { TextWithIcon } from "@/components/TextWithIcon";
-import { FA_ICONS } from "@/lib/faIcons";
+import { CardCaption } from "@/components/CardCaption";
+import { Separator } from "@/components/Separator";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
 import { ResearchVersionDoc } from "@humandbs/backend/types";
 import { createFileRoute } from "@tanstack/react-router";
@@ -23,16 +22,27 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { data } = Route.useLoaderData();
+  const { humId } = Route.useParams();
 
   return (
-    <CardWithCaption variant={"dark"} caption="Versions">
-      {/*TODO add locales for this*/}
-      <ContentHeader>Released versions</ContentHeader>
-
+    <CardWithCaption
+      size={"lg"}
+      variant={"dark"}
+      caption={
+        <CardCaption
+          badge="バージョン一覧"
+          icon="books"
+          title="NBDC Research ID:"
+        >
+          {humId}
+        </CardCaption>
+      }
+    >
       <ul>
-        {data.map((ver) => (
+        {data.map((ver, i) => (
           <li key={ver.humVersionId}>
-            <VersionCard version={ver} />
+            <VersionInfo version={ver} />
+            <Separator show={i < data.length - 1} extend={"lg"} />
           </li>
         ))}
       </ul>
@@ -40,21 +50,26 @@ function RouteComponent() {
   );
 }
 
-function VersionCard({ version }: { version: ResearchVersionDoc }) {
+function VersionInfo({ version }: { version: ResearchVersionDoc }) {
   return (
-    <CardWithCaption
-      variant={"light"}
-      caption={version.version}
-      containerClassName="flex flex-col gap-4"
-    >
-      <ul>
-        {version.datasets.map((ds) => (
-          <li key={ds}>
-            <TextWithIcon icon={FA_ICONS.dataset}>{ds}</TextWithIcon>
-          </li>
+    <section>
+      <h3 className="inline">
+        <Route.Link
+          className="text-secondary font-semibold"
+          to="../$version"
+          params={{ version: version.version }}
+        >
+          {version.humVersionId}
+        </Route.Link>
+        <span className="text-foreground-light text-2xs ml-3">
+          {version.releaseDate}
+        </span>
+      </h3>
+      <section className="text-sm">
+        {version.releaseNote.map((r, i) => (
+          <p key={i}>{r}</p>
         ))}
-      </ul>
-      <section>{version.releaseNote}</section>
-    </CardWithCaption>
+      </section>
+    </section>
   );
 }

@@ -1,13 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { createColumnHelper } from "@tanstack/react-table";
-import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
+import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
+import {
+  createColumnHelper,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
+import { Search } from "lucide-react";
 
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
+import { Pagination } from "@/components/Pagination";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { Table } from "@/components/Table";
+import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
+import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import {
@@ -15,9 +21,8 @@ import {
   ResearchSummary,
 } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useCallback, useMemo } from "react";
+import { startTransition, Suspense, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
-import { Pagination } from "@/components/Pagination";
 
 export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
   lang: true,
@@ -69,14 +74,6 @@ function Caption() {
           type="text"
           placeholder="検索"
           beforeIcon={<Search size={22} />}
-          // onKeyDown={(e) => {
-          //   if (e.key === "Enter") {
-          //     // Handle search logic here
-          //     navigate({
-          //       search: { filter: (e.target as HTMLInputElement).value },
-          //     });
-          //   }
-          // }}
         />
       </div>
     </div>
@@ -88,34 +85,9 @@ const columnHelper = createColumnHelper<ResearchSummary>();
 const columns = [
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => {
-      const sortDirection = ctx.column.getIsSorted();
-      const sortIcon =
-        sortDirection === "desc" ? (
-          <ChevronDown size={18} />
-        ) : sortDirection === "asc" ? (
-          <ChevronUp size={18} />
-        ) : (
-          <ChevronsUpDown size={18} />
-        );
+    header: (ctx) => <SortHeader ctx={ctx} label="Research ID" />,
 
-      return (
-        <div className="flex items-center whitespace-nowrap">
-          <div>Research ID </div>
-          <Button
-            onClick={ctx.column.getToggleSortingHandler()}
-            variant={"plain"}
-            className="p-0"
-          >
-            {sortIcon}
-          </Button>
-        </div>
-      );
-    },
     cell: function Cell(ctx) {
-      const researchIdWithVer = ctx.getValue();
-      const researchId = researchIdWithVer.split(".")[0];
-      const researchVer = researchIdWithVer.split(".")[1];
       return (
         <div>
           <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
@@ -129,41 +101,67 @@ const columns = [
           <ul>
             {ctx.row.original.datasetIds.map((dataset) => (
               <li key={dataset}>
-                <TextWithIcon
+                <Route.Link
                   className="text-secondary"
-                  icon={FA_ICONS.dataset}
+                  to="../datasets/$datasetId"
+                  params={{ datasetId: dataset }}
                 >
-                  {dataset}
-                </TextWithIcon>
+                  <TextWithIcon icon={FA_ICONS.dataset}>{dataset}</TextWithIcon>
+                </Route.Link>
               </li>
             ))}
           </ul>
         </div>
       );
     },
-    sortingFn: "alphanumeric",
+    size: 15,
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: "研究題目",
+    header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
     cell: (ctx) => ctx.getValue(),
   }),
   columnHelper.accessor("versions", {
     id: "versions",
     header: "Versions",
-    cell: (ctx) =>
-      ctx.renderValue()?.map((version) => (
-        <span className="flex gap-2" key={version.version}>
-          <span>{version.version}:</span>
-          <span>{version.releaseDate.replaceAll(/-/g, "/")}</span>
-        </span>
-      )),
+    size: 10,
+    cell: (ctx) => (
+      <ul>
+        <li>
+          <Route.Link
+            className="text-secondary text-sm"
+            to="$humId/versions"
+            params={{ humId: ctx.row.original.humId }}
+          >
+            All versions
+          </Route.Link>
+        </li>
+        {ctx.renderValue()?.map((version) => (
+          <li key={version.version}>
+            <Route.Link
+              to="$humId/$version"
+              className="whitespace-nowrap"
+              params={{
+                humId: ctx.row.original.humId,
+                version: version.version,
+              }}
+            >
+              <span className="text-sm">{version.version}</span>
+              <span className="text-2xs text-foreground-light ml-2">
+                {version.releaseDate}
+              </span>
+            </Route.Link>
+          </li>
+        ))}
+      </ul>
+    ),
   }),
 
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: "データタイプ",
     cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
+    maxSize: 15,
   }),
   columnHelper.accessor("methods", {
     id: "methods",
@@ -195,7 +193,7 @@ const columns = [
 
 function RouteComponent() {
   return (
-    <Card caption={<Caption />}>
+    <Card caption={<Caption />} containerClassName="overflow-x-auto">
       <Suspense fallback={<SkeletonLoading />}>
         <CardContent />
       </Suspense>
@@ -206,7 +204,6 @@ function RouteComponent() {
 function CardContent() {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
-  const navigate = Route.useNavigate();
 
   const { data: researchesData } = useSuspenseQuery(
     getResearchesQueryOptions({ ...search, lang })
@@ -217,48 +214,40 @@ function CardContent() {
     return [{ id: search.sort, desc: search.order === "desc" }];
   }, [search.sort, search.order]);
 
-  const handleSortingChange = useCallback(
-    (updater: any) => {
-      const newSorting =
-        typeof updater === "function" ? updater(sorting) : updater;
+  const { filters, setFilters } = useFilters(Route.id);
 
-      if (newSorting.length === 0) {
-        // Clear sorting
-        navigate({
-          search: (prev) => ({
-            ...prev,
-            sort: "humId",
-            order: "asc",
-            page: 1,
-          }),
+  const sortingState: SortingState = [
+    { id: filters.sort, desc: filters.order === "desc" },
+  ];
+
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const newState = functionalUpdate(updater, sortingState);
+
+      startTransition(() => {
+        setFilters({
+          sort: newState[0]?.id,
+          order: newState[0]?.desc ? "desc" : "asc",
         });
-      } else {
-        const { id, desc } = newSorting[0];
-        navigate({
-          search: (prev) => ({
-            ...prev,
-            sort: id,
-            order: desc ? "desc" : "asc",
-            page: 1,
-          }),
-        });
-      }
+      });
     },
-    [navigate, sorting]
+    [setFilters]
   );
 
   return (
     <>
       <Table
-        className="mt-4"
+        className="mt-4 text-sm"
         columns={columns}
         data={researchesData.data}
         sorting={sorting}
         onSortingChange={handleSortingChange}
       />
+
       <Pagination
         totalPages={researchesData.pagination.totalPages}
-        page={researchesData.pagination.page}
+        page={filters.page}
+        itemsPerPage={filters.limit}
       />
     </>
   );

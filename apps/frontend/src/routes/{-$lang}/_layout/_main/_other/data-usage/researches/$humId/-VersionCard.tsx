@@ -1,8 +1,17 @@
+import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
+import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
-import { Link } from "@/components/Link";
+import { KeyValueCard, ListOfKeyValues } from "@/components/KeyValueCard";
+import { Separator } from "@/components/Separator";
 import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { FA_ICONS } from "@/lib/faIcons";
 import {
   Dataset,
@@ -10,36 +19,35 @@ import {
   Publication,
   ResearchDetail,
 } from "@humandbs/backend/types";
+import { getRouteApi } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import ArrowIcon from "@/assets/icons/arrow.svg?react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Fragment } from "react/jsx-runtime";
 
 export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
+  const Route = getRouteApi(
+    "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId"
+  );
+
   return (
     <CardWithCaption
       size={"lg"}
       variant={"dark"}
       caption={
-        <div className="flex items-end gap-4">
-          <div>
-            <span className="text-xs">NDBC Research ID:</span>
-
-            <h2 className="text-2xl leading-8">
-              {FA_ICONS.books}
-              <span className="ml-1">{versionData?.humVersionId}</span>
-            </h2>
-          </div>
-          <Badge> リリース情報 </Badge>
-        </div>
+        <CardCaption
+          title="NBDC Research ID:"
+          icon="books"
+          badge="リリース情報"
+          right={
+            <Route.Link className="link-button" to="versions">
+              <span>All versions</span>
+              <ArrowIcon />
+            </Route.Link>
+          }
+        >
+          {versionData.humVersionId}
+        </CardCaption>
       }
     >
-      <article className="mb-4">
+      <article>
         <ContentHeader>研究概要</ContentHeader>
         <div className="columns-2 [&>p]:mb-2 [&>p>span]:font-bold">
           <p>
@@ -56,19 +64,21 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
           </p>
         </div>
       </article>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
+      <Separator className="-mx-4" />
       <section>
         <ContentHeader>データセット</ContentHeader>
-
+        {versionData?.datasets.length === 0 && (
+          <div className="bg-foreground-light/10 rounded-sm p-3"> No data</div>
+        )}
         <ul>
           {versionData?.datasets.map((dataset) => (
             <li key={dataset.datasetId} className="mb-2">
-              <DatasetCard dataset={dataset} />
+              <DatasetInfo dataset={dataset} />
             </li>
           ))}
         </ul>
       </section>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
+      <Separator className="-mx-4" />
       <section>
         <ContentHeader>提供者情報</ContentHeader>
 
@@ -96,7 +106,7 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
           })}
         </ul>
       </section>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
+      <Separator className="-mx-4" />
 
       <section>
         <ContentHeader>関連論文</ContentHeader>
@@ -106,7 +116,7 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
           className="mt-4"
         />
       </section>
-      <hr className="border-foreground-light -mx-4 my-4 border-dashed" />
+      <Separator className="-mx-4" />
       <section>
         <ContentHeader>制限公開データの利用者一覧</ContentHeader>
         <Table
@@ -118,7 +128,7 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
   );
 }
 
-function DatasetCard({ dataset }: { dataset: Dataset }) {
+function DatasetInfo({ dataset }: { dataset: Dataset }) {
   return (
     <CardWithCaption
       caption={
@@ -129,7 +139,6 @@ function DatasetCard({ dataset }: { dataset: Dataset }) {
         />
       }
       className="border-foreground-light border"
-      containerClassName="p-5"
     >
       <Accordion type="multiple">
         {dataset.experiments.map((ex, i) => (
@@ -142,14 +151,7 @@ function DatasetCard({ dataset }: { dataset: Dataset }) {
               <h3 className="text-secondary text-sm font-bold">{ex.header}</h3>
             </AccordionTrigger>
             <AccordionContent className="pt-5">
-              <div className="grid grid-cols-[20rem_1fr] gap-y-4">
-                {Object.entries(ex.data).map(([key, val]) => (
-                  <Fragment key={key}>
-                    <p className="text-secondary text-sm">{key}</p>
-                    <p>{val}</p>
-                  </Fragment>
-                ))}
-              </div>
+              <ListOfKeyValues keyValues={ex.data} />
             </AccordionContent>
           </AccordionItem>
         ))}
@@ -168,6 +170,7 @@ function DatasetCaption({
   criteria,
   typeOfData,
 }: DatasetCaptionProps) {
+  const Route = getRouteApi("/{-$lang}/_layout/_main/_other/data-usage");
   return (
     <div className="flex justify-between px-3">
       <div className="flex items-center gap-5">
@@ -176,40 +179,15 @@ function DatasetCaption({
         <span className="text-xs">{typeOfData}</span>
       </div>
 
-      <Link
-        to={"/{-$lang}/data-usage"}
-        variant={"button"}
-        className="flex items-center gap-2"
+      <Route.Link
+        to={"/{-$lang}/data-usage/datasets/$datasetId"}
+        params={{ datasetId }}
+        className="link-button"
       >
         <span>Details</span>
         <ArrowIcon className="block" />
-      </Link>
+      </Route.Link>
     </div>
-  );
-}
-
-function KeyValueCard({
-  title,
-  value,
-}: {
-  title: string;
-  value: React.ReactNode | null | undefined;
-}) {
-  if (!value) return null;
-  return (
-    <>
-      <dt className="text-secondary">{title}</dt>
-      <dd>{value}</dd>
-      <hr className="border-foreground-light my-2 border" />
-    </>
-  );
-}
-
-function Badge({ children }: { children: string }) {
-  return (
-    <span className="rounded-full bg-white/20 px-2 py-1 text-xs text-white">
-      {children}
-    </span>
   );
 }
 
