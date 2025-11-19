@@ -1,4 +1,5 @@
 import { api } from "@/services/backend";
+import { filterDefined } from "@/utils/filterDefined";
 import {
   HumIdParamsSchema,
   LangQuerySchema,
@@ -56,13 +57,11 @@ export const $getResearch = createServerFn()
   .inputValidator(ResearchQuerySchema)
   .handler(({ data }) => {
     // if data.verison is undefined, dont include it
-    const search = data.version
-      ? { lang: data.lang, version: data.version }
-      : { lang: data.lang };
+    const { humId, ...search } = filterDefined(data);
 
     return api.getResearchDetail({
       search,
-      params: { humId: data.humId },
+      params: { humId },
     });
   });
 

@@ -39,12 +39,6 @@ export const Route = createFileRoute(
     await context.queryClient.ensureQueryData(
       getDatasetsPaginatedQueryOptions({ ...deps, lang: context.lang })
     );
-
-    return {
-      // data: datasets.data,
-      // pagination: datasets.pagination,
-      crumbs: context.messages.Navbar["dataset-list"],
-    };
   },
   wrapInSuspense: true,
   pendingComponent: () => <SkeletonLoading />,
