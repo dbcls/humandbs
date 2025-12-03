@@ -10,6 +10,7 @@ import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   type ContentItemResponse,
   $publishContentItemDraftTranslation,
+  $resetContentItemTranslationDraft,
   $saveContentItemTranslationDraft,
   getContentQueryOptions,
   getContentsListQueryOptions,
@@ -28,7 +29,7 @@ import { Suspense, useRef, useState } from "react";
 type ContentItem = NonNullable<ContentItemResponse>;
 
 type FormMeta = {
-  submitAction: "saveDraft" | "publish" | null;
+  submitAction: "saveDraft" | "publish" | "resetDraft" | null;
 };
 
 const defaultMeta: FormMeta = {
@@ -55,13 +56,15 @@ function useContentItemDetailsForm({
   const { mutateAsync: publishDraft, isPending: isPublishPending } =
     usePublishDraft(id);
 
-  const isPublishingRef = useRef(false);
+  const { mutateAsync: resetDraft } = useResetDraft(id);
+
+  const isIgnoreRef = useRef(false);
 
   const form = useAppForm({
     defaultValues,
     onSubmitMeta: defaultMeta,
     onSubmit: ({ value, meta, formApi }) => {
-      if (isPublishingRef.current) {
+      if (isIgnoreRef.current) {
         console.log("skipping save");
         return;
       }
@@ -82,9 +85,39 @@ function useContentItemDetailsForm({
             });
           }
           break;
+        case "resetDraft":
+          isIgnoreRef.current = true;
+          resetDraft(value)
+            .then(() => {
+              const publishedTitle =
+                value.translation?.[value.lang]?.published?.title ?? "";
+              const publishedContent =
+                value.translation?.[value.lang]?.published?.content ?? "";
+
+              const resetValue = {
+                ...value,
+                translation: {
+                  ...value.translation,
+                  [value.lang]: {
+                    ...value.translation[value.lang],
+                    draft: {
+                      title: publishedTitle,
+                      content: publishedContent,
+                    },
+                  },
+                },
+              };
+              setDefaultValues(resetValue);
+              formApi.reset(resetValue, { keepDefaultValues: false });
+            })
+            .finally(() => {
+              isIgnoreRef.current = false;
+            });
+
+          break;
 
         case "publish":
-          isPublishingRef.current = true;
+          isIgnoreRef.current = true;
           if (title || content) {
             saveDraft({
               lang: value.lang,
@@ -101,7 +134,7 @@ function useContentItemDetailsForm({
               formApi.reset(value, { keepDefaultValues: false });
             })
             .finally(() => {
-              isPublishingRef.current = false;
+              isIgnoreRef.current = false;
             });
 
           break;
@@ -117,7 +150,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
 
   const savingStatuses = useMutationState({
     filters: {
-      mutationKey: ["contentId", "draft", id],
+      mutationKey: ["content", "draft", id, "save"],
     },
     select: (mutation) => mutation.state.status,
   });
@@ -211,13 +244,19 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             }}
           </form.Subscribe>
 
-          <div className="flex items-center justify-between">
-            <Button variant={"outline"}>Reset</Button>
-            <div className="flex gap-2">
-              <form.Subscribe
-                selector={(state) => state.isDirty && state.isValid}
-              >
-                {(canPublish) => (
+          <form.Subscribe selector={(state) => state.isDirty && state.isValid}>
+            {(canPublish) => (
+              <div className="flex items-center justify-between">
+                <Button
+                  variant={"outline"}
+                  disabled={!canPublish}
+                  onClick={() =>
+                    form.handleSubmit({ submitAction: "resetDraft" })
+                  }
+                >
+                  Reset
+                </Button>
+                <div className="flex gap-2">
                   <Button
                     type="submit"
                     onClick={() =>
@@ -231,10 +270,10 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                     <Save className="size-5" />
                     Publish
                   </Button>
-                )}
-              </form.Subscribe>
-            </div>
-          </div>
+                </div>
+              </div>
+            )}
+          </form.Subscribe>
         </TabsContent>
         <TabsContent
           className="flex h-full flex-col gap-2"
@@ -265,10 +304,10 @@ function usePublishDraft(id: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: ["contentId", "published", id],
+    mutationKey: ["content", "published", id, "publish"],
     mutationFn: async ({ lang }: { lang: Locale }) => {
       await waitUntilNoMutations(queryClient, {
-        mutationKey: ["contentId", "draft", id],
+        mutationKey: ["content", "draft", id, "save"],
       });
       return $publishContentItemDraftTranslation({ data: { lang, id } });
     },
@@ -342,7 +381,7 @@ function useSaveDraft(id: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: ["contentId", "draft", id],
+    mutationKey: ["content", "draft", id, "save"],
     mutationFn: ({
       lang,
       translationDraft,
@@ -403,6 +442,81 @@ function useSaveDraft(id: string) {
                   tr.status === DOCUMENT_VERSION_STATUS.DRAFT
                 ) {
                   return { ...tr, ...data.translationDraft };
+                }
+                return tr;
+              }),
+            };
+          }
+          return item;
+        });
+      });
+
+      return { prevContent, prevList };
+    },
+
+    onError: (_, __, context) => {
+      if (context?.prevContent) {
+        queryClient.setQueryData(contentItemQO.queryKey, context.prevContent);
+      }
+      if (context?.prevList) {
+        queryClient.setQueryData(contentsListQO.queryKey, context.prevList);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(contentItemQO);
+      queryClient.invalidateQueries(contentsListQO);
+    },
+  });
+}
+
+function useResetDraft(id: string) {
+  const contentItemQO = getContentQueryOptions(id);
+  const contentsListQO = getContentsListQueryOptions();
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["content", "draft", id, "reset"],
+    mutationFn: ({ lang }: { lang: Locale }) =>
+      $resetContentItemTranslationDraft({ data: { id, lang } }),
+    onMutate: async ({ lang }) => {
+      await queryClient.cancelQueries(contentItemQO);
+      await queryClient.cancelQueries(contentsListQO);
+
+      const prevContent = queryClient.getQueryData(contentItemQO.queryKey);
+      const prevList = queryClient.getQueryData(contentsListQO.queryKey);
+
+      queryClient.setQueryData(contentItemQO.queryKey, (old) => {
+        if (!old) {
+          return old;
+        }
+
+        return {
+          translations: {
+            ...old.translations,
+            [lang]: {
+              ...old.translations[lang],
+              draft: old.translations[lang]?.published || {},
+            },
+          },
+        };
+      });
+
+      queryClient.setQueryData(contentsListQO.queryKey, (old) => {
+        if (!old) {
+          return old;
+        }
+
+        return old.map((item) => {
+          if (item.id === id) {
+            return {
+              ...item,
+              translations: item.translations.map((tr) => {
+                if (
+                  tr.lang === lang &&
+                  tr.status === DOCUMENT_VERSION_STATUS.DRAFT
+                ) {
+                  return { ...tr, status: DOCUMENT_VERSION_STATUS.PUBLISHED };
                 }
                 return tr;
               }),

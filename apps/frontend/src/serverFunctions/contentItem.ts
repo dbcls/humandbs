@@ -189,8 +189,6 @@ export const $getContentItemTranslation = createServerFn({
       },
     });
 
-    console.log("translation", translation);
-
     if (!translation) {
       throw new Error(
         `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`
@@ -244,10 +242,8 @@ export const $createContentItem = createServerFn({ method: "POST" })
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
-    console.log("checking permissions...");
     context.checkPermission("contents", "create");
 
-    console.log("done!");
     const id = data.id;
 
     const user = context.user!;
@@ -406,6 +402,47 @@ export const $unpublishContentItemTranslation = createServerFn({
           eq(contentTranslation.contentId, data.id),
           eq(contentTranslation.lang, data.lang),
           eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+        )
+      )
+      .returning();
+
+    return result;
+  });
+
+// reset draft to currently available published translation. if no translasion is published, throw an error
+export const $resetContentItemTranslationDraft = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(selectContentItemSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("contents", "update");
+
+    const publishedTranslation = await db.query.contentTranslation.findFirst({
+      where: (table, { eq, and }) =>
+        and(
+          eq(table.contentId, data.id),
+          eq(table.lang, data.lang),
+          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+        ),
+    });
+
+    if (!publishedTranslation) {
+      throw new Error("No published translation found");
+    }
+
+    const [result] = await db
+      .update(contentTranslation)
+      .set({
+        content: publishedTranslation.content,
+        title: publishedTranslation.title,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(contentTranslation.contentId, data.id),
+          eq(contentTranslation.lang, data.lang),
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT)
         )
       )
       .returning();
