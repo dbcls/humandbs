@@ -23,7 +23,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Save } from "lucide-react";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useRef, useState } from "react";
 
 type ContentItem = NonNullable<ContentItemResponse>;
 
@@ -40,32 +40,28 @@ type FormData = {
   translation: ContentItem["translations"];
 };
 
-export function ContentItemDetails({ id }: { id: string }) {
-  const contentItemQO = getContentQueryOptions(id);
-  const { data } = useSuspenseQuery(contentItemQO);
+// use custom hook to suport resetting to not default values
+function useContentItemDetailsForm({
+  initialValues,
+  id,
+}: {
+  initialValues: FormData;
+  id: string;
+}) {
+  const [defaultValues, setDefaultValues] = useState(initialValues);
 
   const { mutate: saveDraft } = useSaveDraft(id);
 
   const { mutateAsync: publishDraft, isPending: isPublishPending } =
     usePublishDraft(id);
 
-  const savingStatuses = useMutationState({
-    filters: {
-      mutationKey: ["contentId", "draft", id],
-    },
-    select: (mutation) => mutation.state.status,
-  });
-
-  const isPublishing = useRef(false);
+  const isPublishingRef = useRef(false);
 
   const form = useAppForm({
-    defaultValues: {
-      lang: i18n.defaultLocale,
-      translation: data?.translations || {},
-    } as FormData,
+    defaultValues,
     onSubmitMeta: defaultMeta,
     onSubmit: ({ value, meta, formApi }) => {
-      if (isPublishing.current) {
+      if (isPublishingRef.current) {
         console.log("skipping save");
         return;
       }
@@ -88,7 +84,7 @@ export function ContentItemDetails({ id }: { id: string }) {
           break;
 
         case "publish":
-          isPublishing.current = true;
+          isPublishingRef.current = true;
           if (title || content) {
             saveDraft({
               lang: value.lang,
@@ -100,14 +96,40 @@ export function ContentItemDetails({ id }: { id: string }) {
           }
 
           publishDraft({ lang: value.lang })
-            .then(() => formApi.reset(value))
+            .then(() => {
+              setDefaultValues(value);
+              formApi.reset(value, { keepDefaultValues: false });
+            })
             .finally(() => {
-              isPublishing.current = false;
+              isPublishingRef.current = false;
             });
 
           break;
       }
     },
+  });
+  return form;
+}
+
+export const ContentItemDetails = ({ id }: { id: string }) => {
+  const contentItemQO = getContentQueryOptions(id);
+  const { data } = useSuspenseQuery(contentItemQO);
+
+  const savingStatuses = useMutationState({
+    filters: {
+      mutationKey: ["contentId", "draft", id],
+    },
+    select: (mutation) => mutation.state.status,
+  });
+
+  const { isPending: isPublishPending } = usePublishDraft(id);
+
+  const form = useContentItemDetailsForm({
+    initialValues: {
+      lang: i18n.defaultLocale,
+      translation: data.translations,
+    },
+    id,
   });
 
   return (
@@ -234,7 +256,7 @@ export function ContentItemDetails({ id }: { id: string }) {
       </Tabs>
     </Card>
   );
-}
+};
 
 function usePublishDraft(id: string) {
   const contentItemQO = getContentQueryOptions(id);
@@ -376,7 +398,10 @@ function useSaveDraft(id: string) {
             return {
               ...item,
               translations: item.translations.map((tr) => {
-                if (tr.lang === data.lang) {
+                if (
+                  tr.lang === data.lang &&
+                  tr.status === DOCUMENT_VERSION_STATUS.DRAFT
+                ) {
                   return { ...tr, ...data.translationDraft };
                 }
                 return tr;

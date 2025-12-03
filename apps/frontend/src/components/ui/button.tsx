@@ -17,16 +17,16 @@ export const buttonVariants = cva(
       },
       variant: {
         accent:
-          "bg-linear-to-r from-accent to-accent-light hover:from-accent/80 hover:saturate-150 active:bg-accent/90",
+          "bg-linear-to-r from-accent to-accent-light enabled:hover:from-accent/80 enabled:hover:saturate-150 active:bg-accent/90",
         action: " bg-linear-to-r from-secondary to-secondary-light",
         outline:
-          "border border-tetriary bg-transparent text-black hover:bg-white/50",
+          "border border-tetriary bg-transparent text-black enabled:hover:bg-white/50",
         tableAction: "bg-secondary-light rounded-full ",
         plain: "bg-none",
         "cms-table-action":
-          "bg-none rounded-xs hover:bg-hover active:bg-foreground-light/30",
+          "bg-none rounded-xs enabled:hover:bg-hover active:bg-foreground-light/30",
         toggle:
-          " bg-none text-foreground rounded-md whitespace-normal w-full text-left hover:bg-hover",
+          " bg-none text-foreground rounded-md whitespace-normal w-full text-left enabled:hover:bg-hover",
         ghost: "bg-none text-black",
       },
     },

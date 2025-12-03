@@ -98,7 +98,9 @@ export function ContentList({
       {contents.map((content) => {
         const isActive = content.id === selectedContentId;
 
-        const langs = [...new Set(content.translations.map((t) => t.lang))];
+        const langs = [
+          ...new Set(content.translations.map((t) => t.lang)),
+        ].sort();
 
         const showItems = langs.map((l) => {
           const item =
