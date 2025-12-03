@@ -113,11 +113,19 @@ export const contentTranslationInsertSchema = createInsertSchema(
   schema.contentTranslation
 );
 
+export const contentTranslationUpdateSchema = createUpdateSchema(
+  schema.contentTranslation
+);
+
 export type ContentTranslationSelect =
   typeof schema.contentTranslation.$inferSelect;
 
 export type ContentTranslationInsert = z.infer<
   typeof contentTranslationInsertSchema
+>;
+
+export type ContentTranslationUpdate = z.infer<
+  typeof contentTranslationUpdateSchema
 >;
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;

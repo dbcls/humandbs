@@ -9,6 +9,7 @@ import { Trash2 } from "lucide-react";
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
   loader: () => ({ crumb: "Cart" }),
+  ssr: false,
 });
 
 function RouteComponent() {
@@ -18,12 +19,9 @@ function RouteComponent() {
     <CardWithCaption size={"sm"}>
       <ul>
         {cart.map((item) => (
-          <li key={item.datasetId}>
+          <li key={`${item.datasetId}-${item.version}`}>
             <span className="flex items-start justify-between">
-              <TextWithIcon
-                key={`${item.datasetId}-${item.version}`}
-                icon={FA_ICONS.dataset}
-              >
+              <TextWithIcon icon={FA_ICONS.dataset}>
                 {item.datasetId}-{item.version}
               </TextWithIcon>
               <Button variant={"plain"} onClick={() => remove(item)}>

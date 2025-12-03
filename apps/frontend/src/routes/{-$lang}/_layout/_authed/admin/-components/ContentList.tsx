@@ -35,7 +35,7 @@ export function ContentList({
   onClickAdd,
 }: {
   selectedContentId: string | null;
-  onSelectContent: (contentId: string) => void;
+  onSelectContent: (contentId: string | null) => void;
   onClickAdd: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -76,7 +76,10 @@ export function ContentList({
       title: "Delete Content page",
       description: `Are you sure you want to delete content page ${id}?`,
       actionLabel: "Delete",
-      onAction: () => deleteContent(id),
+      onAction: () => {
+        deleteContent(id);
+        onSelectContent(null);
+      },
     });
   }
 
@@ -186,8 +189,8 @@ function AddNewDialog() {
             e.preventDefault();
             e.stopPropagation();
             await form.handleSubmit();
-            console.log("onSubmit", form.state.fieldMeta.contentId.errors);
-            if (form.state.fieldMeta.contentId.errors.length === 0) {
+
+            if (form.state.fieldMeta.contentId?.errors.length === 0) {
               setOpen(false);
             }
           }}

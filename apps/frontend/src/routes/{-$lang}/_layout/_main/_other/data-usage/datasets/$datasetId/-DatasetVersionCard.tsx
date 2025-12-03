@@ -20,7 +20,13 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
     Criteria: versionData.criteria,
   };
 
-  const { add } = useCart();
+  const { add, cart } = useCart();
+
+  const isInCart = cart.some(
+    (item) =>
+      item.datasetId === versionData.datasetId &&
+      item.version === versionData.version
+  );
   return (
     <CardWithCaption
       size={"lg"}
@@ -35,6 +41,7 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
               <Button
                 variant={"accent"}
                 className="rounded-full"
+                disabled={isInCart}
                 onClick={() =>
                   add({
                     datasetId: versionData.datasetId,
@@ -42,7 +49,7 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
                   })
                 }
               >
-                Add to cart
+                {isInCart ? "Already in cart" : " Add to cart"}
               </Button>
               <Route.Link className="link-button" to="versions">
                 <span>All versions</span>

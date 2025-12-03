@@ -1,25 +1,24 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { User } from "better-auth";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { i18n, Locale, localeSchema } from "@/config/i18n-config";
 import { getNavConfig } from "@/config/navbar-config";
+import { db } from "@/db/database";
 import {
   contentItem,
   contentTranslation,
   DOCUMENT_VERSION_STATUS,
 } from "@/db/schema";
 import {
-  ContentTranslationInsert,
   contentTranslationInsertSchema,
   ContentTranslationSelect,
   DocumentVersionStatus,
   statusSchema,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { db } from "@/db/database";
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
@@ -63,16 +62,18 @@ const $getContentItems = createServerFn({ method: "GET" })
     return contentItems;
   });
 
-type ContentTranslationResponse = Omit<
+export type ContentTranslationResponse = Omit<
   ContentTranslationSelect,
   "lang" | "contentId"
 >;
 
-interface ContentItemResponse {
+export interface ContentItemResponse {
   author?: Pick<User, "name" | "email">;
-  translations: Record<
-    Locale,
-    Record<DocumentVersionStatus, ContentTranslationResponse>
+  translations: Partial<
+    Record<
+      Locale,
+      Partial<Record<DocumentVersionStatus, ContentTranslationResponse>>
+    >
   >;
 }
 
@@ -182,6 +183,8 @@ export const $getContentItemTranslation = createServerFn({
       },
     });
 
+    console.log("translation", translation);
+
     if (!translation) {
       throw new Error(
         `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`
@@ -211,11 +214,6 @@ export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
     return !!content;
   });
 
-// interface ContentIdValidationResponse {
-//   error: boolean;
-//   message?: string;
-// }
-
 export const $validateContentId = createServerFn({ method: "GET" })
   .inputValidator(z.string())
   .handler(async ({ data }): Promise<boolean> => {
@@ -240,8 +238,10 @@ export const $createContentItem = createServerFn({ method: "POST" })
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
+    console.log("checking permissions...");
     context.checkPermission("contents", "create");
 
+    console.log("done!");
     const id = data.id;
 
     const user = context.user!;
@@ -277,44 +277,45 @@ export const $deleteContentItem = createServerFn({ method: "POST" })
     return deletedContentItem[0];
   });
 
-const upsertContentItemTranslationSchema = z.object({
-  translations: z.partialRecord(
-    localeSchema,
-    z.partialRecord(
-      statusSchema,
-      contentTranslationInsertSchema.pick({
-        title: true,
-        content: true,
-      })
-    )
-  ),
-  id: z.string(),
+// Save/Create draft
+const upsertContentItemDataSchema = contentTranslationInsertSchema.pick({
+  title: true,
+  content: true,
 });
 
-type UpsertContentTranslationParams = z.infer<
-  typeof upsertContentItemTranslationSchema
+export type UpsertContentItemData = z.infer<typeof upsertContentItemDataSchema>;
+
+const selectContentItemSchema = z.object({
+  id: z.string(),
+  lang: localeSchema,
+});
+
+export type UpcertContentItemData = z.infer<typeof upsertContentItemDataSchema>;
+
+const upsertContentItemTranslationDraftSchema = z.object({
+  translation: upsertContentItemDataSchema,
+  ...selectContentItemSchema.shape,
+});
+
+export type UpsertContentItemDraftTranslationParams = z.infer<
+  typeof upsertContentItemTranslationDraftSchema
 >;
 
-export const $upsertContentItemTranslation = createServerFn({ method: "POST" })
-  .inputValidator(upsertContentItemTranslationSchema)
+export const $saveContentItemTranslationDraft = createServerFn({
+  method: "POST",
+})
   .middleware([hasPermissionMiddleware])
-  .handler(async ({ data, context }) => {
-    context.checkPermission("contents", "update");
-
-    const dataToUpsert: ContentTranslationInsert[] = Object.entries(
-      data.translations
-    ).flatMap(([lang, translationStatuses]) =>
-      Object.entries(translationStatuses).map(([status, translation]) => ({
-        ...translation,
-        status: status as DocumentVersionStatus,
-        lang,
-        contentId: data.id,
-      }))
-    );
-
+  .inputValidator(upsertContentItemTranslationDraftSchema)
+  .handler(async ({ data }) => {
     const result = await db
       .insert(contentTranslation)
-      .values(dataToUpsert)
+      .values({
+        lang: data.lang,
+        contentId: data.id,
+        status: DOCUMENT_VERSION_STATUS.DRAFT,
+        content: data.translation.content,
+        title: data.translation.title,
+      })
       .onConflictDoUpdate({
         target: [
           contentTranslation.contentId,
@@ -326,6 +327,54 @@ export const $upsertContentItemTranslation = createServerFn({ method: "POST" })
           "title",
         ]),
       })
+      .returning();
+    return result;
+  });
+
+export type SelectContentItemParams = z.infer<typeof selectContentItemSchema>;
+
+// Publish draft
+export type PublishContentItemResponse = ContentTranslationSelect & {
+  status: typeof DOCUMENT_VERSION_STATUS.PUBLISHED;
+};
+
+export const $publishContentItemDraftTranslation = createServerFn({
+  method: "POST",
+})
+  .inputValidator(selectContentItemSchema)
+  .handler(async ({ data }) => {
+    const [result] = await db
+      .update(contentTranslation)
+      .set({ status: DOCUMENT_VERSION_STATUS.PUBLISHED })
+      .where(
+        and(
+          eq(contentTranslation.contentId, data.id),
+          eq(contentTranslation.lang, data.lang),
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT)
+        )
+      )
+      .returning();
+    return result as PublishContentItemResponse;
+  });
+
+// Unpublish - delete published
+export const $unpublishContentItemTranslation = createServerFn({
+  method: "POST",
+})
+  .inputValidator(selectContentItemSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ context, data }) => {
+    context.checkPermission("contents", "update");
+
+    const [result] = await db
+      .delete(contentTranslation)
+      .where(
+        and(
+          eq(contentTranslation.contentId, data.id),
+          eq(contentTranslation.lang, data.lang),
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+        )
+      )
       .returning();
 
     return result;

@@ -21,6 +21,7 @@ export function useCart() {
   });
 
   useEffect(() => {
+    console.log("saving cart", cart);
     localStorage.setItem(keyFor(user?.id), JSON.stringify(cart));
   }, [cart, user?.id]);
 
@@ -37,7 +38,7 @@ export function useCart() {
         prev.some(
           (item) =>
             item.datasetId === dataset.datasetId &&
-            item.version === dataset.vertion
+            item.version === dataset.version
         )
           ? prev
           : [...prev, dataset]
@@ -45,11 +46,14 @@ export function useCart() {
     },
     remove(dataset: CartItem) {
       setCart((prev) =>
-        prev.filter(
-          (item) =>
+        prev.filter((item) => {
+          const filter =
             item.datasetId !== dataset.datasetId &&
-            item.version !== dataset.version
-        )
+            item.version !== dataset.version;
+
+          console.log("item", item, dataset, filter);
+          return filter;
+        })
       );
     },
     clear() {
