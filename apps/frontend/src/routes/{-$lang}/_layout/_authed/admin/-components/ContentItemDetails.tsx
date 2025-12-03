@@ -1,25 +1,29 @@
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, Locale } from "@/config/i18n-config";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   type ContentItemResponse,
+  $publishContentItemDraftTranslation,
   $saveContentItemTranslationDraft,
   getContentQueryOptions,
   getContentsListQueryOptions,
   UpsertContentItemData,
 } from "@/serverFunctions/contentItem";
+import { waitUntilNoMutations } from "@/utils/mutations";
 import {
   useMutation,
   useMutationState,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Pencil, Save } from "lucide-react";
-import { useEffect } from "react";
+import { Loader2, Pencil, Save } from "lucide-react";
+import { Suspense, useEffect, useRef } from "react";
 
 type ContentItem = NonNullable<ContentItemResponse>;
 
@@ -42,6 +46,9 @@ export function ContentItemDetails({ id }: { id: string }) {
 
   const { mutate: saveDraft } = useSaveDraft(id);
 
+  const { mutateAsync: publishDraft, isPending: isPublishPending } =
+    usePublishDraft(id);
+
   const savingStatuses = useMutationState({
     filters: {
       mutationKey: ["contentId", "draft", id],
@@ -49,47 +56,59 @@ export function ContentItemDetails({ id }: { id: string }) {
     select: (mutation) => mutation.state.status,
   });
 
+  const isPublishing = useRef(false);
+
   const form = useAppForm({
     defaultValues: {
       lang: i18n.defaultLocale,
       translation: data?.translations || {},
     } as FormData,
     onSubmitMeta: defaultMeta,
-    onSubmit: ({ value, meta }) => {
+    onSubmit: ({ value, meta, formApi }) => {
+      if (isPublishing.current) {
+        console.log("skipping save");
+        return;
+      }
+
+      const title = value.translation?.[value.lang]?.draft?.title;
+      const content = value.translation?.[value.lang]?.draft?.content;
+
       switch (meta.submitAction) {
         case "saveDraft":
           // dont save draft if only switched to empty editor
-          if (
-            !value.translation?.[value.lang]?.draft?.title &&
-            !value.translation?.[value.lang]?.draft?.content
-          ) {
-            return;
+          if (title || content) {
+            saveDraft({
+              lang: value.lang,
+              translationDraft: {
+                title: title ?? "",
+                content: content ?? "",
+              },
+            });
           }
-          saveDraft({
-            lang: value.lang,
-            translationDraft: {
-              title: value.translation?.[value.lang]?.draft?.title ?? "",
-              content: value.translation?.[value.lang]?.draft?.content ?? "",
-            },
-          });
           break;
 
         case "publish":
-          // TODO
-          console.log("publish handling here...");
-          (() => {})();
+          isPublishing.current = true;
+          if (title || content) {
+            saveDraft({
+              lang: value.lang,
+              translationDraft: {
+                title: title ?? "",
+                content: content ?? "",
+              },
+            });
+          }
+
+          publishDraft({ lang: value.lang })
+            .then(() => formApi.reset(value))
+            .finally(() => {
+              isPublishing.current = false;
+            });
+
           break;
       }
     },
-
-    listeners: {
-      onChangeDebounceMs: 800,
-    },
   });
-
-  useEffect(() => {
-    form.reset();
-  }, [id]);
 
   return (
     <Card
@@ -103,42 +122,36 @@ export function ContentItemDetails({ id }: { id: string }) {
           <form.AppField name="lang">
             {(field) => <field.LocaleSwitchField />}
           </form.AppField>
-          {/*<form.Subscribe selector={(state) => state.values.locale}>
-            {(locale) => (
-              <form.AppField name="status">
-                {(field) => (
-                  <Tabs>
-                    <TabsList>
-                      {Object.keys(data.translations[locale] || {}).map(
-                        (status) => (
-                          <TabsTrigger key={status} value={status}>
-                            {status}
-                          </TabsTrigger>
-                        )
-                      )}
-                    </TabsList>
-                  </Tabs>
-                )}
-              </form.AppField>
-            )}
-          </form.Subscribe>*/}
         </span>
       }
     >
       <Tabs className="flex-1" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
         <TabsList>
-          <TabsTrigger value={DOCUMENT_VERSION_STATUS.DRAFT}>
-            <Pencil /> Editor
+          <TabsTrigger
+            className="flex items-center gap-2"
+            value={DOCUMENT_VERSION_STATUS.DRAFT}
+          >
+            <Pencil /> <span>Editor</span>
+            <div className="w-4">
+              {savingStatuses.at(-1) === "pending" && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+            </div>
           </TabsTrigger>
-          <TabsTrigger value={DOCUMENT_VERSION_STATUS.PUBLISHED}>
-            Live
+          <TabsTrigger
+            className="flex items-center gap-2"
+            value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+          >
+            <span>Live</span>
+            <div className="w-4">
+              {isPublishPending && <Loader2 className="size-4 animate-spin" />}
+            </div>
           </TabsTrigger>
         </TabsList>
         <TabsContent
           className="flex h-full flex-col gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
-          <div>{savingStatuses.at(-1)}</div>
           <form.Subscribe selector={(state) => state.values.lang}>
             {(lang) => {
               return (
@@ -147,7 +160,6 @@ export function ContentItemDetails({ id }: { id: string }) {
                     name={`translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
                     listeners={{
                       onChange: ({ fieldApi }) => {
-                        console.log("change");
                         fieldApi.form.handleSubmit({
                           submitAction: "saveDraft",
                         });
@@ -157,19 +169,21 @@ export function ContentItemDetails({ id }: { id: string }) {
                   >
                     {(field) => <field.TextField label="Title" />}
                   </form.AppField>
-                  <form.AppField
-                    name={`translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
-                    listeners={{
-                      onChange: ({ fieldApi }) => {
-                        fieldApi.form.handleSubmit({
-                          submitAction: "saveDraft",
-                        });
-                      },
-                      onChangeDebounceMs: 800,
-                    }}
-                  >
-                    {(field) => <field.ContentAreaField label="Content" />}
-                  </form.AppField>
+                  <Suspense fallback={<SkeletonLoading />}>
+                    <form.AppField
+                      name={`translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
+                      listeners={{
+                        onChange: ({ fieldApi }) => {
+                          fieldApi.form.handleSubmit({
+                            submitAction: "saveDraft",
+                          });
+                        },
+                        onChangeDebounceMs: 800,
+                      }}
+                    >
+                      {(field) => <field.ContentAreaField label="Content" />}
+                    </form.AppField>
+                  </Suspense>
                 </>
               );
             }}
@@ -178,26 +192,25 @@ export function ContentItemDetails({ id }: { id: string }) {
           <div className="flex items-center justify-between">
             <Button variant={"outline"}>Reset</Button>
             <div className="flex gap-2">
-              <Button
-                type="submit"
-                onClick={form.handleSubmit}
-                className="gap-1 self-end"
-                size={"lg"}
-                variant={"accent"}
+              <form.Subscribe
+                selector={(state) => state.isDirty && state.isValid}
               >
-                <Save className="size-5" />
-                Publish
-              </Button>
-              {/*<Button
-                type="submit"
-                onClick={form.handleSubmit}
-                className="gap-1 self-end"
-                size={"lg"}
-                variant={"action"}
-              >
-                <Save className="size-5" />
-                Save draft
-              </Button>*/}
+                {(canPublish) => (
+                  <Button
+                    type="submit"
+                    onClick={() =>
+                      form.handleSubmit({ submitAction: "publish" })
+                    }
+                    className="gap-1 self-end"
+                    size={"lg"}
+                    variant={"accent"}
+                    disabled={!canPublish}
+                  >
+                    <Save className="size-5" />
+                    Publish
+                  </Button>
+                )}
+              </form.Subscribe>
             </div>
           </div>
         </TabsContent>
@@ -210,18 +223,94 @@ export function ContentItemDetails({ id }: { id: string }) {
               if (!data.translations[lang]?.published?.content) {
                 return <div> No published content</div>;
               }
-              return (
-                <RenderMarkdoc
-                  className="mx-auto"
-                  content={data.translations[lang].published.content}
-                />
-              );
+              const { content } = transformMarkdoc({
+                rawContent: data.translations[lang]?.published?.content,
+              });
+
+              return <RenderMarkdoc className="mx-auto" content={content} />;
             }}
           </form.Subscribe>
         </TabsContent>
       </Tabs>
     </Card>
   );
+}
+
+function usePublishDraft(id: string) {
+  const contentItemQO = getContentQueryOptions(id);
+  const contentsListQO = getContentsListQueryOptions();
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["contentId", "published", id],
+    mutationFn: async ({ lang }: { lang: Locale }) => {
+      await waitUntilNoMutations(queryClient, {
+        mutationKey: ["contentId", "draft", id],
+      });
+      return $publishContentItemDraftTranslation({ data: { lang, id } });
+    },
+    onMutate: async (data) => {
+      await queryClient.cancelQueries(contentItemQO);
+
+      const previousContentItem = queryClient.getQueryData(
+        contentItemQO.queryKey
+      );
+
+      queryClient.setQueryData(contentItemQO.queryKey, (old) => {
+        if (!old) {
+          return old;
+        }
+
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [data.lang]: {
+              ...old.translations[data.lang],
+              published: {
+                ...old.translations[data.lang]?.published,
+                content: old.translations[data.lang]?.draft?.content,
+              },
+            },
+          },
+        };
+      });
+
+      await queryClient.cancelQueries(contentsListQO);
+
+      const previousContentsList = queryClient.getQueryData(
+        contentsListQO.queryKey
+      );
+
+      queryClient.setQueryData(contentsListQO.queryKey, (old) => {
+        if (!old) {
+          return old;
+        }
+
+        return old.map((item) => {
+          if (item.id === id) {
+            return {
+              ...item,
+              translations: item.translations.map((tr) => {
+                if (tr.lang === data.lang) {
+                  // Mark this translation as published
+                  return {
+                    ...tr,
+                    status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+                  };
+                }
+                return tr;
+              }),
+            };
+          }
+          return item;
+        });
+      });
+
+      return { previousContentItem, previousContentsList };
+    },
+  });
 }
 
 function useSaveDraft(id: string) {
@@ -279,12 +368,7 @@ function useSaveDraft(id: string) {
       // update list content items query data
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
         if (!old) {
-          return [
-            {
-              id: "",
-              translations: [{ lang: data.lang, ...data.translationDraft }],
-            },
-          ];
+          return old;
         }
 
         return old.map((item) => {

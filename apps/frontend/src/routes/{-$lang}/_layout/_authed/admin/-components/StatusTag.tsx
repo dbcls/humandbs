@@ -1,3 +1,4 @@
+import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { cva, VariantProps } from "class-variance-authority";
 
@@ -6,14 +7,16 @@ const statusTagVariants = cva(
   {
     variants: {
       status: {
-        draft: "text-foreground-light border-foreground-light",
-        published: "text-accent-light border-accent-light",
+        [DOCUMENT_VERSION_STATUS.DRAFT]:
+          "text-foreground-light border-foreground-light",
+        [DOCUMENT_VERSION_STATUS.PUBLISHED]:
+          "text-accent-light border-accent-light",
         current: "text-secondary-light border-secondary-light",
         archived: "text-yellow-600 border-yellow-600",
       },
     },
     defaultVariants: {
-      status: "draft",
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
     },
   }
 );

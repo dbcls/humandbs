@@ -38,9 +38,14 @@ export function getContentQueryOptions(id: string) {
   });
 }
 
+export type ContentItemsListItem = {
+  id: string;
+  translations: Pick<ContentTranslationSelect, "title" | "lang" | "status">[];
+};
+
 const $getContentItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<ContentItemsListItem[]> => {
     context.checkPermission("contents", "list");
 
     const contentItems = await db.query.contentItem.findMany({
@@ -49,6 +54,7 @@ const $getContentItems = createServerFn({ method: "GET" })
           columns: {
             title: true,
             lang: true,
+            status: true,
           },
         },
       },
@@ -342,18 +348,45 @@ export const $publishContentItemDraftTranslation = createServerFn({
   method: "POST",
 })
   .inputValidator(selectContentItemSchema)
-  .handler(async ({ data }) => {
-    const [result] = await db
-      .update(contentTranslation)
-      .set({ status: DOCUMENT_VERSION_STATUS.PUBLISHED })
-      .where(
+  .handler(async ({ data }): Promise<PublishContentItemResponse> => {
+    const draftTranslation = await db.query.contentTranslation.findFirst({
+      where: (table, { and, eq }) =>
         and(
-          eq(contentTranslation.contentId, data.id),
-          eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT)
-        )
-      )
+          eq(table.contentId, data.id),
+          eq(table.lang, data.lang),
+          eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT)
+        ),
+    });
+
+    if (!draftTranslation) {
+      throw new Error("Draft translation not found");
+    }
+
+    // Create or update the published version while keeping the draft
+    const [result] = await db
+      .insert(contentTranslation)
+      .values({
+        contentId: data.id,
+        lang: data.lang,
+        status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+        title: draftTranslation.title,
+        content: draftTranslation.content,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          contentTranslation.contentId,
+          contentTranslation.lang,
+          contentTranslation.status,
+        ],
+        set: buildConflictUpdateColumns(contentTranslation, [
+          "title",
+          "content",
+          "updatedAt",
+        ]),
+      })
       .returning();
+
     return result as PublishContentItemResponse;
   });
 

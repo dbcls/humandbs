@@ -18,7 +18,7 @@ import {
 } from "@/serverFunctions/documentVersion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Trash2, Undo2 } from "lucide-react";
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import { StatusTag } from "./StatusTag";
 
 type FormMeta = {
