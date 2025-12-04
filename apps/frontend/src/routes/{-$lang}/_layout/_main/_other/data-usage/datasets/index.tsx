@@ -63,28 +63,26 @@ function RouteComponent() {
   const t = useTranslations("Dataset-list");
 
   return (
-    <Card
-      caption={t("dataset-list")}
-      captionSize={"lg"}
-      containerClassName="overflow-x-auto"
-    >
-      <Table
-        className="text-sm"
-        onSortingChange={(updater) => {
-          const newState = functionalUpdate(updater, sortingState);
+    <Card caption={t("dataset-list")} captionSize={"lg"}>
+      <div className="overflow-x-auto">
+        <Table
+          className="text-sm"
+          onSortingChange={(updater) => {
+            const newState = functionalUpdate(updater, sortingState);
 
-          startTransition(() => {
-            setFilters({
-              sort: newState[0]?.id,
-              order: newState[0]?.desc ? "desc" : "asc",
+            startTransition(() => {
+              setFilters({
+                sort: newState[0]?.id,
+                order: newState[0]?.desc ? "desc" : "asc",
+              });
             });
-          });
-        }}
-        sorting={sortingState}
-        meta={{ t }}
-        columns={datasetsColumns}
-        data={data.data}
-      ></Table>
+          }}
+          sorting={sortingState}
+          meta={{ t }}
+          columns={datasetsColumns}
+          data={data.data}
+        />
+      </div>
       <Pagination
         totalPages={data.pagination.totalPages}
         page={data.pagination.page}
@@ -111,14 +109,7 @@ const datasetsColumns = [
     ),
     maxSize: 10,
   }),
-  datasetsColumnHelper.accessor("version", {
-    id: "version",
-    header: (ctx) => {
-      return <p>{ctx.table.options.meta?.t?.("version")}</p>;
-    },
-    cell: (ctx) => ctx.getValue(),
-    size: 10,
-  }),
+
   datasetsColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
     header: (ctx) => (

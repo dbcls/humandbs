@@ -193,7 +193,7 @@ const columns = [
 
 function RouteComponent() {
   return (
-    <Card caption={<Caption />} containerClassName="overflow-x-auto">
+    <Card caption={<Caption />}>
       <Suspense fallback={<SkeletonLoading />}>
         <CardContent />
       </Suspense>
@@ -236,13 +236,15 @@ function CardContent() {
 
   return (
     <>
-      <Table
-        className="mt-4 text-sm"
-        columns={columns}
-        data={researchesData.data}
-        sorting={sorting}
-        onSortingChange={handleSortingChange}
-      />
+      <div className="overflow-x-auto">
+        <Table
+          className="mt-4 text-sm"
+          columns={columns}
+          data={researchesData.data}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+        />
+      </div>
 
       <Pagination
         totalPages={researchesData.pagination.totalPages}
