@@ -204,7 +204,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           </TabsTrigger>
         </TabsList>
         <TabsContent
-          className="flex h-full flex-col gap-2"
+          className="flex flex-1 flex-col gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
           <form.Subscribe selector={(state) => state.values.lang}>
@@ -276,7 +276,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           </form.Subscribe>
         </TabsContent>
         <TabsContent
-          className="flex h-full flex-col gap-2"
+          className="flex min-h-0 flex-1 shrink-0 flex-col gap-2 overflow-y-auto"
           value={DOCUMENT_VERSION_STATUS.PUBLISHED}
         >
           <form.Subscribe selector={(state) => state.values.lang}>
@@ -288,7 +288,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                 rawContent: data.translations[lang]?.published?.content,
               });
 
-              return <RenderMarkdoc className="mx-auto" content={content} />;
+              return <RenderMarkdoc content={content} />;
             }}
           </form.Subscribe>
         </TabsContent>
