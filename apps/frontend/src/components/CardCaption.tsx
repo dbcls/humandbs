@@ -26,7 +26,7 @@ export function CardCaption({
             {children}
           </TextWithIcon>
         </div>
-        <Badge> {badge} </Badge>
+        {badge && <Badge> {badge} </Badge>}
       </div>
       {right}
     </div>

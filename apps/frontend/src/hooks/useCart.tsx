@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
+import { Dataset } from "@humandbs/backend/types";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
-export type CartItem = { datasetId: string; version: string };
+export type CartItem = Dataset;
 
 export function useCart() {
   const { user } = useRouteContext({ from: "__root__" });
@@ -35,11 +36,7 @@ export function useCart() {
     cart,
     add(dataset: CartItem) {
       setCart((prev) =>
-        prev.some(
-          (item) =>
-            item.datasetId === dataset.datasetId &&
-            item.version === dataset.version
-        )
+        prev.some((item) => item.datasetId === dataset.datasetId)
           ? prev
           : [...prev, dataset]
       );
@@ -47,11 +44,8 @@ export function useCart() {
     remove(dataset: CartItem) {
       setCart((prev) =>
         prev.filter((item) => {
-          const filter =
-            item.datasetId !== dataset.datasetId &&
-            item.version !== dataset.version;
+          const filter = item.datasetId !== dataset.datasetId;
 
-          console.log("item", item, dataset, filter);
           return filter;
         })
       );

@@ -1,9 +1,5 @@
 import Logo from "@/assets/Logo.png";
-import {
-  getRouteApi,
-  useNavigate,
-  useRouteContext,
-} from "@tanstack/react-router";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
@@ -118,17 +114,17 @@ function ShoppingCartButton() {
 
   return (
     <Button
-      className="relative mr-2"
+      className="relative mr-2 h-fit"
       variant={"plain"}
       onClick={() => navigate({ to: "./cart" })}
     >
       {cart.length > 0 && (
-        <span className="bg-accent text-2xs absolute -top-2 -right-2 z-10 inline min-w-6 rounded-full p-1 leading-4 text-white">
+        <span className="bg-accent text-2xs absolute top-0 right-0 z-10 inline min-w-6 rounded-full p-1 leading-4 text-white">
           {cart.length}
         </span>
       )}
 
-      <ShoppingCart className="text-secondary absolute top-0 right-0" />
+      <ShoppingCart className="text-secondary" />
     </Button>
   );
 }

@@ -1,8 +1,3 @@
-import { CardWithCaption } from "@/components/Card";
-import { CardCaption } from "@/components/CardCaption";
-import { ContentHeader } from "@/components/ContentHeader";
-import { KeyValueCard, ListOfKeyValues } from "@/components/KeyValueCard";
-import { Separator } from "@/components/Separator";
 import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
 import { createFileRoute } from "@tanstack/react-router";
 import { DatasetVersionCard } from "./-DatasetVersionCard";

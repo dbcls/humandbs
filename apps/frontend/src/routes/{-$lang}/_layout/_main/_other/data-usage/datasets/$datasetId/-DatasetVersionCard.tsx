@@ -1,4 +1,3 @@
-import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
@@ -23,10 +22,9 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
   const { add, cart } = useCart();
 
   const isInCart = cart.some(
-    (item) =>
-      item.datasetId === versionData.datasetId &&
-      item.version === versionData.version
+    (item) => item.datasetId === versionData.datasetId
   );
+
   return (
     <CardWithCaption
       size={"lg"}
@@ -35,26 +33,17 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
         <CardCaption
           title="NBDC Dataset ID:"
           icon="dataset"
-          badge={"リリース情報"}
+          badge={<Route.Link to="versions">リリース情報</Route.Link>}
           right={
             <div className="flex gap-5">
               <Button
                 variant={"accent"}
                 className="rounded-full"
                 disabled={isInCart}
-                onClick={() =>
-                  add({
-                    datasetId: versionData.datasetId,
-                    version: versionData.version,
-                  })
-                }
+                onClick={() => add(versionData)}
               >
                 {isInCart ? "Already in cart" : " Add to cart"}
               </Button>
-              <Route.Link className="link-button" to="versions">
-                <span>All versions</span>
-                <ArrowIcon />
-              </Route.Link>
             </div>
           }
         >

@@ -29,11 +29,7 @@ function RouteComponent() {
       size={"lg"}
       variant={"dark"}
       caption={
-        <CardCaption
-          badge="バージョン一覧"
-          icon="books"
-          title="NBDC Research ID:"
-        >
+        <CardCaption icon="books" title="NBDC Research ID:">
           {humId}
         </CardCaption>
       }

@@ -35,13 +35,7 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
         <CardCaption
           title="NBDC Research ID:"
           icon="books"
-          badge="リリース情報"
-          right={
-            <Route.Link className="link-button" to="versions">
-              <span>All versions</span>
-              <ArrowIcon />
-            </Route.Link>
-          }
+          badge={<Route.Link to="versions">リリース情報</Route.Link>}
         >
           {versionData.humVersionId}
         </CardCaption>

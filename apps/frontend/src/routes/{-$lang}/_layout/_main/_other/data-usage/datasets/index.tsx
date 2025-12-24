@@ -3,7 +3,6 @@ import { Pagination } from "@/components/Pagination";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
-import { Button } from "@/components/ui/button";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
@@ -12,14 +11,10 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   createColumnHelper,
-  DeepValue,
   functionalUpdate,
-  HeaderContext,
-  RowData,
   SortingState,
 } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
 import { startTransition } from "react";
 import { useTranslations } from "use-intl";
 
@@ -92,9 +87,9 @@ function RouteComponent() {
   );
 }
 
-const datasetsColumnHelper = createColumnHelper<Dataset>();
+export const datasetsColumnHelper = createColumnHelper<Dataset>();
 
-const datasetsColumns = [
+export const datasetsColumns = [
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => (
