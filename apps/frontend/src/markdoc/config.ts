@@ -3,7 +3,6 @@ import * as nodes from "@/markdoc/nodes";
 import Markdoc, { Config, Tag } from "@markdoc/markdoc";
 import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
-import { Locale } from "@/config/i18n-config";
 
 export const config = {
   tags: {

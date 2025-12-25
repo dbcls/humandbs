@@ -3,7 +3,6 @@ import { filterDefined } from "@/utils/filterDefined";
 import {
   DatasetIdParamsSchema,
   DatasetsQuerySchema,
-  DatasetVersionItem,
   LangQuerySchema,
   LangVersionQuerySchema,
 } from "@humandbs/backend/types";

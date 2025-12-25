@@ -17,7 +17,6 @@ import { getNavConfig } from "@/config/navbar-config";
 import { Link } from "./Link";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { SessionUser } from "@/serverFunctions/user";
 
 export function Navbar() {
   const t = useTranslations("Navbar");

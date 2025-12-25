@@ -1,4 +1,4 @@
-import { hasPermission, Permissions, USER_ROLES } from "@/config/permissions";
+import { hasPermission, Permissions } from "@/config/permissions";
 import { $getAuthUser } from "@/serverFunctions/user";
 import { createMiddleware } from "@tanstack/react-start";
 

@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Pagination as PaginationBase,
   PaginationContent,
@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFilters } from "@/hooks/useFilters";
 
 // Export function for testing
 export const getVisiblePages = (currentPage: number, totalPages: number) => {
