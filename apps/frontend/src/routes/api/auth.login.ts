@@ -29,6 +29,7 @@ export const Route = createFileRoute("/api/auth/login")({
         });
 
         const redirect_uri = process.env.OIDC_REDIRECT_URI!;
+        console.log("OIDC_REDIRECT_URI", redirect_uri);
         const scope = "openid profile email offline_access";
 
         const url = oidc.buildAuthorizationUrl(cfg, {
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/api/auth/login")({
           code_challenge_method: "S256",
           state,
         });
+        console.log(" login get 1 url", url.href);
 
         return new Response(null, {
           status: 302,

@@ -13,7 +13,9 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(
 );
 
 function RouteComponent() {
-  const [selectedContentId, setSelectedContentId] = useState("");
+  const [selectedContentId, setSelectedContentId] = useState<string | null>(
+    null
+  );
 
   return (
     <>

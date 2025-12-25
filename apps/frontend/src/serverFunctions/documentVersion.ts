@@ -18,12 +18,13 @@ import {
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { db } from "@/db/database";
-import { i18n } from "@/lib/i18n-config";
+import { i18n } from "@/config/i18n-config";
 import { unionOfLiterals } from "@/lib/utils";
 import {
   authMiddleware,
   hasPermissionMiddleware,
 } from "@/middleware/authMiddleware";
+import { USER_ROLES } from "@/config/permissions";
 
 export interface DocumentVersionListItemResponse {
   statuses: DocumentVersionStatus[];
@@ -47,7 +48,8 @@ export const $getDocumentVersions = createServerFn({
 
     // if just public user, filter out drafts
     const filterOutDrafts = !(
-      context.user?.role === "admin" || context.user?.role === "editor"
+      context.user?.role === USER_ROLES.ADMIN ||
+      context.user?.role === USER_ROLES.EDITOR
     );
 
     const versions = await db.query.documentVersion.findMany({

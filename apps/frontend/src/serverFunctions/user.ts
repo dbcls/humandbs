@@ -14,6 +14,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 import { count, eq } from "drizzle-orm";
+import { USER_ROLES } from "@/config/permissions";
 
 export const $getUsers = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
@@ -36,7 +37,7 @@ export const $changeUserRole = createServerFn({
     const [amountOfAdmins] = await db
       .select({ count: count() })
       .from(user)
-      .where(eq(user.role, "admin"));
+      .where(eq(user.role, USER_ROLES.ADMIN));
 
     if (amountOfAdmins.count < 2)
       throw new Error("Cannot change role of last admin");
@@ -67,7 +68,7 @@ export const $deleteUser = createServerFn({ method: "POST" })
     const [amountOfAdmins] = await db
       .select({ count: count() })
       .from(user)
-      .where(eq(user.role, "admin"));
+      .where(eq(user.role, USER_ROLES.ADMIN));
 
     if (amountOfAdmins.count < 2) throw new Error("Cannot delete last admin");
 
@@ -115,11 +116,37 @@ export const $getAuthUser = createServerFn({ method: "GET" }).handler<
       );
     }
 
+    let role: UserRole = USER_ROLES.USER;
+
+    const isAdminRes = await fetch(
+      `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}/users/is-admin`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }
+    );
+
+    if (isAdminRes.status === 401 || isAdminRes.status === 403) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+      throw new Error("Unauthorized");
+    }
+
+    if (isAdminRes.ok) {
+      const { isAdmin } = (await isAdminRes.json()) as { isAdmin: boolean };
+
+      if (isAdmin) {
+        role = USER_ROLES.ADMIN;
+      }
+    }
+
     const user: SessionUser = {
       id: claims.sub,
       name: claims.name,
       email: claims.email,
       username: claims.preferred_username,
+      role,
     };
 
     const sessionMeta: SessionMeta = {

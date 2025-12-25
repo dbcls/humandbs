@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/$researchId"
+  "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId"
 )({
   loader: ({ params }) => {
-    return { crumb: params.researchId };
+    return {
+      crumb: params.datasetId,
+    };
   },
 });

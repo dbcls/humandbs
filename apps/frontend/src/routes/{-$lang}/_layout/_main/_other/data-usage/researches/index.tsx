@@ -1,22 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { createColumnHelper } from "@tanstack/react-table";
-import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
+import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
+import {
+  createColumnHelper,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
+import { Search } from "lucide-react";
 
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
-import { Table } from "@/components/Table";
+import { Pagination } from "@/components/Pagination";
+import { SkeletonLoading } from "@/components/Skeleton";
+import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
+import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
-import { useTranslations } from "use-intl";
-import { $getResearchList } from "@/serverFunctions/mock/research";
+import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import {
-  Research,
   ResearchesQuerySchema,
   ResearchSummary,
 } from "@humandbs/backend/types";
-import { filterStringSchema, paginationSchema } from "@/utils/searchParams";
-import { api } from "@/services/backend";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { startTransition, Suspense, useCallback, useMemo } from "react";
+import { useTranslations } from "use-intl";
 
 export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
   lang: true,
@@ -34,14 +40,18 @@ export const Route = createFileRoute(
     order,
   }),
 
-  loader: ({ deps, context }) =>
-    api.getResearchListPaginated({ search: { ...deps, lang: context.lang } }),
+  loader: async ({ deps, context }) => {
+    await context.queryClient.ensureQueryData(
+      getResearchesQueryOptions({ ...deps, lang: context.lang })
+    );
+  },
+  errorComponent: ({ error }) => {
+    return <div>{error.message}</div>;
+  },
 });
 
 function Caption() {
   const t = useTranslations("Research-list");
-
-  const navigate = Route.useNavigate();
 
   return (
     <div className="flex items-center justify-between">
@@ -64,58 +74,23 @@ function Caption() {
           type="text"
           placeholder="検索"
           beforeIcon={<Search size={22} />}
-          // onKeyDown={(e) => {
-          //   if (e.key === "Enter") {
-          //     // Handle search logic here
-          //     navigate({
-          //       search: { filter: (e.target as HTMLInputElement).value },
-          //     });
-          //   }
-          // }}
         />
       </div>
     </div>
   );
 }
 
-const columnHelper = createColumnHelper<Research>();
+const columnHelper = createColumnHelper<ResearchSummary>();
 
 const columns = [
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => {
-      const sortDirection = ctx.column.getIsSorted();
-      const sortIcon =
-        sortDirection === "desc" ? (
-          <ChevronDown size={18} />
-        ) : sortDirection === "asc" ? (
-          <ChevronUp size={18} />
-        ) : (
-          <ChevronsUpDown size={18} />
-        );
-      return (
-        <div className="flex items-center whitespace-nowrap">
-          <div>Research ID </div>
-          <Button
-            onClick={ctx.column.getToggleSortingHandler()}
-            variant={"plain"}
-            className="p-0"
-          >
-            {sortIcon}
-          </Button>
-        </div>
-      );
-    },
+    header: (ctx) => <SortHeader ctx={ctx} label="Research ID" />,
+
     cell: function Cell(ctx) {
-      const researchIdWithVer = ctx.getValue();
-      const researchId = researchIdWithVer.split(".")[0];
-      const researchVer = researchIdWithVer.split(".")[1];
       return (
         <div>
-          <Route.Link
-            to="$researchId/$researchVer"
-            params={{ researchId, researchVer }}
-          >
+          <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
             <TextWithIcon
               className="text-foreground-dark"
               icon={FA_ICONS.books}
@@ -124,125 +99,158 @@ const columns = [
             </TextWithIcon>
           </Route.Link>
           <ul>
-            <p> Datasets here ... </p>
-            {/*{ctx.row.original.datasets.map((dataset) => (
+            {ctx.row.original.datasetIds.map((dataset) => (
               <li key={dataset}>
-                <TextWithIcon
+                <Route.Link
                   className="text-secondary"
-                  icon={FA_ICONS.dataset}
+                  to="../datasets/$datasetId"
+                  params={{ datasetId: dataset }}
                 >
-                  {dataset}
-                </TextWithIcon>
+                  <TextWithIcon icon={FA_ICONS.dataset}>{dataset}</TextWithIcon>
+                </Route.Link>
               </li>
-            ))}*/}
+            ))}
           </ul>
         </div>
       );
     },
-    sortingFn: "alphanumeric",
+    size: 15,
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: "研究題目",
+    header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
     cell: (ctx) => ctx.getValue(),
   }),
   columnHelper.accessor("versions", {
     id: "versions",
     header: "Versions",
-    cell: (ctx) =>
-      ctx.renderValue()?.map((version) => (
-        <span className="flex gap-2" key={version.version}>
-          <span>{version.version}:</span>
-          <span>{version.releaseDate.replaceAll(/-/g, "/")}</span>
-        </span>
-      )),
+    size: 10,
+    cell: (ctx) => (
+      <ul>
+        <li>
+          <Route.Link
+            className="text-secondary text-sm"
+            to="$humId/versions"
+            params={{ humId: ctx.row.original.humId }}
+          >
+            All versions
+          </Route.Link>
+        </li>
+        {ctx.renderValue()?.map((version) => (
+          <li key={version.version}>
+            <Route.Link
+              to="$humId/$version"
+              className="whitespace-nowrap"
+              params={{
+                humId: ctx.row.original.humId,
+                version: version.version,
+              }}
+            >
+              <span className="text-sm">{version.version}</span>
+              <span className="text-2xs text-foreground-light ml-2">
+                {version.releaseDate}
+              </span>
+            </Route.Link>
+          </li>
+        ))}
+      </ul>
+    ),
   }),
-  columnHelper.accessor(() => {}, {
-    id: "publicationDate",
-    header: "公開日",
-    cell: (ctx) => <> ... </>,
-  }),
-  columnHelper.accessor(() => {}, {
-    id: "dataType",
+
+  columnHelper.accessor("typeOfData", {
+    id: "typeOfData",
     header: "データタイプ",
-    cell: (ctx) => <>...</>,
+    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
+    maxSize: 15,
   }),
-  columnHelper.accessor(() => {}, {
-    id: "methodology",
+  columnHelper.accessor("methods", {
+    id: "methods",
     header: "手法",
-    cell: (ctx) => <>...</>,
+    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
   }),
-  columnHelper.accessor(() => {}, {
-    id: "instrument",
-    header: "機器",
-    cell: (ctx) => <>...</>,
+  columnHelper.accessor("platforms", {
+    id: "platforms",
+    header: "プラットホーム",
+    cell: (ctx) => (
+      <ul>
+        {ctx.getValue().map((p) => (
+          <li
+            key={p}
+            className="text-sm"
+            dangerouslySetInnerHTML={{ __html: p }}
+          />
+        ))}
+      </ul>
+    ),
   }),
-  columnHelper.accessor(() => {}, {
-    id: "subjects",
-    header: "被験者",
-    cell: (ctx) => <> ... </>,
-    // ctx.getValue().map((participant) => (
-    //   <div key={participant.content.join(",")}>
-    //     <ul>
-    //       {participant.content.map((content) => (
-    //         <li key={content}>{content}</li>
-    //       ))}
-    //     </ul>
-    //     {participant.type && (
-    //       <p className="text-secondary text-sm">{participant.type}</p>
-    //     )}
-    //   </div>
-    // )),
+  columnHelper.accessor("targets", {
+    id: "targets",
+    header: "目的",
+    cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
   }),
 ];
 // table using Tanstack table:
 
 function RouteComponent() {
-  const { data, pagination } = Route.useLoaderData();
-
-  const { page } = Route.useSearch();
-
   return (
     <Card caption={<Caption />}>
-      <Table className="mt-4" columns={columns} data={data} />
-      {/*Pagination*/}
-      <Pagination totalPages={pagination.totalPages} page={page} />
+      <Suspense fallback={<SkeletonLoading />}>
+        <CardContent />
+      </Suspense>
     </Card>
   );
 }
 
-function Pagination({
-  totalPages,
-  page,
-}: {
-  totalPages: number;
-  page: number;
-}) {
-  const navigate = Route.useNavigate();
+function CardContent() {
+  const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
+
+  const { data: researchesData } = useSuspenseQuery(
+    getResearchesQueryOptions({ ...search, lang })
+  );
+
+  const sorting = useMemo(() => {
+    if (!search.sort) return [];
+    return [{ id: search.sort, desc: search.order === "desc" }];
+  }, [search.sort, search.order]);
+
+  const { filters, setFilters } = useFilters(Route.id);
+
+  const sortingState: SortingState = [
+    { id: filters.sort, desc: filters.order === "desc" },
+  ];
+
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const newState = functionalUpdate(updater, sortingState);
+
+      startTransition(() => {
+        setFilters({
+          sort: newState[0]?.id,
+          order: newState[0]?.desc ? "desc" : "asc",
+        });
+      });
+    },
+    [setFilters]
+  );
 
   return (
-    <div className="mt-4 flex justify-center gap-5">
-      <button
-        className="btn btn-sm btn-outline"
-        onClick={() =>
-          navigate({ search: (prev) => ({ page: prev.page - 1 }) })
-        }
-        disabled={page === 1}
-      >
-        Previous
-      </button>
-      <span>
-        {page} / {totalPages}
-      </span>
-      <button
-        className="btn btn-sm btn-outline"
-        onClick={() =>
-          navigate({ search: (prev) => ({ page: prev.page + 1 }) })
-        }
-        disabled={page === totalPages}
-      >
-        Next
-      </button>
-    </div>
+    <>
+      <div className="overflow-x-auto">
+        <Table
+          className="mt-4 text-sm"
+          columns={columns}
+          data={researchesData.data}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+        />
+      </div>
+
+      <Pagination
+        totalPages={researchesData.pagination.totalPages}
+        page={filters.page}
+        itemsPerPage={filters.limit}
+      />
+    </>
   );
 }

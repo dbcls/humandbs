@@ -4,6 +4,9 @@ import {
   $createContentItem,
   $deleteContentItem,
   $validateContentId,
+  ContentItemResponse,
+  ContentItemsListItem,
+  ContentTranslationResponse,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
 import {
@@ -11,7 +14,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Tag } from "./StatusTag";
+import { StatusTag, Tag } from "./StatusTag";
 import { AddNewButton } from "./AddNewButton";
 import {
   Dialog,
@@ -27,7 +30,9 @@ import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { useServerFn } from "@tanstack/react-start";
-import { localeSchema } from "@/lib/i18n-config";
+import { i18n, Locale, localeSchema } from "@/config/i18n-config";
+import { DOCUMENT_VERSION_STATUS, DocVersionStatus } from "@/db/schema";
+import { ContentItem, DocumentVersionStatus } from "@/db/types";
 
 export function ContentList({
   selectedContentId,
@@ -35,7 +40,7 @@ export function ContentList({
   onClickAdd,
 }: {
   selectedContentId: string | null;
-  onSelectContent: (contentId: string) => void;
+  onSelectContent: (contentId: string | null) => void;
   onClickAdd: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -76,9 +81,14 @@ export function ContentList({
       title: "Delete Content page",
       description: `Are you sure you want to delete content page ${id}?`,
       actionLabel: "Delete",
-      onAction: () => deleteContent(id),
+      onAction: () => {
+        deleteContent(id);
+        onSelectContent(null);
+      },
     });
   }
+
+  console.log("contents", contents);
 
   return (
     <ul>
@@ -87,6 +97,23 @@ export function ContentList({
       </li>
       {contents.map((content) => {
         const isActive = content.id === selectedContentId;
+
+        const langs = [
+          ...new Set(content.translations.map((t) => t.lang)),
+        ].sort();
+
+        const showItems = langs.map((l) => {
+          const item =
+            content.translations.find(
+              (tr) => tr.status === "published" && tr.lang === l
+            ) ||
+            content.translations.find(
+              (tr) => tr.status === "draft" && tr.lang === l
+            );
+          return item as NonNullable<
+            ContentItemsListItem["translations"][number]
+          >;
+        });
 
         return (
           <ListItem
@@ -97,12 +124,20 @@ export function ContentList({
             <div className="text-sm font-medium">
               <span>{content.id}</span>
               <ul className="space-y-1">
-                {content.translations.map((tr) => (
-                  <li key={tr.lang} className="flex items-center gap-1 text-xs">
-                    <Tag tag={tr.lang} isActive={isActive} />
-                    <span>{tr.title}</span>
-                  </li>
-                ))}
+                {showItems.map((tr) => {
+                  return (
+                    <li
+                      key={tr.lang}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <Tag tag={tr.lang} isActive={isActive} />
+
+                      <StatusTag status={tr.status} isActive={isActive} />
+
+                      <span>{tr.title}</span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
@@ -186,8 +221,8 @@ function AddNewDialog() {
             e.preventDefault();
             e.stopPropagation();
             await form.handleSubmit();
-            console.log("onSubmit", form.state.fieldMeta.contentId.errors);
-            if (form.state.fieldMeta.contentId.errors.length === 0) {
+
+            if (form.state.fieldMeta.contentId?.errors.length === 0) {
               setOpen(false);
             }
           }}

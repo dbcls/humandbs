@@ -1,6 +1,6 @@
 import { Card } from "@/components/Card";
 import { Link } from "@/components/Link";
-import { Locale } from "@/lib/i18n-config";
+import { Locale } from "@/config/i18n-config";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 import { createFileRoute } from "@tanstack/react-router";
 import { LucideBell } from "lucide-react";

@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { i18n } from "@/lib/i18n-config";
+import { i18n } from "@/config/i18n-config";
 import { ResearchSchema } from "@humandbs/backend/types";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";

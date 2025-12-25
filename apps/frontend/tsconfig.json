@@ -18,6 +18,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+
     "noEmit": true
-  }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "react-table.d.ts"]
 }

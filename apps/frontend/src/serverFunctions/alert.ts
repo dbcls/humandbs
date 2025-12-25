@@ -1,7 +1,7 @@
 import { alert, newsItem, newsTranslation } from "@/db/schema";
 import { createAlertSchema, updateAlertSchema } from "@/db/types";
 import { db } from "@/db/database";
-import { localeSchema } from "@/lib/i18n-config";
+import { localeSchema } from "@/config/i18n-config";
 import { toDateString } from "@/lib/utils";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { queryOptions } from "@tanstack/react-query";

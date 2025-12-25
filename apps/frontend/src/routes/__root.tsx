@@ -3,7 +3,6 @@ import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
 import css from "@/index.css?url";
 import { Context } from "@/router";
 import { $getAuthUser } from "@/serverFunctions/user";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -32,7 +31,7 @@ export const Route = createRootRouteWithContext<Context>()({
   },
   component: RootComponent,
 
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { user, session } = await $getAuthUser();
 
     return {
@@ -43,16 +42,10 @@ export const Route = createRootRouteWithContext<Context>()({
 });
 
 function RootComponent() {
-  // const { messages, lang } = Route.useRouteContext();
-
-  // const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
   return (
-    // <IntlProvider locale={lang} messages={messages} timeZone={timeZone}>
     <RootDocument>
       <Outlet />
     </RootDocument>
-    // </IntlProvider>
   );
 }
 
@@ -67,7 +60,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="font-family-sans main-bg text-foreground relative h-fit">
         {children}
         <TanStackRouterDevtools position="bottom-left" />
-        {/*<ReactQueryDevtools buttonPosition="bottom-left" />*/}
         <SessionRefreshHandler session={session} />
         <ConfirmationDialog />
         <Scripts />

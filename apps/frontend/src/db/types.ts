@@ -1,4 +1,4 @@
-import { localeSchema } from "@/lib/i18n-config";
+import { localeSchema } from "@/config/i18n-config";
 import {
   createInsertSchema,
   createSelectSchema,
@@ -113,11 +113,19 @@ export const contentTranslationInsertSchema = createInsertSchema(
   schema.contentTranslation
 );
 
+export const contentTranslationUpdateSchema = createUpdateSchema(
+  schema.contentTranslation
+);
+
 export type ContentTranslationSelect =
   typeof schema.contentTranslation.$inferSelect;
 
 export type ContentTranslationInsert = z.infer<
   typeof contentTranslationInsertSchema
+>;
+
+export type ContentTranslationUpdate = z.infer<
+  typeof contentTranslationUpdateSchema
 >;
 
 export type NewsTranslationInsert = typeof schema.newsTranslation.$inferInsert;

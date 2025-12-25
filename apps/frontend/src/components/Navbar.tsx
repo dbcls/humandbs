@@ -1,9 +1,5 @@
 import Logo from "@/assets/Logo.png";
-import {
-  useNavigate,
-  useRouteContext,
-  useRouter,
-} from "@tanstack/react-router";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Search } from "./Search";
@@ -19,6 +15,8 @@ import {
 } from "@/components/ui/navigation-menu";
 import { getNavConfig } from "@/config/navbar-config";
 import { Link } from "./Link";
+import { ShoppingCart } from "lucide-react";
+import { useCart } from "@/hooks/useCart";
 
 export function Navbar() {
   const t = useTranslations("Navbar");
@@ -93,6 +91,8 @@ export function Navbar() {
 
         {user ? (
           <div className="flex items-center gap-2">
+            <ShoppingCartButton />
+
             <span className="text-xs">{user.name}</span>
             <form method="post" action={"/api/auth/logout"}>
               <Button type="submit">Logout</Button>
@@ -103,5 +103,27 @@ export function Navbar() {
         )}
       </div>
     </header>
+  );
+}
+
+function ShoppingCartButton() {
+  const { cart } = useCart();
+
+  const navigate = useNavigate({ from: "/{-$lang}" });
+
+  return (
+    <Button
+      className="relative mr-2 h-fit"
+      variant={"plain"}
+      onClick={() => navigate({ to: "./cart" })}
+    >
+      {cart.length > 0 && (
+        <span className="bg-accent text-2xs absolute top-0 right-0 z-10 inline min-w-6 rounded-full p-1 leading-4 text-white">
+          {cart.length}
+        </span>
+      )}
+
+      <ShoppingCart className="text-secondary" />
+    </Button>
   );
 }

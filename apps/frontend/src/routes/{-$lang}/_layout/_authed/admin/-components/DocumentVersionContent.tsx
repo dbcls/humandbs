@@ -5,7 +5,7 @@ import {
   DOCUMENT_VERSION_STATUS,
   DocumentVersionTranslation,
 } from "@/db/schema";
-import { i18n, Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/config/i18n-config";
 import { cn } from "@/lib/utils";
 import {
   $deleteDocumentVersionDraft,
@@ -18,7 +18,7 @@ import {
 } from "@/serverFunctions/documentVersion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Trash2, Undo2 } from "lucide-react";
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import { StatusTag } from "./StatusTag";
 
 type FormMeta = {

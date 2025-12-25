@@ -1,4 +1,4 @@
-import { i18n, type Locale, type Messages } from "@/lib/i18n-config";
+import { i18n, type Locale, type Messages } from "@/config/i18n-config";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, LocationRewrite } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
@@ -30,16 +30,19 @@ export type Context = {
 function localeRewrite(): LocationRewrite {
   return {
     input: ({ url }) => {
-      const parts = url.pathname.split("/").filter(Boolean);
+      console.log("input href", url.href, url.pathname);
+      const parts = url.pathname.split("/").slice(1);
 
       const [maybeLocale] = parts;
 
+      console.log("maybeLocale", maybeLocale);
       if (
         maybeLocale &&
         (maybeLocale.startsWith(".") ||
           maybeLocale === "api" ||
           maybeLocale === "assets" ||
-          maybeLocale === "favicon.ico")
+          maybeLocale === "favicon.ico" ||
+          maybeLocale.startsWith("hum"))
       ) {
         return url;
       }
@@ -48,10 +51,12 @@ function localeRewrite(): LocationRewrite {
         url.pathname = `/${i18n.defaultLocale}/${parts.join("/")}`;
       }
 
+      console.log("returnint url", url.pathname);
+
       return url;
     },
     output: ({ url }) => {
-      const parts = url.pathname.split("/").filter(Boolean);
+      const parts = url.pathname.split("/").slice(1);
       if (parts[0] === i18n.defaultLocale) {
         parts.shift();
         url.pathname = parts.length ? `/${parts.join("/")}` : "/";

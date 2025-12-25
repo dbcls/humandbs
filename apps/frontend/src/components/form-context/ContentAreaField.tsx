@@ -1,8 +1,7 @@
-import MDEditor from "@uiw/react-md-editor";
-import { Label } from "../ui/label";
-import { useFieldContext } from "./FormContext";
 import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import MDEditor from "@uiw/react-md-editor";
+import { useFieldContext } from "./FormContext";
 
 export default function ContentAreaField({ label }: { label: string }) {
   const field = useFieldContext<string>();

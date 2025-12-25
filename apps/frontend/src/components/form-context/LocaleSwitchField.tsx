@@ -1,4 +1,4 @@
-import { i18n, Locale } from "@/lib/i18n-config";
+import { i18n, Locale } from "@/config/i18n-config";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { useFieldContext } from "./FormContext";
 

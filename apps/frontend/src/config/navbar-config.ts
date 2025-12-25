@@ -1,4 +1,4 @@
-import { Locale, Messages } from "@/lib/i18n-config";
+import { Locale, Messages } from "@/config/i18n-config";
 import { LinkOptions } from "@tanstack/react-router";
 type NavLinkId = keyof Messages["Navbar"];
 
@@ -82,14 +82,23 @@ export const getNavConfig = (lang: Locale): NavConfig => {
     {
       id: "data-usage",
       linkOptions: {
-        to: "/{-$lang}/$contentId",
-        params: { lang, contentId: "data-usage" },
+        to: "/{-$lang}/data-usage",
+        params: { lang },
       },
       children: [
         {
           id: "research-list",
           linkOptions: {
             to: "/{-$lang}/data-usage/researches",
+            params: {
+              lang,
+            },
+          },
+        },
+        {
+          id: "dataset-list",
+          linkOptions: {
+            to: "/{-$lang}/data-usage/datasets",
             params: {
               lang,
             },

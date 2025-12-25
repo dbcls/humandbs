@@ -11,7 +11,7 @@ import {
   documentVersionTranslation,
 } from "@/db/schema";
 import { db } from "@/db/database";
-import { i18n, Locale, localeSchema } from "@/lib/i18n-config";
+import { i18n, Locale, localeSchema } from "@/config/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 
 /** Get document version translation */

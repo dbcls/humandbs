@@ -7,9 +7,7 @@ export const contentItem = pgTable("content_item", {
   id: text("id").notNull().primaryKey(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   publishedAt: text("published_at"),
-  authorId: text("author_id")
-    .notNull()
-    .references(() => user.id),
+  authorId: text("author_id").notNull(),
 });
 
 export const contentItemRelations = relations(contentItem, ({ many, one }) => ({

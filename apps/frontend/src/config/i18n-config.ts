@@ -1,5 +1,5 @@
 import en from "../../localization/messages/en.json";
-import { enumFromStringArray } from "./utils";
+import { enumFromStringArray } from "../lib/utils";
 
 export type Messages = typeof en;
 
