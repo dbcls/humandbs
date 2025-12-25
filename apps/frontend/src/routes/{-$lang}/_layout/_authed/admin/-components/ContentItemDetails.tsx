@@ -17,13 +17,14 @@ import {
   UpsertContentItemData,
 } from "@/serverFunctions/contentItem";
 import { waitUntilNoMutations } from "@/utils/mutations";
+import { useStore } from "@tanstack/react-form";
 import {
   useMutation,
   useMutationState,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Loader2, Pencil, Save } from "lucide-react";
+import { Dot, Loader2, Pencil, Save } from "lucide-react";
 import { Suspense, useRef, useState } from "react";
 
 type ContentItem = NonNullable<ContentItemResponse>;
@@ -165,6 +166,16 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
     id,
   });
 
+  const isDraftChanged = useStore(
+    form.store,
+    (state) =>
+      state.isValid &&
+      (state.values.translation[state.values.lang]?.draft?.content !==
+        state.values.translation[state.values.lang]?.published?.content ||
+        state.values.translation[state.values.lang]?.draft?.title !==
+          state.values.translation[state.values.lang]?.draft?.title)
+  );
+
   return (
     <Card
       className="flex h-full flex-1 flex-col"
@@ -187,6 +198,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             value={DOCUMENT_VERSION_STATUS.DRAFT}
           >
             <Pencil /> <span>Editor</span>
+            {isDraftChanged ? <Dot /> : null}
             <div className="w-4">
               {savingStatuses.at(-1) === "pending" && (
                 <Loader2 className="size-4 animate-spin" />
@@ -244,36 +256,28 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             }}
           </form.Subscribe>
 
-          <form.Subscribe selector={(state) => state.isDirty && state.isValid}>
-            {(canPublish) => (
-              <div className="flex items-center justify-between">
-                <Button
-                  variant={"outline"}
-                  disabled={!canPublish}
-                  onClick={() =>
-                    form.handleSubmit({ submitAction: "resetDraft" })
-                  }
-                >
-                  Reset
-                </Button>
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    onClick={() =>
-                      form.handleSubmit({ submitAction: "publish" })
-                    }
-                    className="gap-1 self-end"
-                    size={"lg"}
-                    variant={"accent"}
-                    disabled={!canPublish}
-                  >
-                    <Save className="size-5" />
-                    Publish
-                  </Button>
-                </div>
-              </div>
-            )}
-          </form.Subscribe>
+          <div className="flex items-center justify-between">
+            <Button
+              variant={"outline"}
+              disabled={!isDraftChanged}
+              onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
+            >
+              Reset
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                onClick={() => form.handleSubmit({ submitAction: "publish" })}
+                className="gap-1 self-end"
+                size={"lg"}
+                variant={"accent"}
+                disabled={!isDraftChanged}
+              >
+                <Save className="size-5" />
+                Publish
+              </Button>
+            </div>
+          </div>
         </TabsContent>
         <TabsContent
           className="flex min-h-0 flex-1 shrink-0 flex-col gap-2 overflow-y-auto"
