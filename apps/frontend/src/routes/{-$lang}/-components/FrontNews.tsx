@@ -1,8 +1,9 @@
-import { Link } from "@/components/Link";
-import { type NewsTitleResponse } from "@/serverFunctions/news";
 import { useLoaderData } from "@tanstack/react-router";
 import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
+
+import { Link } from "@/components/Link";
+import { type NewsTitleResponse } from "@/serverFunctions/news";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (

@@ -1,19 +1,20 @@
 import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { roles } from "@/config/permissions";
 import { UserRole } from "@/db/schema";
 import { $changeUserRole, getUsersQueryOptions } from "@/serverFunctions/user";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { roles } from "@/config/permissions";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/users")({
   component: RouteComponent,

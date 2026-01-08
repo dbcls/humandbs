@@ -1,12 +1,13 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Trash2 } from "lucide-react";
+import { useTranslations } from "use-intl";
+
 import { CardWithCaption } from "@/components/Card";
 import { Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
-import { FA_ICONS } from "@/lib/faIcons";
-import { createFileRoute } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
+
 import { datasetsColumnHelper, datasetsColumns } from "./data-usage/datasets";
-import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,

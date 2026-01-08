@@ -8,7 +8,6 @@ import {
   HumIdParams,
   LangQuery,
   LangVersionQuery,
-  Research,
   ResearchDetail,
   ResearchesQuery,
   ResearchesResponse,
@@ -16,7 +15,7 @@ import {
   ResearchVersionsResponse,
 } from "@humandbs/backend/types";
 import axios from "axios";
-import z from "zod";
+import { z } from "zod";
 
 // Extend Error type to include custom properties
 declare global {

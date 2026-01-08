@@ -1,9 +1,10 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
+
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/"

@@ -1,8 +1,14 @@
-import Markdoc, { type Config, type Tag } from "@markdoc/markdoc";
+import Markdoc, {
+  type Config,
+  type Tag,
+  Tokenizer,
+  transform,
+  parse,
+} from "@markdoc/markdoc";
 import { createServerFn } from "@tanstack/react-start";
 import fs from "fs/promises";
 import { Parser } from "htmlparser2";
-import yaml from "js-yaml";
+import { FAILSAFE_SCHEMA, load } from "js-yaml";
 import { z } from "zod";
 
 import { ContentId, contentIdSchema } from "@/config/content-config";
@@ -87,7 +93,7 @@ export function processTokens(tokens: Tokens) {
         output.push({ type: "text", content });
     },
 
-    onclosetag(name) {
+    onclosetag() {
       output.push({
         type: "tag_close",
         nesting: -1,
@@ -111,7 +117,7 @@ export function processTokens(tokens: Tokens) {
   return output;
 }
 
-export const tokenizer = new Markdoc.Tokenizer({ html: true });
+export const tokenizer = new Tokenizer({ html: true });
 
 export type Heading = {
   title: string;
@@ -155,12 +161,12 @@ export const getContent = createServerFn({ method: "GET" })
     const raw = await getFileContent(data);
     const tokens = tokenizer.tokenize(raw);
     const processed = processTokens(tokens);
-    const ast = Markdoc.parse(processed);
+    const ast = parse(processed);
 
     const frontmatter = (
       ast.attributes.frontmatter
-        ? yaml.load(ast.attributes.frontmatter, {
-            schema: yaml.FAILSAFE_SCHEMA,
+        ? load(ast.attributes.frontmatter, {
+            schema: FAILSAFE_SCHEMA,
           })
         : {}
     ) as Record<string, string | number>;
@@ -171,7 +177,7 @@ export const getContent = createServerFn({ method: "GET" })
       lang: data.lang,
     };
 
-    const content = Markdoc.transform(ast, config) as any;
+    const content = transform(ast, config);
 
     let headings: Heading[] = [];
 

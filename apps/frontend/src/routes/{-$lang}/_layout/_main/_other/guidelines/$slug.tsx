@@ -1,11 +1,12 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+
 import { Card } from "@/components/Card";
 import { CONTENT_IDS } from "@/config/content-config";
 import { enumFromStringArray } from "@/lib/utils";
 import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/guidelines/$slug"

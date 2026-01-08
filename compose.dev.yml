@@ -66,6 +66,10 @@ services:
       - POSTGRES_DB=mydb
       - HUMANDBS_BACKEND_PORT=8080
       - HUMANDBS_BACKEND=backend
+      - OIDC_ISSUER_URL=https://idp-staging.ddbj.nig.ac.jp/realms/master
+      - OIDC_CLIENT_ID=humandbs-dev
+      - OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
+
     ports:
       - 127.0.0.1:3000:3000
     working_dir: /app

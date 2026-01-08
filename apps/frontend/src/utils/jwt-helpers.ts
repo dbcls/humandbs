@@ -1,14 +1,15 @@
-import { getConfig } from "@/lib/oidc";
 import { getCookies } from "@tanstack/react-start/server";
 import { serialize } from "cookie";
 import * as jose from "jose";
 import * as oidc from "openid-client";
 
+import { getConfig } from "@/lib/oidc";
+
 export const SESSION_COOKIE_NAME = "session_tokens";
 const PROACTIVE_REFRESH_WINDOW_SEC = 60;
 const DEFAULT_MAX_AGE = 3600;
 
-export type Session = {
+export interface Session {
   access_token: string;
   refresh_token?: string;
   id_token?: string;
@@ -18,14 +19,14 @@ export type Session = {
   refresh_expires_at?: string;
   scope?: string;
   token_type?: string;
-};
+}
 
 export type SessionMeta = Pick<
   Session,
   "expires_at" | "refresh_expires_at" | "expires_in" | "refresh_expires_in"
 >;
 
-export type AccessTokenClaims = {
+export interface AccessTokenClaims {
   sub: string;
   preferred_username?: string;
   email?: string;
@@ -38,14 +39,14 @@ export type AccessTokenClaims = {
   aud?: string | string[];
   azp?: string;
   [k: string]: unknown;
-};
+}
 
-export type EnsureFreshSessionResult = {
+export interface EnsureFreshSessionResult {
   session: Session | null;
   claims: AccessTokenClaims | null;
   refreshed: boolean;
   shouldClear: boolean;
-};
+}
 
 const JWKS = jose.createRemoteJWKSet(
   new URL(`${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/certs`)

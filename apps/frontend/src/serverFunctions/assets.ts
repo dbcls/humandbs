@@ -5,8 +5,8 @@ import { eq, or } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
-import { asset } from "@/db/schema";
 import { db } from "@/db/database";
+import { asset } from "@/db/schema";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 const PUBLIC_DIR = "./public";

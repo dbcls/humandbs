@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ErrorBoundary } from "react-error-boundary";
+import { useTranslations } from "use-intl";
 
 import InfographicsImg from "@/assets/Infographics.png";
 import { Card } from "@/components/Card";
@@ -6,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
-import { ErrorBoundary } from "react-error-boundary";
-import { useTranslations } from "use-intl";
+
 import { News } from "../../-components/FrontNews";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/")({

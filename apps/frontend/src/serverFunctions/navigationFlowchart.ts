@@ -1,6 +1,8 @@
-import { NavigationData } from "@/components/NavigationChart";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+
+import { NavigationData } from "@/components/NavigationChart";
+
 import { getLocaleFn } from "./locale";
 
 export const $getNavigationFlowchartData = createServerFn({

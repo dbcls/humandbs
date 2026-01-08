@@ -5,6 +5,9 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Locale } from "use-intl";
 import { z } from "zod";
 
+import { i18n } from "@/config/i18n-config";
+import { USER_ROLES } from "@/config/permissions";
+import { db } from "@/db/database";
 import {
   DOCUMENT_VERSION_STATUS,
   documentVersion,
@@ -17,14 +20,11 @@ import {
   InsertDocumentVersionTranslationParams,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { db } from "@/db/database";
-import { i18n } from "@/config/i18n-config";
 import { unionOfLiterals } from "@/lib/utils";
 import {
   authMiddleware,
   hasPermissionMiddleware,
 } from "@/middleware/authMiddleware";
-import { USER_ROLES } from "@/config/permissions";
 
 export interface DocumentVersionListItemResponse {
   statuses: DocumentVersionStatus[];

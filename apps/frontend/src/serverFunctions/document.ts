@@ -3,9 +3,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { db } from "@/db/database";
 import { document } from "@/db/schema";
 import { insertDocumentSchema } from "@/db/types";
-import { db } from "@/db/database";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 /** List all documents */
