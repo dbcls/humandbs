@@ -1,6 +1,6 @@
 import { Dataset } from "@humandbs/backend/types";
 import { Separator } from "@radix-ui/react-select";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
@@ -26,6 +26,8 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
     (item) => item.datasetId === versionData.datasetId
   );
 
+  const { user } = useRouteContext({ from: "__root__" });
+
   return (
     <CardWithCaption
       size={"lg"}
@@ -36,16 +38,18 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
           icon="dataset"
           badge={<Route.Link to="versions">リリース情報</Route.Link>}
           right={
-            <div className="flex gap-5">
-              <Button
-                variant={"accent"}
-                className="rounded-full"
-                disabled={isInCart}
-                onClick={() => add(versionData)}
-              >
-                {isInCart ? "Already in cart" : " Add to cart"}
-              </Button>
-            </div>
+            user ? (
+              <div className="flex gap-5">
+                <Button
+                  variant={"accent"}
+                  className="rounded-full"
+                  disabled={isInCart}
+                  onClick={() => add(versionData)}
+                >
+                  {isInCart ? "Already in cart" : " Add to cart"}
+                </Button>
+              </div>
+            ) : null
           }
         >
           {versionData.datasetId}.{versionData.version}

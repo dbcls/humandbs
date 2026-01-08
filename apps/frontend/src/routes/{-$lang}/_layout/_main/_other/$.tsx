@@ -21,8 +21,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       })
     );
 
-    console.log("content", content);
-
     return content;
   },
   errorComponent: ({ error }) => (

@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import { FA_ICONS } from "@/lib/faIcons";
+import { cn } from "@/lib/utils";
 
 export function Callout({
   children,

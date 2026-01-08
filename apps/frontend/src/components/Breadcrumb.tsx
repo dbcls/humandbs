@@ -1,10 +1,10 @@
-import { cn } from "@/lib/utils";
-import { FileRoutesByTo } from "@/routeTree.gen";
 import { Slot } from "@radix-ui/react-slot";
-import { isMatch, useMatches } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { isMatch, useMatches, Link } from "@tanstack/react-router";
 import { Home, MoreHorizontal } from "lucide-react";
 import * as React from "react";
+
+import { cn } from "@/lib/utils";
+import { FileRoutesByTo } from "@/routeTree.gen";
 
 const Breadcrumb = React.forwardRef<
   HTMLElement,
@@ -141,7 +141,9 @@ function Breadcrumbs() {
                 {label}
               </Link>
             </BreadcrumbItem>
-            {index < crumbs.length - 1 && <BreadcrumbSeparator />}
+            {index < crumbs.length - 1 && (
+              <BreadcrumbSeparator className="text-foreground-light" />
+            )}
           </React.Fragment>
         ))}
       </BreadcrumbList>

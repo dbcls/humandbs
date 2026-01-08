@@ -1,6 +1,7 @@
-import { cn } from "@/lib/utils";
 import { Link as BaseLink, LinkComponentProps } from "@tanstack/react-router";
 import { cva, VariantProps } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
 
 const linkVariants = cva("text-secondary underline", {
   variants: {

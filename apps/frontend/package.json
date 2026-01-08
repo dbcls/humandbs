@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite dev --port 3000 --host 0.0.0.0",
     "build": "vite build",
-    "auth:generate": "bunx --bun @better-auth/cli@latest generate --config ./src/lib/auth.ts --y --output ./src/db/schema/auth-schema.ts && prettier --write ./src/db/schema/auth-schema.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
     "db:push": "bunx --bun drizzle-kit push",

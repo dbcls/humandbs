@@ -1,9 +1,12 @@
-import Logo from "@/assets/Logo.png";
-import { useNavigate, useRouteContext } from "@tanstack/react-router";
+import {
+  useLocation,
+  useNavigate,
+  useRouteContext,
+} from "@tanstack/react-router";
+import { ShoppingCart } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
-import { LangSwitcher } from "./LanguageSwitcher";
-import { Search } from "./Search";
 
+import Logo from "@/assets/Logo.png";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -14,9 +17,11 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { getNavConfig } from "@/config/navbar-config";
-import { Link } from "./Link";
-import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+
+import { LangSwitcher } from "./LanguageSwitcher";
+import { Link } from "./Link";
+import { Search } from "./Search";
 
 export function Navbar() {
   const t = useTranslations("Navbar");
@@ -29,8 +34,16 @@ export function Navbar() {
 
   const navigate = useNavigate();
 
+  const currentLocation = useLocation();
+
   async function login() {
-    await navigate({ to: "/api/auth/login", reloadDocument: true });
+    await navigate({
+      to: "/api/auth/login",
+      search: {
+        redirect: currentLocation.href,
+      },
+      reloadDocument: true,
+    });
   }
 
   return (
