@@ -1,18 +1,14 @@
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+
 import { Alerts } from "@/components/Alerts";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import {
-  $getHiddenAlertIds,
-  getActiveAlertsQueryOptions,
-} from "@/serverFunctions/alert";
-
-import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main")({
   component: RouteComponent,
 
   loader: async ({ context }) => {
-    const locale = context.lang;
+    // const locale = context.lang;
     // const activeAlertTranslations = await context.queryClient.ensureQueryData(
     //   getActiveAlertsQueryOptions({ locale })
     // );

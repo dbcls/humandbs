@@ -1,3 +1,8 @@
+import {
+  ResearchesQuerySchema,
+  ResearchSummary,
+} from "@humandbs/backend/types";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
   createColumnHelper,
@@ -5,6 +10,8 @@ import {
   Updater,
 } from "@tanstack/react-table";
 import { Search } from "lucide-react";
+import { startTransition, Suspense, useCallback, useMemo } from "react";
+import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -16,13 +23,6 @@ import { Button } from "@/components/ui/button";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
-import {
-  ResearchesQuerySchema,
-  ResearchSummary,
-} from "@humandbs/backend/types";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { startTransition, Suspense, useCallback, useMemo } from "react";
-import { useTranslations } from "use-intl";
 
 export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
   lang: true,

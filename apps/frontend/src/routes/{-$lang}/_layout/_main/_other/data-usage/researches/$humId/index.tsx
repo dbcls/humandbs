@@ -1,14 +1,7 @@
-import { CardWithCaption } from "@/components/Card";
-import { ContentHeader } from "@/components/ContentHeader";
-import { TextWithIcon } from "@/components/TextWithIcon";
-import { FA_ICONS } from "@/lib/faIcons";
-import {
-  getResearchQueryOptions,
-  getResearchVersionsQueryOptions,
-} from "@/serverFunctions/researches";
-import { ResearchVersionDoc } from "@humandbs/backend/types";
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+
+import { getResearchQueryOptions } from "@/serverFunctions/researches";
+
 import { VersionCard } from "./-VersionCard";
 
 export const Route = createFileRoute(

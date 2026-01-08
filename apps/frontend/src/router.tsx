@@ -1,13 +1,14 @@
-import { i18n, type Locale, type Messages } from "@/config/i18n-config";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, LocationRewrite } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
-import { routeTree } from "./routeTree.gen";
-import { SessionUser } from "./serverFunctions/user";
-import type { SessionMeta } from "@/utils/jwt-helpers";
+import { i18n, type Locale, type Messages } from "@/config/i18n-config";
+import { type SessionMeta } from "@/utils/jwt-helpers";
 
-export type Context = {
+import { routeTree } from "./routeTree.gen";
+import { type SessionUser } from "./serverFunctions/user";
+
+export interface Context {
   queryClient: QueryClient;
   // auth: Auth;
   crumb: string;
@@ -15,7 +16,7 @@ export type Context = {
   messages: Messages;
   user: SessionUser | null | undefined;
   session: SessionMeta | null | undefined;
-};
+}
 
 /**
  * Tanstack Router's rewrite feature - to handle optional locale params
@@ -30,12 +31,10 @@ export type Context = {
 function localeRewrite(): LocationRewrite {
   return {
     input: ({ url }) => {
-      console.log("input href", url.href, url.pathname);
       const parts = url.pathname.split("/").slice(1);
 
       const [maybeLocale] = parts;
 
-      console.log("maybeLocale", maybeLocale);
       if (
         maybeLocale &&
         (maybeLocale.startsWith(".") ||
@@ -50,8 +49,6 @@ function localeRewrite(): LocationRewrite {
       if (!i18n.locales.includes(maybeLocale as Locale)) {
         url.pathname = `/${i18n.defaultLocale}/${parts.join("/")}`;
       }
-
-      console.log("returnint url", url.pathname);
 
       return url;
     },

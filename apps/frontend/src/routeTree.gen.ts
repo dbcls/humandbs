@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginErrorRouteImport } from './routes/login-error'
 import { Route as HumChar123humIdNumAndRestChar125RouteImport } from './routes/hum{$humIdNumAndRest}'
@@ -63,13 +61,6 @@ import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdVersi
 import { Route as Char123LangChar125LayoutMainOtherDataUsageDatasetsDatasetIdVersionsRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/versions'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageDatasetsDatasetIdVersionRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/$version'
 
-const Char123LangChar125RouteImport = createFileRoute('/{-$lang}')()
-
-const Char123LangChar125Route = Char123LangChar125RouteImport.update({
-  id: '/{-$lang}',
-  path: '/{-$lang}',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginErrorRoute = LoginErrorRouteImport.update({
   id: '/login-error',
   path: '/login-error',
@@ -83,8 +74,9 @@ const HumChar123humIdNumAndRestChar125Route =
   } as any)
 const Char123LangChar125LayoutRoute =
   Char123LangChar125LayoutRouteImport.update({
-    id: '/_layout',
-    getParentRoute: () => Char123LangChar125Route,
+    id: '/{-$lang}/_layout',
+    path: '/{-$lang}',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const Char123LangChar125LayoutMainRoute =
   Char123LangChar125LayoutMainRouteImport.update({
@@ -511,7 +503,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
-  '/{-$lang}': typeof Char123LangChar125RouteWithChildren
   '/{-$lang}/_layout': typeof Char123LangChar125LayoutRouteWithChildren
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -656,7 +647,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/hum{$humIdNumAndRest}'
     | '/login-error'
-    | '/{-$lang}'
     | '/{-$lang}/_layout'
     | '/api/auth/callback'
     | '/api/auth/login'
@@ -711,7 +701,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   HumChar123humIdNumAndRestChar125Route: typeof HumChar123humIdNumAndRestChar125Route
   LoginErrorRoute: typeof LoginErrorRoute
-  Char123LangChar125Route: typeof Char123LangChar125RouteWithChildren
+  Char123LangChar125LayoutRoute: typeof Char123LangChar125LayoutRouteWithChildren
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -720,13 +710,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/{-$lang}': {
-      id: '/{-$lang}'
-      path: '/{-$lang}'
-      fullPath: '/{-$lang}'
-      preLoaderRoute: typeof Char123LangChar125RouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login-error': {
       id: '/login-error'
       path: '/login-error'
@@ -746,7 +729,7 @@ declare module '@tanstack/react-router' {
       path: '/{-$lang}'
       fullPath: '/{-$lang}'
       preLoaderRoute: typeof Char123LangChar125LayoutRouteImport
-      parentRoute: typeof Char123LangChar125Route
+      parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/_layout/_main': {
       id: '/{-$lang}/_layout/_main'
@@ -1399,21 +1382,10 @@ const Char123LangChar125LayoutRouteWithChildren =
     Char123LangChar125LayoutRouteChildren,
   )
 
-interface Char123LangChar125RouteChildren {
-  Char123LangChar125LayoutRoute: typeof Char123LangChar125LayoutRouteWithChildren
-}
-
-const Char123LangChar125RouteChildren: Char123LangChar125RouteChildren = {
-  Char123LangChar125LayoutRoute: Char123LangChar125LayoutRouteWithChildren,
-}
-
-const Char123LangChar125RouteWithChildren =
-  Char123LangChar125Route._addFileChildren(Char123LangChar125RouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   HumChar123humIdNumAndRestChar125Route: HumChar123humIdNumAndRestChar125Route,
   LoginErrorRoute: LoginErrorRoute,
-  Char123LangChar125Route: Char123LangChar125RouteWithChildren,
+  Char123LangChar125LayoutRoute: Char123LangChar125LayoutRouteWithChildren,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,

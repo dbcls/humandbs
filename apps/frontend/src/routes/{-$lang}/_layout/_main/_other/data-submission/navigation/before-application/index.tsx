@@ -1,8 +1,9 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
+
 import { Card } from "@/components/Card";
 import { NavigationChart } from "@/components/NavigationChart";
 import { $getNavigationFlowchartData } from "@/serverFunctions/navigationFlowchart";
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/"

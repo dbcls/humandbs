@@ -1,8 +1,11 @@
 import { match as matchLocale } from "@formatjs/intl-localematcher";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
+import { type DeepPartial } from "@tanstack/router-core";
 import Negotiator from "negotiator";
+import { type Messages } from "use-intl";
 import { z } from "zod";
+
 import {
   i18n as i18nConfig,
   Locale,
@@ -19,7 +22,7 @@ export const getMessagesFn = createServerFn()
     const jsonFile = Bun.file(`./localization/messages/${locale}.json`);
 
     const content = await jsonFile.json();
-    return content as Record<string, any>;
+    return content as DeepPartial<Messages> | null;
   });
 
 /**
@@ -64,7 +67,7 @@ function getLocale(request: Request): Locale {
   return locale;
 }
 
-export const getLocaleFn = createServerFn().handler(async (ctx) => {
+export const getLocaleFn = createServerFn().handler(async () => {
   const request = getRequest();
 
   return getLocale(request);

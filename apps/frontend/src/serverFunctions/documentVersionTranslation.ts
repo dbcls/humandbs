@@ -3,6 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { i18n, Locale, localeSchema } from "@/config/i18n-config";
+import { db } from "@/db/database";
 import {
   document,
   DOCUMENT_VERSION_STATUS,
@@ -10,8 +12,6 @@ import {
   DocumentVersionTranslation,
   documentVersionTranslation,
 } from "@/db/schema";
-import { db } from "@/db/database";
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
 import { transformMarkdoc } from "@/markdoc/config";
 
 /** Get document version translation */

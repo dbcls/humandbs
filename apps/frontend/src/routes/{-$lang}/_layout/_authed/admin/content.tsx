@@ -1,9 +1,11 @@
-import { Card } from "@/components/Card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, useState } from "react";
-import { ContentList } from "./-components/ContentList";
+
+import { Card } from "@/components/Card";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { ContentItemDetails } from "./-components/ContentItemDetails";
+import { ContentList } from "./-components/ContentList";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(

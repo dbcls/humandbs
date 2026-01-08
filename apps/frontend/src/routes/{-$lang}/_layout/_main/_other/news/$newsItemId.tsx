@@ -1,9 +1,12 @@
+import { createFileRoute } from "@tanstack/react-router";
+
 import { Card } from "@/components/Card";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
-import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/$newsItemId")({
+export const Route = createFileRoute(
+  "/{-$lang}/_layout/_main/_other/news/$newsItemId"
+)({
   component: RouteComponent,
 
   loader: async ({ context, params }) => {

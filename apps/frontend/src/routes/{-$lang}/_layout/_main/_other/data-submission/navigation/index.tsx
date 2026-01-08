@@ -1,7 +1,8 @@
-import { Card } from "@/components/Card";
-import { NavigationChart, NavigationData } from "@/components/NavigationChart";
-import { useTranslations } from "use-intl";
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
+
+import { Card } from "@/components/Card";
+import { NavigationChart } from "@/components/NavigationChart";
 import { $getNavigationFlowchartData } from "@/serverFunctions/navigationFlowchart";
 
 export const Route = createFileRoute(

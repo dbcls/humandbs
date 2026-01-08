@@ -1,9 +1,10 @@
+import { createFileRoute } from "@tanstack/react-router";
+
 import { Card } from "@/components/Card";
 import { CONTENT_IDS } from "@/config/content-config";
 import { MarkdocTOC } from "@/markdoc/MarkdocTOC";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getDocumentVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
-import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/guidelines/revision/$revision"

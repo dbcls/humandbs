@@ -1,6 +1,3 @@
-import { Navbar } from "@/components/Navbar";
-import { USER_ROLES } from "@/config/permissions";
-import { cn } from "@/lib/utils";
 import {
   createFileRoute,
   Link,
@@ -15,7 +12,11 @@ import {
   PenTool,
   User2,
 } from "lucide-react";
-import z from "zod";
+import { z } from "zod";
+
+import { Navbar } from "@/components/Navbar";
+import { USER_ROLES } from "@/config/permissions";
+import { cn } from "@/lib/utils";
 
 export const tabParamSchema = z.enum([
   "news",

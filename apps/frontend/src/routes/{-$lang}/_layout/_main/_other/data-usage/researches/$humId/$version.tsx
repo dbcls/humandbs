@@ -1,5 +1,7 @@
-import { getResearchQueryOptions } from "@/serverFunctions/researches";
 import { createFileRoute } from "@tanstack/react-router";
+
+import { getResearchQueryOptions } from "@/serverFunctions/researches";
+
 import { VersionCard } from "./-VersionCard";
 
 export const Route = createFileRoute(

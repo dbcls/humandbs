@@ -1,6 +1,7 @@
-import { hasPermission, Permissions } from "@/config/permissions";
-import { $getAuthUser } from "@/serverFunctions/user";
 import { createMiddleware } from "@tanstack/react-start";
+
+import { hasPermission, Permissions } from "@/config/permissions";
+import { $getAuthUser } from "@/serverFunctions/authUser";
 
 export const authMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {

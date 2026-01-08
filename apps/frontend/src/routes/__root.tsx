@@ -1,8 +1,3 @@
-import ConfirmationDialog from "@/components/ConfirmationDialog";
-import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
-import css from "@/index.css?url";
-import { Context } from "@/router";
-import { $getAuthUser } from "@/serverFunctions/user";
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -10,6 +5,12 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+
+import ConfirmationDialog from "@/components/ConfirmationDialog";
+import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
+import css from "@/index.css?url";
+import { Context } from "@/router";
+import { $getAuthUser } from "@/serverFunctions/authUser";
 
 export const Route = createRootRouteWithContext<Context>()({
   head: () => {
@@ -31,7 +32,7 @@ export const Route = createRootRouteWithContext<Context>()({
   },
   component: RootComponent,
 
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async () => {
     const { user, session } = await $getAuthUser();
 
     return {

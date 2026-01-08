@@ -1,9 +1,10 @@
+import { ResearchVersionDoc } from "@humandbs/backend/types";
+import { createFileRoute } from "@tanstack/react-router";
+
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { Separator } from "@/components/Separator";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
-import { ResearchVersionDoc } from "@humandbs/backend/types";
-import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions"

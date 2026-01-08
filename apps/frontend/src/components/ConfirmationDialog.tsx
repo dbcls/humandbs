@@ -18,7 +18,6 @@ function ConfirmationDialog() {
   const { open, title, description, cancelLabel, actionLabel, onAction } =
     useConfirmationStore();
 
-  console.log("open component", open);
   return (
     <AlertDialog
       open={open}

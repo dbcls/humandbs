@@ -22,6 +22,7 @@ import Markdoc, { Schema } from "@markdoc/markdoc";
 function getSrc(url: string, contentId: string, lang: string) {
   if (url.startsWith("/") || url.startsWith("http")) return url;
 
+  // TODO confusing with ContentItem, but this is just for markdowns that have links to other files
   return `/content/${lang}/${contentId}/${url}`;
 }
 

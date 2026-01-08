@@ -4,11 +4,10 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { IntlProvider } from "use-intl";
 
 import { i18n, localeSchema } from "@/config/i18n-config";
 import { getMessagesFn } from "@/serverFunctions/locale";
-import { IntlProvider } from "use-intl";
-import z from "zod";
 
 const langSchemaWithDefault = localeSchema.default(i18n.defaultLocale);
 
@@ -42,7 +41,7 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
   },
   loader: async ({ context }) => {
     return {
-      crumb: context.messages.Navbar.home,
+      crumb: context.messages?.Navbar?.home,
       alerts: [],
     };
   },

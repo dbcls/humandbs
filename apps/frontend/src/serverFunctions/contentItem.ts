@@ -38,10 +38,10 @@ export function getContentQueryOptions(id: string) {
   });
 }
 
-export type ContentItemsListItem = {
+export interface ContentItemsListItem {
   id: string;
   translations: Pick<ContentTranslationSelect, "title" | "lang" | "status">[];
-};
+}
 
 const $getContentItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])

@@ -1,11 +1,11 @@
-import { Card } from "@/components/Card";
-import { Link } from "@/components/Link";
-import { Locale } from "@/config/i18n-config";
-import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 import { createFileRoute } from "@tanstack/react-router";
 import { LucideBell } from "lucide-react";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 import { z } from "zod";
+
+import { Card } from "@/components/Card";
+import { Link } from "@/components/Link";
+import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
   component: RouteComponent,

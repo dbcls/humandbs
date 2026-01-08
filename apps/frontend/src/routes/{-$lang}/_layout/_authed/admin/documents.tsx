@@ -1,11 +1,13 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useState } from "react";
+
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
-import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useState } from "react";
+
 import { DocumentsList } from "./-components/DocumentsList";
-import { DocumentVersionsList } from "./-components/DocumentVersionsList";
 import { DocumentVersionContent } from "./-components/DocumentVersionContent";
+import { DocumentVersionsList } from "./-components/DocumentVersionsList";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/documents"

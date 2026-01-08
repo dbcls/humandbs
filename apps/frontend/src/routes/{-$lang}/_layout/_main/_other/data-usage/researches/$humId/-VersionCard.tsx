@@ -1,3 +1,12 @@
+import {
+  Dataset,
+  Person,
+  Publication,
+  ResearchDetail,
+} from "@humandbs/backend/types";
+import { getRouteApi } from "@tanstack/react-router";
+import { createColumnHelper } from "@tanstack/react-table";
+
 import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
@@ -13,14 +22,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FA_ICONS } from "@/lib/faIcons";
-import {
-  Dataset,
-  Person,
-  Publication,
-  ResearchDetail,
-} from "@humandbs/backend/types";
-import { getRouteApi } from "@tanstack/react-router";
-import { createColumnHelper } from "@tanstack/react-table";
 
 export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
   const Route = getRouteApi(

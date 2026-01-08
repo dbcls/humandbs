@@ -1,9 +1,10 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+
 import { Card } from "@/components/Card";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getContentTranslationQueryOptions } from "@/serverFunctions/contentItem";
-import { createFileRoute } from "@tanstack/react-router";
-import z from "zod";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,

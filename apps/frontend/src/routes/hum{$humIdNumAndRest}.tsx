@@ -1,4 +1,3 @@
-import { i18n } from "@/config/i18n-config";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 const humPageRegex = /(\d+)(-(v\d+))?/i;
