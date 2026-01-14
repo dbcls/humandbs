@@ -125,3 +125,136 @@ export interface CrawlArgs {
   noCache?: boolean
   concurrency?: number
 }
+
+// === Transform 用の型定義 ===
+
+/** Dataset ID の種類 */
+export type DatasetIdType =
+  | "JGAD"
+  | "JGAS"
+  | "DRA"
+  | "GEA"
+  | "NBDC_DATASET"
+  | "BP"
+  | "METABO"
+
+/** 抽出された ID の集合 */
+export type ExtractedIds = Partial<Record<DatasetIdType, Set<string>>>
+
+/** Experiment (molTable の1行分、裏返し後) */
+export interface TransformedExperiment {
+  header: TextValue
+  data: Record<string, TextValue | TextValue[] | null>
+  footers: TextValue[]
+}
+
+/** 変換後の Dataset */
+export interface TransformedDataset {
+  // Identifiers
+  datasetId: string
+  lang: LangType
+  version: string
+
+  // Parent references
+  humId: string
+  humVersionId: string
+
+  // Metadata (from summary.datasets)
+  typeOfData: string[] | null
+  criteria: CriteriaCanonical[] | null
+  releaseDate: string[] | null
+
+  // Experiments (inverted molecularData)
+  experiments: TransformedExperiment[]
+}
+
+/** 変換後の ResearchVersion */
+export interface TransformedResearchVersion {
+  humId: string
+  lang: LangType
+  version: string
+  humVersionId: string
+  datasetIds: string[]
+  releaseDate: string
+  releaseNote: TextValue
+}
+
+/** 変換後の Person */
+export interface TransformedPerson {
+  name: TextValue
+  email?: string | null
+  orcid?: string | null
+  organization?: {
+    name: TextValue
+    address?: { country?: string | null } | null
+  } | null
+  datasetIds?: string[]
+  researchTitle?: string | null
+  periodOfDataUse?: {
+    startDate: string | null
+    endDate: string | null
+  } | null
+}
+
+/** 変換後の ResearchProject */
+export interface TransformedResearchProject {
+  name: TextValue
+  url?: UrlValue | null
+}
+
+/** 変換後の Grant */
+export interface TransformedGrant {
+  id: string[]
+  title: string
+  agency: { name: string }
+}
+
+/** 変換後の Publication */
+export interface TransformedPublication {
+  title: string
+  doi?: string | null
+  datasetIds?: string[]
+}
+
+/** 変換後の Research */
+export interface TransformedResearch {
+  // Identifiers
+  humId: string
+  lang: LangType
+
+  // Core display info
+  title: string
+  url: string
+
+  // Summary (from latest version)
+  summary: {
+    aims: TextValue
+    methods: TextValue
+    targets: TextValue
+    url: UrlValue[]
+    footers: TextValue[]
+  }
+
+  // Data provider
+  dataProvider: TransformedPerson[]
+
+  // Research project
+  researchProject: TransformedResearchProject[]
+
+  // Grant information
+  grant: TransformedGrant[]
+
+  // Publications (accumulated)
+  relatedPublication: TransformedPublication[]
+
+  // Controlled access users (accumulated)
+  controlledAccessUser: TransformedPerson[]
+
+  // Version references
+  versionIds: string[]
+  latestVersion: string
+
+  // Timestamps
+  firstReleaseDate: string
+  lastReleaseDate: string
+}
