@@ -60,7 +60,7 @@ Visiumデータ解析ソフトウェア	Software	解析方法	Analysis Methods
 平均カバー率（Depth）	Coverage (Depth)	平均カバー率	Coverage
 平均カバー率	Coverage（Depth）	平均カバー率	Coverage
 平均カバー率（Depth）	Depth (average)	平均カバー率	Coverage
-CRISPR配列構築方法	CRISPR contsruction	CRISPR配列構築方法	CRISPR contsruction
+CRISPR配列構築方法	CRISPR contsruction	CRISPR配列構築方法	CRISPR construction
 データのダウンロード	Data Download	データのダウンロード	Data Download
 NBDCおよび生命情報・DDBJ センターによる加工データのID	Dataset ID of the Processed data by JGA	DBCLSおよび生命情報・DDBJ センターによる加工データのID	Dataset ID of the Processed data by JGA
 Mass Submission System ID	Mass Submission System ID	Assembled Sequence	Assembled Sequence
@@ -141,9 +141,11 @@ Platform	Platforms	Platform	Platform
 リード長（除：バーコード、アダプター、プライマー、リンカー）	Read Length (without Barcodes, Adaptors, Primers, and Linkers)	リード長	Read Length
 ライブラリ構築方法	Spot Type	ライブラリ構成	Read Type
 試薬	Reagents	試薬	Reagents
+試薬	Reagents (Kit, Version)< /span>	試薬	Reagents
 調整試薬（キット名、バージョン）	Reagents (Kit, Version)	試薬	Reagents
 調整試薬（パネル、キット名、バージョンなど）	Reagents (Panel, Kit, Version)	試薬	Reagents
 リファレンス	Reference	参照配列	Reference Sequence
+リファレンス	Reference Sequence	参照配列	Reference Sequence
 マッピングの際のリファレンス配列	Reference Genome Sequence	参照配列	Reference Sequence
 リファレンス配列	Reference Genome Sequence	参照配列	Reference Sequence
 ウイルス参照配列	Reference sequence for viral genome	参照配列	Reference Sequence
@@ -180,8 +182,26 @@ SV数（QC後）	SV Numbers (after QC)	SV数	SV Number
 MS数（QC後）	SV Numbers (after QC)	バリアント数	Variant Number
 バリアント数（QC後）	Variant Numbers (after QC)	バリアント数	Variant Number
 リファレンスパネルに含まれるvariant数	Variant Numbers in reference panel	バリアント数	Variant Number
-ウイルスゲノム構築方法	Virus genome contsruction	ウイルスゲノム構築方法	Virus Genome Contsruction
+ウイルスゲノム構築方法	Virus genome contsruction	ウイルスゲノム構築方法	Virus Genome Construction
 免染工程における洗浄（試薬、時間）	Washing (reagent, time)	免染工程における洗浄	Washing
 アノテーション方法	Annotation	不要な項目のため削除する	不要な項目のため削除する
 実験期間	Experiment date	不要な項目のため削除する	不要な項目のため削除する
 関連データセット	Related Datasets	不要な項目のため削除する	不要な項目のため削除する
+GWAS関連解析（ソフトウェア）	Analysis Methods (software)	解析方法	Analysis Methods
+NBDC Data Set ID / Japanese Genotype-phenotype Archive Data set ID	NBDC Data Set ID / Japanese Genotype-phenotype Archive Data set ID	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける
+NBDC Dataset ID / Japanese Genotype-phenotype Archive Dataset ID	NBDC Dataset ID / Japanese Genotype-phenotype Archive Dataset ID	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける
+Softwear	Softwear	解析方法	Analysis Methods
+Variant Numbers	Variant Numbers	バリアント数	Variant Number
+レパトア解析方法（ソフトウェア）	Repertoire analysis Methods (software)	解析方法	Analysis Methods
+染色体変異検出アルゴリズム（ソフトウェア）	Algorithm for detecting chromosome abnormality (software)	解析方法	Analysis Methods
+バリアント数	Variant Number	バリアント数	Variant Number
+フィルタリング方法	Filtering (QC)	フィルタリング	Filtering
+メタ解析方法	Meta Analysis Methods	解析方法	Analysis Methods
+解析方法	Analysis Methods	解析方法	Analysis Methods
+Phenotype情報	Phenotype Data	被験者属性	Participant Attributes
+mobile element数	Mobile element Number	Mobile Element 数	Mobile Element  Number
+mobile element検出方法	Detecting Methods for mobile element	解析方法	Analysis Methods
+vcfファイルの統合方法	Method for merging vcf files	解析方法	Analysis Methods
+vcfファイルのphasing方法	Method for phasing vcf files	解析方法	Analysis Methods
+ポリジェニックリスクスコア算出方法	Calculation Methods for Polygenic Risk Score	解析方法	Analysis Methods
+データセット	NBDC Dataset ID	NBDC Dataset Accession	NBDC Dataset Accession

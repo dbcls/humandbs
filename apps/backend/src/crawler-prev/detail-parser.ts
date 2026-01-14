@@ -1018,3 +1018,4 @@ export const parseControlledAccessUsers = (humVersionId: string, dom: JSDOM, lan
 
   return users
 }
+
