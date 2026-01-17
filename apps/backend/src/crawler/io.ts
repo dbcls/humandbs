@@ -88,12 +88,32 @@ export const genReleaseUrl = (humVersionId: string, lang: LangType): string => {
     : `${DETAIL_PAGE_BASE_URL}en/${humVersionId}${suffix}`
 }
 
+class HttpError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message)
+    this.name = "HttpError"
+  }
+}
+
 const fetchHtml = async (url: string): Promise<string> => {
   const res = await fetch(url, { redirect: "follow" })
   if (!res.ok) {
-    throw new Error(`Failed to fetch HTML: ${url} (${res.status})`)
+    throw new HttpError(`Failed to fetch HTML: ${url} (${res.status})`, res.status)
   }
   return await res.text()
+}
+
+const isRetryable = (e: unknown): boolean => {
+  if (e instanceof HttpError) {
+    // 4xx errors are not retryable (client errors like 404)
+    // 5xx errors are retryable (server errors)
+    return e.status >= 500
+  }
+  // Network errors are retryable
+  return true
 }
 
 const fetchHtmlWithRetry = async (
@@ -107,6 +127,9 @@ const fetchHtmlWithRetry = async (
       return await fetchHtml(url)
     } catch (e) {
       lastErr = e
+      if (!isRetryable(e)) {
+        throw e
+      }
       if (i < retries - 1) {
         await new Promise(r => setTimeout(r, delayMs))
       }
