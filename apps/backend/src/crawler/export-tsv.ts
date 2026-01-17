@@ -3,7 +3,7 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { getResultsDirPath, DETAIL_PAGE_BASE_URL } from "@/crawler/fetch"
+import { getResultsDirPath, DETAIL_PAGE_BASE_URL } from "@/crawler/io"
 import type {
   LangType,
   TextValue,

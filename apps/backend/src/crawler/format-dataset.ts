@@ -3,8 +3,8 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { findLatestVersionNum, getResultsDirPath, headLatestVersionNum, readNormalizedDetailJson } from "@/crawler/fetch"
 import { parseAllHumIds } from "@/crawler/home"
+import { findLatestVersionNum, getResultsDirPath, headLatestVersionNum, readNormalizedDetailJson } from "@/crawler/io"
 import type { LangType, CrawlArgs, NormalizedParseResult } from "@/crawler/types"
 
 type IdType = "SRA" | "JGAD" | "JGAS" | "GEA" | "NBDC_DATASET" | "BP" | "METABO"

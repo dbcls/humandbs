@@ -10,8 +10,17 @@
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",
     "crawler": "bun run src/crawler/app.ts",
+    "crawler:download": "bun run src/crawler/download-html.ts",
+    "crawler:parse": "bun run src/crawler/crawl.ts",
+    "export-tsv": "bun run src/crawler/export-tsv.ts",
     "es:load-mappings": "node src/es/load-mappings.ts",
-    "es:load-docs": "node src/es/load-docs.ts"
+    "es:load-docs": "node src/es/load-docs.ts",
+    "test": "bun test tests/unit",
+    "test:watch": "bun test tests/unit --watch",
+    "test:integration": "bun test tests/integration",
+    "test:all": "bun test",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix"
   },
   "devDependencies": {
     "@humandbs/eslint-config": "workspace:*",

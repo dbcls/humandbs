@@ -3,7 +3,7 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { getResultsDirPath } from "@/crawler/fetch"
+import { getResultsDirPath } from "@/crawler/io"
 import type {
   TextValue,
   TransformedDataset,

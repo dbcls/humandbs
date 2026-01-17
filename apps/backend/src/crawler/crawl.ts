@@ -1,7 +1,9 @@
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
+import { shouldSkipPage } from "@/crawler/config"
 import { parseDetailPage } from "@/crawler/detail"
+import { parseAllHumIds } from "@/crawler/home"
 import {
   readHtml,
   genDetailUrl,
@@ -9,8 +11,7 @@ import {
   headLatestVersionNum,
   writeDetailJson,
   genReleaseUrl,
-} from "@/crawler/fetch"
-import { parseAllHumIds } from "@/crawler/home"
+} from "@/crawler/io"
 import { parseReleasePage } from "@/crawler/release"
 import type { LangType, CrawlArgs } from "@/crawler/types"
 
@@ -65,7 +66,7 @@ const main = async (): Promise<void> => {
       const humVersionId = `${humId}-v${v}`
 
       for (const lang of langs) {
-        if (humVersionId === "hum0003-v1" && lang === "en") continue
+        if (shouldSkipPage(humVersionId, lang)) continue
 
         tasks.push(async () => {
           try {

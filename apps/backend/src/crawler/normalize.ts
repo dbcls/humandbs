@@ -2,7 +2,7 @@ import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import { PUBLICATION_DATASET_ID_MAP, CONTROLLED_ACCESS_USERS_DATASET_ID_MAP } from "@/crawler/const"
-import { listDetailJsonFiles, readDetailJson, writeNormalizedDetailJson } from "@/crawler/fetch"
+import { listDetailJsonFiles, readDetailJson, writeNormalizedDetailJson } from "@/crawler/io"
 import { buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/mapping-table"
 import type { LangType, CrawlArgs, ParseResult, CriteriaCanonical, NormalizedParseResult, TextValue, NormalizedMolecularData, Publication, ControlledAccessUser, Release } from "@/crawler/types"
 

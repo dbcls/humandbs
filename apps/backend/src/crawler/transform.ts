@@ -3,14 +3,14 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
+import { parseAllHumIds } from "@/crawler/home"
 import {
   getResultsDirPath,
   readNormalizedDetailJson,
   findLatestVersionNum,
   headLatestVersionNum,
   DETAIL_PAGE_BASE_URL,
-} from "@/crawler/fetch"
-import { parseAllHumIds } from "@/crawler/home"
+} from "@/crawler/io"
 import type {
   LangType,
   CrawlArgs,

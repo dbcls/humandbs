@@ -1,6 +1,12 @@
+/**
+ * Home page parser
+ *
+ * Extracts the list of humIds from the HumanDBs home page.
+ */
 import { JSDOM } from "jsdom"
 
-import { readHtml, DETAIL_PAGE_BASE_URL } from "@/crawler/fetch"
+import { DETAIL_PAGE_BASE_URL } from "@/crawler/config"
+import { readHtml } from "@/crawler/io"
 import type { LangType } from "@/crawler/types"
 
 const normalizeUrl = (href: string): string => {
@@ -11,10 +17,11 @@ const normalizeUrl = (href: string): string => {
   }
 }
 
-export const parseAllHumIds = async (
-  useCache = true,
-): Promise<string[]> => {
-  const html = await readHtml(`${DETAIL_PAGE_BASE_URL}`, "home.html", useCache)
+/**
+ * Extract humId list from home page HTML (pure function).
+ * Exported for testing.
+ */
+export const parseHomeHtml = (html: string): string[] => {
   const dom = new JSDOM(html)
   const doc = dom.window.document
 
@@ -33,12 +40,11 @@ export const parseAllHumIds = async (
   return Array.from(ids).sort()
 }
 
-export const humIdToTitle = async (
-  lang: LangType = "ja",
-  useCache = true,
-): Promise<Record<string, string>> => {
-  const base = lang === "ja" ? DETAIL_PAGE_BASE_URL : `${DETAIL_PAGE_BASE_URL}en/`
-  const html = await readHtml(base, `home-${lang}.html`, useCache)
+/**
+ * Extract humId -> title mapping from home page HTML (pure function).
+ * Exported for testing.
+ */
+export const parseHomeTitles = (html: string): Record<string, string> => {
   const dom = new JSDOM(html)
   const doc = dom.window.document
 
@@ -49,15 +55,31 @@ export const humIdToTitle = async (
     const anchor = row.querySelector("th a[href]")
     if (!anchor) continue
     const url = normalizeUrl(anchor.getAttribute("href")!)
-    const m = url.match(/\/(hum\\d+)-v\\d+/)
+    const m = url.match(/\/(hum\d+)-v\d+/)
     if (!m) continue
     const humId = m[1]
 
     const tds = row.querySelectorAll("td")
     if (tds.length < 2) continue
-    const title = tds[1].textContent?.trim().replace(/\\s+/g, " ")
+    const title = tds[1].textContent?.trim().replace(/\s+/g, " ")
     if (title) mapping[humId] = title
   }
 
   return mapping
+}
+
+/** Fetch all humIds from home page (with caching). */
+export const parseAllHumIds = async (useCache = true): Promise<string[]> => {
+  const html = await readHtml(`${DETAIL_PAGE_BASE_URL}`, "home.html", useCache)
+  return parseHomeHtml(html)
+}
+
+/** Fetch humId -> title mapping from home page (with caching). */
+export const humIdToTitle = async (
+  lang: LangType = "ja",
+  useCache = true,
+): Promise<Record<string, string>> => {
+  const base = lang === "ja" ? DETAIL_PAGE_BASE_URL : `${DETAIL_PAGE_BASE_URL}en/`
+  const html = await readHtml(base, `home-${lang}.html`, useCache)
+  return parseHomeTitles(html)
 }

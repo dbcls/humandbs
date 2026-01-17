@@ -179,9 +179,7 @@ dist
 .DS_Store
 
 # === our custom rules ===
-apps/backend/tests
 apps/backend/crawler-results*
-apps/backend/jga-example
 es-data
 ollama-data
 
