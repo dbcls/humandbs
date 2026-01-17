@@ -154,6 +154,8 @@ export interface TransformedDataset {
   datasetId: string
   lang: LangType
   version: string
+  /** この version が初出現した release の日付 */
+  versionReleaseDate: string
 
   // Parent references
   humId: string
@@ -257,4 +259,97 @@ export interface TransformedResearch {
   // Timestamps
   firstReleaseDate: string
   lastReleaseDate: string
+}
+
+// === LLM 抽出フィールド用の型定義 ===
+
+/** 被験者数のカウントタイプ */
+export type SubjectCountType = "individual" | "sample" | "mixed"
+
+/** 健康状態 */
+export type HealthStatus = "healthy" | "affected" | "mixed"
+
+/** リードタイプ */
+export type ReadType = "single-end" | "paired-end"
+
+/** 疾患情報 */
+export interface DiseaseInfo {
+  label: string
+  icd10: string | null
+}
+
+/** プラットフォーム情報 */
+export interface PlatformInfo {
+  vendor: string
+  model: string
+}
+
+/** Experiment レベルの抽出フィールド */
+export interface ExtractedExperimentFields {
+  // 被験者・サンプル情報
+  subjectCount: number | null
+  subjectCountType: SubjectCountType | null
+  healthStatus: HealthStatus | null
+
+  // 疾患情報
+  disease: DiseaseInfo | null
+
+  // 生体試料情報
+  tissue: string | null
+  isTumor: boolean | null
+  cellLine: string | null
+
+  // 実験手法
+  assayType: string | null
+  libraryKit: string | null
+
+  // プラットフォーム
+  platformVendor: string | null
+  platformModel: string | null
+  readType: ReadType | null
+  readLength: number | null
+
+  // 対象領域
+  targets: string | null
+
+  // データ情報
+  fileTypes: string[]
+  dataVolumeBytes: number | null
+}
+
+/** Dataset レベルの検索用集約フィールド */
+export interface SearchableDatasetFields {
+  // 疾患
+  diseases: DiseaseInfo[]
+
+  // 生体試料
+  tissues: string[]
+
+  // 実験手法
+  assayTypes: string[]
+
+  // プラットフォーム
+  platforms: PlatformInfo[]
+  readTypes: string[]
+
+  // データ情報
+  fileTypes: string[]
+  totalSubjectCount: number | null
+  totalDataVolumeBytes: number | null
+
+  // フラグ
+  hasHealthyControl: boolean
+  hasTumor: boolean
+  hasCellLine: boolean
+}
+
+/** 抽出フィールドを含む Experiment */
+export interface ExtractedExperiment extends TransformedExperiment {
+  extracted: ExtractedExperimentFields
+}
+
+/** 検索可能フィールドを含む Dataset */
+export interface SearchableDataset extends Omit<TransformedDataset, "experiments"> {
+  searchable: SearchableDatasetFields
+  experiments: ExtractedExperiment[]
 }

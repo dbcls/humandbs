@@ -11,6 +11,15 @@
       "version": {
         "type": "keyword"
       },
+      "versionReleaseDate": {
+        "type": "keyword"
+      },
+      "humId": {
+        "type": "keyword"
+      },
+      "humVersionId": {
+        "type": "keyword"
+      },
       "typeOfData": {
         "type": "keyword"
       },
@@ -20,14 +29,76 @@
       "releaseDate": {
         "type": "keyword"
       },
+      "searchable": {
+        "properties": {
+          "diseases": {
+            "type": "nested",
+            "properties": {
+              "label": {
+                "type": "keyword"
+              },
+              "icd10": {
+                "type": "keyword"
+              }
+            }
+          },
+          "tissues": {
+            "type": "keyword"
+          },
+          "assayTypes": {
+            "type": "keyword"
+          },
+          "platforms": {
+            "type": "nested",
+            "properties": {
+              "vendor": {
+                "type": "keyword"
+              },
+              "model": {
+                "type": "keyword"
+              }
+            }
+          },
+          "readTypes": {
+            "type": "keyword"
+          },
+          "fileTypes": {
+            "type": "keyword"
+          },
+          "totalSubjectCount": {
+            "type": "integer"
+          },
+          "totalDataVolumeBytes": {
+            "type": "long"
+          },
+          "hasHealthyControl": {
+            "type": "boolean"
+          },
+          "hasTumor": {
+            "type": "boolean"
+          },
+          "hasCellLine": {
+            "type": "boolean"
+          }
+        }
+      },
       "experiments": {
         "type": "nested",
         "properties": {
           "header": {
-            "type": "text",
-            "fields": {
-              "kw": {
-                "type": "keyword"
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "text",
+                "fields": {
+                  "kw": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "rawHtml": {
+                "type": "text",
+                "index": false
               }
             }
           },
@@ -35,7 +106,75 @@
             "type": "flattened"
           },
           "footers": {
-            "type": "text"
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "text"
+              },
+              "rawHtml": {
+                "type": "text",
+                "index": false
+              }
+            }
+          },
+          "extracted": {
+            "properties": {
+              "subjectCount": {
+                "type": "integer"
+              },
+              "subjectCountType": {
+                "type": "keyword"
+              },
+              "healthStatus": {
+                "type": "keyword"
+              },
+              "disease": {
+                "properties": {
+                  "label": {
+                    "type": "keyword"
+                  },
+                  "icd10": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "tissue": {
+                "type": "keyword"
+              },
+              "isTumor": {
+                "type": "boolean"
+              },
+              "cellLine": {
+                "type": "keyword"
+              },
+              "assayType": {
+                "type": "keyword"
+              },
+              "libraryKit": {
+                "type": "text"
+              },
+              "platformVendor": {
+                "type": "keyword"
+              },
+              "platformModel": {
+                "type": "keyword"
+              },
+              "readType": {
+                "type": "keyword"
+              },
+              "readLength": {
+                "type": "integer"
+              },
+              "targets": {
+                "type": "text"
+              },
+              "fileTypes": {
+                "type": "keyword"
+              },
+              "dataVolumeBytes": {
+                "type": "long"
+              }
+            }
           }
         }
       }

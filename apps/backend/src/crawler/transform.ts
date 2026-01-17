@@ -519,6 +519,10 @@ async function transformOneResearch(
     // Invert molTable -> Dataset
     const invertedMap = await invertMolTableToDataset(detail.molecularData)
 
+    // Find release info (used for both datasets and research-version)
+    const releaseInfo = detail.releases.find(r => r.humVersionId === humVersionId)
+    const versionReleaseDate = releaseInfo?.releaseDate ?? ""
+
     // Create datasets
     const versionDatasetIds: string[] = []
 
@@ -542,6 +546,7 @@ async function transformOneResearch(
         datasetId,
         lang,
         version,
+        versionReleaseDate,
         humId,
         humVersionId,
         typeOfData: metadata?.typeOfData ?? null,
@@ -563,16 +568,13 @@ async function transformOneResearch(
       versionDatasetIds.push(`${datasetId}-${version}-${lang}`)
     }
 
-    // Find release info
-    const releaseInfo = detail.releases.find(r => r.humVersionId === humVersionId)
-
     const researchVersion: TransformedResearchVersion = {
       humId,
       lang,
       version: `v${v}`,
       humVersionId,
       datasetIds: versionDatasetIds,
-      releaseDate: releaseInfo?.releaseDate ?? "",
+      releaseDate: versionReleaseDate,
       releaseNote: releaseInfo?.releaseNote ?? { text: "", rawHtml: "" },
     }
 
