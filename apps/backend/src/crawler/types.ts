@@ -37,7 +37,7 @@ export interface MolecularData {
 export interface Grant {
   grantName: string | null
   projectTitle: string | null
-  grantId: string | null
+  grantId: string[]
 }
 
 export interface DataProvider {
@@ -67,7 +67,7 @@ export interface Release {
   humVersionId: string
   releaseDate: string
   content: string
-  releaseNote: TextValue
+  releaseNote?: TextValue
 }
 
 export interface ParseResult {
@@ -118,12 +118,26 @@ export interface NormalizedParseResult extends Omit<ParseResult, "summary" | "mo
   controlledAccessUsers: NormalizedControlledAccessUser[]
 }
 
-// CLI arguments for crawl command.
+// CLI arguments for crawler commands.
 export interface CrawlArgs {
   humId?: string
   lang?: LangType
-  noCache?: boolean
+  force?: boolean
   concurrency?: number
+}
+
+// Result of parsing one humVersionId + lang
+export interface CrawlOneResult {
+  success: boolean
+  hasRelease: boolean
+  error?: string
+}
+
+// Result of parsing all versions for one humId
+export interface CrawlHumIdResult {
+  parsed: number
+  errors: number
+  noRelease: number
 }
 
 // === Transform 用の型定義 ===

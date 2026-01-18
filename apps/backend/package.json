@@ -9,9 +9,8 @@
   },
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",
-    "crawler": "bun run src/crawler/app.ts",
-    "crawler:download": "bun run src/crawler/download-html.ts",
-    "crawler:parse": "bun run src/crawler/crawl.ts",
+    "crawler:download-html": "bun run src/crawler/download-html.ts",
+    "crawler:crawl": "bun run src/crawler/crawl.ts",
     "export-tsv": "bun run src/crawler/export-tsv.ts",
     "es:load-mappings": "node src/es/load-mappings.ts",
     "es:load-docs": "node src/es/load-docs.ts",

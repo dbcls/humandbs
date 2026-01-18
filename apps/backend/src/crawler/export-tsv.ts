@@ -688,6 +688,6 @@ const main = async (): Promise<void> => {
   })
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   await main()
 }

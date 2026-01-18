@@ -28,7 +28,7 @@ const parseArgs = (): CrawlArgs =>
     .option("lang", { choices: ["ja", "en"] as const, describe: "Language to download" })
     .option("force", { alias: "f", type: "boolean", default: false, describe: "Ignore existing cache and re-download" })
     .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent downloads" })
-    .parseSync() as CrawlArgs & { force?: boolean }
+    .parseSync() as CrawlArgs
 
 export const downloadOne = async (
   humVersionId: string,
@@ -102,7 +102,7 @@ const downloadAllVersionsForHumId = async (
 }
 
 const main = async (): Promise<void> => {
-  const args = parseArgs() as CrawlArgs & { force?: boolean }
+  const args = parseArgs()
   const useCache = !args.force
   const langs: LangType[] = args.lang ? [args.lang] : ["ja", "en"]
   const humIds = args.humId ? [args.humId] : await parseAllHumIds(useCache)
@@ -137,6 +137,6 @@ const main = async (): Promise<void> => {
   console.log(`Done: ${totalDownloaded} downloaded, ${totalErrors} errors`)
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   await main()
 }

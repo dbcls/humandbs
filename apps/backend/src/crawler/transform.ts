@@ -723,7 +723,7 @@ const main = async (): Promise<void> => {
   console.log("Done!")
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   await main()
 }
 

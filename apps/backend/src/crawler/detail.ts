@@ -1,32 +1,199 @@
+/**
+ * Detail page parser for HumanDBs portal
+ *
+ * Parses the detail page HTML and extracts structured data.
+ * The page is divided into 5 main sections:
+ * - Summary: Research overview, aims, methods, targets, and datasets
+ * - Molecular Data: Detailed experiment/sample information tables
+ * - Data Provider: Principal investigator, affiliation, grants
+ * - Publications: Related papers with DOIs
+ * - Controlled Access Users: List of approved data users
+ *
+ * @module crawler/detail
+ */
 import { JSDOM } from "jsdom"
 
+import { findSpecialControlledAccessRow } from "@/crawler/config"
 import { HUM_IDS_WITH_DATA_SUMMARY } from "@/crawler/const"
 import type { LangType, ParseResult, Summary, Dataset, MolecularData, DataProvider, Publication, ControlledAccessUser, TextValue } from "@/crawler/types"
 
-export const parseDetailPage = (
-  html: string,
-  humVersionId: string,
-  lang: LangType,
-): ParseResult => {
-  const sections = splitToSection(html, humVersionId, lang)
+// =============================================================================
+// Utility functions
+// =============================================================================
 
-  const summary = parseSummarySection(sections.summary!, humVersionId, lang)
-  const molecularData = parseMolecularDataSection(sections.molecularData, humVersionId, lang)
-  const dataProvider = parseDataProviderSection(sections.dataProvider!, humVersionId, lang)
-  const publications = parsePublicationsSection(sections.publications!, humVersionId, lang)
-  const controlledAccessUsers = parseControlledAccessUsersSection(sections.controlledAccessUsers, humVersionId, lang)
+/**
+ * Clean whitespace from text
+ */
+export const cleanText = (str: string | null | undefined): string => {
+  return str?.trim() ?? ""
+}
 
-  const result: ParseResult = {
-    summary,
-    molecularData,
-    dataProvider,
-    publications,
-    controlledAccessUsers,
-    releases: [], // Placeholder, to be filled in parseReleasePage
+/**
+ * Clean innerHTML by removing style/class/id attributes
+ */
+export const cleanInnerHtml = (node: Element): string => {
+  const clone = node.cloneNode(true) as Element
+
+  const removeAttrs = (el: Element) => {
+    el.removeAttribute("style")
+    el.removeAttribute("class")
+    el.removeAttribute("id")
+    el.removeAttribute("rel")
+    el.removeAttribute("target")
+    for (const child of Array.from(el.children)) {
+      removeAttrs(child)
+    }
+  }
+  removeAttrs(clone)
+
+  return clone.innerHTML.trim()
+}
+
+/**
+ * Convert Element to TextValue (text + rawHtml)
+ */
+const toTextValue = (el: Element): TextValue => ({
+  text: cleanText(el.textContent),
+  rawHtml: cleanInnerHtml(el),
+})
+
+/**
+ * Compare table headers with expected headers (case-insensitive, whitespace-normalized)
+ */
+const compareHeaders = (headers: string[], expected: string[]): boolean => {
+  if (headers.length !== expected.length) return false
+  for (let i = 0; i < headers.length; i++) {
+    const act = headers[i].replace(/\s+/g, "").toLowerCase().trim()
+    const exp = expected[i].replace(/\s+/g, "").toLowerCase().trim()
+    if (act !== exp) return false
+  }
+  return true
+}
+
+/**
+ * Normalize cell value: empty string or "-" becomes null
+ */
+const normalizeCellValue = (cell: HTMLTableCellElement): string | null => {
+  const t = cleanText(cell.textContent)
+  return t === "" || t === "-" ? null : t
+}
+
+/**
+ * Parse values separated by <br> tags from a table cell
+ * Used for grantId and other fields that use <br> as a separator
+ */
+const parseBrSeparatedValues = (cell: Element): string[] => {
+  let html = cell.innerHTML
+  html = html.replace(/<br\s*\/?>/gi, "\n")
+  html = html.replace(/<\/p>/gi, "\n")
+  html = html.replace(/<\/div>/gi, "\n")
+
+  const text = html.replace(/<[^>]+>/g, "")
+  const parts = text.split(/\n+/)
+
+  const values: string[] = []
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed || trimmed === "-" || trimmed === "\u00a0") continue
+    values.push(trimmed)
   }
 
-  return result
+  return values
 }
+
+/**
+ * Parse dataset IDs from a table cell
+ *
+ * Handles various HTML formats:
+ * - IDs separated by <br> tags
+ * - IDs separated by <p> tags
+ * - IDs separated by commas
+ * - IDs separated by whitespace/newlines
+ *
+ * Returns each ID as a separate string in the array.
+ * Range formats like "JGAD000144-JGAD000201" are preserved as-is.
+ */
+const parseDatasetIdsFromCell = (cell: Element): string[] => {
+  // Get innerHTML and replace block-level separators with newlines
+  let html = cell.innerHTML
+  html = html.replace(/<br\s*\/?>/gi, "\n")
+  html = html.replace(/<\/p>/gi, "\n")
+  html = html.replace(/<\/div>/gi, "\n")
+  html = html.replace(/<\/li>/gi, "\n")
+
+  // Remove all remaining HTML tags
+  const text = html.replace(/<[^>]+>/g, "")
+
+  // Split by separators: newline, comma, ideographic comma
+  const parts = text.split(/[\n,\u3001]+/)
+
+  // Clean up each part and filter
+  const ids: string[] = []
+  for (const part of parts) {
+    const trimmed = part.trim()
+    // Skip empty, "-", or whitespace-only
+    if (!trimmed || trimmed === "-" || trimmed === "\u00a0") continue
+    // Skip notes/comments starting with special characters
+    if (/^[※*（(]/.test(trimmed) && !/^[（(]?[A-Z]/.test(trimmed)) continue
+    ids.push(trimmed)
+  }
+
+  return ids
+}
+
+/**
+ * Check if a line should be ignored (notes, empty, etc.)
+ */
+const isIgnorableLine = (text: string): boolean => {
+  const t = text.trim()
+  if (!t) return true
+  if (/^(※|\*|NOTE:|Note:)/.test(t)) return true
+  if (t === "\u00a0") return true
+  return false
+}
+
+/**
+ * Check if a node is empty (no meaningful text content)
+ */
+const isEmptyNode = (node: Node): boolean => {
+  const ELEMENT_NODE = 1
+  const TEXT_NODE = 3
+
+  if (node.nodeType === TEXT_NODE) {
+    return (node.textContent?.trim() ?? "") === ""
+  } else if (node.nodeType === ELEMENT_NODE) {
+    const el = node as Element
+    return (el.textContent?.trim() ?? "") === ""
+  }
+  return false
+}
+
+/**
+ * Generic table parser
+ */
+const parseTable = <T>(
+  table: HTMLTableElement,
+  mapRow: (headers: string[], cells: HTMLTableCellElement[]) => T | null,
+): T[] => {
+  const thead = table.querySelector("thead")
+  const tbody = table.querySelector("tbody")
+  if (!thead || !tbody) return []
+
+  const headerCells = Array.from(thead.querySelectorAll("th"))
+  const headers = headerCells.map(th => cleanText(th.textContent))
+
+  const results: T[] = []
+  for (const row of Array.from(tbody.querySelectorAll("tr"))) {
+    const cells = Array.from(row.querySelectorAll("td"))
+    const parsed = mapRow(headers, cells)
+    if (parsed) results.push(parsed)
+  }
+  return results
+}
+
+// =============================================================================
+// Section detection and splitting
+// =============================================================================
 
 type SectionType =
   | "summary"
@@ -37,10 +204,11 @@ type SectionType =
   | "dataSummary"
   | "mriEquipment"
 
+/**
+ * Map heading text to section type
+ */
 const mapHeadingTextToSectionType = (headingText: string): SectionType | null => {
-  if (!headingText) {
-    return null
-  }
+  if (!headingText) return null
 
   const s = headingText
     .trim()
@@ -59,6 +227,9 @@ const mapHeadingTextToSectionType = (headingText: string): SectionType | null =>
   return null
 }
 
+/**
+ * Check if a node is a heading and return its section type
+ */
 const isHeadingNode = (node: Node): SectionType | null => {
   const ELEMENT_NODE = 1
   const TEXT_NODE = 3
@@ -79,21 +250,11 @@ const isHeadingNode = (node: Node): SectionType | null => {
   return mapHeadingTextToSectionType(text)
 }
 
-const isEmptyNode = (node: Node): boolean => {
-  const ELEMENT_NODE = 1
-  const TEXT_NODE = 3
-
-  if (node.nodeType === TEXT_NODE) {
-    return (node.textContent?.trim() ?? "") === ""
-  } else if (node.nodeType === ELEMENT_NODE) {
-    const el = node as Element
-    return (el.textContent?.trim() ?? "") === ""
-  }
-  return false
-}
-
 type SectionedDocument = Partial<Record<SectionType, Element>>
 
+/**
+ * Split HTML document into sections based on headings
+ */
 const splitToSection = (
   html: string,
   humVersionId: string,
@@ -111,31 +272,27 @@ const splitToSection = (
 
   let idx = 0
 
-  // skip until first heading, ignore header part
+  // Skip until first heading, ignore header part
   while (idx < allChildren.length) {
     const maybeHeading = isHeadingNode(allChildren[idx])
     if (maybeHeading !== null) break
     idx++
   }
 
-  // parse from first heading onward
+  // Parse from first heading onward
   while (idx < allChildren.length) {
     const node = allChildren[idx]
     const sectionKey = isHeadingNode(node)
     idx++
 
-    if (sectionKey === null) {
-      continue
-    }
+    if (sectionKey === null) continue
 
-    // collect until next heading
+    // Collect until next heading
     const container = doc.createElement("div")
     while (idx < allChildren.length) {
       const nextNode = allChildren[idx]
       const nextSectionKey = isHeadingNode(nextNode)
-      if (nextSectionKey !== null) {
-        break
-      }
+      if (nextSectionKey !== null) break
       container.appendChild(nextNode.cloneNode(true))
       idx++
     }
@@ -143,7 +300,8 @@ const splitToSection = (
     sectionElements[sectionKey] = container
   }
 
-  // Fix for hum0474-style controlledAccessUsers misplaced publications
+  // Hotfix for hum0474: publications table misplaced in controlledAccessUsers section
+  // The publications table appears after the controlled access users heading
   if (sectionElements.controlledAccessUsers) {
     const container = sectionElements.controlledAccessUsers
     const tables = Array.from(container.querySelectorAll("table"))
@@ -152,7 +310,7 @@ const splitToSection = (
       const headerTexts = Array.from(firstTable.querySelectorAll("thead th"))
         .map(th => cleanText(th.textContent).toLowerCase())
 
-      // heuristic: publication table headers
+      // Heuristic: publication table has title, doi, dataset id headers
       const isPublicationTable =
         headerTexts.includes("title") &&
         headerTexts.includes("doi") &&
@@ -169,7 +327,7 @@ const splitToSection = (
     }
   }
 
-  // Case for molecularData header is missing but table exists
+  // Case for molecularData header is missing but table exists in summary
   if (sectionElements.summary && !sectionElements.molecularData) {
     let foundMolecularTable = false
     const summaryElem = sectionElements.summary!
@@ -179,7 +337,7 @@ const splitToSection = (
       const secondTable = tables[1]
       const children = Array.from(summaryElem.childNodes)
       const tableIndex = children.indexOf(secondTable)
-      let startIndex = tableIndex - 1 // Include preceding caption or heading
+      let startIndex = tableIndex - 1
       while (startIndex >= 0) {
         const node = children[startIndex]
         if (isEmptyNode(node)) {
@@ -216,67 +374,9 @@ const splitToSection = (
   return sectionElements
 }
 
-export const cleanText = (str: string | null | undefined): string => {
-  return str?.trim() ?? ""
-}
-
-export const cleanInnerHtml = (node: Element): string => {
-  const clone = node.cloneNode(true) as Element
-
-  const removeAttrs = (el: Element) => {
-    el.removeAttribute("style")
-    el.removeAttribute("class")
-    el.removeAttribute("id")
-    el.removeAttribute("rel")
-    el.removeAttribute("target")
-    for (const child of Array.from(el.children)) {
-      removeAttrs(child)
-    }
-  }
-  removeAttrs(clone)
-
-  return clone.innerHTML.trim()
-}
-
-const toTextValue = (el: Element): TextValue => ({
-  text: cleanText(el.textContent),
-  rawHtml: cleanInnerHtml(el),
-})
-
-const compareHeaders = (headers: string[], expected: string[]): boolean => {
-  if (headers.length !== expected.length) return false
-  for (let i = 0; i < headers.length; i++) {
-    // e.g., Type of Data -> typeofdata
-    const act = headers[i].replace(/\s+/g, "").toLowerCase().trim()
-    const exp = expected[i].replace(/\s+/g, "").toLowerCase().trim()
-    if (act !== exp) return false
-  }
-
-  return true
-}
-
-const parseTable = <T>(
-  table: HTMLTableElement,
-  mapRow: (
-    headers: string[],
-    cells: HTMLTableCellElement[],
-  ) => T | null,
-): T[] => {
-  const thead = table.querySelector("thead")
-  const tbody = table.querySelector("tbody")
-  if (!thead || !tbody) return []
-
-  const headerCells = Array.from(thead.querySelectorAll("th"))
-  const headers = headerCells.map(th => cleanText(th.textContent))
-
-  const results: T[] = []
-  for (const row of Array.from(tbody.querySelectorAll("tr"))) {
-    const cells = Array.from(row.querySelectorAll("td"))
-    const parsed = mapRow(headers, cells)
-    if (parsed) results.push(parsed)
-  }
-  return results
-}
+// =============================================================================
+// Summary section parser
+// =============================================================================
 
 const SUMMARY_FIELD_PATTERNS: { field: "aims" | "methods" | "targets" | "url"; regex: RegExp }[] = [
   { field: "aims", regex: /^(目的|aims?)\s*[:：]?/i },
@@ -301,12 +401,15 @@ const stripSummaryPrefix = (text: string): string => {
   return result.trim()
 }
 
-const normalizeCellValue = (cell: HTMLTableCellElement): string | null => {
-  const t = cleanText(cell.textContent)
-  return t === "" || t === "-" ? null : t
-}
-
-const parseSummarySection = (element: Element, humVersionId: string, lang: LangType): Summary => {
+/**
+ * Parse the Summary section
+ * Contains: aims, methods, targets, url, datasets table, footers
+ */
+const parseSummarySection = (
+  element: Element | undefined,
+  humVersionId: string,
+  lang: LangType,
+): Summary => {
   const summary: Summary = {
     aims: { text: "", rawHtml: "" },
     methods: { text: "", rawHtml: "" },
@@ -316,12 +419,17 @@ const parseSummarySection = (element: Element, humVersionId: string, lang: LangT
     footers: [],
   }
 
+  if (!element) {
+    console.debug(`[DEBUG] - ${humVersionId} (${lang}): Summary section not found.`)
+    return summary
+  }
+
   const children = Array.from(element.children)
   const tableIndex = children.findIndex(ch => ch.tagName.toLowerCase() === "table")
   const before = tableIndex >= 0 ? children.slice(0, tableIndex) : children
   const after = tableIndex >= 0 ? children.slice(tableIndex + 1) : []
 
-  // === Parse text sections before the table ===
+  // Parse text sections before the table
   type FieldKey = "aims" | "methods" | "targets" | "url" | null
   let currentField: FieldKey = null
   for (const el of before) {
@@ -354,12 +462,11 @@ const parseSummarySection = (element: Element, humVersionId: string, lang: LangT
         summary[currentField].rawHtml += (summary[currentField].rawHtml ? "\n" : "") + rawHtml
       }
     } else {
-      // No current field
       console.debug(`[DEBUG] - ${humVersionId} (${lang}): Text outside recognized summary fields: ${text}`)
     }
   }
 
-  // === Parse dataset table ===
+  // Parse dataset table
   const EXPECT_HEADERS: Record<LangType, string[]> = {
     ja: ["データID", "内容", "制限", "公開日"],
     en: ["Dataset ID", "Type of Data", "Criteria", "Release Date"],
@@ -385,7 +492,7 @@ const parseSummarySection = (element: Element, humVersionId: string, lang: LangT
     summary.datasets = rows.filter(r => r !== null)
   }
 
-  // === Parse footer section (after the table) ===
+  // Parse footer section (after the table)
   for (const el of after) {
     if (isEmptyNode(el)) continue
     summary.footers.push(toTextValue(el))
@@ -394,18 +501,14 @@ const parseSummarySection = (element: Element, humVersionId: string, lang: LangT
   return summary
 }
 
-const isIgnorableLine = (text: string): boolean => {
-  const t = text.trim()
-  if (!t) return true
-  if (/^(※|\*|NOTE:|Note:)/.test(t)) return true
-  if (t === "\u00a0") return true
-  return false
-}
+// =============================================================================
+// Molecular Data section parser
+// =============================================================================
 
-const findNearestIdIndex = (
-  children: Element[],
-  tableIndex: number,
-): number | null => {
+/**
+ * Find the nearest identifier element before a table
+ */
+const findNearestIdIndex = (children: Element[], tableIndex: number): number | null => {
   for (let i = tableIndex - 1; i >= 0; i--) {
     const text = cleanText(children[i].textContent)
     if (isIgnorableLine(text)) continue
@@ -414,11 +517,10 @@ const findNearestIdIndex = (
   return null
 }
 
-const collectFooters = (
-  children: Element[],
-  startIndex: number,
-  endIndex: number,
-): TextValue[] => {
+/**
+ * Collect footer elements between two indices
+ */
+const collectFooters = (children: Element[], startIndex: number, endIndex: number): TextValue[] => {
   const footers: TextValue[] = []
 
   for (let i = startIndex; i < endIndex; i++) {
@@ -435,6 +537,10 @@ interface ActiveRowspan {
   remaining: number
 }
 
+/**
+ * Expand rowspan cells into a regular grid
+ * This handles tables with rowspan attributes by duplicating cells
+ */
 const expandRowspan = (table: HTMLTableElement): Element[][] => {
   const rows = Array.from(table.querySelectorAll("tr"))
 
@@ -445,7 +551,7 @@ const expandRowspan = (table: HTMLTableElement): Element[][] => {
     const logicalRow: Element[] = []
     let col = 0
 
-    // まず rowspan 由来のセルを補充
+    // Fill in cells from active rowspans
     while (activeRowspans[col]) {
       const active = activeRowspans[col]!
       logicalRow.push(active.el.cloneNode(true) as Element)
@@ -456,7 +562,7 @@ const expandRowspan = (table: HTMLTableElement): Element[][] => {
       col++
     }
 
-    // 実セルを処理
+    // Process actual cells
     const cells = Array.from(tr.children).filter(el =>
       ["TD", "TH"].includes(el.tagName.toUpperCase()),
     )
@@ -481,6 +587,10 @@ const expandRowspan = (table: HTMLTableElement): Element[][] => {
   return grid
 }
 
+/**
+ * Parse the Molecular Data section
+ * Contains multiple tables, each with an identifier header and key-value rows
+ */
 const parseMolecularDataSection = (
   element: Element | undefined,
   humVersionId: string,
@@ -498,7 +608,7 @@ const parseMolecularDataSection = (
   for (let i = 0; i < tables.length; i++) {
     const { table, index: tableIndex } = tables[i]
 
-    // === id (header) ===
+    // Find identifier (header)
     const idIndex = findNearestIdIndex(children, tableIndex)
     if (idIndex === null) {
       console.debug(`[DEBUG] - ${humVersionId} (${lang}): Could not find identifier element for molecular data table at index ${tableIndex}.`)
@@ -507,20 +617,16 @@ const parseMolecularDataSection = (
     const idElem = children[idIndex]
     const id = toTextValue(idElem)
 
-    // === data (table rows) ===
+    // Parse table rows as key-value pairs
     const data: Record<string, TextValue | null> = {}
     const gridTable = expandRowspan(table)
     for (const row of gridTable) {
-      if (row.length < 2) {
-        continue
-      }
+      if (row.length < 2) continue
 
       const keyCell = row[0]
       const valueCells = row.slice(1)
       const keyText = cleanText(keyCell.textContent)
-      if (!keyText) {
-        continue
-      }
+      if (!keyText) continue
 
       const valueTexts: string[] = []
       const valueHtmls: string[] = []
@@ -550,7 +656,7 @@ const parseMolecularDataSection = (
       }
     }
 
-    // === footers ===
+    // Collect footers between this table and the next
     const nextTable = tables[i + 1]
     const nextIdIndex = nextTable
       ? findNearestIdIndex(children, nextTable.index)
@@ -565,6 +671,10 @@ const parseMolecularDataSection = (
 
   return results
 }
+
+// =============================================================================
+// Data Provider section parser
+// =============================================================================
 
 type DataProviderField = "principalInvestigator" | "affiliation" | "projectName" | "projectUrl" | "header"
 const DATA_PROVIDER_FIELD_PATTERNS: { field: DataProviderField; regex: RegExp }[] = [
@@ -583,9 +693,7 @@ const DATA_PROVIDER_FIELD_PATTERNS: { field: DataProviderField; regex: RegExp }[
   { field: "header", regex: /^Funds\s*\/\s*Grants\s*(?:[(（]Research Project Number[)）])?\s*[:：]?\s*/i },
 ]
 
-const detectDataProviderField = (
-  text: string,
-): DataProviderField | null => {
+const detectDataProviderField = (text: string): DataProviderField | null => {
   const t = text.trim()
   for (const { field, regex } of DATA_PROVIDER_FIELD_PATTERNS) {
     if (regex.test(t)) return field
@@ -595,15 +703,18 @@ const detectDataProviderField = (
 
 const stripDataProviderPrefix = (text: string): string => {
   let result = text
-
   for (const { regex } of DATA_PROVIDER_FIELD_PATTERNS) {
     result = result.replace(regex, "")
   }
   return result.trim()
 }
 
+/**
+ * Parse the Data Provider section
+ * Contains: principal investigator, affiliation, project name, URL, grants table
+ */
 const parseDataProviderSection = (
-  element: Element,
+  element: Element | undefined,
   humVersionId: string,
   lang: LangType,
 ): DataProvider => {
@@ -615,12 +726,17 @@ const parseDataProviderSection = (
     grants: [],
   }
 
+  if (!element) {
+    console.debug(`[DEBUG] - ${humVersionId} (${lang}): Data Provider section not found.`)
+    return dataProvider
+  }
+
   const children = Array.from(element.children)
   const tableIndex = children.findIndex(el => el.tagName.toUpperCase() === "TABLE")
   const before = tableIndex >= 0 ? children.slice(0, tableIndex) : children
   const table = tableIndex >= 0 ? (children[tableIndex] as HTMLTableElement) : null
 
-  // === Parse text sections before the table ===
+  // Parse text sections before the table
   let currentField: DataProviderField | null = null
   for (const el of before) {
     if (isEmptyNode(el)) continue
@@ -652,14 +768,12 @@ const parseDataProviderSection = (
         continue
       }
       const cleanedText = stripDataProviderPrefix(text)
-      if (!cleanedText || cleanedText === "-") {
-        continue
-      }
+      if (!cleanedText || cleanedText === "-") continue
       dataProvider[currentField].push({ text: cleanedText, rawHtml })
     }
   }
 
-  // === Parse grants table ===
+  // Parse grants table
   const EXPECT_HEADERS: Record<LangType, string[]> = {
     ja: ["科研費・助成金名", "タイトル", "研究課題番号"],
     en: ["Name", "Title", "Project Number"],
@@ -687,7 +801,7 @@ const parseDataProviderSection = (
       dataProvider.grants.push({
         grantName: normalizeCellValue(cells[0]),
         projectTitle: normalizeCellValue(cells[1]),
-        grantId: normalizeCellValue(cells[2]),
+        grantId: parseBrSeparatedValues(cells[2]),
       })
     }
   }
@@ -695,13 +809,21 @@ const parseDataProviderSection = (
   return dataProvider
 }
 
+// =============================================================================
+// Publications section parser
+// =============================================================================
+
+/**
+ * Parse the Publications section
+ * Contains a table with title, DOI, and dataset IDs
+ */
 const parsePublicationsSection = (
-  element: Element,
+  element: Element | undefined,
   humVersionId: string,
   lang: LangType,
 ): Publication[] => {
-  // セクションが実質空の場合
-  if (!cleanText(element.textContent)) {
+  // Missing or empty section check
+  if (!element || !cleanText(element.textContent)) {
     return []
   }
 
@@ -714,7 +836,7 @@ const parsePublicationsSection = (
     return []
   }
 
-  // === table header ===
+  // Table header validation
   const EXPECT_HEADERS: Record<LangType, string[]> = {
     ja: ["", "タイトル", "DOI", "データID"],
     en: ["", "Title", "DOI", "Dataset ID"],
@@ -724,10 +846,9 @@ const parsePublicationsSection = (
     cleanText(th.textContent),
   )
 
-  // first, try exact match
+  // Try exact match, then fallback variations
   const expected = [...EXPECT_HEADERS[lang]]
   if (!compareHeaders(headers, expected)) {
-    // en: Data ID / Data Set ID
     expected[3] = "Data ID"
     if (!compareHeaders(headers, expected)) {
       expected[3] = "Data Set ID"
@@ -739,7 +860,7 @@ const parsePublicationsSection = (
     }
   }
 
-  // === rows ===
+  // Parse rows
   const publications: Publication[] = []
 
   for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
@@ -756,15 +877,11 @@ const parsePublicationsSection = (
     const doiCell = cells[2]
     const datasetCell = cells[3]
 
-    // All empty or "-"
-    const allText = cells
-      .map(c => cleanText(c.textContent))
-      .slice(1)
-    if (allText.every(v => !v || v === "-")) {
-      continue
-    }
+    // Skip all-empty rows
+    const allText = cells.map(c => cleanText(c.textContent)).slice(1)
+    if (allText.every(v => !v || v === "-")) continue
 
-    // === DOI ===
+    // Extract DOI
     let doi: string | null = null
     const doiAnchor = doiCell.querySelector("a")
     if (doiAnchor) {
@@ -774,29 +891,18 @@ const parsePublicationsSection = (
       doi = normalizeCellValue(doiCell)
     }
 
-    // === dataset IDs ===
-    const datasetIds: string[] = []
+    // Extract dataset IDs using the common parser
+    const datasetIds = parseDatasetIdsFromCell(datasetCell)
 
-    for (const child of Array.from(datasetCell.children)) {
-      const t = normalizeCellValue(child as HTMLTableCellElement)
-      if (t) datasetIds.push(t)
-    }
-
-    // children が無い（text node だけ）のケース
-    if (datasetIds.length === 0) {
-      const t = normalizeCellValue(datasetCell)
-      if (t) datasetIds.push(t)
-    }
-
-    publications.push({
-      title,
-      doi,
-      datasetIds,
-    })
+    publications.push({ title, doi, datasetIds })
   }
 
   return publications
 }
+
+// =============================================================================
+// Controlled Access Users section parser
+// =============================================================================
 
 type ControlledAccessUserKey =
   | "principalInvestigator"
@@ -824,9 +930,7 @@ const CONTROLLED_ACCESS_HEADER_PATTERNS: { key: ControlledAccessUserKey; regex: 
   { key: "periodOfDataUse", regex: /^Period of Data Use$/i },
 ]
 
-const detectControlledAccessKey = (
-  text: string,
-): ControlledAccessUserKey | null => {
+const detectControlledAccessKey = (text: string): ControlledAccessUserKey | null => {
   const t = text.trim()
   for (const { key, regex } of CONTROLLED_ACCESS_HEADER_PATTERNS) {
     if (regex.test(t)) return key
@@ -850,13 +954,10 @@ const normalizeCellText = (cell: Element): string[] => {
   return values
 }
 
-const splitBySeparators = (text: string): string[] => {
-  return text
-    .split(/[,\u3001\s]+/) // , 、 whitespace
-    .map(s => s.trim())
-    .filter(Boolean)
-}
-
+/**
+ * Parse the Controlled Access Users section
+ * Contains a table listing approved data users with their details
+ */
 const parseControlledAccessUsersSection = (
   element: Element | undefined,
   humVersionId: string,
@@ -872,7 +973,7 @@ const parseControlledAccessUsersSection = (
     return []
   }
 
-  // === header mapping ===
+  // Build header-to-key mapping
   const headerCells = Array.from(table.querySelectorAll("thead th"))
   const headerMap = new Map<number, ControlledAccessUserKey>()
 
@@ -895,13 +996,13 @@ const parseControlledAccessUsersSection = (
     return []
   }
 
-  // === rows ===
+  // Parse rows
   const users: ControlledAccessUser[] = []
 
   for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
     const cells = Array.from(row.querySelectorAll("td"))
 
-    // 全部空はスキップ
+    // Skip empty rows
     if (cells.every(c => !cleanText(c.textContent))) continue
 
     const user: ControlledAccessUser = {
@@ -913,16 +1014,11 @@ const parseControlledAccessUsersSection = (
       periodOfDataUse: null,
     }
 
-    // hotfix for hum0014
-    if (cells.length === 5 && cells[0]?.textContent?.trim() === "Atray Dixit") {
-      users.push({
-        principalInvestigator: "Atray Dixit",
-        affiliation: "Coral Genomics, Inc.",
-        country: null,
-        researchTitle: "Derivation and Evaluation of Functional Response Scores",
-        datasetIds: ["JGAD000101, JGAD000123, JGAD000124, JGAD000144- JGAD000201, JGAD000220"],
-        periodOfDataUse: "2020/08/24-2021/07/21",
-      })
+    // Check for special malformed rows defined in config
+    const firstCellText = cells[0]?.textContent?.trim() ?? ""
+    const specialRow = findSpecialControlledAccessRow(humVersionId, cells.length, firstCellText)
+    if (specialRow) {
+      users.push(specialRow.data)
       continue
     }
 
@@ -936,14 +1032,12 @@ const parseControlledAccessUsersSection = (
         return
       }
 
-      const values = normalizeCellText(cell)
-
       if (key === "datasetIds") {
-        for (const v of values) {
-          const splitted = splitBySeparators(v)
-          user.datasetIds.push(...splitted)
-        }
+        // Use the common parser for dataset IDs
+        const ids = parseDatasetIdsFromCell(cell)
+        user.datasetIds.push(...ids)
       } else {
+        const values = normalizeCellText(cell)
         const joined = values.join("\n")
         if (joined) {
           user[key] = joined
@@ -951,7 +1045,7 @@ const parseControlledAccessUsersSection = (
       }
     })
 
-    // 実質空でなければ push
+    // Only add if has meaningful data
     if (
       user.principalInvestigator ||
       user.affiliation ||
@@ -965,4 +1059,41 @@ const parseControlledAccessUsersSection = (
   }
 
   return users
+}
+
+// =============================================================================
+// Main parser function
+// =============================================================================
+
+/**
+ * Parse a detail page HTML and extract all structured data
+ *
+ * @param html - The raw HTML string of the detail page
+ * @param humVersionId - The version identifier (e.g., "hum0001-v1")
+ * @param lang - The language ("ja" or "en")
+ * @returns ParseResult containing all extracted sections
+ */
+export const parseDetailPage = (
+  html: string,
+  humVersionId: string,
+  lang: LangType,
+): ParseResult => {
+  const sections = splitToSection(html, humVersionId, lang)
+
+  const summary = parseSummarySection(sections.summary, humVersionId, lang)
+  const molecularData = parseMolecularDataSection(sections.molecularData, humVersionId, lang)
+  const dataProvider = parseDataProviderSection(sections.dataProvider, humVersionId, lang)
+  const publications = parsePublicationsSection(sections.publications, humVersionId, lang)
+  const controlledAccessUsers = parseControlledAccessUsersSection(sections.controlledAccessUsers, humVersionId, lang)
+
+  const result: ParseResult = {
+    summary,
+    molecularData,
+    dataProvider,
+    publications,
+    controlledAccessUsers,
+    releases: [], // Placeholder, to be filled in parseReleasePage
+  }
+
+  return result
 }

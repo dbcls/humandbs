@@ -82,3 +82,59 @@ export const getReleaseSuffix = (
   )
   return special?.suffix ?? "-release"
 }
+
+/**
+ * Special controlled access user rows that have malformed HTML structure.
+ * These are manually parsed entries because the original HTML is broken.
+ */
+export interface SpecialControlledAccessRow {
+  /** humId (without version) to match */
+  humId: string
+  /** Cell count to detect this malformed row */
+  cellCount: number
+  /** First cell text to identify the row */
+  firstCellText: string
+  /** Manually parsed data */
+  data: {
+    principalInvestigator: string | null
+    affiliation: string | null
+    country: string | null
+    researchTitle: string | null
+    datasetIds: string[]
+    periodOfDataUse: string | null
+  }
+}
+
+export const SPECIAL_CONTROLLED_ACCESS_ROWS: SpecialControlledAccessRow[] = [
+  {
+    // hum0014: Atray Dixit row has 5 cells instead of 6, with merged cells
+    humId: "hum0014",
+    cellCount: 5,
+    firstCellText: "Atray Dixit",
+    data: {
+      principalInvestigator: "Atray Dixit",
+      affiliation: "Coral Genomics, Inc.",
+      country: null,
+      researchTitle: "Derivation and Evaluation of Functional Response Scores",
+      datasetIds: ["JGAD000101", "JGAD000123", "JGAD000124", "JGAD000144-JGAD000201", "JGAD000220"],
+      periodOfDataUse: "2020/08/24-2021/07/21",
+    },
+  },
+]
+
+/**
+ * Find a special controlled access row configuration.
+ */
+export const findSpecialControlledAccessRow = (
+  humVersionId: string,
+  cellCount: number,
+  firstCellText: string,
+): SpecialControlledAccessRow | undefined => {
+  const humId = humVersionId.split("-v")[0]
+  return SPECIAL_CONTROLLED_ACCESS_ROWS.find(
+    s =>
+      s.humId === humId &&
+      s.cellCount === cellCount &&
+      s.firstCellText === firstCellText,
+  )
+}

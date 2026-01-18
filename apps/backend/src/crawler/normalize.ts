@@ -417,34 +417,33 @@ const fixDatasetIdsInControlledAccessUsers = (
   })
 }
 
-const fixGrantId = (value: string | null): string[] | null => {
-  if (!value) return null
-  if (["None", "null", "なし"].includes(value)) return null
+const fixGrantId = (values: string[]): string[] | null => {
+  if (values.length === 0) return null
 
-  const fixedValue = value
-    // 全角英数字を半角に
-    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c =>
-      String.fromCharCode(c.charCodeAt(0) - 0xFEE0),
-    )
-    // 全角ハイフン・ダッシュ類を半角 -
-    .replace(/[－―ー–—]/g, "-")
-    // 全角スペース → 半角
-    .replace(/\u3000/g, " ")
-    // スペース整理
-    .replace(/\s{2,}/g, " ")
-    .trim()
+  const INVALID_VALUES = ["None", "null", "なし"]
 
-  if (!fixedValue) return null
+  const results: string[] = []
+  for (const value of values) {
+    if (INVALID_VALUES.includes(value)) continue
 
-  const jpMatches = fixedValue.match(/JP/g)
-  if (jpMatches && jpMatches.length > 1) {
-    return fixedValue
-      .split(/(?=JP)/g)
-      .map(v => v.trim())
-      .filter(v => v !== "")
+    const fixedValue = value
+      // 全角英数字を半角に
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c =>
+        String.fromCharCode(c.charCodeAt(0) - 0xFEE0),
+      )
+      // 全角ハイフン・ダッシュ類を半角 - (長音記号 ー U+30FC は除外)
+      .replace(/[－―–—]/g, "-")
+      // 全角スペース → 半角
+      .replace(/\u3000/g, " ")
+      // スペース整理
+      .replace(/\s{2,}/g, " ")
+      .trim()
+
+    if (!fixedValue) continue
+    results.push(fixedValue)
   }
 
-  return [fixedValue]
+  return results.length > 0 ? results : null
 }
 
 const parsePeriodOfDataUse = (
@@ -457,7 +456,6 @@ const parsePeriodOfDataUse = (
   if (!m) return null
 
   const [, startDate, endDate] = m
-  console.log({ startDate, endDate })
   return {
     startDate,
     endDate,
@@ -531,7 +529,7 @@ const normalizeOneDetail = (
       grants: detail.dataProvider.grants.map(grant => ({
         grantName: grant.grantName ? normalizeText(grant.grantName, true) : null,
         projectTitle: grant.projectTitle ? normalizeText(grant.projectTitle, true) : null,
-        grantId: grant.grantId ? fixGrantId(normalizeText(grant.grantId, true)) : null,
+        grantId: fixGrantId(grant.grantId.map(id => normalizeText(id, true))),
       })),
     },
     publications: detail.publications.map(pub => ({
@@ -596,6 +594,6 @@ const main = async (): Promise<void> => {
   }
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   await main()
 }
