@@ -1,14 +1,36 @@
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { PUBLICATION_DATASET_ID_MAP, CONTROLLED_ACCESS_USERS_DATASET_ID_MAP } from "@/crawler/const"
+import {
+  cleanPublicationDatasetId,
+  CONTROLLED_ACCESS_USERS_DATASET_ID_MAP,
+  CRITERIA_CANONICAL_MAP,
+  DATASET_ID_SPECIAL_CASES,
+  DEFAULT_CONCURRENCY,
+  HUMANDBS_BASE_URL,
+  INVALID_DOI_VALUES,
+  INVALID_GRANT_ID_VALUES,
+  isInvalidPublicationDatasetId,
+  MAX_CONCURRENCY,
+  MOL_DATA_SPLIT_KEYS,
+  MOL_DATA_UNUSED_KEY,
+  PUBLICATION_DATASET_ID_MAP,
+  UNUSED_PUBLICATION_TITLES,
+} from "@/crawler/config"
 import { listDetailJsonFiles, readDetailJson, writeNormalizedDetailJson } from "@/crawler/io"
 import { buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/mapping-table"
-import type { LangType, CrawlArgs, ParseResult, CriteriaCanonical, NormalizedParseResult, TextValue, NormalizedMolecularData, Publication, ControlledAccessUser, Release } from "@/crawler/types"
+import type { LangType, CrawlArgs, ParseResult, CriteriaCanonical, NormalizedParseResult, NormalizedControlledAccessUser, TextValue, NormalizedMolecularData, Publication, Release, NormalizeOneResult } from "@/crawler/types"
 
-const HUMANDBS_BASE_URL = "https://humandbs.dbcls.jp"
+// === CLI argument parsing ===
+const parseArgs = (): CrawlArgs =>
+  yargs(hideBin(process.argv))
+    .option("hum-id", { alias: "i", type: "string" })
+    .option("lang", { choices: ["ja", "en"] as const })
+    .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY })
+    .parseSync()
 
-const normalizeKey = (v: string): string => {
+// === Text normalization helpers ===
+export const normalizeKey = (v: string): string => {
   return v
     .trim()
     .toLowerCase()
@@ -17,14 +39,14 @@ const normalizeKey = (v: string): string => {
     .replace(/[\s-]/g, "")
 }
 
-const splitValue = (value: string): string[] => {
+export const splitValue = (value: string): string[] => {
   return value
     .split(/[\r\n]+|[、,／/]/)
     .map(v => v.trim())
     .filter(v => v !== "")
 }
 
-const isTextValue = (v: unknown): v is TextValue => {
+export const isTextValue = (v: unknown): v is TextValue => {
   return (
     typeof v === "object" &&
     v !== null &&
@@ -33,9 +55,9 @@ const isTextValue = (v: unknown): v is TextValue => {
   )
 }
 
-function normalizeText(value: string, newlineToSpace: boolean): string
-function normalizeText(value: TextValue, newlineToSpace: boolean): TextValue
-function normalizeText(
+export function normalizeText(value: string, newlineToSpace: boolean): string
+export function normalizeText(value: TextValue, newlineToSpace: boolean): TextValue
+export function normalizeText(
   value: string | TextValue,
   newlineToSpace = true,
 ): string | TextValue {
@@ -43,7 +65,7 @@ function normalizeText(
     const raw = s.trim()
     if (raw === "") return ""
 
-    if (/^https?\s*:\s*\/\s*\//i.test(raw)) {
+    if (/^https?:\/\//i.test(raw)) {
       return raw
     }
 
@@ -58,9 +80,9 @@ function normalizeText(
       .replace(/[（）]/g, (m) => (m === "（" ? "(" : ")"))
       // 全角スラッシュ → 半角
       .replace(/／/g, "/")
-      // クォート類
-      .replace(/[‘’]/g, "'")
-      .replace(/[“”]/g, "\"")
+      // クォート類 (U+2018, U+2019 → ', U+201C, U+201D → ")
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, "\"")
       // ダッシュ類
       .replace(/[‐-‒–—―]/g, "-")
       // コロン前後
@@ -94,7 +116,7 @@ function normalizeText(
   return value
 }
 
-const normalizeUrl = (url: string): string => {
+export const normalizeUrl = (url: string): string => {
   const u = url.trim()
   if (!u) return u
 
@@ -105,32 +127,21 @@ const normalizeUrl = (url: string): string => {
   return u
 }
 
-const normalizeSummaryFooterText = (
+// === Data field normalization ===
+const normalizeFooterText = (
   text: string,
   lang: LangType,
 ): string => {
   if (lang === "ja") {
-    return text.replace(/^※\s?/, "")
+    // Remove leading ※ or * with optional number (e.g., "※1", "*1", "※ ", "* ")
+    return text.replace(/^[※*]\d*\s?/, "")
   } else {
-    return text.replace(/^\*\s?/, "")
+    // Remove leading * with optional number (e.g., "*1", "* ")
+    return text.replace(/^\*\d*\s?/, "")
   }
 }
 
-const CRITERIA_CANONICAL_MAP: Record<string, CriteriaCanonical> = {
-  // Type I
-  "制限公開(typei)": "Controlled-access (Type I)",
-  "controlledaccess(typei)": "Controlled-access (Type I)",
-
-  // Type II
-  "制限公開(typeii)": "Controlled-access (Type II)",
-  "controlledaccess(typeii)": "Controlled-access (Type II)",
-
-  // unrestricted
-  "非制限公開": "Unrestricted-access",
-  "unrestrictedaccess": "Unrestricted-access",
-}
-
-const normalizeCriteria = (
+export const normalizeCriteria = (
   value: string | null | undefined,
 ): CriteriaCanonical[] | null => {
   if (!value) return null
@@ -148,20 +159,20 @@ const normalizeCriteria = (
     if (canonical) {
       results.push(canonical)
     } else {
-      console.debug(`[DEBUG] - Unknown criteria value: "${part}" (normalized: "${key}")`)
+      console.warn(`Unknown criteria value: "${part}" (normalized: "${key}")`)
     }
   }
 
   return results.length > 0 ? results : null
 }
 
-const fixDatasetId = (
+export const fixDatasetId = (
   value: string,
 ): string[] => {
   const raw = value.trim()
   if (raw === "") return []
 
-  let trimmed = raw
+  const trimmed = raw
     // ( と ) を除去
     .replace(/[()]/g, "")
     // "データ追加" と "Data addition" を除去
@@ -179,18 +190,16 @@ const fixDatasetId = (
     .replace(/\s{2,}/g, " ")
     .trim()
 
-  if (trimmed === "AP023461-AP024084") {
-    trimmed = "PRJDB10452"
-  }
-  if (trimmed === "35 Dieases" || trimmed === "35 Diseases") {
-    return ["35 Diseases"]
+  // Check special cases from config
+  if (trimmed in DATASET_ID_SPECIAL_CASES) {
+    return DATASET_ID_SPECIAL_CASES[trimmed]
   }
 
   // スペースを区切り文字として分割
   return trimmed.split(" ")
 }
 
-const fixReleaseDate = (
+export const fixReleaseDate = (
   value: string | null | undefined,
 ): string[] | null => {
   if (!value) return null
@@ -217,7 +226,7 @@ const fixReleaseDate = (
   return dates.length > 0 ? dates : null
 }
 
-const fixDate = (value: string): string => {
+export const fixDate = (value: string): string => {
   const raw = value.trim()
   const m = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
   if (!m) return raw
@@ -237,7 +246,112 @@ const fixDateInReleases = (
   }))
 }
 
-const mergeValue = (
+export const fixHumVersionId = (humVersionId: string): string => {
+  // Normalize humVersionId format: "hum0014-v1-freq-v1" → "hum0014-v1"
+  // Extract only the base humId and version (e.g., "hum0014-v1")
+  const match = humVersionId.match(/^(hum\d+)-(v\d+)/)
+  if (match) {
+    return `${match[1]}-${match[2]}`
+  }
+  return humVersionId
+}
+
+export const normalizeDoiValue = (doi: string | null): string | null => {
+  if (!doi) return null
+
+  if (INVALID_DOI_VALUES.includes(doi)) {
+    return null
+  }
+
+  return doi
+}
+
+export const fixGrantId = (values: string[]): string[] | null => {
+  if (values.length === 0) return null
+
+  const results: string[] = []
+  for (const value of values) {
+    if (INVALID_GRANT_ID_VALUES.includes(value)) continue
+
+    const fixedValue = value
+      // 全角英数字を半角に
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c =>
+        String.fromCharCode(c.charCodeAt(0) - 0xFEE0),
+      )
+      // 全角ハイフン・ダッシュ類を半角 - (長音記号 ー U+30FC は除外)
+      .replace(/[－―–—]/g, "-")
+      // 全角スペース → 半角
+      .replace(/\u3000/g, " ")
+      // スペース整理
+      .replace(/\s{2,}/g, " ")
+      .trim()
+
+    if (!fixedValue) continue
+    results.push(fixedValue)
+  }
+
+  return results.length > 0 ? results : null
+}
+
+export const parsePeriodOfDataUse = (
+  value: string,
+): { startDate: string | null; endDate: string | null } | null => {
+  const raw = value.trim().replace(/\s+/g, "")
+  if (raw === "") return null
+
+  // Try YYYY-MM-DD-YYYY-MM-DD format first
+  const mHyphen = raw.match(/^(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/)
+  if (mHyphen) {
+    return {
+      startDate: mHyphen[1],
+      endDate: mHyphen[2],
+    }
+  }
+
+  // Try YYYY/M/D-YYYY/M/D format (common in source data, month/day can be 1 or 2 digits)
+  const mSlash = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})-(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+  if (mSlash) {
+    const [, y1, m1, d1, y2, m2, d2] = mSlash
+    return {
+      startDate: `${y1}-${m1.padStart(2, "0")}-${d1.padStart(2, "0")}`,
+      endDate: `${y2}-${m2.padStart(2, "0")}-${d2.padStart(2, "0")}`,
+    }
+  }
+
+  return null
+}
+// === JGAD Range Expansion ===
+
+/**
+ * Expand JGAD range notation to individual IDs
+ * e.g., "JGAD000106-JGAD000108" → ["JGAD000106", "JGAD000107", "JGAD000108"]
+ * Non-range IDs are returned as-is in an array
+ */
+export const expandJgadRange = (id: string): string[] => {
+  const match = id.match(/^(JGAD)(\d+)-JGAD(\d+)$/)
+  if (!match) {
+    return [id]
+  }
+
+  const [, prefix, startStr, endStr] = match
+  const start = parseInt(startStr, 10)
+  const end = parseInt(endStr, 10)
+
+  if (start > end) {
+    return [id]
+  }
+
+  const padLength = startStr.length
+  const result: string[] = []
+  for (let i = start; i <= end; i++) {
+    result.push(`${prefix}${i.toString().padStart(padLength, "0")}`)
+  }
+
+  return result
+}
+
+// Array/object transformation helpers
+export const mergeValue = (
   existing: TextValue | TextValue[] | null | undefined,
   incoming: TextValue | TextValue[] | null,
 ): TextValue | TextValue[] | null => {
@@ -265,18 +379,6 @@ const normalizeMolData = (
   humVersionId: string,
   lang: LangType,
 ): NormalizedMolecularData["data"] => {
-  const UNUSED_KEY = "不要な項目のため削除する"
-  const SPLIT_KEYS: Record<string, string[]> = {
-    "Japanese Genotype-phenotype Archive Dataset AccessionとSequence Read Archive Accessionに分ける": [
-      "Japanese Genotype-phenotype Archive Dataset Accession",
-      "Sequence Read Archive Accession",
-    ],
-    "NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける": [
-      "NBDC Dataset Accession",
-      "Japanese Genotype-phenotype Archive Dataset Accession",
-    ],
-  }
-
   const mappingTable = buildMolDataHeaderMapping()
   const normalizedData: NormalizedMolecularData["data"] = {}
 
@@ -291,7 +393,7 @@ const normalizeMolData = (
       .trim()
     const normKey = normalizeMolDataKey(trimmedKey, lang, mappingTable)
 
-    if (normKey === UNUSED_KEY) {
+    if (normKey === MOL_DATA_UNUSED_KEY) {
       continue
     }
 
@@ -301,8 +403,8 @@ const normalizeMolData = (
       continue
     }
 
-    if (normKey in SPLIT_KEYS) {
-      const splitKeys = SPLIT_KEYS[normKey]
+    if (normKey in MOL_DATA_SPLIT_KEYS) {
+      const splitKeys = MOL_DATA_SPLIT_KEYS[normKey]
 
       for (const sk of splitKeys) {
         normalizedData[sk] = mergeValue(
@@ -322,56 +424,14 @@ const normalizeMolData = (
   return normalizedData
 }
 
-const fixPeriodOfDataUseInControlledAccessUsers = (
-  cas: ControlledAccessUser[],
-): ControlledAccessUser[] => {
-  return cas.map(ca => {
-    if (!ca.periodOfDataUse) return ca
-
-    const raw = ca.periodOfDataUse.trim()
-    if (raw === "") return { ...ca, periodOfDataUse: null }
-
-    const m = raw.match(/^(.+?)\s*-\s*(.+)$/)
-    if (!m) return ca
-
-    const [, start, end] = m
-    if (start && end) {
-      const fixedStart = fixDate(start)
-      const fixedEnd = fixDate(end)
-      return {
-        ...ca,
-        periodOfDataUse: `${fixedStart}-${fixedEnd}`,
-      }
-    }
-    return ca
-  })
-}
-
-const normalizeDoiValue = (doi: string | null): string | null => {
-  if (!doi) return null
-
-  if (["doi:", "In submission", "null", "投稿中"].includes(doi)) {
-    return null
-  }
-
-  return doi
-}
-
-const removeUnusedPublications = (
+export const removeUnusedPublications = (
   publications: Publication[],
 ): Publication[] => {
-  const UNUSED_TITLES = [
-    "In submission",
-    "under publishing",
-    "投稿中",
-    "投稿準備中",
-  ]
-
   return publications.filter(pub => {
     if (!pub.title) return true
 
     const t = pub.title.trim()
-    return !UNUSED_TITLES.includes(t)
+    return !UNUSED_PUBLICATION_TITLES.includes(t)
   })
 }
 
@@ -385,7 +445,7 @@ const fixDatasetIdsInPublications = (
       if (id in PUBLICATION_DATASET_ID_MAP) {
         mappedIds.push(...PUBLICATION_DATASET_ID_MAP[id])
       } else {
-        mappedIds.push(id)
+        mappedIds.push(...expandJgadRange(id))
       }
     }
 
@@ -397,8 +457,8 @@ const fixDatasetIdsInPublications = (
 }
 
 const fixDatasetIdsInControlledAccessUsers = (
-  cas: ControlledAccessUser[],
-): ControlledAccessUser[] => {
+  cas: NormalizedControlledAccessUser[],
+): NormalizedControlledAccessUser[] => {
   return cas.map(ca => {
     const mappedIds: string[] = []
 
@@ -406,7 +466,7 @@ const fixDatasetIdsInControlledAccessUsers = (
       if (id in CONTROLLED_ACCESS_USERS_DATASET_ID_MAP) {
         mappedIds.push(...CONTROLLED_ACCESS_USERS_DATASET_ID_MAP[id])
       } else {
-        mappedIds.push(id)
+        mappedIds.push(...expandJgadRange(id))
       }
     }
 
@@ -417,155 +477,116 @@ const fixDatasetIdsInControlledAccessUsers = (
   })
 }
 
-const fixGrantId = (values: string[]): string[] | null => {
-  if (values.length === 0) return null
-
-  const INVALID_VALUES = ["None", "null", "なし"]
-
-  const results: string[] = []
-  for (const value of values) {
-    if (INVALID_VALUES.includes(value)) continue
-
-    const fixedValue = value
-      // 全角英数字を半角に
-      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c =>
-        String.fromCharCode(c.charCodeAt(0) - 0xFEE0),
-      )
-      // 全角ハイフン・ダッシュ類を半角 - (長音記号 ー U+30FC は除外)
-      .replace(/[－―–—]/g, "-")
-      // 全角スペース → 半角
-      .replace(/\u3000/g, " ")
-      // スペース整理
-      .replace(/\s{2,}/g, " ")
-      .trim()
-
-    if (!fixedValue) continue
-    results.push(fixedValue)
-  }
-
-  return results.length > 0 ? results : null
-}
-
-const parsePeriodOfDataUse = (
-  value: string,
-): { startDate: string | null; endDate: string | null } | null => {
-  const raw = value.trim().replace(/\s+/g, "")
-  if (raw === "") return null
-
-  const m = raw.match(/^(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/)
-  if (!m) return null
-
-  const [, startDate, endDate] = m
-  return {
-    startDate,
-    endDate,
-  }
-}
-
-/* =========================
-* main
-* ========================= */
-
-const parseArgs = (): CrawlArgs =>
-  yargs(hideBin(process.argv))
-    .option("hum-id", { alias: "i", type: "string" })
-    .option("lang", { choices: ["ja", "en"] as const })
-    .option("concurrency", { type: "number", default: 4 })
-    .parseSync()
-
-const normalizeOneDetail = (
+// === Single normalization function ===
+export const normalizeOneDetail = (
   humVersionId: string,
   lang: LangType,
-): void => {
-  const detail = readDetailJson(humVersionId, lang) as ParseResult | null
-  if (!detail) return
+): NormalizeOneResult => {
+  try {
+    const detail = readDetailJson(humVersionId, lang) as ParseResult | null
+    if (!detail) {
+      return { success: false, humVersionId, lang, error: "JSON not found" }
+    }
 
-  const normalizedDetail: NormalizedParseResult = {
-    ...detail,
-    summary: {
-      ...detail.summary,
-      aims: normalizeText(detail.summary.aims, lang === "en"),
-      methods: normalizeText(detail.summary.methods, lang === "en"),
-      targets: normalizeText(detail.summary.targets, lang === "en"),
-      url: detail.summary.url.map(u => ({
-        ...u,
-        url: normalizeUrl(u.url),
+    const normalizedDetail: NormalizedParseResult = {
+      ...detail,
+      summary: {
+        ...detail.summary,
+        aims: normalizeText(detail.summary.aims, lang === "en"),
+        methods: normalizeText(detail.summary.methods, lang === "en"),
+        targets: normalizeText(detail.summary.targets, lang === "en"),
+        url: detail.summary.url.map(u => ({
+          ...u,
+          url: normalizeUrl(u.url),
+        })),
+        datasets: detail.summary.datasets.map(ds => ({
+          ...ds,
+          datasetId: ds.datasetId ? fixDatasetId(normalizeText(ds.datasetId, true)) : null,
+          typeOfData: ds.typeOfData ? normalizeText(ds.typeOfData, true) : null,
+          criteria: normalizeCriteria(ds.criteria),
+          releaseDate: ds.releaseDate ? fixReleaseDate(normalizeText(ds.releaseDate, true)) : null,
+        })),
+        footers: detail.summary.footers.map(f => ({
+          ...f,
+          text: normalizeFooterText(normalizeText(f.text, lang === "en"), lang),
+        })),
+      },
+      molecularData: detail.molecularData.map(md => ({
+        ...md,
+        id: normalizeText(md.id, true),
+        data: Object.fromEntries(
+          Object.entries(md.data).map(([key, val]) => [
+            key,
+            val === null ? null : normalizeText(val, true),
+          ]),
+        ),
+        footers: md.footers.map(f => ({
+          ...f,
+          text: normalizeFooterText(normalizeText(f.text, lang === "en"), lang),
+        })),
       })),
-      datasets: detail.summary.datasets.map(ds => ({
-        ...ds,
-        datasetId: ds.datasetId ? fixDatasetId(normalizeText(ds.datasetId, true)) : null,
-        typeOfData: ds.typeOfData ? normalizeText(ds.typeOfData, true) : null,
-        criteria: normalizeCriteria(ds.criteria),
-        releaseDate: ds.releaseDate ? fixReleaseDate(normalizeText(ds.releaseDate, true)) : null,
+      dataProvider: {
+        ...detail.dataProvider,
+        principalInvestigator: detail.dataProvider.principalInvestigator.map(pi => normalizeText(pi, true)),
+        affiliation: detail.dataProvider.affiliation.map(af => normalizeText(af, true)),
+        projectName: detail.dataProvider.projectName.map(pn => normalizeText(pn, true)),
+        projectUrl: detail.dataProvider.projectUrl.map(u => ({
+          ...u,
+          url: normalizeUrl(u.url),
+        })),
+        grants: detail.dataProvider.grants.map(grant => ({
+          grantName: grant.grantName ? normalizeText(grant.grantName, true) : null,
+          projectTitle: grant.projectTitle ? normalizeText(grant.projectTitle, true) : null,
+          grantId: fixGrantId(grant.grantId.map(id => normalizeText(id, true))),
+        })),
+      },
+      publications: detail.publications.map(pub => ({
+        ...pub,
+        title: pub.title ? normalizeText(pub.title, true) : null,
+        doi: pub.doi ? normalizeDoiValue(normalizeText(pub.doi, true)) : null,
+        datasetIds: pub.datasetIds
+          .flatMap(id => normalizeText(id, true).split(/\s+/).filter(s => s !== ""))
+          .filter(id => !isInvalidPublicationDatasetId(id))
+          .map(id => cleanPublicationDatasetId(id)),
       })),
-      footers: detail.summary.footers.map(f => ({
-        ...f,
-        text: normalizeSummaryFooterText(normalizeText(f.text, lang === "en"), lang),
+      controlledAccessUsers: detail.controlledAccessUsers.map(cau => ({
+        ...cau,
+        principalInvestigator: cau.principalInvestigator ? normalizeText(cau.principalInvestigator, true) : null,
+        affiliation: cau.affiliation ? normalizeText(cau.affiliation, true) : null,
+        country: cau.country ? normalizeText(cau.country, true) : null,
+        researchTitle: cau.researchTitle ? normalizeText(cau.researchTitle, true) : null,
+        datasetIds: cau.datasetIds.map(id => normalizeText(id, true)),
+        periodOfDataUse: cau.periodOfDataUse ? parsePeriodOfDataUse(normalizeText(cau.periodOfDataUse, true)) : null,
       })),
-    },
-    molecularData: detail.molecularData.map(md => ({
-      ...md,
-      id: normalizeText(md.id, true),
-      data: Object.fromEntries(
-        Object.entries(md.data).map(([key, val]) => [
-          key,
-          val === null ? null : normalizeText(val, true),
-        ]),
-      ),
-      footers: md.footers.map(f => ({
-        ...f,
-        text: normalizeText(f.text, true),
+      releases: detail.releases.map(rel => ({
+        ...rel,
+        humVersionId: fixHumVersionId(rel.humVersionId),
+        content: normalizeText(rel.content, lang === "en"),
+        releaseNote: rel.releaseNote ? normalizeText(rel.releaseNote, true) : undefined,
       })),
-    })),
-    dataProvider: {
-      ...detail.dataProvider,
-      principalInvestigator: detail.dataProvider.principalInvestigator.map(pi => normalizeText(pi, true)),
-      affiliation: detail.dataProvider.affiliation.map(af => normalizeText(af, true)),
-      projectName: detail.dataProvider.projectName.map(pn => normalizeText(pn, true)),
-      projectUrl: detail.dataProvider.projectUrl.map(u => ({
-        ...u,
-        url: normalizeUrl(u.url),
-      })),
-      grants: detail.dataProvider.grants.map(grant => ({
-        grantName: grant.grantName ? normalizeText(grant.grantName, true) : null,
-        projectTitle: grant.projectTitle ? normalizeText(grant.projectTitle, true) : null,
-        grantId: fixGrantId(grant.grantId.map(id => normalizeText(id, true))),
-      })),
-    },
-    publications: detail.publications.map(pub => ({
-      ...pub,
-      title: pub.title ? normalizeText(pub.title, true) : null,
-      doi: pub.doi ? normalizeDoiValue(normalizeText(pub.doi, true)) : null,
-      datasetIds: pub.datasetIds.map(id => normalizeText(id, true)),
-    })),
-    controlledAccessUsers: detail.controlledAccessUsers.map(cau => ({
-      ...cau,
-      principalInvestigator: cau.principalInvestigator ? normalizeText(cau.principalInvestigator, true) : null,
-      affiliation: cau.affiliation ? normalizeText(cau.affiliation, true) : null,
-      country: cau.country ? normalizeText(cau.country, true) : null,
-      researchTitle: cau.researchTitle ? normalizeText(cau.researchTitle, true) : null,
-      datasetIds: cau.datasetIds.map(id => normalizeText(id, true)),
-      periodOfDataUse: cau.periodOfDataUse ? parsePeriodOfDataUse(normalizeText(cau.periodOfDataUse, true)) : null,
-    })),
-    releases: detail.releases.map(rel => ({
-      ...rel,
-      content: normalizeText(rel.content, lang === "en"),
-      releaseNote: normalizeText(rel.releaseNote, true),
-    })),
+    }
+
+    normalizedDetail.publications = removeUnusedPublications(normalizedDetail.publications)
+    normalizedDetail.publications = fixDatasetIdsInPublications(normalizedDetail.publications)
+    normalizedDetail.controlledAccessUsers = fixDatasetIdsInControlledAccessUsers(normalizedDetail.controlledAccessUsers)
+    normalizedDetail.releases = fixDateInReleases(normalizedDetail.releases)
+    for (const molData of normalizedDetail.molecularData) {
+      molData.data = normalizeMolData(molData.data, humVersionId, lang)
+    }
+
+    writeNormalizedDetailJson(humVersionId, lang, normalizedDetail)
+    return { success: true, humVersionId, lang }
+  } catch (e) {
+    return {
+      success: false,
+      humVersionId,
+      lang,
+      error: e instanceof Error ? e.message : String(e),
+    }
   }
-
-  normalizedDetail.publications = removeUnusedPublications(normalizedDetail.publications)
-  normalizedDetail.publications = fixDatasetIdsInPublications(normalizedDetail.publications)
-  normalizedDetail.controlledAccessUsers = fixDatasetIdsInControlledAccessUsers(normalizedDetail.controlledAccessUsers)
-  normalizedDetail.controlledAccessUsers = fixPeriodOfDataUseInControlledAccessUsers(normalizedDetail.controlledAccessUsers)
-  normalizedDetail.releases = fixDateInReleases(normalizedDetail.releases)
-  for (const molData of normalizedDetail.molecularData) {
-    molData.data = normalizeMolData(molData.data, humVersionId, lang)
-  }
-
-  writeNormalizedDetailJson(humVersionId, lang, normalizedDetail)
 }
 
+// === Main function ===
 const main = async (): Promise<void> => {
   const args = parseArgs()
   const langs: LangType[] = args.lang ? [args.lang] : ["ja", "en"]
@@ -575,23 +596,37 @@ const main = async (): Promise<void> => {
     langs,
   })
 
-  const tasks: (() => Promise<void>)[] = targets.map(
-    ({ humVersionId, lang }) =>
-      async () => {
-        try {
-          normalizeOneDetail(humVersionId, lang)
-        } catch (e) {
-          console.error(
-            `Normalize failed: ${humVersionId} (${lang}): ${e instanceof Error ? e.message : String(e)}`,
-          )
-        }
-      },
-  )
-
-  const conc = Math.max(1, Math.min(32, args.concurrency ?? 4))
-  for (let i = 0; i < tasks.length; i += conc) {
-    await Promise.all(tasks.slice(i, i + conc).map(fn => fn()))
+  if (targets.length === 0) {
+    console.log("No JSON files found. Run 'bun run crawler:crawl' first.")
+    return
   }
+
+  console.log(`Normalizing ${targets.length} file(s), langs: ${langs.join(", ")}`)
+  const conc = Math.max(1, Math.min(MAX_CONCURRENCY, args.concurrency ?? DEFAULT_CONCURRENCY))
+
+  let totalNormalized = 0
+  let totalErrors = 0
+  let processed = 0
+
+  for (let i = 0; i < targets.length; i += conc) {
+    const batch = targets.slice(i, i + conc)
+    const results = batch.map(({ humVersionId, lang }) =>
+      normalizeOneDetail(humVersionId, lang),
+    )
+    for (const result of results) {
+      if (result.success) {
+        totalNormalized++
+      } else {
+        totalErrors++
+        console.error(`Error: ${result.humVersionId} (${result.lang}): ${result.error}`)
+      }
+    }
+    processed += batch.length
+    const percent = Math.round((processed / targets.length) * 100)
+    console.log(`Progress: ${processed}/${targets.length} (${percent}%)`)
+  }
+
+  console.log(`Done: ${totalNormalized} normalized, ${totalErrors} errors`)
 }
 
 if (import.meta.main) {

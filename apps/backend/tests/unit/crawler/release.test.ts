@@ -4,8 +4,8 @@
 import { describe, it, expect } from "bun:test"
 import { existsSync, readFileSync } from "fs"
 
-import { fromDotToHyphen, validateTableHeaders, parseReleasePage } from "@/crawler/release"
 import { getHtmlDir } from "@/crawler/io"
+import { fromDotToHyphen, validateTableHeaders, parseReleasePage } from "@/crawler/release"
 
 describe("release.ts", () => {
   describe("fromDotToHyphen", () => {

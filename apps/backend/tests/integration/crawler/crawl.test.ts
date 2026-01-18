@@ -78,7 +78,7 @@ describe("Parse all HTML files", () => {
   const files = htmlExists ? readdirSync(htmlDir) : []
 
   if (!htmlExists || files.length === 0) {
-    it.skip("HTML files not found - run 'bun run crawler:download' first", () => {})
+    it.skip("HTML files not found - run 'bun run crawler:download' first", () => { /* skip */ })
     return
   }
 

@@ -13,13 +13,11 @@
  */
 import { JSDOM } from "jsdom"
 
-import { findSpecialControlledAccessRow } from "@/crawler/config"
-import { HUM_IDS_WITH_DATA_SUMMARY } from "@/crawler/const"
+import { findSpecialControlledAccessRow, HUM_IDS_WITH_DATA_SUMMARY } from "@/crawler/config"
 import type { LangType, ParseResult, Summary, Dataset, MolecularData, DataProvider, Publication, ControlledAccessUser, TextValue } from "@/crawler/types"
 
-// =============================================================================
-// Utility functions
-// =============================================================================
+
+// === Utility functions ===
 
 /**
  * Clean whitespace from text
@@ -27,6 +25,7 @@ import type { LangType, ParseResult, Summary, Dataset, MolecularData, DataProvid
 export const cleanText = (str: string | null | undefined): string => {
   return str?.trim() ?? ""
 }
+
 
 /**
  * Clean innerHTML by removing style/class/id attributes
@@ -49,6 +48,7 @@ export const cleanInnerHtml = (node: Element): string => {
   return clone.innerHTML.trim()
 }
 
+
 /**
  * Convert Element to TextValue (text + rawHtml)
  */
@@ -70,6 +70,7 @@ const compareHeaders = (headers: string[], expected: string[]): boolean => {
   return true
 }
 
+
 /**
  * Normalize cell value: empty string or "-" becomes null
  */
@@ -77,6 +78,7 @@ const normalizeCellValue = (cell: HTMLTableCellElement): string | null => {
   const t = cleanText(cell.textContent)
   return t === "" || t === "-" ? null : t
 }
+
 
 /**
  * Parse values separated by <br> tags from a table cell
@@ -100,6 +102,7 @@ const parseBrSeparatedValues = (cell: Element): string[] => {
 
   return values
 }
+
 
 /**
  * Parse dataset IDs from a table cell
@@ -141,6 +144,7 @@ const parseDatasetIdsFromCell = (cell: Element): string[] => {
   return ids
 }
 
+
 /**
  * Check if a line should be ignored (notes, empty, etc.)
  */
@@ -151,6 +155,7 @@ const isIgnorableLine = (text: string): boolean => {
   if (t === "\u00a0") return true
   return false
 }
+
 
 /**
  * Check if a node is empty (no meaningful text content)
@@ -167,6 +172,7 @@ const isEmptyNode = (node: Node): boolean => {
   }
   return false
 }
+
 
 /**
  * Generic table parser
@@ -191,10 +197,8 @@ const parseTable = <T>(
   return results
 }
 
-// =============================================================================
-// Section detection and splitting
-// =============================================================================
 
+// === Section detection and splitting ===
 type SectionType =
   | "summary"
   | "molecularData"
@@ -227,6 +231,7 @@ const mapHeadingTextToSectionType = (headingText: string): SectionType | null =>
   return null
 }
 
+
 /**
  * Check if a node is a heading and return its section type
  */
@@ -249,6 +254,7 @@ const isHeadingNode = (node: Node): SectionType | null => {
 
   return mapHeadingTextToSectionType(text)
 }
+
 
 type SectionedDocument = Partial<Record<SectionType, Element>>
 
@@ -374,10 +380,8 @@ const splitToSection = (
   return sectionElements
 }
 
-// =============================================================================
-// Summary section parser
-// =============================================================================
 
+// === Summary section parser ===
 const SUMMARY_FIELD_PATTERNS: { field: "aims" | "methods" | "targets" | "url"; regex: RegExp }[] = [
   { field: "aims", regex: /^(目的|aims?)\s*[:：]?/i },
   { field: "methods", regex: /^(方法|methods?)\s*[:：]?/i },
@@ -393,6 +397,7 @@ const detectSummaryField = (text: string): "aims" | "methods" | "targets" | "url
   return null
 }
 
+
 const stripSummaryPrefix = (text: string): string => {
   let result = text
   for (const { regex } of SUMMARY_FIELD_PATTERNS) {
@@ -400,6 +405,7 @@ const stripSummaryPrefix = (text: string): string => {
   }
   return result.trim()
 }
+
 
 /**
  * Parse the Summary section
@@ -501,10 +507,8 @@ const parseSummarySection = (
   return summary
 }
 
-// =============================================================================
-// Molecular Data section parser
-// =============================================================================
 
+// === Molecular Data section parser ===
 /**
  * Find the nearest identifier element before a table
  */
@@ -516,6 +520,7 @@ const findNearestIdIndex = (children: Element[], tableIndex: number): number | n
   }
   return null
 }
+
 
 /**
  * Collect footer elements between two indices
@@ -532,10 +537,12 @@ const collectFooters = (children: Element[], startIndex: number, endIndex: numbe
   return footers
 }
 
+
 interface ActiveRowspan {
   el: Element
   remaining: number
 }
+
 
 /**
  * Expand rowspan cells into a regular grid
@@ -586,6 +593,7 @@ const expandRowspan = (table: HTMLTableElement): Element[][] => {
 
   return grid
 }
+
 
 /**
  * Parse the Molecular Data section
@@ -672,10 +680,8 @@ const parseMolecularDataSection = (
   return results
 }
 
-// =============================================================================
-// Data Provider section parser
-// =============================================================================
 
+// === Data Provider section parser ===
 type DataProviderField = "principalInvestigator" | "affiliation" | "projectName" | "projectUrl" | "header"
 const DATA_PROVIDER_FIELD_PATTERNS: { field: DataProviderField; regex: RegExp }[] = [
   // ja
@@ -701,6 +707,7 @@ const detectDataProviderField = (text: string): DataProviderField | null => {
   return null
 }
 
+
 const stripDataProviderPrefix = (text: string): string => {
   let result = text
   for (const { regex } of DATA_PROVIDER_FIELD_PATTERNS) {
@@ -708,6 +715,7 @@ const stripDataProviderPrefix = (text: string): string => {
   }
   return result.trim()
 }
+
 
 /**
  * Parse the Data Provider section
@@ -809,10 +817,8 @@ const parseDataProviderSection = (
   return dataProvider
 }
 
-// =============================================================================
-// Publications section parser
-// =============================================================================
 
+// === Publications section parser ===
 /**
  * Parse the Publications section
  * Contains a table with title, DOI, and dataset IDs
@@ -900,10 +906,8 @@ const parsePublicationsSection = (
   return publications
 }
 
-// =============================================================================
-// Controlled Access Users section parser
-// =============================================================================
 
+// === Controlled Access Users section parser ===
 type ControlledAccessUserKey =
   | "principalInvestigator"
   | "affiliation"
@@ -938,6 +942,7 @@ const detectControlledAccessKey = (text: string): ControlledAccessUserKey | null
   return null
 }
 
+
 const normalizeCellText = (cell: Element): string[] => {
   const values: string[] = []
 
@@ -953,6 +958,7 @@ const normalizeCellText = (cell: Element): string[] => {
   }
   return values
 }
+
 
 /**
  * Parse the Controlled Access Users section
@@ -1061,10 +1067,8 @@ const parseControlledAccessUsersSection = (
   return users
 }
 
-// =============================================================================
-// Main parser function
-// =============================================================================
 
+// === Main parser function ===
 /**
  * Parse a detail page HTML and extract all structured data
  *
@@ -1097,3 +1101,4 @@ export const parseDetailPage = (
 
   return result
 }
+

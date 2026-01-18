@@ -199,7 +199,7 @@ Variant Numbers	Variant Numbers	バリアント数	Variant Number
 メタ解析方法	Meta Analysis Methods	解析方法	Analysis Methods
 解析方法	Analysis Methods	解析方法	Analysis Methods
 Phenotype情報	Phenotype Data	被験者属性	Participant Attributes
-mobile element数	Mobile element Number	Mobile Element 数	Mobile Element  Number
+mobile element数	Mobile element Number	Mobile Element 数	Mobile Element Number
 mobile element検出方法	Detecting Methods for mobile element	解析方法	Analysis Methods
 vcfファイルの統合方法	Method for merging vcf files	解析方法	Analysis Methods
 vcfファイルのphasing方法	Method for phasing vcf files	解析方法	Analysis Methods

@@ -10,6 +10,8 @@ import {
   SPECIAL_RELEASE_URLS,
   shouldSkipPage,
   getReleaseSuffix,
+  isInvalidPublicationDatasetId,
+  cleanPublicationDatasetId,
 } from "@/crawler/config"
 
 describe("config.ts", () => {
@@ -136,6 +138,71 @@ describe("config.ts", () => {
       expect(getReleaseSuffix("hum0001-v1", "ja")).toBe("-release")
       expect(getReleaseSuffix("hum0001-v1", "en")).toBe("-release")
       expect(getReleaseSuffix("hum0100-v2", "ja")).toBe("-release")
+    })
+  })
+
+  describe("isInvalidPublicationDatasetId", () => {
+    it("should return true for IDs containing genes", () => {
+      expect(isInvalidPublicationDatasetId("genes)")).toBe(true)
+      expect(isInvalidPublicationDatasetId("genes・63")).toBe(true)
+      expect(isInvalidPublicationDatasetId("genes・89")).toBe(true)
+    })
+
+    it("should return true for IDs containing panel", () => {
+      expect(isInvalidPublicationDatasetId("panel)")).toBe(true)
+      expect(isInvalidPublicationDatasetId("panel")).toBe(true)
+    })
+
+    it("should return true for IDs containing Japanese 遺伝子", () => {
+      expect(isInvalidPublicationDatasetId("(69遺伝子領域・63遺伝子領域)")).toBe(true)
+    })
+
+    it("should return true for fastq file format", () => {
+      expect(isInvalidPublicationDatasetId("(fastq)")).toBe(true)
+    })
+
+    it("should return true for numbers only (fragments)", () => {
+      expect(isInvalidPublicationDatasetId("(69")).toBe(true)
+      expect(isInvalidPublicationDatasetId("69")).toBe(true)
+    })
+
+    it("should return true for reference fragment", () => {
+      expect(isInvalidPublicationDatasetId("(reference")).toBe(true)
+    })
+
+    it("should return true for empty after stripping parentheses", () => {
+      expect(isInvalidPublicationDatasetId("()")).toBe(true)
+    })
+
+    it("should return false for valid dataset IDs", () => {
+      expect(isInvalidPublicationDatasetId("JGAD000220")).toBe(false)
+      expect(isInvalidPublicationDatasetId("JGAS000006")).toBe(false)
+      expect(isInvalidPublicationDatasetId("(JGAS000006)")).toBe(false) // Parentheses stripped
+      expect(isInvalidPublicationDatasetId("hum0014.v4.AD.v1")).toBe(false)
+      expect(isInvalidPublicationDatasetId("(hum0040)")).toBe(false) // Valid humId reference
+      expect(isInvalidPublicationDatasetId("T2DM")).toBe(false)
+      expect(isInvalidPublicationDatasetId("JSNP")).toBe(false)
+      expect(isInvalidPublicationDatasetId("(JSNP)")).toBe(false) // Valid project name
+    })
+  })
+
+  describe("cleanPublicationDatasetId", () => {
+    it("should remove surrounding parentheses", () => {
+      expect(cleanPublicationDatasetId("(JGAS000006)")).toBe("JGAS000006")
+      expect(cleanPublicationDatasetId("(hum0040)")).toBe("hum0040")
+    })
+
+    it("should remove only leading parenthesis", () => {
+      expect(cleanPublicationDatasetId("(69")).toBe("69")
+    })
+
+    it("should remove only trailing parenthesis", () => {
+      expect(cleanPublicationDatasetId("genes)")).toBe("genes")
+    })
+
+    it("should not modify IDs without parentheses", () => {
+      expect(cleanPublicationDatasetId("JGAD000220")).toBe("JGAD000220")
+      expect(cleanPublicationDatasetId("DRA003802")).toBe("DRA003802")
     })
   })
 })

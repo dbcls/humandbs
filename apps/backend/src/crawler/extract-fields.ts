@@ -431,7 +431,7 @@ async function processOneDataset(filename: string, dryRun: boolean): Promise<voi
   }
 }
 
-async function processAllDatasets(
+async function _processAllDatasets(
   concurrency: number,
   dryRun: boolean,
 ): Promise<void> {

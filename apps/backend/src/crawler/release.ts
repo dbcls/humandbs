@@ -11,7 +11,7 @@
 import { JSDOM } from "jsdom"
 
 import { cleanText, cleanInnerHtml } from "@/crawler/detail"
-import type { LangType, TextValue, Release } from "@/crawler/types"
+import type { LangType, Release } from "@/crawler/types"
 
 // =============================================================================
 // Utility functions
@@ -111,14 +111,14 @@ export const findReleaseDetails = (
   const allElements = Array.from(container.children)
 
   let index = 0
-  let noteStartIndex: number | null = null
+  let _noteStartIndex: number | null = null
 
   while (index < allElements.length) {
     const node = allElements[index]
     const text = cleanText(node.textContent)
 
     if (NOTE_RE.test(text)) {
-      noteStartIndex = index
+      _noteStartIndex = index
       break
     }
 
@@ -153,7 +153,7 @@ export const findReleaseDetails = (
       const nextText = cleanText(nextNode.textContent)
 
       if (NOTE_RE.test(nextText)) {
-        noteStartIndex = index
+        _noteStartIndex = index
         break
       }
 
@@ -204,10 +204,10 @@ export const findReleaseDetails = (
   // - Adding a `notes: TextValue[]` field to Release type
   // - Or creating a separate parser for scanner info
   //
-  // Implementation sketch (noteStartIndex is already detected above):
-  // if (noteStartIndex !== null) {
+  // Implementation sketch (_noteStartIndex is already detected above):
+  // if (_noteStartIndex !== null) {
   //   const noteText: string[] = []
-  //   for (let i = noteStartIndex; i < allElements.length; i++) {
+  //   for (let i = _noteStartIndex; i < allElements.length; i++) {
   //     const node = allElements[i]
   //     const t = cleanText(node.textContent).replace(/^note\s*[:：]?\s*/i, "").trim()
   //     if (t) noteText.push(t)

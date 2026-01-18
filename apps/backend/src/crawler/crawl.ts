@@ -11,7 +11,6 @@
  */
 import { existsSync, readFileSync, readdirSync } from "fs"
 import { join } from "path"
-
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 

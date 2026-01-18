@@ -19,7 +19,6 @@ import type {
   NormalizedDataset,
   DatasetIdType,
   ExtractedIds,
-  TextValue,
   TransformedExperiment,
   TransformedDataset,
   TransformedResearchVersion,

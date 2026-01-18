@@ -3,6 +3,7 @@
  */
 import { describe, it, expect } from "bun:test"
 import { existsSync, readFileSync } from "fs"
+import { JSDOM } from "jsdom"
 
 import { cleanText, cleanInnerHtml, parseDetailPage } from "@/crawler/detail"
 import { getHtmlDir } from "@/crawler/io"
@@ -28,19 +29,19 @@ describe("detail.ts", () => {
 
   describe("cleanInnerHtml", () => {
     it("should remove style attributes", () => {
-      const doc = new (require("jsdom").JSDOM)("<div style='color: red'>text</div>").window.document
+      const doc = new JSDOM("<div style='color: red'>text</div>").window.document
       const el = doc.querySelector("div")!
       expect(cleanInnerHtml(el)).toBe("text")
     })
 
     it("should remove class attributes", () => {
-      const doc = new (require("jsdom").JSDOM)("<div class='foo'>text</div>").window.document
+      const doc = new JSDOM("<div class='foo'>text</div>").window.document
       const el = doc.querySelector("div")!
       expect(cleanInnerHtml(el)).toBe("text")
     })
 
     it("should preserve inner tags without attributes", () => {
-      const doc = new (require("jsdom").JSDOM)("<div><strong style='x'>bold</strong></div>").window.document
+      const doc = new JSDOM("<div><strong style='x'>bold</strong></div>").window.document
       const el = doc.querySelector("div")!
       expect(cleanInnerHtml(el)).toBe("<strong>bold</strong>")
     })

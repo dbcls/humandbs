@@ -1,15 +1,55 @@
+// === CLI Types ===
+
+/** CLI arguments for crawler commands */
+export interface CrawlArgs {
+  humId?: string
+  lang?: LangType
+  force?: boolean
+  concurrency?: number
+  noCache?: boolean
+}
+
+/** Result of parsing one humVersionId + lang */
+export interface CrawlOneResult {
+  success: boolean
+  hasRelease: boolean
+  error?: string
+}
+
+/** Result of normalizing one humVersionId + lang */
+export interface NormalizeOneResult {
+  success: boolean
+  humVersionId: string
+  lang: LangType
+  error?: string
+}
+
+/** Result of parsing all versions for one humId */
+export interface CrawlHumIdResult {
+  parsed: number
+  errors: number
+  noRelease: number
+}
+
+// === Common Types ===
+
+/** Language type for ja/en versions */
 export type LangType = "ja" | "en"
 
+/** Text with normalized text and original raw HTML */
 export interface TextValue {
   text: string
   rawHtml: string
 }
 
+/** URL with display text and actual URL */
 export interface UrlValue {
   text: string
   url: string
 }
 
+// === Parse Types (output of HTML parsing) ===
+/** Dataset information from summary table */
 export interface Dataset {
   datasetId: string | null
   typeOfData: string | null
@@ -17,6 +57,7 @@ export interface Dataset {
   releaseDate: string | null
 }
 
+/** Summary section of a detail page */
 export interface Summary {
   aims: TextValue
   methods: TextValue
@@ -26,20 +67,23 @@ export interface Summary {
   footers: TextValue[]
 }
 
+/** Molecular data table (one table per dataset) */
 export interface MolecularData {
-  // Identifier text shown above the table (may include accessions)
+  /** Identifier text shown above the table (may include accessions) */
   id: TextValue
-  // Key-value map of table rows; value is normalized HTML or null for absent "-"
+  /** Key-value map of table rows; value is normalized HTML or null for absent "-" */
   data: Record<string, TextValue | null>
   footers: TextValue[]
 }
 
+/** Grant information from data provider section */
 export interface Grant {
   grantName: string | null
   projectTitle: string | null
   grantId: string[]
 }
 
+/** Data provider section */
 export interface DataProvider {
   principalInvestigator: TextValue[]
   affiliation: TextValue[]
@@ -48,12 +92,14 @@ export interface DataProvider {
   grants: Grant[]
 }
 
+/** Publication entry */
 export interface Publication {
   title: string | null
   doi: string | null
   datasetIds: string[]
 }
 
+/** Controlled access user entry */
 export interface ControlledAccessUser {
   principalInvestigator: string | null
   affiliation: string | null
@@ -63,6 +109,7 @@ export interface ControlledAccessUser {
   periodOfDataUse: string | null
 }
 
+/** Release entry from release page */
 export interface Release {
   humVersionId: string
   releaseDate: string
@@ -70,6 +117,7 @@ export interface Release {
   releaseNote?: TextValue
 }
 
+/** Complete parse result for a single humVersionId + lang */
 export interface ParseResult {
   summary: Summary
   molecularData: MolecularData[]
@@ -79,27 +127,32 @@ export interface ParseResult {
   releases: Release[]
 }
 
-// Normalized definition
+// === Normalized Types (output of normalization) ===
 
+/** Canonical criteria values after normalization */
 export type CriteriaCanonical =
   | "Controlled-access (Type I)"
   | "Controlled-access (Type II)"
   | "Unrestricted-access"
 
+/** Normalized dataset with array fields */
 export interface NormalizedDataset extends Omit<Dataset, "datasetId" | "criteria" | "releaseDate"> {
   datasetId: string[] | null
   criteria: CriteriaCanonical[] | null
   releaseDate: string[] | null
 }
 
+/** Normalized molecular data with possible array values */
 export interface NormalizedMolecularData extends Omit<MolecularData, "data"> {
   data: Record<string, TextValue | TextValue[] | null>
 }
 
+/** Normalized grant with nullable grantId */
 export interface NormalizedGrant extends Omit<Grant, "grantId"> {
   grantId: string[] | null
 }
 
+/** Normalized controlled access user with structured periodOfDataUse */
 export interface NormalizedControlledAccessUser extends Omit<ControlledAccessUser, "periodOfDataUse"> {
   periodOfDataUse: {
     startDate: string | null
@@ -107,6 +160,7 @@ export interface NormalizedControlledAccessUser extends Omit<ControlledAccessUse
   } | null
 }
 
+/** Complete normalized parse result */
 export interface NormalizedParseResult extends Omit<ParseResult, "summary" | "molecularData" | "dataProvider" | "controlledAccessUsers"> {
   summary: Omit<ParseResult["summary"], "datasets"> & {
     datasets: NormalizedDataset[]
@@ -118,31 +172,9 @@ export interface NormalizedParseResult extends Omit<ParseResult, "summary" | "mo
   controlledAccessUsers: NormalizedControlledAccessUser[]
 }
 
-// CLI arguments for crawler commands.
-export interface CrawlArgs {
-  humId?: string
-  lang?: LangType
-  force?: boolean
-  concurrency?: number
-}
+// === Transform Types (output of transformation to ES structure) ===
 
-// Result of parsing one humVersionId + lang
-export interface CrawlOneResult {
-  success: boolean
-  hasRelease: boolean
-  error?: string
-}
-
-// Result of parsing all versions for one humId
-export interface CrawlHumIdResult {
-  parsed: number
-  errors: number
-  noRelease: number
-}
-
-// === Transform 用の型定義 ===
-
-/** Dataset ID の種類 */
+/** Dataset ID type prefixes */
 export type DatasetIdType =
   | "JGAD"
   | "JGAS"
@@ -152,23 +184,23 @@ export type DatasetIdType =
   | "BP"
   | "METABO"
 
-/** 抽出された ID の集合 */
+/** Extracted ID collections keyed by type */
 export type ExtractedIds = Partial<Record<DatasetIdType, Set<string>>>
 
-/** Experiment (molTable の1行分、裏返し後) */
+/** Experiment (inverted molecular data row) */
 export interface TransformedExperiment {
   header: TextValue
   data: Record<string, TextValue | TextValue[] | null>
   footers: TextValue[]
 }
 
-/** 変換後の Dataset */
+/** Transformed dataset for ES indexing */
 export interface TransformedDataset {
   // Identifiers
   datasetId: string
   lang: LangType
   version: string
-  /** この version が初出現した release の日付 */
+  /** Release date when this version first appeared */
   versionReleaseDate: string
 
   // Parent references
@@ -184,7 +216,7 @@ export interface TransformedDataset {
   experiments: TransformedExperiment[]
 }
 
-/** 変換後の ResearchVersion */
+/** Transformed research version */
 export interface TransformedResearchVersion {
   humId: string
   lang: LangType
@@ -195,7 +227,7 @@ export interface TransformedResearchVersion {
   releaseNote: TextValue
 }
 
-/** 変換後の Person */
+/** Transformed person (data provider or controlled access user) */
 export interface TransformedPerson {
   name: TextValue
   email?: string | null
@@ -212,27 +244,27 @@ export interface TransformedPerson {
   } | null
 }
 
-/** 変換後の ResearchProject */
+/** Transformed research project */
 export interface TransformedResearchProject {
   name: TextValue
   url?: UrlValue | null
 }
 
-/** 変換後の Grant */
+/** Transformed grant */
 export interface TransformedGrant {
   id: string[]
   title: string
   agency: { name: string }
 }
 
-/** 変換後の Publication */
+/** Transformed publication */
 export interface TransformedPublication {
   title: string
   doi?: string | null
   datasetIds?: string[]
 }
 
-/** 変換後の Research */
+/** Transformed research for ES indexing */
 export interface TransformedResearch {
   // Identifiers
   humId: string
@@ -275,94 +307,94 @@ export interface TransformedResearch {
   lastReleaseDate: string
 }
 
-// === LLM 抽出フィールド用の型定義 ===
+// === LLM Extraction Types ===
 
-/** 被験者数のカウントタイプ */
+/** Subject count type */
 export type SubjectCountType = "individual" | "sample" | "mixed"
 
-/** 健康状態 */
+/** Health status */
 export type HealthStatus = "healthy" | "affected" | "mixed"
 
-/** リードタイプ */
+/** Read type */
 export type ReadType = "single-end" | "paired-end"
 
-/** 疾患情報 */
+/** Disease information */
 export interface DiseaseInfo {
   label: string
   icd10: string | null
 }
 
-/** プラットフォーム情報 */
+/** Platform information */
 export interface PlatformInfo {
   vendor: string
   model: string
 }
 
-/** Experiment レベルの抽出フィールド */
+/** Experiment-level extracted fields */
 export interface ExtractedExperimentFields {
-  // 被験者・サンプル情報
+  // Subject/sample info
   subjectCount: number | null
   subjectCountType: SubjectCountType | null
   healthStatus: HealthStatus | null
 
-  // 疾患情報
+  // Disease info
   disease: DiseaseInfo | null
 
-  // 生体試料情報
+  // Biological sample info
   tissue: string | null
   isTumor: boolean | null
   cellLine: string | null
 
-  // 実験手法
+  // Experimental method
   assayType: string | null
   libraryKit: string | null
 
-  // プラットフォーム
+  // Platform
   platformVendor: string | null
   platformModel: string | null
   readType: ReadType | null
   readLength: number | null
 
-  // 対象領域
+  // Target region
   targets: string | null
 
-  // データ情報
+  // Data info
   fileTypes: string[]
   dataVolumeBytes: number | null
 }
 
-/** Dataset レベルの検索用集約フィールド */
+/** Dataset-level searchable aggregated fields */
 export interface SearchableDatasetFields {
-  // 疾患
+  // Diseases
   diseases: DiseaseInfo[]
 
-  // 生体試料
+  // Biological samples
   tissues: string[]
 
-  // 実験手法
+  // Experimental methods
   assayTypes: string[]
 
-  // プラットフォーム
+  // Platforms
   platforms: PlatformInfo[]
   readTypes: string[]
 
-  // データ情報
+  // Data info
   fileTypes: string[]
   totalSubjectCount: number | null
   totalDataVolumeBytes: number | null
 
-  // フラグ
+  // Flags
   hasHealthyControl: boolean
   hasTumor: boolean
   hasCellLine: boolean
 }
 
-/** 抽出フィールドを含む Experiment */
+/** Experiment with extracted fields */
 export interface ExtractedExperiment extends TransformedExperiment {
   extracted: ExtractedExperimentFields
 }
 
-/** 検索可能フィールドを含む Dataset */
+/** Dataset with searchable fields */
 export interface SearchableDataset extends Omit<TransformedDataset, "experiments"> {
   searchable: SearchableDatasetFields
   experiments: ExtractedExperiment[]
