@@ -11,12 +11,16 @@ import {
   INVALID_DOI_VALUES,
   INVALID_GRANT_ID_VALUES,
   isInvalidPublicationDatasetId,
+  JGAX_TO_JGAS_MAP,
   MAX_CONCURRENCY,
   MOL_DATA_SPLIT_KEYS,
   MOL_DATA_UNUSED_KEY,
+  OLD_JGA_TO_JGAS_MAP,
   PUBLICATION_DATASET_ID_MAP,
+  PUBLICATION_DATASET_ID_NO_SPLIT,
   UNUSED_PUBLICATION_TITLES,
 } from "@/crawler/config"
+import { getDatasetsFromStudy, saveCache as saveJgaCache } from "@/crawler/jga-api"
 import { listDetailJsonFiles, readDetailJson, writeNormalizedDetailJson } from "@/crawler/io"
 import { buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/mapping-table"
 import type { LangType, CrawlArgs, ParseResult, CriteriaCanonical, NormalizedParseResult, NormalizedControlledAccessUser, TextValue, NormalizedMolecularData, Publication, Release, NormalizeOneResult } from "@/crawler/types"
@@ -435,53 +439,138 @@ export const removeUnusedPublications = (
   })
 }
 
-const fixDatasetIdsInPublications = (
+/**
+ * Split datasetId by whitespace, but preserve special cases that shouldn't be split
+ */
+const splitDatasetId = (id: string): string[] => {
+  const normalized = normalizeText(id, true)
+  // Check if this matches any no-split pattern
+  for (const noSplit of PUBLICATION_DATASET_ID_NO_SPLIT) {
+    if (normalized === noSplit) {
+      return [normalized]
+    }
+  }
+  return normalized.split(/\s+/).filter(s => s !== "")
+}
+
+/**
+ * Convert JGAX or old JGA format to JGAS using config mappings
+ */
+const convertToJgas = (id: string): string => {
+  // Check JGAX mapping first
+  if (id in JGAX_TO_JGAS_MAP) {
+    return JGAX_TO_JGAS_MAP[id]
+  }
+  // Check old JGA format mapping
+  if (id in OLD_JGA_TO_JGAS_MAP) {
+    return OLD_JGA_TO_JGAS_MAP[id]
+  }
+  return id
+}
+
+/**
+ * Expand JGAS ID to JGAD IDs using JGA API
+ * Falls back to original ID if no JGAD found
+ */
+const expandJgasToJgad = async (id: string): Promise<string[]> => {
+  if (!/^JGAS\d{6}$/.test(id)) {
+    return [id]
+  }
+  const jgadIds = await getDatasetsFromStudy(id)
+  return jgadIds.length > 0 ? jgadIds : [id]
+}
+
+/**
+ * Process a single dataset ID: apply mapping, convert JGAX→JGAS, expand range, expand JGAS→JGAD
+ */
+const processDatasetId = async (
+  id: string,
+  idMap: Record<string, string[]>,
+): Promise<string[]> => {
+  // First, apply ID mapping
+  if (id in idMap) {
+    return idMap[id]
+  }
+
+  // Convert JGAX or old JGA format to JGAS
+  const convertedId = convertToJgas(id)
+
+  // Expand JGAD range
+  const expandedIds = expandJgadRange(convertedId)
+
+  // Expand JGAS to JGAD for each expanded ID
+  const results: string[] = []
+  for (const expandedId of expandedIds) {
+    const jgadIds = await expandJgasToJgad(expandedId)
+    results.push(...jgadIds)
+  }
+
+  return results
+}
+
+const fixDatasetIdsInPublications = async (
   publications: Publication[],
-): Publication[] => {
-  return publications.map(pub => {
+): Promise<Publication[]> => {
+  return Promise.all(publications.map(async pub => {
     const mappedIds: string[] = []
 
     for (const id of pub.datasetIds) {
-      if (id in PUBLICATION_DATASET_ID_MAP) {
-        mappedIds.push(...PUBLICATION_DATASET_ID_MAP[id])
-      } else {
-        mappedIds.push(...expandJgadRange(id))
-      }
+      const processedIds = await processDatasetId(id, PUBLICATION_DATASET_ID_MAP)
+      mappedIds.push(...processedIds)
     }
 
     return {
       ...pub,
       datasetIds: mappedIds,
     }
-  })
+  }))
 }
 
-const fixDatasetIdsInControlledAccessUsers = (
+const fixDatasetIdsInControlledAccessUsers = async (
   cas: NormalizedControlledAccessUser[],
-): NormalizedControlledAccessUser[] => {
-  return cas.map(ca => {
+): Promise<NormalizedControlledAccessUser[]> => {
+  return Promise.all(cas.map(async ca => {
     const mappedIds: string[] = []
 
     for (const id of ca.datasetIds) {
-      if (id in CONTROLLED_ACCESS_USERS_DATASET_ID_MAP) {
-        mappedIds.push(...CONTROLLED_ACCESS_USERS_DATASET_ID_MAP[id])
-      } else {
-        mappedIds.push(...expandJgadRange(id))
-      }
+      const processedIds = await processDatasetId(id, CONTROLLED_ACCESS_USERS_DATASET_ID_MAP)
+      mappedIds.push(...processedIds)
     }
 
     return {
       ...ca,
       datasetIds: mappedIds,
     }
-  })
+  }))
+}
+
+const fixDatasetIdsInSummaryDatasets = async (
+  datasets: NormalizedParseResult["summary"]["datasets"],
+): Promise<NormalizedParseResult["summary"]["datasets"]> => {
+  return Promise.all(datasets.map(async ds => {
+    if (!ds.datasetId || ds.datasetId.length === 0) {
+      return ds
+    }
+
+    const mappedIds: string[] = []
+    for (const id of ds.datasetId) {
+      // Use empty map since there's no special mapping for summary datasets
+      const processedIds = await processDatasetId(id, {})
+      mappedIds.push(...processedIds)
+    }
+
+    return {
+      ...ds,
+      datasetId: mappedIds,
+    }
+  }))
 }
 
 // === Single normalization function ===
-export const normalizeOneDetail = (
+export const normalizeOneDetail = async (
   humVersionId: string,
   lang: LangType,
-): NormalizeOneResult => {
+): Promise<NormalizeOneResult> => {
   try {
     const detail = readDetailJson(humVersionId, lang) as ParseResult | null
     if (!detail) {
@@ -545,7 +634,7 @@ export const normalizeOneDetail = (
         title: pub.title ? normalizeText(pub.title, true) : null,
         doi: pub.doi ? normalizeDoiValue(normalizeText(pub.doi, true)) : null,
         datasetIds: pub.datasetIds
-          .flatMap(id => normalizeText(id, true).split(/\s+/).filter(s => s !== ""))
+          .flatMap(id => splitDatasetId(id))
           .filter(id => !isInvalidPublicationDatasetId(id))
           .map(id => cleanPublicationDatasetId(id)),
       })),
@@ -567,8 +656,9 @@ export const normalizeOneDetail = (
     }
 
     normalizedDetail.publications = removeUnusedPublications(normalizedDetail.publications)
-    normalizedDetail.publications = fixDatasetIdsInPublications(normalizedDetail.publications)
-    normalizedDetail.controlledAccessUsers = fixDatasetIdsInControlledAccessUsers(normalizedDetail.controlledAccessUsers)
+    normalizedDetail.publications = await fixDatasetIdsInPublications(normalizedDetail.publications)
+    normalizedDetail.controlledAccessUsers = await fixDatasetIdsInControlledAccessUsers(normalizedDetail.controlledAccessUsers)
+    normalizedDetail.summary.datasets = await fixDatasetIdsInSummaryDatasets(normalizedDetail.summary.datasets)
     normalizedDetail.releases = fixDateInReleases(normalizedDetail.releases)
     for (const molData of normalizedDetail.molecularData) {
       molData.data = normalizeMolData(molData.data, humVersionId, lang)
@@ -610,8 +700,10 @@ const main = async (): Promise<void> => {
 
   for (let i = 0; i < targets.length; i += conc) {
     const batch = targets.slice(i, i + conc)
-    const results = batch.map(({ humVersionId, lang }) =>
-      normalizeOneDetail(humVersionId, lang),
+    const results = await Promise.all(
+      batch.map(({ humVersionId, lang }) =>
+        normalizeOneDetail(humVersionId, lang),
+      ),
     )
     for (const result of results) {
       if (result.success) {
@@ -625,6 +717,9 @@ const main = async (): Promise<void> => {
     const percent = Math.round((processed / targets.length) * 100)
     console.log(`Progress: ${processed}/${targets.length} (${percent}%)`)
   }
+
+  // Save JGA relation cache to file
+  saveJgaCache()
 
   console.log(`Done: ${totalNormalized} normalized, ${totalErrors} errors`)
 }

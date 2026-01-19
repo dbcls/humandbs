@@ -21,7 +21,7 @@ interface NormalizeTask {
   lang: LangType
 }
 
-const normalizeOne = (task: NormalizeTask): NormalizeOneResult => {
+const normalizeOne = async (task: NormalizeTask): Promise<NormalizeOneResult> => {
   return normalizeOneDetail(task.humVersionId, task.lang)
 }
 
@@ -31,7 +31,7 @@ const runBatch = async (tasks: NormalizeTask[]): Promise<NormalizeOneResult[]> =
   for (let i = 0; i < tasks.length; i += CONCURRENCY) {
     const batch = tasks.slice(i, i + CONCURRENCY)
     const batchResults = await Promise.all(
-      batch.map(task => Promise.resolve(normalizeOne(task))),
+      batch.map(task => normalizeOne(task)),
     )
     results.push(...batchResults)
   }
@@ -121,11 +121,11 @@ describe("Normalize single humId", () => {
     }
   })
 
-  it("should return NormalizeOneResult with success=true", () => {
+  it("should return NormalizeOneResult with success=true", async () => {
     const target = targets[0]
     if (!target) return
 
-    const result = normalizeOneDetail(target.humVersionId, target.lang)
+    const result = await normalizeOneDetail(target.humVersionId, target.lang)
     expect(result.success).toBe(true)
     expect(result.humVersionId).toBe(target.humVersionId)
     expect(result.lang).toBe(target.lang)
@@ -134,17 +134,17 @@ describe("Normalize single humId", () => {
 })
 
 describe("normalizeOneDetail error handling", () => {
-  it("should return error for non-existent humVersionId", () => {
-    const result = normalizeOneDetail("hum9999-v1", "ja")
+  it("should return error for non-existent humVersionId", async () => {
+    const result = await normalizeOneDetail("hum9999-v1", "ja")
     expect(result.success).toBe(false)
     expect(result.humVersionId).toBe("hum9999-v1")
     expect(result.lang).toBe("ja")
     expect(result.error).toBe("JSON not found")
   })
 
-  it("should return error for non-existent lang", () => {
+  it("should return error for non-existent lang", async () => {
     // Test with an ID that might exist in ja but not in an invalid lang
-    const result = normalizeOneDetail("hum0001-v1", "en")
+    const result = await normalizeOneDetail("hum0001-v1", "en")
     // If hum0001-v1 en doesn't exist, it should fail with "JSON not found"
     // If it does exist, it will succeed
     expect(result.humVersionId).toBe("hum0001-v1")

@@ -31,6 +31,29 @@ export interface CrawlHumIdResult {
   noRelease: number
 }
 
+/** Successful transform result */
+export interface TransformOneSuccess {
+  success: true
+  humId: string
+  lang: LangType
+  data: {
+    research: TransformedResearch
+    versions: TransformedResearchVersion[]
+    datasets: TransformedDataset[]
+  }
+}
+
+/** Failed transform result */
+export interface TransformOneFailure {
+  success: false
+  humId: string
+  lang: LangType
+  error: string
+}
+
+/** Result of transforming one humId + lang (discriminated union) */
+export type TransformOneResult = TransformOneSuccess | TransformOneFailure
+
 // === Common Types ===
 
 /** Language type for ja/en versions */
@@ -208,8 +231,8 @@ export interface TransformedDataset {
   humVersionId: string
 
   // Metadata (from summary.datasets)
-  typeOfData: string[] | null
-  criteria: CriteriaCanonical[] | null
+  typeOfData: string | null
+  criteria: string[] | null  // Display values (language-specific)
   releaseDate: string[] | null
 
   // Experiments (inverted molecularData)

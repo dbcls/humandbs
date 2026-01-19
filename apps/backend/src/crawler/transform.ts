@@ -3,6 +3,15 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
+import {
+  extractIdsByType,
+  getCriteriaDisplayValue,
+  ID_FIELDS,
+  INVALID_ID_VALUES,
+  applyDatasetIdSpecialCase,
+  isValidDatasetId,
+  shouldSkipPage,
+} from "@/crawler/config"
 import { parseAllHumIds } from "@/crawler/home"
 import {
   getResultsDirPath,
@@ -11,6 +20,7 @@ import {
   headLatestVersionNum,
   DETAIL_PAGE_BASE_URL,
 } from "@/crawler/io"
+import { getDatasetsFromStudy, saveCache as saveJgaCache } from "@/crawler/jga-api"
 import type {
   LangType,
   CrawlArgs,
@@ -28,96 +38,22 @@ import type {
   TransformedGrant,
   TransformedPublication,
   CriteriaCanonical,
+  TransformOneResult,
 } from "@/crawler/types"
 
-// === ID Pattern Definitions (copied from format-dataset.ts) ===
+// === Criteria Display ===
 
-const SRA_REGEX = /(DRA|ERA|SRP|SRR|SRX|SRS)\d{6}/g
-const JGAD_REGEX = /JGAD\d{6}/g
-const JGAS_REGEX = /JGAS\d{6}/g
-const GEA_REGEX = /E-GEAD-\d{3,4}/g
-const NBDC_DATASET_REGEX = /hum\d{4}\.v\d+(?:\.[A-Za-z0-9_-]+)*\.v\d+/g
-const BP_REGEX = /PRJDB\d{5}/g
-const METABO_REGEX = /MTBKS\d{3}/g
-
-const ID_PATTERNS: Record<DatasetIdType, RegExp> = {
-  DRA: SRA_REGEX,
-  JGAD: JGAD_REGEX,
-  JGAS: JGAS_REGEX,
-  GEA: GEA_REGEX,
-  NBDC_DATASET: NBDC_DATASET_REGEX,
-  BP: BP_REGEX,
-  METABO: METABO_REGEX,
-}
-
-const ID_FIELDS = [
-  "Dataset ID of the Processed data by JGA",
-  "Genomic Expression Archive Accession",
-  "Japanese Genotype-phenotype Archive Dataset Accession",
-  "MetaboBank Accession",
-  "NBDC Dataset Accession",
-  "Sequence Read Archive Accession",
-]
-
-// === JGAS -> JGAD API ===
-
-interface DbXref {
-  identifier: string
-  type: string
-  url: string
-}
-
-interface JgaStudyDoc {
-  found: boolean
-  _source: {
-    dbXrefs?: DbXref[]
-  }
-}
-
-const studyToDatasetCache = new Map<string, string[]>()
-
-async function studyToDatasets(studyId: string): Promise<string[]> {
-  const url = `https://ddbj.nig.ac.jp/search/resources/jga-study/_doc/${studyId}`
-
-  const res = await fetch(url)
-  if (!res.ok) return []
-
-  const json = (await res.json()) as JgaStudyDoc
-  if (!json.found) return []
-
-  return (json._source.dbXrefs ?? [])
-    .filter(x => x.type === "jga-dataset")
-    .map(x => x.identifier)
-}
-
-async function getDatasetsFromStudy(studyId: string): Promise<string[]> {
-  if (studyToDatasetCache.has(studyId)) {
-    return studyToDatasetCache.get(studyId)!
-  }
-
-  const datasets = await studyToDatasets(studyId)
-  studyToDatasetCache.set(studyId, datasets)
-  return datasets
+const convertCriteriaToDisplay = (
+  criteria: CriteriaCanonical[] | null,
+  lang: LangType,
+): string[] | null => {
+  if (!criteria) return null
+  return criteria.map(c => getCriteriaDisplayValue(c, lang))
 }
 
 // === ID Extraction ===
 
-function extractIdsByType(text: string): Partial<Record<DatasetIdType, string[]>> {
-  const result: Partial<Record<DatasetIdType, string[]>> = {}
-
-  for (const [type, regex] of Object.entries(ID_PATTERNS) as [DatasetIdType, RegExp][]) {
-    // Reset regex lastIndex for global patterns
-    regex.lastIndex = 0
-    const matches = text.match(new RegExp(regex.source, "g"))
-    if (matches && matches.length > 0) {
-      result[type] = matches
-    }
-  }
-
-  return result
-}
-
-function extractDatasetIdsFromMolData(molData: NormalizedMolecularData): ExtractedIds {
+export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): ExtractedIds => {
   const idSets: ExtractedIds = {}
 
   const addIds = (text: string) => {
@@ -128,7 +64,7 @@ function extractDatasetIdsFromMolData(molData: NormalizedMolecularData): Extract
       }
       for (const id of ids) {
         // Skip invalid IDs
-        if (id === "E-GEAD-000" || id === "E-GEAD-1000") continue
+        if (INVALID_ID_VALUES.includes(id)) continue
         idSets[type]!.add(id)
       }
     }
@@ -136,11 +72,12 @@ function extractDatasetIdsFromMolData(molData: NormalizedMolecularData): Extract
 
   // Extract from header
   if (molData.id?.text) {
-    // Hot fix for specific case
-    if (molData.id.text === "AP023461-AP024084") {
-      if (!idSets.BP) idSets.BP = new Set()
-      idSets.BP.add("PRJDB10452")
+    // Apply special case transformations (e.g., AP023461-AP024084 -> PRJDB10452)
+    const specialCaseIds = applyDatasetIdSpecialCase(molData.id.text)
+    for (const id of specialCaseIds) {
+      addIds(id)
     }
+    // Also extract IDs from the original header text
     addIds(molData.id.text)
   }
 
@@ -161,9 +98,9 @@ function extractDatasetIdsFromMolData(molData: NormalizedMolecularData): Extract
 
 // === Invert molTable -> Dataset ===
 
-async function invertMolTableToDataset(
+export const invertMolTableToDataset = async (
   molecularData: NormalizedMolecularData[],
-): Promise<Map<string, NormalizedMolecularData[]>> {
+): Promise<Map<string, NormalizedMolecularData[]>> => {
   const result = new Map<string, NormalizedMolecularData[]>()
 
   // First pass: collect all JGAS IDs
@@ -229,21 +166,21 @@ async function invertMolTableToDataset(
 // === Dataset Metadata ===
 
 interface DatasetMetadata {
-  typeOfData: string[] | null
+  typeOfData: string | null
   criteria: CriteriaCanonical[] | null
   releaseDate: string[] | null
 }
 
-function buildDatasetMetadataMap(
+export const buildDatasetMetadataMap = (
   datasets: NormalizedDataset[],
-): Map<string, DatasetMetadata> {
+): Map<string, DatasetMetadata> => {
   const map = new Map<string, DatasetMetadata>()
 
   for (const ds of datasets) {
     const ids = ds.datasetId ?? []
     for (const id of ids) {
       map.set(id, {
-        typeOfData: ds.typeOfData ? [ds.typeOfData] : null,
+        typeOfData: ds.typeOfData ?? null,
         criteria: ds.criteria,
         releaseDate: ds.releaseDate,
       })
@@ -255,19 +192,19 @@ function buildDatasetMetadataMap(
 
 // === Dataset Versioning ===
 
-function isExperimentsEqual(
+export const isExperimentsEqual = (
   a: TransformedExperiment[],
   b: TransformedExperiment[],
-): boolean {
+): boolean => {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
-function assignDatasetVersion(
+export const assignDatasetVersion = (
   datasetId: string,
   lang: LangType,
   experiments: TransformedExperiment[],
   existingVersions: Map<string, TransformedDataset[]>,
-): string {
+): string => {
   const key = `${datasetId}-${lang}`
   const existing = existingVersions.get(key) ?? []
 
@@ -284,9 +221,9 @@ function assignDatasetVersion(
 
 // === Transform Functions ===
 
-function transformDataProvider(
+export const transformDataProvider = (
   dp: NormalizedParseResult["dataProvider"],
-): TransformedPerson[] {
+): TransformedPerson[] => {
   const persons: TransformedPerson[] = []
 
   const piCount = dp.principalInvestigator.length
@@ -300,8 +237,8 @@ function transformDataProvider(
       name: pi,
       organization: aff
         ? {
-            name: aff,
-          }
+          name: aff,
+        }
         : null,
     })
   }
@@ -309,17 +246,17 @@ function transformDataProvider(
   return persons
 }
 
-function transformControlledAccessUsers(
+export const transformControlledAccessUsers = (
   users: NormalizedParseResult["controlledAccessUsers"],
   expansionMap: Map<string, Set<string>>,
-): TransformedPerson[] {
+): TransformedPerson[] => {
   return users.map(u => ({
     name: { text: u.principalInvestigator ?? "", rawHtml: u.principalInvestigator ?? "" },
     organization: u.affiliation
       ? {
-          name: { text: u.affiliation, rawHtml: u.affiliation },
-          address: u.country ? { country: u.country } : null,
-        }
+        name: { text: u.affiliation, rawHtml: u.affiliation },
+        address: u.country ? { country: u.country } : null,
+      }
       : null,
     datasetIds: u.datasetIds.length > 0
       ? expandDatasetIds(u.datasetIds, expansionMap)
@@ -329,9 +266,9 @@ function transformControlledAccessUsers(
   }))
 }
 
-function transformGrants(
+export const transformGrants = (
   grants: NormalizedParseResult["dataProvider"]["grants"],
-): TransformedGrant[] {
+): TransformedGrant[] => {
   return grants
     .filter(g => g.grantName || g.projectTitle || g.grantId)
     .map(g => ({
@@ -345,10 +282,10 @@ function transformGrants(
  * Build a mapping from original datasetId to expanded datasetIds
  * When a molTable contains multiple datasetIds, any reference to one should expand to all
  */
-function buildDatasetIdExpansionMap(
+export const buildDatasetIdExpansionMap = (
   molecularData: NormalizedMolecularData[],
   invertedMap: Map<string, NormalizedMolecularData[]>,
-): Map<string, Set<string>> {
+): Map<string, Set<string>> => {
   const expansionMap = new Map<string, Set<string>>()
 
   // For each molTable, collect all datasetIds it maps to
@@ -390,10 +327,10 @@ function buildDatasetIdExpansionMap(
 /**
  * Expand datasetIds using the expansion map
  */
-function expandDatasetIds(
+export const expandDatasetIds = (
   datasetIds: string[],
   expansionMap: Map<string, Set<string>>,
-): string[] {
+): string[] => {
   const expanded = new Set<string>()
 
   for (const id of datasetIds) {
@@ -411,10 +348,10 @@ function expandDatasetIds(
   return [...expanded].sort()
 }
 
-function transformPublications(
+export const transformPublications = (
   pubs: NormalizedParseResult["publications"],
   expansionMap: Map<string, Set<string>>,
-): TransformedPublication[] {
+): TransformedPublication[] => {
   return pubs
     .filter(p => p.title)
     .map(p => {
@@ -429,9 +366,9 @@ function transformPublications(
     })
 }
 
-function transformResearchProjects(
+export const transformResearchProjects = (
   dp: NormalizedParseResult["dataProvider"],
-): TransformedResearchProject[] {
+): TransformedResearchProject[] => {
   const projects: TransformedResearchProject[] = []
 
   const nameCount = dp.projectName.length
@@ -452,7 +389,7 @@ function transformResearchProjects(
 
 // === I/O Functions ===
 
-function getStructuredJsonDir(type: "research" | "research-version" | "dataset"): string {
+const getStructuredJsonDir = (type: "research" | "research-version" | "dataset"): string => {
   const base = join(getResultsDirPath(), "structured-json", type)
   if (!existsSync(base)) {
     mkdirSync(base, { recursive: true })
@@ -460,11 +397,11 @@ function getStructuredJsonDir(type: "research" | "research-version" | "dataset")
   return base
 }
 
-function writeStructuredJson(
+const writeStructuredJson = (
   type: "research" | "research-version" | "dataset",
   filename: string,
   data: unknown,
-): void {
+): void => {
   const dir = getStructuredJsonDir(type)
   const filePath = join(dir, filename)
   writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
@@ -472,17 +409,11 @@ function writeStructuredJson(
 
 // === Main Transform Logic ===
 
-interface TransformResult {
-  research: TransformedResearch
-  versions: TransformedResearchVersion[]
-  datasets: TransformedDataset[]
-}
-
-async function transformOneResearch(
+export const transformOneResearch = async (
   humId: string,
   lang: LangType,
   opts: { noCache?: boolean },
-): Promise<TransformResult | null> {
+): Promise<TransformOneResult> => {
   const useCache = !opts.noCache
 
   // Find all versions
@@ -494,21 +425,32 @@ async function transformOneResearch(
   }
 
   if (latestVersion === 0) {
-    console.error(`No versions found for ${humId}`)
-    return null
+    return {
+      success: false,
+      humId,
+      lang,
+      error: `No versions found for ${humId}`,
+    }
   }
 
   const versions: TransformedResearchVersion[] = []
   const allDatasets: TransformedDataset[] = []
   const datasetVersionsMap = new Map<string, TransformedDataset[]>()
+  let skippedCount = 0
 
   // Process each version
   for (let v = 1; v <= latestVersion; v++) {
     const humVersionId = `${humId}-v${v}`
 
+    // Skip pages that are known to not exist
+    if (shouldSkipPage(humVersionId, lang)) {
+      skippedCount++
+      continue
+    }
+
     const detail = readNormalizedDetailJson(humVersionId, lang) as NormalizedParseResult | null
     if (!detail) {
-      console.warn(`Skipping ${humVersionId}-${lang}: no normalized JSON found`)
+      // This is expected for skipped pages, so only log as debug info
       continue
     }
 
@@ -549,7 +491,7 @@ async function transformOneResearch(
         humId,
         humVersionId,
         typeOfData: metadata?.typeOfData ?? null,
-        criteria: metadata?.criteria ?? null,
+        criteria: convertCriteriaToDisplay(metadata?.criteria ?? null, lang),
         releaseDate: metadata?.releaseDate ?? null,
         experiments,
       }
@@ -567,6 +509,56 @@ async function transformOneResearch(
       versionDatasetIds.push(`${datasetId}-${version}-${lang}`)
     }
 
+    // Create datasets from summary.datasets for datasetIds without molecularData
+    for (const summaryDataset of detail.summary.datasets) {
+      const datasetIds = summaryDataset.datasetId ?? []
+      for (const datasetId of datasetIds) {
+        // Skip if already processed from molecularData
+        if (invertedMap.has(datasetId)) {
+          continue
+        }
+
+        // Only create empty datasets for valid dataset IDs (e.g., JGAD, DRA, etc.)
+        if (!isValidDatasetId(datasetId)) {
+          continue
+        }
+
+        const experiments: TransformedExperiment[] = []
+
+        const version = assignDatasetVersion(
+          datasetId,
+          lang,
+          experiments,
+          datasetVersionsMap,
+        )
+
+        const dataset: TransformedDataset = {
+          datasetId,
+          lang,
+          version,
+          versionReleaseDate,
+          humId,
+          humVersionId,
+          typeOfData: summaryDataset.typeOfData ?? null,
+          criteria: convertCriteriaToDisplay(summaryDataset.criteria, lang),
+          releaseDate: summaryDataset.releaseDate,
+          experiments,
+        }
+
+        // Track version
+        const key = `${datasetId}-${lang}`
+        const existing = datasetVersionsMap.get(key) ?? []
+        // Only add if this is a new version
+        if (!existing.some(d => d.version === version)) {
+          existing.push(dataset)
+          datasetVersionsMap.set(key, existing)
+          allDatasets.push(dataset)
+        }
+
+        versionDatasetIds.push(`${datasetId}-${version}-${lang}`)
+      }
+    }
+
     const researchVersion: TransformedResearchVersion = {
       humId,
       lang,
@@ -581,8 +573,21 @@ async function transformOneResearch(
   }
 
   if (versions.length === 0) {
-    console.error(`No versions processed for ${humId}-${lang}`)
-    return null
+    // All versions were skipped - this is not an error
+    if (skippedCount === latestVersion) {
+      return {
+        success: false,
+        humId,
+        lang,
+        error: "SKIPPED", // Special marker for skipped humId-lang
+      }
+    }
+    return {
+      success: false,
+      humId,
+      lang,
+      error: `No versions processed for ${humId}-${lang}`,
+    }
   }
 
   // Build Research from latest version
@@ -590,8 +595,12 @@ async function transformOneResearch(
   const latestDetail = readNormalizedDetailJson(latestHumVersionId, lang) as NormalizedParseResult | null
 
   if (!latestDetail) {
-    console.error(`Cannot read latest detail for ${humId}-${lang}`)
-    return null
+    return {
+      success: false,
+      humId,
+      lang,
+      error: `Cannot read latest detail for ${humId}-${lang}`,
+    }
   }
 
   // Build expansion map for datasetIds (using latest version's molecularData)
@@ -630,59 +639,72 @@ async function transformOneResearch(
   }
 
   return {
-    research,
-    versions,
-    datasets: allDatasets,
+    success: true,
+    humId,
+    lang,
+    data: {
+      research,
+      versions,
+      datasets: allDatasets,
+    },
   }
 }
 
-async function transformAll(
+export const transformAll = async (
   humIds: string[],
   langs: LangType[],
   opts: { noCache?: boolean; concurrency?: number },
-): Promise<void> {
+): Promise<void> => {
   const tasks: (() => Promise<void>)[] = []
 
   for (const humId of humIds) {
     for (const lang of langs) {
       tasks.push(async () => {
+        const tag = `[${humId}-${lang}]`
         try {
-          console.log(`Processing ${humId}-${lang}...`)
           const result = await transformOneResearch(humId, lang, opts)
 
-          if (result) {
-            // Write research
+          if (!result.success) {
+            // Don't log if all versions were skipped (expected)
+            if (result.error !== "SKIPPED") {
+              console.error(`${tag} Error: ${result.error}`)
+            }
+            return
+          }
+
+          const { data } = result
+
+          // Write research
+          writeStructuredJson(
+            "research",
+            `${humId}-${lang}.json`,
+            data.research,
+          )
+
+          // Write versions
+          for (const version of data.versions) {
             writeStructuredJson(
-              "research",
-              `${humId}-${lang}.json`,
-              result.research,
-            )
-
-            // Write versions
-            for (const version of result.versions) {
-              writeStructuredJson(
-                "research-version",
-                `${version.humVersionId}-${lang}.json`,
-                version,
-              )
-            }
-
-            // Write datasets
-            for (const dataset of result.datasets) {
-              writeStructuredJson(
-                "dataset",
-                `${dataset.datasetId}-${dataset.version}-${lang}.json`,
-                dataset,
-              )
-            }
-
-            console.log(
-              `  -> ${result.versions.length} versions, ${result.datasets.length} datasets`,
+              "research-version",
+              `${version.humVersionId}-${lang}.json`,
+              version,
             )
           }
+
+          // Write datasets
+          for (const dataset of data.datasets) {
+            writeStructuredJson(
+              "dataset",
+              `${dataset.datasetId}-${dataset.version}-${lang}.json`,
+              dataset,
+            )
+          }
+
+          console.log(
+            `${tag} ${data.versions.length} versions, ${data.datasets.length} datasets`,
+          )
         } catch (e) {
           console.error(
-            `Failed to transform ${humId}-${lang}: ${e instanceof Error ? e.message : String(e)}`,
+            `${tag} Failed: ${e instanceof Error ? e.message : String(e)}`,
           )
         }
       })
@@ -719,18 +741,12 @@ const main = async (): Promise<void> => {
     concurrency: args.concurrency,
   })
 
+  // Save JGA relation cache to file
+  saveJgaCache()
+
   console.log("Done!")
 }
 
 if (import.meta.main) {
   await main()
-}
-
-// Export for testing
-export {
-  extractIdsByType,
-  extractDatasetIdsFromMolData,
-  invertMolTableToDataset,
-  transformOneResearch,
-  transformAll,
 }

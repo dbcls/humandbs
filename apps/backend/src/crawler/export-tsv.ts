@@ -492,7 +492,7 @@ const datasetToRow = (ds: SearchableDataset): unknown[] => {
     ds.humId,
     ds.humVersionId,
     genDetailUrl(ds.humVersionId, ds.lang),
-    joinPipe(ds.typeOfData),
+    escapeForTsv(ds.typeOfData ?? ""),
     joinPipe(ds.criteria),
     joinPipe(ds.releaseDate),
     ds.experiments.length,

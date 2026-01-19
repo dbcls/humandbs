@@ -12,6 +12,11 @@ import {
   getReleaseSuffix,
   isInvalidPublicationDatasetId,
   cleanPublicationDatasetId,
+  extractIdsByType,
+  applyDatasetIdSpecialCase,
+  ID_PATTERNS,
+  ID_FIELDS,
+  INVALID_ID_VALUES,
 } from "@/crawler/config"
 
 describe("config.ts", () => {
@@ -203,6 +208,107 @@ describe("config.ts", () => {
     it("should not modify IDs without parentheses", () => {
       expect(cleanPublicationDatasetId("JGAD000220")).toBe("JGAD000220")
       expect(cleanPublicationDatasetId("DRA003802")).toBe("DRA003802")
+    })
+  })
+
+  describe("ID_PATTERNS", () => {
+    it("should have patterns for all ID types", () => {
+      expect(ID_PATTERNS.DRA).toBeDefined()
+      expect(ID_PATTERNS.JGAD).toBeDefined()
+      expect(ID_PATTERNS.JGAS).toBeDefined()
+      expect(ID_PATTERNS.GEA).toBeDefined()
+      expect(ID_PATTERNS.NBDC_DATASET).toBeDefined()
+      expect(ID_PATTERNS.BP).toBeDefined()
+      expect(ID_PATTERNS.METABO).toBeDefined()
+    })
+  })
+
+  describe("ID_FIELDS", () => {
+    it("should contain expected field names", () => {
+      expect(ID_FIELDS).toContain("Sequence Read Archive Accession")
+      expect(ID_FIELDS).toContain("Japanese Genotype-phenotype Archive Dataset Accession")
+      expect(ID_FIELDS).toContain("MetaboBank Accession")
+    })
+  })
+
+  describe("INVALID_ID_VALUES", () => {
+    it("should contain known invalid IDs", () => {
+      expect(INVALID_ID_VALUES).toContain("E-GEAD-000")
+    })
+  })
+
+  describe("extractIdsByType", () => {
+    it("should extract JGAD IDs", () => {
+      const result = extractIdsByType("This contains JGAD000001 and JGAD000002")
+      expect(result.JGAD).toBeDefined()
+      expect(result.JGAD).toContain("JGAD000001")
+      expect(result.JGAD).toContain("JGAD000002")
+    })
+
+    it("should extract JGAS IDs", () => {
+      const result = extractIdsByType("Study ID: JGAS000123")
+      expect(result.JGAS).toBeDefined()
+      expect(result.JGAS).toContain("JGAS000123")
+    })
+
+    it("should extract DRA IDs", () => {
+      const result = extractIdsByType("Archive: DRA001234")
+      expect(result.DRA).toBeDefined()
+      expect(result.DRA).toContain("DRA001234")
+    })
+
+    it("should extract GEA IDs", () => {
+      const result = extractIdsByType("GEA ID: E-GEAD-123")
+      expect(result.GEA).toBeDefined()
+      expect(result.GEA).toContain("E-GEAD-123")
+    })
+
+    it("should extract NBDC_DATASET IDs", () => {
+      const result = extractIdsByType("Dataset: hum0001.v1.sample.v1")
+      expect(result.NBDC_DATASET).toBeDefined()
+      expect(result.NBDC_DATASET).toContain("hum0001.v1.sample.v1")
+    })
+
+    it("should extract BP IDs", () => {
+      const result = extractIdsByType("BioProject: PRJDB12345")
+      expect(result.BP).toBeDefined()
+      expect(result.BP).toContain("PRJDB12345")
+    })
+
+    it("should extract METABO IDs", () => {
+      const result = extractIdsByType("MetaboBank: MTBKS123")
+      expect(result.METABO).toBeDefined()
+      expect(result.METABO).toContain("MTBKS123")
+    })
+
+    it("should extract multiple ID types from same text", () => {
+      const result = extractIdsByType("JGAD000001, JGAS000002, DRA003456")
+      expect(result.JGAD).toContain("JGAD000001")
+      expect(result.JGAS).toContain("JGAS000002")
+      expect(result.DRA).toContain("DRA003456")
+    })
+
+    it("should return empty object for text without IDs", () => {
+      const result = extractIdsByType("No IDs here")
+      expect(Object.keys(result)).toHaveLength(0)
+    })
+  })
+
+  describe("applyDatasetIdSpecialCase", () => {
+    it("should transform AP023461-AP024084 to PRJDB10452", () => {
+      const result = applyDatasetIdSpecialCase("AP023461-AP024084")
+      expect(result).toEqual(["PRJDB10452"])
+    })
+
+    it("should return original ID for non-special cases", () => {
+      const result = applyDatasetIdSpecialCase("JGAD000001")
+      expect(result).toEqual(["JGAD000001"])
+    })
+
+    it("should handle 35 Diseases variations", () => {
+      expect(applyDatasetIdSpecialCase("35 Dieases")).toEqual(["35 Diseases"])
+      expect(applyDatasetIdSpecialCase("35 Diseases")).toEqual(["35 Diseases"])
+      expect(applyDatasetIdSpecialCase("35疾患")).toEqual(["35 Diseases"])
     })
   })
 })
