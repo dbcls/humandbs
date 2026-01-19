@@ -11,7 +11,7 @@ export function Callout({
   return (
     <div
       className={cn(
-        "border-secondary flex items-center gap-10 rounded-md border px-10 shadow-md",
+        "border-secondary mt-2 flex items-center gap-10 rounded-md border px-10 shadow-md",
         {
           "border-amber-300": type === "tip",
           "border-red-600": type === "error",

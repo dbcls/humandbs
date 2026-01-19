@@ -438,7 +438,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
-  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
+  '/{-$lang}/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
   '/{-$lang}/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
@@ -448,7 +448,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/data-usage/researches/$humId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteWithChildren
   '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
   '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
-  '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
+  '/{-$lang}/data-submission/application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/data-usage/datasets/': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
@@ -583,7 +583,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
-    | '/{-$lang}/admin/researches'
+    | '/{-$lang}/admin/researches/'
     | '/{-$lang}/data-submission/'
     | '/{-$lang}/data-usage/'
     | '/{-$lang}/guidelines/'
@@ -593,7 +593,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-usage/researches/$humId'
     | '/{-$lang}/data-submission/revision/$revision'
     | '/{-$lang}/guidelines/revision/$revision'
-    | '/{-$lang}/data-submission/application'
+    | '/{-$lang}/data-submission/application/'
     | '/{-$lang}/data-submission/navigation/'
     | '/{-$lang}/data-usage/datasets/'
     | '/{-$lang}/data-usage/researches/'
@@ -902,7 +902,7 @@ declare module '@tanstack/react-router' {
     '/{-$lang}/_layout/_authed/admin/researches/': {
       id: '/{-$lang}/_layout/_authed/admin/researches/'
       path: '/researches'
-      fullPath: '/{-$lang}/admin/researches'
+      fullPath: '/{-$lang}/admin/researches/'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
@@ -979,7 +979,7 @@ declare module '@tanstack/react-router' {
     '/{-$lang}/_layout/_main/_other/data-submission/application/': {
       id: '/{-$lang}/_layout/_main/_other/data-submission/application/'
       path: '/application'
-      fullPath: '/{-$lang}/data-submission/application'
+      fullPath: '/{-$lang}/data-submission/application/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
