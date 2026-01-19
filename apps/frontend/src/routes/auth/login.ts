@@ -1,10 +1,12 @@
-import { getConfig } from "@/lib/oidc";
 import { createFileRoute } from "@tanstack/react-router";
-import * as oidc from "openid-client";
 import { serialize } from "cookie";
+import * as oidc from "openid-client";
+
+import { getConfig } from "@/lib/oidc";
+
 import { sanitizeRedirectPath } from "./-utils";
 
-export const Route = createFileRoute("/api/auth/login")({
+export const Route = createFileRoute("/auth/login")({
   server: {
     handlers: {
       GET: async ({ request }) => {

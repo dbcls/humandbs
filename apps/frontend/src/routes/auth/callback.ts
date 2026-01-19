@@ -1,14 +1,16 @@
-import { getConfig } from "@/lib/oidc";
 import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
 import * as oidc from "openid-client";
-import { redirectWithCookies, sanitizeRedirectPath } from "./-utils";
+
+import { getConfig } from "@/lib/oidc";
 import {
   buildSessionFromTokenResponse,
   createSessionCookie,
 } from "@/utils/jwt-helpers";
 
-export const Route = createFileRoute("/api/auth/callback")({
+import { redirectWithCookies, sanitizeRedirectPath } from "./-utils";
+
+export const Route = createFileRoute("/auth/callback")({
   server: {
     handlers: {
       GET: async ({ request }) => {
