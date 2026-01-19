@@ -21,6 +21,7 @@ import { useCart } from "@/hooks/useCart";
 
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Link } from "./Link";
+import { MobileNav } from "./MobileNav";
 import { Search } from "./Search";
 
 export function Navbar() {
@@ -47,15 +48,21 @@ export function Navbar() {
   }
 
   return (
-    <header className="flex items-center justify-between gap-8 rounded-md bg-white p-4">
-      <nav className="flex items-center gap-8">
+    <header className="flex items-center justify-between gap-4 rounded-md bg-white p-4 md:gap-8">
+      <MobileNav />
+      <nav className="hidden items-center gap-8 md:flex">
         <Link
           className="w-fit shrink-0"
           variant={"nav"}
           to="/{-$lang}"
           params={{ lang }}
         >
-          <img src={Logo} width={200} height={50} className="block" />
+          <img
+            src={Logo}
+            width={200}
+            height={50}
+            className="block w-32 md:w-[200px]"
+          />
 
           <div className="text-center text-sm font-semibold whitespace-nowrap">
             {tCommon("humandb")}
@@ -98,15 +105,15 @@ export function Navbar() {
         </NavigationMenu>
       </nav>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
 
         {user ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <ShoppingCartButton />
 
-            <span className="text-xs">{user.name}</span>
+            <span className="hidden text-xs sm:inline">{user.name}</span>
             <form method="post" action={"/api/auth/logout"}>
               <Button type="submit">Logout</Button>
             </form>

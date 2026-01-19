@@ -1,5 +1,5 @@
-import { SearchIcon } from "lucide-react"
+import { SearchIcon } from "lucide-react";
 
 export function Search() {
-  return <SearchIcon className=" text-secondary" size={24} />
+  return <SearchIcon className="text-secondary mr-2" size={24} />;
 }
