@@ -26,7 +26,7 @@ declare global {
 }
 
 const axiosInstance = axios.create({
-  baseURL: `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}`,
+  baseURL: `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}`,
 });
 
 // Add response interceptor to handle errors properly

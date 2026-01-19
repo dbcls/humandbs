@@ -21,16 +21,19 @@ export const createApp = () => {
   app.route("/datasets", datasetsRouter)
 
   // OpenAPI docs
-  app.doc("/docs/openapi.json", {
+  app.doc("/openapi.json", {
     openapi: "3.0.0",
     info: {
       title: "HumanDB Backend API",
       version: "1.0.0",
       description: "API for accessing HumanDB research data",
     },
+    servers: [
+      { url: "/api" },
+    ],
   })
   app.get("/docs", swaggerUI({
-    url: "/docs/openapi.json",
+    url: "./openapi.json",
   }))
 
   return app

@@ -51,7 +51,7 @@ export const $getAuthUser = createServerFn({ method: "GET" }).handler<
     let role: UserRole = USER_ROLES.USER;
 
     const isAdminRes = await fetch(
-      `http://${process.env.HUMANDBS_BACKEND}:${process.env.HUMANDBS_BACKEND_PORT}/users/is-admin`,
+      `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}/users/is-admin`,
       {
         method: "GET",
         headers: {
