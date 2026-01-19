@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { cva, VariantProps } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
 
 const contentHeaderVariants = cva("text-secondary font-semibold", {
   variants: {

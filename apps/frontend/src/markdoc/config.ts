@@ -1,8 +1,9 @@
-import * as tags from "@/markdoc/tags";
-import * as nodes from "@/markdoc/nodes";
 import Markdoc, { Config, Tag } from "@markdoc/markdoc";
 import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
+
+import * as nodes from "@/markdoc/nodes";
+import * as tags from "@/markdoc/tags";
 
 export const config = {
   tags: {

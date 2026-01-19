@@ -1,6 +1,7 @@
-import { pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
 import { relations } from "drizzle-orm";
+import { pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+
+import { user } from "./auth-schema";
 import { documentVersionStatus } from "./documentVersion";
 
 export const contentItem = pgTable("content_item", {

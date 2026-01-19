@@ -1,8 +1,10 @@
 import Markdoc, { RenderableTreeNode } from "@markdoc/markdoc";
-import React from "react";
-import * as components from "./Components";
-import { getDocumentWithClassName } from "@/markdoc/nodes/Document";
 import { CatchBoundary } from "@tanstack/react-router";
+import React from "react";
+
+import { getDocumentWithClassName } from "@/markdoc/nodes/Document";
+
+import * as components from "./Components";
 
 export function RenderMarkdoc({
   content,

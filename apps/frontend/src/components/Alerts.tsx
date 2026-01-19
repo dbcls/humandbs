@@ -1,12 +1,14 @@
+import { useLoaderData, useRouter } from "@tanstack/react-router";
+import { LucideX } from "lucide-react";
+import { useLocale } from "use-intl";
+
 import {
   $saveHiddenAlertIds,
   ActiveAlertsItemResponse,
 } from "@/serverFunctions/alert";
-import { useLoaderData, useRouter } from "@tanstack/react-router";
-import { LucideX } from "lucide-react";
-import { Button } from "./ui/button";
-import { useLocale } from "use-intl";
+
 import { Link } from "./Link";
+import { Button } from "./ui/button";
 
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });

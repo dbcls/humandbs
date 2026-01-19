@@ -1,6 +1,7 @@
-import { pgTable, text, uuid } from "drizzle-orm/pg-core";
-import { newsItem } from "./newsItem";
 import { relations } from "drizzle-orm";
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+
+import { newsItem } from "./newsItem";
 
 export const alert = pgTable("alert", {
   newsId: uuid("news_id")

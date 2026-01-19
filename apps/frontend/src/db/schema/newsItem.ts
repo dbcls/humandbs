@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import {
   pgTable,
   primaryKey,
@@ -5,9 +6,9 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-import { relations } from "drizzle-orm";
+
 import { alert } from "./alert";
+import { user } from "./auth-schema";
 
 export const newsItem = pgTable("news_item", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
