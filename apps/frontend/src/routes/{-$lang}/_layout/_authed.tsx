@@ -106,7 +106,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
       const target = buildRedirectTarget(location, fallback);
 
       throw redirect({
-        to: "/api/auth/login",
+        to: "/auth/login",
         search: {
           redirect: target,
         },

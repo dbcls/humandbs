@@ -39,7 +39,7 @@ export function Navbar() {
 
   async function login() {
     await navigate({
-      to: "/api/auth/login",
+      to: "/auth/login",
       search: {
         redirect: currentLocation.href,
       },
@@ -114,7 +114,7 @@ export function Navbar() {
             <ShoppingCartButton />
 
             <span className="hidden text-xs sm:inline">{user.name}</span>
-            <form method="post" action={"/api/auth/logout"}>
+            <form method="post" action={"/auth/logout"}>
               <Button type="submit">Logout</Button>
             </form>
           </div>
