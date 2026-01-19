@@ -1,3 +1,6 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { parse } from "cookie";
+
 import {
   createClearSessionCookie,
   createSessionCookie,
@@ -6,10 +9,8 @@ import {
   SESSION_COOKIE_NAME,
   SessionMeta,
 } from "@/utils/jwt-helpers";
-import { createFileRoute } from "@tanstack/react-router";
-import { parse } from "cookie";
 
-export const Route = createFileRoute("/api/auth/refresh")({
+export const Route = createFileRoute("/auth/refresh")({
   server: {
     handlers: {
       POST: async ({ request }) => {

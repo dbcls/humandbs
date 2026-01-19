@@ -1,10 +1,12 @@
-import { getLogoutUrl } from "@/lib/oidc";
-import { createClearSessionCookie } from "@/utils/jwt-helpers";
 import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
+
+import { getLogoutUrl } from "@/lib/oidc";
+import { createClearSessionCookie } from "@/utils/jwt-helpers";
+
 import { redirectWithCookies } from "./-utils";
 
-export const Route = createFileRoute("/api/auth/logout")({
+export const Route = createFileRoute("/auth/logout")({
   server: {
     handlers: {
       POST: async ({ request }) => {

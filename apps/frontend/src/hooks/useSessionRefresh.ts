@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { SessionMeta } from "@/utils/jwt-helpers";
 
-type UseSessionRefreshOptions = {
+interface UseSessionRefreshOptions {
   session: SessionMeta | null | undefined;
   refreshUrl?: string;
   bufferSeconds?: number;
   onUnauthorized?: () => void;
-};
+}
 
-type RefreshResponse = {
+interface RefreshResponse {
   refreshed?: boolean;
   session?: {
     expires_at?: string | null;
@@ -17,11 +17,11 @@ type RefreshResponse = {
     refresh_expires_at?: string | null;
     refreshExpiresAt?: string | null;
   };
-};
+}
 
 export function useSessionRefresh({
   session,
-  refreshUrl = "/api/auth/refresh",
+  refreshUrl = "/auth/refresh",
   bufferSeconds = 60,
   onUnauthorized,
 }: UseSessionRefreshOptions) {
@@ -42,7 +42,7 @@ export function useSessionRefresh({
     if (onUnauthorized) {
       onUnauthorized();
     } else {
-      window.location.assign("/api/auth/login");
+      window.location.assign("/auth/login");
     }
   }, [onUnauthorized]);
 

@@ -12,12 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginErrorRouteImport } from './routes/login-error'
 import { Route as HumChar123humIdNumAndRestChar125RouteImport } from './routes/hum{$humIdNumAndRest}'
 import { Route as Char123LangChar125LayoutRouteImport } from './routes/{-$lang}/_layout'
+import { Route as AuthRefreshRouteImport } from './routes/auth/refresh'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as Char123LangChar125LayoutMainRouteImport } from './routes/{-$lang}/_layout/_main'
 import { Route as Char123LangChar125LayoutAuthedRouteImport } from './routes/{-$lang}/_layout/_authed'
-import { Route as ApiAuthRefreshRouteImport } from './routes/api/auth.refresh'
-import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth.logout'
-import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
-import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth.callback'
 import { Route as Char123LangChar125LayoutMainIndexRouteImport } from './routes/{-$lang}/_layout/_main/index'
 import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/{-$lang}/_layout/_main/_other'
 import { Route as Char123LangChar125LayoutAuthedAdminRouteRouteImport } from './routes/{-$lang}/_layout/_authed/admin/route'
@@ -78,6 +78,26 @@ const Char123LangChar125LayoutRoute =
     path: '/{-$lang}',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthRefreshRoute = AuthRefreshRouteImport.update({
+  id: '/auth/refresh',
+  path: '/auth/refresh',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char123LangChar125LayoutMainRoute =
   Char123LangChar125LayoutMainRouteImport.update({
     id: '/_main',
@@ -88,26 +108,6 @@ const Char123LangChar125LayoutAuthedRoute =
     id: '/_authed',
     getParentRoute: () => Char123LangChar125LayoutRoute,
   } as any)
-const ApiAuthRefreshRoute = ApiAuthRefreshRouteImport.update({
-  id: '/api/auth/refresh',
-  path: '/api/auth/refresh',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
-  id: '/api/auth/logout',
-  path: '/api/auth/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
-  id: '/api/auth/login',
-  path: '/api/auth/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
-  id: '/api/auth/callback',
-  path: '/api/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Char123LangChar125LayoutMainIndexRoute =
   Char123LangChar125LayoutMainIndexRouteImport.update({
     id: '/',
@@ -413,11 +413,11 @@ const Char123LangChar125LayoutMainOtherDataUsageDatasetsDatasetIdVersionRoute =
 export interface FileRoutesByFullPath {
   '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/refresh': typeof AuthRefreshRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainOtherRouteWithChildren
-  '/api/auth/callback': typeof ApiAuthCallbackRoute
-  '/api/auth/login': typeof ApiAuthLoginRoute
-  '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/refresh': typeof ApiAuthRefreshRoute
   '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
   '/{-$lang}/': typeof Char123LangChar125LayoutMainIndexRoute
   '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren
@@ -438,7 +438,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
-  '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
+  '/{-$lang}/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   '/{-$lang}/data-usage/': typeof Char123LangChar125LayoutMainOtherDataUsageIndexRoute
   '/{-$lang}/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
@@ -448,7 +448,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/data-usage/researches/$humId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteWithChildren
   '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
   '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
-  '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
+  '/{-$lang}/data-submission/application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/data-usage/datasets/': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
@@ -463,11 +463,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/refresh': typeof AuthRefreshRoute
   '/{-$lang}': typeof Char123LangChar125LayoutMainIndexRoute
-  '/api/auth/callback': typeof ApiAuthCallbackRoute
-  '/api/auth/login': typeof ApiAuthLoginRoute
-  '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/refresh': typeof ApiAuthRefreshRoute
   '/{-$lang}/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
@@ -503,11 +503,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/hum{$humIdNumAndRest}': typeof HumChar123humIdNumAndRestChar125Route
   '/login-error': typeof LoginErrorRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
+  '/auth/refresh': typeof AuthRefreshRoute
   '/{-$lang}/_layout': typeof Char123LangChar125LayoutRouteWithChildren
-  '/api/auth/callback': typeof ApiAuthCallbackRoute
-  '/api/auth/login': typeof ApiAuthLoginRoute
-  '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/refresh': typeof ApiAuthRefreshRoute
   '/{-$lang}/_layout/_authed': typeof Char123LangChar125LayoutAuthedRouteWithChildren
   '/{-$lang}/_layout/_main': typeof Char123LangChar125LayoutMainRouteWithChildren
   '/{-$lang}/_layout/_authed/admin': typeof Char123LangChar125LayoutAuthedAdminRouteRouteWithChildren
@@ -558,11 +558,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/hum{$humIdNumAndRest}'
     | '/login-error'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
+    | '/auth/refresh'
     | '/{-$lang}'
-    | '/api/auth/callback'
-    | '/api/auth/login'
-    | '/api/auth/logout'
-    | '/api/auth/refresh'
     | '/{-$lang}/admin'
     | '/{-$lang}/'
     | '/{-$lang}/data-submission'
@@ -583,7 +583,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
-    | '/{-$lang}/admin/researches'
+    | '/{-$lang}/admin/researches/'
     | '/{-$lang}/data-submission/'
     | '/{-$lang}/data-usage/'
     | '/{-$lang}/guidelines/'
@@ -593,7 +593,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-usage/researches/$humId'
     | '/{-$lang}/data-submission/revision/$revision'
     | '/{-$lang}/guidelines/revision/$revision'
-    | '/{-$lang}/data-submission/application'
+    | '/{-$lang}/data-submission/application/'
     | '/{-$lang}/data-submission/navigation/'
     | '/{-$lang}/data-usage/datasets/'
     | '/{-$lang}/data-usage/researches/'
@@ -608,11 +608,11 @@ export interface FileRouteTypes {
   to:
     | '/hum{$humIdNumAndRest}'
     | '/login-error'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
+    | '/auth/refresh'
     | '/{-$lang}'
-    | '/api/auth/callback'
-    | '/api/auth/login'
-    | '/api/auth/logout'
-    | '/api/auth/refresh'
     | '/{-$lang}/admin'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
@@ -647,11 +647,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/hum{$humIdNumAndRest}'
     | '/login-error'
+    | '/auth/callback'
+    | '/auth/login'
+    | '/auth/logout'
+    | '/auth/refresh'
     | '/{-$lang}/_layout'
-    | '/api/auth/callback'
-    | '/api/auth/login'
-    | '/api/auth/logout'
-    | '/api/auth/refresh'
     | '/{-$lang}/_layout/_authed'
     | '/{-$lang}/_layout/_main'
     | '/{-$lang}/_layout/_authed/admin'
@@ -701,11 +701,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   HumChar123humIdNumAndRestChar125Route: typeof HumChar123humIdNumAndRestChar125Route
   LoginErrorRoute: typeof LoginErrorRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
+  AuthRefreshRoute: typeof AuthRefreshRoute
   Char123LangChar125LayoutRoute: typeof Char123LangChar125LayoutRouteWithChildren
-  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
-  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
-  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
-  ApiAuthRefreshRoute: typeof ApiAuthRefreshRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -731,6 +731,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/refresh': {
+      id: '/auth/refresh'
+      path: '/auth/refresh'
+      fullPath: '/auth/refresh'
+      preLoaderRoute: typeof AuthRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/{-$lang}/_layout/_main': {
       id: '/{-$lang}/_layout/_main'
       path: ''
@@ -744,34 +772,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedRouteImport
       parentRoute: typeof Char123LangChar125LayoutRoute
-    }
-    '/api/auth/refresh': {
-      id: '/api/auth/refresh'
-      path: '/api/auth/refresh'
-      fullPath: '/api/auth/refresh'
-      preLoaderRoute: typeof ApiAuthRefreshRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/logout': {
-      id: '/api/auth/logout'
-      path: '/api/auth/logout'
-      fullPath: '/api/auth/logout'
-      preLoaderRoute: typeof ApiAuthLogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/login': {
-      id: '/api/auth/login'
-      path: '/api/auth/login'
-      fullPath: '/api/auth/login'
-      preLoaderRoute: typeof ApiAuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/callback': {
-      id: '/api/auth/callback'
-      path: '/api/auth/callback'
-      fullPath: '/api/auth/callback'
-      preLoaderRoute: typeof ApiAuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/_layout/_main/': {
       id: '/{-$lang}/_layout/_main/'
@@ -902,7 +902,7 @@ declare module '@tanstack/react-router' {
     '/{-$lang}/_layout/_authed/admin/researches/': {
       id: '/{-$lang}/_layout/_authed/admin/researches/'
       path: '/researches'
-      fullPath: '/{-$lang}/admin/researches'
+      fullPath: '/{-$lang}/admin/researches/'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
@@ -979,7 +979,7 @@ declare module '@tanstack/react-router' {
     '/{-$lang}/_layout/_main/_other/data-submission/application/': {
       id: '/{-$lang}/_layout/_main/_other/data-submission/application/'
       path: '/application'
-      fullPath: '/{-$lang}/data-submission/application'
+      fullPath: '/{-$lang}/data-submission/application/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
     }
@@ -1385,11 +1385,11 @@ const Char123LangChar125LayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   HumChar123humIdNumAndRestChar125Route: HumChar123humIdNumAndRestChar125Route,
   LoginErrorRoute: LoginErrorRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
+  AuthRefreshRoute: AuthRefreshRoute,
   Char123LangChar125LayoutRoute: Char123LangChar125LayoutRouteWithChildren,
-  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
-  ApiAuthLoginRoute: ApiAuthLoginRoute,
-  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
-  ApiAuthRefreshRoute: ApiAuthRefreshRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
