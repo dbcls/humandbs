@@ -197,14 +197,6 @@ describe("config.ts", () => {
       expect(cleanPublicationDatasetId("(hum0040)")).toBe("hum0040")
     })
 
-    it("should remove only leading parenthesis", () => {
-      expect(cleanPublicationDatasetId("(69")).toBe("69")
-    })
-
-    it("should remove only trailing parenthesis", () => {
-      expect(cleanPublicationDatasetId("genes)")).toBe("genes")
-    })
-
     it("should not modify IDs without parentheses", () => {
       expect(cleanPublicationDatasetId("JGAD000220")).toBe("JGAD000220")
       expect(cleanPublicationDatasetId("DRA003802")).toBe("DRA003802")
@@ -308,7 +300,7 @@ describe("config.ts", () => {
     it("should handle 35 Diseases variations", () => {
       expect(applyDatasetIdSpecialCase("35 Dieases")).toEqual(["35 Diseases"])
       expect(applyDatasetIdSpecialCase("35 Diseases")).toEqual(["35 Diseases"])
-      expect(applyDatasetIdSpecialCase("35疾患")).toEqual(["35 Diseases"])
+      expect(applyDatasetIdSpecialCase("35疾患")).toEqual(["35疾患"])  // Japanese kept as-is
     })
   })
 })

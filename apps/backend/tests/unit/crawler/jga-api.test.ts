@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach } from "bun:test"
+
 import {
   studyToDatasets,
   datasetToStudy,
   getDatasetsFromStudy,
   getStudiesFromDataset,
   clearJgaApiCache,
-} from "@/crawler/jga-api"
+} from "@/crawler/jga"
 
 describe("jga-api.ts", () => {
   beforeEach(() => {

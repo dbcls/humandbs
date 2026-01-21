@@ -1,3 +1,9 @@
+/**
+ * TSV Export
+ *
+ * Exports data from llm-extracted directory to TSV files for manual editing.
+ * All TSV files are sorted by humId.
+ */
 import { existsSync, readdirSync, writeFileSync, mkdirSync, readFileSync } from "fs"
 import { join } from "path"
 import yargs from "yargs"
@@ -7,12 +13,14 @@ import { getResultsDirPath, DETAIL_PAGE_BASE_URL } from "@/crawler/io"
 import type {
   LangType,
   TextValue,
-  TransformedResearch,
-  TransformedResearchVersion,
-  SearchableDataset,
-  ExtractedExperiment,
   DiseaseInfo,
   PlatformInfo,
+  DataVolume,
+  ExtractedExperiment,
+  EnrichedResearch,
+  EnrichedPublication,
+  TransformedResearchVersion,
+  SearchableEnrichedDataset,
 } from "@/crawler/types"
 
 // === Options ===
@@ -39,11 +47,6 @@ const escapeForTsv = (value: unknown): string => {
     .replace(/\r/g, "\\r")
 }
 
-const joinPipe = (arr: unknown[] | null | undefined): string => {
-  if (!arr || arr.length === 0) return ""
-  return arr.map(v => escapeForTsv(v)).join("|")
-}
-
 const textValueToString = (tv: TextValue | null | undefined): string => {
   if (!tv) return ""
   return escapeForTsv(tv.text)
@@ -65,6 +68,30 @@ const genDetailUrl = (humVersionId: string, lang: LangType): string => {
     : `${DETAIL_PAGE_BASE_URL}en/${humVersionId}`
 }
 
+/** Sort function for humId (e.g., hum0001, hum0002, ...) */
+const sortByHumId = <T extends { humId: string }>(a: T, b: T): number => {
+  const numA = parseInt(a.humId.replace("hum", ""), 10)
+  const numB = parseInt(b.humId.replace("hum", ""), 10)
+  return numA - numB
+}
+
+/** Sort function for humId + version + datasetId */
+const sortByHumIdVersionDataset = <T extends { humId: string; version: string; datasetId: string }>(
+  a: T,
+  b: T,
+): number => {
+  const humIdCompare = sortByHumId(a, b)
+  if (humIdCompare !== 0) return humIdCompare
+
+  // Compare version (v1, v2, ...)
+  const versionA = parseInt(a.version.replace("v", ""), 10)
+  const versionB = parseInt(b.version.replace("v", ""), 10)
+  if (versionA !== versionB) return versionA - versionB
+
+  // Compare datasetId
+  return a.datasetId.localeCompare(b.datasetId)
+}
+
 // === Directory Functions ===
 
 const getTsvDir = (outputDir?: string): string => {
@@ -75,12 +102,8 @@ const getTsvDir = (outputDir?: string): string => {
   return base
 }
 
-const getStructuredJsonDir = (type: "research" | "research-version" | "dataset"): string => {
-  return join(getResultsDirPath(), "structured-json", type)
-}
-
-const getLlmExtractedDir = (): string => {
-  return join(getResultsDirPath(), "llm-extracted", "dataset")
+const getLlmExtractedDir = (type: "research" | "research-version" | "dataset"): string => {
+  return join(getResultsDirPath(), "llm-extracted", type)
 }
 
 // === Read JSON Functions ===
@@ -100,29 +123,24 @@ const readJsonFiles = <T>(dir: string, filter?: (filename: string) => boolean): 
   })
 }
 
-// === Export Research TSV (simplified) ===
+// === Export Research Summary TSV ===
 
-const RESEARCH_HEADERS = [
+const RESEARCH_SUMMARY_HEADERS = [
   "humId",
   "lang",
-  "humVersionUrl",
+  "url",
   "title",
-  "summary_aims",
-  "summary_methods",
-  "summary_targets",
-  "summary_urls",
-  "dataProviderCount",
-  "researchProjectCount",
-  "grantCount",
-  "publicationCount",
-  "controlledAccessUserCount",
+  "aims",
+  "methods",
+  "targets",
+  "footers",
   "versionIds",
   "latestVersion",
   "firstReleaseDate",
   "lastReleaseDate",
 ]
 
-const researchToRow = (r: TransformedResearch): unknown[] => {
+const researchSummaryToRow = (r: EnrichedResearch): unknown[] => {
   const latestHumVersionId = `${r.humId}-${r.latestVersion}`
   return [
     r.humId,
@@ -132,34 +150,31 @@ const researchToRow = (r: TransformedResearch): unknown[] => {
     textValueToString(r.summary.aims),
     textValueToString(r.summary.methods),
     textValueToString(r.summary.targets),
-    r.summary.url.map(u => u.url).join("|"),
-    r.dataProvider.length,
-    r.researchProject.length,
-    r.grant.length,
-    r.relatedPublication.length,
-    r.controlledAccessUser.length,
-    r.versionIds.join("|"),
+    JSON.stringify(r.summary.footers.map(f => f.text)),
+    JSON.stringify(r.versionIds),
     r.latestVersion,
     r.firstReleaseDate,
     r.lastReleaseDate,
   ]
 }
 
-export const exportResearchTsv = async (options: ExportOptions): Promise<void> => {
-  console.log("Exporting research.tsv...")
+export const exportResearchSummaryTsv = async (options: ExportOptions): Promise<void> => {
+  console.log("Exporting research-summary.tsv...")
 
-  const dir = getStructuredJsonDir("research")
+  const dir = getLlmExtractedDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  const researches = readJsonFiles<TransformedResearch>(dir, filter)
-  const rows = researches.map(r => researchToRow(r) as string[])
+  const researches = readJsonFiles<EnrichedResearch>(dir, filter)
+    .sort(sortByHumId)
+
+  const rows = researches.map(r => researchSummaryToRow(r) as string[])
 
   const tsvDir = getTsvDir(options.output)
-  writeTsv(join(tsvDir, "research.tsv"), RESEARCH_HEADERS, rows)
+  writeTsv(join(tsvDir, "research-summary.tsv"), RESEARCH_SUMMARY_HEADERS, rows)
 }
 
 // === Export Research Data Provider TSV ===
@@ -167,15 +182,16 @@ export const exportResearchTsv = async (options: ExportOptions): Promise<void> =
 const DATA_PROVIDER_HEADERS = [
   "humId",
   "lang",
-  "humVersionUrl",
+  "url",
   "index",
   "name",
-  "organization",
   "email",
   "orcid",
+  "organization_name",
+  "organization_country",
 ]
 
-const dataProviderToRows = (r: TransformedResearch): unknown[][] => {
+const dataProviderToRows = (r: EnrichedResearch): unknown[][] => {
   const latestHumVersionId = `${r.humId}-${r.latestVersion}`
   const url = genDetailUrl(latestHumVersionId, r.lang)
 
@@ -185,23 +201,26 @@ const dataProviderToRows = (r: TransformedResearch): unknown[][] => {
     url,
     i,
     textValueToString(dp.name),
-    dp.organization ? textValueToString(dp.organization.name) : "",
     dp.email ?? "",
     dp.orcid ?? "",
+    dp.organization ? textValueToString(dp.organization.name) : "",
+    dp.organization?.address?.country ?? "",
   ])
 }
 
 export const exportDataProviderTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting research-data-provider.tsv...")
 
-  const dir = getStructuredJsonDir("research")
+  const dir = getLlmExtractedDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  const researches = readJsonFiles<TransformedResearch>(dir, filter)
+  const researches = readJsonFiles<EnrichedResearch>(dir, filter)
+    .sort(sortByHumId)
+
   const rows: string[][] = []
   for (const r of researches) {
     rows.push(...dataProviderToRows(r) as string[][])
@@ -216,13 +235,13 @@ export const exportDataProviderTsv = async (options: ExportOptions): Promise<voi
 const RESEARCH_PROJECT_HEADERS = [
   "humId",
   "lang",
-  "humVersionUrl",
+  "url",
   "index",
   "name",
-  "url",
+  "project_url",
 ]
 
-const researchProjectToRows = (r: TransformedResearch): unknown[][] => {
+const researchProjectToRows = (r: EnrichedResearch): unknown[][] => {
   const latestHumVersionId = `${r.humId}-${r.latestVersion}`
   const pageUrl = genDetailUrl(latestHumVersionId, r.lang)
 
@@ -239,14 +258,16 @@ const researchProjectToRows = (r: TransformedResearch): unknown[][] => {
 export const exportResearchProjectTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting research-project.tsv...")
 
-  const dir = getStructuredJsonDir("research")
+  const dir = getLlmExtractedDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  const researches = readJsonFiles<TransformedResearch>(dir, filter)
+  const researches = readJsonFiles<EnrichedResearch>(dir, filter)
+    .sort(sortByHumId)
+
   const rows: string[][] = []
   for (const r of researches) {
     rows.push(...researchProjectToRows(r) as string[][])
@@ -261,14 +282,14 @@ export const exportResearchProjectTsv = async (options: ExportOptions): Promise<
 const GRANT_HEADERS = [
   "humId",
   "lang",
-  "humVersionUrl",
+  "url",
   "index",
-  "ids",
+  "id",
   "title",
-  "agency",
+  "agency_name",
 ]
 
-const grantToRows = (r: TransformedResearch): unknown[][] => {
+const grantToRows = (r: EnrichedResearch): unknown[][] => {
   const latestHumVersionId = `${r.humId}-${r.latestVersion}`
   const url = genDetailUrl(latestHumVersionId, r.lang)
 
@@ -277,7 +298,7 @@ const grantToRows = (r: TransformedResearch): unknown[][] => {
     r.lang,
     url,
     i,
-    g.id.join("|"),
+    JSON.stringify(g.id),
     g.title,
     g.agency.name,
   ])
@@ -286,14 +307,16 @@ const grantToRows = (r: TransformedResearch): unknown[][] => {
 export const exportGrantTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting research-grant.tsv...")
 
-  const dir = getStructuredJsonDir("research")
+  const dir = getLlmExtractedDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  const researches = readJsonFiles<TransformedResearch>(dir, filter)
+  const researches = readJsonFiles<EnrichedResearch>(dir, filter)
+    .sort(sortByHumId)
+
   const rows: string[][] = []
   for (const r of researches) {
     rows.push(...grantToRows(r) as string[][])
@@ -308,39 +331,41 @@ export const exportGrantTsv = async (options: ExportOptions): Promise<void> => {
 const PUBLICATION_HEADERS = [
   "humId",
   "lang",
-  "humVersionUrl",
+  "url",
   "index",
   "title",
   "doi",
   "datasetIds",
 ]
 
-const publicationToRows = (r: TransformedResearch): unknown[][] => {
+const publicationToRows = (r: EnrichedResearch): unknown[][] => {
   const latestHumVersionId = `${r.humId}-${r.latestVersion}`
   const url = genDetailUrl(latestHumVersionId, r.lang)
 
-  return r.relatedPublication.map((p, i) => [
+  return r.relatedPublication.map((p: EnrichedPublication, i) => [
     r.humId,
     r.lang,
     url,
     i,
     p.title,
     p.doi ?? "",
-    p.datasetIds?.join("|") ?? "",
+    JSON.stringify(p.datasetIds ?? []),
   ])
 }
 
 export const exportPublicationTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting research-publication.tsv...")
 
-  const dir = getStructuredJsonDir("research")
+  const dir = getLlmExtractedDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  const researches = readJsonFiles<TransformedResearch>(dir, filter)
+  const researches = readJsonFiles<EnrichedResearch>(dir, filter)
+    .sort(sortByHumId)
+
   const rows: string[][] = []
   for (const r of researches) {
     rows.push(...publicationToRows(r) as string[][])
@@ -350,23 +375,23 @@ export const exportPublicationTsv = async (options: ExportOptions): Promise<void
   writeTsv(join(tsvDir, "research-publication.tsv"), PUBLICATION_HEADERS, rows)
 }
 
-// === Export Research Controlled Access User TSV ===
+// === Export Research CAU (Controlled Access User) TSV ===
 
-const CONTROLLED_ACCESS_USER_HEADERS = [
+const CAU_HEADERS = [
   "humId",
   "lang",
-  "humVersionUrl",
+  "url",
   "index",
   "name",
   "organization",
   "country",
   "researchTitle",
   "datasetIds",
-  "periodOfDataUse_start",
-  "periodOfDataUse_end",
+  "periodOfDataUse_startDate",
+  "periodOfDataUse_endDate",
 ]
 
-const controlledAccessUserToRows = (r: TransformedResearch): unknown[][] => {
+const cauToRows = (r: EnrichedResearch): unknown[][] => {
   const latestHumVersionId = `${r.humId}-${r.latestVersion}`
   const url = genDetailUrl(latestHumVersionId, r.lang)
 
@@ -379,43 +404,44 @@ const controlledAccessUserToRows = (r: TransformedResearch): unknown[][] => {
     u.organization ? textValueToString(u.organization.name) : "",
     u.organization?.address?.country ?? "",
     u.researchTitle ?? "",
-    u.datasetIds?.join("|") ?? "",
+    JSON.stringify(u.datasetIds ?? []),
     u.periodOfDataUse?.startDate ?? "",
     u.periodOfDataUse?.endDate ?? "",
   ])
 }
 
-export const exportControlledAccessUserTsv = async (options: ExportOptions): Promise<void> => {
-  console.log("Exporting research-controlled-access-user.tsv...")
+export const exportCauTsv = async (options: ExportOptions): Promise<void> => {
+  console.log("Exporting research-cau.tsv...")
 
-  const dir = getStructuredJsonDir("research")
+  const dir = getLlmExtractedDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  const researches = readJsonFiles<TransformedResearch>(dir, filter)
+  const researches = readJsonFiles<EnrichedResearch>(dir, filter)
+    .sort(sortByHumId)
+
   const rows: string[][] = []
   for (const r of researches) {
-    rows.push(...controlledAccessUserToRows(r) as string[][])
+    rows.push(...cauToRows(r) as string[][])
   }
 
   const tsvDir = getTsvDir(options.output)
-  writeTsv(join(tsvDir, "research-controlled-access-user.tsv"), CONTROLLED_ACCESS_USER_HEADERS, rows)
+  writeTsv(join(tsvDir, "research-cau.tsv"), CAU_HEADERS, rows)
 }
 
-// === Export ResearchVersion TSV ===
+// === Export Research Version TSV ===
 
 const RESEARCH_VERSION_HEADERS = [
   "humId",
   "lang",
   "version",
-  "humVersionId",
-  "humVersionUrl",
-  "datasetIds",
+  "releaseNoteUrl",
   "releaseDate",
   "releaseNote",
+  "datasetIds",
 ]
 
 const researchVersionToRow = (rv: TransformedResearchVersion): unknown[] => {
@@ -423,18 +449,17 @@ const researchVersionToRow = (rv: TransformedResearchVersion): unknown[] => {
     rv.humId,
     rv.lang,
     rv.version,
-    rv.humVersionId,
-    genDetailUrl(rv.humVersionId, rv.lang),
-    rv.datasetIds.join("|"),
+    genDetailUrl(rv.humVersionId, rv.lang) + "-release",
     rv.releaseDate,
     textValueToString(rv.releaseNote),
+    JSON.stringify(rv.datasetIds),
   ]
 }
 
 export const exportResearchVersionTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting research-version.tsv...")
 
-  const dir = getStructuredJsonDir("research-version")
+  const dir = getLlmExtractedDir("research-version")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
@@ -442,26 +467,26 @@ export const exportResearchVersionTsv = async (options: ExportOptions): Promise<
   }
 
   const versions = readJsonFiles<TransformedResearchVersion>(dir, filter)
+    .sort(sortByHumId)
+
   const rows = versions.map(rv => researchVersionToRow(rv) as string[])
 
   const tsvDir = getTsvDir(options.output)
   writeTsv(join(tsvDir, "research-version.tsv"), RESEARCH_VERSION_HEADERS, rows)
 }
 
-// === Export Dataset TSV (aggregated) ===
+// === Export Dataset TSV ===
 
 const DATASET_HEADERS = [
-  "datasetId",
+  "humId",
   "lang",
   "version",
+  "url",
+  "datasetId",
   "versionReleaseDate",
-  "humId",
-  "humVersionId",
-  "humVersionUrl",
   "typeOfData",
   "criteria",
   "releaseDate",
-  "experimentCount",
   "searchable_diseases",
   "searchable_tissues",
   "searchable_assayTypes",
@@ -469,10 +494,11 @@ const DATASET_HEADERS = [
   "searchable_readTypes",
   "searchable_fileTypes",
   "searchable_totalSubjectCount",
-  "searchable_totalDataVolumeBytes",
+  "searchable_totalDataVolume",
   "searchable_hasHealthyControl",
   "searchable_hasTumor",
   "searchable_hasCellLine",
+  "originalMetadata",
 ]
 
 const diseaseToString = (d: DiseaseInfo): string => {
@@ -483,47 +509,54 @@ const platformToString = (p: PlatformInfo): string => {
   return `${p.vendor}:${p.model}`
 }
 
-const datasetToRow = (ds: SearchableDataset): unknown[] => {
+const dataVolumeToString = (vol: DataVolume | null): string => {
+  if (!vol) return ""
+  return `${vol.value} ${vol.unit}`
+}
+
+const datasetToRow = (ds: SearchableEnrichedDataset): unknown[] => {
   return [
-    ds.datasetId,
+    ds.humId,
     ds.lang,
     ds.version,
-    ds.versionReleaseDate,
-    ds.humId,
-    ds.humVersionId,
     genDetailUrl(ds.humVersionId, ds.lang),
+    ds.datasetId,
+    ds.versionReleaseDate,
     escapeForTsv(ds.typeOfData ?? ""),
-    joinPipe(ds.criteria),
-    joinPipe(ds.releaseDate),
-    ds.experiments.length,
-    ds.searchable.diseases.map(diseaseToString).join("|"),
-    ds.searchable.tissues.join("|"),
-    ds.searchable.assayTypes.join("|"),
-    ds.searchable.platforms.map(platformToString).join("|"),
-    ds.searchable.readTypes.join("|"),
-    ds.searchable.fileTypes.join("|"),
+    JSON.stringify(ds.criteria ?? []),
+    JSON.stringify(ds.releaseDate ?? []),
+    JSON.stringify(ds.searchable.diseases.map(diseaseToString)),
+    JSON.stringify(ds.searchable.tissues),
+    JSON.stringify(ds.searchable.assayTypes),
+    JSON.stringify(ds.searchable.platforms.map(platformToString)),
+    JSON.stringify(ds.searchable.readTypes),
+    JSON.stringify(ds.searchable.fileTypes),
     ds.searchable.totalSubjectCount ?? "",
-    ds.searchable.totalDataVolumeBytes ?? "",
+    dataVolumeToString(ds.searchable.totalDataVolume),
     ds.searchable.hasHealthyControl,
     ds.searchable.hasTumor,
     ds.searchable.hasCellLine,
+    ds.originalMetadata ? JSON.stringify(ds.originalMetadata) : "",
   ]
 }
 
 export const exportDatasetTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting dataset.tsv...")
 
-  const dir = getLlmExtractedDir()
+  const dir = getLlmExtractedDir("dataset")
   const filter = (filename: string): boolean => {
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  let datasets = readJsonFiles<SearchableDataset>(dir, filter)
+  let datasets = readJsonFiles<SearchableEnrichedDataset>(dir, filter)
 
   if (options.humId) {
     datasets = datasets.filter(ds => ds.humId === options.humId)
   }
+
+  // Sort by humId, version, datasetId
+  datasets.sort(sortByHumIdVersionDataset)
 
   const rows = datasets.map(ds => datasetToRow(ds) as string[])
 
@@ -531,58 +564,54 @@ export const exportDatasetTsv = async (options: ExportOptions): Promise<void> =>
   writeTsv(join(tsvDir, "dataset.tsv"), DATASET_HEADERS, rows)
 }
 
-// === Export Experiment TSV (expanded) ===
+// === Export Experiment TSV ===
 
 const EXPERIMENT_HEADERS = [
-  "datasetId",
+  "humId",
   "lang",
   "version",
-  "humId",
-  "humVersionId",
-  "humVersionUrl",
+  "url",
+  "datasetId",
+  "versionReleaseDate",
   "experimentIndex",
-  "experimentHeader",
-  "experimentData",
-  "ext_subjectCount",
-  "ext_subjectCountType",
-  "ext_healthStatus",
-  "ext_disease_label",
-  "ext_disease_icd10",
-  "ext_tissue",
-  "ext_isTumor",
-  "ext_cellLine",
-  "ext_assayType",
-  "ext_libraryKit",
-  "ext_platformVendor",
-  "ext_platformModel",
-  "ext_readType",
-  "ext_readLength",
-  "ext_targets",
-  "ext_fileTypes",
-  "ext_dataVolumeBytes",
+  "header",
+  "extracted_subjectCount",
+  "extracted_subjectCountType",
+  "extracted_healthStatus",
+  "extracted_diseases",
+  "extracted_tissue",
+  "extracted_isTumor",
+  "extracted_cellLine",
+  "extracted_assayType",
+  "extracted_libraryKit",
+  "extracted_platformVendor",
+  "extracted_platformModel",
+  "extracted_readType",
+  "extracted_readLength",
+  "extracted_targets",
+  "extracted_fileTypes",
+  "extracted_dataVolume",
 ]
 
 const experimentToRow = (
-  ds: SearchableDataset,
+  ds: SearchableEnrichedDataset,
   exp: ExtractedExperiment,
   index: number,
 ): unknown[] => {
   const ext = exp.extracted
   return [
-    ds.datasetId,
+    ds.humId,
     ds.lang,
     ds.version,
-    ds.humId,
-    ds.humVersionId,
     genDetailUrl(ds.humVersionId, ds.lang),
+    ds.datasetId,
+    ds.versionReleaseDate,
     index,
     textValueToString(exp.header),
-    JSON.stringify(exp.data),
     ext.subjectCount ?? "",
     ext.subjectCountType ?? "",
     ext.healthStatus ?? "",
-    ext.disease?.label ?? "",
-    ext.disease?.icd10 ?? "",
+    JSON.stringify(ext.diseases.map(diseaseToString)),
     ext.tissue ?? "",
     ext.isTumor ?? "",
     ext.cellLine ?? "",
@@ -593,25 +622,28 @@ const experimentToRow = (
     ext.readType ?? "",
     ext.readLength ?? "",
     ext.targets ?? "",
-    ext.fileTypes.join("|"),
-    ext.dataVolumeBytes ?? "",
+    JSON.stringify(ext.fileTypes),
+    dataVolumeToString(ext.dataVolume),
   ]
 }
 
 export const exportExperimentTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Exporting experiment.tsv...")
 
-  const dir = getLlmExtractedDir()
+  const dir = getLlmExtractedDir("dataset")
   const filter = (filename: string): boolean => {
     if (options.lang && !filename.endsWith(`-${options.lang}.json`)) return false
     return true
   }
 
-  let datasets = readJsonFiles<SearchableDataset>(dir, filter)
+  let datasets = readJsonFiles<SearchableEnrichedDataset>(dir, filter)
 
   if (options.humId) {
     datasets = datasets.filter(ds => ds.humId === options.humId)
   }
+
+  // Sort by humId, version, datasetId
+  datasets.sort(sortByHumIdVersionDataset)
 
   const rows: string[][] = []
   for (const ds of datasets) {
@@ -630,13 +662,13 @@ export const exportAllTsv = async (options: ExportOptions): Promise<void> => {
   console.log("Starting TSV export...")
   console.log(`  Options: ${JSON.stringify(options)}`)
 
-  // Research and related
-  await exportResearchTsv(options)
+  // Research related
+  await exportResearchSummaryTsv(options)
   await exportDataProviderTsv(options)
   await exportResearchProjectTsv(options)
   await exportGrantTsv(options)
   await exportPublicationTsv(options)
-  await exportControlledAccessUserTsv(options)
+  await exportCauTsv(options)
 
   // Research Version
   await exportResearchVersionTsv(options)
@@ -645,7 +677,8 @@ export const exportAllTsv = async (options: ExportOptions): Promise<void> => {
   await exportDatasetTsv(options)
   await exportExperimentTsv(options)
 
-  console.log("TSV export completed!")
+  const outputDir = getTsvDir(options.output)
+  console.log(`TSV export completed! Output: ${outputDir}`)
 }
 
 // === CLI ===

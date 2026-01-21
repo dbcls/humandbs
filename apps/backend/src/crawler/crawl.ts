@@ -16,7 +16,7 @@ import { hideBin } from "yargs/helpers"
 
 import { shouldSkipPage, DEFAULT_CONCURRENCY, MAX_CONCURRENCY } from "@/crawler/config"
 import { parseDetailPage } from "@/crawler/detail"
-import { getHtmlDir, writeDetailJson } from "@/crawler/io"
+import { getHtmlDir, writeDetailJson, getResultsDirPath } from "@/crawler/io"
 import { parseReleasePage } from "@/crawler/release"
 import type { LangType, CrawlArgs, CrawlOneResult, CrawlHumIdResult } from "@/crawler/types"
 
@@ -195,7 +195,8 @@ const main = async (): Promise<void> => {
     console.log(`Progress: ${completedHumIds}/${humIds.length} humIds (${percent}%), ${totalParsed} parsed${totalErrors > 0 ? ` [${totalErrors} errors]` : ""}`)
   }
 
-  console.log(`Done: ${totalParsed} parsed, ${totalErrors} errors, ${totalNoRelease} without release page`)
+  const outputDir = join(getResultsDirPath(), "detail-json")
+  console.log(`Done: ${totalParsed} parsed, ${totalErrors} errors, ${totalNoRelease} without release page. Output: ${outputDir}`)
 }
 
 if (import.meta.main) {

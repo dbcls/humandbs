@@ -10,6 +10,7 @@
  *   bun run crawler:download --lang ja          # Japanese only
  *   bun run crawler:download --force            # Ignore cache and re-download
  */
+import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
@@ -19,6 +20,7 @@ import {
   readHtml,
   genDetailUrl,
   genReleaseUrl,
+  getResultsDirPath,
 } from "@/crawler/io"
 import type { LangType, CrawlArgs } from "@/crawler/types"
 
@@ -134,7 +136,8 @@ const main = async (): Promise<void> => {
     console.log(`Progress: ${completedHumIds}/${humIds.length} humIds (${percent}%), ${totalDownloaded} files${totalErrors > 0 ? ` [${totalErrors} errors]` : ""}`)
   }
 
-  console.log(`Done: ${totalDownloaded} downloaded, ${totalErrors} errors`)
+  const outputDir = join(getResultsDirPath(), "html")
+  console.log(`Done: ${totalDownloaded} downloaded, ${totalErrors} errors. Output: ${outputDir}`)
 }
 
 if (import.meta.main) {

@@ -1,10 +1,19 @@
+/**
+ * Load documents from final/ directory into Elasticsearch
+ *
+ * Reads JSON files from:
+ * - crawler-results/final/research/
+ * - crawler-results/final/research-version/
+ * - crawler-results/final/dataset/
+ *
+ * Falls back to llm-extracted/ if final/ doesn't exist.
+ */
 import { Client, HttpConnection } from "@elastic/elasticsearch"
-import { readFileSync } from "fs"
-import { join } from "path"
+import { existsSync, readdirSync, readFileSync } from "fs"
+import { join, dirname } from "path"
 
-import type { DatasetDoc, Research, ResearchDoc, ResearchVersionDoc } from "@/types"
+// === Utils ===
 
-// === utils ===
 const ES_NODE = process.env.ES_HOST ?? "http://humandbs-elasticsearch-dev:9200"
 
 const INDEX = {
@@ -25,34 +34,107 @@ const idResearch = (humId: string, lang: string): string => `${humId}-${lang}`
 const idResearchVersion = (humId: string, version: string, lang: string): string => `${humId}-${normVersion(version)}-${lang}`
 const idDataset = (datasetId: string, version: string, lang: string): string => `${datasetId}-${normVersion(version)}-${lang}`
 
-// === main ===
+/**
+ * Find crawler-results directory by searching up from current file
+ */
+function findResultsDir(): string {
+  let currentDir = dirname(__filename)
+  while (!existsSync(join(currentDir, "package.json"))) {
+    const parentDir = dirname(currentDir)
+    if (parentDir === currentDir) {
+      throw new Error("Failed to find package.json")
+    }
+    currentDir = parentDir
+  }
+  return join(currentDir, "crawler-results")
+}
+
+/**
+ * Get the source directory for a given type
+ * Prefers final/ if it exists, otherwise falls back to llm-extracted/
+ */
+function getSourceDir(type: "research" | "research-version" | "dataset"): string {
+  const resultsDir = findResultsDir()
+  const finalDir = join(resultsDir, "final", type)
+  const llmDir = join(resultsDir, "llm-extracted", type)
+
+  if (existsSync(finalDir)) {
+    return finalDir
+  }
+  if (existsSync(llmDir)) {
+    console.log(`Note: final/${type} not found, using llm-extracted/${type}`)
+    return llmDir
+  }
+
+  throw new Error(`Neither final/${type} nor llm-extracted/${type} directory found`)
+}
+
+/**
+ * Read all JSON files from a directory
+ */
+function readJsonFilesFromDir<T>(dir: string): T[] {
+  if (!existsSync(dir)) {
+    console.warn(`Directory not found: ${dir}`)
+    return []
+  }
+
+  const files = readdirSync(dir).filter(f => f.endsWith(".json"))
+  return files.map(f => {
+    const content = readFileSync(join(dir, f), "utf8")
+    return JSON.parse(content) as T
+  })
+}
+
+// === Document Types ===
+
+interface ResearchDoc {
+  humId: string
+  lang: string
+  [key: string]: unknown
+}
+
+interface ResearchVersionDoc {
+  humId: string
+  version: string
+  lang: string
+  [key: string]: unknown
+}
+
+interface DatasetDoc {
+  datasetId: string
+  version: string
+  lang: string
+  [key: string]: unknown
+}
+
+// === Main ===
 
 const main = async () => {
-  const jsonFile = join(__dirname, "../../crawler-results/es-json/research.json")
-  const researchData: Research[] = JSON.parse(readFileSync(jsonFile, "utf-8"))
+  console.log("Loading documents into Elasticsearch...")
+  console.log(`ES_NODE: ${ES_NODE}`)
 
-  const researchDocs: ResearchDoc[] = []
-  const researchVersionDocs: ResearchVersionDoc[] = []
-  const datasetDocs: DatasetDoc[] = []
+  // Read from final/ (or llm-extracted/ as fallback)
+  const researchDir = getSourceDir("research")
+  const researchVersionDir = getSourceDir("research-version")
+  const datasetDir = getSourceDir("dataset")
 
-  for (const r of researchData) {
-    const versionIds = r.versions.map((v) => idResearchVersion(r.humId, v.version, v.lang))
-    researchDocs.push({
-      ...r,
-      versions: versionIds,
-    })
+  console.log(`\nSource directories:`)
+  console.log(`  Research: ${researchDir}`)
+  console.log(`  Research Version: ${researchVersionDir}`)
+  console.log(`  Dataset: ${datasetDir}`)
 
-    for (const rv of r.versions) {
-      const dsIds = rv.datasets.map((d) => idDataset(d.datasetId, d.version, d.lang))
-      researchVersionDocs.push({
-        ...rv,
-        datasets: dsIds,
-      })
+  const researchDocs = readJsonFilesFromDir<ResearchDoc>(researchDir)
+  const researchVersionDocs = readJsonFilesFromDir<ResearchVersionDoc>(researchVersionDir)
+  const datasetDocs = readJsonFilesFromDir<DatasetDoc>(datasetDir)
 
-      for (const d of rv.datasets) {
-        datasetDocs.push(d)
-      }
-    }
+  console.log(`\nLoaded documents:`)
+  console.log(`  Research: ${researchDocs.length}`)
+  console.log(`  Research Version: ${researchVersionDocs.length}`)
+  console.log(`  Dataset: ${datasetDocs.length}`)
+
+  if (researchDocs.length === 0 && researchVersionDocs.length === 0 && datasetDocs.length === 0) {
+    console.log("\nNo documents to index. Exiting.")
+    return
   }
 
   const client = new Client({
@@ -60,15 +142,19 @@ const main = async () => {
     Connection: HttpConnection,
   })
 
+  // Check indices exist
   for (const idx of Object.values(INDEX)) {
     const exists = await client.indices.exists({ index: idx })
     if (!exists) {
-      console.log(`Index ${idx} does not exist`)
-      continue
+      console.warn(`\nWarning: Index ${idx} does not exist. Please run es:load-mappings first.`)
     }
   }
 
-  const bulkIndex = async <T>(index: keyof typeof INDEX, docs: T[], genId: (doc: T) => string) => {
+  const bulkIndex = async <T>(
+    index: keyof typeof INDEX,
+    docs: T[],
+    genId: (doc: T) => string,
+  ) => {
     if (docs.length === 0) return
     const ops = docs.flatMap(doc => [{ index: { _index: INDEX[index], _id: genId(doc) } }, doc])
     const res = await client.bulk({ refresh: true, body: ops })
@@ -82,15 +168,20 @@ const main = async () => {
           op: ops[i * 2],
           doc: ops[i * 2 + 1],
         }))
-      console.error(`Bulk errors: ${INDEX[index]}`, errors)
+      console.error(`\nBulk errors for ${INDEX[index]}:`, errors.slice(0, 5))
+      if (errors.length > 5) {
+        console.error(`  ... and ${errors.length - 5} more errors`)
+      }
     } else {
-      console.log(`Indexed ${docs.length} -> ${INDEX[index]}`)
+      console.log(`\nIndexed ${docs.length} documents -> ${INDEX[index]}`)
     }
   }
 
-  await bulkIndex("research", researchDocs, (d: ResearchDoc) => idResearch(d.humId, d.lang))
-  await bulkIndex("researchVersion", researchVersionDocs, (d: ResearchVersionDoc) => idResearchVersion(d.humId, d.version, d.lang))
+  await bulkIndex("research", researchDocs, (d) => idResearch(d.humId, d.lang))
+  await bulkIndex("researchVersion", researchVersionDocs, (d) => idResearchVersion(d.humId, d.version, d.lang))
   await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version, d.lang))
+
+  console.log("\nDone!")
 }
 
 if (require.main === module) {

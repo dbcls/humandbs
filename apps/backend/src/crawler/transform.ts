@@ -12,7 +12,7 @@ import {
   isValidDatasetId,
   shouldSkipPage,
 } from "@/crawler/config"
-import { parseAllHumIds } from "@/crawler/home"
+import { parseAllHumIds, humIdToTitle } from "@/crawler/home"
 import {
   getResultsDirPath,
   readNormalizedDetailJson,
@@ -20,7 +20,7 @@ import {
   headLatestVersionNum,
   DETAIL_PAGE_BASE_URL,
 } from "@/crawler/io"
-import { getDatasetsFromStudy, saveCache as saveJgaCache } from "@/crawler/jga-api"
+import { getDatasetsFromStudy, saveRelationCache as saveJgaCache } from "@/crawler/jga"
 import type {
   LangType,
   CrawlArgs,
@@ -413,6 +413,7 @@ export const transformOneResearch = async (
   humId: string,
   lang: LangType,
   opts: { noCache?: boolean },
+  titleMap?: Record<string, string>,
 ): Promise<TransformOneResult> => {
   const useCache = !opts.noCache
 
@@ -616,7 +617,7 @@ export const transformOneResearch = async (
   const research: TransformedResearch = {
     humId,
     lang,
-    title: "", // Will be filled from home page or summary
+    title: titleMap?.[humId] ?? "",
     url: lang === "ja"
       ? `${DETAIL_PAGE_BASE_URL}${latestHumVersionId}`
       : `${DETAIL_PAGE_BASE_URL}en/${latestHumVersionId}`,
@@ -655,6 +656,14 @@ export const transformAll = async (
   langs: LangType[],
   opts: { noCache?: boolean; concurrency?: number },
 ): Promise<void> => {
+  const useCache = !opts.noCache
+
+  // Fetch title mappings for each language from home page
+  const titleMaps: Record<LangType, Record<string, string>> = {
+    ja: await humIdToTitle("ja", useCache),
+    en: await humIdToTitle("en", useCache),
+  }
+
   const tasks: (() => Promise<void>)[] = []
 
   for (const humId of humIds) {
@@ -662,7 +671,7 @@ export const transformAll = async (
       tasks.push(async () => {
         const tag = `[${humId}-${lang}]`
         try {
-          const result = await transformOneResearch(humId, lang, opts)
+          const result = await transformOneResearch(humId, lang, opts, titleMaps[lang])
 
           if (!result.success) {
             // Don't log if all versions were skipped (expected)
@@ -744,7 +753,8 @@ const main = async (): Promise<void> => {
   // Save JGA relation cache to file
   saveJgaCache()
 
-  console.log("Done!")
+  const outputDir = join(getResultsDirPath(), "structured-json")
+  console.log(`Done! Output: ${outputDir}`)
 }
 
 if (import.meta.main) {

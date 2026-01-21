@@ -232,7 +232,7 @@ export interface TransformedDataset {
 
   // Metadata (from summary.datasets)
   typeOfData: string | null
-  criteria: string[] | null  // Display values (language-specific)
+  criteria: string[] | null // Display values (language-specific)
   releaseDate: string[] | null
 
   // Experiments (inverted molecularData)
@@ -353,6 +353,14 @@ export interface PlatformInfo {
   model: string
 }
 
+/** Data volume with unit */
+export type DataVolumeUnit = "KB" | "MB" | "GB" | "TB"
+
+export interface DataVolume {
+  value: number
+  unit: DataVolumeUnit
+}
+
 /** Experiment-level extracted fields */
 export interface ExtractedExperimentFields {
   // Subject/sample info
@@ -360,8 +368,8 @@ export interface ExtractedExperimentFields {
   subjectCountType: SubjectCountType | null
   healthStatus: HealthStatus | null
 
-  // Disease info
-  disease: DiseaseInfo | null
+  // Disease info (multiple diseases supported)
+  diseases: DiseaseInfo[]
 
   // Biological sample info
   tissue: string | null
@@ -383,7 +391,7 @@ export interface ExtractedExperimentFields {
 
   // Data info
   fileTypes: string[]
-  dataVolumeBytes: number | null
+  dataVolume: DataVolume | null
 }
 
 /** Dataset-level searchable aggregated fields */
@@ -404,7 +412,7 @@ export interface SearchableDatasetFields {
   // Data info
   fileTypes: string[]
   totalSubjectCount: number | null
-  totalDataVolumeBytes: number | null
+  totalDataVolume: DataVolume | null
 
   // Flags
   hasHealthyControl: boolean
@@ -421,4 +429,29 @@ export interface ExtractedExperiment extends TransformedExperiment {
 export interface SearchableDataset extends Omit<TransformedDataset, "experiments"> {
   searchable: SearchableDatasetFields
   experiments: ExtractedExperiment[]
+}
+
+// === Enriched Types (output of external API enrichment) ===
+
+/** Publication with DOI from Crossref */
+export interface EnrichedPublication extends TransformedPublication {
+  doi?: string | null
+}
+
+/** Dataset enriched with external API metadata */
+export interface EnrichedDataset extends TransformedDataset {
+  /** Raw metadata from external APIs (JGAD, DRA, etc.) */
+  originalMetadata?: Record<string, unknown> | null
+}
+
+/** Research enriched with DOI information */
+export interface EnrichedResearch extends Omit<TransformedResearch, "relatedPublication"> {
+  relatedPublication: EnrichedPublication[]
+}
+
+/** Dataset with both enrichment and searchable fields */
+export interface SearchableEnrichedDataset extends Omit<EnrichedDataset, "experiments"> {
+  searchable: SearchableDatasetFields
+  experiments: ExtractedExperiment[]
+  originalMetadata?: Record<string, unknown> | null
 }

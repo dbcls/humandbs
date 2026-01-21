@@ -97,7 +97,7 @@ describe("release.ts", () => {
 
       // hum0001 has release notes
       const releaseWithNote = releases.find(r => r.releaseNote?.text)
-      if (releaseWithNote) {
+      if (releaseWithNote?.releaseNote) {
         expect(releaseWithNote.releaseNote.text).toBeTruthy()
       }
     })

@@ -1,3 +1,4 @@
+import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
@@ -20,8 +21,8 @@ import {
   PUBLICATION_DATASET_ID_NO_SPLIT,
   UNUSED_PUBLICATION_TITLES,
 } from "@/crawler/config"
-import { getDatasetsFromStudy, saveCache as saveJgaCache } from "@/crawler/jga-api"
-import { listDetailJsonFiles, readDetailJson, writeNormalizedDetailJson } from "@/crawler/io"
+import { listDetailJsonFiles, readDetailJson, writeNormalizedDetailJson, getResultsDirPath } from "@/crawler/io"
+import { getDatasetsFromStudy, saveRelationCache as saveJgaCache } from "@/crawler/jga"
 import { buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/mapping-table"
 import type { LangType, CrawlArgs, ParseResult, CriteriaCanonical, NormalizedParseResult, NormalizedControlledAccessUser, TextValue, NormalizedMolecularData, Publication, Release, NormalizeOneResult } from "@/crawler/types"
 
@@ -721,7 +722,8 @@ const main = async (): Promise<void> => {
   // Save JGA relation cache to file
   saveJgaCache()
 
-  console.log(`Done: ${totalNormalized} normalized, ${totalErrors} errors`)
+  const outputDir = join(getResultsDirPath(), "detail-json-normalized")
+  console.log(`Done: ${totalNormalized} normalized, ${totalErrors} errors. Output: ${outputDir}`)
 }
 
 if (import.meta.main) {
