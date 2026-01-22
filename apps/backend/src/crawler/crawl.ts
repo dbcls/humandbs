@@ -16,6 +16,7 @@ import { hideBin } from "yargs/helpers"
 
 import { shouldSkipPage, DEFAULT_CONCURRENCY, MAX_CONCURRENCY } from "@/crawler/config"
 import { parseDetailPage } from "@/crawler/detail"
+import { humIdToTitle } from "@/crawler/home"
 import { getHtmlDir, writeDetailJson, getResultsDirPath } from "@/crawler/io"
 import { parseReleasePage } from "@/crawler/release"
 import type { LangType, CrawlArgs, CrawlOneResult, CrawlHumIdResult } from "@/crawler/types"
@@ -85,6 +86,7 @@ export const findAllHumIdsFromHtml = (): string[] => {
 export const crawlOne = (
   humVersionId: string,
   lang: LangType,
+  titleMap: Record<string, string>,
 ): CrawlOneResult => {
   const htmlDir = getHtmlDir()
 
@@ -95,6 +97,10 @@ export const crawlOne = (
   }
   const detailHtml = readFileSync(detailPath, "utf8")
   const parsed = parseDetailPage(detailHtml, humVersionId, lang)
+
+  // Extract humId from humVersionId and set title
+  const humId = humVersionId.match(/^(hum\d+)-v\d+/)?.[1] ?? humVersionId
+  parsed.title = titleMap[humId] ?? ""
 
   // Release page (may not exist)
   let hasRelease = false
@@ -116,6 +122,7 @@ export const crawlOne = (
 const crawlAllVersionsForHumId = async (
   humId: string,
   langs: LangType[],
+  titleMaps: Record<LangType, Record<string, string>>,
 ): Promise<CrawlHumIdResult> => {
   const latestVersion = findLatestVersionFromHtml(humId)
   if (latestVersion === 0) {
@@ -133,7 +140,7 @@ const crawlAllVersionsForHumId = async (
       if (shouldSkipPage(humVersionId, lang)) continue
 
       try {
-        const result = crawlOne(humVersionId, lang)
+        const result = crawlOne(humVersionId, lang, titleMaps[lang])
         if (result.success) {
           parsed++
           if (!result.hasRelease) noRelease++
@@ -169,6 +176,14 @@ const main = async (): Promise<void> => {
 
   console.log(`Parsing ${humIds.length} humId(s), langs: ${langs.join(", ")}`)
 
+  // Fetch title mappings for each language from home page
+  console.log("Fetching title mappings from home page...")
+  const titleMaps: Record<LangType, Record<string, string>> = {
+    ja: langs.includes("ja") ? await humIdToTitle("ja", true) : {},
+    en: langs.includes("en") ? await humIdToTitle("en", true) : {},
+  }
+  console.log(`Loaded ${Object.keys(titleMaps.ja).length} ja titles, ${Object.keys(titleMaps.en).length} en titles`)
+
   const conc = Math.max(1, Math.min(MAX_CONCURRENCY, args.concurrency ?? DEFAULT_CONCURRENCY))
   console.log(`Starting with concurrency: ${conc}`)
 
@@ -181,7 +196,7 @@ const main = async (): Promise<void> => {
   for (let i = 0; i < humIds.length; i += conc) {
     const batch = humIds.slice(i, i + conc)
     const results = await Promise.all(
-      batch.map(humId => crawlAllVersionsForHumId(humId, langs)),
+      batch.map(humId => crawlAllVersionsForHumId(humId, langs, titleMaps)),
     )
 
     for (const { parsed, errors, noRelease } of results) {

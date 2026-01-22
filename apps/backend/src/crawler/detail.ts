@@ -1091,6 +1091,7 @@ export const parseDetailPage = (
   const controlledAccessUsers = parseControlledAccessUsersSection(sections.controlledAccessUsers, humVersionId, lang)
 
   const result: ParseResult = {
+    title: "", // Will be set in crawl.ts with value from home page
     summary,
     molecularData,
     dataProvider,

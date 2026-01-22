@@ -15,6 +15,8 @@
     "crawler:transform": "bun run src/crawler/transform.ts",
     "crawler:fetch-external-api": "bun run src/crawler/fetch-external-api.ts",
     "crawler:extract-fields": "bun run src/crawler/extract-fields.ts",
+    "crawler:enrich-unified": "bun run src/crawler/enrich-unified.ts",
+    "crawler:extract-fields-unified": "bun run src/crawler/extract-fields-unified.ts",
     "crawler:export-tsv": "bun run src/crawler/export-tsv.ts",
     "crawler:import-tsv": "bun run src/crawler/import-tsv.ts",
     "es:load-mappings": "node src/es/load-mappings.ts",

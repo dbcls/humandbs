@@ -40,15 +40,16 @@ describe("crawl.ts", () => {
 
   describe("crawlOne", () => {
     // Note: crawlOne writes files, so actual parsing tests are in integration tests
+    const emptyTitleMap: Record<string, string> = {}
 
     it("should handle missing HTML file", () => {
-      const result = crawlOne("hum9999-v1", "ja")
+      const result = crawlOne("hum9999-v1", "ja", emptyTitleMap)
       expect(result.success).toBe(false)
       expect(result.error).toContain("not found")
     })
 
     it("should return error for invalid humVersionId format", () => {
-      const result = crawlOne("invalid", "ja")
+      const result = crawlOne("invalid", "ja", emptyTitleMap)
       expect(result.success).toBe(false)
     })
   })

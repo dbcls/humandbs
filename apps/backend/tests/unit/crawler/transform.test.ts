@@ -6,6 +6,8 @@ import {
   buildDatasetMetadataMap,
   isExperimentsEqual,
   assignDatasetVersion,
+  assignBilingualDatasetVersion,
+  trackBilingualVersion,
   transformDataProvider,
   transformControlledAccessUsers,
   transformGrants,
@@ -260,9 +262,9 @@ describe("transform.ts", () => {
             versionReleaseDate: "2024-01-01",
             humId: "hum0001",
             humVersionId: "hum0001-v1",
-            typeOfData: null,
-            criteria: null,
-            releaseDate: null,
+            typeOfData: "",
+            criteria: [],
+            releaseDate: [],
             experiments,
           },
         ]],
@@ -287,15 +289,154 @@ describe("transform.ts", () => {
             versionReleaseDate: "2024-01-01",
             humId: "hum0001",
             humVersionId: "hum0001-v1",
-            typeOfData: null,
-            criteria: null,
-            releaseDate: null,
+            typeOfData: "",
+            criteria: [],
+            releaseDate: [],
             experiments: existingExperiments,
           },
         ]],
       ])
       const version = assignDatasetVersion("JGAD000001", "ja", newExperiments, existingVersions)
       expect(version).toBe("v2")
+    })
+  })
+
+  describe("assignBilingualDatasetVersion", () => {
+    it("should assign v1 for first version", () => {
+      const jaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const enExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map<string, { version: string; jaExperiments: TransformedExperiment[]; enExperiments: TransformedExperiment[] }[]>()
+      const version = assignBilingualDatasetVersion("JGAD000001", jaExperiments, enExperiments, existingVersions)
+      expect(version).toBe("v1")
+    })
+
+    it("should return existing version when both ja and en match", () => {
+      const jaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const enExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map([
+        ["JGAD000001", [{ version: "v1", jaExperiments, enExperiments }]],
+      ])
+      const version = assignBilingualDatasetVersion("JGAD000001", jaExperiments, enExperiments, existingVersions)
+      expect(version).toBe("v1")
+    })
+
+    it("should assign new version when ja changes", () => {
+      const oldJaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const newJaExperiments: TransformedExperiment[] = [
+        { header: { text: "B-ja", rawHtml: "B-ja" }, data: {}, footers: [] },
+      ]
+      const enExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map([
+        ["JGAD000001", [{ version: "v1", jaExperiments: oldJaExperiments, enExperiments }]],
+      ])
+      const version = assignBilingualDatasetVersion("JGAD000001", newJaExperiments, enExperiments, existingVersions)
+      expect(version).toBe("v2")
+    })
+
+    it("should assign new version when en changes", () => {
+      const jaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const oldEnExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const newEnExperiments: TransformedExperiment[] = [
+        { header: { text: "B-en", rawHtml: "B-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map([
+        ["JGAD000001", [{ version: "v1", jaExperiments, enExperiments: oldEnExperiments }]],
+      ])
+      const version = assignBilingualDatasetVersion("JGAD000001", jaExperiments, newEnExperiments, existingVersions)
+      expect(version).toBe("v2")
+    })
+
+    it("should assign new version when both ja and en change", () => {
+      const oldJaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const oldEnExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const newJaExperiments: TransformedExperiment[] = [
+        { header: { text: "B-ja", rawHtml: "B-ja" }, data: {}, footers: [] },
+      ]
+      const newEnExperiments: TransformedExperiment[] = [
+        { header: { text: "B-en", rawHtml: "B-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map([
+        ["JGAD000001", [{ version: "v1", jaExperiments: oldJaExperiments, enExperiments: oldEnExperiments }]],
+      ])
+      const version = assignBilingualDatasetVersion("JGAD000001", newJaExperiments, newEnExperiments, existingVersions)
+      expect(version).toBe("v2")
+    })
+  })
+
+  describe("trackBilingualVersion", () => {
+    it("should add new version to empty map", () => {
+      const jaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const enExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map<string, { version: string; jaExperiments: TransformedExperiment[]; enExperiments: TransformedExperiment[] }[]>()
+
+      trackBilingualVersion("JGAD000001", "v1", jaExperiments, enExperiments, existingVersions)
+
+      expect(existingVersions.has("JGAD000001")).toBe(true)
+      expect(existingVersions.get("JGAD000001")).toHaveLength(1)
+      expect(existingVersions.get("JGAD000001")![0].version).toBe("v1")
+    })
+
+    it("should not add duplicate version", () => {
+      const jaExperiments: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const enExperiments: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map([
+        ["JGAD000001", [{ version: "v1", jaExperiments, enExperiments }]],
+      ])
+
+      trackBilingualVersion("JGAD000001", "v1", jaExperiments, enExperiments, existingVersions)
+
+      expect(existingVersions.get("JGAD000001")).toHaveLength(1)
+    })
+
+    it("should add new version to existing list", () => {
+      const jaExperimentsV1: TransformedExperiment[] = [
+        { header: { text: "A-ja", rawHtml: "A-ja" }, data: {}, footers: [] },
+      ]
+      const enExperimentsV1: TransformedExperiment[] = [
+        { header: { text: "A-en", rawHtml: "A-en" }, data: {}, footers: [] },
+      ]
+      const jaExperimentsV2: TransformedExperiment[] = [
+        { header: { text: "B-ja", rawHtml: "B-ja" }, data: {}, footers: [] },
+      ]
+      const enExperimentsV2: TransformedExperiment[] = [
+        { header: { text: "B-en", rawHtml: "B-en" }, data: {}, footers: [] },
+      ]
+      const existingVersions = new Map([
+        ["JGAD000001", [{ version: "v1", jaExperiments: jaExperimentsV1, enExperiments: enExperimentsV1 }]],
+      ])
+
+      trackBilingualVersion("JGAD000001", "v2", jaExperimentsV2, enExperimentsV2, existingVersions)
+
+      expect(existingVersions.get("JGAD000001")).toHaveLength(2)
+      expect(existingVersions.get("JGAD000001")![1].version).toBe("v2")
     })
   })
 

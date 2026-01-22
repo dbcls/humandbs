@@ -275,10 +275,10 @@ function importDatasetTsv(): void {
       hasCellLine: row.searchable_hasCellLine === "true",
     }
 
-    // Update other fields
-    dataset.typeOfData = row.typeOfData || null
-    dataset.criteria = parseJsonFieldOrNull<string[]>(row.criteria)
-    dataset.releaseDate = parseJsonFieldOrNull<string[]>(row.releaseDate)
+    // Update other fields (use empty defaults instead of null)
+    dataset.typeOfData = row.typeOfData || ""
+    dataset.criteria = parseJsonFieldOrNull<string[]>(row.criteria) ?? []
+    dataset.releaseDate = parseJsonFieldOrNull<string[]>(row.releaseDate) ?? []
 
     writeJsonFile(filePath, dataset)
     updated++

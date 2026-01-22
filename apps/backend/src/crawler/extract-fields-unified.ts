@@ -1,26 +1,24 @@
 /**
- * LLM Field Extraction
+ * LLM Field Extraction for Unified Structure
  *
- * Extracts structured fields from experiment data using Ollama LLM.
- * Reads from enriched-json and outputs to llm-extracted.
+ * Extracts structured fields from EnrichedUnifiedDataset using Ollama LLM.
+ * Reads from enriched-json and outputs to extracted-unified.
  *
  * Process:
- * 1. Copy enriched-json -> llm-extracted
- * 2. For each dataset, extract fields using LLM
+ * 1. Copy enriched-json -> extracted-unified (or skip with --skip-copy)
+ * 2. For each dataset (latest version only), extract fields using LLM
  * 3. Add searchable aggregated fields
+ * 4. Support --resume to continue from where it left off
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs"
+import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from "fs"
 import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import { getResultsDirPath } from "@/crawler/io"
-import { getBilingualDatasetsFiltered } from "@/crawler/merge-bilingual"
 import type {
-  TransformedExperiment,
   ExtractedExperimentFields,
   SearchableDatasetFields,
-  ExtractedExperiment,
   DiseaseInfo,
   PlatformInfo,
   DataVolume,
@@ -28,11 +26,12 @@ import type {
   SubjectCountType,
   HealthStatus,
   ReadType,
-  EnrichedDataset,
-  SearchableEnrichedDataset,
-  BilingualDataset,
-  BilingualExperimentPair,
-  ExtractedBilingualExperiment,
+  EnrichedUnifiedDataset,
+  UnifiedExperiment,
+  ExtractedUnifiedExperiment,
+  SearchableUnifiedDataset,
+  BilingualTextValue,
+  TextValue,
 } from "@/crawler/types"
 
 // === Ollama API ===
@@ -56,7 +55,7 @@ interface OllamaResponse {
 }
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:1143"
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen:32b"
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.3:70b"
 
 const callOllama = async (messages: OllamaMessage[]): Promise<string> => {
   const request: OllamaRequest = {
@@ -80,7 +79,7 @@ const callOllama = async (messages: OllamaMessage[]): Promise<string> => {
   return json.message.content
 }
 
-// === Extraction Logic ===
+// === Extraction Prompt ===
 
 const EXTRACTION_PROMPT = `Extract structured metadata from biomedical experiment data.
 Input is JSON with "en" and "ja" keys containing English and Japanese versions of the same experiment.
@@ -215,26 +214,7 @@ Total data size:
 Input:
 `
 
-/** Input structure for bilingual extraction (experiment level) */
-interface BilingualExperimentInput {
-  en: TransformedExperiment | null
-  ja: TransformedExperiment | null
-  externalMetadata: Record<string, unknown> | null
-}
-
-/** Format bilingual experiment as JSON for LLM */
-export const formatBilingualExperimentInput = (
-  experimentEn: TransformedExperiment | null,
-  experimentJa: TransformedExperiment | null,
-  externalMetadata: Record<string, unknown> | null,
-): string => {
-  const input: BilingualExperimentInput = {
-    en: experimentEn,
-    ja: experimentJa,
-    externalMetadata,
-  }
-  return JSON.stringify(input, null, 2)
-}
+// === Validation Functions ===
 
 const createEmptyExtractedFields = (): ExtractedExperimentFields => ({
   subjectCount: null,
@@ -304,7 +284,7 @@ const parseDiseases = (value: unknown): DiseaseInfo[] => {
     }))
 }
 
-export const parseExtractedFields = (jsonStr: string): ExtractedExperimentFields => {
+const parseExtractedFields = (jsonStr: string): ExtractedExperimentFields => {
   const empty = createEmptyExtractedFields()
 
   try {
@@ -336,13 +316,72 @@ export const parseExtractedFields = (jsonStr: string): ExtractedExperimentFields
   }
 }
 
-/** Extract fields from bilingual experiment */
-export const extractFieldsFromBilingualExperiment = async (
-  experimentEn: TransformedExperiment | null,
-  experimentJa: TransformedExperiment | null,
-  externalMetadata: Record<string, unknown> | null,
+// === LLM Input Conversion ===
+
+/** Input structure for bilingual extraction from Unified structure */
+interface BilingualExperimentInput {
+  en: {
+    header: TextValue | null
+    data: Record<string, TextValue | null>
+    footers: TextValue[]
+  } | null
+  ja: {
+    header: TextValue | null
+    data: Record<string, TextValue | null>
+    footers: TextValue[]
+  } | null
+  externalMetadata: Record<string, unknown> | null
+}
+
+/**
+ * Convert UnifiedExperiment to LLM input format.
+ * Separates ja/en fields from unified structure for the existing prompt format.
+ */
+const convertUnifiedToLlmInput = (
+  experiment: UnifiedExperiment,
+  originalMetadata: Record<string, unknown> | null,
+): BilingualExperimentInput => {
+  // Convert BilingualTextValue data to single-language format
+  const jaData: Record<string, TextValue | null> = {}
+  const enData: Record<string, TextValue | null> = {}
+
+  for (const [key, value] of Object.entries(experiment.data)) {
+    if (value) {
+      jaData[key] = value.ja
+      enData[key] = value.en
+    } else {
+      jaData[key] = null
+      enData[key] = null
+    }
+  }
+
+  return {
+    en: experiment.header.en ? {
+      header: experiment.header.en,
+      data: enData,
+      footers: experiment.footers.en,
+    } : null,
+    ja: experiment.header.ja ? {
+      header: experiment.header.ja,
+      data: jaData,
+      footers: experiment.footers.ja,
+    } : null,
+    externalMetadata: originalMetadata,
+  }
+}
+
+/** Format bilingual experiment input as JSON for LLM */
+const formatLlmInput = (input: BilingualExperimentInput): string => {
+  return JSON.stringify(input, null, 2)
+}
+
+/** Extract fields from UnifiedExperiment using LLM */
+const extractFieldsFromUnifiedExperiment = async (
+  experiment: UnifiedExperiment,
+  originalMetadata: Record<string, unknown> | null,
 ): Promise<ExtractedExperimentFields> => {
-  const userContent = formatBilingualExperimentInput(experimentEn, experimentJa, externalMetadata)
+  const input = convertUnifiedToLlmInput(experiment, originalMetadata)
+  const userContent = formatLlmInput(input)
 
   const messages: OllamaMessage[] = [
     { role: "system", content: EXTRACTION_PROMPT },
@@ -370,7 +409,7 @@ const convertToGB = (vol: DataVolume): number => {
   }
 }
 
-export const aggregateToSearchable = (experiments: ExtractedExperiment[]): SearchableDatasetFields => {
+const aggregateToSearchable = (experiments: ExtractedUnifiedExperiment[]): SearchableDatasetFields => {
   const diseases: DiseaseInfo[] = []
   const tissues = new Set<string>()
   const assayTypes = new Set<string>()
@@ -469,10 +508,25 @@ export const aggregateToSearchable = (experiments: ExtractedExperiment[]): Searc
   }
 }
 
+// === Resume Progress Tracking ===
+
+interface ExtractionProgress {
+  totalExperiments: number
+  status: "completed"
+}
+
+interface SearchableUnifiedDatasetWithProgress extends SearchableUnifiedDataset {
+  _extractionProgress?: ExtractionProgress
+}
+
 // === I/O ===
 
-const getLlmExtractedDir = (): string => {
-  const dir = join(getResultsDirPath(), "llm-extracted", "dataset")
+const getEnrichedJsonDir = (): string => {
+  return join(getResultsDirPath(), "enriched-json", "dataset")
+}
+
+const getExtractedUnifiedDir = (): string => {
+  const dir = join(getResultsDirPath(), "extracted-unified", "dataset")
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
@@ -480,207 +534,215 @@ const getLlmExtractedDir = (): string => {
 }
 
 /**
- * Copy enriched-json to llm-extracted (if not already exists)
+ * Copy enriched-json to extracted-unified (if not already exists)
  */
-export const copyEnrichedToExtracted = (force = false): void => {
+const copyEnrichedToExtracted = (force = false): void => {
   const srcBase = join(getResultsDirPath(), "enriched-json")
-  const dstBase = join(getResultsDirPath(), "llm-extracted")
+  const dstBase = join(getResultsDirPath(), "extracted-unified")
 
   if (!existsSync(srcBase)) {
     console.error("Error: enriched-json directory does not exist")
-    console.error("Please run fetch-external-api first")
+    console.error("Please run enrich-unified first")
     process.exit(1)
   }
 
   if (existsSync(dstBase) && !force) {
-    console.log("llm-extracted directory already exists (use --force to overwrite)")
+    console.log("extracted-unified directory already exists (use --force to overwrite)")
     return
   }
 
-  console.log("Copying enriched-json to llm-extracted...")
+  console.log("Copying enriched-json to extracted-unified...")
   cpSync(srcBase, dstBase, { recursive: true })
   console.log("Done copying")
 }
 
-const writeExtractedJson = (filename: string, data: SearchableEnrichedDataset): void => {
-  const dir = getLlmExtractedDir()
+const readEnrichedDataset = (filename: string): EnrichedUnifiedDataset | null => {
+  const filePath = join(getEnrichedJsonDir(), filename)
+  if (!existsSync(filePath)) return null
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8"))
+  } catch {
+    return null
+  }
+}
+
+const readExtractedDataset = (filename: string): SearchableUnifiedDatasetWithProgress | null => {
+  const filePath = join(getExtractedUnifiedDir(), filename)
+  if (!existsSync(filePath)) return null
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8"))
+  } catch {
+    return null
+  }
+}
+
+const writeExtractedDataset = (filename: string, data: SearchableUnifiedDatasetWithProgress): void => {
+  const dir = getExtractedUnifiedDir()
   const filePath = join(dir, filename)
   writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
 }
 
-// === Bilingual Processing ===
+// === Dataset Processing ===
 
-/**
- * Process experiment pairs from a bilingual dataset.
- * Uses the matched experiment pairs from merge-bilingual.ts.
- */
-const processExperimentPairs = async (
-  experimentPairs: BilingualExperimentPair[],
-  externalMetadata: Record<string, unknown> | null,
+/** Parse version number from version string (e.g., "v3" -> 3) */
+const parseVersionNumber = (version: string): number => {
+  const match = version.match(/^v(\d+)$/)
+  return match ? parseInt(match[1], 10) : 0
+}
+
+/** Get list of enriched dataset files */
+const listEnrichedDatasetFiles = (): string[] => {
+  const dir = getEnrichedJsonDir()
+  if (!existsSync(dir)) return []
+  return readdirSync(dir).filter(f => f.endsWith(".json"))
+}
+
+/** Parse datasetId and version from filename (e.g., "JGAD000001-v1.json" -> { datasetId: "JGAD000001", version: "v1" }) */
+const parseFilename = (filename: string): { datasetId: string; version: string } | null => {
+  const match = filename.match(/^(.+)-(v\d+)\.json$/)
+  if (!match) return null
+  return { datasetId: match[1], version: match[2] }
+}
+
+/** Filter to keep only the latest version of each dataset */
+const filterLatestVersions = (files: string[]): string[] => {
+  const datasetVersions = new Map<string, { version: string; versionNum: number; filename: string }[]>()
+
+  for (const filename of files) {
+    const parsed = parseFilename(filename)
+    if (!parsed) continue
+
+    const versionNum = parseVersionNumber(parsed.version)
+    const existing = datasetVersions.get(parsed.datasetId) ?? []
+    existing.push({ version: parsed.version, versionNum, filename })
+    datasetVersions.set(parsed.datasetId, existing)
+  }
+
+  const result: string[] = []
+  for (const versions of datasetVersions.values()) {
+    // Sort by version number descending and take the first (latest)
+    versions.sort((a, b) => b.versionNum - a.versionNum)
+    result.push(versions[0].filename)
+  }
+
+  return result.sort()
+}
+
+/** Process experiments in parallel batches */
+const processExperimentsParallel = async (
+  experiments: UnifiedExperiment[],
+  originalMetadata: Record<string, unknown> | null,
+  experimentConcurrency: number,
   dryRun: boolean,
-): Promise<ExtractedBilingualExperiment[]> => {
-  const results: ExtractedBilingualExperiment[] = []
+): Promise<ExtractedUnifiedExperiment[]> => {
+  const results: ExtractedUnifiedExperiment[] = new Array(experiments.length)
+  const total = experiments.length
 
-  for (let i = 0; i < experimentPairs.length; i++) {
-    const pair = experimentPairs[i]
-    console.log(`  -> Extracting experiment ${i + 1}/${experimentPairs.length} (${pair.matchType}: ${pair.experimentKey})...`)
+  // Process in batches
+  for (let i = 0; i < total; i += experimentConcurrency) {
+    const batchEnd = Math.min(i + experimentConcurrency, total)
+    const batchIndices = Array.from({ length: batchEnd - i }, (_, idx) => i + idx)
 
-    const extracted = dryRun
-      ? createEmptyExtractedFields()
-      : await extractFieldsFromBilingualExperiment(pair.en, pair.ja, externalMetadata)
+    console.log(`  -> Extracting experiments ${i + 1}-${batchEnd}/${total}...`)
 
-    results.push({
-      experimentKey: pair.experimentKey,
-      sourceJa: pair.ja,
-      sourceEn: pair.en,
-      extracted,
+    const batchPromises = batchIndices.map(async (idx) => {
+      const experiment = experiments[idx]
+
+      const extracted = dryRun
+        ? createEmptyExtractedFields()
+        : await extractFieldsFromUnifiedExperiment(experiment, originalMetadata)
+
+      return { idx, extracted }
     })
+
+    const batchResults = await Promise.all(batchPromises)
+
+    for (const { idx, extracted } of batchResults) {
+      // Exclude matchType from output
+      const { matchType: _, ...experimentWithoutMatchType } = experiments[idx]
+      results[idx] = {
+        ...experimentWithoutMatchType,
+        extracted,
+      }
+    }
   }
 
   return results
 }
 
-/**
- * Create ExtractedExperiment array for a specific language dataset.
- * Maps extracted fields from bilingual results to the language-specific experiments.
- */
-const createExtractedExperimentsForLang = (
-  dataset: EnrichedDataset,
-  experimentPairs: BilingualExperimentPair[],
-  extractedResults: ExtractedBilingualExperiment[],
-  lang: "ja" | "en",
-): ExtractedExperiment[] => {
-  // Build a map from experiment pairs to extracted fields
-  const extractedMap = new Map<TransformedExperiment, ExtractedExperimentFields>()
-
-  for (let i = 0; i < experimentPairs.length; i++) {
-    const pair = experimentPairs[i]
-    const extracted = extractedResults[i]?.extracted ?? createEmptyExtractedFields()
-    const exp = lang === "ja" ? pair.ja : pair.en
-    if (exp) {
-      extractedMap.set(exp, extracted)
-    }
+/** Process a single dataset with resume support (dataset-level) */
+const processDataset = async (
+  filename: string,
+  options: { dryRun: boolean; force: boolean; experimentConcurrency: number },
+): Promise<void> => {
+  const { dryRun, force, experimentConcurrency } = options
+  const parsed = parseFilename(filename)
+  if (!parsed) {
+    console.error(`Invalid filename format: ${filename}`)
+    return
   }
 
-  // Map dataset experiments to extracted fields
-  return dataset.experiments.map(exp => {
-    const extracted = extractedMap.get(exp) ?? createEmptyExtractedFields()
-    return { ...exp, extracted }
-  })
-}
-
-/**
- * Process a bilingual dataset using matched experiment pairs.
- */
-const processBilingualDataset = async (
-  bilingual: BilingualDataset,
-  dryRun: boolean,
-): Promise<void> => {
-  const { datasetId, version, jaDataset, enDataset, experimentPairs, originalMetadata } = bilingual
-
+  const { datasetId, version } = parsed
   console.log(`Processing ${datasetId} ${version}...`)
 
-  // Skip if already processed (check en file first, then ja)
-  const enFile = enDataset ? `${datasetId}-${version}-en.json` : null
-  const jaFile = jaDataset ? `${datasetId}-${version}-ja.json` : null
+  // Check for existing progress (dataset-level resume)
+  const existing = readExtractedDataset(filename)
+  const progress = existing?._extractionProgress
 
-  const checkFile = enFile ?? jaFile
-  if (checkFile) {
-    const extractedPath = join(getLlmExtractedDir(), checkFile)
-    if (existsSync(extractedPath)) {
-      const existing = JSON.parse(readFileSync(extractedPath, "utf8"))
-      if (existing.searchable) {
-        console.log("  -> Skip: already processed")
-        return
-      }
-    }
+  // Skip if already completed (unless --force)
+  if (progress?.status === "completed" && !force) {
+    console.log("  -> Skip: already completed")
+    return
   }
 
-  // Log experiment pair info
-  const jaCount = experimentPairs.filter(p => p.ja !== null).length
-  const enCount = experimentPairs.filter(p => p.en !== null).length
-  const matchStats = {
-    exact: experimentPairs.filter(p => p.matchType === "exact").length,
-    fuzzy: experimentPairs.filter(p => p.matchType === "fuzzy").length,
-    position: experimentPairs.filter(p => p.matchType === "position").length,
-    unmatchedJa: experimentPairs.filter(p => p.matchType === "unmatched-ja").length,
-    unmatchedEn: experimentPairs.filter(p => p.matchType === "unmatched-en").length,
+  // Read source data (from enriched-json)
+  const enriched = readEnrichedDataset(filename)
+  if (!enriched) {
+    console.error(`  -> Error: cannot read enriched dataset`)
+    return
   }
 
-  console.log(`  -> ${experimentPairs.length} experiment pairs (ja=${jaCount}, en=${enCount})`)
-  console.log(`  -> Match types: exact=${matchStats.exact}, fuzzy=${matchStats.fuzzy}, position=${matchStats.position}, unmatched-ja=${matchStats.unmatchedJa}, unmatched-en=${matchStats.unmatchedEn}`)
+  const totalExperiments = enriched.experiments.length
+  console.log(`  -> ${totalExperiments} experiments (concurrency: ${experimentConcurrency})`)
 
-  // Extract fields for each experiment pair
-  const extractedResults = await processExperimentPairs(experimentPairs, originalMetadata, dryRun)
+  // Process all experiments in parallel batches
+  const experiments = await processExperimentsParallel(
+    enriched.experiments,
+    enriched.originalMetadata ?? null,
+    experimentConcurrency,
+    dryRun,
+  )
 
-  // Aggregate to searchable fields (use all extracted experiments)
-  const allExtractedExperiments: ExtractedExperiment[] = extractedResults.map(result => ({
-    // Use en experiment as reference, fallback to ja
-    header: result.sourceEn?.header ?? result.sourceJa?.header ?? { text: "", rawHtml: "" },
-    data: result.sourceEn?.data ?? result.sourceJa?.data ?? {},
-    footers: result.sourceEn?.footers ?? result.sourceJa?.footers ?? [],
-    extracted: result.extracted,
-  }))
+  // Aggregate and save
+  const searchable = aggregateToSearchable(experiments)
 
-  const searchable = aggregateToSearchable(allExtractedExperiments)
-
-  // Write results to both ja and en files (same searchable fields)
-  if (jaDataset && jaFile) {
-    const extractedExperiments = createExtractedExperimentsForLang(
-      jaDataset,
-      experimentPairs,
-      extractedResults,
-      "ja",
-    )
-
-    const result: SearchableEnrichedDataset = {
-      ...jaDataset,
-      searchable,
-      experiments: extractedExperiments,
-    }
-
-    if (!dryRun) {
-      writeExtractedJson(jaFile, result)
-      console.log(`  -> Saved to llm-extracted/dataset/${jaFile}`)
-    } else {
-      console.log(`  -> [dry-run] Would save to llm-extracted/dataset/${jaFile}`)
-    }
+  const finalResult: SearchableUnifiedDatasetWithProgress = {
+    ...enriched,
+    searchable,
+    experiments,
+    _extractionProgress: {
+      totalExperiments,
+      status: "completed",
+    },
   }
 
-  if (enDataset && enFile) {
-    const extractedExperiments = createExtractedExperimentsForLang(
-      enDataset,
-      experimentPairs,
-      extractedResults,
-      "en",
-    )
-
-    const result: SearchableEnrichedDataset = {
-      ...enDataset,
-      searchable,
-      experiments: extractedExperiments,
-    }
-
-    if (!dryRun) {
-      writeExtractedJson(enFile, result)
-      console.log(`  -> Saved to llm-extracted/dataset/${enFile}`)
-    } else {
-      console.log(`  -> [dry-run] Would save to llm-extracted/dataset/${enFile}`)
-    }
-  }
-
-  if (dryRun) {
+  if (!dryRun) {
+    writeExtractedDataset(filename, finalResult)
+    console.log(`  -> Saved to extracted-unified/dataset/${filename}`)
+  } else {
+    console.log(`  -> [dry-run] Would save to extracted-unified/dataset/${filename}`)
     console.log("  -> Searchable fields:", JSON.stringify(searchable, null, 2))
   }
 }
 
-// === Main ===
+// === CLI ===
 
 interface ExtractArgs {
   file?: string
   humId?: string[]
   datasetId?: string[]
   concurrency?: number
+  experimentConcurrency?: number
   dryRun?: boolean
   force?: boolean
   skipCopy?: boolean
@@ -692,25 +754,13 @@ const parseArgs = (): ExtractArgs =>
     .option("file", { alias: "f", type: "string", description: "Process single file (by datasetId)" })
     .option("hum-id", { alias: "i", type: "array", string: true, description: "Process datasets for specified humIds" })
     .option("dataset-id", { alias: "d", type: "array", string: true, description: "Process specific datasetIds" })
-    .option("concurrency", { alias: "c", type: "number", default: 1, description: "Concurrent processing" })
+    .option("concurrency", { alias: "c", type: "number", default: 4, description: "Concurrent dataset processing" })
+    .option("experiment-concurrency", { alias: "e", type: "number", default: 4, description: "Concurrent experiment LLM calls per dataset" })
     .option("dry-run", { type: "boolean", default: false, description: "Dry run without LLM calls" })
-    .option("force", { type: "boolean", default: false, description: "Force overwrite llm-extracted directory" })
-    .option("skip-copy", { type: "boolean", default: false, description: "Skip copying enriched-json to llm-extracted" })
+    .option("force", { type: "boolean", default: false, description: "Force reprocess even if already completed" })
+    .option("skip-copy", { type: "boolean", default: false, description: "Skip copying enriched-json to extracted-unified" })
     .option("latest-only", { type: "boolean", default: true, description: "Process only the latest version of each dataset" })
     .parseSync()
-
-const processBilingualDatasets = async (
-  datasets: BilingualDataset[],
-  concurrency: number,
-  dryRun: boolean,
-): Promise<void> => {
-  console.log(`Processing ${datasets.length} bilingual datasets...`)
-
-  for (let i = 0; i < datasets.length; i += concurrency) {
-    const batch = datasets.slice(i, i + concurrency)
-    await Promise.all(batch.map(d => processBilingualDataset(d, dryRun)))
-  }
-}
 
 const main = async (): Promise<void> => {
   const args = parseArgs()
@@ -720,34 +770,62 @@ const main = async (): Promise<void> => {
 
   const dryRun = args.dryRun ?? false
   const concurrency = args.concurrency ?? 1
+  const experimentConcurrency = args.experimentConcurrency ?? 8
+  const latestOnly = args.latestOnly ?? true
+  const force = args.force ?? false
+
+  console.log(`Dataset concurrency: ${concurrency}, Experiment concurrency: ${experimentConcurrency}`)
 
   if (!args.skipCopy) {
     copyEnrichedToExtracted(args.force)
   }
 
-  // Get bilingual datasets using merge-bilingual.ts
-  let datasets = getBilingualDatasetsFiltered({
-    humIds: args.humId,
-    datasetIds: args.datasetId,
-    latestVersionOnly: args.latestOnly ?? true,
-  })
+  // Get list of dataset files
+  let files = listEnrichedDatasetFiles()
 
-  // Filter by specific file if specified (for debugging)
+  // Filter by specific file
   if (args.file) {
-    const targetDatasetId = args.file.split("-")[0] // e.g., "JGAD000004-v4-en.json" -> "JGAD000004"
-    datasets = datasets.filter(d => d.datasetId === targetDatasetId)
+    const targetFile = args.file.endsWith(".json") ? args.file : `${args.file}.json`
+    files = files.filter(f => f === targetFile || f.startsWith(args.file!))
   }
 
-  if (datasets.length === 0) {
+  // Filter by humId
+  if (args.humId && args.humId.length > 0) {
+    const humIdSet = new Set(args.humId)
+    files = files.filter(f => {
+      const data = readEnrichedDataset(f)
+      return data && humIdSet.has(data.humId)
+    })
+  }
+
+  // Filter by datasetId
+  if (args.datasetId && args.datasetId.length > 0) {
+    const datasetIdSet = new Set(args.datasetId)
+    files = files.filter(f => {
+      const parsed = parseFilename(f)
+      return parsed && datasetIdSet.has(parsed.datasetId)
+    })
+  }
+
+  // Filter to latest versions only
+  if (latestOnly) {
+    files = filterLatestVersions(files)
+  }
+
+  if (files.length === 0) {
     console.log("No datasets to process")
     return
   }
 
-  console.log(`Found ${datasets.length} bilingual dataset pairs`)
+  console.log(`Found ${files.length} datasets to process`)
 
-  await processBilingualDatasets(datasets, concurrency, dryRun)
+  // Process datasets with concurrency
+  for (let i = 0; i < files.length; i += concurrency) {
+    const batch = files.slice(i, i + concurrency)
+    await Promise.all(batch.map(f => processDataset(f, { dryRun, force, experimentConcurrency })))
+  }
 
-  const outputDir = join(getResultsDirPath(), "llm-extracted")
+  const outputDir = join(getResultsDirPath(), "extracted-unified")
   console.log(`Done! Output: ${outputDir}`)
 }
 

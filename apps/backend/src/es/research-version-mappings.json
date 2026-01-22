@@ -5,24 +5,46 @@
       "humId": {
         "type": "keyword"
       },
-      "lang": {
-        "type": "keyword"
-      },
       "version": {
         "type": "keyword"
       },
       "humVersionId": {
         "type": "keyword"
       },
-      "datasets": {
+      "datasetIds": {
         "type": "keyword"
       },
-      "releaseDate": {
-        "type": "date",
-        "format": "strict_date||strict_date_time"
+      "versionReleaseDate": {
+        "type": "keyword"
       },
       "releaseNote": {
-        "type": "text"
+        "type": "object",
+        "properties": {
+          "ja": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "text"
+              },
+              "rawHtml": {
+                "type": "text",
+                "index": false
+              }
+            }
+          },
+          "en": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "text"
+              },
+              "rawHtml": {
+                "type": "text",
+                "index": false
+              }
+            }
+          }
+        }
       }
     }
   }

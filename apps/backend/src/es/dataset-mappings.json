@@ -5,9 +5,6 @@
       "datasetId": {
         "type": "keyword"
       },
-      "lang": {
-        "type": "keyword"
-      },
       "version": {
         "type": "keyword"
       },
@@ -21,7 +18,15 @@
         "type": "keyword"
       },
       "typeOfData": {
-        "type": "keyword"
+        "type": "object",
+        "properties": {
+          "ja": {
+            "type": "keyword"
+          },
+          "en": {
+            "type": "keyword"
+          }
+        }
       },
       "criteria": {
         "type": "keyword"
@@ -85,20 +90,48 @@
       "experiments": {
         "type": "nested",
         "properties": {
+          "experimentKey": {
+            "type": "keyword"
+          },
+          "matchType": {
+            "type": "keyword"
+          },
           "header": {
             "type": "object",
             "properties": {
-              "text": {
-                "type": "text",
-                "fields": {
-                  "kw": {
-                    "type": "keyword"
+              "ja": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "text",
+                    "fields": {
+                      "kw": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "rawHtml": {
+                    "type": "text",
+                    "index": false
                   }
                 }
               },
-              "rawHtml": {
-                "type": "text",
-                "index": false
+              "en": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "text",
+                    "fields": {
+                      "kw": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "rawHtml": {
+                    "type": "text",
+                    "index": false
+                  }
+                }
               }
             }
           },
@@ -108,12 +141,29 @@
           "footers": {
             "type": "object",
             "properties": {
-              "text": {
-                "type": "text"
+              "ja": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "text"
+                  },
+                  "rawHtml": {
+                    "type": "text",
+                    "index": false
+                  }
+                }
               },
-              "rawHtml": {
-                "type": "text",
-                "index": false
+              "en": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "text"
+                  },
+                  "rawHtml": {
+                    "type": "text",
+                    "index": false
+                  }
+                }
               }
             }
           },

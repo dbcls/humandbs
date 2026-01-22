@@ -3,15 +3,22 @@ import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import {
+  applyDatasetIdSpecialCase,
   cleanPublicationDatasetId,
   CONTROLLED_ACCESS_USERS_DATASET_ID_MAP,
   CRITERIA_CANONICAL_MAP,
   DATASET_ID_SPECIAL_CASES,
   DEFAULT_CONCURRENCY,
+  extractIdsByType,
   HUMANDBS_BASE_URL,
+  ID_FIELDS,
   INVALID_DOI_VALUES,
   INVALID_GRANT_ID_VALUES,
+  INVALID_ID_VALUES,
+  INVALID_JGAS_IDS,
   isInvalidPublicationDatasetId,
+  isValidDatasetId,
+  JGAD_TYPO_TO_JGAS,
   JGAX_TO_JGAS_MAP,
   MAX_CONCURRENCY,
   MOL_DATA_SPLIT_KEYS,
@@ -471,18 +478,30 @@ const convertToJgas = (id: string): string => {
 
 /**
  * Expand JGAS ID to JGAD IDs using JGA API
- * Falls back to original ID if no JGAD found
+ * Returns empty array if no JGAD found (JGAS should not remain as datasetId)
  */
 const expandJgasToJgad = async (id: string): Promise<string[]> => {
   if (!/^JGAS\d{6}$/.test(id)) {
+    // Filter out invalid IDs (also applies to non-JGAS IDs like JGAD)
+    if (INVALID_ID_VALUES.includes(id)) {
+      return []
+    }
     return [id]
   }
+  // Skip invalid JGAS IDs that don't exist
+  if (INVALID_JGAS_IDS.has(id)) {
+    return []
+  }
   const jgadIds = await getDatasetsFromStudy(id)
-  return jgadIds.length > 0 ? jgadIds : [id]
+  if (jgadIds.length === 0) {
+    console.warn(`[normalize] JGAS ${id} has no corresponding JGAD (unexpected - this should not happen)`)
+  }
+  // Filter out invalid JGAD IDs
+  return jgadIds.filter(jgadId => !INVALID_ID_VALUES.includes(jgadId))
 }
 
 /**
- * Process a single dataset ID: apply mapping, convert JGAX→JGAS, expand range, expand JGAS→JGAD
+ * Process a single dataset ID: apply special cases, mapping, convert JGAX→JGAS, expand range, expand JGAS→JGAD
  */
 const processDatasetId = async (
   id: string,
@@ -493,17 +512,25 @@ const processDatasetId = async (
     return idMap[id]
   }
 
-  // Convert JGAX or old JGA format to JGAS
-  const convertedId = convertToJgas(id)
+  // Fix typos: JGAD written by mistake instead of JGAS
+  const typoFixedId = JGAD_TYPO_TO_JGAS[id] ?? id
 
-  // Expand JGAD range
-  const expandedIds = expandJgadRange(convertedId)
+  // Apply special case transformations (e.g., ja/en bilingual ID normalization)
+  const specialCaseIds = applyDatasetIdSpecialCase(typoFixedId)
 
-  // Expand JGAS to JGAD for each expanded ID
   const results: string[] = []
-  for (const expandedId of expandedIds) {
-    const jgadIds = await expandJgasToJgad(expandedId)
-    results.push(...jgadIds)
+  for (const specialCaseId of specialCaseIds) {
+    // Convert JGAX or old JGA format to JGAS
+    const convertedId = convertToJgas(specialCaseId)
+
+    // Expand JGAD range
+    const expandedIds = expandJgadRange(convertedId)
+
+    // Expand JGAS to JGAD for each expanded ID
+    for (const expandedId of expandedIds) {
+      const jgadIds = await expandJgasToJgad(expandedId)
+      results.push(...jgadIds)
+    }
   }
 
   return results
@@ -545,8 +572,60 @@ const fixDatasetIdsInControlledAccessUsers = async (
   }))
 }
 
+/**
+ * Extract all dataset IDs from molecularData's ID fields (text and rawHtml)
+ */
+const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): string[] => {
+  const ids = new Set<string>()
+
+  for (const key of ID_FIELDS) {
+    const val = molData.data[key]
+    if (!val) continue
+
+    const values = Array.isArray(val) ? val : [val]
+    for (const v of values) {
+      // Extract from text
+      const textIds = extractIdsByType(v.text)
+      for (const idList of Object.values(textIds)) {
+        for (const id of idList) {
+          ids.add(id)
+        }
+      }
+      // Extract from rawHtml
+      const htmlIds = extractIdsByType(v.rawHtml)
+      for (const idList of Object.values(htmlIds)) {
+        for (const id of idList) {
+          ids.add(id)
+        }
+      }
+    }
+  }
+
+  return [...ids]
+}
+
+/**
+ * Find matching molecularData for a summary datasetId
+ * Match if the summary datasetId is contained in the molData header text
+ */
+const findMatchingMolData = (
+  summaryDatasetId: string,
+  molecularData: NormalizedMolecularData[],
+): NormalizedMolecularData | undefined => {
+  // Normalize for matching (remove spaces, convert to lowercase for comparison)
+  const normalizedSummaryId = summaryDatasetId.toLowerCase().replace(/\s+/g, "")
+
+  return molecularData.find(md => {
+    const headerText = md.id?.text ?? ""
+    const normalizedHeader = headerText.toLowerCase().replace(/\s+/g, "")
+    // Check if the summary datasetId is contained in the header
+    return normalizedHeader.includes(normalizedSummaryId)
+  })
+}
+
 const fixDatasetIdsInSummaryDatasets = async (
   datasets: NormalizedParseResult["summary"]["datasets"],
+  molecularData: NormalizedMolecularData[],
 ): Promise<NormalizedParseResult["summary"]["datasets"]> => {
   return Promise.all(datasets.map(async ds => {
     if (!ds.datasetId || ds.datasetId.length === 0) {
@@ -555,9 +634,29 @@ const fixDatasetIdsInSummaryDatasets = async (
 
     const mappedIds: string[] = []
     for (const id of ds.datasetId) {
-      // Use empty map since there's no special mapping for summary datasets
-      const processedIds = await processDatasetId(id, {})
-      mappedIds.push(...processedIds)
+      // If the ID is already a valid dataset ID pattern, process it normally
+      if (isValidDatasetId(id)) {
+        const processedIds = await processDatasetId(id, {})
+        mappedIds.push(...processedIds)
+        continue
+      }
+
+      // Otherwise, try to expand from matching molecularData
+      const matchingMolData = findMatchingMolData(id, molecularData)
+      if (matchingMolData) {
+        const extractedIds = extractDatasetIdsFromMolData(matchingMolData)
+        if (extractedIds.length > 0) {
+          // Process each extracted ID (apply special cases, expand JGAS, etc.)
+          for (const extractedId of extractedIds) {
+            const processedIds = await processDatasetId(extractedId, {})
+            mappedIds.push(...processedIds)
+          }
+          continue
+        }
+      }
+
+      // Fallback: keep the original ID (will be filtered out later if invalid)
+      mappedIds.push(id)
     }
 
     return {
@@ -659,11 +758,15 @@ export const normalizeOneDetail = async (
     normalizedDetail.publications = removeUnusedPublications(normalizedDetail.publications)
     normalizedDetail.publications = await fixDatasetIdsInPublications(normalizedDetail.publications)
     normalizedDetail.controlledAccessUsers = await fixDatasetIdsInControlledAccessUsers(normalizedDetail.controlledAccessUsers)
-    normalizedDetail.summary.datasets = await fixDatasetIdsInSummaryDatasets(normalizedDetail.summary.datasets)
     normalizedDetail.releases = fixDateInReleases(normalizedDetail.releases)
     for (const molData of normalizedDetail.molecularData) {
       molData.data = normalizeMolData(molData.data, humVersionId, lang)
     }
+    // Must be called after normalizeMolData to ensure data keys are normalized to English
+    normalizedDetail.summary.datasets = await fixDatasetIdsInSummaryDatasets(
+      normalizedDetail.summary.datasets,
+      normalizedDetail.molecularData,
+    )
 
     writeNormalizedDetailJson(humVersionId, lang, normalizedDetail)
     return { success: true, humVersionId, lang }

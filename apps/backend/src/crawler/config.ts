@@ -148,6 +148,25 @@ export const getCriteriaDisplayValue = (
   return criteria
 }
 
+// Reverse mapping from display value to canonical
+const CRITERIA_DISPLAY_TO_CANONICAL: Record<string, CriteriaCanonical> = {
+  // Japanese display values
+  "制限公開 (Type I)": "Controlled-access (Type I)",
+  "制限公開 (Type II)": "Controlled-access (Type II)",
+  "非制限公開": "Unrestricted-access",
+  // English (canonical) values
+  "Controlled-access (Type I)": "Controlled-access (Type I)",
+  "Controlled-access (Type II)": "Controlled-access (Type II)",
+  "Unrestricted-access": "Unrestricted-access",
+}
+
+/**
+ * Convert display value back to canonical criteria value
+ */
+export const getCriteriaCanonical = (displayValue: string): CriteriaCanonical | null => {
+  return CRITERIA_DISPLAY_TO_CANONICAL[displayValue] ?? null
+}
+
 // === Molecular Data Keys ===
 
 export const MOL_DATA_UNUSED_KEY = "不要な項目のため削除する"
@@ -210,6 +229,11 @@ export const DATASET_ID_SPECIAL_CASES: Record<string, string[]> = {
   "35 Diseases": ["35 Diseases"],  // prevent split
   "35疾患": ["35疾患"],  // prevent split (Japanese)
   "hum0009v1.CpG.v1": ["hum0009.v1.CpG.v1"],  // typo fix (missing dot)
+  // ja/en bilingual ID normalization (incorrect ja -> correct en)
+  "hum0014.v7.POAG-1.v1": ["hum0014.v7.POAG.v1"],
+  "hum0072.v1.narco.v1": ["hum0072.v1.nrc.v1"],
+  // ja/en bilingual ID normalization (incorrect en -> correct ja)
+  "hum0014.v12.T2DMw.v1": ["hum0014.v12.T2DMwN.v1"],
 }
 
 // === Dataset ID Mapping (Publications) ===
@@ -249,6 +273,43 @@ export const OLD_JGA_TO_JGAS_MAP: Record<string, string> = {
   "JGA000122": "JGAS000112",
 }
 
+// Additional JGAD IDs to append to JGAS → JGAD mapping (when JGA API doesn't return them)
+export const JGAS_TO_ADDITIONAL_JGAD: Record<string, string[]> = {
+  "JGAS000106": ["JGAD000114"], // API returns JGAD000112, 000113; add 000114
+  "JGAS000818": ["JGAD000986"], // JGAD000986 belongs to JGAS000818
+}
+
+// Typo corrections: JGAD → JGAS (when JGAD was written by mistake instead of JGAS)
+export const JGAD_TYPO_TO_JGAS: Record<string, string> = {
+  "JGAD000220": "JGAS000220", // hum0214-v5 en typo
+}
+
+// Dataset IDs to ignore for specific humIds (special cases)
+export const IGNORE_DATASET_ID_FOR_HUM: Record<string, string[]> = {
+  "hum0184": ["JGAD000117"], // JGAD000117 should be ignored for hum0184
+  "hum0195": ["JGAD000406"], // JGAD000406 belongs to hum0214, not hum0195 (referenced in publications.datasetIds)
+}
+
+// Dataset ID metadata inheritance (child inherits metadata from parent)
+// Use when a datasetId is not in summary.datasets but should use another datasetId's metadata
+export const DATASET_METADATA_INHERITANCE: Record<string, string> = {
+  "JGAD000114": "JGAD000112", // JGAD000114 inherits metadata from JGAD000112
+  "JGAD000220": "JGAD000371", // hum0214-v5 en typo (JGAD000220 should be JGAS000220), inherit from JGAD000371
+  "JGAD000986": "JGAD000960", // JGAD000986 inherits metadata from JGAD000960 (hum0535)
+  // hum0197 microbiome datasets (MAG, VIRUS, CRISPR) inherit from DRA014186 which has the same typeOfData
+  "hum0197.v12.MAG.v1": "DRA014186",
+  "hum0197.v12.VIRUS.v1": "DRA014186",
+  "hum0197.v12.CRISPR.v1": "DRA014186",
+}
+
+// JGAS IDs that do not exist (should be silently ignored)
+export const INVALID_JGAS_IDS: Set<string> = new Set([
+  "JGAS000000", // Placeholder ID, does not exist
+  "JGAS000031", // Does not exist in JGA
+  "JGAS000525", // Does not exist in JGA
+  "JGAS000775", // Does not exist in JGA
+])
+
 // === ID Pattern Definitions ===
 
 const SRA_REGEX = /(DRA|ERA|SRP|SRR|SRX|SRS)\d{6}/g
@@ -278,7 +339,14 @@ export const ID_FIELDS = [
   "Sequence Read Archive Accession",
 ]
 
-export const INVALID_ID_VALUES = ["E-GEAD-000"]
+export const INVALID_ID_VALUES = [
+  "E-GEAD-000",
+  "E-GEAD-1000", // Does not exist
+  "JGAD000117", // Appears in explanation text only (hum0160-v2), not a real datasetId
+  "JGAD000447", // Does not exist in JGA
+  "JGAD000490", // Does not exist in JGA
+  "JGAD000917", // Does not exist in JGA
+]
 
 /**
  * Extract IDs by type from a text string

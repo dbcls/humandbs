@@ -60,8 +60,8 @@ export const parseHomeTitles = (html: string): Record<string, string> => {
     const humId = m[1]
 
     const tds = row.querySelectorAll("td")
-    if (tds.length < 2) continue
-    const title = tds[1].textContent?.trim().replace(/\s+/g, " ")
+    if (tds.length < 1) continue
+    const title = tds[0].textContent?.trim().replace(/\s+/g, " ")
     if (title) mapping[humId] = title
   }
 
