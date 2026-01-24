@@ -1,0 +1,3 @@
+{
+  "invalidGrantIdValues": ["None", "null", "なし", "&nbsp;"]
+}

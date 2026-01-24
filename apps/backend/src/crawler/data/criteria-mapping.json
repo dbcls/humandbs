@@ -1,0 +1,24 @@
+{
+  "canonical": {
+    "Controlled-access (Type I)": {
+      "ja": "制限公開 (Type I)",
+      "en": "Controlled-access (Type I)"
+    },
+    "Controlled-access (Type II)": {
+      "ja": "制限公開 (Type II)",
+      "en": "Controlled-access (Type II)"
+    },
+    "Unrestricted-access": {
+      "ja": "非制限公開",
+      "en": "Unrestricted-access"
+    }
+  },
+  "normalize": {
+    "制限公開(typei)": "Controlled-access (Type I)",
+    "controlledaccess(typei)": "Controlled-access (Type I)",
+    "制限公開(typeii)": "Controlled-access (Type II)",
+    "controlledaccess(typeii)": "Controlled-access (Type II)",
+    "非制限公開": "Unrestricted-access",
+    "unrestrictedaccess": "Unrestricted-access"
+  }
+}

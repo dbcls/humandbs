@@ -1,0 +1,448 @@
+/**
+ * TSV Import
+ *
+ * Imports manually edited TSV files back into JSON format
+ * Merges TSV changes into extracted-unified JSON files and outputs to final/ directory
+ * Uses Unified (ja/en integrated) data format
+ *
+ * Process:
+ * 1. Copy extracted-unified → final
+ * 2. Read TSV files
+ * 3. Merge TSV edits into final JSON files
+ */
+import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs"
+import { join } from "path"
+import yargs from "yargs"
+import { hideBin } from "yargs/helpers"
+
+import type {
+  BilingualText,
+  CriteriaCanonical,
+  DiseaseInfo,
+  PlatformInfo,
+  DataVolume,
+  DataVolumeUnit,
+  Research,
+  Publication,
+  SearchableDataset,
+  ExtractedExperimentFields,
+  HealthStatus,
+  SubjectCountType,
+  ReadType,
+} from "@/crawler/types"
+import { getResultsDir } from "@/crawler/utils/io"
+import { logger, setLogLevel } from "@/crawler/utils/logger"
+
+// TSV Parsing
+
+type TsvRow = Record<string, string>
+
+const parseTsv = (content: string): TsvRow[] => {
+  const lines = content.split("\n").filter(line => line.trim() !== "")
+  if (lines.length === 0) return []
+
+  const headers = lines[0].split("\t")
+  const rows: TsvRow[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split("\t")
+    const row: TsvRow = {}
+    for (let j = 0; j < headers.length; j++) {
+      row[headers[j]] = unescapeTsv(values[j] ?? "")
+    }
+    rows.push(row)
+  }
+
+  return rows
+}
+
+const unescapeTsv = (value: string): string => {
+  return value
+    .replace(/\\t/g, "\t")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+}
+
+const parseJsonField = <T>(value: string, defaultValue: T): T => {
+  if (!value || value.trim() === "") return defaultValue
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return defaultValue
+  }
+}
+
+const parseJsonFieldOrNull = <T>(value: string): T | null => {
+  if (!value || value.trim() === "") return null
+  try {
+    const parsed = JSON.parse(value) as T
+    if (Array.isArray(parsed) && parsed.length === 0) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+const parseNumberOrNull = (value: string): number | null => {
+  if (!value || value.trim() === "") return null
+  const num = parseFloat(value)
+  return isNaN(num) ? null : num
+}
+
+const parseBooleanOrNull = (value: string): boolean | null => {
+  if (!value || value.trim() === "") return null
+  if (value === "true") return true
+  if (value === "false") return false
+  return null
+}
+
+// Directory Functions
+
+const getTsvDir = (): string => {
+  return join(getResultsDir(), "tsv")
+}
+
+const getFinalDir = (type: "research" | "research-version" | "dataset"): string => {
+  const dir = join(getResultsDir(), "final", type)
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
+/**
+ * Copy extracted-unified to final (if not already exists)
+ */
+export const copyExtractedToFinal = (force = false): void => {
+  const srcBase = join(getResultsDir(), "extracted-unified")
+  const dstBase = join(getResultsDir(), "final")
+
+  if (!existsSync(srcBase)) {
+    logger.error("Error: extracted-unified directory does not exist")
+    logger.error("Please run extract-fields-unified first")
+    process.exit(1)
+  }
+
+  if (existsSync(dstBase) && !force) {
+    logger.info("final directory already exists (use --force to overwrite)")
+    return
+  }
+
+  logger.info("Copying extracted-unified to final...")
+  cpSync(srcBase, dstBase, { recursive: true })
+  logger.info("Copy completed")
+}
+
+// Read/Write JSON
+
+const readJsonFile = <T>(filePath: string): T | null => {
+  if (!existsSync(filePath)) return null
+  const content = readFileSync(filePath, "utf8")
+  return JSON.parse(content) as T
+}
+
+const writeJsonFile = (filePath: string, data: unknown): void => {
+  writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
+}
+
+// Parse Helpers
+
+const parseBilingualText = (ja: string, en: string): BilingualText => {
+  return {
+    ja: ja || null,
+    en: en || null,
+  }
+}
+
+const parseDisease = (str: string): DiseaseInfo | null => {
+  if (!str) return null
+  // Format: "label(icd10)" or just "label"
+  const match = str.match(/^(.+?)\(([^)]+)\)$/)
+  if (match) {
+    return { label: match[1], icd10: match[2] }
+  }
+  return { label: str, icd10: null }
+}
+
+const parseDataVolume = (str: string): DataVolume | null => {
+  if (!str) return null
+  // Format: "123.45 GB" or "1.2 TB"
+  const match = str.match(/^([\d.]+)\s*(KB|MB|GB|TB)$/i)
+  if (match) {
+    return {
+      value: parseFloat(match[1]),
+      unit: match[2].toUpperCase() as DataVolumeUnit,
+    }
+  }
+  return null
+}
+
+// Import Publication TSV
+
+export const importPublicationTsv = (): void => {
+  logger.info("Importing research-publication.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-publication.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-publication.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  // Group by humId
+  const groupedRows = new Map<string, TsvRow[]>()
+  for (const row of rows) {
+    const key = row.humId
+    const existing = groupedRows.get(key) ?? []
+    existing.push(row)
+    groupedRows.set(key, existing)
+  }
+
+  // Update each research file
+  const finalDir = getFinalDir("research")
+  let updated = 0
+
+  for (const [humId, pubRows] of groupedRows) {
+    const filename = `${humId}.json`
+    const filePath = join(finalDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Build new publications array
+    const newPubs: Publication[] = pubRows.map(row => ({
+      title: parseBilingualText(row.title_ja ?? "", row.title_en ?? ""),
+      doi: row.doi || null,
+      datasetIds: parseJsonField<string[]>(row.datasetIds, []),
+    }))
+
+    research.relatedPublication = newPubs
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research files", { count: updated })
+}
+
+// Import Dataset TSV
+
+export const importDatasetTsv = (): void => {
+  logger.info("Importing dataset.tsv...")
+
+  const tsvPath = join(getTsvDir(), "dataset.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: dataset.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  const finalDir = getFinalDir("dataset")
+  let updated = 0
+
+  for (const row of rows) {
+    const filename = `${row.datasetId}-${row.version}.json`
+    const filePath = join(finalDir, filename)
+
+    const dataset = readJsonFile<SearchableDataset>(filePath)
+    if (!dataset) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Parse diseases from JSON array
+    const diseasesRaw = parseJsonField<(DiseaseInfo | string)[]>(row.searchable_diseases, [])
+    const diseases = diseasesRaw
+      .map(d => {
+        if (typeof d === "string") return parseDisease(d)
+        return d
+      })
+      .filter((d): d is DiseaseInfo => d !== null)
+
+    // Parse platforms from JSON array
+    const platformsRaw = parseJsonField<PlatformInfo[]>(row.searchable_platforms, [])
+    const platforms = platformsRaw.filter((p): p is PlatformInfo => p !== null && p.vendor !== undefined)
+
+    dataset.searchable = {
+      ...dataset.searchable,
+      diseases,
+      tissues: parseJsonField<string[]>(row.searchable_tissues, []),
+      assayTypes: parseJsonField<string[]>(row.searchable_assayTypes, []),
+      platforms,
+      readTypes: parseJsonField<string[]>(row.searchable_readTypes, []),
+      fileTypes: parseJsonField<string[]>(row.searchable_fileTypes, []),
+      totalSubjectCount: parseNumberOrNull(row.searchable_totalSubjectCount),
+      totalDataVolume: parseDataVolume(row.searchable_totalDataVolume),
+      hasHealthyControl: row.searchable_hasHealthyControl === "true",
+      hasTumor: row.searchable_hasTumor === "true",
+      hasCellLine: row.searchable_hasCellLine === "true",
+    }
+
+    // Update bilingual fields
+    dataset.typeOfData = parseBilingualText(row.typeOfData_ja ?? "", row.typeOfData_en ?? "")
+    dataset.criteria = parseJsonFieldOrNull<CriteriaCanonical[]>(row.criteria) ?? []
+    dataset.releaseDate = parseJsonFieldOrNull<string[]>(row.releaseDate) ?? []
+
+    writeJsonFile(filePath, dataset)
+    updated++
+  }
+
+  logger.info("Updated dataset files", { count: updated })
+}
+
+// Import Experiment TSV
+
+export const importExperimentTsv = (): void => {
+  logger.info("Importing experiment.tsv...")
+
+  const tsvPath = join(getTsvDir(), "experiment.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: experiment.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  // Group by dataset file
+  const groupedRows = new Map<string, TsvRow[]>()
+  for (const row of rows) {
+    const filename = `${row.datasetId}-${row.version}.json`
+    const existing = groupedRows.get(filename) ?? []
+    existing.push(row)
+    groupedRows.set(filename, existing)
+  }
+
+  const finalDir = getFinalDir("dataset")
+  let updated = 0
+
+  for (const [filename, expRows] of groupedRows) {
+    const filePath = join(finalDir, filename)
+
+    const dataset = readJsonFile<SearchableDataset>(filePath)
+    if (!dataset) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Sort rows by experimentIndex
+    expRows.sort((a, b) => parseInt(a.experimentIndex) - parseInt(b.experimentIndex))
+
+    // Update experiments
+    for (const row of expRows) {
+      const index = parseInt(row.experimentIndex)
+      if (index >= 0 && index < dataset.experiments.length) {
+        const exp = dataset.experiments[index]
+
+        // Parse diseases from JSON array of strings like ["label(icd10)", "label2"]
+        const diseasesRaw = parseJsonField<string[]>(row.extracted_diseases, [])
+        const diseases = diseasesRaw
+          .map(parseDisease)
+          .filter((d): d is DiseaseInfo => d !== null)
+
+        const extracted: ExtractedExperimentFields = {
+          subjectCount: parseNumberOrNull(row.extracted_subjectCount),
+          subjectCountType: (row.extracted_subjectCountType as SubjectCountType) || null,
+          healthStatus: (row.extracted_healthStatus as HealthStatus) || null,
+          diseases,
+          tissue: row.extracted_tissue || null,
+          isTumor: parseBooleanOrNull(row.extracted_isTumor),
+          cellLine: row.extracted_cellLine || null,
+          assayType: row.extracted_assayType || null,
+          libraryKit: row.extracted_libraryKit || null,
+          platformVendor: row.extracted_platformVendor || null,
+          platformModel: row.extracted_platformModel || null,
+          readType: (row.extracted_readType as ReadType) || null,
+          readLength: parseNumberOrNull(row.extracted_readLength),
+          targets: row.extracted_targets || null,
+          fileTypes: parseJsonField<string[]>(row.extracted_fileTypes, []),
+          dataVolume: parseDataVolume(row.extracted_dataVolume),
+        }
+
+        exp.extracted = extracted
+      }
+    }
+
+    writeJsonFile(filePath, dataset)
+    updated++
+  }
+
+  logger.info("Updated dataset files", { count: updated })
+}
+
+// Import All
+
+export const importAllTsv = (force: boolean): void => {
+  logger.info("Starting TSV import...")
+
+  // Step 1: Copy extracted-unified to final
+  copyExtractedToFinal(force)
+
+  // Step 2: Import TSV files
+  const tsvDir = getTsvDir()
+  if (!existsSync(tsvDir)) {
+    logger.info("TSV directory not found. Nothing to import.")
+    return
+  }
+
+  importPublicationTsv()
+  importDatasetTsv()
+  importExperimentTsv()
+
+  const outputDir = join(getResultsDir(), "final")
+  logger.info("Completed", { outputDir })
+}
+
+// CLI
+
+interface CliArgs {
+  force?: boolean
+  verbose?: boolean
+  quiet?: boolean
+}
+
+const parseArgs = (): CliArgs => {
+  const args = yargs(hideBin(process.argv))
+    .option("force", {
+      alias: "f",
+      type: "boolean",
+      default: false,
+      description: "Force overwrite final directory",
+    })
+    .option("verbose", {
+      alias: "v",
+      type: "boolean",
+      default: false,
+      description: "Show debug logs",
+    })
+    .option("quiet", {
+      alias: "q",
+      type: "boolean",
+      default: false,
+      description: "Show only warnings and errors",
+    })
+    .parseSync() as CliArgs
+
+  if (args.verbose) {
+    setLogLevel("debug")
+  } else if (args.quiet) {
+    setLogLevel("warn")
+  }
+
+  return args
+}
+
+const main = (): void => {
+  const args = parseArgs()
+  importAllTsv(args.force ?? false)
+}
+
+if (import.meta.main) {
+  main()
+}

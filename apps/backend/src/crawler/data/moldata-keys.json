@@ -1,0 +1,21 @@
+{
+  "unusedKey": "不要な項目のため削除する",
+  "splitKeys": {
+    "Japanese Genotype-phenotype Archive Dataset AccessionとSequence Read Archive Accessionに分ける": [
+      "Japanese Genotype-phenotype Archive Dataset Accession",
+      "Sequence Read Archive Accession"
+    ],
+    "NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける": [
+      "NBDC Dataset Accession",
+      "Japanese Genotype-phenotype Archive Dataset Accession"
+    ]
+  },
+  "idFields": [
+    "Dataset ID of the Processed data by JGA",
+    "Genomic Expression Archive Accession",
+    "Japanese Genotype-phenotype Archive Dataset Accession",
+    "MetaboBank Accession",
+    "NBDC Dataset Accession",
+    "Sequence Read Archive Accession"
+  ]
+}
