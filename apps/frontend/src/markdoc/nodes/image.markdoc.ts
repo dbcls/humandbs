@@ -19,11 +19,12 @@ import Markdoc, { Schema } from "@markdoc/markdoc";
  * @param lang - language code
  * @returns image src
  */
-function getSrc(url: string, contentId: string, lang: string) {
+function getSrc(url: string) {
+  if (!url) return url;
   if (url.startsWith("/") || url.startsWith("http")) return url;
 
   // TODO confusing with ContentItem, but this is just for markdowns that have links to other files
-  return `/content/${lang}/${contentId}/${url}`;
+  return `/assets/${url}`;
 }
 
 export const image: Schema = {
@@ -33,11 +34,7 @@ export const image: Schema = {
     const attributes = node.transformAttributes(config);
     const children = node.transformChildren(config);
 
-    const src = getSrc(
-      attributes.src,
-      config.variables?.slug,
-      config.variables?.lang
-    );
+    const src = getSrc(attributes.src);
 
     return new Markdoc.Tag(`img`, { ...attributes, src }, children);
   },
