@@ -83,12 +83,12 @@ function HomeContent() {
   return <RenderMarkdoc content={content} />;
 }
 
-type InfographicsItem = {
+interface InfographicsItem {
   id: string;
   title: string;
   amount: number;
   parent: string | null;
-};
+}
 
 const info: InfographicsItem[] = [
   {
