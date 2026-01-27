@@ -18,10 +18,12 @@ import { hideBin } from "yargs/helpers"
 import { getOllamaConfig, type OllamaConfig } from "@/crawler/llm/client"
 import {
   aggregateToSearchable,
+  isEmptyExtractedFields,
   processExperimentsParallel,
 } from "@/crawler/llm/extract"
 import type {
   EnrichedDataset,
+  ExtractedExperiment,
   SearchableDataset,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
@@ -153,9 +155,9 @@ const filterLatestVersions = (files: string[]): string[] => {
 /** Process a single dataset with resume support (dataset-level) */
 const processDataset = async (
   filename: string,
-  options: { dryRun: boolean; force: boolean; experimentConcurrency: number; ollamaConfig?: OllamaConfig },
+  options: { dryRun: boolean; force: boolean; retryFailed: boolean; experimentConcurrency: number; ollamaConfig?: OllamaConfig },
 ): Promise<void> => {
-  const { dryRun, force, experimentConcurrency, ollamaConfig } = options
+  const { dryRun, force, retryFailed, experimentConcurrency, ollamaConfig } = options
   const parsed = parseFilename(filename)
   if (!parsed) {
     logger.error("Invalid filename format", { filename })
@@ -168,6 +170,68 @@ const processDataset = async (
   // Check for existing progress (dataset-level resume)
   const existing = readExtractedDataset(filename)
   const progress = existing?._extractionProgress
+
+  // --retry-failed: re-extract only failed experiments in completed datasets
+  if (retryFailed && progress?.status === "completed" && existing) {
+    const existingExperiments = (existing as SearchableDatasetWithProgress & { experiments: ExtractedExperiment[] }).experiments
+    const failedIndices: number[] = []
+    for (let i = 0; i < existingExperiments.length; i++) {
+      if (isEmptyExtractedFields(existingExperiments[i].extracted)) {
+        failedIndices.push(i)
+      }
+    }
+
+    if (failedIndices.length === 0) {
+      logger.info("Skipped: no failed experiments", { filename })
+      return
+    }
+
+    logger.info("Retrying failed experiments", { filename, failedCount: failedIndices.length, totalCount: existingExperiments.length })
+
+    // Read source data (from enriched-json)
+    const enriched = readEnrichedDataset(filename)
+    if (!enriched) {
+      logger.error("Failed to read enriched dataset", { filename })
+      return
+    }
+
+    // Extract only failed experiments
+    const failedExperiments = failedIndices.map(i => enriched.experiments[i])
+    const reExtracted = await processExperimentsParallel(
+      failedExperiments,
+      enriched.originalMetadata ?? null,
+      experimentConcurrency,
+      dryRun,
+      ollamaConfig,
+    )
+
+    // Merge: keep existing successful, replace failed with re-extracted
+    const mergedExperiments = [...existingExperiments]
+    for (let j = 0; j < failedIndices.length; j++) {
+      mergedExperiments[failedIndices[j]] = reExtracted[j]
+    }
+
+    // Re-aggregate searchable fields
+    const searchable = aggregateToSearchable(mergedExperiments)
+
+    const finalResult: SearchableDatasetWithProgress = {
+      ...existing,
+      searchable,
+      experiments: mergedExperiments,
+      _extractionProgress: {
+        totalExperiments: mergedExperiments.length,
+        status: "completed",
+      },
+    }
+
+    if (!dryRun) {
+      writeExtractedDataset(filename, finalResult)
+      logger.info("Saved dataset (retry-failed)", { output: `extracted-unified/dataset/${filename}` })
+    } else {
+      logger.info("[dry-run] Would save dataset (retry-failed)", { output: `extracted-unified/dataset/${filename}`, failedCount: failedIndices.length })
+    }
+    return
+  }
 
   // Skip if already completed (unless --force)
   if (progress?.status === "completed" && !force) {
@@ -229,6 +293,7 @@ interface ExtractArgs {
   force?: boolean
   skipCopy?: boolean
   latestOnly?: boolean
+  retryFailed?: boolean
   verbose?: boolean
   quiet?: boolean
 }
@@ -245,6 +310,7 @@ const parseArgs = (): ExtractArgs => {
     .option("force", { type: "boolean", default: false, description: "Force reprocess even if already completed" })
     .option("skip-copy", { type: "boolean", default: false, description: "Skip copying enriched-json to extracted-unified" })
     .option("latest-only", { type: "boolean", default: true, description: "Process only the latest version of each dataset" })
+    .option("retry-failed", { type: "boolean", default: false, description: "Retry only experiments with empty extracted fields" })
     .option("verbose", { alias: "v", type: "boolean", default: false, description: "Show debug logs" })
     .option("quiet", { alias: "q", type: "boolean", default: false, description: "Show only warnings and errors" })
     .parseSync() as ExtractArgs
@@ -272,10 +338,16 @@ const main = async (): Promise<void> => {
   const experimentConcurrency = args.experimentConcurrency ?? 8
   const latestOnly = args.latestOnly ?? true
   const force = args.force ?? false
+  const retryFailed = args.retryFailed ?? false
+
+  if (retryFailed && force) {
+    logger.error("--retry-failed and --force cannot be used together")
+    process.exit(1)
+  }
 
   logger.debug("Concurrency settings", { datasetConcurrency: concurrency, experimentConcurrency })
 
-  if (!args.skipCopy) {
+  if (!args.skipCopy && !retryFailed) {
     copyEnrichedToExtracted(args.force)
   }
 
@@ -321,7 +393,7 @@ const main = async (): Promise<void> => {
   // Process datasets with concurrency
   for (let i = 0; i < files.length; i += concurrency) {
     const batch = files.slice(i, i + concurrency)
-    await Promise.all(batch.map(f => processDataset(f, { dryRun, force, experimentConcurrency, ollamaConfig })))
+    await Promise.all(batch.map(f => processDataset(f, { dryRun, force, retryFailed, experimentConcurrency, ollamaConfig })))
   }
 
   const outputDir = join(getResultsDir(), "extracted-unified")

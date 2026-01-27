@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import {
   createEmptyExtractedFields,
+  isEmptyExtractedFields,
   parseExtractedFields,
   aggregateToSearchable,
 } from "@/crawler/llm/extract"
@@ -27,6 +28,38 @@ describe("createEmptyExtractedFields", () => {
     expect(empty.targets).toBeNull()
     expect(empty.fileTypes).toEqual([])
     expect(empty.dataVolume).toBeNull()
+  })
+})
+
+describe("isEmptyExtractedFields", () => {
+  it("should return true when all fields are default values", () => {
+    const empty = createEmptyExtractedFields()
+    expect(isEmptyExtractedFields(empty)).toBe(true)
+  })
+
+  it("should return false when a scalar field has a value", () => {
+    const fields = { ...createEmptyExtractedFields(), subjectCount: 10 }
+    expect(isEmptyExtractedFields(fields)).toBe(false)
+  })
+
+  it("should return false when an enum field has a value", () => {
+    const fields = { ...createEmptyExtractedFields(), healthStatus: "healthy" as const }
+    expect(isEmptyExtractedFields(fields)).toBe(false)
+  })
+
+  it("should return false when an array field has elements", () => {
+    const fields = { ...createEmptyExtractedFields(), diseases: [{ label: "cancer", icd10: null }] }
+    expect(isEmptyExtractedFields(fields)).toBe(false)
+  })
+
+  it("should return false when tissues array has elements", () => {
+    const fields = { ...createEmptyExtractedFields(), tissues: ["blood"] }
+    expect(isEmptyExtractedFields(fields)).toBe(false)
+  })
+
+  it("should return false when dataVolume has a value", () => {
+    const fields = { ...createEmptyExtractedFields(), dataVolume: { value: 1.5, unit: "TB" as const } }
+    expect(isEmptyExtractedFields(fields)).toBe(false)
   })
 })
 

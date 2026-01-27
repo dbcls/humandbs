@@ -89,6 +89,31 @@ export const createEmptyExtractedFields = (): ExtractedExperimentFields => ({
 })
 
 /**
+ * Check if extracted fields are all default (empty) values
+ */
+export const isEmptyExtractedFields = (fields: ExtractedExperimentFields): boolean => {
+  return (
+    fields.subjectCount === null &&
+    fields.subjectCountType === null &&
+    fields.healthStatus === null &&
+    fields.diseases.length === 0 &&
+    fields.tissues.length === 0 &&
+    fields.isTumor === null &&
+    fields.cellLine === null &&
+    fields.population === null &&
+    fields.assayType === null &&
+    fields.libraryKits.length === 0 &&
+    fields.platformVendor === null &&
+    fields.platformModel === null &&
+    fields.readType === null &&
+    fields.readLength === null &&
+    fields.targets === null &&
+    fields.fileTypes.length === 0 &&
+    fields.dataVolume === null
+  )
+}
+
+/**
  * Parse LLM JSON output into ExtractedExperimentFields
  */
 export const parseExtractedFields = (jsonStr: string): ExtractedExperimentFields => {
