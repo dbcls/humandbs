@@ -5,11 +5,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
+import { CONTENT_IDS } from "@/config/content-config";
 import * as schema from "@/db/schema";
 
 /** Absolute path to the documents seed folder. */
 const DOCUMENTS_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "seed-data",
   "documents"
 );
 /** Absolute path to the public assets folder. */
@@ -17,11 +20,15 @@ const PUBLIC_ASSETS_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
   "..",
+  "..",
   "public",
   "assets"
 );
 /** Locales expected under the documents seed folder. */
 const SUPPORTED_LOCALES = ["en", "ja"] as const;
+
+/** Valid document IDs from content configuration */
+const VALID_DOCUMENT_IDS = new Set(Object.values(CONTENT_IDS).flat());
 
 type DocumentLocaleMap = Map<
   string,
@@ -211,6 +218,15 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const documentId = entry.name;
+
+      // Validate document ID against CONTENT_IDS
+      if (!VALID_DOCUMENT_IDS.has(documentId)) {
+        console.warn(
+          `Skipping document '${documentId}' - not found in CONTENT_IDS configuration`
+        );
+        continue;
+      }
+
       const contentPath = path.join(localeDir, documentId, "content.md");
 
       let content: string;
