@@ -14,11 +14,18 @@ export const Route = createFileRoute("/auth/callback")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        console.log("callback");
         const cfg = await getConfig();
-        const url = new URL(request.url);
+
+        // request.url reflects the internal proxy address (e.g. http://localhost/...),
+        // not the external origin the user hit. Use OIDC_REDIRECT_URI so the
+        // redirect_uri sent during the token exchange matches what was sent in
+        // the authorization request.
+        const internalUrl = new URL(request.url);
+        const url = new URL(process.env.OIDC_REDIRECT_URI!);
+        url.search = internalUrl.search;
 
         const cookies = parse(request.headers.get("cookie") ?? "");
+
         const stash = cookies["oidc_pkce"]
           ? JSON.parse(cookies["oidc_pkce"])
           : null;
@@ -38,12 +45,9 @@ export const Route = createFileRoute("/auth/callback")({
 
         const setCookies: string[] = [];
 
-        console.log("1");
         setCookies.push(serialize("oidc_pkce", "", { path: "/", maxAge: 0 }));
-        console.log("2");
 
         const session = buildSessionFromTokenResponse(tokens);
-        console.log("3");
         if (!session) {
           return new Response("Missing access token", { status: 400 });
         }
@@ -51,8 +55,6 @@ export const Route = createFileRoute("/auth/callback")({
         setCookies.push(createSessionCookie(session));
 
         const redirectTarget = sanitizeRedirectPath(stash.redirect_to) ?? "/";
-
-        console.log("redirectTarget", redirectTarget);
 
         return redirectWithCookies(redirectTarget, setCookies, 302);
       },
