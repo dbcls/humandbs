@@ -1,11 +1,18 @@
 {
-  "releaseUrls": {
+  "skipPages": [
+    {
+      "humVersionId": "hum0003-v1",
+      "lang": "en",
+      "reason": "English version does not exist"
+    }
+  ],
+  "releaseUrlOverrides": {
     "hum0329-v1-ja": {
       "suffix": "-release-note",
       "reason": "Non-standard URL pattern"
     }
   },
-  "controlledAccessRows": {
+  "controlledAccessRowFixes": {
     "hum0014": [
       {
         "cellCount": 5,
@@ -21,7 +28,7 @@
       }
     ]
   },
-  "humIdsWithDataSummary": [
+  "dataSummaryPages": [
     "hum0031",
     "hum0043",
     "hum0235",

@@ -6,7 +6,7 @@
  */
 import { join } from "path"
 
-import { getJgasToAdditionalJgad } from "@/crawler/config/mapping"
+import { getAdditionalJgadByJgas } from "@/crawler/config/mapping"
 import { DEFAULT_API_DELAY_MS } from "@/crawler/config/urls"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getExternalCacheDir, ensureDir, readJson, writeJson, fileExists } from "@/crawler/utils/io"
@@ -169,7 +169,7 @@ export const studyToDatasets = async (studyId: string): Promise<string[]> => {
     .map(x => x.identifier)
 
   // Add additional JGAD IDs from config
-  const additionalJgadMap = getJgasToAdditionalJgad()
+  const additionalJgadMap = getAdditionalJgadByJgas()
   const additionalJgad = additionalJgadMap[studyId] ?? []
 
   return [...datasetsFromApi, ...additionalJgad]

@@ -94,51 +94,32 @@ export const listFiles = (dir: string, pattern?: string): string[] => {
 
 /** Get the path to the HTML cache directory */
 export const getHtmlDir = (): string => {
-  const path = join(getResultsDir(), "html")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "html")
 }
 
 /** Get the path to the parsed JSON directory */
 export const getParsedDir = (): string => {
-  const path = join(getResultsDir(), "detail-json")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "detail-json")
 }
 
 /** Get the path to the normalized JSON directory */
 export const getNormalizedDir = (): string => {
-  const path = join(getResultsDir(), "normalized-json")
-  ensureDir(path)
-  return path
-}
-
-/** Get the path to the transformed JSON directory */
-export const getTransformedDir = (): string => {
-  const path = join(getResultsDir(), "transformed")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "normalized-json")
 }
 
 /** Get the path to the enriched JSON directory */
 export const getEnrichedDir = (): string => {
-  const path = join(getResultsDir(), "enriched")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "enriched")
 }
 
 /** Get the path to the extracted JSON directory */
 export const getExtractedDir = (): string => {
-  const path = join(getResultsDir(), "extracted")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "extracted")
 }
 
 /** Get the path to the external cache directory */
 export const getExternalCacheDir = (): string => {
-  const path = join(getResultsDir(), "external-cache")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "external-cache")
 }
 
 /**
@@ -231,30 +212,22 @@ export const listNormalizedFiles = (opts: {
 
 /** Get the path to the structured JSON directory */
 export const getStructuredJsonDir = (): string => {
-  const path = join(getResultsDir(), "structured-json")
-  ensureDir(path)
-  return path
+  return join(getResultsDir(), "structured-json")
 }
 
 /** Get the path to the structured research directory */
 export const getStructuredResearchDir = (): string => {
-  const path = join(getStructuredJsonDir(), "research")
-  ensureDir(path)
-  return path
+  return join(getStructuredJsonDir(), "research")
 }
 
 /** Get the path to the structured research version directory */
 export const getStructuredResearchVersionDir = (): string => {
-  const path = join(getStructuredJsonDir(), "research-version")
-  ensureDir(path)
-  return path
+  return join(getStructuredJsonDir(), "research-version")
 }
 
 /** Get the path to the structured dataset directory */
 export const getStructuredDatasetDir = (): string => {
-  const path = join(getStructuredJsonDir(), "dataset")
-  ensureDir(path)
-  return path
+  return join(getStructuredJsonDir(), "dataset")
 }
 
 /**

@@ -22,32 +22,13 @@ const loadConfig = <T>(filename: string): T => {
   return JSON.parse(content) as T
 }
 
-// Skip Pages
+// Crawl Hotfix Mapping (skip-pages + special-cases を統合)
 
 interface SkipPage {
   humVersionId: string
   lang: LangType
   reason: string
 }
-
-interface SkipPagesConfig {
-  pages: SkipPage[]
-}
-
-let skipPagesCache: SkipPagesConfig | null = null
-
-export const getSkipPages = (): SkipPage[] => {
-  if (!skipPagesCache) {
-    skipPagesCache = loadConfig<SkipPagesConfig>("skip-pages.json")
-  }
-  return skipPagesCache.pages
-}
-
-export const shouldSkipPage = (humVersionId: string, lang: LangType): boolean => {
-  return getSkipPages().some(s => s.humVersionId === humVersionId && s.lang === lang)
-}
-
-// Special Cases
 
 interface SpecialControlledAccessRowData {
   principalInvestigator: string | null
@@ -64,25 +45,34 @@ interface SpecialControlledAccessRow {
   data: SpecialControlledAccessRowData
 }
 
-interface SpecialCasesConfig {
-  releaseUrls: Record<string, { suffix: string; reason: string }>
-  controlledAccessRows: Record<string, SpecialControlledAccessRow[]>
-  humIdsWithDataSummary: string[]
+interface CrawlHotfixMappingConfig {
+  skipPages: SkipPage[]
+  releaseUrlOverrides: Record<string, { suffix: string; reason: string }>
+  controlledAccessRowFixes: Record<string, SpecialControlledAccessRow[]>
+  dataSummaryPages: string[]
 }
 
-let specialCasesCache: SpecialCasesConfig | null = null
+let crawlHotfixCache: CrawlHotfixMappingConfig | null = null
 
-const getSpecialCases = (): SpecialCasesConfig => {
-  if (!specialCasesCache) {
-    specialCasesCache = loadConfig<SpecialCasesConfig>("special-cases.json")
+const getCrawlHotfixMapping = (): CrawlHotfixMappingConfig => {
+  if (!crawlHotfixCache) {
+    crawlHotfixCache = loadConfig<CrawlHotfixMappingConfig>("crawl-hotfix-mapping.json")
   }
-  return specialCasesCache
+  return crawlHotfixCache
+}
+
+export const getSkipPages = (): SkipPage[] => {
+  return getCrawlHotfixMapping().skipPages
+}
+
+export const shouldSkipPage = (humVersionId: string, lang: LangType): boolean => {
+  return getSkipPages().some(s => s.humVersionId === humVersionId && s.lang === lang)
 }
 
 export const getReleaseSuffix = (humVersionId: string, lang: LangType): string => {
   const key = `${humVersionId}-${lang}`
-  const specialCases = getSpecialCases()
-  const special = specialCases.releaseUrls[key]
+  const hotfix = getCrawlHotfixMapping()
+  const special = hotfix.releaseUrlOverrides[key]
   return special?.suffix ?? "-release"
 }
 
@@ -103,128 +93,151 @@ export const findSpecialControlledAccessRow = (
   firstCellText: string,
 ): SpecialControlledAccessRow | undefined => {
   const humId = humVersionId.split("-v")[0]
-  const specialCases = getSpecialCases()
-  const rows = specialCases.controlledAccessRows[humId]
+  const hotfix = getCrawlHotfixMapping()
+  const rows = hotfix.controlledAccessRowFixes[humId]
   if (!rows) return undefined
   return rows.find(s => s.cellCount === cellCount && s.firstCellText === firstCellText)
 }
 
 export const getHumIdsWithDataSummary = (): string[] => {
-  return getSpecialCases().humIdsWithDataSummary
+  return getCrawlHotfixMapping().dataSummaryPages
 }
 
-// ID Mapping
+// Dataset ID Mapping
 
-interface IdMappingConfig {
-  datasetIdSpecialCases: Record<string, string[]>
-  publicationDatasetId: Record<string, string[]>
-  publicationDatasetIdNoSplit: string[]
-  controlledAccessUsersDatasetId: Record<string, string[]>
-  jgaxToJgas: Record<string, string>
-  oldJgaToJgas: Record<string, string>
-  jgasToAdditionalJgad: Record<string, string[]>
-  jgadTypoToJgas: Record<string, string>
-  ignoreDatasetIdForHum: Record<string, string[]>
-  datasetMetadataInheritance: Record<string, string>
-  invalidJgasIds: string[]
-  invalidIdValues: string[]
-}
-
-let idMappingCache: IdMappingConfig | null = null
-
-const getIdMapping = (): IdMappingConfig => {
-  if (!idMappingCache) {
-    idMappingCache = loadConfig<IdMappingConfig>("id-mapping.json")
+interface DatasetIdMappingConfig {
+  idCorrection: {
+    global: Record<string, string[]>
+    publication: Record<string, string[]>
+    byHum: Record<string, Record<string, string>>
   }
-  return idMappingCache
+  idFormatConversion: {
+    jgaxToJgas: Record<string, string>
+    oldJgaToJgas: Record<string, string>
+  }
+  invalidIds: {
+    jgas: string[]
+    other: string[]
+  }
+  noSplitIds: string[]
+  ignoreIdsByHum: Record<string, string[]>
+  additionalIdsByHum: Record<string, string[]>
+  additionalJgadByJgas: Record<string, string[]>
+  metadataInheritance: Record<string, string>
 }
 
-export const getDatasetIdSpecialCases = (): Record<string, string[]> => {
-  return getIdMapping().datasetIdSpecialCases
+let datasetIdMappingCache: DatasetIdMappingConfig | null = null
+
+const getDatasetIdMapping = (): DatasetIdMappingConfig => {
+  if (!datasetIdMappingCache) {
+    datasetIdMappingCache = loadConfig<DatasetIdMappingConfig>("dataset-id-mapping.json")
+  }
+  return datasetIdMappingCache
 }
 
-export const applyDatasetIdSpecialCase = (id: string): string[] => {
-  const specialCases = getDatasetIdSpecialCases()
-  return specialCases[id] ?? [id]
+export const getGlobalIdCorrection = (): Record<string, string[]> => {
+  return getDatasetIdMapping().idCorrection.global
 }
 
-export const getPublicationDatasetIdMap = (): Record<string, string[]> => {
-  return getIdMapping().publicationDatasetId
+export const applyGlobalIdCorrection = (id: string): string[] => {
+  const corrections = getGlobalIdCorrection()
+  return corrections[id] ?? [id]
 }
 
-export const getPublicationDatasetIdNoSplit = (): string[] => {
-  return getIdMapping().publicationDatasetIdNoSplit
+export const getPublicationIdCorrection = (): Record<string, string[]> => {
+  return getDatasetIdMapping().idCorrection.publication
 }
 
-export const getControlledAccessUsersDatasetIdMap = (): Record<string, string[]> => {
-  return getIdMapping().controlledAccessUsersDatasetId
+export const getIdCorrectionByHum = (humId: string): Record<string, string> => {
+  const mapping = getDatasetIdMapping().idCorrection.byHum
+  return mapping[humId] ?? {}
+}
+
+export const getNoSplitIds = (): string[] => {
+  return getDatasetIdMapping().noSplitIds
 }
 
 export const getJgaxToJgasMap = (): Record<string, string> => {
-  return getIdMapping().jgaxToJgas
+  return getDatasetIdMapping().idFormatConversion.jgaxToJgas
 }
 
 export const getOldJgaToJgasMap = (): Record<string, string> => {
-  return getIdMapping().oldJgaToJgas
+  return getDatasetIdMapping().idFormatConversion.oldJgaToJgas
 }
 
-export const getJgasToAdditionalJgad = (): Record<string, string[]> => {
-  return getIdMapping().jgasToAdditionalJgad
+export const getAdditionalIdsByHum = (humId: string): string[] => {
+  return getDatasetIdMapping().additionalIdsByHum[humId] ?? []
 }
 
-export const getJgadTypoToJgas = (): Record<string, string> => {
-  return getIdMapping().jgadTypoToJgas
+export const getAdditionalJgadByJgas = (): Record<string, string[]> => {
+  return getDatasetIdMapping().additionalJgadByJgas
 }
 
-export const getIgnoreDatasetIdForHum = (): Record<string, string[]> => {
-  return getIdMapping().ignoreDatasetIdForHum
+export const getIgnoreIdsByHum = (): Record<string, string[]> => {
+  return getDatasetIdMapping().ignoreIdsByHum
 }
 
-export const getDatasetMetadataInheritance = (): Record<string, string> => {
-  return getIdMapping().datasetMetadataInheritance
+export const getMetadataInheritance = (): Record<string, string> => {
+  return getDatasetIdMapping().metadataInheritance
 }
 
 export const getInvalidJgasIds = (): Set<string> => {
-  return new Set(getIdMapping().invalidJgasIds)
+  return new Set(getDatasetIdMapping().invalidIds.jgas)
 }
 
-export const getInvalidIdValues = (): string[] => {
-  return getIdMapping().invalidIdValues
+export const getInvalidOtherIds = (): string[] => {
+  return getDatasetIdMapping().invalidIds.other
 }
 
-// Criteria Mapping
+// Normalize Mapping (criteria + grant + publication を統合)
 
-interface CriteriaMappingConfig {
+interface CriteriaMappingSection {
   canonical: Record<CriteriaCanonical, { ja: string; en: string }>
   normalize: Record<string, CriteriaCanonical>
 }
 
-let criteriaMappingCache: CriteriaMappingConfig | null = null
+interface GrantMappingSection {
+  invalidValues: string[]
+}
 
-const getCriteriaMapping = (): CriteriaMappingConfig => {
-  if (!criteriaMappingCache) {
-    criteriaMappingCache = loadConfig<CriteriaMappingConfig>("criteria-mapping.json")
+interface PublicationMappingSection {
+  unusedTitles: string[]
+  invalidDoiValues: string[]
+  invalidDatasetIdPatterns: string[]
+}
+
+interface NormalizeMappingConfig {
+  criteria: CriteriaMappingSection
+  grant: GrantMappingSection
+  publication: PublicationMappingSection
+}
+
+let normalizeMappingCache: NormalizeMappingConfig | null = null
+
+const getNormalizeMapping = (): NormalizeMappingConfig => {
+  if (!normalizeMappingCache) {
+    normalizeMappingCache = loadConfig<NormalizeMappingConfig>("normalize-mapping.json")
   }
-  return criteriaMappingCache
+  return normalizeMappingCache
 }
 
 export const getCriteriaCanonicalMap = (): Record<string, CriteriaCanonical> => {
-  return getCriteriaMapping().normalize
+  return getNormalizeMapping().criteria.normalize
 }
 
 export const getCriteriaDisplayValue = (criteria: CriteriaCanonical, lang: LangType): string => {
-  const mapping = getCriteriaMapping()
-  return mapping.canonical[criteria][lang]
+  const mapping = getNormalizeMapping()
+  return mapping.criteria.canonical[criteria][lang]
 }
 
 export const getCriteriaCanonical = (displayValue: string): CriteriaCanonical | null => {
-  const mapping = getCriteriaMapping()
+  const mapping = getNormalizeMapping()
   // Check if it's already a canonical value
-  if (displayValue in mapping.canonical) {
+  if (displayValue in mapping.criteria.canonical) {
     return displayValue as CriteriaCanonical
   }
   // Check Japanese display values
-  for (const [canonical, display] of Object.entries(mapping.canonical)) {
+  for (const [canonical, display] of Object.entries(mapping.criteria.canonical)) {
     if (display.ja === displayValue || display.en === displayValue) {
       return canonical as CriteriaCanonical
     }
@@ -232,35 +245,22 @@ export const getCriteriaCanonical = (displayValue: string): CriteriaCanonical | 
   return null
 }
 
-// Publication Config
-
-interface PublicationConfig {
-  unusedTitles: string[]
-  invalidDoiValues: string[]
-  invalidDatasetIdPatterns: string[]
-}
-
-let publicationConfigCache: PublicationConfig | null = null
-
-const getPublicationConfig = (): PublicationConfig => {
-  if (!publicationConfigCache) {
-    publicationConfigCache = loadConfig<PublicationConfig>("publication-config.json")
-  }
-  return publicationConfigCache
+export const getInvalidGrantIdValues = (): string[] => {
+  return getNormalizeMapping().grant.invalidValues
 }
 
 export const getUnusedPublicationTitles = (): string[] => {
-  return getPublicationConfig().unusedTitles
+  return getNormalizeMapping().publication.unusedTitles
 }
 
 export const getInvalidDoiValues = (): string[] => {
-  return getPublicationConfig().invalidDoiValues
+  return getNormalizeMapping().publication.invalidDoiValues
 }
 
 export const isInvalidPublicationDatasetId = (id: string): boolean => {
   const stripped = id.replace(/^\(|\)$/g, "")
   if (stripped === "") return true
-  const patterns = getPublicationConfig().invalidDatasetIdPatterns
+  const patterns = getNormalizeMapping().publication.invalidDatasetIdPatterns
   return patterns.some(pattern => new RegExp(pattern, "i").test(stripped))
 }
 
@@ -271,51 +271,31 @@ export const cleanPublicationDatasetId = (id: string): string => {
   return id
 }
 
-// Grant Config
+// Molecular Data Field Mapping
 
-interface GrantConfig {
-  invalidGrantIdValues: string[]
-}
-
-let grantConfigCache: GrantConfig | null = null
-
-const getGrantConfig = (): GrantConfig => {
-  if (!grantConfigCache) {
-    grantConfigCache = loadConfig<GrantConfig>("grant-config.json")
-  }
-  return grantConfigCache
-}
-
-export const getInvalidGrantIdValues = (): string[] => {
-  return getGrantConfig().invalidGrantIdValues
-}
-
-// Molecular Data Keys
-
-interface MolDataKeysConfig {
+interface MolDataFieldMappingConfig {
   unusedKey: string
   splitKeys: Record<string, string[]>
   idFields: string[]
 }
 
-let molDataKeysCache: MolDataKeysConfig | null = null
+let molDataFieldMappingCache: MolDataFieldMappingConfig | null = null
 
-const getMolDataKeys = (): MolDataKeysConfig => {
-  if (!molDataKeysCache) {
-    molDataKeysCache = loadConfig<MolDataKeysConfig>("moldata-keys.json")
+const getMolDataFieldMapping = (): MolDataFieldMappingConfig => {
+  if (!molDataFieldMappingCache) {
+    molDataFieldMappingCache = loadConfig<MolDataFieldMappingConfig>("moldata-field-mapping.json")
   }
-  return molDataKeysCache
+  return molDataFieldMappingCache
 }
 
 export const getMolDataUnusedKey = (): string => {
-  return getMolDataKeys().unusedKey
+  return getMolDataFieldMapping().unusedKey
 }
 
 export const getMolDataSplitKeys = (): Record<string, string[]> => {
-  return getMolDataKeys().splitKeys
+  return getMolDataFieldMapping().splitKeys
 }
 
 export const getMolDataIdFields = (): string[] => {
-  return getMolDataKeys().idFields
+  return getMolDataFieldMapping().idFields
 }
-

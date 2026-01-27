@@ -8,7 +8,6 @@ import {
   getHtmlDir,
   getParsedDir,
   getNormalizedDir,
-  getTransformedDir,
   getEnrichedDir,
   getExtractedDir,
   getExternalCacheDir,
@@ -80,13 +79,6 @@ describe("utils/io.ts", () => {
     it("should return a path ending with normalized-json", () => {
       const dir = getNormalizedDir()
       expect(dir.endsWith("normalized-json")).toBe(true)
-    })
-  })
-
-  describe("getTransformedDir", () => {
-    it("should return a path ending with transformed", () => {
-      const dir = getTransformedDir()
-      expect(dir.endsWith("transformed")).toBe(true)
     })
   })
 

@@ -1,18 +1,16 @@
 /**
- * Transform processor
+ * Structure processor
  *
- * Transforms normalized data into structured output (datasets, research, versions)
+ * Structures normalized data into output format (datasets, research, versions)
  * Handles dataset ID extraction, versioning, and bilingual integration
  */
 import {
-  getDatasetMetadataInheritance,
+  getMetadataInheritance,
   getCriteriaCanonical,
   getCriteriaDisplayValue,
-  getIgnoreDatasetIdForHum,
-  getInvalidIdValues,
-  getInvalidJgasIds,
-  getJgasToAdditionalJgad,
-  applyDatasetIdSpecialCase,
+  getIgnoreIdsByHum,
+  getInvalidOtherIds,
+  applyGlobalIdCorrection,
   getMolDataIdFields,
 } from "@/crawler/config/mapping"
 import { extractIdsByType } from "@/crawler/config/patterns"
@@ -52,7 +50,6 @@ import type {
   Grant,
   Publication,
 } from "@/crawler/types"
-import { logger } from "@/crawler/utils/logger"
 
 // Criteria Display
 
@@ -88,7 +85,7 @@ export const convertCriteriaToCanonical = (
 export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): ExtractedIds => {
   const idSets: ExtractedIds = {}
   const idFields = getMolDataIdFields()
-  const invalidIdValues = getInvalidIdValues()
+  const invalidIdValues = getInvalidOtherIds()
 
   const addIds = (text: string) => {
     const found = extractIdsByType(text)
@@ -100,7 +97,7 @@ export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): 
         // Skip invalid IDs
         if (invalidIdValues.includes(id)) continue
         // Apply special case transformations
-        const normalizedIds = applyDatasetIdSpecialCase(id)
+        const normalizedIds = applyGlobalIdCorrection(id)
         for (const normalizedId of normalizedIds) {
           idSets[type]!.add(normalizedId)
         }
@@ -110,7 +107,7 @@ export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): 
 
   // Extract from header
   if (molData.id?.text) {
-    const specialCaseIds = applyDatasetIdSpecialCase(molData.id.text)
+    const specialCaseIds = applyGlobalIdCorrection(molData.id.text)
     for (const id of specialCaseIds) {
       addIds(id)
     }
@@ -136,77 +133,34 @@ export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): 
 
 /**
  * Invert molecularData to datasetId mapping
+ * Uses pre-extracted dataset IDs from normalization phase
  */
-export const invertMolTableToDataset = async (
+export const invertMolTableToDataset = (
   molecularData: NormalizedMolecularData[],
-  getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
-): Promise<Map<string, NormalizedMolecularData[]>> => {
+): Map<string, NormalizedMolecularData[]> => {
   const result = new Map<string, NormalizedMolecularData[]>()
-  const invalidIdValues = getInvalidIdValues()
-  const invalidJgasIds = getInvalidJgasIds()
-  const jgasToAdditionalJgad = getJgasToAdditionalJgad()
 
-  // First pass: collect all JGAS IDs
-  const allJgasIds = new Set<string>()
   for (const molData of molecularData) {
-    const extractedIds = extractDatasetIdsFromMolData(molData)
-    const jgasIds = extractedIds.JGAS
-    if (jgasIds) {
-      for (const jgasId of jgasIds) {
-        allJgasIds.add(jgasId)
-      }
-    }
-  }
+    // Use pre-extracted dataset IDs from normalization
+    const extractedIds = molData.extractedDatasetIds
 
-  // Fetch JGAS -> JGAD mapping
-  const jgasToJgadMap = new Map<string, string[]>()
-  for (const jgasId of allJgasIds) {
-    const jgadIds = await getDatasetsFromStudy(jgasId)
-    jgasToJgadMap.set(jgasId, jgadIds)
-  }
-
-  // Second pass: invert
-  for (const molData of molecularData) {
-    const extractedIds = extractDatasetIdsFromMolData(molData)
-    const allDatasetIds = new Set<string>()
-
-    // Add direct IDs (JGAD, DRA, GEA, NBDC, BP, METABO)
-    for (const type of ["JGAD", "DRA", "GEA", "NBDC_DATASET", "BP", "METABO"] as const) {
-      const ids = extractedIds[type]
-      if (ids) {
-        for (const id of ids) {
-          allDatasetIds.add(id)
-        }
-      }
-    }
-
-    // Convert JGAS to JGAD
-    const jgasIds = extractedIds.JGAS
-    if (jgasIds) {
-      for (const jgasId of jgasIds) {
-        if (invalidJgasIds.has(jgasId)) {
-          continue
-        }
-        const jgadIds = jgasToJgadMap.get(jgasId) ?? []
-        for (const jgadId of jgadIds) {
-          if (invalidIdValues.includes(jgadId)) continue
-          allDatasetIds.add(jgadId)
-        }
-        // Add additional JGAD IDs from config
-        const additionalJgadIds = jgasToAdditionalJgad[jgasId]
-        if (additionalJgadIds) {
-          for (const jgadId of additionalJgadIds) {
-            allDatasetIds.add(jgadId)
+    if (!extractedIds) {
+      // Fallback for backward compatibility: use legacy extraction
+      const legacyIds = extractDatasetIdsFromMolData(molData)
+      for (const [, ids] of Object.entries(legacyIds)) {
+        if (ids) {
+          for (const id of ids) {
+            const existing = result.get(id) ?? []
+            existing.push(molData)
+            result.set(id, existing)
           }
         }
-        if (jgadIds.length === 0) {
-          logger.warn("JGAS has no corresponding JGAD", { jgasId })
-        }
       }
+      continue
     }
 
     // Associate molData with each datasetId
-    for (const datasetId of allDatasetIds) {
+    for (const datasetId of extractedIds.datasetIds) {
       const existing = result.get(datasetId) ?? []
       existing.push(molData)
       result.set(datasetId, existing)
@@ -253,7 +207,7 @@ export const buildDatasetMetadataMap = (
   molecularData?: NormalizedMolecularData[],
 ): Map<string, DatasetMetadata> => {
   const map = new Map<string, DatasetMetadata>()
-  const metadataInheritance = getDatasetMetadataInheritance()
+  const metadataInheritance = getMetadataInheritance()
 
   // First pass: add all datasetIds from summary.datasets
   for (const ds of datasets) {
@@ -390,12 +344,12 @@ export const trackBilingualVersion = (
   }
 }
 
-// Transform Functions
+// Structure Functions
 
 /**
- * Transform data provider
+ * Structure data provider
  */
-export const transformDataProvider = (
+export const structureDataProvider = (
   dp: NormalizedParseResult["dataProvider"],
 ): SingleLangPerson[] => {
   const persons: SingleLangPerson[] = []
@@ -421,9 +375,9 @@ export const transformDataProvider = (
 }
 
 /**
- * Transform controlled access users
+ * Structure controlled access users
  */
-export const transformControlledAccessUsers = (
+export const structureControlledAccessUsers = (
   users: NormalizedParseResult["controlledAccessUsers"],
   expansionMap: Map<string, Set<string>>,
 ): SingleLangPerson[] => {
@@ -444,9 +398,9 @@ export const transformControlledAccessUsers = (
 }
 
 /**
- * Transform grants
+ * Structure grants
  */
-export const transformGrants = (
+export const structureGrants = (
   grants: NormalizedParseResult["dataProvider"]["grants"],
 ): SingleLangGrant[] => {
   return grants
@@ -523,9 +477,9 @@ export const expandDatasetIds = (
 }
 
 /**
- * Transform publications
+ * Structure publications
  */
-export const transformPublications = (
+export const structurePublications = (
   pubs: NormalizedParseResult["publications"],
   expansionMap: Map<string, Set<string>>,
 ): SingleLangPublication[] => {
@@ -544,9 +498,9 @@ export const transformPublications = (
 }
 
 /**
- * Transform research projects
+ * Structure research projects
  */
-export const transformResearchProjects = (
+export const structureResearchProjects = (
   dp: NormalizedParseResult["dataProvider"],
 ): SingleLangResearchProject[] => {
   const projects: SingleLangResearchProject[] = []
@@ -567,7 +521,7 @@ export const transformResearchProjects = (
   return projects
 }
 
-// Unified Transform Helpers
+// Unified Structure Helpers
 
 /**
  * Convert to bilingual text
@@ -612,7 +566,6 @@ export const createUnifiedExperiments = (
         ja: pair.ja?.footers ?? [],
         en: pair.en?.footers ?? [],
       },
-      matchType: pair.matchType,
     }
   })
 }
@@ -730,7 +683,6 @@ export const createUnifiedControlledAccessUsers = (
     datasetIds: pair.ja?.datasetIds ?? pair.en?.datasetIds,
     researchTitle: toBilingualText(pair.ja?.researchTitle ?? null, pair.en?.researchTitle ?? null),
     periodOfDataUse: pair.ja?.periodOfDataUse ?? pair.en?.periodOfDataUse ?? null,
-    matchType: pair.matchType,
   }))
 }
 
@@ -751,7 +703,6 @@ export const createUnifiedResearchProjects = (
         en: pair.en?.url ?? null,
       }
       : null,
-    matchType: pair.matchType,
   }))
 }
 
@@ -770,7 +721,6 @@ export const createUnifiedGrants = (
     agency: {
       name: toBilingualText(pair.ja?.agency?.name ?? null, pair.en?.agency?.name ?? null),
     },
-    matchType: pair.matchType,
   }))
 }
 
@@ -787,7 +737,6 @@ export const createUnifiedPublications = (
     title: toBilingualText(pair.ja?.title ?? null, pair.en?.title ?? null),
     doi: pair.ja?.doi ?? pair.en?.doi ?? null,
     datasetIds: pair.ja?.datasetIds ?? pair.en?.datasetIds,
-    matchType: pair.matchType,
   }))
 }
 
@@ -861,12 +810,12 @@ export const createUnifiedResearchVersion = (
   ),
 })
 
-// Transform Options
+// Structure Options
 
 /**
- * Transform options
+ * Structure options
  */
-export interface TransformOptions {
+export interface StructureOptions {
   /** Base URL for detail pages */
   detailPageBaseUrl: string
   /** Function to get JGAD datasets from JGAS study ID */
@@ -877,6 +826,6 @@ export interface TransformOptions {
  * Get ignored dataset IDs for a humId
  */
 export const getIgnoredDatasetIds = (humId: string): string[] => {
-  const ignoreMap = getIgnoreDatasetIdForHum()
+  const ignoreMap = getIgnoreIdsByHum()
   return ignoreMap[humId] ?? []
 }

@@ -91,8 +91,8 @@ export interface SearchableDatasetFields {
   hasCellLine: boolean
 }
 
-/** Experiment with extracted fields (matchType excluded from output) */
-export interface ExtractedExperiment extends Omit<Experiment, "matchType"> {
+/** Experiment with extracted fields */
+export interface ExtractedExperiment extends Experiment {
   extracted: ExtractedExperimentFields
 }
 

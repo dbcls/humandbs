@@ -10,12 +10,49 @@ import type {
   SingleLangGrant,
   SingleLangPerson,
   SingleLangResearchProject,
-  ExperimentMatchType,
-  PublicationMatchType,
-  GrantMatchType,
-  ControlledAccessUserMatchType,
-  ResearchProjectMatchType,
 } from "@/crawler/types"
+
+// Match Types (internal to merge process)
+
+/** Match type for experiment pairing */
+type ExperimentMatchType =
+  | "exact" // Matched by accession ID
+  | "fuzzy" // Matched by header similarity
+  | "position" // Matched by index position
+  | "unmatched-ja" // Only ja exists
+  | "unmatched-en" // Only en exists
+
+/** Match type for publication pairing */
+type PublicationMatchType =
+  | "exact-doi" // Matched by DOI
+  | "exact-datasetIds" // Matched by datasetIds
+  | "fuzzy-title" // Matched by title similarity
+  | "position" // Matched by index position
+  | "unmatched-ja" // Only ja exists
+  | "unmatched-en" // Only en exists
+
+/** Match type for grant pairing */
+type GrantMatchType =
+  | "exact-grantId" // Matched by grantId overlap
+  | "position" // Matched by index position
+  | "unmatched-ja" // Only ja exists
+  | "unmatched-en" // Only en exists
+
+/** Match type for controlled access user pairing */
+type ControlledAccessUserMatchType =
+  | "exact-both" // Matched by datasetIds AND periodOfDataUse
+  | "exact-datasetIds" // Matched by datasetIds only
+  | "position" // Matched by index position
+  | "unmatched-ja" // Only ja exists
+  | "unmatched-en" // Only en exists
+
+/** Match type for research project pairing */
+type ResearchProjectMatchType =
+  | "exact-url" // Matched by URL
+  | "fuzzy-name" // Matched by name similarity
+  | "position" // Matched by index position
+  | "unmatched-ja" // Only ja exists
+  | "unmatched-en" // Only en exists
 
 // Accession ID Extraction
 

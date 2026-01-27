@@ -93,9 +93,6 @@
           "experimentKey": {
             "type": "keyword"
           },
-          "matchType": {
-            "type": "keyword"
-          },
           "header": {
             "type": "object",
             "properties": {

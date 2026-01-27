@@ -37,6 +37,9 @@ export type {
 
 // Normalized types
 export type {
+  ExtractedDatasetIds,
+  DatasetIdRegistry,
+  OrphanReference,
   NormalizedDataset,
   NormalizedMolecularData,
   NormalizedGrant,
@@ -55,15 +58,10 @@ export type {
   SingleLangPublication,
   SingleLangSummary,
   SingleLangResearch,
-} from "./transformed"
+} from "./single-lang"
 
 // Output types (ja/en integrated - final output format)
 export type {
-  ExperimentMatchType,
-  PublicationMatchType,
-  GrantMatchType,
-  ControlledAccessUserMatchType,
-  ResearchProjectMatchType,
   Experiment,
   Dataset,
   Summary,

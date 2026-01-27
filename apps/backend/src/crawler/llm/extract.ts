@@ -353,12 +353,7 @@ export const processExperimentsParallel = async (
     const batchResults = await Promise.all(batchPromises)
 
     for (const { idx, extracted } of batchResults) {
-      // Exclude matchType from output
-      const { matchType: _, ...experimentWithoutMatchType } = experiments[idx]
-      results[idx] = {
-        ...experimentWithoutMatchType,
-        extracted,
-      }
+      results[idx] = { ...experiments[idx], extracted }
     }
   }
 

@@ -13,48 +13,6 @@ import type {
   UrlValue,
 } from "./common"
 
-// Match Types
-
-/** Match type for experiment pairing */
-export type ExperimentMatchType =
-  | "exact" // Matched by accession ID
-  | "fuzzy" // Matched by header similarity
-  | "position" // Matched by index position
-  | "unmatched-ja" // Only ja exists
-  | "unmatched-en" // Only en exists
-
-/** Match type for publication pairing */
-export type PublicationMatchType =
-  | "exact-doi" // Matched by DOI
-  | "exact-datasetIds" // Matched by datasetIds
-  | "fuzzy-title" // Matched by title similarity
-  | "position" // Matched by index position
-  | "unmatched-ja" // Only ja exists
-  | "unmatched-en" // Only en exists
-
-/** Match type for grant pairing */
-export type GrantMatchType =
-  | "exact-grantId" // Matched by grantId overlap
-  | "position" // Matched by index position
-  | "unmatched-ja" // Only ja exists
-  | "unmatched-en" // Only en exists
-
-/** Match type for controlled access user pairing */
-export type ControlledAccessUserMatchType =
-  | "exact-both" // Matched by datasetIds AND periodOfDataUse
-  | "exact-datasetIds" // Matched by datasetIds only
-  | "position" // Matched by index position
-  | "unmatched-ja" // Only ja exists
-  | "unmatched-en" // Only en exists
-
-/** Match type for research project pairing */
-export type ResearchProjectMatchType =
-  | "exact-url" // Matched by URL
-  | "fuzzy-name" // Matched by name similarity
-  | "position" // Matched by index position
-  | "unmatched-ja" // Only ja exists
-  | "unmatched-en" // Only en exists
-
 // Output Types
 
 /** Experiment (ja/en pairs) */
@@ -65,7 +23,6 @@ export interface Experiment {
     ja: TextValue[]
     en: TextValue[]
   }
-  matchType: ExperimentMatchType
 }
 
 /** Dataset (language-integrated) */
@@ -114,14 +71,12 @@ export interface Person {
   datasetIds?: string[]
   researchTitle?: BilingualText
   periodOfDataUse?: PeriodOfDataUse | null
-  matchType?: ControlledAccessUserMatchType
 }
 
 /** Research project */
 export interface ResearchProject {
   name: BilingualTextValue
   url?: BilingualUrlValue | null
-  matchType?: ResearchProjectMatchType
 }
 
 /** Grant */
@@ -129,7 +84,6 @@ export interface Grant {
   id: string[]
   title: BilingualText
   agency: { name: BilingualText }
-  matchType?: GrantMatchType
 }
 
 /** Publication */
@@ -137,7 +91,6 @@ export interface Publication {
   title: BilingualText
   doi?: string | null
   datasetIds?: string[]
-  matchType?: PublicationMatchType
 }
 
 /** Research (language-integrated) */

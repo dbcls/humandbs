@@ -79,12 +79,16 @@ export const isTextValue = (v: unknown): v is TextValue => {
 
 /**
  * Normalize text content
+ *
+ * @param lang - When "ja", inserts spaces around parentheses (needed after full-width→half-width conversion).
+ *               When "en" or omitted, skips parenthesis spacing to avoid artifacts like ") ."
  */
-export function normalizeText(value: string, newlineToSpace?: boolean): string
-export function normalizeText(value: TextValue, newlineToSpace?: boolean): TextValue
+export function normalizeText(value: string, newlineToSpace?: boolean, lang?: "ja" | "en"): string
+export function normalizeText(value: TextValue, newlineToSpace?: boolean, lang?: "ja" | "en"): TextValue
 export function normalizeText(
   value: string | TextValue,
   newlineToSpace = true,
+  lang?: "ja" | "en",
 ): string | TextValue {
   const normalizeString = (s: string): string => {
     const raw = s.trim()
@@ -111,9 +115,11 @@ export function normalizeText(
       t = t.replace(/\r\n?|\n/g, "")
     }
 
-    t = t
-      .replace(/([^\s(])\(/g, "$1 (")
-      .replace(/\)([^\s)])/g, ") $1")
+    if (lang === "ja") {
+      t = t
+        .replace(/([^\s(])\(/g, "$1 (")
+        .replace(/\)([^\s)])/g, ") $1")
+    }
 
     return t.replace(/[ \t]{2,}/g, " ").trim()
   }
@@ -146,14 +152,34 @@ export const normalizeUrl = (url: string): string => {
 }
 
 /**
+ * Convert HTTP URL to HTTPS
+ */
+export const httpToHttps = (url: string): string => {
+  const trimmed = url.trim()
+  if (!trimmed) return trimmed
+  return trimmed.replace(/^http:\/\//i, "https://")
+}
+
+/**
  * Normalize footer text (remove leading markers)
  */
 export const normalizeFooterText = (text: string, lang: "ja" | "en"): string => {
+  let result = text
+
+  // Remove ※/※n, */*, etc. (existing pattern)
   if (lang === "ja") {
-    return text.replace(/^[※*]\d*\s?/, "")
+    result = result.replace(/^[※*]\d*\s*/, "")
   } else {
-    return text.replace(/^\*\d*\s?/, "")
+    result = result.replace(/^\*\d*\s*/, "")
   }
+
+  // Remove numbered parentheses: 1), 2), 3), etc.
+  result = result.replace(/^\d+\)\s*/, "")
+
+  // Remove leading colons (half-width and full-width)
+  result = result.replace(/^[:：]\s*/, "")
+
+  return result.trim()
 }
 
 /**

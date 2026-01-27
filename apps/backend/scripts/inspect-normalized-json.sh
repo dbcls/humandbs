@@ -1,16 +1,16 @@
 #!/bin/bash
-# Extract unique field values from detail-json files for analysis
-# Usage: ./scripts/extract-field-values.sh
+# Extract unique field values from normalized-json files for debugging/analysis
+# Usage: ./scripts/inspect-normalized-json.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULTS_DIR="$SCRIPT_DIR/../crawler-results"
-JSON_DIR="$RESULTS_DIR/detail-json"
-OUT_DIR="$RESULTS_DIR/field-analysis"
+JSON_DIR="$RESULTS_DIR/normalized-json"
+OUT_DIR="$RESULTS_DIR/normalized-field-analysis"
 
 if [ ! -d "$JSON_DIR" ]; then
-  echo "Error: $JSON_DIR not found. Run 'bun run crawler:crawl' first."
+  echo "Error: $JSON_DIR not found. Run 'bun run crawler:normalize' first."
   exit 1
 fi
 
@@ -25,10 +25,13 @@ extract_field() {
   jq -r "$field // empty" "$JSON_DIR"/*-"$lang".json 2>/dev/null | sort | uniq > "$OUT_DIR/$lang/$output_name.txt"
 }
 
-echo "Extracting field values..."
+echo "Extracting field values from normalized JSON..."
 
 for lang in ja en; do
   echo "Processing $lang..."
+
+  # Title
+  extract_field "$lang" '.title' "title"
 
   # Summary
   extract_field "$lang" '.summary.aims.text' "summary-aims-text"
@@ -36,17 +39,18 @@ for lang in ja en; do
   extract_field "$lang" '.summary.targets.text' "summary-targets-text"
   extract_field "$lang" '.summary.url[].text' "summary-url-text"
   extract_field "$lang" '.summary.url[].url' "summary-url-url"
-  extract_field "$lang" '.summary.datasets[].datasetId' "summary-datasets-datasetId"
+  # NormalizedDataset: datasetId, criteria, releaseDate are arrays
+  extract_field "$lang" '.summary.datasets[].datasetId[]' "summary-datasets-datasetId"
   extract_field "$lang" '.summary.datasets[].typeOfData' "summary-datasets-typeOfData"
-  extract_field "$lang" '.summary.datasets[].criteria' "summary-datasets-criteria"
-  extract_field "$lang" '.summary.datasets[].releaseDate' "summary-datasets-releaseDate"
+  extract_field "$lang" '.summary.datasets[].criteria[]' "summary-datasets-criteria"
+  extract_field "$lang" '.summary.datasets[].releaseDate[]' "summary-datasets-releaseDate"
   extract_field "$lang" '.summary.footers[].text' "summary-footers-text"
 
-  # Molecular Data
+  # Molecular Data (id, footers, and extractedDatasetIds)
   extract_field "$lang" '.molecularData[].id.text' "molecularData-id-text"
-  extract_field "$lang" '.molecularData[].data | keys[]' "molecularData-data-keys"
-  extract_field "$lang" '.molecularData[].data | to_entries[] | select(.value != null) | .value.text' "molecularData-data-values-text"
   extract_field "$lang" '.molecularData[].footers[].text' "molecularData-footers-text"
+  extract_field "$lang" '.molecularData[].extractedDatasetIds.datasetIds[]' "molecularData-extractedDatasetIds-datasetIds"
+  extract_field "$lang" '.molecularData[].extractedDatasetIds.originalJgasIds[]' "molecularData-extractedDatasetIds-originalJgasIds"
 
   # Data Provider
   extract_field "$lang" '.dataProvider.principalInvestigator[].text' "dataProvider-principalInvestigator-text"
@@ -56,6 +60,7 @@ for lang in ja en; do
   extract_field "$lang" '.dataProvider.projectUrl[].url' "dataProvider-projectUrl-url"
   extract_field "$lang" '.dataProvider.grants[].grantName' "dataProvider-grants-grantName"
   extract_field "$lang" '.dataProvider.grants[].projectTitle' "dataProvider-grants-projectTitle"
+  # NormalizedGrant: grantId is string[] | null
   extract_field "$lang" '.dataProvider.grants[].grantId[]' "dataProvider-grants-grantId"
 
   # Publications
@@ -69,7 +74,9 @@ for lang in ja en; do
   extract_field "$lang" '.controlledAccessUsers[].country' "controlledAccessUsers-country"
   extract_field "$lang" '.controlledAccessUsers[].researchTitle' "controlledAccessUsers-researchTitle"
   extract_field "$lang" '.controlledAccessUsers[].datasetIds[]' "controlledAccessUsers-datasetIds"
-  extract_field "$lang" '.controlledAccessUsers[].periodOfDataUse' "controlledAccessUsers-periodOfDataUse"
+  # NormalizedControlledAccessUser: periodOfDataUse is PeriodOfDataUse | null
+  extract_field "$lang" '.controlledAccessUsers[].periodOfDataUse.startDate' "controlledAccessUsers-periodOfDataUse-startDate"
+  extract_field "$lang" '.controlledAccessUsers[].periodOfDataUse.endDate' "controlledAccessUsers-periodOfDataUse-endDate"
 
   # Releases
   extract_field "$lang" '.releases[].humVersionId' "releases-humVersionId"
@@ -77,12 +84,22 @@ for lang in ja en; do
   extract_field "$lang" '.releases[].content' "releases-content"
   extract_field "$lang" '.releases[].releaseNote.text' "releases-releaseNote-text"
 
+  # Dataset ID Registry
+  extract_field "$lang" '.datasetIdRegistry.validDatasetIds[]' "datasetIdRegistry-validDatasetIds"
+
+  # Detected Orphans
+  extract_field "$lang" '.detectedOrphans[].type' "detectedOrphans-type"
+  extract_field "$lang" '.detectedOrphans[].datasetId' "detectedOrphans-datasetId"
+  extract_field "$lang" '.detectedOrphans[].context' "detectedOrphans-context"
+
   echo "$lang done"
 done
 
 echo ""
 echo "Output directory: $OUT_DIR"
 echo ""
-echo "File counts:"
-wc -l "$OUT_DIR"/ja/*.txt 2>/dev/null | tail -1 || echo "No ja files"
-wc -l "$OUT_DIR"/en/*.txt 2>/dev/null | tail -1 || echo "No en files"
+echo "File counts (lines per file):"
+for lang in ja en; do
+  echo "  $lang:"
+  wc -l "$OUT_DIR/$lang"/*.txt 2>/dev/null | tail -1 || echo "    No files"
+done

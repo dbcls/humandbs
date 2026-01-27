@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * Structure CLI - Transform normalized JSON into structured output
+ * Structure CLI - Structure normalized JSON into structured output
  *
- * Transforms normalized data from crawler-results/normalized-json/ and generates
+ * Structures normalized data from crawler-results/normalized-json/ and generates
  * structured JSON in crawler-results/structured-json/
  *
  * Output structure:
@@ -23,16 +23,16 @@ import { readdirSync } from "fs"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { getDatasetsFromStudy, saveRelationCache } from "@/crawler/api/jga"
+import { saveRelationCache } from "@/crawler/api/jga"
 import { genDetailUrl } from "@/crawler/config/urls"
 import {
   invertMolTableToDataset,
   buildDatasetMetadataMap,
-  transformDataProvider,
-  transformControlledAccessUsers,
-  transformGrants,
-  transformPublications,
-  transformResearchProjects,
+  structureDataProvider,
+  structureControlledAccessUsers,
+  structureGrants,
+  structurePublications,
+  structureResearchProjects,
   buildDatasetIdExpansionMap,
   assignBilingualDatasetVersion,
   trackBilingualVersion,
@@ -40,7 +40,7 @@ import {
   createUnifiedResearch,
   createUnifiedResearchVersion,
   getIgnoredDatasetIds,
-} from "@/crawler/processors/transform"
+} from "@/crawler/processors/structure"
 import type {
   LangType,
   NormalizedParseResult,
@@ -151,9 +151,9 @@ const loadNormalizedFilesForHumId = (humId: string): Map<string, Map<LangType, N
   return result
 }
 
-// Transform molecular data to experiments
+// Structure molecular data to experiments
 
-const transformMolDataToExperiment = (
+const structureMolDataToExperiment = (
   molData: NormalizedMolecularData,
 ): SingleLangExperiment => {
   // Convert array values to single values (take first element)
@@ -196,7 +196,7 @@ const buildSingleLangDataset = (
     releaseDate: metadata?.releaseDate ?? [],
     criteria: metadata?.criteria ?? [],
     typeOfData: metadata?.typeOfData ?? null,
-    experiments: molDataList.map(transformMolDataToExperiment),
+    experiments: molDataList.map(structureMolDataToExperiment),
   }
 }
 
@@ -222,11 +222,11 @@ const buildSingleLangResearch = (
     url: normalized.summary.url,
     footers: normalized.summary.footers,
   },
-  dataProvider: transformDataProvider(normalized.dataProvider),
-  researchProject: transformResearchProjects(normalized.dataProvider),
-  grant: transformGrants(normalized.dataProvider.grants),
-  relatedPublication: transformPublications(normalized.publications, expansionMap),
-  controlledAccessUser: transformControlledAccessUsers(normalized.controlledAccessUsers, expansionMap),
+  dataProvider: structureDataProvider(normalized.dataProvider),
+  researchProject: structureResearchProjects(normalized.dataProvider),
+  grant: structureGrants(normalized.dataProvider.grants),
+  relatedPublication: structurePublications(normalized.publications, expansionMap),
+  controlledAccessUser: structureControlledAccessUsers(normalized.controlledAccessUsers, expansionMap),
   versionIds,
   latestVersion,
   firstReleaseDate,
@@ -325,7 +325,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       }
     }
 
-    const invertedMap = await invertMolTableToDataset(allMolData, getDatasetsFromStudy)
+    const invertedMap = invertMolTableToDataset(allMolData)
     const expansionMap = buildDatasetIdExpansionMap(allMolData, invertedMap)
 
     // Build metadata map
@@ -379,7 +379,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
         }
       }
 
-      const versionInvertedMap = await invertMolTableToDataset(versionAllMolData, getDatasetsFromStudy)
+      const versionInvertedMap = invertMolTableToDataset(versionAllMolData)
       const versionDatasetIds: string[] = []
 
       // Process each dataset
@@ -396,8 +396,8 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
           ? molDataList.filter(m => enVersionMolData.some(em => em.id?.text === m.id?.text))
           : []
 
-        const jaExperiments = jaMolDataForDataset.map(transformMolDataToExperiment)
-        const enExperiments = enMolDataForDataset.map(transformMolDataToExperiment)
+        const jaExperiments = jaMolDataForDataset.map(structureMolDataToExperiment)
+        const enExperiments = enMolDataForDataset.map(structureMolDataToExperiment)
 
         // Assign version
         const datasetVersion = assignBilingualDatasetVersion(

@@ -16,22 +16,24 @@ import {
   getCriteriaCanonicalMap,
   getInvalidGrantIdValues,
   getInvalidDoiValues,
-  getDatasetIdSpecialCases,
-  applyDatasetIdSpecialCase,
+  getGlobalIdCorrection,
+  applyGlobalIdCorrection,
   getJgaxToJgasMap,
   getOldJgaToJgasMap,
-  getPublicationDatasetIdMap,
-  getControlledAccessUsersDatasetIdMap,
+  getPublicationIdCorrection,
   getUnusedPublicationTitles,
-  getInvalidIdValues,
+  getInvalidOtherIds,
   getInvalidJgasIds,
   isInvalidPublicationDatasetId,
   cleanPublicationDatasetId,
-  getPublicationDatasetIdNoSplit,
+  getNoSplitIds,
   getMolDataUnusedKey,
   getMolDataSplitKeys,
   getMolDataIdFields,
-  getJgadTypoToJgas,
+  getIdCorrectionByHum,
+  getHumIdsWithDataSummary,
+  getAdditionalIdsByHum,
+  getIgnoreIdsByHum,
 } from "@/crawler/config/mapping"
 import { isValidDatasetId } from "@/crawler/config/patterns"
 import { loadMolDataMappingTable, buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/processors/mapping-table"
@@ -39,6 +41,7 @@ import type {
   LangType,
   TextValue,
   CriteriaCanonical,
+  DatasetIdType,
   RawParseResult,
   NormalizedParseResult,
   NormalizedControlledAccessUser,
@@ -46,6 +49,9 @@ import type {
   RawPublication,
   RawRelease,
   PeriodOfDataUse,
+  ExtractedDatasetIds,
+  DatasetIdRegistry,
+  OrphanReference,
 } from "@/crawler/types"
 import { logger } from "@/crawler/utils/logger"
 import {
@@ -54,6 +60,7 @@ import {
   isTextValue,
   normalizeText,
   normalizeFooterText,
+  httpToHttps,
 } from "@/crawler/utils/text"
 
 // Re-export mapping table functions
@@ -177,6 +184,10 @@ export const fixDatasetId = (
   if (raw === "") return []
 
   const trimmed = raw
+    // Insert spaces around parentheses before removing them
+    // so that compound IDs like "JGAS000073(JGA000074)" split correctly
+    .replace(/([^\s(])\(/g, "$1 (")
+    .replace(/\)([^\s)])/g, ") $1")
     // Remove parentheses
     .replace(/[()]/g, "")
     // Remove Japanese text
@@ -196,7 +207,7 @@ export const fixDatasetId = (
     .trim()
 
   // Check special cases from config
-  const specialCases = getDatasetIdSpecialCases()
+  const specialCases = getGlobalIdCorrection()
   if (trimmed in specialCases) {
     return specialCases[trimmed]
   }
@@ -493,8 +504,12 @@ export const removeUnusedPublications = (
  * Split datasetId by whitespace, but preserve special cases
  */
 const splitDatasetId = (id: string): string[] => {
-  const normalized = normalizeText(id, true)
-  const noSplitPatterns = getPublicationDatasetIdNoSplit()
+  const raw = normalizeText(id, true)
+  // Insert spaces around parentheses so compound IDs like "DRA003802(JGAS000006)" split correctly
+  const normalized = raw
+    .replace(/([^\s(])\(/g, "$1 (")
+    .replace(/\)([^\s)])/g, ") $1")
+  const noSplitPatterns = getNoSplitIds()
 
   // Check if this matches any no-split pattern
   for (const noSplit of noSplitPatterns) {
@@ -534,7 +549,7 @@ export const expandJgasToJgad = async (
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
 ): Promise<string[]> => {
   if (!/^JGAS\d{6}$/.test(id)) {
-    const invalidIdValues = getInvalidIdValues()
+    const invalidIdValues = getInvalidOtherIds()
     if (invalidIdValues.includes(id)) {
       return []
     }
@@ -553,7 +568,7 @@ export const expandJgasToJgad = async (
   }
 
   // Filter out invalid JGAD IDs
-  const invalidIdValues = getInvalidIdValues()
+  const invalidIdValues = getInvalidOtherIds()
   return jgadIds.filter(jgadId => !invalidIdValues.includes(jgadId))
 }
 
@@ -564,18 +579,19 @@ export const processDatasetId = async (
   id: string,
   idMap: Record<string, string[]>,
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
+  humId: string,
 ): Promise<string[]> => {
   // First, apply ID mapping
   if (id in idMap) {
     return idMap[id]
   }
 
-  // Fix typos: JGAD written by mistake instead of JGAS
-  const jgadTypoToJgas = getJgadTypoToJgas()
+  // Fix typos: JGAD written by mistake instead of JGAS (hum-specific)
+  const jgadTypoToJgas = getIdCorrectionByHum(humId)
   const typoFixedId = jgadTypoToJgas[id] ?? id
 
   // Apply special case transformations
-  const specialCaseIds = applyDatasetIdSpecialCase(typoFixedId)
+  const specialCaseIds = applyGlobalIdCorrection(typoFixedId)
 
   const results: string[] = []
   for (const specialCaseId of specialCaseIds) {
@@ -602,15 +618,39 @@ export const processDatasetId = async (
  */
 export const fixDatasetIdsInPublications = async (
   publications: RawPublication[],
+  molecularData: NormalizedMolecularData[],
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
+  extractIdsByTypeFn: (text: string) => Partial<Record<DatasetIdType, string[]>>,
+  humId: string,
 ): Promise<RawPublication[]> => {
-  const pubDatasetIdMap = getPublicationDatasetIdMap()
+  const pubDatasetIdMap = getPublicationIdCorrection()
 
   return Promise.all(publications.map(async pub => {
     const mappedIds: string[] = []
 
     for (const id of pub.datasetIds) {
-      const processedIds = await processDatasetId(id, pubDatasetIdMap, getDatasetsFromStudy)
+      // If the ID is already a valid dataset ID pattern, process it normally
+      if (isValidDatasetId(id)) {
+        const processedIds = await processDatasetId(id, pubDatasetIdMap, getDatasetsFromStudy, humId)
+        mappedIds.push(...processedIds)
+        continue
+      }
+
+      // Otherwise, try to match with molecularData header
+      const matchingMolData = findMatchingMolData(id, molecularData)
+      if (matchingMolData) {
+        const extractedIds = extractDatasetIdsFromMolData(matchingMolData, extractIdsByTypeFn)
+        if (extractedIds.length > 0) {
+          for (const extractedId of extractedIds) {
+            const processedIds = await processDatasetId(extractedId, pubDatasetIdMap, getDatasetsFromStudy, humId)
+            mappedIds.push(...processedIds)
+          }
+          continue
+        }
+      }
+
+      // Fallback: process the original ID
+      const processedIds = await processDatasetId(id, pubDatasetIdMap, getDatasetsFromStudy, humId)
       mappedIds.push(...processedIds)
     }
 
@@ -626,15 +666,40 @@ export const fixDatasetIdsInPublications = async (
  */
 export const fixDatasetIdsInControlledAccessUsers = async (
   cas: NormalizedControlledAccessUser[],
+  molecularData: NormalizedMolecularData[],
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
+  extractIdsByTypeFn: (text: string) => Partial<Record<DatasetIdType, string[]>>,
+  humId: string,
 ): Promise<NormalizedControlledAccessUser[]> => {
-  const caDatasetIdMap = getControlledAccessUsersDatasetIdMap()
+  // No typo correction map for controlled access users (kept empty)
+  const caDatasetIdMap: Record<string, string[]> = {}
 
   return Promise.all(cas.map(async ca => {
     const mappedIds: string[] = []
 
     for (const id of ca.datasetIds) {
-      const processedIds = await processDatasetId(id, caDatasetIdMap, getDatasetsFromStudy)
+      // If the ID is already a valid dataset ID pattern, process it normally
+      if (isValidDatasetId(id)) {
+        const processedIds = await processDatasetId(id, caDatasetIdMap, getDatasetsFromStudy, humId)
+        mappedIds.push(...processedIds)
+        continue
+      }
+
+      // Otherwise, try to match with molecularData header
+      const matchingMolData = findMatchingMolData(id, molecularData)
+      if (matchingMolData) {
+        const extractedIds = extractDatasetIdsFromMolData(matchingMolData, extractIdsByTypeFn)
+        if (extractedIds.length > 0) {
+          for (const extractedId of extractedIds) {
+            const processedIds = await processDatasetId(extractedId, caDatasetIdMap, getDatasetsFromStudy, humId)
+            mappedIds.push(...processedIds)
+          }
+          continue
+        }
+      }
+
+      // Fallback: process the original ID
+      const processedIds = await processDatasetId(id, caDatasetIdMap, getDatasetsFromStudy, humId)
       mappedIds.push(...processedIds)
     }
 
@@ -682,6 +747,224 @@ export const extractDatasetIdsFromMolData = (
 }
 
 /**
+ * Extract and expand dataset IDs from molecular data (including JGAS→JGAD conversion)
+ */
+export const extractAndExpandDatasetIdsFromMolData = async (
+  molData: NormalizedMolecularData,
+  getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
+  extractIdsByTypeFn: (text: string) => Partial<Record<DatasetIdType, string[]>>,
+): Promise<ExtractedDatasetIds> => {
+  const invalidIdValues = getInvalidOtherIds()
+  const invalidJgasIds = getInvalidJgasIds()
+  const idFields = getMolDataIdFields()
+
+  // Collect IDs from header and data fields
+  const idsByType: Partial<Record<DatasetIdType, Set<string>>> = {}
+
+  const addIds = (text: string) => {
+    const found = extractIdsByTypeFn(text)
+    for (const [type, ids] of Object.entries(found) as [DatasetIdType, string[]][]) {
+      if (!idsByType[type]) {
+        idsByType[type] = new Set()
+      }
+      for (const id of ids) {
+        if (invalidIdValues.includes(id)) continue
+        const normalizedIds = applyGlobalIdCorrection(id)
+        for (const normalizedId of normalizedIds) {
+          idsByType[type]!.add(normalizedId)
+        }
+      }
+    }
+  }
+
+  // Extract from header
+  if (molData.id?.text) {
+    const specialCaseIds = applyGlobalIdCorrection(molData.id.text)
+    for (const id of specialCaseIds) {
+      addIds(id)
+    }
+    addIds(molData.id.text)
+  }
+
+  // Extract from data fields
+  for (const key of idFields) {
+    const val = molData.data[key]
+    if (!val) continue
+
+    const values = Array.isArray(val) ? val : [val]
+    for (const v of values) {
+      addIds(v.text)
+      addIds(v.rawHtml)
+    }
+  }
+
+  // Convert to arrays
+  const idsByTypeArrays: Partial<Record<DatasetIdType, string[]>> = {}
+  for (const [type, ids] of Object.entries(idsByType)) {
+    idsByTypeArrays[type as DatasetIdType] = [...ids]
+  }
+
+  // Collect JGAS IDs for expansion
+  const originalJgasIds: string[] = idsByTypeArrays.JGAS ?? []
+
+  // Expand JGAS to JGAD
+  const expandedJgadIds = new Set<string>()
+  for (const jgasId of originalJgasIds) {
+    if (invalidJgasIds.has(jgasId)) continue
+    const jgadIds = await getDatasetsFromStudy(jgasId)
+    for (const jgadId of jgadIds) {
+      if (!invalidIdValues.includes(jgadId)) {
+        expandedJgadIds.add(jgadId)
+      }
+    }
+    if (jgadIds.length === 0) {
+      logger.warn("JGAS has no corresponding JGAD (unexpected)", { jgasId })
+    }
+  }
+
+  // Collect all final dataset IDs
+  const allDatasetIds = new Set<string>()
+
+  // Add direct IDs (JGAD, DRA, GEA, NBDC, BP, METABO)
+  const directIdTypes: DatasetIdType[] = ["JGAD", "DRA", "GEA", "NBDC_DATASET", "BP", "METABO"]
+  for (const type of directIdTypes) {
+    const ids = idsByTypeArrays[type]
+    if (ids) {
+      for (const id of ids) {
+        allDatasetIds.add(id)
+      }
+    }
+  }
+
+  // Add expanded JGAD IDs
+  for (const jgadId of expandedJgadIds) {
+    allDatasetIds.add(jgadId)
+  }
+
+  return {
+    datasetIds: [...allDatasetIds],
+    originalJgasIds,
+    idsByType: idsByTypeArrays,
+  }
+}
+
+/**
+ * Build dataset ID registry from molecular data
+ */
+export const buildDatasetIdRegistry = (
+  molecularData: NormalizedMolecularData[],
+): DatasetIdRegistry => {
+  const validDatasetIds = new Set<string>()
+  const datasetIdToMolDataIndices: Record<string, number[]> = {}
+
+  for (let i = 0; i < molecularData.length; i++) {
+    const molData = molecularData[i]
+    const extractedIds = molData.extractedDatasetIds
+
+    if (!extractedIds) continue
+
+    for (const datasetId of extractedIds.datasetIds) {
+      validDatasetIds.add(datasetId)
+
+      if (!datasetIdToMolDataIndices[datasetId]) {
+        datasetIdToMolDataIndices[datasetId] = []
+      }
+      datasetIdToMolDataIndices[datasetId].push(i)
+    }
+  }
+
+  return {
+    validDatasetIds: [...validDatasetIds],
+    datasetIdToMolDataIndices,
+  }
+}
+
+/**
+ * Build dataset ID registry from summary.datasets (for dataSummaryPages that have no molecularData)
+ */
+export const buildDatasetIdRegistryFromSummary = (
+  datasets: NormalizedParseResult["summary"]["datasets"],
+): DatasetIdRegistry => {
+  const validDatasetIds = new Set<string>()
+
+  for (const ds of datasets) {
+    if (ds.datasetId) {
+      for (const id of ds.datasetId) {
+        validDatasetIds.add(id)
+      }
+    }
+  }
+
+  return {
+    validDatasetIds: [...validDatasetIds],
+    datasetIdToMolDataIndices: {}, // molData がないので空
+  }
+}
+
+/**
+ * Detect orphan dataset ID references
+ */
+export const detectOrphanDatasetIds = (
+  result: NormalizedParseResult,
+  validDatasetIds: Set<string>,
+  humVersionId: string,
+): OrphanReference[] => {
+  const orphans: OrphanReference[] = []
+
+  // Check summary.datasets
+  for (const ds of result.summary.datasets) {
+    if (!ds.datasetId) continue
+    for (const id of ds.datasetId) {
+      if (!validDatasetIds.has(id)) {
+        orphans.push({
+          type: "summary",
+          datasetId: id,
+          context: ds.typeOfData ?? "",
+        })
+      }
+    }
+  }
+
+  // Check publications
+  for (const pub of result.publications) {
+    for (const id of pub.datasetIds) {
+      if (!validDatasetIds.has(id)) {
+        orphans.push({
+          type: "publication",
+          datasetId: id,
+          context: pub.title ?? "",
+        })
+      }
+    }
+  }
+
+  // Check controlledAccessUsers
+  for (const cau of result.controlledAccessUsers) {
+    for (const id of cau.datasetIds) {
+      if (!validDatasetIds.has(id)) {
+        orphans.push({
+          type: "controlledAccessUser",
+          datasetId: id,
+          context: cau.researchTitle ?? "",
+        })
+      }
+    }
+  }
+
+  // Log warnings
+  for (const orphan of orphans) {
+    logger.warn("Orphan dataset ID reference detected", {
+      humVersionId,
+      type: orphan.type,
+      datasetId: orphan.datasetId,
+      context: orphan.context,
+    })
+  }
+
+  return orphans
+}
+
+/**
  * Find matching molecularData for a summary datasetId
  */
 const findMatchingMolData = (
@@ -705,6 +988,7 @@ export const fixDatasetIdsInSummaryDatasets = async (
   molecularData: NormalizedMolecularData[],
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
   extractIdsByType: (text: string) => Record<string, string[]>,
+  humId: string,
 ): Promise<NormalizedParseResult["summary"]["datasets"]> => {
   return Promise.all(datasets.map(async ds => {
     if (!ds.datasetId || ds.datasetId.length === 0) {
@@ -715,7 +999,7 @@ export const fixDatasetIdsInSummaryDatasets = async (
     for (const id of ds.datasetId) {
       // If the ID is already a valid dataset ID pattern, process it normally
       if (isValidDatasetId(id)) {
-        const processedIds = await processDatasetId(id, {}, getDatasetsFromStudy)
+        const processedIds = await processDatasetId(id, {}, getDatasetsFromStudy, humId)
         mappedIds.push(...processedIds)
         continue
       }
@@ -727,15 +1011,16 @@ export const fixDatasetIdsInSummaryDatasets = async (
         if (extractedIds.length > 0) {
           // Process each extracted ID
           for (const extractedId of extractedIds) {
-            const processedIds = await processDatasetId(extractedId, {}, getDatasetsFromStudy)
+            const processedIds = await processDatasetId(extractedId, {}, getDatasetsFromStudy, humId)
             mappedIds.push(...processedIds)
           }
           continue
         }
       }
 
-      // Fallback: keep the original ID
-      mappedIds.push(id)
+      // Fallback: process the original ID (handles oldJga conversion etc.)
+      const processedIds = await processDatasetId(id, {}, getDatasetsFromStudy, humId)
+      mappedIds.push(...processedIds)
     }
 
     return {
@@ -774,12 +1059,13 @@ export const normalizeParseResult = async (
     ...detail,
     summary: {
       ...detail.summary,
-      aims: normalizeText(detail.summary.aims, lang === "en"),
-      methods: normalizeText(detail.summary.methods, lang === "en"),
-      targets: normalizeText(detail.summary.targets, lang === "en"),
+      aims: normalizeText(detail.summary.aims, lang === "en", lang),
+      methods: normalizeText(detail.summary.methods, lang === "en", lang),
+      targets: normalizeText(detail.summary.targets, lang === "en", lang),
       url: detail.summary.url.map(u => ({
         ...u,
-        url: normalizeUrl(u.url, baseUrl),
+        text: httpToHttps(u.text),
+        url: httpToHttps(normalizeUrl(u.url, baseUrl)),
       })),
       datasets: detail.summary.datasets.map(ds => ({
         ...ds,
@@ -790,7 +1076,7 @@ export const normalizeParseResult = async (
       })),
       footers: detail.summary.footers.map(f => ({
         ...f,
-        text: normalizeFooterText(normalizeText(f.text, lang === "en"), lang),
+        text: normalizeFooterText(normalizeText(f.text, lang === "en", lang), lang),
       })),
     },
     molecularData: detail.molecularData.map(md => ({
@@ -804,29 +1090,34 @@ export const normalizeParseResult = async (
       ),
       footers: md.footers.map(f => ({
         ...f,
-        text: normalizeFooterText(normalizeText(f.text, lang === "en"), lang),
+        text: normalizeFooterText(normalizeText(f.text, lang === "en", lang), lang),
       })),
     })),
     dataProvider: {
       ...detail.dataProvider,
-      principalInvestigator: detail.dataProvider.principalInvestigator.map(pi => normalizeText(pi, true)),
-      affiliation: detail.dataProvider.affiliation.map(af => normalizeText(af, true)),
-      projectName: detail.dataProvider.projectName.map(pn => normalizeText(pn, true)),
+      principalInvestigator: detail.dataProvider.principalInvestigator.map(pi => normalizeText(pi, true, lang)),
+      affiliation: detail.dataProvider.affiliation.map(af => normalizeText(af, true, lang)),
+      projectName: detail.dataProvider.projectName.map(pn => normalizeText(pn, true, lang)),
       projectUrl: detail.dataProvider.projectUrl.map(u => ({
         ...u,
-        url: normalizeUrl(u.url, baseUrl),
+        text: httpToHttps(u.text),
+        url: httpToHttps(normalizeUrl(u.url, baseUrl)),
       })),
       grants: detail.dataProvider.grants.map(grant => ({
-        grantName: grant.grantName ? normalizeText(grant.grantName, true) : null,
-        projectTitle: grant.projectTitle ? normalizeText(grant.projectTitle, true) : null,
+        grantName: grant.grantName ? normalizeText(grant.grantName, true, lang) : null,
+        projectTitle: grant.projectTitle ? normalizeText(grant.projectTitle, true, lang) : null,
         // Filter "-" and annotations before processing
         grantId: fixGrantId(filterParsedValues(grant.grantId).map(id => normalizeText(id, true))),
       })),
     },
     publications: detail.publications.map(pub => ({
       ...pub,
-      title: pub.title ? normalizeText(pub.title, true) : null,
-      doi: pub.doi ? normalizeDoiValue(normalizeText(pub.doi, true)) : null,
+      title: pub.title ? normalizeText(pub.title, true, lang) : null,
+      doi: (() => {
+        if (!pub.doi) return null
+        const normalized = normalizeDoiValue(normalizeText(pub.doi, true))
+        return normalized ? httpToHttps(normalized) : null
+      })(),
       // Filter "-" and annotations before processing
       datasetIds: filterParsedValues(pub.datasetIds)
         .flatMap(id => splitDatasetId(id))
@@ -835,10 +1126,10 @@ export const normalizeParseResult = async (
     })),
     controlledAccessUsers: detail.controlledAccessUsers.map(cau => ({
       ...cau,
-      principalInvestigator: cau.principalInvestigator ? normalizeText(cau.principalInvestigator, true) : null,
-      affiliation: cau.affiliation ? normalizeText(cau.affiliation, true) : null,
-      country: cau.country ? normalizeText(cau.country, true) : null,
-      researchTitle: cau.researchTitle ? normalizeText(cau.researchTitle, true) : null,
+      principalInvestigator: cau.principalInvestigator ? normalizeText(cau.principalInvestigator, true, lang) : null,
+      affiliation: cau.affiliation ? normalizeText(cau.affiliation, true, lang) : null,
+      country: cau.country ? normalizeText(cau.country, true, lang) : null,
+      researchTitle: cau.researchTitle ? normalizeText(cau.researchTitle, true, lang) : null,
       // Filter "-" and annotations before processing
       datasetIds: filterParsedValues(cau.datasetIds).map(id => normalizeText(id, true)),
       periodOfDataUse: cau.periodOfDataUse ? parsePeriodOfDataUse(normalizeText(cau.periodOfDataUse, true)) : null,
@@ -846,15 +1137,13 @@ export const normalizeParseResult = async (
     releases: detail.releases.map(rel => ({
       ...rel,
       humVersionId: fixHumVersionId(rel.humVersionId),
-      content: normalizeText(rel.content, lang === "en"),
-      releaseNote: rel.releaseNote ? normalizeText(rel.releaseNote, true) : undefined,
+      content: normalizeText(rel.content, lang === "en", lang),
+      releaseNote: rel.releaseNote ? normalizeText(rel.releaseNote, true, lang) : undefined,
     })),
   }
 
   // Post-processing
   normalizedDetail.publications = removeUnusedPublications(normalizedDetail.publications)
-  normalizedDetail.publications = await fixDatasetIdsInPublications(normalizedDetail.publications, getDatasetsFromStudy)
-  normalizedDetail.controlledAccessUsers = await fixDatasetIdsInControlledAccessUsers(normalizedDetail.controlledAccessUsers, getDatasetsFromStudy)
   normalizedDetail.releases = fixDateInReleases(normalizedDetail.releases)
 
   // Normalize molecular data keys
@@ -862,12 +1151,73 @@ export const normalizeParseResult = async (
     molData.data = normalizeMolData(molData.data, humVersionId, lang)
   }
 
+  // Extract and expand dataset IDs from molecular data
+  for (const molData of normalizedDetail.molecularData) {
+    molData.extractedDatasetIds = await extractAndExpandDatasetIdsFromMolData(
+      molData,
+      getDatasetsFromStudy,
+      extractIdsByType,
+    )
+  }
+
+  // Extract humId from humVersionId (e.g., "hum0014-v37" -> "hum0014")
+  const humId = humVersionId.split("-v")[0]
+  const dataSummaryHumIds = getHumIdsWithDataSummary()
+
+  // Build dataset ID registry (molecularData から構築)
+  // dataSummaryPages の場合は fixDatasetIdsInSummaryDatasets の後に再構築する
+  normalizedDetail.datasetIdRegistry = buildDatasetIdRegistry(normalizedDetail.molecularData)
+
+  // Fix dataset IDs in publications (with molData header matching)
+  normalizedDetail.publications = await fixDatasetIdsInPublications(
+    normalizedDetail.publications,
+    normalizedDetail.molecularData,
+    getDatasetsFromStudy,
+    extractIdsByType,
+    humId,
+  )
+
+  // Fix dataset IDs in controlled access users (with molData header matching)
+  normalizedDetail.controlledAccessUsers = await fixDatasetIdsInControlledAccessUsers(
+    normalizedDetail.controlledAccessUsers,
+    normalizedDetail.molecularData,
+    getDatasetsFromStudy,
+    extractIdsByType,
+    humId,
+  )
+
   // Fix dataset IDs in summary (must be called after normalizeMolData)
   normalizedDetail.summary.datasets = await fixDatasetIdsInSummaryDatasets(
     normalizedDetail.summary.datasets,
     normalizedDetail.molecularData,
     getDatasetsFromStudy,
     extractIdsByType,
+    humId,
+  )
+
+  // Build dataset ID registry for dataSummaryPages (after fixDatasetIdsInSummaryDatasets)
+  if (dataSummaryHumIds.includes(humId)) {
+    normalizedDetail.datasetIdRegistry = buildDatasetIdRegistryFromSummary(
+      normalizedDetail.summary.datasets,
+    )
+  }
+
+  // Add additional dataset IDs from config (e.g., PRJDB10452 for hum0248)
+  const additionalIds = getAdditionalIdsByHum(humId)
+  if (additionalIds.length > 0) {
+    normalizedDetail.datasetIdRegistry.validDatasetIds.push(...additionalIds)
+  }
+
+  // Detect orphan dataset ID references (warning only, no exclusion)
+  const ignoredIds = getIgnoreIdsByHum()[humId] ?? []
+  const validDatasetIds = new Set([
+    ...normalizedDetail.datasetIdRegistry.validDatasetIds,
+    ...ignoredIds,
+  ])
+  normalizedDetail.detectedOrphans = detectOrphanDatasetIds(
+    normalizedDetail,
+    validDatasetIds,
+    humVersionId,
   )
 
   return normalizedDetail

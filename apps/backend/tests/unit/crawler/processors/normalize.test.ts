@@ -22,8 +22,17 @@ import {
   filterParsedValues,
   compareHeaders,
   normalizeCellValue,
+  extractAndExpandDatasetIdsFromMolData,
+  buildDatasetIdRegistry,
+  detectOrphanDatasetIds,
 } from "@/crawler/processors/normalize"
-import type { TextValue, RawPublication } from "@/crawler/types"
+import type {
+  TextValue,
+  RawPublication,
+  NormalizedMolecularData,
+  NormalizedParseResult,
+  DatasetIdType,
+} from "@/crawler/types"
 
 const BASE_URL = "https://humandbs.dbcls.jp"
 
@@ -157,12 +166,25 @@ describe("processors/normalize.ts", () => {
         expect(normalizeText("a\nb\r\nc", false)).toBe("abc")
       })
 
-      it("should add space before opening parenthesis if needed", () => {
-        expect(normalizeText("hello(world)", true)).toBe("hello (world)")
+      it("should add space before opening parenthesis when lang is 'ja'", () => {
+        expect(normalizeText("hello(world)", true, "ja")).toBe("hello (world)")
       })
 
-      it("should add space after closing parenthesis if needed", () => {
-        expect(normalizeText("(hello)world", true)).toBe("(hello) world")
+      it("should add space after closing parenthesis when lang is 'ja'", () => {
+        expect(normalizeText("(hello)world", true, "ja")).toBe("(hello) world")
+      })
+
+      it("should not add space around parentheses when lang is 'en'", () => {
+        expect(normalizeText("hello(world)", true, "en")).toBe("hello(world)")
+        expect(normalizeText("(hello)world", true, "en")).toBe("(hello)world")
+      })
+
+      it("should not add space around parentheses when lang is undefined", () => {
+        expect(normalizeText("hello(world)", true)).toBe("hello(world)")
+      })
+
+      it("should not produce ') .' in English text", () => {
+        expect(normalizeText("(see above).", true, "en")).toBe("(see above).")
       })
 
       it("should collapse multiple spaces", () => {
@@ -731,6 +753,296 @@ describe("processors/normalize.ts", () => {
 
     it("should return value for text that is not '-'", () => {
       expect(normalizeCellValue(createMockCell("JGAD000001"))).toBe("JGAD000001")
+    })
+  })
+
+  // ===========================================================================
+  // extractAndExpandDatasetIdsFromMolData
+  // ===========================================================================
+  describe("extractAndExpandDatasetIdsFromMolData", () => {
+    const mockExtractIdsByType = (text: string): Partial<Record<DatasetIdType, string[]>> => {
+      const result: Partial<Record<DatasetIdType, string[]>> = {}
+      const jgadMatches = text.match(/JGAD\d{6}/g)
+      if (jgadMatches) result.JGAD = jgadMatches
+      const jgasMatches = text.match(/JGAS\d{6}/g)
+      if (jgasMatches) result.JGAS = jgasMatches
+      const draMatches = text.match(/DRA\d{6}/g)
+      if (draMatches) result.DRA = draMatches
+      return result
+    }
+
+    const mockGetDatasetsFromStudy = async (studyId: string): Promise<string[]> => {
+      if (studyId === "JGAS000001") return ["JGAD000001", "JGAD000002"]
+      if (studyId === "JGAS000002") return ["JGAD000003"]
+      return []
+    }
+
+    it("should extract JGAD IDs from molecular data header", async () => {
+      const molData: NormalizedMolecularData = {
+        id: { text: "JGAD000001", rawHtml: "JGAD000001" },
+        data: {},
+        footers: [],
+      }
+
+      const result = await extractAndExpandDatasetIdsFromMolData(
+        molData,
+        mockGetDatasetsFromStudy,
+        mockExtractIdsByType,
+      )
+
+      expect(result.datasetIds).toContain("JGAD000001")
+      expect(result.originalJgasIds).toEqual([])
+    })
+
+    it("should expand JGAS IDs to JGAD IDs", async () => {
+      const molData: NormalizedMolecularData = {
+        id: { text: "Study: JGAS000001", rawHtml: "Study: JGAS000001" },
+        data: {},
+        footers: [],
+      }
+
+      const result = await extractAndExpandDatasetIdsFromMolData(
+        molData,
+        mockGetDatasetsFromStudy,
+        mockExtractIdsByType,
+      )
+
+      expect(result.datasetIds).toContain("JGAD000001")
+      expect(result.datasetIds).toContain("JGAD000002")
+      expect(result.originalJgasIds).toContain("JGAS000001")
+    })
+
+    it("should extract IDs from data fields", async () => {
+      const molData: NormalizedMolecularData = {
+        id: { text: "Header", rawHtml: "Header" },
+        data: {
+          // Use actual field name from idFields config
+          "Japanese Genotype-phenotype Archive Dataset Accession": {
+            text: "JGAD000005",
+            rawHtml: "JGAD000005",
+          },
+        },
+        footers: [],
+      }
+
+      const result = await extractAndExpandDatasetIdsFromMolData(
+        molData,
+        mockGetDatasetsFromStudy,
+        mockExtractIdsByType,
+      )
+
+      expect(result.datasetIds).toContain("JGAD000005")
+    })
+
+    it("should extract DRA IDs", async () => {
+      const molData: NormalizedMolecularData = {
+        id: { text: "DRA001234", rawHtml: "DRA001234" },
+        data: {},
+        footers: [],
+      }
+
+      const result = await extractAndExpandDatasetIdsFromMolData(
+        molData,
+        mockGetDatasetsFromStudy,
+        mockExtractIdsByType,
+      )
+
+      expect(result.datasetIds).toContain("DRA001234")
+    })
+  })
+
+  // ===========================================================================
+  // buildDatasetIdRegistry
+  // ===========================================================================
+  describe("buildDatasetIdRegistry", () => {
+    it("should build registry from molecular data with extracted IDs", () => {
+      const molecularData: NormalizedMolecularData[] = [
+        {
+          id: { text: "Data1", rawHtml: "Data1" },
+          data: {},
+          footers: [],
+          extractedDatasetIds: {
+            datasetIds: ["JGAD000001", "JGAD000002"],
+            originalJgasIds: [],
+            idsByType: {},
+          },
+        },
+        {
+          id: { text: "Data2", rawHtml: "Data2" },
+          data: {},
+          footers: [],
+          extractedDatasetIds: {
+            datasetIds: ["JGAD000002", "JGAD000003"],
+            originalJgasIds: [],
+            idsByType: {},
+          },
+        },
+      ]
+
+      const registry = buildDatasetIdRegistry(molecularData)
+
+      expect(registry.validDatasetIds).toContain("JGAD000001")
+      expect(registry.validDatasetIds).toContain("JGAD000002")
+      expect(registry.validDatasetIds).toContain("JGAD000003")
+      expect(registry.datasetIdToMolDataIndices["JGAD000001"]).toEqual([0])
+      expect(registry.datasetIdToMolDataIndices["JGAD000002"]).toEqual([0, 1])
+      expect(registry.datasetIdToMolDataIndices["JGAD000003"]).toEqual([1])
+    })
+
+    it("should skip molecular data without extracted IDs", () => {
+      const molecularData: NormalizedMolecularData[] = [
+        {
+          id: { text: "Data1", rawHtml: "Data1" },
+          data: {},
+          footers: [],
+          // No extractedDatasetIds
+        },
+      ]
+
+      const registry = buildDatasetIdRegistry(molecularData)
+
+      expect(registry.validDatasetIds).toEqual([])
+      expect(registry.datasetIdToMolDataIndices).toEqual({})
+    })
+
+    it("should return empty registry for empty input", () => {
+      const registry = buildDatasetIdRegistry([])
+
+      expect(registry.validDatasetIds).toEqual([])
+      expect(registry.datasetIdToMolDataIndices).toEqual({})
+    })
+  })
+
+  // ===========================================================================
+  // detectOrphanDatasetIds
+  // ===========================================================================
+  describe("detectOrphanDatasetIds", () => {
+    const createMockNormalizedParseResult = (
+      summaryDatasetIds: string[][],
+      publicationDatasetIds: string[][],
+      cauDatasetIds: string[][],
+    ): NormalizedParseResult => ({
+      title: "Test",
+      summary: {
+        aims: { text: "", rawHtml: "" },
+        methods: { text: "", rawHtml: "" },
+        targets: { text: "", rawHtml: "" },
+        url: [],
+        datasets: summaryDatasetIds.map((ids, i) => ({
+          datasetId: ids,
+          typeOfData: `Type${i}`,
+          criteria: null,
+          releaseDate: null,
+        })),
+        footers: [],
+      },
+      molecularData: [],
+      dataProvider: {
+        principalInvestigator: [],
+        affiliation: [],
+        projectName: [],
+        projectUrl: [],
+        grants: [],
+      },
+      publications: publicationDatasetIds.map((ids, i) => ({
+        title: `Publication${i}`,
+        doi: null,
+        datasetIds: ids,
+      })),
+      controlledAccessUsers: cauDatasetIds.map((ids, i) => ({
+        principalInvestigator: null,
+        affiliation: null,
+        country: null,
+        researchTitle: `Research${i}`,
+        datasetIds: ids,
+        periodOfDataUse: null,
+      })),
+      releases: [],
+    })
+
+    it("should detect orphan dataset IDs in summary", () => {
+      const result = createMockNormalizedParseResult(
+        [["JGAD000001", "JGAD999999"]],
+        [],
+        [],
+      )
+      const validIds = new Set(["JGAD000001"])
+
+      const orphans = detectOrphanDatasetIds(result, validIds, "hum0001-v1")
+
+      expect(orphans).toHaveLength(1)
+      expect(orphans[0]).toEqual({
+        type: "summary",
+        datasetId: "JGAD999999",
+        context: "Type0",
+      })
+    })
+
+    it("should detect orphan dataset IDs in publications", () => {
+      const result = createMockNormalizedParseResult(
+        [],
+        [["JGAD000001", "JGAD999999"]],
+        [],
+      )
+      const validIds = new Set(["JGAD000001"])
+
+      const orphans = detectOrphanDatasetIds(result, validIds, "hum0001-v1")
+
+      expect(orphans).toHaveLength(1)
+      expect(orphans[0]).toEqual({
+        type: "publication",
+        datasetId: "JGAD999999",
+        context: "Publication0",
+      })
+    })
+
+    it("should detect orphan dataset IDs in controlled access users", () => {
+      const result = createMockNormalizedParseResult(
+        [],
+        [],
+        [["JGAD000001", "JGAD999999"]],
+      )
+      const validIds = new Set(["JGAD000001"])
+
+      const orphans = detectOrphanDatasetIds(result, validIds, "hum0001-v1")
+
+      expect(orphans).toHaveLength(1)
+      expect(orphans[0]).toEqual({
+        type: "controlledAccessUser",
+        datasetId: "JGAD999999",
+        context: "Research0",
+      })
+    })
+
+    it("should return empty array when no orphans", () => {
+      const result = createMockNormalizedParseResult(
+        [["JGAD000001"]],
+        [["JGAD000001", "JGAD000002"]],
+        [["JGAD000002"]],
+      )
+      const validIds = new Set(["JGAD000001", "JGAD000002"])
+
+      const orphans = detectOrphanDatasetIds(result, validIds, "hum0001-v1")
+
+      expect(orphans).toHaveLength(0)
+    })
+
+    it("should detect multiple orphans across different sources", () => {
+      const result = createMockNormalizedParseResult(
+        [["JGAD999991"]],
+        [["JGAD999992"]],
+        [["JGAD999993"]],
+      )
+      const validIds = new Set(["JGAD000001"])
+
+      const orphans = detectOrphanDatasetIds(result, validIds, "hum0001-v1")
+
+      expect(orphans).toHaveLength(3)
+      expect(orphans.map(o => o.datasetId).sort()).toEqual([
+        "JGAD999991",
+        "JGAD999992",
+        "JGAD999993",
+      ])
     })
   })
 })

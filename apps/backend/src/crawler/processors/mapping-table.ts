@@ -10,7 +10,7 @@ import type { LangType } from "@/crawler/types"
 import { logger } from "@/crawler/utils/logger"
 
 // Path to the TSV file in data/ directory
-const HEADER_TSV_PATH = path.join(__dirname, "..", "data", "moldata-mapping-table.tsv")
+const HEADER_TSV_PATH = path.join(__dirname, "..", "data", "moldata-header-mapping.tsv")
 
 /**
  * Mapping table row

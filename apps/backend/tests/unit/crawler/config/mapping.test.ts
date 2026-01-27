@@ -5,12 +5,12 @@ import {
   shouldSkipPage,
   getReleaseSuffix,
   genReleaseUrl,
-  applyDatasetIdSpecialCase,
+  applyGlobalIdCorrection,
   isInvalidPublicationDatasetId,
   cleanPublicationDatasetId,
   getMolDataIdFields,
-  getInvalidIdValues,
-  getDatasetIdSpecialCases,
+  getInvalidOtherIds,
+  getGlobalIdCorrection,
   getCriteriaCanonicalMap,
   getUnusedPublicationTitles,
   getInvalidDoiValues,
@@ -83,32 +83,32 @@ describe("config/mapping.ts", () => {
   })
 
   // ===========================================================================
-  // Dataset ID Special Cases
+  // Global Typo Correction
   // ===========================================================================
-  describe("applyDatasetIdSpecialCase", () => {
+  describe("applyGlobalIdCorrection", () => {
     it("should return original ID for non-special cases", () => {
-      expect(applyDatasetIdSpecialCase("JGAD000001")).toEqual(["JGAD000001"])
+      expect(applyGlobalIdCorrection("JGAD000001")).toEqual(["JGAD000001"])
     })
 
     it("should transform special case IDs", () => {
-      const specialCases = getDatasetIdSpecialCases()
-      // Test with actual special cases from config
-      for (const [input, expected] of Object.entries(specialCases)) {
-        expect(applyDatasetIdSpecialCase(input)).toEqual(expected)
+      const corrections = getGlobalIdCorrection()
+      // Test with actual corrections from config
+      for (const [input, expected] of Object.entries(corrections)) {
+        expect(applyGlobalIdCorrection(input)).toEqual(expected)
         break // Just test one to ensure function works
       }
     })
   })
 
-  describe("getDatasetIdSpecialCases", () => {
+  describe("getGlobalIdCorrection", () => {
     it("should return an object", () => {
-      const cases = getDatasetIdSpecialCases()
-      expect(typeof cases).toBe("object")
+      const corrections = getGlobalIdCorrection()
+      expect(typeof corrections).toBe("object")
     })
 
     it("should have string keys and array values", () => {
-      const cases = getDatasetIdSpecialCases()
-      for (const [key, value] of Object.entries(cases)) {
+      const corrections = getGlobalIdCorrection()
+      for (const [key, value] of Object.entries(corrections)) {
         expect(typeof key).toBe("string")
         expect(Array.isArray(value)).toBe(true)
       }
@@ -197,9 +197,9 @@ describe("config/mapping.ts", () => {
   // ===========================================================================
   // Invalid ID Values
   // ===========================================================================
-  describe("getInvalidIdValues", () => {
+  describe("getInvalidOtherIds", () => {
     it("should return an array", () => {
-      const invalid = getInvalidIdValues()
+      const invalid = getInvalidOtherIds()
       expect(Array.isArray(invalid)).toBe(true)
     })
   })
