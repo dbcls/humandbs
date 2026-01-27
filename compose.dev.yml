@@ -7,7 +7,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ${PWD}/pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
       interval: 10s
@@ -21,7 +21,10 @@ services:
     init: true
 
   cms-db-migrator:
-    image: docker.io/oven/bun:1.3.5
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    image: humandbs-dev
     container_name: humandbs-cms-db-migrator-dev
     environment:
       - POSTGRES_HOST=cms-db
@@ -66,8 +69,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      - HUMANDBS_BACKEND_HOST=backend
-      - HUMANDBS_BACKEND_PORT=8080
+      # - HUMANDBS_BACKEND_HOST=backend
+      # - HUMANDBS_BACKEND_PORT=8080
       - OIDC_ISSUER_URL=https://idp-staging.ddbj.nig.ac.jp/realms/master
       - OIDC_CLIENT_ID=humandbs-dev
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
@@ -137,6 +140,7 @@ volumes:
   frontend_node_modules: {}
   backend_node_modules: {}
   eslint_config_node_modules: {}
+  pgdata: {}
 
 networks:
   humandbs-dev-network:
