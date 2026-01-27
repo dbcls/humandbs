@@ -1,5 +1,29 @@
+import { useForm } from "@tanstack/react-form";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+
+import { Button } from "@/components/ui/button";
+import useConfirmationStore from "@/stores/confirmationStore";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import z from "zod";
+import { Input } from "@/components/Input";
+
 import { ListItem } from "@/components/ListItem";
 import { TrashButton } from "@/components/TrashButton";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { i18n, Locale, localeSchema } from "@/config/i18n-config";
+import { DOCUMENT_VERSION_STATUS, DocVersionStatus } from "@/db/schema";
+import { ContentItem, DocumentVersionStatus } from "@/db/types";
 import {
   $createContentItem,
   $deleteContentItem,
@@ -9,30 +33,9 @@ import {
   ContentTranslationResponse,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { StatusTag, Tag } from "./StatusTag";
+
 import { AddNewButton } from "./AddNewButton";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useForm } from "@tanstack/react-form";
-import { useState } from "react";
-import z from "zod";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/Input";
-import { Button } from "@/components/ui/button";
-import useConfirmationStore from "@/stores/confirmationStore";
-import { useServerFn } from "@tanstack/react-start";
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
-import { DOCUMENT_VERSION_STATUS, DocVersionStatus } from "@/db/schema";
-import { ContentItem, DocumentVersionStatus } from "@/db/types";
+import { StatusTag, Tag } from "./StatusTag";
 
 export function ContentList({
   selectedContentId,
@@ -87,8 +90,6 @@ export function ContentList({
       },
     });
   }
-
-  console.log("contents", contents);
 
   return (
     <ul>

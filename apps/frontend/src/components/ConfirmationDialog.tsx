@@ -22,7 +22,6 @@ function ConfirmationDialog() {
     <AlertDialog
       open={open}
       onOpenChange={(open) => {
-        console.log("open", open);
         return open;
       }}
     >

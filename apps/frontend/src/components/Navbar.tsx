@@ -38,7 +38,6 @@ export function Navbar() {
   const currentLocation = useLocation();
 
   async function login() {
-    console.log("logging in");
     await navigate({
       to: "/auth/login",
       search: {

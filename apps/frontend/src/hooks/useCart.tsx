@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { Dataset } from "@humandbs/backend/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
-import { Dataset } from "@humandbs/backend/types";
+import { useEffect } from "react";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
@@ -22,7 +22,6 @@ export function useCart() {
   });
 
   useEffect(() => {
-    console.log("saving cart", cart);
     localStorage.setItem(keyFor(user?.id), JSON.stringify(cart));
   }, [cart, user?.id]);
 
