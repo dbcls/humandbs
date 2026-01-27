@@ -140,6 +140,12 @@ async function downloadFiles(
         const imageName = path.basename(imageUrl.pathname);
         const imagePath = path.join(filesDir, imageName);
 
+        // Check if file already exists
+        if (fs.existsSync(imagePath)) {
+          console.log(`Skipped image (already exists): ${imageName}`);
+          return;
+        }
+
         try {
           const imageResponse = await axios.get(imageUrl.href, {
             responseType: "arraybuffer",
@@ -167,6 +173,12 @@ async function downloadFiles(
           const fileUrl = new URL(href, "https://humandbs.dbcls.jp");
           const fileName = path.basename(fileUrl.pathname);
           const filePath = path.join(filesDir, fileName);
+
+          // Check if file already exists
+          if (fs.existsSync(filePath)) {
+            console.log(`Skipped file (already exists): ${fileName}`);
+            return;
+          }
 
           const fileResponse = await axios.get(fileUrl.href, {
             responseType: "arraybuffer",
@@ -233,13 +245,18 @@ async function convertToMarkdown(
         const imagePath = path.join(filesDir, imageName);
 
         try {
-          const imageResponse = await axios.get(imageUrl.href, {
-            responseType: "arraybuffer",
-          });
-          fs.writeFileSync(imagePath, imageResponse.data);
+          // Check if file already exists
+          if (!fs.existsSync(imagePath)) {
+            const imageResponse = await axios.get(imageUrl.href, {
+              responseType: "arraybuffer",
+            });
+            fs.writeFileSync(imagePath, imageResponse.data);
+            console.log(`Downloaded image: ${imageName}`);
+          } else {
+            console.log(`Skipped image (already exists): ${imageName}`);
+          }
           // Update the image reference to use the new directory name
           $(el).after(`![${alt}](${filesDirName}/${imageName})`);
-          console.log(`Downloaded image: ${imageName}`);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           console.error(
@@ -264,14 +281,19 @@ async function convertToMarkdown(
           const fileName = path.basename(fileUrl.pathname);
           const filePath = path.join(filesDir, fileName);
 
-          const fileResponse = await axios.get(fileUrl.href, {
-            responseType: "arraybuffer",
-          });
-          fs.writeFileSync(filePath, fileResponse.data);
+          // Check if file already exists
+          if (!fs.existsSync(filePath)) {
+            const fileResponse = await axios.get(fileUrl.href, {
+              responseType: "arraybuffer",
+            });
+            fs.writeFileSync(filePath, fileResponse.data);
+            console.log(`Downloaded file: ${fileName}`);
+          } else {
+            console.log(`Skipped file (already exists): ${fileName}`);
+          }
 
           // Update the link to point to the local file
           $(el).attr("href", `${filesDirName}/${fileName}`);
-          console.log(`Downloaded file: ${fileName}`);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           console.error(`Failed to download file from ${href}:`, errorMessage);
