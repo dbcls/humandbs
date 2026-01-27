@@ -31,17 +31,17 @@ const DDBJ_SEARCH_BASE_URL = "https://ddbj.nig.ac.jp/search/resources"
 
 // Map accession prefix to DDBJ resource type
 const ACCESSION_RESOURCE_MAP: Record<string, string> = {
-  DRA: "sra-run",
+  DRA: "sra-submission",
   DRR: "sra-run",
   DRX: "sra-experiment",
   DRS: "sra-sample",
   DRP: "sra-study",
-  ERA: "sra-run",
+  ERA: "sra-submission",
   ERR: "sra-run",
   ERX: "sra-experiment",
   ERS: "sra-sample",
   ERP: "sra-study",
-  SRA: "sra-run",
+  SRA: "sra-submission",
   SRR: "sra-run",
   SRX: "sra-experiment",
   SRS: "sra-sample",

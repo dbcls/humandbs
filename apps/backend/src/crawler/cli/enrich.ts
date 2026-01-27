@@ -144,9 +144,9 @@ const enrichDatasets = async (
       const content = readFileSync(filePath, "utf-8")
       const dataset = JSON.parse(content) as Dataset
 
-      // Skip if already has originalMetadata
+      // Skip if already has originalMetadata (re-enrich when cache is disabled)
       const existingEnriched = dataset as EnrichedDataset
-      if (existingEnriched.originalMetadata !== undefined) {
+      if (useCache && existingEnriched.originalMetadata !== undefined) {
         skipped++
         continue
       }
@@ -329,10 +329,10 @@ const argv = await yargs(hideBin(process.argv))
     description: "Overwrite enriched-json even if it exists",
     default: false,
   })
-  .option("no-cache", {
+  .option("cache", {
     type: "boolean",
-    description: "Ignore cache and fetch fresh from APIs",
-    default: false,
+    description: "Use cache for API calls (use --no-cache to disable)",
+    default: true,
   })
   .option("skip-copy", {
     type: "boolean",
@@ -378,7 +378,7 @@ if (argv.verbose) {
 const args: EnrichArgs = {
   humId: argv["hum-id"],
   force: argv.force,
-  noCache: argv["no-cache"],
+  noCache: !argv.cache,
   skipCopy: argv["skip-copy"],
   skipDatasets: argv["skip-datasets"],
   skipResearch: argv["skip-research"],
