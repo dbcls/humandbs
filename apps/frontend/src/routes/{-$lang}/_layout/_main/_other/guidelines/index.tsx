@@ -14,14 +14,12 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
   loader: async ({ context }) => {
-    console.log("1");
     const data = await context.queryClient.ensureQueryData(
       getDocumentLatestPublishedVersionTranslationQueryOptions({
         contentId: "guidelines",
         locale: context.lang,
       })
     );
-    console.log("2");
 
     const versions = await context.queryClient.ensureQueryData(
       getDocumentPublishedVersionsListQueryOptions({
@@ -29,7 +27,6 @@ export const Route = createFileRoute(
         locale: context.lang,
       })
     );
-    console.log("3");
 
     return { data, versions };
   },

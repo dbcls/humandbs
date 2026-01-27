@@ -187,3 +187,6 @@ ollama-data
 
 # === memos etc. ===
 memos
+
+# === postgres data folder ===
+pgdata

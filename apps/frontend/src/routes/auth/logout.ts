@@ -16,8 +16,10 @@ export const Route = createFileRoute("/auth/logout")({
           : null;
         const idTokenHint = session?.id_token as string | undefined;
 
-        const postLogoutRedirect = new URL("/", new URL(request.url).origin)
-          .href;
+        // Use OIDC_REDIRECT_URI origin instead of request.url, which
+        // reflects the internal proxy address behind nginx.
+        const externalOrigin = new URL(process.env.OIDC_REDIRECT_URI!).origin;
+        const postLogoutRedirect = new URL("/", externalOrigin).href;
 
         const endSession = await getLogoutUrl(idTokenHint, postLogoutRedirect);
 

@@ -38,7 +38,7 @@ function localeRewrite(): LocationRewrite {
       if (
         maybeLocale &&
         (maybeLocale.startsWith(".") ||
-          maybeLocale === "api" ||
+          maybeLocale === "auth" ||
           maybeLocale === "assets" ||
           maybeLocale === "favicon.ico" ||
           maybeLocale.startsWith("hum"))

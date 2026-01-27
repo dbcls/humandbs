@@ -14,9 +14,6 @@ export const Route = createFileRoute("/auth/refresh")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        console.log("refreshing");
-        console.log("refreshing");
-        console.log("refreshing");
         const cookieHeader = request.headers.get("cookie") ?? "";
         const cookies = parse(cookieHeader);
         const rawSession = cookies[SESSION_COOKIE_NAME];
@@ -26,8 +23,6 @@ export const Route = createFileRoute("/auth/refresh")({
           await ensureFreshSession({
             session: existingSession,
           });
-
-        console.log("refreshed?", { refreshed, session, claims });
 
         if (!session || !claims) {
           const headers = new Headers();
