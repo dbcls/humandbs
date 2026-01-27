@@ -22,9 +22,9 @@ const argv = yargs(hideBin(process.argv))
   })
   .option("outdir", {
     alias: "o",
-    description: "Directory to save parsed content and files",
+    description: "Relative path under ./output to save content",
     type: "string",
-    default: path.resolve(__dirname, "output"),
+    default: "",
   })
   .option("files-only", {
     alias: "f",
@@ -90,33 +90,39 @@ async function fetchAndParse(): Promise<void> {
 
     // Generate base filename from URL
     const baseFileName = getFileNameFromUrl(url);
-    const mdFileName = `${baseFileName}.md`;
-    const filesDirName = `${baseFileName}_files`;
 
-    // Create the files directory
-    const filesDir = path.join(argv.outdir, filesDirName);
-    if (!fs.existsSync(filesDir)) {
-      fs.mkdirSync(filesDir, { recursive: true });
+    // Build output directory structure: ./output/[outdir]/baseFileName/
+    const outputBaseDir = path.resolve(__dirname, "output");
+    const documentDir = argv.outdir
+      ? path.join(outputBaseDir, argv.outdir, baseFileName)
+      : path.join(outputBaseDir, baseFileName);
+
+    // Create the document directory
+    if (!fs.existsSync(documentDir)) {
+      fs.mkdirSync(documentDir, { recursive: true });
     }
+
+    const mdFileName = "content.md";
+    const filesDirName = baseFileName;
 
     if (argv["files-only"]) {
       // Files-only mode: just download files without parsing markdown
-      await downloadFiles(content, $, filesDir);
-      console.log(`Files downloaded to ${filesDir}`);
+      await downloadFiles(content, $, documentDir);
+      console.log(`Files downloaded to ${documentDir}`);
     } else {
       // Normal mode: parse markdown and download files
       const markdown = await convertToMarkdown(
         content,
         $,
-        filesDir,
+        documentDir,
         filesDirName
       );
 
-      const mdFilePath = path.join(argv.outdir, mdFileName);
+      const mdFilePath = path.join(documentDir, mdFileName);
       fs.writeFileSync(mdFilePath, markdown, "utf-8");
 
       console.log(`Content parsed and saved as ${mdFilePath}`);
-      console.log(`Files saved in ${filesDir}`);
+      console.log(`Files saved in ${documentDir}`);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

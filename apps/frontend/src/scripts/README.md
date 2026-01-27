@@ -41,10 +41,12 @@ bun run seed:documents
 
 ```bash
 # Convert page to markdown with assets
-bun crawler/crawl-page.ts -u "https://example.com" -o crawler/output
+bun crawler/crawl-page.ts -u "https://example.com" -o documents
+# Saves to: crawler/output/documents/example/content.md
 
 # Download assets only
-bun crawler/crawl-page.ts -u "https://example.com" -f -o crawler/output
+bun crawler/crawl-page.ts -u "https://example.com" -f -o documents
+# Downloads to: crawler/output/documents/example/
 ```
 
 ## Components Overview
@@ -78,8 +80,8 @@ Web scraping tools for extracting and converting content from websites.
 
 **Common Commands:**
 
-- Full conversion: `bun crawler/crawl-page.ts -u "URL"`
-- Assets only: `bun crawler/crawl-page.ts -u "URL" -f`
+- Full conversion: `bun crawler/crawl-page.ts -u "URL" -o documents`
+- Assets only: `bun crawler/crawl-page.ts -u "URL" -f -o documents`
 
 ### 📁 Seed Data (`seed-data/`)
 
@@ -98,7 +100,8 @@ Structured content and assets for database seeding.
 
 ```bash
 # Option A: Crawl from website
-bun crawler/crawl-page.ts -u "https://source.com/page" -o crawler/output
+bun crawler/crawl-page.ts -u "https://source.com/page" -o temp/en
+# Output: crawler/output/temp/en/page/content.md
 
 # Option B: Manual creation
 mkdir -p seed-data/documents/en/new-document
@@ -112,8 +115,8 @@ echo "---\ntitle: New Document\n---\n\n# Content" > seed-data/documents/en/new-d
 ls crawler/output/
 
 # Move to seed data if approved
-mv crawler/output/page.md seed-data/documents/en/page/content.md
-mv crawler/output/page_files/* seed-data/documents/en/page/
+mv crawler/output/temp/en/page seed-data/documents/en/
+# This moves the entire directory with content.md and assets
 ```
 
 ### 3. Database Integration

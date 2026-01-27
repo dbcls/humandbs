@@ -21,19 +21,24 @@ A versatile web scraping script that extracts content from HTML pages and conver
 **Full parsing mode (default):**
 
 ```bash
-bun crawl-page.ts -u "https://example.com/page" -o ./output
+bun crawl-page.ts -u "https://example.com/page"
+# Saves to: ./output/page/content.md
+
+bun crawl-page.ts -u "https://example.com/page" -o documents
+# Saves to: ./output/documents/page/content.md
 ```
 
 **Files-only mode (skip markdown processing):**
 
 ```bash
-bun crawl-page.ts -u "https://example.com/page" -f -o ./output
+bun crawl-page.ts -u "https://example.com/page" -f -o documents
+# Downloads assets to: ./output/documents/page/
 ```
 
 #### Options
 
 - `-u, --url <url>` - **Required.** URL of the page to parse
-- `-o, --outdir <dir>` - Output directory (default: current directory)
+- `-o, --outdir <path>` - Relative path under ./output to save content (default: saves to ./output/[page-name]/)
 - `-f, --files-only` - Download assets only, skip markdown conversion
 
 #### Supported File Types
@@ -48,11 +53,12 @@ bun crawl-page.ts -u "https://example.com/page" -f -o ./output
 
 ```
 output/
-├── page-name.md              # Converted markdown (full mode only)
-└── page-name_files/          # Downloaded assets
-    ├── image1.png
-    ├── document.xlsx
-    └── file.pdf
+└── [outdir]/                 # Optional subdirectory from -o
+    └── page-name/            # Page-specific directory
+        ├── content.md        # Converted markdown (full mode only)
+        ├── image1.png        # Downloaded images
+        ├── document.xlsx     # Downloaded files
+        └── file.pdf
 ```
 
 ## Output Directory
@@ -75,12 +81,14 @@ Contains all crawled content and downloaded assets. This directory is git-ignore
 # Crawl security guidelines page
 bun crawl-page.ts \
   -u "https://humandbs.dbcls.jp/en/security-guidelines-for-users" \
-  -o ./output
+  -o documents
+# Output: ./output/documents/security-guidelines-for-users/content.md
 
 # Download only assets from guidelines page
 bun crawl-page.ts \
   -u "https://humandbs.dbcls.jp/en/guidelines" \
-  -f -o ./output
+  -f -o documents
+# Output: ./output/documents/guidelines/ (assets only)
 ```
 
 ### Processing multiple pages
@@ -92,8 +100,9 @@ for url in \
   "https://humandbs.dbcls.jp/en/data-usage" \
   "https://humandbs.dbcls.jp/en/data-submission"
 do
-  bun crawl-page.ts -u "$url" -o ./output
+  bun crawl-page.ts -u "$url" -o seed-data/en
 done
+# Output: ./output/seed-data/en/about/content.md, etc.
 ```
 
 ## Integration with Seeding
@@ -101,9 +110,22 @@ done
 The output from crawler scripts can be processed and integrated into the seed data:
 
 1. **Review crawled content** in `output/` directory
-2. **Copy relevant files** to `../seed-data/documents/`
-3. **Organize by locale** (en/, ja/) and document structure
+2. **Copy relevant directories** to `../seed-data/documents/[locale]/`
+3. **Rename to match document IDs** if needed
 4. **Run seed scripts** to import into database
+
+**Example workflow:**
+
+```bash
+# Crawl content
+bun crawl-page.ts -u "https://site.com/about" -o temp/en
+
+# Review and move to seed data
+mv output/temp/en/about ../seed-data/documents/en/
+
+# Seed into database
+bun ../database/seed-documents.ts
+```
 
 ## Technical Details
 
