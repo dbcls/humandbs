@@ -1,6 +1,8 @@
 /**
  * LLM field extraction for experiment data
  */
+import { z } from "zod"
+
 import type {
   TextValue,
   Experiment,
@@ -10,16 +12,56 @@ import type {
   DiseaseInfo,
   PlatformInfo,
   DataVolume,
-  DataVolumeUnit,
-  SubjectCountType,
-  HealthStatus,
-  ReadType,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { logger } from "@/crawler/utils/logger"
 
 import { chat, type OllamaMessage, type OllamaConfig } from "./client"
 import { EXTRACTION_PROMPT } from "./prompts"
+
+// Zod Schemas
+
+const DiseaseInfoSchema = z.object({
+  label: z.string(),
+  icd10: z.string().nullable().catch(null),
+}).strict()
+
+const DataVolumeSchema = z.object({
+  value: z.number(),
+  unit: z.enum(["KB", "MB", "GB", "TB"]),
+}).strict()
+
+/** Parse array with element-level filtering: invalid elements are dropped instead of failing the whole array */
+const safeFilteredArray = <T extends z.ZodType>(schema: T) =>
+  z.unknown().transform((val): z.output<T>[] => {
+    if (!Array.isArray(val)) return []
+    const results: z.output<T>[] = []
+    for (const item of val) {
+      const parsed = schema.safeParse(item)
+      if (parsed.success) results.push(parsed.data)
+    }
+    return results
+  })
+
+export const ExtractedExperimentFieldsSchema = z.object({
+  subjectCount: z.number().nullable().catch(null),
+  subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable().catch(null),
+  healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable().catch(null),
+  diseases: safeFilteredArray(DiseaseInfoSchema),
+  tissues: z.array(z.string()).catch([]),
+  isTumor: z.boolean().nullable().catch(null),
+  cellLine: z.string().nullable().catch(null),
+  population: z.string().nullable().catch(null),
+  assayType: z.string().nullable().catch(null),
+  libraryKits: z.array(z.string()).catch([]),
+  platformVendor: z.string().nullable().catch(null),
+  platformModel: z.string().nullable().catch(null),
+  readType: z.enum(["single-end", "paired-end"]).nullable().catch(null),
+  readLength: z.number().nullable().catch(null),
+  targets: z.string().nullable().catch(null),
+  fileTypes: z.array(z.string()).catch([]),
+  dataVolume: DataVolumeSchema.nullable().catch(null),
+})
 
 // Validation Functions
 
@@ -31,11 +73,12 @@ export const createEmptyExtractedFields = (): ExtractedExperimentFields => ({
   subjectCountType: null,
   healthStatus: null,
   diseases: [],
-  tissue: null,
+  tissues: [],
   isTumor: null,
   cellLine: null,
+  population: null,
   assayType: null,
-  libraryKit: null,
+  libraryKits: [],
   platformVendor: null,
   platformModel: null,
   readType: null,
@@ -45,55 +88,6 @@ export const createEmptyExtractedFields = (): ExtractedExperimentFields => ({
   dataVolume: null,
 })
 
-const validateSubjectCountType = (value: unknown): SubjectCountType | null => {
-  if (value === "individual" || value === "sample" || value === "mixed") {
-    return value
-  }
-  return null
-}
-
-const validateHealthStatus = (value: unknown): HealthStatus | null => {
-  if (value === "healthy" || value === "affected" || value === "mixed") {
-    return value
-  }
-  return null
-}
-
-const validateReadType = (value: unknown): ReadType | null => {
-  if (value === "single-end" || value === "paired-end") {
-    return value
-  }
-  return null
-}
-
-const validateDataVolumeUnit = (value: unknown): DataVolumeUnit | null => {
-  if (value === "KB" || value === "MB" || value === "GB" || value === "TB") {
-    return value
-  }
-  return null
-}
-
-const parseDataVolume = (value: unknown): DataVolume | null => {
-  if (!value || typeof value !== "object") return null
-  const obj = value as Record<string, unknown>
-  if (typeof obj.value !== "number") return null
-  const unit = validateDataVolumeUnit(obj.unit)
-  if (!unit) return null
-  return { value: obj.value, unit }
-}
-
-const parseDiseases = (value: unknown): DiseaseInfo[] => {
-  if (!Array.isArray(value)) return []
-  return value
-    .filter((d): d is Record<string, unknown> =>
-      d !== null && typeof d === "object" && typeof (d as Record<string, unknown>).label === "string",
-    )
-    .map(d => ({
-      label: d.label as string,
-      icd10: typeof d.icd10 === "string" ? d.icd10 : null,
-    }))
-}
-
 /**
  * Parse LLM JSON output into ExtractedExperimentFields
  */
@@ -102,29 +96,9 @@ export const parseExtractedFields = (jsonStr: string): ExtractedExperimentFields
 
   try {
     const parsed = JSON.parse(jsonStr)
-
-    return {
-      subjectCount: typeof parsed.subjectCount === "number" ? parsed.subjectCount : null,
-      subjectCountType: validateSubjectCountType(parsed.subjectCountType),
-      healthStatus: validateHealthStatus(parsed.healthStatus),
-      diseases: parseDiseases(parsed.diseases),
-      tissue: typeof parsed.tissue === "string" ? parsed.tissue : null,
-      isTumor: typeof parsed.isTumor === "boolean" ? parsed.isTumor : null,
-      cellLine: typeof parsed.cellLine === "string" ? parsed.cellLine : null,
-      assayType: typeof parsed.assayType === "string" ? parsed.assayType : null,
-      libraryKit: typeof parsed.libraryKit === "string" ? parsed.libraryKit : null,
-      platformVendor: typeof parsed.platformVendor === "string" ? parsed.platformVendor : null,
-      platformModel: typeof parsed.platformModel === "string" ? parsed.platformModel : null,
-      readType: validateReadType(parsed.readType),
-      readLength: typeof parsed.readLength === "number" ? parsed.readLength : null,
-      targets: typeof parsed.targets === "string" ? parsed.targets : null,
-      fileTypes: Array.isArray(parsed.fileTypes)
-        ? parsed.fileTypes.filter((t: unknown) => typeof t === "string")
-        : [],
-      dataVolume: parseDataVolume(parsed.dataVolume),
-    }
-  } catch {
-    logger.error("Failed to parse LLM response", { preview: jsonStr.slice(0, 200) })
+    return ExtractedExperimentFieldsSchema.parse(parsed)
+  } catch (error) {
+    logger.error("Failed to parse LLM response", { error: getErrorMessage(error), preview: jsonStr.slice(0, 200) })
     return empty
   }
 }
@@ -225,6 +199,7 @@ const convertToGB = (vol: DataVolume): number => {
 export const aggregateToSearchable = (experiments: ExtractedExperiment[]): SearchableDatasetFields => {
   const diseases: DiseaseInfo[] = []
   const tissues = new Set<string>()
+  const populations = new Set<string>()
   const assayTypes = new Set<string>()
   const platforms: PlatformInfo[] = []
   const readTypes = new Set<string>()
@@ -250,8 +225,12 @@ export const aggregateToSearchable = (experiments: ExtractedExperiment[]): Searc
       }
     }
 
-    if (extracted.tissue) {
-      tissues.add(extracted.tissue)
+    for (const tissue of extracted.tissues) {
+      tissues.add(tissue)
+    }
+
+    if (extracted.population) {
+      populations.add(extracted.population)
     }
 
     if (extracted.assayType) {
@@ -309,6 +288,7 @@ export const aggregateToSearchable = (experiments: ExtractedExperiment[]): Searc
   return {
     diseases,
     tissues: [...tissues],
+    populations: [...populations],
     assayTypes: [...assayTypes],
     platforms,
     readTypes: [...readTypes],

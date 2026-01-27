@@ -50,6 +50,9 @@
           "tissues": {
             "type": "keyword"
           },
+          "populations": {
+            "type": "keyword"
+          },
           "assayTypes": {
             "type": "keyword"
           },
@@ -175,7 +178,8 @@
               "healthStatus": {
                 "type": "keyword"
               },
-              "disease": {
+              "diseases": {
+                "type": "nested",
                 "properties": {
                   "label": {
                     "type": "keyword"
@@ -185,7 +189,7 @@
                   }
                 }
               },
-              "tissue": {
+              "tissues": {
                 "type": "keyword"
               },
               "isTumor": {
@@ -194,11 +198,14 @@
               "cellLine": {
                 "type": "keyword"
               },
+              "population": {
+                "type": "keyword"
+              },
               "assayType": {
                 "type": "keyword"
               },
-              "libraryKit": {
-                "type": "text"
+              "libraryKits": {
+                "type": "keyword"
               },
               "platformVendor": {
                 "type": "keyword"

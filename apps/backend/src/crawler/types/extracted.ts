@@ -43,13 +43,14 @@ export interface ExtractedExperimentFields {
   diseases: DiseaseInfo[]
 
   // Biological sample info
-  tissue: string | null
+  tissues: string[]
   isTumor: boolean | null
   cellLine: string | null
+  population: string | null
 
   // Experimental method
   assayType: string | null
-  libraryKit: string | null
+  libraryKits: string[]
 
   // Platform
   platformVendor: string | null
@@ -72,6 +73,9 @@ export interface SearchableDatasetFields {
 
   // Biological samples
   tissues: string[]
+
+  // Population/ethnicity
+  populations: string[]
 
   // Experimental methods
   assayTypes: string[]

@@ -32,69 +32,14 @@ import type {
 } from "@/crawler/types"
 import { getResultsDir } from "@/crawler/utils/io"
 import { logger, setLogLevel } from "@/crawler/utils/logger"
-
-// TSV Parsing
-
-type TsvRow = Record<string, string>
-
-const parseTsv = (content: string): TsvRow[] => {
-  const lines = content.split("\n").filter(line => line.trim() !== "")
-  if (lines.length === 0) return []
-
-  const headers = lines[0].split("\t")
-  const rows: TsvRow[] = []
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split("\t")
-    const row: TsvRow = {}
-    for (let j = 0; j < headers.length; j++) {
-      row[headers[j]] = unescapeTsv(values[j] ?? "")
-    }
-    rows.push(row)
-  }
-
-  return rows
-}
-
-const unescapeTsv = (value: string): string => {
-  return value
-    .replace(/\\t/g, "\t")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-}
-
-const parseJsonField = <T>(value: string, defaultValue: T): T => {
-  if (!value || value.trim() === "") return defaultValue
-  try {
-    return JSON.parse(value) as T
-  } catch {
-    return defaultValue
-  }
-}
-
-const parseJsonFieldOrNull = <T>(value: string): T | null => {
-  if (!value || value.trim() === "") return null
-  try {
-    const parsed = JSON.parse(value) as T
-    if (Array.isArray(parsed) && parsed.length === 0) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-const parseNumberOrNull = (value: string): number | null => {
-  if (!value || value.trim() === "") return null
-  const num = parseFloat(value)
-  return isNaN(num) ? null : num
-}
-
-const parseBooleanOrNull = (value: string): boolean | null => {
-  if (!value || value.trim() === "") return null
-  if (value === "true") return true
-  if (value === "false") return false
-  return null
-}
+import {
+  parseTsv,
+  parseJsonField,
+  parseJsonFieldOrNull,
+  parseNumberOrNull,
+  parseBooleanOrNull,
+  type TsvRow,
+} from "@/crawler/utils/tsv"
 
 // Directory Functions
 
@@ -273,6 +218,7 @@ export const importDatasetTsv = (): void => {
       ...dataset.searchable,
       diseases,
       tissues: parseJsonField<string[]>(row.searchable_tissues, []),
+      populations: parseJsonField<string[]>(row.searchable_populations, []),
       assayTypes: parseJsonField<string[]>(row.searchable_assayTypes, []),
       platforms,
       readTypes: parseJsonField<string[]>(row.searchable_readTypes, []),
@@ -351,11 +297,12 @@ export const importExperimentTsv = (): void => {
           subjectCountType: (row.extracted_subjectCountType as SubjectCountType) || null,
           healthStatus: (row.extracted_healthStatus as HealthStatus) || null,
           diseases,
-          tissue: row.extracted_tissue || null,
+          tissues: parseJsonField<string[]>(row.extracted_tissues, []),
           isTumor: parseBooleanOrNull(row.extracted_isTumor),
           cellLine: row.extracted_cellLine || null,
+          population: row.extracted_population || null,
           assayType: row.extracted_assayType || null,
-          libraryKit: row.extracted_libraryKit || null,
+          libraryKits: parseJsonField<string[]>(row.extracted_libraryKits, []),
           platformVendor: row.extracted_platformVendor || null,
           platformModel: row.extracted_platformModel || null,
           readType: (row.extracted_readType as ReadType) || null,

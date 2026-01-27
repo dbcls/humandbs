@@ -24,6 +24,7 @@ import type {
 } from "@/crawler/types"
 import { getResultsDir } from "@/crawler/utils/io"
 import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { escapeForTsv, toTsvRow } from "@/crawler/utils/tsv"
 
 // Options
 
@@ -33,24 +34,6 @@ interface ExportOptions {
 }
 
 // Utility Functions
-
-const escapeForTsv = (value: unknown): string => {
-  if (value === null || value === undefined) {
-    return ""
-  }
-
-  const str = typeof value === "object" ? JSON.stringify(value) : String(value)
-
-  // Escape tabs, newlines, and carriage returns
-  return str
-    .replace(/\t/g, "\\t")
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-}
-
-const toTsvRow = (values: unknown[]): string => {
-  return values.map(v => escapeForTsv(v)).join("\t")
-}
 
 const writeTsv = (filePath: string, headers: string[], rows: string[][]): void => {
   const content = [toTsvRow(headers), ...rows.map(r => toTsvRow(r))].join("\n")
@@ -565,6 +548,7 @@ const DATASET_HEADERS = [
   // Searchable fields
   "searchable_diseases",
   "searchable_tissues",
+  "searchable_populations",
   "searchable_assayTypes",
   "searchable_platforms",
   "searchable_readTypes",
@@ -574,6 +558,10 @@ const DATASET_HEADERS = [
   "searchable_hasHealthyControl",
   "searchable_hasTumor",
   "searchable_hasCellLine",
+  // Manual curation fields
+  "ageGroup",
+  "region",
+  "sex",
   "comment",
 ]
 
@@ -591,6 +579,7 @@ const datasetToRow = (d: SearchableDataset): unknown[] => {
     // Searchable
     JSON.stringify(d.searchable?.diseases ?? []),
     JSON.stringify(d.searchable?.tissues ?? []),
+    JSON.stringify(d.searchable?.populations ?? []),
     JSON.stringify(d.searchable?.assayTypes ?? []),
     JSON.stringify(d.searchable?.platforms ?? []),
     JSON.stringify(d.searchable?.readTypes ?? []),
@@ -602,6 +591,10 @@ const datasetToRow = (d: SearchableDataset): unknown[] => {
     d.searchable?.hasHealthyControl ?? "",
     d.searchable?.hasTumor ?? "",
     d.searchable?.hasCellLine ?? "",
+    // Manual curation fields (empty by default)
+    "", // ageGroup
+    "", // region
+    "", // sex
     "", // comment
   ]
 }
@@ -639,11 +632,12 @@ const EXPERIMENT_HEADERS = [
   "extracted_subjectCountType",
   "extracted_healthStatus",
   "extracted_diseases",
-  "extracted_tissue",
+  "extracted_tissues",
   "extracted_isTumor",
   "extracted_cellLine",
+  "extracted_population",
   "extracted_assayType",
-  "extracted_libraryKit",
+  "extracted_libraryKits",
   "extracted_platformVendor",
   "extracted_platformModel",
   "extracted_readType",
@@ -673,11 +667,12 @@ const experimentToRow = (
     ext?.subjectCountType ?? "",
     ext?.healthStatus ?? "",
     JSON.stringify(ext?.diseases?.map(dis => dis.icd10 ? `${dis.label}(${dis.icd10})` : dis.label) ?? []),
-    ext?.tissue ?? "",
+    JSON.stringify(ext?.tissues ?? []),
     ext?.isTumor ?? "",
     ext?.cellLine ?? "",
+    ext?.population ?? "",
     ext?.assayType ?? "",
-    ext?.libraryKit ?? "",
+    JSON.stringify(ext?.libraryKits ?? []),
     ext?.platformVendor ?? "",
     ext?.platformModel ?? "",
     ext?.readType ?? "",

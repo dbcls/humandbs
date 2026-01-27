@@ -1,6 +1,7 @@
 /**
  * Base API client with caching
  */
+import { existsSync, rmSync } from "fs"
 import { join } from "path"
 
 import { DEFAULT_API_DELAY_MS } from "@/crawler/config/urls"
@@ -101,7 +102,12 @@ export const createCachedClient = <T>(
   }
 
   const clearCache = (): void => {
-    logger.info("Cache directory requires manual deletion", { cacheDir })
+    if (existsSync(cacheDir)) {
+      rmSync(cacheDir, { recursive: true })
+      logger.info("Cache directory deleted", { cacheDir })
+    } else {
+      logger.info("Cache directory does not exist", { cacheDir })
+    }
   }
 
   return {
