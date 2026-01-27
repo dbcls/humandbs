@@ -40,11 +40,16 @@ bun run seed:documents
 ### Web Crawling
 
 ```bash
-# Convert page to markdown with assets
+# Single page conversion
 bun crawler/crawl-page.ts -u "https://example.com" -o documents
 # Saves to: crawler/output/documents/example/content.md
 
-# Download assets only
+# Bulk sitemap crawling (recommended)
+bun run crawl:sitemap --dry-run          # Preview what would be crawled
+bun run crawl:sitemap                    # Crawl entire sitemap
+bun run crawl:sitemap --files-only       # Download assets only
+
+# Download assets only from single page
 bun crawler/crawl-page.ts -u "https://example.com" -f -o documents
 # Downloads to: crawler/output/documents/example/
 ```
@@ -77,10 +82,15 @@ Web scraping tools for extracting and converting content from websites.
 - Automatic asset downloading
 - Multiple operation modes
 - Callout block processing
+- Bulk sitemap crawling
+- Multi-language support (en/ja)
+- Concurrent processing with rate limiting
 
 **Common Commands:**
 
-- Full conversion: `bun crawler/crawl-page.ts -u "URL" -o documents`
+- Single page: `bun crawler/crawl-page.ts -u "URL" -o documents`
+- Bulk crawl: `bun run crawl:sitemap --concurrency 3`
+- Preview: `bun run crawl:sitemap --dry-run`
 - Assets only: `bun crawler/crawl-page.ts -u "URL" -f -o documents`
 
 ### 📁 Seed Data (`seed-data/`)
@@ -99,11 +109,17 @@ Structured content and assets for database seeding.
 ### 1. Content Creation
 
 ```bash
-# Option A: Crawl from website
+# Option A: Bulk crawl entire sitemap (recommended)
+bun run crawl:sitemap --dry-run          # Preview first
+bun run crawl:sitemap                    # Crawl all pages
+# Output: crawler/output/documents/en/*/content.md
+#         crawler/output/documents/ja/*/content.md
+
+# Option B: Single page crawl
 bun crawler/crawl-page.ts -u "https://source.com/page" -o temp/en
 # Output: crawler/output/temp/en/page/content.md
 
-# Option B: Manual creation
+# Option C: Manual creation
 mkdir -p seed-data/documents/en/new-document
 echo "---\ntitle: New Document\n---\n\n# Content" > seed-data/documents/en/new-document/content.md
 ```
@@ -114,7 +130,11 @@ echo "---\ntitle: New Document\n---\n\n# Content" > seed-data/documents/en/new-d
 # Review crawled output
 ls crawler/output/
 
-# Move to seed data if approved
+# For sitemap crawl - move entire language directories
+mv crawler/output/documents/en/* seed-data/documents/en/
+mv crawler/output/documents/ja/* seed-data/documents/ja/
+
+# For single page - move individual directory
 mv crawler/output/temp/en/page seed-data/documents/en/
 # This moves the entire directory with content.md and assets
 ```

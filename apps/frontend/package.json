@@ -11,6 +11,7 @@
     "db:push": "bunx --bun drizzle-kit push",
     "start": "bun server.ts",
     "crawl": "bun ./src/scripts/crawler/crawl-page.ts \"$@\"",
+    "crawl:sitemap": "bun ./src/scripts/crawler/crawl-sitemap.ts \"$@\"",
     "db:studio": "POSTGRES_HOST=localhost bunx --bun drizzle-kit studio",
     "seed:documents": "bun ./src/scripts/database/seed-documents.ts",
     "db:reset": "bun ./src/scripts/database/reset-db.ts",

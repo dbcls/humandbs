@@ -8,6 +8,10 @@ This directory contains web crawling and scraping utilities for extracting conte
 
 A versatile web scraping script that extracts content from HTML pages and converts it to markdown format while downloading associated assets.
 
+### `crawl-sitemap.ts`
+
+A comprehensive sitemap crawler that extracts all page URLs from a website's sitemap and batch-crawls each page using the `crawl-page.ts` script.
+
 #### Features
 
 - **HTML to Markdown conversion** with proper formatting preservation
@@ -61,6 +65,78 @@ output/
         └── file.pdf
 ```
 
+#### Features
+
+- **Sitemap parsing** from both English and Japanese versions
+- **Automatic language detection** based on URL structure
+- **Document ID extraction** from URLs and page titles
+- **Batch processing** with configurable concurrency
+- **Dry-run mode** for preview before crawling
+- **Files-only mode** support for asset downloading
+
+#### Usage
+
+**Dry run (preview what will be crawled):**
+
+```bash
+bun crawl-sitemap.ts --dry-run
+# Shows all pages that would be crawled without actually downloading
+```
+
+**Full sitemap crawl:**
+
+```bash
+bun crawl-sitemap.ts
+# Crawls all pages from sitemap with default settings
+```
+
+**Customized crawling:**
+
+```bash
+bun crawl-sitemap.ts --concurrency 5 --files-only
+# Downloads only files with 5 concurrent requests
+```
+
+#### Options
+
+- `-d, --dry-run` - Preview pages without crawling
+- `-c, --concurrency <num>` - Number of concurrent pages to process (default: 3)
+- `-f, --files-only` - Download assets only, skip markdown conversion
+
+#### Output Structure for Sitemap Crawl
+
+```
+output/
+└── documents/
+    ├── en/                   # English pages
+    │   ├── home/
+    │   │   ├── content.md
+    │   │   └── assets...
+    │   ├── guidelines/
+    │   │   ├── content.md
+    │   │   └── assets...
+    │   └── data-submission/
+    │       ├── content.md
+    │       └── assets...
+    └── ja/                   # Japanese pages
+        ├── home/
+        ├── guidelines/
+        └── data-submission/
+```
+
+#### Language and Document ID Mapping
+
+The script automatically:
+
+- Detects language from URL (`/en/` prefix = English, otherwise Japanese)
+- Extracts document IDs from URL paths or page titles
+- Creates organized directory structure by language
+
+**Examples:**
+
+- `https://humandbs.dbcls.jp/en/guidelines` → `documents/en/guidelines/`
+- `https://humandbs.dbcls.jp/data-submission` → `documents/ja/data-submission/`
+
 ## Output Directory
 
 ### `output/`
@@ -75,7 +151,7 @@ Contains all crawled content and downloaded assets. This directory is git-ignore
 
 ## Usage Examples
 
-### Crawling NBDC pages
+### Crawling individual pages
 
 ```bash
 # Crawl security guidelines page
@@ -91,18 +167,29 @@ bun crawl-page.ts \
 # Output: ./output/documents/guidelines/ (assets only)
 ```
 
-### Processing multiple pages
+### Crawling entire sitemap
 
 ```bash
-# Create a simple script to crawl multiple pages
-for url in \
-  "https://humandbs.dbcls.jp/en/about" \
-  "https://humandbs.dbcls.jp/en/data-usage" \
-  "https://humandbs.dbcls.jp/en/data-submission"
-do
-  bun crawl-page.ts -u "$url" -o seed-data/en
-done
-# Output: ./output/seed-data/en/about/content.md, etc.
+# Preview all pages that would be crawled
+bun crawl-sitemap.ts --dry-run
+
+# Crawl all pages from sitemap (recommended)
+bun crawl-sitemap.ts
+
+# Faster crawling with more concurrency
+bun crawl-sitemap.ts --concurrency 5
+
+# Download only files from all pages
+bun crawl-sitemap.ts --files-only
+```
+
+### Package.json shortcuts
+
+```bash
+# Use npm/bun scripts for convenience
+bun run crawl:sitemap --dry-run
+bun run crawl:sitemap --concurrency 3
+bun run crawl -u "https://site.com/page" -o documents
 ```
 
 ## Integration with Seeding
@@ -148,14 +235,19 @@ bun ../database/seed-documents.ts
 - Downloads are processed asynchronously
 - Large files may take time to download
 - Network rate limiting may affect crawling speed
+- Sitemap crawler includes 2-second delays between batches
+- Concurrent processing can be adjusted based on server capacity
 
 ## Best Practices
 
 1. **Respect robots.txt** and site terms of service
-2. **Use files-only mode** when you only need assets
-3. **Check output quality** before using for seeding
-4. **Handle rate limiting** with appropriate delays between requests
-5. **Verify downloaded files** for completeness and integrity
+2. **Use sitemap crawler for bulk operations** instead of manual loops
+3. **Start with dry-run** to preview what will be crawled
+4. **Adjust concurrency** based on target server capacity
+5. **Use files-only mode** when you only need assets
+6. **Check output quality** before using for seeding
+7. **Handle rate limiting** with appropriate delays between requests
+8. **Verify downloaded files** for completeness and integrity
 
 ## Troubleshooting
 

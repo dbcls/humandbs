@@ -38,9 +38,20 @@ const argv = yargs(hideBin(process.argv))
 function getFileNameFromUrl(url: string): string {
   // Extract the last segment of the URL path and remove any trailing slashes
   const urlObj = new URL(url);
-  const segments = urlObj.pathname
-    .split("/")
-    .filter((segment) => segment.length > 0);
+  const pathname = urlObj.pathname;
+
+  // Special case for home pages - check first
+  if (
+    pathname === "/" ||
+    pathname === "/en/" ||
+    pathname === "/ja/" ||
+    pathname === "/en" ||
+    pathname === "/ja"
+  ) {
+    return "home";
+  }
+
+  const segments = pathname.split("/").filter((segment) => segment.length > 0);
   const lastSegment = segments[segments.length - 1] || "index";
   return lastSegment;
 }
