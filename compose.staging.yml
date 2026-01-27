@@ -7,7 +7,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ${PWD}/pgdata:/var/lib/postgresql/data
+      - cms_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
       interval: 10s
@@ -104,7 +104,7 @@ services:
       - bootstrap.memory_lock=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
     volumes:
-      - ${PWD}/es-data:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
     ulimits:
       nofile:
         soft: 65536
@@ -133,6 +133,8 @@ volumes:
   frontend_node_modules: {}
   backend_node_modules: {}
   eslint_config_node_modules: {}
+  cms_pgdata: {}
+  es_data: {}
 
 networks:
   humandbs-dev-network:
