@@ -20,7 +20,7 @@ This will:
 
 - Use Docker as the container runtime
 - Use `compose.dev.yml` as the compose file
-- Create two default buckets: `cms` and `data`
+- Create two default buckets: `cms` (public) and `data` (private)
 - Create local data directories (`garage-data/`)
 - Generate all necessary secrets and keys
 - Update your `.env` file with configuration
@@ -45,11 +45,25 @@ CONTAINER_RUNTIME=podman ./scripts/setup-garage.sh
 
 This creates five buckets:
 
-- `cms`
-- `data`
-- `images`
-- `documents`
-- `backups`
+- `cms` (public by default)
+- `data` (private by default)
+- `images` (private by default)
+- `documents` (private by default)
+- `backups` (private by default)
+
+### Public vs Private Buckets
+
+Control which buckets are publicly accessible via website mode:
+
+```bash
+./scripts/setup-garage.sh --buckets "cms,data,images" --public "cms,images"
+```
+
+This creates:
+
+- `cms` bucket with **website mode enabled** (public)
+- `data` bucket with **website mode disabled** (private)
+- `images` bucket with **website mode enabled** (public)
 
 ### Staging Setup
 
@@ -93,6 +107,7 @@ export BUCKETS="uploads,downloads"
 | `-s, --service`   | `GARAGE_SERVICE_NAME`   | `garage`          | Service name in compose file         |
 | `-c, --container` | `GARAGE_CONTAINER_NAME` | `humandbs-garage` | Container name                       |
 | `-b, --buckets`   | `BUCKETS`               | `cms,data`        | Comma-separated list of buckets      |
+| `-p, --public`    | `PUBLIC_BUCKETS`        | `cms`             | Buckets to enable website mode       |
 | `-h, --help`      |                         |                   | Show help message                    |
 
 ## What the Script Does
@@ -104,7 +119,7 @@ export BUCKETS="uploads,downloads"
 5. **Initializes** Garage cluster layout
 6. **Creates** application access keys
 7. **Creates** specified buckets with full permissions
-8. **Enables** website mode for public file serving
+8. **Enables** website mode only for explicitly public buckets (security)
 9. **Updates** `.env` file with all configuration
 
 ## Generated Configuration
@@ -169,12 +184,31 @@ Examples:
 - Garage will enforce proper secret file permissions
 - Requires secure secret management practices
 
+### Public vs Private Bucket Security
+
+🔒 **Critical Security Feature**: Only buckets explicitly listed in `--public` (or `PUBLIC_BUCKETS`) will have website mode enabled.
+
+**Public Buckets** (website mode enabled):
+
+- Files are **world-readable** via S3 web endpoint (`http://localhost:3903`)
+- Intended for: CMS assets, static content, public downloads
+- Default: `cms` bucket only
+
+**Private Buckets** (website mode disabled):
+
+- Files are **NOT accessible** via web endpoint
+- Require authenticated S3 API calls
+- Intended for: User data, backups, sensitive files
+- Default: `data` bucket and any others not explicitly made public
+
 ### Recommendations
 
 1. **Never deploy with world-readable secrets enabled**
 2. **Use proper secret management** in staging/production (Docker secrets, Kubernetes secrets, etc.)
-3. **Rotate credentials regularly** using the setup script
-4. **Restrict network access** to Garage ports in production environments
+3. **Only make buckets public when necessary** - review `--public` parameter carefully
+4. **Audit bucket permissions regularly** using `garage bucket list` and `garage bucket info`
+5. **Rotate credentials regularly** using the setup script
+6. **Restrict network access** to Garage ports in production environments
 
 ## Testing Your Setup
 

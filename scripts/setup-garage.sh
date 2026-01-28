@@ -7,6 +7,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-compose.dev.yml}"
 GARAGE_SERVICE_NAME="${GARAGE_SERVICE_NAME:-garage}"
 GARAGE_CONTAINER_NAME="${GARAGE_CONTAINER_NAME:-humandbs-garage}"
 BUCKETS="${BUCKETS:-cms,data}"
+PUBLIC_BUCKETS="${PUBLIC_BUCKETS:-cms}"
 
 # Usage function
 usage() {
@@ -20,6 +21,7 @@ usage() {
     echo "  -s, --service NAME       Garage service name in compose [default: garage]"
     echo "  -c, --container NAME     Garage container name [default: humandbs-garage]"
     echo "  -b, --buckets LIST       Comma-separated list of buckets to create [default: cms,data]"
+    echo "  -p, --public LIST        Comma-separated list of buckets to enable website mode [default: cms]"
     echo "  -h, --help               Show this help message"
     echo ""
     echo "Environment variables:"
@@ -28,11 +30,13 @@ usage() {
     echo "  GARAGE_SERVICE_NAME      Same as --service"
     echo "  GARAGE_CONTAINER_NAME    Same as --container"
     echo "  BUCKETS                  Same as --buckets"
+    echo "  PUBLIC_BUCKETS           Same as --public"
     echo ""
     echo "Examples:"
     echo "  $0                                                   # Use defaults"
     echo "  $0 --runtime podman                                 # Use Podman"
     echo "  $0 --buckets 'cms,data,images'                      # Create multiple buckets"
+    echo "  $0 --public 'cms,images' --buckets 'cms,data,images' # Only cms,images public"
     echo "  CONTAINER_RUNTIME=podman $0 --buckets 'data,backup' # Use env var + option"
 }
 
@@ -69,6 +73,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -b|--buckets)
             BUCKETS="$2"
+            shift 2
+            ;;
+        -p|--public)
+            PUBLIC_BUCKETS="$2"
             shift 2
             ;;
         -h|--help)
@@ -126,6 +134,7 @@ echo "Compose File:      $COMPOSE_FILE"
 echo "Service Name:      $GARAGE_SERVICE_NAME"
 echo "Container Name:    $GARAGE_CONTAINER_NAME"
 echo "Buckets to create: $BUCKETS"
+echo "Public buckets (website mode): $PUBLIC_BUCKETS"
 echo ""
 
 # Generate secrets
@@ -254,9 +263,23 @@ for bucket in "${BUCKET_ARRAY[@]}"; do
     $CONTAINER_RUNTIME exec "$GARAGE_CONTAINER_NAME" /garage bucket allow "$bucket" --read --write --key humandbs-app
     echo "  🔐 Permissions set for '$bucket'"
 
-    # Enable website mode
-    $CONTAINER_RUNTIME exec "$GARAGE_CONTAINER_NAME" /garage bucket website --allow "$bucket"
-    echo "  🌐 Website mode enabled for '$bucket'"
+    # Check if this bucket should have website mode enabled
+    IFS=',' read -ra PUBLIC_BUCKET_ARRAY <<< "$PUBLIC_BUCKETS"
+    is_public=false
+    for public_bucket in "${PUBLIC_BUCKET_ARRAY[@]}"; do
+        public_bucket=$(echo "$public_bucket" | xargs)
+        if [[ "$bucket" == "$public_bucket" ]]; then
+            is_public=true
+            break
+        fi
+    done
+
+    if [[ "$is_public" == "true" ]]; then
+        $CONTAINER_RUNTIME exec "$GARAGE_CONTAINER_NAME" /garage bucket website --allow "$bucket"
+        echo "  🌐 Website mode enabled for '$bucket' (public bucket)"
+    else
+        echo "  🔒 Website mode disabled for '$bucket' (private bucket)"
+    fi
 
     CREATED_BUCKETS+=("$bucket")
 done
