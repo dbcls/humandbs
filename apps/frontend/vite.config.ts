@@ -9,8 +9,15 @@ export default defineConfig({
   server: {
     port: 3000,
     host: "0.0.0.0",
-    allowedHosts: ["localhost"],
+    allowedHosts: [
+      "humandbs-staging.ddbj.nig.ac.jp",
+      "frontend",
+      "humandbs-frontend-dev",
+      "localhost",
+    ],
   },
+
+  logLevel: "error",
 
   plugins: [
     tailwindcss(),
