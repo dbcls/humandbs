@@ -36,7 +36,7 @@ const argv = yargs(hideBin(process.argv))
 
 async function crawlPage(page: PageInfo): Promise<void> {
   const outputDir = `documents/${page.language}`;
-  const crawlerScript = path.resolve(__dirname, "crawl-page.ts");
+  const crawlerScript = path.resolve(import.meta.dir, "crawl-page.ts");
 
   console.log(
     `Crawling: ${page.title} (${page.language}) -> ${outputDir}/${page.documentId}`
@@ -52,7 +52,7 @@ async function crawlPage(page: PageInfo): Promise<void> {
     const command = `bun ${args.join(" ")}`;
     execSync(command, {
       stdio: "pipe",
-      cwd: path.resolve(__dirname),
+      cwd: import.meta.dir,
       encoding: "utf-8",
     });
 
