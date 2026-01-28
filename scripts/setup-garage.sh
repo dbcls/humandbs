@@ -36,6 +36,18 @@ usage() {
     echo "  CONTAINER_RUNTIME=podman $0 --buckets 'data,backup' # Use env var + option"
 }
 
+# Function to properly escape values for .env files
+escape_env_value() {
+    local value="$1"
+    # If value contains spaces, quotes, #, or other special chars, quote it
+    if [[ "$value" =~ [[:space:]#\"\'\\] ]]; then
+        # Escape any existing quotes and wrap in double quotes
+        printf '"%s"' "${value//\"/\\\"}"
+    else
+        printf '%s' "$value"
+    fi
+}
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -262,17 +274,17 @@ FIRST_BUCKET="${CREATED_BUCKETS[0]}"
 {
     echo ""
     echo "# Garage S3-compatible storage configuration"
-    echo "GARAGE_RPC_SECRET=$GARAGE_RPC_SECRET"
-    echo "GARAGE_ACCESS_KEY=$ACCESS_KEY"
-    echo "GARAGE_SECRET_KEY=$SECRET_KEY"
-    echo "GARAGE_ENDPOINT=http://$GARAGE_SERVICE_NAME:3900"
-    echo "GARAGE_REGION=garage"
+    echo "GARAGE_RPC_SECRET=$(escape_env_value "$GARAGE_RPC_SECRET")"
+    echo "GARAGE_ACCESS_KEY=$(escape_env_value "$ACCESS_KEY")"
+    echo "GARAGE_SECRET_KEY=$(escape_env_value "$SECRET_KEY")"
+    echo "GARAGE_ENDPOINT=$(escape_env_value "http://$GARAGE_SERVICE_NAME:3900")"
+    echo "GARAGE_REGION=$(escape_env_value "garage")"
 
     echo ""
     echo "# Bucket-specific environment variables"
     for bucket in "${CREATED_BUCKETS[@]}"; do
         bucket_var=$(echo "$bucket" | tr '[:lower:]-' '[:upper:]_')
-        echo "GARAGE_BUCKET_$bucket_var=$bucket"
+        echo "GARAGE_BUCKET_$bucket_var=$(escape_env_value "$bucket")"
     done
 } >> "$ENV_FILE"
 
