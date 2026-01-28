@@ -133,7 +133,6 @@ services:
     restart: unless-stopped
     environment:
       GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
-      GARAGE_ALLOW_WORLD_READABLE_SECRETS: true
       GARAGE_LOG_LEVEL: info
     volumes:
       - garage_data:/data

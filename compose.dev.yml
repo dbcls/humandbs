@@ -144,6 +144,8 @@ services:
       - "3903:3903" # Web API
     environment:
       GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      # WARNING: GARAGE_ALLOW_WORLD_READABLE_SECRETS=true is a security risk!
+      # Only use in development. Never enable in staging/production.
       GARAGE_ALLOW_WORLD_READABLE_SECRETS: true
       GARAGE_LOG_LEVEL: info
     volumes:

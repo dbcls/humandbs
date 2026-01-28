@@ -151,6 +151,31 @@ Examples:
 - Data managed by Docker
 - Use `docker volume` commands to manage
 
+## Security Considerations
+
+⚠️ **Important Security Notes**
+
+### Development vs Production Configuration
+
+**Development Environment (`compose.dev.yml`)**:
+
+- Uses `GARAGE_ALLOW_WORLD_READABLE_SECRETS=true` for convenience
+- **This is a security risk and should NEVER be used in staging/production**
+- Only acceptable for local development environments
+
+**Staging/Production Environments**:
+
+- `GARAGE_ALLOW_WORLD_READABLE_SECRETS` is **not set** (secure default)
+- Garage will enforce proper secret file permissions
+- Requires secure secret management practices
+
+### Recommendations
+
+1. **Never deploy with world-readable secrets enabled**
+2. **Use proper secret management** in staging/production (Docker secrets, Kubernetes secrets, etc.)
+3. **Rotate credentials regularly** using the setup script
+4. **Restrict network access** to Garage ports in production environments
+
 ## Testing Your Setup
 
 ### Check Garage Status
