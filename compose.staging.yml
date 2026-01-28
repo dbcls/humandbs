@@ -98,7 +98,7 @@ services:
       - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY}
       - GARAGE_ENDPOINT=${GARAGE_ENDPOINT}
       - GARAGE_REGION=${GARAGE_REGION}
-      - GARAGE_BUCKET_FILES=${GARAGE_BUCKET_FILES}
+      - GARAGE_BUCKET_DATA=${GARAGE_BUCKET_DATA}
     working_dir: /app
     command: ["sleep", "infinity"]
     networks:

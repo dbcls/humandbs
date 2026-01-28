@@ -6,7 +6,7 @@ CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.dev.yml}"
 GARAGE_SERVICE_NAME="${GARAGE_SERVICE_NAME:-garage}"
 GARAGE_CONTAINER_NAME="${GARAGE_CONTAINER_NAME:-humandbs-garage}"
-BUCKETS="${BUCKETS:-cms,files}"
+BUCKETS="${BUCKETS:-cms,data}"
 
 # Usage function
 usage() {
@@ -19,7 +19,7 @@ usage() {
     echo "  -f, --file FILE          Compose file path [default: compose.dev.yml]"
     echo "  -s, --service NAME       Garage service name in compose [default: garage]"
     echo "  -c, --container NAME     Garage container name [default: humandbs-garage]"
-    echo "  -b, --buckets LIST       Comma-separated list of buckets to create [default: cms,files]"
+    echo "  -b, --buckets LIST       Comma-separated list of buckets to create [default: cms,data]"
     echo "  -h, --help               Show this help message"
     echo ""
     echo "Environment variables:"
@@ -32,7 +32,7 @@ usage() {
     echo "Examples:"
     echo "  $0                                                   # Use defaults"
     echo "  $0 --runtime podman                                 # Use Podman"
-    echo "  $0 --buckets 'cms,files,images'                     # Create multiple buckets"
+    echo "  $0 --buckets 'cms,data,images'                      # Create multiple buckets"
     echo "  CONTAINER_RUNTIME=podman $0 --buckets 'data,backup' # Use env var + option"
 }
 

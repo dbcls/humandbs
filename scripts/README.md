@@ -20,7 +20,7 @@ This will:
 
 - Use Docker as the container runtime
 - Use `compose.dev.yml` as the compose file
-- Create two default buckets: `cms` and `files`
+- Create two default buckets: `cms` and `data`
 - Generate all necessary secrets and keys
 - Update your `.env` file with configuration
 
@@ -39,18 +39,16 @@ CONTAINER_RUNTIME=podman ./scripts/setup-garage.sh
 ### Creating Multiple Buckets
 
 ```bash
-./scripts/setup-garage.sh --buckets "cms,files,images,documents,backups"
+./scripts/setup-garage.sh --buckets "cms,data,images,documents,backups"
 ```
 
 This creates five buckets:
 
 - `cms`
-- `files`
+- `data`
 - `images`
 - `documents`
 - `backups`
-
-The first bucket (`cms`) becomes the default `GARAGE_BUCKET` in your `.env`.
 
 ### Custom Configuration
 
@@ -85,7 +83,7 @@ export BUCKETS="uploads,downloads"
 | `-f, --file`      | `COMPOSE_FILE`          | `compose.dev.yml` | Path to compose file                 |
 | `-s, --service`   | `GARAGE_SERVICE_NAME`   | `garage`          | Service name in compose file         |
 | `-c, --container` | `GARAGE_CONTAINER_NAME` | `humandbs-garage` | Container name                       |
-| `-b, --buckets`   | `BUCKETS`               | `cms,files`       | Comma-separated list of buckets      |
+| `-b, --buckets`   | `BUCKETS`               | `cms,data`        | Comma-separated list of buckets      |
 | `-h, --help`      |                         |                   | Show help message                    |
 
 ## What the Script Does
@@ -110,9 +108,8 @@ GARAGE_ACCESS_KEY=<generated-access-key>
 GARAGE_SECRET_KEY=<generated-secret-key>
 GARAGE_ENDPOINT=http://garage:3900
 GARAGE_REGION=garage
-GARAGE_BUCKET=<first-bucket-name>
 GARAGE_BUCKET_CMS=cms
-GARAGE_BUCKET_FILES=files
+GARAGE_BUCKET_DATA=data
 ```
 
 ### Bucket-Specific Environment Variables
@@ -125,7 +122,7 @@ For each bucket created, the script generates a specific environment variable:
 Examples:
 
 - `cms` bucket → `GARAGE_BUCKET_CMS=cms`
-- `files` bucket → `GARAGE_BUCKET_FILES=files`
+- `data` bucket → `GARAGE_BUCKET_DATA=data`
 - `user-uploads` bucket → `GARAGE_BUCKET_USER_UPLOADS=user-uploads`
 - `static-assets` bucket → `GARAGE_BUCKET_STATIC_ASSETS=static-assets`
 
@@ -265,7 +262,7 @@ await s3Client.send(
 
 await s3Client.send(
   new PutObjectCommand({
-    Bucket: process.env.GARAGE_BUCKET_FILES, // User files
+    Bucket: process.env.GARAGE_BUCKET_DATA, // User files
     Key: "user-upload.pdf",
     Body: documentBuffer,
   }),
@@ -290,7 +287,7 @@ const uploadCMSFile = async (file) => {
 const uploadUserFile = async (userId, file) => {
   return await s3Client.send(
     new PutObjectCommand({
-      Bucket: process.env.GARAGE_BUCKET_FILES,
+      Bucket: process.env.GARAGE_BUCKET_DATA,
       Key: `users/${userId}/${file.name}`,
       Body: file.buffer,
     }),

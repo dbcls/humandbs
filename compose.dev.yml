@@ -102,7 +102,7 @@ services:
       - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY}
       - GARAGE_ENDPOINT=${GARAGE_ENDPOINT} # http://garage:3900
       - GARAGE_REGION=${GARAGE_REGION} # garage
-      - GARAGE_BUCKET_FILES=${GARAGE_BUCKET_FILES} # files
+      - GARAGE_BUCKET_DATA=${GARAGE_BUCKET_DATA} # data
     working_dir: /app
     command: ["sleep", "infinity"]
     networks:
