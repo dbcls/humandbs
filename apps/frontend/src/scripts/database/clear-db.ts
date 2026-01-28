@@ -10,7 +10,9 @@ async function clearDatabase() {
     process.exit(1);
   }
 
-  console.log("process.env.POSTGRES_HOST", process.env.POSTGRES_HOST);
+  if (process.env.DEBUG_DB_CLEAR === "true") {
+    console.log("process.env.POSTGRES_HOST", process.env.POSTGRES_HOST);
+  }
 
   const db = drizzle(
     new Pool({
