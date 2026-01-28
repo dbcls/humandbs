@@ -194,4 +194,4 @@ memos
 pgdata
 
 # === garage data folder ===
-data/garage
+garage-data

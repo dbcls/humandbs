@@ -21,6 +21,7 @@ This will:
 - Use Docker as the container runtime
 - Use `compose.dev.yml` as the compose file
 - Create two default buckets: `cms` and `data`
+- Create local data directories (`garage-data/`)
 - Generate all necessary secrets and keys
 - Update your `.env` file with configuration
 
@@ -49,6 +50,14 @@ This creates five buckets:
 - `images`
 - `documents`
 - `backups`
+
+### Staging Setup
+
+```bash
+./scripts/setup-garage.sh --file compose.staging.yml
+```
+
+This will use named Docker volumes instead of creating local directories.
 
 ### Custom Configuration
 
@@ -90,7 +99,7 @@ export BUCKETS="uploads,downloads"
 
 1. **Validates** container runtime and dependencies
 2. **Generates** secure RPC secret (32-byte hex)
-3. **Creates** data directories for Garage
+3. **Creates** data directories for Garage (dev only - staging uses named volumes)
 4. **Starts** Garage container using specified runtime
 5. **Initializes** Garage cluster layout
 6. **Creates** application access keys
@@ -125,6 +134,22 @@ Examples:
 - `data` bucket → `GARAGE_BUCKET_DATA=data`
 - `user-uploads` bucket → `GARAGE_BUCKET_USER_UPLOADS=user-uploads`
 - `static-assets` bucket → `GARAGE_BUCKET_STATIC_ASSETS=static-assets`
+
+## Storage Differences
+
+### Development Environment (`compose.dev.yml`)
+
+- Uses **bind mounts** to `./garage-data/` directory
+- Script creates local directories automatically
+- Data persists in project folder
+- Easy to backup/restore by copying folder
+
+### Staging Environment (`compose.staging.yml`)
+
+- Uses **named Docker volumes** (`garage_data`, `garage_meta`)
+- No local directories created
+- Data managed by Docker
+- Use `docker volume` commands to manage
 
 ## Testing Your Setup
 
@@ -212,8 +237,16 @@ If you need to completely reset:
 
 2. Remove data (⚠️ **This deletes all data**):
 
+   **For development:**
+
    ```bash
-   rm -rf ./data/garage
+   rm -rf ./garage-data
+   ```
+
+   **For staging:**
+
+   ```bash
+   docker volume rm humandbs_garage_data humandbs_garage_meta
    ```
 
 3. Clean up .env (optional):

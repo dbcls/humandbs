@@ -144,8 +144,8 @@ services:
       GARAGE_ALLOW_WORLD_READABLE_SECRETS: true
       GARAGE_LOG_LEVEL: info
     volumes:
-      - ./data/garage/data:/data
-      - ./data/garage/meta:/meta
+      - ./garage-data/data:/data
+      - ./garage-data/meta:/meta
       - ./garage-config.toml:/etc/garage.toml:ro
     networks:
       - humandbs-dev-network

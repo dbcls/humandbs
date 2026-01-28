@@ -138,10 +138,14 @@ else
     echo "  No existing GARAGE variables found"
 fi
 
-# Create data directories
-echo "📁 Creating Garage data directories..."
-mkdir -p ./data/garage/data
-mkdir -p ./data/garage/meta
+# Create data directories (only needed for bind mounts, not named volumes)
+if [[ "$COMPOSE_FILE" == *"staging"* ]]; then
+    echo "📁 Using named volumes for staging environment - no host directories needed"
+else
+    echo "📁 Creating Garage data directories..."
+    mkdir -p ./garage-data/data
+    mkdir -p ./garage-data/meta
+fi
 
 echo "🐳 Starting Garage service with $CONTAINER_RUNTIME..."
 $COMPOSE_CMD -f "$COMPOSE_FILE" up -d "$GARAGE_SERVICE_NAME"
@@ -182,7 +186,11 @@ else
     $COMPOSE_CMD -f "$COMPOSE_FILE" down "$GARAGE_SERVICE_NAME"
 
     echo "  Clearing layout data..."
-    rm -rf ./data/garage/meta/*
+    if [[ "$COMPOSE_FILE" == *"staging"* ]]; then
+        echo "    Using named volumes - clearing via container restart"
+    else
+        rm -rf ./garage-data/meta/*
+    fi
 
     echo "  Restarting Garage..."
     $COMPOSE_CMD -f "$COMPOSE_FILE" up -d "$GARAGE_SERVICE_NAME"
