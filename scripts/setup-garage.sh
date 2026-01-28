@@ -108,15 +108,15 @@ fi
 if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
     if command -v podman-compose &> /dev/null; then
         COMPOSE_CMD="podman-compose"
-    elif command -v "$CONTAINER_RUNTIME" compose &> /dev/null; then
-        COMPOSE_CMD="$CONTAINER_RUNTIME compose"
+    elif podman compose version &> /dev/null; then
+        COMPOSE_CMD="podman compose"
     else
         echo "❌ Neither podman-compose nor 'podman compose' found"
         exit 1
     fi
 else
-    if command -v "$CONTAINER_RUNTIME" compose &> /dev/null; then
-        COMPOSE_CMD="$CONTAINER_RUNTIME compose"
+    if docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
     elif command -v docker-compose &> /dev/null; then
         COMPOSE_CMD="docker-compose"
         echo "⚠️  Using legacy docker-compose command"
