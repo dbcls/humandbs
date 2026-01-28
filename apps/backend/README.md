@@ -27,14 +27,6 @@ docker compose -f compose.dev.yml up -d
 docker compose -f compose.dev.yml exec backend bash
 ```
 
-### Ollama モデルの用意
-
-LLM によるフィールド抽出を使用する場合:
-
-```bash
-docker compose -f compose.dev.yml exec ollama ollama pull qwen3:8b
-```
-
 ## クローラー実行手順
 
 クローラーはパイプライン形式で、以下の順序で実行する:
@@ -96,6 +88,7 @@ bun run crawler:structure --hum-id hum0001  # 特定の humId のみ
 ```
 
 出力: `crawler-results/structured-json/`
+
 - `research/{humId}.json` (Research)
 - `research-version/{humVersionId}.json` (ResearchVersion)
 - `dataset/{datasetId}-{version}.json` (Dataset)
@@ -277,51 +270,3 @@ bun run lint --fix  # 自動修正
 # TypeScript 型チェック
 bun run typecheck
 ```
-
-## トラブルシューティング
-
-### よくある問題
-
-#### Elasticsearch に接続できない
-
-```bash
-# コンテナが起動しているか確認
-docker compose -f compose.dev.yml ps
-
-# ログを確認
-docker compose -f compose.dev.yml logs elasticsearch
-```
-
-#### LLM 抽出が動かない
-
-```bash
-# Ollama コンテナが起動しているか確認
-docker compose -f compose.dev.yml ps ollama
-
-# モデルがダウンロードされているか確認
-docker compose -f compose.dev.yml exec ollama ollama list
-```
-
-#### パースエラーが発生する
-
-一部の humId は HTML 構造が特殊で自動解析が困難なため、`config/mapping.ts` の `SKIP_PAGES` でスキップされている:
-
-- MRI 関係: hum0031, hum0043, hum0235, hum0250
-- 健康調査: hum0395, hum0396, hum0397, hum0398
-
-### デバッグ
-
-```bash
-# verbose モードで実行
-bun run crawler:download-html --verbose
-bun run crawler:parse-html --verbose
-
-# 特定の humId のみ処理
-bun run crawler:parse-html --hum-id hum0001 --verbose
-```
-
-## 環境変数
-
-| 変数名 | デフォルト | 説明 |
-|--------|----------|------|
-| `HUMANDBS_ES_HOST` | `http://humandbs-elasticsearch-dev:9200` | Elasticsearch ホスト |

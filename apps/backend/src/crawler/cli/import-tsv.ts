@@ -2,11 +2,11 @@
  * TSV Import
  *
  * Imports manually edited TSV files back into JSON format
- * Merges TSV changes into extracted-unified JSON files and outputs to final/ directory
+ * Merges TSV changes into extracted-json JSON files and outputs to final/ directory
  * Uses Unified (ja/en integrated) data format
  *
  * Process:
- * 1. Copy extracted-unified → final
+ * 1. Copy extracted-json → final
  * 2. Read TSV files
  * 3. Merge TSV edits into final JSON files
  */
@@ -56,14 +56,14 @@ const getFinalDir = (type: "research" | "research-version" | "dataset"): string 
 }
 
 /**
- * Copy extracted-unified to final (if not already exists)
+ * Copy extracted-json to final (if not already exists)
  */
 export const copyExtractedToFinal = (force = false): void => {
-  const srcBase = join(getResultsDir(), "extracted-unified")
+  const srcBase = join(getResultsDir(), "extracted-json")
   const dstBase = join(getResultsDir(), "final")
 
   if (!existsSync(srcBase)) {
-    logger.error("Error: extracted-unified directory does not exist")
+    logger.error("Error: extracted-json directory does not exist")
     logger.error("Please run extract-fields-unified first")
     process.exit(1)
   }
@@ -73,7 +73,7 @@ export const copyExtractedToFinal = (force = false): void => {
     return
   }
 
-  logger.info("Copying extracted-unified to final...")
+  logger.info("Copying extracted-json to final...")
   cpSync(srcBase, dstBase, { recursive: true })
   logger.info("Copy completed")
 }
@@ -328,7 +328,7 @@ export const importExperimentTsv = (): void => {
 export const importAllTsv = (force: boolean): void => {
   logger.info("Starting TSV import...")
 
-  // Step 1: Copy extracted-unified to final
+  // Step 1: Copy extracted-json to final
   copyExtractedToFinal(force)
 
   // Step 2: Import TSV files
