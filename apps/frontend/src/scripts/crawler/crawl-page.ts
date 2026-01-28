@@ -6,6 +6,8 @@ import TurndownService from "turndown";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import { getFileNameFromUrl, isDownloadableFile } from "./utils";
+
 interface ParsedArguments {
   url: string;
   outdir: string;
@@ -34,58 +36,6 @@ const argv = yargs(hideBin(process.argv))
   })
   .help()
   .parseSync() as ParsedArguments;
-
-function getFileNameFromUrl(url: string): string {
-  // Extract the last segment of the URL path and remove any trailing slashes
-  const urlObj = new URL(url);
-  const pathname = urlObj.pathname;
-
-  // Special case for home pages - check first
-  if (
-    pathname === "/" ||
-    pathname === "/en/" ||
-    pathname === "/ja/" ||
-    pathname === "/en" ||
-    pathname === "/ja"
-  ) {
-    return "home";
-  }
-
-  const segments = pathname.split("/").filter((segment) => segment.length > 0);
-  const lastSegment = segments[segments.length - 1] || "index";
-  return lastSegment;
-}
-
-// Helper function to determine if a link is a downloadable file
-function isDownloadableFile(href: string | undefined): href is string {
-  if (!href) return false;
-
-  // Check if it's a /files/ link
-  if (href.includes("/files/")) return true;
-
-  // Check for common file extensions
-  const fileExtensions = [
-    ".pdf",
-    ".doc",
-    ".docx",
-    ".xls",
-    ".xlsx",
-    ".ppt",
-    ".pptx",
-    ".zip",
-    ".tar",
-    ".gz",
-    ".rar",
-    ".7z",
-    ".txt",
-    ".csv",
-    ".json",
-    ".xml",
-  ];
-
-  const lowerHref = href.toLowerCase();
-  return fileExtensions.some((ext) => lowerHref.endsWith(ext));
-}
 
 async function fetchAndParse(): Promise<void> {
   try {

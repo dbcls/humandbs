@@ -62,6 +62,33 @@ bun reset-db.ts
 
 ⚠️ **Warning:** This script will permanently delete all data. Use with extreme caution.
 
+### `clear-db.ts`
+
+Database content clearing utility that removes all data while preserving table structure.
+
+**Usage:**
+
+```bash
+bun run db:clear
+# or run directly with:
+bun clear-db.ts
+```
+
+**Features:**
+
+- **Content clearing** - Removes all data from all tables using TRUNCATE
+- **Structure preservation** - Keeps tables, indexes, and schema intact
+- **Auto-increment reset** - Resets identity columns to start values
+- **Foreign key handling** - Temporarily disables constraints during clearing
+- **Production protection** - Automatically prevents execution in production
+
+**When to use:**
+
+- Development data reset without schema changes
+- Quick content refresh while preserving structure
+- Testing with clean data state
+- Faster than full reset when schema is unchanged
+
 ## Database Configuration
 
 ### Required Environment Variables
@@ -104,6 +131,22 @@ bun run seed:documents
 ```bash
 # Update documents and content (safe to run repeatedly)
 bun run seed:documents
+
+# Quick data refresh (preserves schema)
+bun run db:clear && bun run seed:documents
+```
+
+### Development Workflows
+
+```bash
+# Full reset with schema changes
+bun run db:fresh  # Equivalent to: db:reset && db:push && seed:documents
+
+# Quick content-only reset
+bun run db:clear && bun run seed:documents
+
+# Schema updates only
+bun run db:push
 ```
 
 ## Asset Management

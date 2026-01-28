@@ -83,6 +83,56 @@ function extractImageFilenames(content: string) {
   return Array.from(results);
 }
 
+/** Extracts file references from markdown links. */
+function extractFileFilenames(content: string) {
+  const results = new Set<string>();
+  const pattern = /\[([^\]]*)\]\(([^)]+)\)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(content)) !== null) {
+    const raw = match[2]?.trim();
+    if (!raw) continue;
+
+    const cleaned = raw.split(/\s+/)[0]?.replace(/^<|>$/g, "");
+    if (
+      !cleaned ||
+      cleaned.startsWith("http://") ||
+      cleaned.startsWith("https://") ||
+      cleaned.startsWith("/") ||
+      cleaned.startsWith("#")
+    ) {
+      continue;
+    }
+
+    // Check if it's a downloadable file by extension
+    const ext = path.extname(cleaned).toLowerCase();
+    const downloadableExts = [
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".zip",
+      ".tar",
+      ".gz",
+      ".rar",
+      ".7z",
+      ".txt",
+      ".csv",
+      ".json",
+      ".xml",
+    ];
+
+    if (downloadableExts.includes(ext)) {
+      results.add(path.basename(cleaned));
+    }
+  }
+
+  return Array.from(results);
+}
+
 /** Rewrites relative image URLs to public assets paths. */
 function rewriteImageReferences(content: string, fileNames: Iterable<string>) {
   const names = new Set(fileNames);
@@ -108,6 +158,32 @@ function rewriteImageReferences(content: string, fileNames: Iterable<string>) {
   });
 }
 
+/** Rewrites relative file URLs to public assets paths. */
+function rewriteFileReferences(content: string, fileNames: Iterable<string>) {
+  const names = new Set(fileNames);
+  if (names.size === 0) return content;
+
+  const pattern = /\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g;
+
+  return content.replace(pattern, (full, text, url, rest) => {
+    if (typeof url !== "string") return full;
+    const trimmed = url.trim().replace(/^<|>$/g, "");
+    if (
+      trimmed.startsWith("/") ||
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("#")
+    ) {
+      return full;
+    }
+
+    const fileName = path.basename(trimmed);
+    if (!names.has(fileName)) return full;
+
+    return `[${text}](/assets/${fileName}${rest ?? ""})`;
+  });
+}
+
 /** Determines a mime type based on file extension. */
 function getMimeType(fileName: string) {
   const ext = path.extname(fileName).toLowerCase();
@@ -123,6 +199,38 @@ function getMimeType(fileName: string) {
       return "image/svg+xml";
     case ".webp":
       return "image/webp";
+    case ".pdf":
+      return "application/pdf";
+    case ".doc":
+      return "application/msword";
+    case ".docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case ".xls":
+      return "application/vnd.ms-excel";
+    case ".xlsx":
+      return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    case ".ppt":
+      return "application/vnd.ms-powerpoint";
+    case ".pptx":
+      return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    case ".zip":
+      return "application/zip";
+    case ".tar":
+      return "application/x-tar";
+    case ".gz":
+      return "application/gzip";
+    case ".rar":
+      return "application/vnd.rar";
+    case ".7z":
+      return "application/x-7z-compressed";
+    case ".txt":
+      return "text/plain";
+    case ".csv":
+      return "text/csv";
+    case ".json":
+      return "application/json";
+    case ".xml":
+      return "application/xml";
     default:
       return "application/octet-stream";
   }
@@ -375,7 +483,9 @@ async function seedDocuments() {
 
       for (const [locale, data] of localeEntries) {
         const images = extractImageFilenames(data.content);
-        if (images.length === 0) continue;
+        const files = extractFileFilenames(data.content);
+        const allAssets = [...images, ...files];
+        if (allAssets.length === 0) continue;
 
         if (!assetsDirReady) {
           await mkdir(PUBLIC_ASSETS_DIR, { recursive: true });
@@ -384,7 +494,7 @@ async function seedDocuments() {
 
         const availableAssets = new Set<string>();
 
-        for (const fileName of images) {
+        for (const fileName of allAssets) {
           if (processedAssets.has(fileName)) {
             availableAssets.add(fileName);
             continue;
@@ -431,12 +541,31 @@ async function seedDocuments() {
         }
 
         if (availableAssets.size > 0) {
-          const updatedContent = rewriteImageReferences(
-            data.content,
-            availableAssets
+          const availableImages = new Set(
+            Array.from(availableAssets).filter((name) => images.includes(name))
           );
+          const availableFiles = new Set(
+            Array.from(availableAssets).filter((name) => files.includes(name))
+          );
+
+          let updatedContent = data.content;
+
+          if (availableImages.size > 0) {
+            updatedContent = rewriteImageReferences(
+              updatedContent,
+              availableImages
+            );
+          }
+
+          if (availableFiles.size > 0) {
+            updatedContent = rewriteFileReferences(
+              updatedContent,
+              availableFiles
+            );
+          }
+
           if (updatedContent !== data.content) {
-            console.log(`Rewrote image URLs for: ${documentId} (${locale})`);
+            console.log(`Rewrote asset URLs for: ${documentId} (${locale})`);
           }
           contentByLocale.set(locale, updatedContent);
         }

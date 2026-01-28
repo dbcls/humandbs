@@ -12,6 +12,14 @@ A versatile web scraping script that extracts content from HTML pages and conver
 
 A comprehensive sitemap crawler that extracts all page URLs from a website's sitemap and batch-crawls each page using the `crawl-page.ts` script.
 
+### `aggregate-attachments.ts`
+
+A specialized script that crawls all pages from the sitemap and aggregates information about all attachment files (documents and images) into a CSV report. Unlike the other crawlers, this script doesn't download content but creates a comprehensive inventory of all attachments across the site.
+
+### `utils.ts`
+
+Shared utility functions used by the crawler scripts, including sitemap parsing, attachment detection, and concurrent processing helpers.
+
 #### Features
 
 - **HTML to Markdown conversion** with proper formatting preservation
@@ -149,6 +157,67 @@ Contains all crawled content and downloaded assets. This directory is git-ignore
 - **Asset directories:** `*_files/` folders containing downloaded images and documents
 - **Structured content:** Ready for processing by seeding scripts
 
+#### Features
+
+- **Sitemap processing** from both English and Japanese versions
+- **Attachment detection** for files and images across all pages
+- **Relative URL filtering** - only includes internal files (starting with `/`)
+- **CSV output** with detailed attachment information
+- **Concurrent processing** with configurable rate limiting
+- **Dry-run mode** for preview before processing
+- **Duplicate detection** and handling
+
+#### Usage
+
+**Dry run (preview what will be processed):**
+
+```bash
+bun aggregate-attachments.ts --dry-run
+# Shows all pages that would be processed without actually analyzing them
+```
+
+**Generate attachment inventory:**
+
+```bash
+bun aggregate-attachments.ts
+# Creates attachments.csv with all attachment information
+```
+
+**Customized processing:**
+
+```bash
+bun aggregate-attachments.ts --concurrency 5 --output my-attachments.csv
+# Process with 5 concurrent requests and custom output filename
+```
+
+#### Options
+
+- `-d, --dry-run` - Preview pages without processing
+- `-c, --concurrency <num>` - Number of concurrent pages to process (default: 3)
+- `-o, --output <file>` - Output CSV file path (default: attachments.csv)
+
+#### CSV Output Format
+
+The generated CSV contains the following columns:
+
+- **Document ID** - Unique identifier extracted from page URL/title
+- **Page Title** - Full title of the page containing the attachment
+- **Page URL** - Complete URL of the source page
+- **Language** - Page language (en/ja)
+- **Attachment Type** - file or image
+- **Filename** - Name of the attachment file
+- **Attachment URL** - Relative URL path (e.g., `/files/document.pdf`)
+
+**Note**: Only relative URLs starting with `/` are included. External links to other domains are automatically filtered out.
+
+#### Use Cases
+
+- **Content auditing** - Get complete inventory of internal site attachments
+- **Migration planning** - Understand what files need to be migrated
+- **File organization** - Analyze directory structure and file distribution
+- **Content analysis** - Analyze file types and distribution across pages
+- **Asset management** - Track all downloadable resources
+
 ## Usage Examples
 
 ### Crawling individual pages
@@ -183,6 +252,23 @@ bun crawl-sitemap.ts --concurrency 5
 bun crawl-sitemap.ts --files-only
 ```
 
+### Aggregating attachment information
+
+```bash
+# Preview all pages that would be analyzed
+bun aggregate-attachments.ts --dry-run
+
+# Generate complete attachment inventory
+bun aggregate-attachments.ts
+
+# Custom output file and concurrency
+bun aggregate-attachments.ts --concurrency 5 --output site-attachments.csv
+
+# Process and analyze the CSV
+cat attachments.csv | grep "\.pdf" | wc -l  # Count PDF files
+cat attachments.csv | grep "/files/" | wc -l  # Count files in main directory
+```
+
 ### Package.json shortcuts
 
 ```bash
@@ -190,6 +276,7 @@ bun crawl-sitemap.ts --files-only
 bun run crawl:sitemap --dry-run
 bun run crawl:sitemap --concurrency 3
 bun run crawl -u "https://site.com/page" -o documents
+bun run aggregate-attachments --output audit.csv
 ```
 
 ## Integration with Seeding
@@ -214,6 +301,22 @@ mv output/temp/en/about ../seed-data/documents/en/
 bun ../database/seed-documents.ts
 ```
 
+### Content Analysis Workflow
+
+```bash
+# First, audit all attachments
+bun aggregate-attachments.ts --output site-audit.csv
+
+# Review the attachment inventory
+# Identify important content to preserve
+
+# Then crawl specific pages based on audit
+bun crawl-page.ts -u "https://site.com/important-page" -o seed-data
+
+# Or crawl everything if needed
+bun crawl-sitemap.ts
+```
+
 ## Technical Details
 
 ### Dependencies
@@ -222,6 +325,8 @@ bun ../database/seed-documents.ts
 - **cheerio** - Server-side jQuery for HTML parsing
 - **turndown** - HTML to markdown conversion
 - **yargs** - Command-line argument parsing
+- **path** - File path utilities
+- **fs** - File system operations
 
 ### Error Handling
 
@@ -234,9 +339,11 @@ bun ../database/seed-documents.ts
 
 - Downloads are processed asynchronously
 - Large files may take time to download
-- Network rate limiting may affect crawling speed
+- Network timeouts and connection errors
 - Sitemap crawler includes 2-second delays between batches
 - Concurrent processing can be adjusted based on server capacity
+- Attachment aggregation is faster as it only analyzes HTML, doesn't download files
+- CSV generation is memory-efficient for large sites
 
 ## Best Practices
 
@@ -248,6 +355,8 @@ bun ../database/seed-documents.ts
 6. **Check output quality** before using for seeding
 7. **Handle rate limiting** with appropriate delays between requests
 8. **Verify downloaded files** for completeness and integrity
+9. **Run attachment aggregation first** to understand site structure
+10. **Use CSV output for planning** and prioritizing content migration
 
 ## Troubleshooting
 
