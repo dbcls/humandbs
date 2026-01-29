@@ -34,7 +34,7 @@ export interface Dataset {
   humId: string
   humVersionId: string
   releaseDate: string[] // must not be null
-  criteria: CriteriaCanonical[] // must not be null
+  criteria: CriteriaCanonical // must not be null, single value
 
   // Language-dependent - at least one of ja/en must be non-null
   typeOfData: { ja: string | null; en: string | null }

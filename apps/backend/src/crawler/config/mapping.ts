@@ -327,3 +327,31 @@ export const getMolDataSplitKeys = (): Record<string, string[]> => {
 export const getMolDataIdFields = (): string[] => {
   return getMolDataFieldMapping().idFields
 }
+
+// Criteria Override
+
+type CriteriaOverrideConfig = Record<string, Record<string, CriteriaCanonical>>
+
+let criteriaOverrideCache: CriteriaOverrideConfig | null = null
+
+const getCriteriaOverride = (): CriteriaOverrideConfig => {
+  if (!criteriaOverrideCache) {
+    criteriaOverrideCache = loadConfig<CriteriaOverrideConfig>("criteria-override.json")
+  }
+  return criteriaOverrideCache
+}
+
+/**
+ * Get criteria override for a specific humId and datasetId
+ * Returns null if no override exists
+ */
+export const getCriteriaOverrideForDataset = (
+  humId: string,
+  datasetId: string,
+): CriteriaCanonical | null => {
+  const overrides = getCriteriaOverride()
+  const humOverrides = overrides[humId]
+  if (!humOverrides) return null
+  return humOverrides[datasetId] ?? null
+}
+

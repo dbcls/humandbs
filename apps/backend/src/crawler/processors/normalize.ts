@@ -149,11 +149,11 @@ export const normalizeCellValue = (cell: HTMLTableCellElement): string | null =>
 // Criteria normalization
 
 /**
- * Normalize criteria value to canonical form
+ * Normalize criteria value to canonical form (single value)
  */
 export const normalizeCriteria = (
   value: string | null | undefined,
-): CriteriaCanonical[] | null => {
+): CriteriaCanonical | null => {
   if (!value) return null
 
   const raw = value.trim()
@@ -174,7 +174,14 @@ export const normalizeCriteria = (
     }
   }
 
-  return results.length > 0 ? results : null
+  if (results.length === 0) return null
+
+  // Warn if multiple criteria values found
+  if (results.length > 1) {
+    logger.warn("Multiple criteria values found, using first", { values: results })
+  }
+
+  return results[0]
 }
 
 // Policy normalization

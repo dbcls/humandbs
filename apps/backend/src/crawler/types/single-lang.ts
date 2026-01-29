@@ -21,7 +21,7 @@ export interface SingleLangDataset {
   humId: string
   humVersionId: string
   releaseDate: string[]
-  criteria: CriteriaCanonical[]
+  criteria: CriteriaCanonical | null
   typeOfData: string | null
   experiments: SingleLangExperiment[]
 }

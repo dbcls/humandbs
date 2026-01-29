@@ -8,6 +8,7 @@ import {
   getMetadataInheritance,
   getCriteriaCanonical,
   getCriteriaDisplayValue,
+  getCriteriaOverrideForDataset,
   getIgnoreIdsByHum,
   getInvalidOtherIds,
   applyGlobalIdCorrection,
@@ -51,30 +52,99 @@ import type {
   Publication,
 } from "@/crawler/types"
 
-// Criteria Display
+// Criteria Validation
 
-/**
- * Convert criteria canonical values to display values
- */
-export const convertCriteriaToDisplay = (
-  criteria: CriteriaCanonical[] | null,
-  lang: LangType,
-): string[] => {
-  if (!criteria) return []
-  return criteria.map(c => getCriteriaDisplayValue(c, lang))
+interface CriteriaValidationResult {
+  criteria: CriteriaCanonical
+  warnings: string[]
 }
 
 /**
- * Convert display criteria values back to canonical values
+ * Check if criteria matches expected pattern based on dataset ID prefix
+ *
+ * Rules:
+ * - E-GEAD-*, DRA* → should be Unrestricted-access
+ * - JGAD*, JGAS* → should be Controlled-access (Type I or Type II)
+ */
+const checkCriteriaPrefixMismatch = (
+  datasetId: string,
+  criteria: CriteriaCanonical,
+): string | null => {
+  // E-GEAD/DRA should be Unrestricted
+  if ((datasetId.startsWith("E-GEAD-") || datasetId.startsWith("DRA"))
+      && criteria !== "Unrestricted-access") {
+    return `Expected Unrestricted-access but got ${criteria}`
+  }
+  // JGA should be Controlled
+  if ((datasetId.startsWith("JGAD") || datasetId.startsWith("JGAS"))
+      && criteria === "Unrestricted-access") {
+    return "JGA dataset should not be Unrestricted-access"
+  }
+  return null
+}
+
+/**
+ * Validate criteria and apply override if configured
+ *
+ * Priority:
+ * 1. Use override from criteria-override.json if exists
+ * 2. Use criteria from summary table
+ * 3. Output warnings for empty or mismatched criteria
+ */
+export const validateAndCorrectCriteria = (
+  humId: string,
+  datasetId: string,
+  criteria: CriteriaCanonical | null,
+): CriteriaValidationResult => {
+  const warnings: string[] = []
+
+  // Check for override first
+  const override = getCriteriaOverrideForDataset(humId, datasetId)
+  if (override) {
+    return { criteria: override, warnings }
+  }
+
+  // Empty criteria: warning and use fallback
+  if (!criteria) {
+    warnings.push(`[${humId}/${datasetId}] criteria is empty`)
+    // Fallback based on prefix
+    if (datasetId.startsWith("JGAD") || datasetId.startsWith("JGAS")) {
+      return { criteria: "Controlled-access (Type I)", warnings }
+    }
+    return { criteria: "Unrestricted-access", warnings }
+  }
+
+  // Check for prefix mismatch (warning only, no correction)
+  const mismatch = checkCriteriaPrefixMismatch(datasetId, criteria)
+  if (mismatch) {
+    warnings.push(`[${datasetId}] ${mismatch}`)
+  }
+
+  return { criteria, warnings }
+}
+
+// Criteria Display
+
+/**
+ * Convert criteria canonical value to display value
+ */
+export const convertCriteriaToDisplay = (
+  criteria: CriteriaCanonical | null,
+  lang: LangType,
+): string | null => {
+  if (!criteria) return null
+  return getCriteriaDisplayValue(criteria, lang)
+}
+
+/**
+ * Convert display criteria value back to canonical value
+ * Takes the first value from display array (for backward compatibility with parsed data)
  */
 export const convertCriteriaToCanonical = (
   displayValues: string[] | undefined,
-): CriteriaCanonical[] => {
-  if (!displayValues || displayValues.length === 0) return []
-  const canonical = displayValues
-    .map(v => getCriteriaCanonical(v))
-    .filter((v): v is CriteriaCanonical => v !== null)
-  return canonical
+): CriteriaCanonical | null => {
+  if (!displayValues || displayValues.length === 0) return null
+  return getCriteriaCanonical(displayValues[0])
 }
 
 // ID Extraction
@@ -174,7 +244,7 @@ export const invertMolTableToDataset = (
 
 interface DatasetMetadata {
   typeOfData: string | null
-  criteria: CriteriaCanonical[] | null
+  criteria: CriteriaCanonical | null
   releaseDate: string[] | null
 }
 
@@ -210,14 +280,17 @@ export const buildDatasetMetadataMap = (
   const metadataInheritance = getMetadataInheritance()
 
   // First pass: add all datasetIds from summary.datasets
+  // Use first-wins strategy: existing entries are not overwritten
   for (const ds of datasets) {
     const ids = ds.datasetId ?? []
     for (const id of ids) {
-      map.set(id, {
-        typeOfData: ds.typeOfData ?? null,
-        criteria: ds.criteria,
-        releaseDate: ds.releaseDate,
-      })
+      if (!map.has(id)) {
+        map.set(id, {
+          typeOfData: ds.typeOfData ?? null,
+          criteria: ds.criteria,
+          releaseDate: ds.releaseDate,
+        })
+      }
     }
   }
 
@@ -587,9 +660,16 @@ export const createUnifiedDataset = (
     enDataset?.experiments ?? [],
   )
 
-  const jaCriteria = convertCriteriaToCanonical(jaDataset?.criteria)
-  const enCriteria = convertCriteriaToCanonical(enDataset?.criteria)
-  const criteria = jaCriteria.length > 0 ? jaCriteria : enCriteria
+  // Use criteria from ja dataset, fallback to en dataset
+  const rawCriteria = jaDataset?.criteria ?? enDataset?.criteria ?? null
+
+  // Validate criteria and apply override if configured
+  const { criteria: validatedCriteria, warnings } = validateAndCorrectCriteria(humId, datasetId, rawCriteria)
+
+  // Output warnings for data quality tracking
+  for (const warning of warnings) {
+    console.warn(warning)
+  }
 
   return {
     datasetId,
@@ -598,7 +678,7 @@ export const createUnifiedDataset = (
     humId,
     humVersionId,
     releaseDate: jaDataset?.releaseDate ?? enDataset?.releaseDate ?? [],
-    criteria,
+    criteria: validatedCriteria,
     typeOfData: {
       ja: jaDataset?.typeOfData || null,
       en: enDataset?.typeOfData || null,

@@ -202,7 +202,9 @@ export const importDatasetTsv = (): void => {
 
     // Update bilingual fields
     dataset.typeOfData = parseBilingualText(row.typeOfData_ja ?? "", row.typeOfData_en ?? "")
-    dataset.criteria = parseJsonFieldOrNull<CriteriaCanonical[]>(row.criteria) ?? []
+    // criteria is now a single value, not an array
+    const criteriaValue = parseJsonFieldOrNull<CriteriaCanonical>(row.criteria)
+    dataset.criteria = criteriaValue ?? "Unrestricted-access"
     dataset.releaseDate = parseJsonFieldOrNull<string[]>(row.releaseDate) ?? []
 
     writeJsonFile(filePath, dataset)

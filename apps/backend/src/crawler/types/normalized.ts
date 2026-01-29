@@ -32,7 +32,7 @@ export interface OrphanReference {
 /** Normalized dataset with array fields */
 export interface NormalizedDataset extends Omit<RawDataset, "datasetId" | "criteria" | "releaseDate"> {
   datasetId: string[] | null
-  criteria: CriteriaCanonical[] | null
+  criteria: CriteriaCanonical | null
   releaseDate: string[] | null
 }
 

@@ -761,7 +761,7 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
     )
     const targets = d.summary?.targets ?? ""
     const dataProvider = uniq((d.dataProvider ?? []).map(p => p.name).filter((x): x is string => !!x))
-    const criteria = uniq(datasets.flatMap(ds => ds.criteria ?? []).filter((x): x is string => !!x))[0] ?? ""
+    const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
 
     return { humId: d.humId, lang: d.lang, title: d.title, versions, methods, datasetIds, typeOfData, platforms, targets, dataProvider, criteria }
   })

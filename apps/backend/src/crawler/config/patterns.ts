@@ -22,16 +22,58 @@ export const ID_PATTERNS: Record<DatasetIdType, RegExp> = {
 }
 
 /**
+ * GEA URL pattern: extract only the final E-GEAD-* ID from URL paths
+ *
+ * GEA URLs have bucket directories like /E-GEAD-1000/E-GEAD-1121/
+ * where E-GEAD-1000 is a bucket (not a real dataset) and E-GEAD-1121 is the actual ID
+ */
+const GEA_URL_PATTERN = /https?:\/\/[^\s]*\/gea\/experiment\/E-GEAD-\d+\/(E-GEAD-\d+)\/?/g
+
+/**
+ * Extract GEA IDs from URLs, taking only the final path segment
+ */
+const extractGeaIdsFromUrls = (text: string): string[] => {
+  const ids: string[] = []
+  const regex = new RegExp(GEA_URL_PATTERN.source, "g")
+  let match
+  while ((match = regex.exec(text)) !== null) {
+    ids.push(match[1])
+  }
+  return ids
+}
+
+/**
+ * Remove GEA URL portions from text to prevent bucket directory extraction
+ */
+const removeGeaUrls = (text: string): string => {
+  return text.replace(/https?:\/\/[^\s]*\/gea\/experiment\/E-GEAD-\d+\/E-GEAD-\d+\/?/g, " ")
+}
+
+/**
  * Extract IDs by type from a text string
  */
 export const extractIdsByType = (text: string): Partial<Record<DatasetIdType, string[]>> => {
   const result: Partial<Record<DatasetIdType, string[]>> = {}
 
+  // Special handling for GEA: extract from URLs first, then from remaining text
+  const geaUrlIds = extractGeaIdsFromUrls(text)
+  const textWithoutGeaUrls = removeGeaUrls(text)
+
   for (const [type, regex] of Object.entries(ID_PATTERNS) as [DatasetIdType, RegExp][]) {
     regex.lastIndex = 0
-    const matches = text.match(new RegExp(regex.source, "g"))
-    if (matches && matches.length > 0) {
-      result[type] = matches
+
+    if (type === "GEA") {
+      // For GEA: use URL-extracted IDs + IDs from non-URL text
+      const nonUrlMatches = textWithoutGeaUrls.match(new RegExp(regex.source, "g")) ?? []
+      const allGeaIds = [...new Set([...geaUrlIds, ...nonUrlMatches])]
+      if (allGeaIds.length > 0) {
+        result[type] = allGeaIds
+      }
+    } else {
+      const matches = text.match(new RegExp(regex.source, "g"))
+      if (matches && matches.length > 0) {
+        result[type] = matches
+      }
     }
   }
 

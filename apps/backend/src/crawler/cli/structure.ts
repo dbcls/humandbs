@@ -182,7 +182,7 @@ const buildSingleLangDataset = (
   humId: string,
   humVersionId: string,
   molDataList: NormalizedMolecularData[],
-  metadataMap: Map<string, { typeOfData: string | null; criteria: import("@/crawler/types").CriteriaCanonical[] | null; releaseDate: string[] | null }>,
+  metadataMap: Map<string, { typeOfData: string | null; criteria: import("@/crawler/types").CriteriaCanonical | null; releaseDate: string[] | null }>,
   _lang: LangType,
 ): SingleLangDataset => {
   const metadata = metadataMap.get(datasetId)
@@ -194,7 +194,7 @@ const buildSingleLangDataset = (
     humId,
     humVersionId,
     releaseDate: metadata?.releaseDate ?? [],
-    criteria: metadata?.criteria ?? [],
+    criteria: metadata?.criteria ?? null,
     typeOfData: metadata?.typeOfData ?? null,
     experiments: molDataList.map(structureMolDataToExperiment),
   }

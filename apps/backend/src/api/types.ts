@@ -117,7 +117,7 @@ const DatasetSchema = z.object({
   humId: z.string(),
   humVersionId: z.string(),
   releaseDate: z.array(z.string()),
-  criteria: z.array(CriteriaCanonicalSchema),
+  criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
@@ -137,7 +137,7 @@ export const EsDatasetDocSchema = z.object({
   lang: z.enum(langType),
   version: z.string(),
   typeOfData: z.array(z.string()).nullable().optional(),
-  criteria: z.array(z.string()).nullable().optional(),
+  criteria: CriteriaCanonicalSchema.nullable().optional(),
   releaseDate: z.array(z.string()).nullable().optional(),
   experiments: z.array(EsExperimentSchema),
 })
@@ -228,7 +228,7 @@ export type EsResearchDetail = z.infer<typeof EsResearchDetailSchema>
 export const DatasetVersionItemSchema = z.object({
   version: z.string(),
   typeOfData: z.array(z.string()).nullable().optional(),
-  criteria: z.array(z.string()).nullable().optional(),
+  criteria: CriteriaCanonicalSchema.nullable().optional(),
   releaseDate: z.array(z.string()).nullable().optional(),
 })
 export type DatasetVersionItem = z.infer<typeof DatasetVersionItemSchema>
@@ -493,7 +493,7 @@ export const CreateDatasetRequestSchema = z.object({
 
   // Dataset fields
   releaseDate: z.array(z.string()),
-  criteria: z.array(CriteriaCanonicalSchema),
+  criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
@@ -510,7 +510,7 @@ export const UpdateDatasetRequestSchema = z.object({
   humId: z.string(),
   humVersionId: z.string(),
   releaseDate: z.array(z.string()),
-  criteria: z.array(CriteriaCanonicalSchema),
+  criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
@@ -743,7 +743,7 @@ export const SearchDatasetResultSchema = z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
   }).optional(),
-  criteria: z.array(CriteriaCanonicalSchema).optional(),
+  criteria: CriteriaCanonicalSchema.optional(),
   score: z.number().optional(),
   highlights: z.record(z.string(), z.array(z.string())).optional(),
 })

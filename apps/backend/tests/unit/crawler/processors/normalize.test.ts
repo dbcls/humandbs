@@ -253,28 +253,28 @@ describe("processors/normalize.ts", () => {
     })
 
     it("should normalize Japanese Type I", () => {
-      expect(normalizeCriteria("制限公開(TypeI)")).toEqual(["Controlled-access (Type I)"])
+      expect(normalizeCriteria("制限公開(TypeI)")).toBe("Controlled-access (Type I)")
     })
 
     it("should normalize English Type I", () => {
-      expect(normalizeCriteria("Controlled-access (Type I)")).toEqual(["Controlled-access (Type I)"])
+      expect(normalizeCriteria("Controlled-access (Type I)")).toBe("Controlled-access (Type I)")
     })
 
     it("should normalize Japanese Type II", () => {
-      expect(normalizeCriteria("制限公開(TypeII)")).toEqual(["Controlled-access (Type II)"])
+      expect(normalizeCriteria("制限公開(TypeII)")).toBe("Controlled-access (Type II)")
     })
 
     it("should normalize unrestricted access (Japanese)", () => {
-      expect(normalizeCriteria("非制限公開")).toEqual(["Unrestricted-access"])
+      expect(normalizeCriteria("非制限公開")).toBe("Unrestricted-access")
     })
 
     it("should normalize unrestricted access (English)", () => {
-      expect(normalizeCriteria("Unrestricted-access")).toEqual(["Unrestricted-access"])
+      expect(normalizeCriteria("Unrestricted-access")).toBe("Unrestricted-access")
     })
 
-    it("should handle multiple comma-separated criteria", () => {
+    it("should use first value when multiple comma-separated criteria", () => {
       const result = normalizeCriteria("制限公開(TypeI),非制限公開")
-      expect(result).toEqual(["Controlled-access (Type I)", "Unrestricted-access"])
+      expect(result).toBe("Controlled-access (Type I)")
     })
 
     it("should return null for unknown criteria", () => {
