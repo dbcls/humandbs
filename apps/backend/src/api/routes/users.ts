@@ -26,6 +26,7 @@ const loadAminUids = async () => {
 const isAdminRoute = createRoute({
   method: "get",
   path: "/is-admin",
+  tags: ["Users"],
   summary: "Check if the user is an admin",
   description: "Reads a JWT from the Authorization header and checks if the user is an admin based on a list of admin UIDs.",
   request: {

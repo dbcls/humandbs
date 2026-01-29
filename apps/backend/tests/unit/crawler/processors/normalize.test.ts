@@ -7,6 +7,7 @@ import {
   normalizeText,
   normalizeUrl,
   normalizeCriteria,
+  normalizePolicies,
   fixDatasetId,
   fixReleaseDate,
   fixDate,
@@ -1043,6 +1044,162 @@ describe("processors/normalize.ts", () => {
         "JGAD999992",
         "JGAD999993",
       ])
+    })
+  })
+
+  // ===========================================================================
+  // normalizePolicies
+  // ===========================================================================
+  describe("normalizePolicies", () => {
+    it("should normalize single NBDC policy from text", () => {
+      const result = normalizePolicies(
+        "NBDC policy",
+        null,
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(1)
+      expect(result[0]).toEqual({
+        id: "nbdc-policy",
+        name: { ja: "NBDC policy", en: "NBDC policy" },
+        url: "https://humandbs.dbcls.jp/nbdc-policy",
+      })
+    })
+
+    it("should normalize NBDC policy from rawHtml href", () => {
+      const result = normalizePolicies(
+        "NBDC policy",
+        null,
+        "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>",
+        null,
+      )
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("nbdc-policy")
+      expect(result[0].url).toBe("https://humandbs.dbcls.jp/nbdc-policy")
+    })
+
+    it("should normalize multiple policies separated by 'および'", () => {
+      const result = normalizePolicies(
+        "NBDC policy および 民間企業における利用禁止",
+        null,
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(2)
+      expect(result.map(p => p.id)).toContain("nbdc-policy")
+      expect(result.map(p => p.id)).toContain("company-limitation-policy")
+    })
+
+    it("should normalize multiple policies separated by '&'", () => {
+      const result = normalizePolicies(
+        null,
+        "NBDC policy & Company User Limit",
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(2)
+      expect(result.map(p => p.id)).toContain("nbdc-policy")
+      expect(result.map(p => p.id)).toContain("company-limitation-policy")
+    })
+
+    it("should normalize Cancer Research Use Only policy", () => {
+      const result = normalizePolicies(
+        "NBDC policy および Cancer Research Use Only",
+        null,
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(2)
+      expect(result.map(p => p.id)).toContain("cancer-research-policy")
+    })
+
+    it("should normalize Familial policy", () => {
+      const result = normalizePolicies(
+        "Familial policy",
+        null,
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("familial-policy")
+    })
+
+    it("should handle custom hum policy", () => {
+      const result = normalizePolicies(
+        "NBDC policy および hum0184 policy",
+        null,
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(2)
+      expect(result.map(p => p.id)).toContain("nbdc-policy")
+      expect(result.map(p => p.id)).toContain("custom-policy")
+
+      const customPolicy = result.find(p => p.id === "custom-policy")
+      expect(customPolicy?.name.ja).toContain("hum0184 policy")
+    })
+
+    it("should remove dataset ID annotations from text", () => {
+      const result = normalizePolicies(
+        "NBDC policy(JGAD000095、JGAD000122) NBDC policy および 民間企業における利用禁止(JGAD000110)",
+        null,
+        null,
+        null,
+      )
+
+      // Should have nbdc-policy and company-limitation-policy, not duplicates
+      expect(result.map(p => p.id)).toContain("nbdc-policy")
+      expect(result.map(p => p.id)).toContain("company-limitation-policy")
+    })
+
+    it("should return empty array for null/empty input", () => {
+      expect(normalizePolicies(null, null, null, null)).toEqual([])
+      expect(normalizePolicies("", "", "", "")).toEqual([])
+    })
+
+    it("should deduplicate policies from ja and en text", () => {
+      const result = normalizePolicies(
+        "NBDC policy",
+        "NBDC policy",
+        null,
+        null,
+      )
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("nbdc-policy")
+    })
+
+    it("should extract policy from English rawHtml href", () => {
+      const result = normalizePolicies(
+        null,
+        null,
+        null,
+        "<a href=\"/en/nbdc-policy\">NBDC policy</a>",
+      )
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("nbdc-policy")
+    })
+
+    it("should handle Academic Use Only as company limitation", () => {
+      // "Academic Use Only" typically appears with "NBDC policy" in the actual data
+      // The text contains both patterns, so both should be detected
+      const result = normalizePolicies(
+        "NBDC policy および Academic Use Only",
+        null,
+        null,
+        null,
+      )
+
+      expect(result.map(p => p.id)).toContain("nbdc-policy")
+      expect(result.map(p => p.id)).toContain("company-limitation-policy")
     })
   })
 })

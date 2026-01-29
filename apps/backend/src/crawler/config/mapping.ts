@@ -6,7 +6,7 @@
 import { readFileSync } from "fs"
 import { join, dirname } from "path"
 
-import type { CriteriaCanonical, LangType } from "@/crawler/types"
+import type { CriteriaCanonical, LangType, PolicyCanonical } from "@/crawler/types"
 
 // Import locally to avoid circular dependency
 const DETAIL_PAGE_BASE_URL = "https://humandbs.dbcls.jp/"
@@ -189,7 +189,14 @@ export const getInvalidOtherIds = (): string[] => {
   return getDatasetIdMapping().invalidIds.other
 }
 
-// Normalize Mapping (criteria + grant + publication を統合)
+// Normalize Mapping (policy + criteria + grant + publication を統合)
+
+interface PolicyMappingSection {
+  baseUrl: string
+  canonical: Record<string, { ja: string; en: string; path: string }>
+  normalize: Record<string, PolicyCanonical>
+  urlToCanonical: Record<string, PolicyCanonical>
+}
 
 interface CriteriaMappingSection {
   canonical: Record<CriteriaCanonical, { ja: string; en: string }>
@@ -207,6 +214,7 @@ interface PublicationMappingSection {
 }
 
 interface NormalizeMappingConfig {
+  policy: PolicyMappingSection
   criteria: CriteriaMappingSection
   grant: GrantMappingSection
   publication: PublicationMappingSection
@@ -220,6 +228,26 @@ const getNormalizeMapping = (): NormalizeMappingConfig => {
   }
   return normalizeMappingCache
 }
+
+// Policy mapping functions
+
+export const getPolicyBaseUrl = (): string => {
+  return getNormalizeMapping().policy.baseUrl
+}
+
+export const getPolicyCanonical = (): Record<string, { ja: string; en: string; path: string }> => {
+  return getNormalizeMapping().policy.canonical
+}
+
+export const getPolicyNormalizeMap = (): Record<string, PolicyCanonical> => {
+  return getNormalizeMapping().policy.normalize
+}
+
+export const getPolicyUrlToCanonicalMap = (): Record<string, PolicyCanonical> => {
+  return getNormalizeMapping().policy.urlToCanonical
+}
+
+// Criteria mapping functions
 
 export const getCriteriaCanonicalMap = (): Record<string, CriteriaCanonical> => {
   return getNormalizeMapping().criteria.normalize

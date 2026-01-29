@@ -34,6 +34,10 @@ import {
   getHumIdsWithDataSummary,
   getAdditionalIdsByHum,
   getIgnoreIdsByHum,
+  getPolicyBaseUrl,
+  getPolicyCanonical,
+  getPolicyNormalizeMap,
+  getPolicyUrlToCanonicalMap,
 } from "@/crawler/config/mapping"
 import { isValidDatasetId } from "@/crawler/config/patterns"
 import { loadMolDataMappingTable, buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/processors/mapping-table"
@@ -52,6 +56,7 @@ import type {
   ExtractedDatasetIds,
   DatasetIdRegistry,
   OrphanReference,
+  NormalizedPolicy,
 } from "@/crawler/types"
 import { logger } from "@/crawler/utils/logger"
 import {
@@ -170,6 +175,165 @@ export const normalizeCriteria = (
   }
 
   return results.length > 0 ? results : null
+}
+
+// Policy normalization
+
+/**
+ * Extract href URLs from rawHtml
+ */
+const extractHrefsFromHtml = (rawHtml: string | null): string[] => {
+  if (!rawHtml) return []
+
+  const hrefs: string[] = []
+  const hrefRegex = /href="([^"]+)"/g
+  let match: RegExpExecArray | null
+
+  while ((match = hrefRegex.exec(rawHtml)) !== null) {
+    hrefs.push(match[1])
+  }
+
+  return hrefs
+}
+
+/**
+ * Split policy text by common delimiters
+ * Handles: "および", "&", "、" and text before parentheses
+ */
+const splitPolicyText = (text: string): string[] => {
+  // Remove dataset ID annotations like "(JGAD000095、JGAD000122)"
+  const withoutAnnotations = text.replace(/\([^)]*JGAD[^)]*\)/g, "")
+
+  // Split by common delimiters
+  return withoutAnnotations
+    .split(/\s*(?:および|&|、)\s*/)
+    .map(s => s.trim())
+    .filter(s => s !== "")
+}
+
+/**
+ * Normalize a single policy text to canonical form
+ */
+const normalizeOnePolicyText = (
+  text: string,
+  _lang: "ja" | "en",
+): NormalizedPolicy | null => {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+
+  const normalizeMap = getPolicyNormalizeMap()
+  const canonicalMap = getPolicyCanonical()
+  const baseUrl = getPolicyBaseUrl()
+
+  // Try to match with normalize map (lowercase comparison)
+  const lowerText = trimmed.toLowerCase()
+  for (const [pattern, canonicalId] of Object.entries(normalizeMap)) {
+    if (lowerText.includes(pattern.toLowerCase())) {
+      const canonical = canonicalMap[canonicalId]
+      if (canonical) {
+        return {
+          id: canonicalId,
+          name: { ja: canonical.ja, en: canonical.en },
+          url: `${baseUrl}${canonical.path}`,
+        }
+      }
+    }
+  }
+
+  // Check for custom policy pattern (e.g., "hum0184 policy")
+  const customMatch = trimmed.match(/hum\d+\s*policy/i)
+  if (customMatch) {
+    return {
+      id: "custom-policy",
+      name: { ja: trimmed, en: trimmed },
+      url: null,
+    }
+  }
+
+  return null
+}
+
+/**
+ * Normalize policy from URL path
+ */
+const normalizePolicyFromUrl = (urlPath: string): NormalizedPolicy | null => {
+  const urlToCanonical = getPolicyUrlToCanonicalMap()
+  const canonicalMap = getPolicyCanonical()
+  const baseUrl = getPolicyBaseUrl()
+
+  const canonicalId = urlToCanonical[urlPath]
+  if (canonicalId) {
+    const canonical = canonicalMap[canonicalId]
+    if (canonical) {
+      return {
+        id: canonicalId,
+        name: { ja: canonical.ja, en: canonical.en },
+        url: `${baseUrl}${canonical.path}`,
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Normalize policies from experiment data
+ *
+ * @param jaText - Japanese policy text
+ * @param enText - English policy text
+ * @param jaRawHtml - Japanese raw HTML (may contain href links)
+ * @param enRawHtml - English raw HTML (may contain href links)
+ * @returns Array of normalized policies
+ */
+export const normalizePolicies = (
+  jaText: string | null,
+  enText: string | null,
+  jaRawHtml: string | null,
+  enRawHtml: string | null,
+): NormalizedPolicy[] => {
+  const policies: NormalizedPolicy[] = []
+  const seenIds = new Set<string>()
+
+  // Helper to add policy if not already seen
+  const addPolicy = (policy: NormalizedPolicy | null) => {
+    if (policy && !seenIds.has(policy.id)) {
+      // For custom policies, use the full name as key to allow multiple custom policies
+      const key = policy.id === "custom-policy"
+        ? `${policy.id}:${policy.name.ja}`
+        : policy.id
+      if (!seenIds.has(key)) {
+        seenIds.add(key)
+        policies.push(policy)
+      }
+    }
+  }
+
+  // 1. Try to extract from rawHtml hrefs first (most reliable)
+  const jaHrefs = extractHrefsFromHtml(jaRawHtml)
+  const enHrefs = extractHrefsFromHtml(enRawHtml)
+  const allHrefs = [...new Set([...jaHrefs, ...enHrefs])]
+
+  for (const href of allHrefs) {
+    // Convert to path only
+    const path = href.startsWith("http")
+      ? new URL(href).pathname
+      : href
+    addPolicy(normalizePolicyFromUrl(path))
+  }
+
+  // 2. Parse policy text
+  const jaTexts = jaText ? splitPolicyText(jaText) : []
+  const enTexts = enText ? splitPolicyText(enText) : []
+
+  for (const t of jaTexts) {
+    addPolicy(normalizeOnePolicyText(t, "ja"))
+  }
+
+  for (const t of enTexts) {
+    addPolicy(normalizeOnePolicyText(t, "en"))
+  }
+
+  return policies
 }
 
 // Dataset ID normalization

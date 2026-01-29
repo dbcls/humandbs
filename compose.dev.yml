@@ -12,7 +12,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      test: [ "CMD-SHELL", "pg_isready -U myuser -d mydb" ]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -59,7 +59,7 @@ services:
     ports:
       - 127.0.0.1:3000:3000
     working_dir: /app
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
     networks:
       - humandbs-dev-network
     init: true
@@ -73,16 +73,13 @@ services:
     volumes:
       - ${PWD}:/app
       - node_modules:/app/node_modules
-      # - /lustre9/open/database/ddbjshare/private/ddbj.nig.ac.jp/jga/metadata:/mount/jga-metadata:ro
     environment:
       - HUMANDBS_BACKEND_HOST=0.0.0.0
       - HUMANDBS_BACKEND_PORT=8080
-      - HUMANDBS_BACKEND_OLLAMA_URL=http://humandbs-ollama-dev:11434
-      # - HUMANDBS_BACKEND_JGA_METADATA_DIR=/mount/jga-metadata
     ports:
       - 127.0.0.1:8080:8080
     working_dir: /app
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
     networks:
       - humandbs-dev-network
     init: true
@@ -107,32 +104,6 @@ services:
         soft: -1
         hard: -1
     mem_limit: 4g
-    networks:
-      - humandbs-dev-network
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.17.6
-    container_name: humandbs-kibana-dev
-    environment:
-      - ELASTICSEARCH_HOSTS=http://humandbs-elasticsearch-dev:9200
-      - ELASTICSEARCH_USERNAME=humandbs-elasticsearch-dev-user
-      - ELASTICSEARCH_PASSWORD=humandbs-elasticsearch-dev-password
-    ports:
-      - "127.0.0.1:5601:5601"
-    depends_on:
-      - elasticsearch
-    networks:
-      - humandbs-dev-network
-
-  ollama:
-    image: ollama/ollama:0.11.6
-    container_name: humandbs-ollama-dev
-    volumes:
-      - ${PWD}/ollama-data:/root/.ollama
-    entrypoint: ["/bin/ollama"]
-    command: ["serve"]
-    ports:
-      - "127.0.0.1:11434:11434"
     networks:
       - humandbs-dev-network
 

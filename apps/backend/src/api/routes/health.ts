@@ -6,6 +6,7 @@ import { HealthResponseSchema } from "@/types"
 const healthRoute = createRoute({
   method: "get",
   path: "/",
+  tags: ["Health"],
   summary: "Health Check",
   description: "Check the health status of the API",
   responses: {

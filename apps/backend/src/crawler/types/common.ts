@@ -56,3 +56,18 @@ export type DatasetIdType =
   | "NBDC_DATASET"
   | "BP"
   | "METABO"
+
+/** Canonical policy identifiers */
+export type PolicyCanonical =
+  | "nbdc-policy"
+  | "company-limitation-policy"
+  | "cancer-research-policy"
+  | "familial-policy"
+  | "custom-policy"
+
+/** Normalized policy information */
+export interface NormalizedPolicy {
+  id: PolicyCanonical
+  name: { ja: string; en: string }
+  url: string | null
+}
