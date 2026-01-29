@@ -927,6 +927,7 @@ hum0328-v1
 hum0328-v1-release
 hum0329-v1
 hum0329-v1-release
+hum0329-v1-release-note
 hum0331-v1
 hum0331-v1-release
 hum0332-v1

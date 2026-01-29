@@ -1,10 +1,18 @@
 #!/bin/bash
+#
+# Categorize Joomla paths into research, menu, and misc
+#
+# Categories:
+#   - research: path matches hum[0-9]{4}-v[0-9]+(-release(-note)?)?
+#   - menu: menutype is main-menu-* or footer-menu-*
+#   - misc: menutype is non-linked-pages-* OR (researches-* but not matching research pattern)
+#
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/../output"
 OUTPUT_RESEARCH="$OUTPUT_DIR/paths-research.txt"
-OUTPUT_SERVICE="$OUTPUT_DIR/paths-service.txt"
+OUTPUT_MENU="$OUTPUT_DIR/paths-menu.txt"
 OUTPUT_MISC="$OUTPUT_DIR/paths-misc.txt"
 
 CONTAINER_NAME="humandbs-joomla-db"
@@ -18,75 +26,55 @@ fi
 # output ディレクトリ作成
 mkdir -p "$OUTPUT_DIR"
 
-# 全パス取得
-ALL_PATHS=$(docker exec "$CONTAINER_NAME" mysql -uroot -prootpassword joomla -N -e "
+# research パターン
+RESEARCH_PATTERN='^hum[0-9]{4}-v[0-9]+(-release(-note)?)?$'
+
+# research: path ベースで抽出
+docker exec "$CONTAINER_NAME" mysql -uroot -prootpassword joomla -N -e "
 SELECT DISTINCT m.path
 FROM b1i5n_menu m
 JOIN b1i5n_content c ON m.link LIKE CONCAT('%id=', c.id)
   AND m.link LIKE '%option=com_content%'
 WHERE m.published = 1
-  AND m.menutype NOT IN ('main', '')
   AND m.path != ''
   AND c.state = 1
+  AND m.path REGEXP '$RESEARCH_PATTERN'
 ORDER BY m.path
-" 2>/dev/null)
+" 2>/dev/null > "$OUTPUT_RESEARCH"
 
-# service ホワイトリスト (完全一致またはプレフィックス一致)
-SERVICE_WHITELIST=(
-  "home"
-  "faq"
-  "aim"
-  "acknowledgement"
-  "contact-us"
-  "data-processing"
-  "data-submission"
-  "data-use"
-  "dac"
-  "guidelines"
-  "off-premise-server"
-  "privacy-policy"
-  "publications"
-  "supported-browsers"
-  "violation"
-)
+# menu: menutype が main-menu-* または footer-menu-*
+docker exec "$CONTAINER_NAME" mysql -uroot -prootpassword joomla -N -e "
+SELECT DISTINCT m.path
+FROM b1i5n_menu m
+JOIN b1i5n_content c ON m.link LIKE CONCAT('%id=', c.id)
+  AND m.link LIKE '%option=com_content%'
+WHERE m.published = 1
+  AND m.path != ''
+  AND c.state = 1
+  AND (m.menutype LIKE 'main-menu%' OR m.menutype LIKE 'footer-menu%')
+ORDER BY m.path
+" 2>/dev/null > "$OUTPUT_MENU"
 
-is_service() {
-  local path="$1"
-  for pattern in "${SERVICE_WHITELIST[@]}"; do
-    if [[ "$path" == "$pattern" ]] || [[ "$path" == "$pattern/"* ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-# 分類関数
-filter_research() {
-  echo "$ALL_PATHS" | grep -E '^hum[0-9]{4}-v[0-9]+(-release(-note)?)?$' || true
-}
-
-filter_service() {
-  while IFS= read -r path; do
-    if is_service "$path"; then
-      echo "$path"
-    fi
-  done <<< "$ALL_PATHS"
-}
-
-filter_misc() {
-  while IFS= read -r path; do
-    if ! echo "$path" | grep -qE '^hum[0-9]{4}-v[0-9]+(-release(-note)?)?$' && ! is_service "$path"; then
-      echo "$path"
-    fi
-  done <<< "$ALL_PATHS"
-}
-
-# 出力
-filter_research > "$OUTPUT_RESEARCH"
-filter_service > "$OUTPUT_SERVICE"
-filter_misc > "$OUTPUT_MISC"
+# misc: non-linked-pages-* OR (researches-* で research パターンに合わないもの)
+docker exec "$CONTAINER_NAME" mysql -uroot -prootpassword joomla -N -e "
+SELECT DISTINCT m.path
+FROM b1i5n_menu m
+JOIN b1i5n_content c ON m.link LIKE CONCAT('%id=', c.id)
+  AND m.link LIKE '%option=com_content%'
+WHERE m.published = 1
+  AND m.path != ''
+  AND c.state = 1
+  AND (
+    m.menutype LIKE 'non-linked-pages%'
+    OR (
+      m.menutype LIKE 'researches%'
+      AND m.path NOT REGEXP '$RESEARCH_PATTERN'
+    )
+  )
+ORDER BY m.path
+" 2>/dev/null > "$OUTPUT_MISC"
 
 echo "Output:"
 echo "  $OUTPUT_RESEARCH ($(wc -l < "$OUTPUT_RESEARCH") paths)"
-echo "  $OUTPUT_SERVICE ($(wc -l < "$OUTPUT_SERVICE") paths)"
+echo "  $OUTPUT_MENU ($(wc -l < "$OUTPUT_MENU") paths)"
 echo "  $OUTPUT_MISC ($(wc -l < "$OUTPUT_MISC") paths)"

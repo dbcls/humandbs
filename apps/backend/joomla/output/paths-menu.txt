@@ -1,5 +1,3 @@
-acknowledgement
-aim
 dac
 dac/committee-1
 data-processing
