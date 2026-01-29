@@ -1,0 +1,8 @@
+# Ignore all crawler output files
+*
+
+# But allow this gitignore file
+!.gitignore
+
+# Optionally allow README files for documentation
+!README.md

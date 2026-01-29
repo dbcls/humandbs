@@ -23,19 +23,26 @@ async function resetDatabase() {
 
     await db.transaction(async (tx) => {
       // Get all tables in the public schema
-      const tables = await tx.execute(sql`
+      const result = await tx.execute(sql`
         SELECT tablename FROM pg_tables
         WHERE schemaname = 'public';
       `);
 
-      // Drop all tables
-      for (const { tablename } of tables) {
-        await tx.execute(
-          sql.raw(`DROP TABLE IF EXISTS "${tablename}" CASCADE;`)
-        );
-      }
+      // Extract table names from the result
+      const tableNames = result.rows.map((row: any) => row.tablename);
 
-      console.log("✨ All tables dropped");
+      if (tableNames.length > 0) {
+        // Drop all tables
+        for (const tablename of tableNames) {
+          console.log(`🗑️  Dropping table: ${tablename}`);
+          await tx.execute(
+            sql.raw(`DROP TABLE IF EXISTS "${tablename}" CASCADE;`)
+          );
+        }
+        console.log("✨ All tables dropped");
+      } else {
+        console.log("ℹ️  No tables found to drop");
+      }
     });
 
     console.log("✅ Database reset successfully");

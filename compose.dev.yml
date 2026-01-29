@@ -69,8 +69,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      # - HUMANDBS_BACKEND_HOST=backend
-      # - HUMANDBS_BACKEND_PORT=8080
+      - HUMANDBS_BACKEND_HOST=backend
+      - HUMANDBS_BACKEND_PORT=8080
       - OIDC_ISSUER_URL=https://idp-staging.ddbj.nig.ac.jp/realms/master
       - OIDC_CLIENT_ID=humandbs-dev
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}

@@ -106,6 +106,10 @@
     position: absolute;
     inset: 0;
 
+    .w-md-editor-content {
+      --md-editor-font-family: "Courier New", Courier, monospace;
+    }
+
     .w-md-editor-input {
       position: relative;
     }
@@ -130,6 +134,69 @@
             text-decoration: underline !important;
           }
         }
+      }
+    }
+
+    /* Enhanced markdown syntax highlighting */
+    .w-md-editor-text-pre,
+    .w-md-editor-text-input,
+    .w-md-editor-text {
+      /* Headings - blue and bold */
+      .token.title {
+        color: #1a5fbd !important;
+        font-weight: bold !important;
+      }
+
+      /* Bold text markers (**) */
+      .token.bold {
+        color: #9333ea !important;
+        font-weight: bold !important;
+      }
+
+      /* Italic text markers (*) */
+      .token.italic {
+        color: #c026d3 !important;
+        font-style: italic !important;
+      }
+
+      /* Links */
+      .token.url,
+      .token.url-link {
+        color: #0891b2 !important;
+      }
+
+      /* List markers (-, *, numbers) */
+      .token.list {
+        color: #ea580c !important;
+        font-weight: bold !important;
+      }
+
+      /* Code blocks and inline code */
+      .token.code {
+        color: #059669 !important;
+        background-color: #f0fdf4 !important;
+      }
+
+      /* Blockquote markers (>) */
+      .token.blockquote {
+        color: #6b7280 !important;
+        font-style: italic !important;
+      }
+
+      /* Horizontal rule (---) */
+      .token.hr {
+        color: #9ca3af !important;
+      }
+
+      /* Punctuation like # for headings, ** for bold */
+      .token.punctuation {
+        color: #9ca3af !important;
+      }
+
+      /* Strike-through */
+      .token.strike {
+        color: #ef4444 !important;
+        text-decoration: line-through !important;
       }
     }
   }
