@@ -71,11 +71,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - HUMANDBS_BACKEND_HOST=backend
       - HUMANDBS_BACKEND_PORT=8080
-      - GARAGE_ACCESS_KEY=${GARAGE_ACCESS_KEY}
-      - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY}
-      - GARAGE_ENDPOINT=${GARAGE_ENDPOINT} # http://garage:3900
-      - GARAGE_REGION=${GARAGE_REGION} # garage
-      - GARAGE_BUCKET_CMS=${GARAGE_BUCKET_CMS} # cms
       - OIDC_ISSUER_URL=https://idp-staging.ddbj.nig.ac.jp/realms/master
       - OIDC_CLIENT_ID=humandbs-dev
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
@@ -101,11 +96,6 @@ services:
     environment:
       - HUMANDBS_BACKEND_HOST=0.0.0.0
       - HUMANDBS_BACKEND_PORT=8080
-      - GARAGE_ACCESS_KEY=${GARAGE_ACCESS_KEY}
-      - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY}
-      - GARAGE_ENDPOINT=${GARAGE_ENDPOINT} # http://garage:3900
-      - GARAGE_REGION=${GARAGE_REGION} # garage
-      - GARAGE_BUCKET_DATA=${GARAGE_BUCKET_DATA} # data
     working_dir: /app
     command: ["sleep", "infinity"]
     networks:
@@ -134,40 +124,11 @@ services:
       - humandbs-dev-network
     init: true
 
-  garage:
-    image: dxflrs/garage:v2.2.0
-    container_name: humandbs-garage
-    restart: unless-stopped
-    ports:
-      - "3900:3900" # S3 API
-      - "3902:3902" # Admin API
-      - "3903:3903" # Web API
-    environment:
-      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
-      # WARNING: GARAGE_ALLOW_WORLD_READABLE_SECRETS=true is a security risk!
-      # Only use in development. Never enable in staging/production.
-      GARAGE_ALLOW_WORLD_READABLE_SECRETS: true
-      GARAGE_LOG_LEVEL: info
-    volumes:
-      - ./garage-data/data:/data
-      - ./garage-data/meta:/meta
-      - ./garage-config.toml:/etc/garage.toml:ro
-    networks:
-      - humandbs-dev-network
-    healthcheck:
-      test: ["CMD", "garage", "status"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
-
   nginx:
     image: docker.io/library/nginx:1.27.0
     container_name: humandbs-nginx-dev
-    environment:
-      - GARAGE_BUCKET_CMS=${GARAGE_BUCKET_CMS}
     volumes:
-      - ${PWD}/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${PWD}/nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
       - 0.0.0.0:5011:80
     networks:

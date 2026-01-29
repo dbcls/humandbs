@@ -192,6 +192,3 @@ memos
 
 # === postgres data folder ===
 pgdata
-
-# === garage data folder ===
-garage-data

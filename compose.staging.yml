@@ -64,11 +64,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - HUMANDBS_BACKEND_HOST=backend
       - HUMANDBS_BACKEND_PORT=8080
-      - GARAGE_ACCESS_KEY=${GARAGE_ACCESS_KEY}
-      - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY}
-      - GARAGE_ENDPOINT=${GARAGE_ENDPOINT}
-      - GARAGE_REGION=${GARAGE_REGION}
-      - GARAGE_BUCKET_CMS=${GARAGE_BUCKET_CMS}
       - OIDC_ISSUER_URL=https://idp-staging.ddbj.nig.ac.jp/realms/master
       - OIDC_CLIENT_ID=humandbs-dev
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
@@ -94,11 +89,6 @@ services:
     environment:
       - HUMANDBS_BACKEND_HOST=0.0.0.0
       - HUMANDBS_BACKEND_PORT=8080
-      - GARAGE_ACCESS_KEY=${GARAGE_ACCESS_KEY}
-      - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY}
-      - GARAGE_ENDPOINT=${GARAGE_ENDPOINT}
-      - GARAGE_REGION=${GARAGE_REGION}
-      - GARAGE_BUCKET_DATA=${GARAGE_BUCKET_DATA}
     working_dir: /app
     command: ["sleep", "infinity"]
     networks:
@@ -127,33 +117,11 @@ services:
       - humandbs-dev-network
     init: true
 
-  garage:
-    image: dxflrs/garage:v2.2.0
-    container_name: humandbs-garage
-    restart: unless-stopped
-    environment:
-      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
-      GARAGE_LOG_LEVEL: info
-    volumes:
-      - garage_data:/data
-      - garage_meta:/meta
-      - ./garage-config.toml:/etc/garage.toml:ro
-    networks:
-      - humandbs-dev-network
-    healthcheck:
-      test: ["CMD", "garage", "status"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
-
   nginx:
     image: docker.io/library/nginx:1.27.0
     container_name: humandbs-nginx-dev
-    environment:
-      - GARAGE_BUCKET_CMS=${GARAGE_BUCKET_CMS}
     volumes:
-      - ${PWD}/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${PWD}/nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
       - 0.0.0.0:5011:80
     networks:
@@ -167,8 +135,6 @@ volumes:
   eslint_config_node_modules: {}
   cms_pgdata: {}
   es_data: {}
-  garage_data: {}
-  garage_meta: {}
 
 networks:
   humandbs-dev-network:
