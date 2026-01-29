@@ -34,62 +34,6 @@
       "releaseDate": {
         "type": "keyword"
       },
-      "searchable": {
-        "properties": {
-          "diseases": {
-            "type": "nested",
-            "properties": {
-              "label": {
-                "type": "keyword"
-              },
-              "icd10": {
-                "type": "keyword"
-              }
-            }
-          },
-          "tissues": {
-            "type": "keyword"
-          },
-          "populations": {
-            "type": "keyword"
-          },
-          "assayTypes": {
-            "type": "keyword"
-          },
-          "platforms": {
-            "type": "nested",
-            "properties": {
-              "vendor": {
-                "type": "keyword"
-              },
-              "model": {
-                "type": "keyword"
-              }
-            }
-          },
-          "readTypes": {
-            "type": "keyword"
-          },
-          "fileTypes": {
-            "type": "keyword"
-          },
-          "totalSubjectCount": {
-            "type": "integer"
-          },
-          "totalDataVolumeBytes": {
-            "type": "long"
-          },
-          "hasHealthyControl": {
-            "type": "boolean"
-          },
-          "hasTumor": {
-            "type": "boolean"
-          },
-          "hasCellLine": {
-            "type": "boolean"
-          }
-        }
-      },
       "experiments": {
         "type": "nested",
         "properties": {
@@ -167,7 +111,7 @@
               }
             }
           },
-          "extracted": {
+          "refined": {
             "properties": {
               "subjectCount": {
                 "type": "integer"
@@ -227,6 +171,27 @@
               },
               "dataVolumeBytes": {
                 "type": "long"
+              },
+              "policies": {
+                "type": "nested",
+                "properties": {
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "properties": {
+                      "ja": {
+                        "type": "keyword"
+                      },
+                      "en": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "url": {
+                    "type": "keyword"
+                  }
+                }
               }
             }
           }

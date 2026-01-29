@@ -243,22 +243,12 @@ Molecular Data テーブル
 | `typeOfData_ja` / `typeOfData_en` | データ種別 | |
 | `criteria` | 公開区分（JSON 配列） | |
 | `releaseDate` | 公開日（JSON 配列） | |
-| `searchable_diseases` | 疾患リスト | |
-| `searchable_tissues` | 組織リスト | |
-| `searchable_populations` | 集団リスト | |
-| `searchable_assayTypes` | 実験手法リスト | |
-| `searchable_platforms` | プラットフォームリスト | |
-| `searchable_readTypes` | リードタイプ | |
-| `searchable_fileTypes` | ファイル形式リスト | |
-| `searchable_totalSubjectCount` | 被験者数 | |
-| `searchable_totalDataVolume` | データ容量（例: `123.45 GB`） | |
-| `searchable_hasHealthyControl` | 健常者対照あり（true/false） | |
-| `searchable_hasTumor` | 腫瘍サンプルあり（true/false） | |
-| `searchable_hasCellLine` | 細胞株あり（true/false） | |
 | `ageGroup` | 年齢層（手動キュレーション用） | |
 | `region` | 地域（手動キュレーション用） | |
 | `sex` | 性別（手動キュレーション用） | |
 | `comment` | メモ | |
+
+※ 検索用の集計フィールド（疾患、組織、実験手法等）は各 experiment の refined フィールドから動的に集計されるため、dataset.tsv には含まれない。
 
 ### experiment.tsv
 
@@ -270,24 +260,26 @@ Molecular Data テーブル
 | `datasetId` | データセット ID | 禁止 |
 | `experimentIndex` | 実験の順番 | 禁止 |
 | `header_ja` / `header_en` | 実験ヘッダー | 禁止 |
-| `extracted_subjectCount` | 被験者/サンプル数 | |
-| `extracted_subjectCountType` | カウント単位（individual/sample/mixed） | |
-| `extracted_healthStatus` | 健康状態（healthy/affected/mixed） | |
-| `extracted_diseases` | 疾患リスト（`["ラベル(ICD10)"]`） | |
-| `extracted_tissues` | 組織リスト | |
-| `extracted_isTumor` | 腫瘍かどうか（true/false） | |
-| `extracted_cellLine` | 細胞株名 | |
-| `extracted_population` | 集団 | |
-| `extracted_assayType` | 実験手法 | |
-| `extracted_libraryKits` | ライブラリキットリスト | |
-| `extracted_platformVendor` | プラットフォームベンダー | |
-| `extracted_platformModel` | プラットフォームモデル | |
-| `extracted_readType` | リードタイプ（single-end/paired-end） | |
-| `extracted_readLength` | リード長 | |
-| `extracted_targets` | ターゲット領域 | |
-| `extracted_fileTypes` | ファイル形式リスト | |
-| `extracted_dataVolume` | データ容量（例: `123.45 GB`） | |
+| `refined_subjectCount` | 被験者/サンプル数 | |
+| `refined_subjectCountType` | カウント単位（individual/sample/mixed） | |
+| `refined_healthStatus` | 健康状態（healthy/affected/mixed） | |
+| `refined_diseases` | 疾患リスト（`["ラベル(ICD10)"]`） | |
+| `refined_tissues` | 組織リスト | |
+| `refined_isTumor` | 腫瘍かどうか（true/false） | |
+| `refined_cellLine` | 細胞株名 | |
+| `refined_population` | 集団 | |
+| `refined_assayType` | 実験手法 | |
+| `refined_libraryKits` | ライブラリキットリスト | |
+| `refined_platformVendor` | プラットフォームベンダー | |
+| `refined_platformModel` | プラットフォームモデル | |
+| `refined_readType` | リードタイプ（single-end/paired-end） | |
+| `refined_readLength` | リード長 | |
+| `refined_targets` | ターゲット領域 | |
+| `refined_fileTypes` | ファイル形式リスト | |
+| `refined_dataVolume` | データ容量（例: `123.45 GB`） | |
 | `comment` | メモ | |
+
+※ `refined_*` フィールドは LLM による抽出 + ルールベースの正規化で生成される。
 
 ## スプレッドシートでの編集
 

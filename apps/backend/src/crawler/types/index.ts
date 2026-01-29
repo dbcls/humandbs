@@ -17,6 +17,8 @@ export type {
   PeriodOfDataUse,
   CriteriaCanonical,
   DatasetIdType,
+  PolicyCanonical,
+  NormalizedPolicy,
 } from "./common"
 
 /** Extracted IDs grouped by type */
@@ -73,7 +75,7 @@ export type {
   ResearchVersion,
 } from "./unified"
 
-// Extracted types
+// Refined types (LLM-extracted + rule-based fields)
 export type {
   SubjectCountType,
   HealthStatus,
@@ -82,10 +84,9 @@ export type {
   PlatformInfo,
   DataVolumeUnit,
   DataVolume,
-  ExtractedExperimentFields,
-  SearchableDatasetFields,
-  ExtractedExperiment,
-  SearchableDataset,
+  RefinedExperimentFields,
+  RefinedExperiment,
+  RefinedDataset,
 } from "./extracted"
 
 // API types (enriched with external API data)

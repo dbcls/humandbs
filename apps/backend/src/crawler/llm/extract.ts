@@ -3,15 +3,13 @@
  */
 import { z } from "zod"
 
+import { normalizePolicies } from "@/crawler/processors/normalize"
 import type {
   TextValue,
   Experiment,
-  ExtractedExperimentFields,
-  ExtractedExperiment,
-  SearchableDatasetFields,
-  DiseaseInfo,
-  PlatformInfo,
-  DataVolume,
+  RefinedExperimentFields,
+  RefinedExperiment,
+  NormalizedPolicy,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { logger } from "@/crawler/utils/logger"
@@ -43,7 +41,7 @@ const safeFilteredArray = <T extends z.ZodType>(schema: T) =>
     return results
   })
 
-export const ExtractedExperimentFieldsSchema = z.object({
+export const RefinedExperimentFieldsSchema = z.object({
   subjectCount: z.number().nullable().catch(null),
   subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable().catch(null),
   healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable().catch(null),
@@ -66,9 +64,9 @@ export const ExtractedExperimentFieldsSchema = z.object({
 // Validation Functions
 
 /**
- * Create empty extracted fields with default values
+ * Create empty refined fields with default values
  */
-export const createEmptyExtractedFields = (): ExtractedExperimentFields => ({
+export const createEmptyRefinedFields = (): RefinedExperimentFields => ({
   subjectCount: null,
   subjectCountType: null,
   healthStatus: null,
@@ -86,12 +84,14 @@ export const createEmptyExtractedFields = (): ExtractedExperimentFields => ({
   targets: null,
   fileTypes: [],
   dataVolume: null,
+  policies: [],
 })
 
 /**
- * Check if extracted fields are all default (empty) values
+ * Check if refined fields are all default (empty) values
+ * Note: policies are excluded from this check as they are rule-based, not LLM-extracted
  */
-export const isEmptyExtractedFields = (fields: ExtractedExperimentFields): boolean => {
+export const isEmptyRefinedFields = (fields: RefinedExperimentFields): boolean => {
   return (
     fields.subjectCount === null &&
     fields.subjectCountType === null &&
@@ -114,14 +114,20 @@ export const isEmptyExtractedFields = (fields: ExtractedExperimentFields): boole
 }
 
 /**
- * Parse LLM JSON output into ExtractedExperimentFields
+ * Parse LLM JSON output into RefinedExperimentFields
+ * Note: policies are extracted separately (rule-based) and added as empty array here
  */
-export const parseExtractedFields = (jsonStr: string): ExtractedExperimentFields => {
-  const empty = createEmptyExtractedFields()
+export const parseRefinedFields = (jsonStr: string): RefinedExperimentFields => {
+  const empty = createEmptyRefinedFields()
 
   try {
     const parsed = JSON.parse(jsonStr)
-    return ExtractedExperimentFieldsSchema.parse(parsed)
+    const llmFields = RefinedExperimentFieldsSchema.parse(parsed)
+    // Add empty policies array (will be populated by rule-based extraction)
+    return {
+      ...llmFields,
+      policies: [],
+    }
   } catch (error) {
     logger.error("Failed to parse LLM response", { error: getErrorMessage(error), preview: jsonStr.slice(0, 200) })
     return empty
@@ -188,7 +194,7 @@ export const extractFieldsFromExperiment = async (
   experiment: Experiment,
   originalMetadata: Record<string, unknown> | null = null,
   config?: OllamaConfig,
-): Promise<ExtractedExperimentFields> => {
+): Promise<RefinedExperimentFields> => {
   const input = convertUnifiedToLlmInput(experiment, originalMetadata)
   const userContent = JSON.stringify(input, null, 2)
 
@@ -199,131 +205,26 @@ export const extractFieldsFromExperiment = async (
 
   try {
     const response = await chat(messages, config)
-    return parseExtractedFields(response)
+    return parseRefinedFields(response)
   } catch (error) {
     logger.error("Failed to extract fields from LLM", { error: getErrorMessage(error) })
-    return createEmptyExtractedFields()
-  }
-}
-
-// Aggregation Logic
-
-/** Convert DataVolume to GB for aggregation */
-const convertToGB = (vol: DataVolume): number => {
-  switch (vol.unit) {
-    case "KB": return vol.value / (1024 * 1024)
-    case "MB": return vol.value / 1024
-    case "GB": return vol.value
-    case "TB": return vol.value * 1024
+    return createEmptyRefinedFields()
   }
 }
 
 /**
- * Aggregate extracted experiment fields to dataset-level searchable fields
+ * Extract policies from experiment data (rule-based, not LLM)
  */
-export const aggregateToSearchable = (experiments: ExtractedExperiment[]): SearchableDatasetFields => {
-  const diseases: DiseaseInfo[] = []
-  const tissues = new Set<string>()
-  const populations = new Set<string>()
-  const assayTypes = new Set<string>()
-  const platforms: PlatformInfo[] = []
-  const readTypes = new Set<string>()
-  const fileTypes = new Set<string>()
+const extractPoliciesFromExperiment = (experiment: Experiment): NormalizedPolicy[] => {
+  const policiesField = experiment.data["Policies"]
+  if (!policiesField) return []
 
-  let totalSubjectCount: number | null = null
-  let totalDataVolumeGB: number | null = null
-  let hasHealthyControl = false
-  let hasTumor = false
-  let hasCellLine = false
-
-  const seenDiseases = new Set<string>()
-  const seenPlatforms = new Set<string>()
-
-  for (const exp of experiments) {
-    const { extracted } = exp
-
-    // Collect diseases
-    for (const disease of extracted.diseases) {
-      if (!seenDiseases.has(disease.label)) {
-        seenDiseases.add(disease.label)
-        diseases.push(disease)
-      }
-    }
-
-    for (const tissue of extracted.tissues) {
-      tissues.add(tissue)
-    }
-
-    if (extracted.population) {
-      populations.add(extracted.population)
-    }
-
-    if (extracted.assayType) {
-      assayTypes.add(extracted.assayType)
-    }
-
-    if (extracted.platformVendor && extracted.platformModel) {
-      const key = `${extracted.platformVendor}:${extracted.platformModel}`
-      if (!seenPlatforms.has(key)) {
-        seenPlatforms.add(key)
-        platforms.push({
-          vendor: extracted.platformVendor,
-          model: extracted.platformModel,
-        })
-      }
-    }
-
-    if (extracted.readType) {
-      readTypes.add(extracted.readType)
-    }
-
-    for (const ft of extracted.fileTypes) {
-      fileTypes.add(ft)
-    }
-
-    if (extracted.subjectCount !== null) {
-      totalSubjectCount = (totalSubjectCount ?? 0) + extracted.subjectCount
-    }
-
-    if (extracted.dataVolume !== null) {
-      totalDataVolumeGB = (totalDataVolumeGB ?? 0) + convertToGB(extracted.dataVolume)
-    }
-
-    if (extracted.healthStatus === "healthy" || extracted.healthStatus === "mixed") {
-      hasHealthyControl = true
-    }
-    if (extracted.isTumor === true) {
-      hasTumor = true
-    }
-    if (extracted.cellLine) {
-      hasCellLine = true
-    }
-  }
-
-  // Convert total to appropriate unit
-  let totalDataVolume: DataVolume | null = null
-  if (totalDataVolumeGB !== null) {
-    if (totalDataVolumeGB >= 1024) {
-      totalDataVolume = { value: Math.round(totalDataVolumeGB / 1024 * 100) / 100, unit: "TB" }
-    } else {
-      totalDataVolume = { value: Math.round(totalDataVolumeGB * 100) / 100, unit: "GB" }
-    }
-  }
-
-  return {
-    diseases,
-    tissues: [...tissues],
-    populations: [...populations],
-    assayTypes: [...assayTypes],
-    platforms,
-    readTypes: [...readTypes],
-    fileTypes: [...fileTypes],
-    totalSubjectCount,
-    totalDataVolume,
-    hasHealthyControl,
-    hasTumor,
-    hasCellLine,
-  }
+  return normalizePolicies(
+    policiesField.ja?.text ?? null,
+    policiesField.en?.text ?? null,
+    policiesField.ja?.rawHtml ?? null,
+    policiesField.en?.rawHtml ?? null,
+  )
 }
 
 /**
@@ -335,8 +236,8 @@ export const processExperimentsParallel = async (
   concurrency: number,
   dryRun: boolean,
   config?: OllamaConfig,
-): Promise<ExtractedExperiment[]> => {
-  const results: ExtractedExperiment[] = new Array(experiments.length)
+): Promise<RefinedExperiment[]> => {
+  const results: RefinedExperiment[] = new Array(experiments.length)
   const total = experiments.length
 
   for (let i = 0; i < total; i += concurrency) {
@@ -348,17 +249,25 @@ export const processExperimentsParallel = async (
     const batchPromises = batchIndices.map(async (idx) => {
       const experiment = experiments[idx]
 
-      const extracted = dryRun
-        ? createEmptyExtractedFields()
+      const llmRefined = dryRun
+        ? createEmptyRefinedFields()
         : await extractFieldsFromExperiment(experiment, originalMetadata, config)
 
-      return { idx, extracted }
+      // Add rule-based policies extraction
+      const policies = extractPoliciesFromExperiment(experiment)
+
+      const refined: RefinedExperimentFields = {
+        ...llmRefined,
+        policies,
+      }
+
+      return { idx, refined }
     })
 
     const batchResults = await Promise.all(batchPromises)
 
-    for (const { idx, extracted } of batchResults) {
-      results[idx] = { ...experiments[idx], extracted }
+    for (const { idx, refined } of batchResults) {
+      results[idx] = { ...experiments[idx], refined }
     }
   }
 

@@ -7,8 +7,7 @@
  * Process:
  * 1. Copy enriched-json -> extracted-json (or skip with --skip-copy)
  * 2. For each dataset (latest version only), extract fields using LLM
- * 3. Add searchable aggregated fields
- * 4. Support --resume to continue from where it left off
+ * 3. Support --resume to continue from where it left off
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from "fs"
 import { join } from "path"
@@ -17,14 +16,13 @@ import { hideBin } from "yargs/helpers"
 
 import { getOllamaConfig, type OllamaConfig } from "@/crawler/llm/client"
 import {
-  aggregateToSearchable,
-  isEmptyExtractedFields,
+  isEmptyRefinedFields,
   processExperimentsParallel,
 } from "@/crawler/llm/extract"
 import type {
   EnrichedDataset,
-  ExtractedExperiment,
-  SearchableDataset,
+  RefinedExperiment,
+  RefinedDataset,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getResultsDir } from "@/crawler/utils/io"
@@ -78,7 +76,7 @@ const readEnrichedDataset = (filename: string): EnrichedDataset | null => {
   }
 }
 
-const readExtractedDataset = (filename: string): SearchableDataset | null => {
+const readExtractedDataset = (filename: string): RefinedDataset | null => {
   const filePath = join(getExtractedDir(), filename)
   if (!existsSync(filePath)) return null
   try {
@@ -89,7 +87,7 @@ const readExtractedDataset = (filename: string): SearchableDataset | null => {
   }
 }
 
-const writeExtractedDataset = (filename: string, data: SearchableDataset): void => {
+const writeExtractedDataset = (filename: string, data: RefinedDataset): void => {
   const dir = getExtractedDir()
   const filePath = join(dir, filename)
   writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
@@ -141,6 +139,11 @@ const filterLatestVersions = (files: string[]): string[] => {
   return result.sort()
 }
 
+/** Check if extraction is complete by verifying at least one experiment has non-empty refined fields */
+const isExtractionComplete = (dataset: RefinedDataset): boolean => {
+  return dataset.experiments.some(exp => exp.refined != null && !isEmptyRefinedFields(exp.refined))
+}
+
 /** Process a single dataset with resume support (dataset-level) */
 const processDataset = async (
   filename: string,
@@ -158,14 +161,14 @@ const processDataset = async (
 
   // Check for existing extracted data (dataset-level resume)
   const existing = readExtractedDataset(filename)
-  const isCompleted = existing?.searchable != null
+  const isCompleted = existing != null && isExtractionComplete(existing)
 
   // --retry-failed: re-extract only failed experiments in completed datasets
   if (retryFailed && isCompleted && existing) {
-    const existingExperiments = (existing as SearchableDataset & { experiments: ExtractedExperiment[] }).experiments
+    const existingExperiments = existing.experiments
     const failedIndices: number[] = []
     for (let i = 0; i < existingExperiments.length; i++) {
-      if (isEmptyExtractedFields(existingExperiments[i].extracted)) {
+      if (isEmptyRefinedFields(existingExperiments[i].refined)) {
         failedIndices.push(i)
       }
     }
@@ -195,17 +198,13 @@ const processDataset = async (
     )
 
     // Merge: keep existing successful, replace failed with re-extracted
-    const mergedExperiments = [...existingExperiments]
+    const mergedExperiments: RefinedExperiment[] = [...existingExperiments]
     for (let j = 0; j < failedIndices.length; j++) {
       mergedExperiments[failedIndices[j]] = reExtracted[j]
     }
 
-    // Re-aggregate searchable fields
-    const searchable = aggregateToSearchable(mergedExperiments)
-
-    const finalResult: SearchableDataset = {
+    const finalResult: RefinedDataset = {
       ...existing,
-      searchable,
       experiments: mergedExperiments,
     }
 
@@ -242,12 +241,8 @@ const processDataset = async (
     ollamaConfig,
   )
 
-  // Aggregate and save
-  const searchable = aggregateToSearchable(experiments)
-
-  const finalResult: SearchableDataset = {
+  const finalResult: RefinedDataset = {
     ...enriched,
-    searchable,
     experiments,
   }
 
@@ -256,7 +251,6 @@ const processDataset = async (
     logger.info("Saved dataset", { output: `extracted-json/dataset/${filename}` })
   } else {
     logger.info("[dry-run] Would save dataset", { output: `extracted-json/dataset/${filename}` })
-    logger.debug("Searchable fields", { searchable })
   }
 }
 

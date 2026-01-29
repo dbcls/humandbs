@@ -1,16 +1,14 @@
 import { describe, expect, it } from "bun:test"
 
 import {
-  createEmptyExtractedFields,
-  isEmptyExtractedFields,
-  parseExtractedFields,
-  aggregateToSearchable,
+  createEmptyRefinedFields,
+  isEmptyRefinedFields,
+  parseRefinedFields,
 } from "@/crawler/llm/extract"
-import type { ExtractedExperiment } from "@/crawler/types"
 
-describe("createEmptyExtractedFields", () => {
+describe("createEmptyRefinedFields", () => {
   it("should return all fields with null or empty defaults", () => {
-    const empty = createEmptyExtractedFields()
+    const empty = createEmptyRefinedFields()
     expect(empty.subjectCount).toBeNull()
     expect(empty.subjectCountType).toBeNull()
     expect(empty.healthStatus).toBeNull()
@@ -31,39 +29,39 @@ describe("createEmptyExtractedFields", () => {
   })
 })
 
-describe("isEmptyExtractedFields", () => {
+describe("isEmptyRefinedFields", () => {
   it("should return true when all fields are default values", () => {
-    const empty = createEmptyExtractedFields()
-    expect(isEmptyExtractedFields(empty)).toBe(true)
+    const empty = createEmptyRefinedFields()
+    expect(isEmptyRefinedFields(empty)).toBe(true)
   })
 
   it("should return false when a scalar field has a value", () => {
-    const fields = { ...createEmptyExtractedFields(), subjectCount: 10 }
-    expect(isEmptyExtractedFields(fields)).toBe(false)
+    const fields = { ...createEmptyRefinedFields(), subjectCount: 10 }
+    expect(isEmptyRefinedFields(fields)).toBe(false)
   })
 
   it("should return false when an enum field has a value", () => {
-    const fields = { ...createEmptyExtractedFields(), healthStatus: "healthy" as const }
-    expect(isEmptyExtractedFields(fields)).toBe(false)
+    const fields = { ...createEmptyRefinedFields(), healthStatus: "healthy" as const }
+    expect(isEmptyRefinedFields(fields)).toBe(false)
   })
 
   it("should return false when an array field has elements", () => {
-    const fields = { ...createEmptyExtractedFields(), diseases: [{ label: "cancer", icd10: null }] }
-    expect(isEmptyExtractedFields(fields)).toBe(false)
+    const fields = { ...createEmptyRefinedFields(), diseases: [{ label: "cancer", icd10: null }] }
+    expect(isEmptyRefinedFields(fields)).toBe(false)
   })
 
   it("should return false when tissues array has elements", () => {
-    const fields = { ...createEmptyExtractedFields(), tissues: ["blood"] }
-    expect(isEmptyExtractedFields(fields)).toBe(false)
+    const fields = { ...createEmptyRefinedFields(), tissues: ["blood"] }
+    expect(isEmptyRefinedFields(fields)).toBe(false)
   })
 
   it("should return false when dataVolume has a value", () => {
-    const fields = { ...createEmptyExtractedFields(), dataVolume: { value: 1.5, unit: "TB" as const } }
-    expect(isEmptyExtractedFields(fields)).toBe(false)
+    const fields = { ...createEmptyRefinedFields(), dataVolume: { value: 1.5, unit: "TB" as const } }
+    expect(isEmptyRefinedFields(fields)).toBe(false)
   })
 })
 
-describe("parseExtractedFields", () => {
+describe("parseRefinedFields", () => {
   it("should parse valid JSON with all fields", () => {
     const input = JSON.stringify({
       subjectCount: 30,
@@ -85,7 +83,7 @@ describe("parseExtractedFields", () => {
       dataVolume: { value: 1.5, unit: "TB" },
     })
 
-    const result = parseExtractedFields(input)
+    const result = parseRefinedFields(input)
     expect(result.subjectCount).toBe(30)
     expect(result.subjectCountType).toBe("individual")
     expect(result.healthStatus).toBe("mixed")
@@ -104,8 +102,8 @@ describe("parseExtractedFields", () => {
   })
 
   it("should return empty fields for invalid JSON", () => {
-    const result = parseExtractedFields("not json")
-    expect(result).toEqual(createEmptyExtractedFields())
+    const result = parseRefinedFields("not json")
+    expect(result).toEqual(createEmptyRefinedFields())
   })
 
   it("should coerce invalid enum values to null", () => {
@@ -115,7 +113,7 @@ describe("parseExtractedFields", () => {
       readType: "other",
     })
 
-    const result = parseExtractedFields(input)
+    const result = parseRefinedFields(input)
     expect(result.subjectCountType).toBeNull()
     expect(result.healthStatus).toBeNull()
     expect(result.readType).toBeNull()
@@ -130,7 +128,7 @@ describe("parseExtractedFields", () => {
       dataVolume: { value: "bad", unit: "GB" },
     })
 
-    const result = parseExtractedFields(input)
+    const result = parseRefinedFields(input)
     expect(result.subjectCount).toBeNull()
     expect(result.diseases).toEqual([])
     expect(result.tissues).toEqual([])
@@ -144,7 +142,7 @@ describe("parseExtractedFields", () => {
       assayType: "RNA-seq",
     })
 
-    const result = parseExtractedFields(input)
+    const result = parseRefinedFields(input)
     expect(result.subjectCount).toBe(10)
     expect(result.assayType).toBe("RNA-seq")
     expect(result.diseases).toEqual([])
@@ -162,127 +160,15 @@ describe("parseExtractedFields", () => {
       ],
     })
 
-    const result = parseExtractedFields(input)
+    const result = parseRefinedFields(input)
     expect(result.diseases).toEqual([{ label: "valid", icd10: "C34" }])
   })
 
   it("should validate dataVolume unit", () => {
     const valid = JSON.stringify({ dataVolume: { value: 100, unit: "GB" } })
-    expect(parseExtractedFields(valid).dataVolume).toEqual({ value: 100, unit: "GB" })
+    expect(parseRefinedFields(valid).dataVolume).toEqual({ value: 100, unit: "GB" })
 
     const invalid = JSON.stringify({ dataVolume: { value: 100, unit: "PB" } })
-    expect(parseExtractedFields(invalid).dataVolume).toBeNull()
-  })
-})
-
-describe("aggregateToSearchable", () => {
-  const makeExperiment = (fields: Partial<ReturnType<typeof createEmptyExtractedFields>>): ExtractedExperiment => ({
-    header: { ja: null, en: null },
-    data: {},
-    footers: { ja: [], en: [] },
-    extracted: { ...createEmptyExtractedFields(), ...fields },
-  })
-
-  it("should aggregate diseases without duplicates", () => {
-    const experiments = [
-      makeExperiment({ diseases: [{ label: "cancer", icd10: "C34" }] }),
-      makeExperiment({ diseases: [{ label: "cancer", icd10: "C34" }, { label: "diabetes", icd10: null }] }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.diseases).toEqual([
-      { label: "cancer", icd10: "C34" },
-      { label: "diabetes", icd10: null },
-    ])
-  })
-
-  it("should sum subject counts", () => {
-    const experiments = [
-      makeExperiment({ subjectCount: 10 }),
-      makeExperiment({ subjectCount: 20 }),
-      makeExperiment({ subjectCount: null }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.totalSubjectCount).toBe(30)
-  })
-
-  it("should return null for totalSubjectCount when all null", () => {
-    const experiments = [
-      makeExperiment({ subjectCount: null }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.totalSubjectCount).toBeNull()
-  })
-
-  it("should aggregate data volume in GB", () => {
-    const experiments = [
-      makeExperiment({ dataVolume: { value: 500, unit: "GB" } }),
-      makeExperiment({ dataVolume: { value: 1, unit: "TB" } }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.totalDataVolume).toEqual({ value: 1.49, unit: "TB" })
-  })
-
-  it("should collect unique platforms", () => {
-    const experiments = [
-      makeExperiment({ platformVendor: "Illumina", platformModel: "NovaSeq 6000" }),
-      makeExperiment({ platformVendor: "Illumina", platformModel: "NovaSeq 6000" }),
-      makeExperiment({ platformVendor: "Illumina", platformModel: "HiSeq 2000" }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.platforms).toEqual([
-      { vendor: "Illumina", model: "NovaSeq 6000" },
-      { vendor: "Illumina", model: "HiSeq 2000" },
-    ])
-  })
-
-  it("should detect healthy control", () => {
-    const experiments = [
-      makeExperiment({ healthStatus: "affected" }),
-      makeExperiment({ healthStatus: "healthy" }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.hasHealthyControl).toBe(true)
-  })
-
-  it("should detect tumor and cell line", () => {
-    const experiments = [
-      makeExperiment({ isTumor: true, cellLine: "HeLa" }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.hasTumor).toBe(true)
-    expect(result.hasCellLine).toBe(true)
-  })
-
-  it("should collect unique tissues, populations, assayTypes, readTypes, fileTypes", () => {
-    const experiments = [
-      makeExperiment({
-        tissues: ["blood", "skin"],
-        population: "Japanese",
-        assayType: "WGS",
-        readType: "paired-end",
-        fileTypes: ["FASTQ"],
-      }),
-      makeExperiment({
-        tissues: ["blood", "liver"],
-        population: "European",
-        assayType: "WGS",
-        readType: "paired-end",
-        fileTypes: ["FASTQ", "BAM"],
-      }),
-    ]
-
-    const result = aggregateToSearchable(experiments)
-    expect(result.tissues).toEqual(["blood", "skin", "liver"])
-    expect(result.populations).toEqual(["Japanese", "European"])
-    expect(result.assayTypes).toEqual(["WGS"])
-    expect(result.readTypes).toEqual(["paired-end"])
-    expect(result.fileTypes).toEqual(["FASTQ", "BAM"])
+    expect(parseRefinedFields(invalid).dataVolume).toBeNull()
   })
 })

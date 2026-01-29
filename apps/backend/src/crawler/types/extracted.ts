@@ -1,6 +1,9 @@
 /**
  * LLM extraction type definitions
+ *
+ * "refined" indicates data that has been refined/extracted from raw experiment data
  */
+import type { NormalizedPolicy } from "./common"
 import type { Experiment, Dataset } from "./unified"
 
 /** Subject count type */
@@ -32,8 +35,8 @@ export interface DataVolume {
   unit: DataVolumeUnit
 }
 
-/** Experiment-level extracted fields */
-export interface ExtractedExperimentFields {
+/** Experiment-level refined fields (extracted via LLM + rule-based) */
+export interface RefinedExperimentFields {
   // Subject/sample info
   subjectCount: number | null
   subjectCountType: SubjectCountType | null
@@ -64,45 +67,18 @@ export interface ExtractedExperimentFields {
   // Data info
   fileTypes: string[]
   dataVolume: DataVolume | null
+
+  // Policies (rule-based, not LLM)
+  policies: NormalizedPolicy[]
 }
 
-/** Dataset-level searchable aggregated fields */
-export interface SearchableDatasetFields {
-  // Diseases
-  diseases: DiseaseInfo[]
-
-  // Biological samples
-  tissues: string[]
-
-  // Population/ethnicity
-  populations: string[]
-
-  // Experimental methods
-  assayTypes: string[]
-
-  // Platforms
-  platforms: PlatformInfo[]
-  readTypes: string[]
-
-  // Data info
-  fileTypes: string[]
-  totalSubjectCount: number | null
-  totalDataVolume: DataVolume | null
-
-  // Flags
-  hasHealthyControl: boolean
-  hasTumor: boolean
-  hasCellLine: boolean
+/** Experiment with refined fields */
+export interface RefinedExperiment extends Experiment {
+  refined: RefinedExperimentFields
 }
 
-/** Experiment with extracted fields */
-export interface ExtractedExperiment extends Experiment {
-  extracted: ExtractedExperimentFields
-}
-
-/** Dataset with searchable fields */
-export interface SearchableDataset extends Omit<Dataset, "experiments"> {
-  searchable: SearchableDatasetFields
-  experiments: ExtractedExperiment[]
+/** Dataset with refined experiments (searchable fields aggregated dynamically) */
+export interface RefinedDataset extends Omit<Dataset, "experiments"> {
+  experiments: RefinedExperiment[]
   originalMetadata?: Record<string, unknown> | null
 }

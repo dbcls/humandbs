@@ -19,13 +19,12 @@ import type {
   BilingualText,
   CriteriaCanonical,
   DiseaseInfo,
-  PlatformInfo,
   DataVolume,
   DataVolumeUnit,
   Research,
   Publication,
-  SearchableDataset,
-  ExtractedExperimentFields,
+  RefinedDataset,
+  RefinedExperimentFields,
   HealthStatus,
   SubjectCountType,
   ReadType,
@@ -195,39 +194,10 @@ export const importDatasetTsv = (): void => {
     const filename = `${row.datasetId}-${row.version}.json`
     const filePath = join(finalDir, filename)
 
-    const dataset = readJsonFile<SearchableDataset>(filePath)
+    const dataset = readJsonFile<RefinedDataset>(filePath)
     if (!dataset) {
       logger.warn("Skipped: file not found", { filename })
       continue
-    }
-
-    // Parse diseases from JSON array
-    const diseasesRaw = parseJsonField<(DiseaseInfo | string)[]>(row.searchable_diseases, [])
-    const diseases = diseasesRaw
-      .map(d => {
-        if (typeof d === "string") return parseDisease(d)
-        return d
-      })
-      .filter((d): d is DiseaseInfo => d !== null)
-
-    // Parse platforms from JSON array
-    const platformsRaw = parseJsonField<PlatformInfo[]>(row.searchable_platforms, [])
-    const platforms = platformsRaw.filter((p): p is PlatformInfo => p !== null && p.vendor !== undefined)
-
-    dataset.searchable = {
-      ...dataset.searchable,
-      diseases,
-      tissues: parseJsonField<string[]>(row.searchable_tissues, []),
-      populations: parseJsonField<string[]>(row.searchable_populations, []),
-      assayTypes: parseJsonField<string[]>(row.searchable_assayTypes, []),
-      platforms,
-      readTypes: parseJsonField<string[]>(row.searchable_readTypes, []),
-      fileTypes: parseJsonField<string[]>(row.searchable_fileTypes, []),
-      totalSubjectCount: parseNumberOrNull(row.searchable_totalSubjectCount),
-      totalDataVolume: parseDataVolume(row.searchable_totalDataVolume),
-      hasHealthyControl: row.searchable_hasHealthyControl === "true",
-      hasTumor: row.searchable_hasTumor === "true",
-      hasCellLine: row.searchable_hasCellLine === "true",
     }
 
     // Update bilingual fields
@@ -271,7 +241,7 @@ export const importExperimentTsv = (): void => {
   for (const [filename, expRows] of groupedRows) {
     const filePath = join(finalDir, filename)
 
-    const dataset = readJsonFile<SearchableDataset>(filePath)
+    const dataset = readJsonFile<RefinedDataset>(filePath)
     if (!dataset) {
       logger.warn("Skipped: file not found", { filename })
       continue
@@ -287,32 +257,34 @@ export const importExperimentTsv = (): void => {
         const exp = dataset.experiments[index]
 
         // Parse diseases from JSON array of strings like ["label(icd10)", "label2"]
-        const diseasesRaw = parseJsonField<string[]>(row.extracted_diseases, [])
+        const diseasesRaw = parseJsonField<string[]>(row.refined_diseases, [])
         const diseases = diseasesRaw
           .map(parseDisease)
           .filter((d): d is DiseaseInfo => d !== null)
 
-        const extracted: ExtractedExperimentFields = {
-          subjectCount: parseNumberOrNull(row.extracted_subjectCount),
-          subjectCountType: (row.extracted_subjectCountType as SubjectCountType) || null,
-          healthStatus: (row.extracted_healthStatus as HealthStatus) || null,
+        const refined: RefinedExperimentFields = {
+          subjectCount: parseNumberOrNull(row.refined_subjectCount),
+          subjectCountType: (row.refined_subjectCountType as SubjectCountType) || null,
+          healthStatus: (row.refined_healthStatus as HealthStatus) || null,
           diseases,
-          tissues: parseJsonField<string[]>(row.extracted_tissues, []),
-          isTumor: parseBooleanOrNull(row.extracted_isTumor),
-          cellLine: row.extracted_cellLine || null,
-          population: row.extracted_population || null,
-          assayType: row.extracted_assayType || null,
-          libraryKits: parseJsonField<string[]>(row.extracted_libraryKits, []),
-          platformVendor: row.extracted_platformVendor || null,
-          platformModel: row.extracted_platformModel || null,
-          readType: (row.extracted_readType as ReadType) || null,
-          readLength: parseNumberOrNull(row.extracted_readLength),
-          targets: row.extracted_targets || null,
-          fileTypes: parseJsonField<string[]>(row.extracted_fileTypes, []),
-          dataVolume: parseDataVolume(row.extracted_dataVolume),
+          tissues: parseJsonField<string[]>(row.refined_tissues, []),
+          isTumor: parseBooleanOrNull(row.refined_isTumor),
+          cellLine: row.refined_cellLine || null,
+          population: row.refined_population || null,
+          assayType: row.refined_assayType || null,
+          libraryKits: parseJsonField<string[]>(row.refined_libraryKits, []),
+          platformVendor: row.refined_platformVendor || null,
+          platformModel: row.refined_platformModel || null,
+          readType: (row.refined_readType as ReadType) || null,
+          readLength: parseNumberOrNull(row.refined_readLength),
+          targets: row.refined_targets || null,
+          fileTypes: parseJsonField<string[]>(row.refined_fileTypes, []),
+          dataVolume: parseDataVolume(row.refined_dataVolume),
+          // Policies are rule-based (not LLM), preserved from existing refined or empty
+          policies: exp.refined?.policies ?? [],
         }
 
-        exp.extracted = extracted
+        exp.refined = refined
       }
     }
 
