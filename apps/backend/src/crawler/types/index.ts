@@ -73,7 +73,7 @@ export type {
   Publication,
   Research,
   ResearchVersion,
-} from "./unified"
+} from "./structured"
 
 // Refined types (LLM-extracted + rule-based fields)
 export type {

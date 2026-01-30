@@ -1,7 +1,7 @@
 /**
  * External API response type definitions
  */
-import type { Dataset, Research, Publication } from "./unified"
+import type { Dataset, Research, Publication } from "./structured"
 
 /** Publication with DOI enrichment */
 export interface EnrichedPublication extends Publication {

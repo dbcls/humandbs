@@ -4,7 +4,7 @@
  * "refined" indicates data that has been refined/extracted from raw experiment data
  */
 import type { NormalizedPolicy } from "./common"
-import type { Experiment, Dataset } from "./unified"
+import type { Experiment, Dataset } from "./structured"
 
 /** Subject count type */
 export type SubjectCountType = "individual" | "sample" | "mixed"
