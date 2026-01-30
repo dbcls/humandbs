@@ -32,6 +32,7 @@ interface JgadApiResponse {
   found: boolean
   _source?: {
     accession?: string
+    datePublished?: string
     properties?: JgadProperties
     dbXrefs?: DdbjDbXref[]
     [key: string]: unknown
@@ -305,4 +306,26 @@ export const batchGetJgadMetadata = async (
   }
 
   return result
+}
+
+/**
+ * Get JGAD release date (datePublished) from DDBJ Search API
+ * Returns ISO 8601 date string (YYYY-MM-DD) or null
+ */
+export const getJgadReleaseDate = async (
+  datasetId: string,
+): Promise<string | null> => {
+  if (!datasetId.startsWith("JGAD")) {
+    return null
+  }
+
+  const response = await fetchJgadFromApi(datasetId)
+  if (!response?.found || !response._source?.datePublished) {
+    return null
+  }
+
+  // Convert ISO 8601 datetime to date (YYYY-MM-DD)
+  const datePublished = response._source.datePublished
+  const match = datePublished.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
 }

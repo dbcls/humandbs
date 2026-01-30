@@ -355,3 +355,30 @@ export const getCriteriaOverrideForDataset = (
   return humOverrides[datasetId] ?? null
 }
 
+// releaseDate Override
+
+type ReleaseDateOverrideConfig = Record<string, Record<string, string>>
+
+let releaseDateOverrideCache: ReleaseDateOverrideConfig | null = null
+
+const getReleaseDateOverride = (): ReleaseDateOverrideConfig => {
+  if (!releaseDateOverrideCache) {
+    releaseDateOverrideCache = loadConfig<ReleaseDateOverrideConfig>("releaseDate-override.json")
+  }
+  return releaseDateOverrideCache
+}
+
+/**
+ * Get releaseDate override for a specific humId and datasetId
+ * Returns null if no override exists
+ */
+export const getReleaseDateOverrideForDataset = (
+  humId: string,
+  datasetId: string,
+): string | null => {
+  const overrides = getReleaseDateOverride()
+  const humOverrides = overrides[humId]
+  if (!humOverrides) return null
+  return humOverrides[datasetId] ?? null
+}
+

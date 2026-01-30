@@ -421,7 +421,7 @@ export const expandJgadRange = (id: string): string[] => {
  */
 export const fixReleaseDate = (
   value: string | null | undefined,
-): string[] | null => {
+): string | null => {
   if (!value) return null
 
   const raw = value.trim()
@@ -429,6 +429,7 @@ export const fixReleaseDate = (
   if (raw === "Coming soon") return null
   if (raw === "近日公開予定") return null
 
+  // Parse dates and return the first one (for single value)
   const dates = raw
     .split(/\s+/)
     .map(v => {
@@ -443,7 +444,7 @@ export const fixReleaseDate = (
     })
     .filter((v): v is string => v !== null)
 
-  return dates.length > 0 ? dates : null
+  return dates.length > 0 ? dates[0] : null
 }
 
 /**

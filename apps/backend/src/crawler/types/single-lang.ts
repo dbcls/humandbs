@@ -20,7 +20,7 @@ export interface SingleLangDataset {
   versionReleaseDate: string
   humId: string
   humVersionId: string
-  releaseDate: string[]
+  releaseDate: string
   criteria: CriteriaCanonical | null
   typeOfData: string | null
   experiments: SingleLangExperiment[]

@@ -19,6 +19,7 @@ interface DraApiResponse {
     accession?: string
     title?: string
     description?: string
+    datePublished?: string
     properties?: Record<string, unknown>
     dbXrefs?: { identifier: string; type: string; url: string }[]
     [key: string]: unknown
@@ -184,4 +185,26 @@ export const batchGetDraMetadata = async (
   }
 
   return result
+}
+
+/**
+ * Get DRA release date (datePublished) from DDBJ Search API
+ * Returns ISO 8601 date string (YYYY-MM-DD) or null
+ */
+export const getDraReleaseDate = async (
+  accession: string,
+): Promise<string | null> => {
+  if (!getResourceType(accession)) {
+    return null
+  }
+
+  const response = await fetchDraFromApi(accession)
+  if (!response?.found || !response._source?.datePublished) {
+    return null
+  }
+
+  // Convert ISO 8601 datetime to date (YYYY-MM-DD)
+  const datePublished = response._source.datePublished
+  const match = datePublished.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
 }

@@ -91,7 +91,7 @@ export const DatasetSchema = z.object({
   version: z.string(),
   typeOfData: z.array(z.string()).nullable().optional(),
   criteria: z.array(z.string()).nullable().optional(),
-  releaseDate: z.array(z.string()).nullable().optional(),
+  releaseDate: z.string(),
   experiments: z.array(ExperimentSchema),
 }).strict()
 export type Dataset = z.infer<typeof DatasetSchema>

@@ -182,10 +182,18 @@ const buildSingleLangDataset = (
   humId: string,
   humVersionId: string,
   molDataList: NormalizedMolecularData[],
-  metadataMap: Map<string, { typeOfData: string | null; criteria: import("@/crawler/types").CriteriaCanonical | null; releaseDate: string[] | null }>,
+  metadataMap: Map<string, { typeOfData: string | null; criteria: import("@/crawler/types").CriteriaCanonical | null; releaseDate: string | null }>,
   _lang: LangType,
 ): SingleLangDataset => {
   const metadata = metadataMap.get(datasetId)
+
+  const releaseDate = metadata?.releaseDate ?? versionReleaseDate
+  if (!metadata?.releaseDate) {
+    logger.warn("Missing releaseDate in metadata, using versionReleaseDate as fallback", {
+      datasetId,
+      versionReleaseDate,
+    })
+  }
 
   return {
     datasetId,
@@ -193,7 +201,7 @@ const buildSingleLangDataset = (
     versionReleaseDate,
     humId,
     humVersionId,
-    releaseDate: metadata?.releaseDate ?? [],
+    releaseDate,
     criteria: metadata?.criteria ?? null,
     typeOfData: metadata?.typeOfData ?? null,
     experiments: molDataList.map(structureMolDataToExperiment),

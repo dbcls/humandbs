@@ -33,7 +33,7 @@ export interface OrphanReference {
 export interface NormalizedDataset extends Omit<RawDataset, "datasetId" | "criteria" | "releaseDate"> {
   datasetId: string[] | null
   criteria: CriteriaCanonical | null
-  releaseDate: string[] | null
+  releaseDate: string | null
 }
 
 /** Normalized molecular data with possible array values */

@@ -245,7 +245,7 @@ export const invertMolTableToDataset = (
 interface DatasetMetadata {
   typeOfData: string | null
   criteria: CriteriaCanonical | null
-  releaseDate: string[] | null
+  releaseDate: string | null
 }
 
 /**
@@ -677,7 +677,7 @@ export const createUnifiedDataset = (
     versionReleaseDate,
     humId,
     humVersionId,
-    releaseDate: jaDataset?.releaseDate ?? enDataset?.releaseDate ?? [],
+    releaseDate: jaDataset?.releaseDate ?? enDataset?.releaseDate ?? versionReleaseDate,
     criteria: validatedCriteria,
     typeOfData: {
       ja: jaDataset?.typeOfData || null,

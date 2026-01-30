@@ -205,7 +205,14 @@ export const importDatasetTsv = (): void => {
     // criteria is now a single value, not an array
     const criteriaValue = parseJsonFieldOrNull<CriteriaCanonical>(row.criteria)
     dataset.criteria = criteriaValue ?? "Unrestricted-access"
-    dataset.releaseDate = parseJsonFieldOrNull<string[]>(row.releaseDate) ?? []
+    const parsedReleaseDate = parseJsonFieldOrNull<string>(row.releaseDate)
+    if (!parsedReleaseDate) {
+      logger.warn("Missing releaseDate, using versionReleaseDate as fallback", {
+        datasetId: dataset.datasetId,
+        versionReleaseDate: dataset.versionReleaseDate,
+      })
+    }
+    dataset.releaseDate = parsedReleaseDate ?? dataset.versionReleaseDate
 
     writeJsonFile(filePath, dataset)
     updated++

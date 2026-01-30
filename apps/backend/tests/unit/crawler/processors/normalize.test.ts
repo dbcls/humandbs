@@ -365,15 +365,15 @@ describe("processors/normalize.ts", () => {
     })
 
     it("should convert YYYY/M/D to YYYY-MM-DD format", () => {
-      expect(fixReleaseDate("2024/1/5")).toEqual(["2024-01-05"])
+      expect(fixReleaseDate("2024/1/5")).toBe("2024-01-05")
     })
 
-    it("should handle multiple space-separated dates", () => {
-      expect(fixReleaseDate("2024/1/5 2024/12/31")).toEqual(["2024-01-05", "2024-12-31"])
+    it("should return the first date when multiple space-separated dates", () => {
+      expect(fixReleaseDate("2024/1/5 2024/12/31")).toBe("2024-01-05")
     })
 
-    it("should skip invalid date parts", () => {
-      expect(fixReleaseDate("invalid 2024/1/5")).toEqual(["2024-01-05"])
+    it("should skip invalid date parts and return the first valid date", () => {
+      expect(fixReleaseDate("invalid 2024/1/5")).toBe("2024-01-05")
     })
 
     it("should return null if no valid dates found", () => {
