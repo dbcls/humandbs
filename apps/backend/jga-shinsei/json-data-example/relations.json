@@ -1,0 +1,58 @@
+{
+  "jga_hierarchy": [
+    {
+      "child": "JGAD000369",
+      "parent": "JGAP000001",
+      "child_type": "JGAD",
+      "parent_type": "JGAP"
+    },
+    {
+      "child": "JGAD000369",
+      "parent": "JGAR000468830",
+      "child_type": "JGAD",
+      "parent_type": "JGAR"
+    }
+  ],
+  "jga_to_hum": [
+    {
+      "jga_accession": "JGA000404",
+      "hum_id": "hum0000"
+    },
+    {
+      "jga_accession": "JGA000405",
+      "hum_id": "hum0000"
+    }
+  ],
+  "jsub_to_jga": [
+    {
+      "jsub_id": "JSUB000481",
+      "type": "Analysis",
+      "jga_accession": "JGAZ000004502"
+    },
+    {
+      "jsub_id": "JSUB000481",
+      "type": "Data",
+      "jga_accession": "JGAR000468830"
+    }
+  ],
+  "jds_to_jga": [
+    {
+      "jds_id": "J-DS002527",
+      "jga_accession": "JGA000442"
+    },
+    {
+      "jds_id": "J-DS002527",
+      "jga_accession": "JGAN000290227"
+    }
+  ],
+  "jdu_to_jgad": [
+    {
+      "jdu_id": "J-DU006527",
+      "jgad_accession": "JGAD000410"
+    },
+    {
+      "jdu_id": "J-DU006529",
+      "jgad_accession": "JGAD000369"
+    }
+  ]
+}

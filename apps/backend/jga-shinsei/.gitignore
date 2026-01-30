@@ -1,2 +1,3 @@
 dumps/
-output/
+json-data/
+.env

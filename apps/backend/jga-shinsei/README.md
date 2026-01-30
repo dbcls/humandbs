@@ -1,218 +1,222 @@
-# JGA Shinsei PostgreSQL Container
+# JGA Shinsei
 
-JGA 申請システムの PostgreSQL ダンプを読み込む独立コンテナ環境。
+JGA 申請システムのデータを利用して、ID 間の関係や申請情報を取得するツール群。
 
-## 前提条件
+## ユースケース
 
-- Docker がインストールされていること
-- ダンプファイルが `dumps/` に配置されていること
+1. **ID 間の関係取得**: JGA 系 ID (JGAS, JGAD, JSUB, hum_id, J-DS, J-DU) 間の関係を取得
+2. **データ提供申請 (J-DS) 情報取得**: 任意の ID から関連する J-DS 申請の詳細を取得
+3. **データ利用申請 (J-DU) 情報取得**: 任意の ID から関連する J-DU 申請の詳細を取得
 
-## ダンプファイル
+## アーキテクチャ
 
-| ファイル | 環境 |
+DB にリアルタイムアクセスできないため、2 段階で処理する:
+
+1. **Dump**: 日次バッチで DB から JSON ファイルを生成
+2. **Fetch**: CLI で JSON を読み取りクエリを実行
+
+```
+[PostgreSQL DB]
+       |
+       v (dump-all-data.sh / 日次バッチ)
+[$JGA_OUTPUT_DIR/*.json]
+       |
+       v (fetch-*.sh)
+[クエリ結果]
+```
+
+## 環境変数
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `JGA_CONTAINER_NAME` | `humandbs-jga-shinsei-db` | Docker container 名 |
+| `JGA_DB_USER` | `postgres` | PostgreSQL ユーザー名 |
+| `JGA_DB_NAME` | `jgadb` | PostgreSQL データベース名 |
+| `JGA_OUTPUT_DIR` | `./json-data` | JSON 出力ディレクトリ |
+
+## クイックスタート
+
+### 1. 環境設定
+
+```bash
+# 環境設定ファイルを作成
+cp env.template .env
+
+# 接続先の DB コンテナに合わせて編集
+vim .env
+```
+
+### 2. データのダンプ
+
+```bash
+./scripts/dump-all-data.sh
+```
+
+### 3. CLI でクエリ
+
+```bash
+# ID の関係を取得
+./scripts/fetch-relation.sh JGAS000001
+./scripts/fetch-relation.sh hum0273
+
+# J-DS 申請情報を取得
+./scripts/fetch-ds-info.sh J-DS002504
+./scripts/fetch-ds-info.sh --format table hum0273
+
+# J-DU 申請情報を取得
+./scripts/fetch-du-info.sh J-DU006529
+./scripts/fetch-du-info.sh --format table JGAD000001
+```
+
+## スクリプト
+
+### dump-all-data.sh
+
+DB から全データを JSON ファイルにダンプする。
+
+```bash
+./scripts/dump-all-data.sh
+```
+
+**出力ファイル:** (`$JGA_OUTPUT_DIR` 以下、デフォルト: `json-data/`)
+
+| ファイル | 内容 |
 |----------|------|
-| `dumps/jgadb_staging_20250422.sql` | staging (約20GB) |
+| `relations.json` | ID マッピング + 階層関係 |
+| `ds-applications.json` | J-DS (データ提供申請) 詳細 |
+| `du-applications.json` | J-DU (データ利用申請) 詳細 |
 
-## 使用方法
+### fetch-relation.sh
 
-### 1. 環境変数でダンプファイルを指定
-
-```bash
-cd apps/backend/jga-shinsei
-
-# staging 環境のダンプを使用
-export JGA_DB_FILE=jgadb_staging_20250422.sql
-```
-
-### 2. コンテナ起動
+任意の ID から関連する ID を取得する。
 
 ```bash
-docker run -d \
-  --name humandbs-jga-shinsei-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=jgadb \
-  -e JGA_DB_FILE="${JGA_DB_FILE:-jgadb_staging_20250422.sql}" \
-  -v "$(pwd)/initdb":/docker-entrypoint-initdb.d:ro \
-  -v "$(pwd)/dumps":/dumps:ro \
-  -p 127.0.0.1:5433:5432 \
-  postgres:17 \
-  -c shared_buffers=256MB \
-  -c work_mem=64MB
+./scripts/fetch-relation.sh [--format json|table] <ID>
 ```
 
-**ポート**: `5433` を使用（既存の cms-db `5432` と衝突回避）
+**対応 ID:**
 
-初回は 20GB のダンプインポートに時間がかかる（数十分〜数時間）。
+- `hum0273` - hum_id
+- `JSUB000481` - JGA 内部 Submission ID
+- `JGAS000123`, `JGAD000123`, etc. - JGA ID
+- `J-DS002504` - データ提供申請 ID
+- `J-DU006529` - データ利用申請 ID
 
-### 3. インポート状況確認
+**例:**
 
 ```bash
-docker logs -f humandbs-jga-shinsei-db
+# JSON 形式（デフォルト）
+./scripts/fetch-relation.sh JGAS000001
+
+# テーブル形式
+./scripts/fetch-relation.sh --format table hum0273
 ```
 
-"Import completed!" が表示されたら完了。
+### fetch-ds-info.sh
 
-### 4. PostgreSQL 接続
+J-DS (データ提供申請) の詳細情報を取得する。
 
 ```bash
-docker exec -it humandbs-jga-shinsei-db psql -U postgres -d jgadb
+./scripts/fetch-ds-info.sh [--format json|table] <ID>
 ```
 
-### 5. コンテナ停止・削除
+**対応 ID:**
+
+- `J-DS002504` - 直接検索
+- `JSUB000481` - JSUB から検索
+- `hum0273` - hum_id から検索
+- `JGAS000123`, `JGAD000123` - JGA ID から検索
+
+### fetch-du-info.sh
+
+J-DU (データ利用申請) の詳細情報を取得する。
 
 ```bash
-docker stop humandbs-jga-shinsei-db && docker rm humandbs-jga-shinsei-db
+./scripts/fetch-du-info.sh [--format json|table] <ID>
 ```
 
-## Scripts
+**対応 ID:**
 
-**注意**: すべてのスクリプトはコンテナ `humandbs-jga-shinsei-db` が起動している必要がある。
+- `J-DU006529` - 直接検索
+- `JGAD000123` - JGAD から検索
+- `JGAS000123` - JGAS から検索
+- `hum0273` - hum_id から検索
 
-### `scripts/list-tables.sh`
+## 出力形式
 
-テーブル一覧（サイズ付き）を表示する。
-
-```bash
-./scripts/list-tables.sh
-```
-
-### `scripts/export-jga-relations.sh`
-
-JGA ID 間の親子関係を JSON で出力する。
-
-```bash
-./scripts/export-jga-relations.sh
-# Output: output/jga-id-relations.json
-```
-
-### `scripts/export-id-mappings.sh`
-
-各種 ID マッピングを JSON で出力する。
-
-```bash
-./scripts/export-id-mappings.sh
-# Output:
-#   output/jga-hum-mapping.json   - JGA ↔ hum_id
-#   output/jsub-jga-mapping.json  - JSUB ↔ JGA accession
-#   output/jds-jga-mapping.json   - J-DS ↔ JGA accession
-#   output/jdu-jgad-mapping.json  - J-DU ↔ JGAD
-#   output/jsub-hum-mapping.json  - JSUB → hum_id
-#   output/jsub-jds-mapping.json  - JSUB → J-DS (group_id 経由)
-#   output/jsub-jdu-mapping.json  - JSUB → J-DU (JGAD 経由)
-#   output/jsub-relations.json    - JSUB → hum_id, J-DS, J-DU (集約)
-```
-
-**jsub-relations.json の形式:**
+### JSON 形式（デフォルト）
 
 ```json
 {
-  "jsub_id": "JSUB000481",
-  "hum_ids": ["hum00000"],
-  "jds_ids": ["J-DS002504", "J-DS002520", "J-DS002527"],
-  "jdu_ids": ["J-DU006529", "J-DU006530"]
+  "jds_id": "J-DS002504",
+  "jsub_ids": ["JSUB000481"],
+  "hum_ids": ["hum0273"],
+  "application": {
+    "study_title": "研究題目",
+    "pi": { "last_name": "山田", ... }
+  },
+  ...
 }
 ```
 
-### `scripts/query-metadata.sh`
+### テーブル形式
 
-各種 ID で metadata を検索する。
+```
+==================================================
+J-DS ID: J-DS002504
+
+【関連 ID】
+  JSUB: JSUB000481
+  hum_id: hum0273
+
+【申請情報】
+  研究題目: ...
+  PI: 山田太郎 (○○大学)
+```
+
+## 詳細ドキュメント
+
+- [ID の種類と関係](docs/id-relationships.md)
+- [データベーススキーマ](docs/database-schema.md)
+
+## 開発者向け
+
+### デバッグ用 DB コンテナの起動
+
+ローカルでデバッグする場合は、ダンプファイルから DB コンテナを起動できる。
 
 ```bash
-./scripts/query-metadata.sh jsub JSUB000481   # JSUB ID で検索
-./scripts/query-metadata.sh hum hum0273       # hum_id で検索
-./scripts/query-metadata.sh jds J-DS002504    # J-DS ID で検索
-./scripts/query-metadata.sh jga JGAS000365    # JGA accession で検索
+# ダンプファイルを dumps/ に配置後:
+docker run -d \
+  --name humandbs-jga-shinsei-db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=jgadb \
+  -e JGA_DB_FILE=jgadb_staging_20250422.sql \
+  -v "$(pwd)/initdb":/docker-entrypoint-initdb.d:ro \
+  -v "$(pwd)/dumps":/dumps:ro \
+  -p 127.0.0.1:5433:5432 \
+  postgres:17
 ```
 
-## ID の種類と関係
+初回は 20GB のダンプインポートに時間がかかる（数十分〜数時間）。進捗は `docker logs -f humandbs-jga-shinsei-db` で確認。
 
-### JGA 系 ID
+### DB コンテナの管理
 
-| プレフィックス | 種類 | 説明 |
-|---------------|------|------|
-| JGA | Submission | 登録単位 |
-| JGAS | Study | 研究 |
-| JGAD | Dataset | データセット |
-| JGAN | Sample | サンプル |
-| JGAX | Experiment | 実験 |
-| JGAR | Data/Run | データファイル |
-| JGAZ | Analysis | 解析結果 |
-| JGAC | Center | センター |
-| JGAP | Policy | ポリシー |
-| JSUB | (内部) | 未公開の Submission ID |
+```bash
+# 停止・削除
+docker stop humandbs-jga-shinsei-db && docker rm humandbs-jga-shinsei-db
 
-### 外部 ID
+# ログ確認
+docker logs -f humandbs-jga-shinsei-db
 
-| ID | 形式 | 説明 |
-|----|------|------|
-| J-DS | J-DS002xxx | Data Submission (データ提供申請) |
-| J-DU | J-DU006xxx | Data Use (データ利用申請) |
-| hum_id | humXXXX | NBDC 研究 ID |
-
-### ID 間の関係
-
-```
-                          group_id
-                       (subgrpXXXX)
-                               |
-               ---------------------------------
-               |                               |
-          submission                nbdc_application_master
-               |                               |
-             entry                           J-DS / J-DU
-               |
-            relation
-               |
-            accession  <---------------- metadata
-               |
-        -----------------
-        |               |
-   JGA accession       hum_id
-    (alias: JSUB)
+# psql で接続
+docker exec -it humandbs-jga-shinsei-db psql -U postgres -d jgadb
 ```
 
-**主要な関係:**
+### データ永続化
 
-| 関係 | 経路 | 説明 |
-|------|------|------|
-| JGA ID 間 | `relation` テーブル | JGAD ← JGAR ← JGAX などの親子関係 |
-| JSUB ↔ JGA | `accession.alias` | JSUB は JGA accession の内部 alias |
-| J-DS ↔ JGA | `group_id` 経由 | 同じ group に属する submission |
-| J-DU ↔ JGAD | `use_permission` | データ利用申請 → Dataset |
-| hum_id ↔ JGA | `metadata` XML | `nbdc_number` 属性 |
-
-**JSUB と J-DS の関係:**
-
-JSUB と J-DS は直接の関係を持たず、`group_id` を介して間接的に関連する:
-
-- JSUB: `accession.alias` → `relation` → `entry` → `submission.group_id`
-- J-DS: `nbdc_application_master.account_group` = `submission.group_id`
-
-同じ研究グループ内で複数の JSUB (submission) と複数の J-DS (申請) が紐づく多対多の関係。
-
-## Database Structure
-
-### スキーマ
-
-- `ts_jgasys` - メインスキーマ
-
-### 確認コマンド
-
-```sql
--- スキーマ一覧
-\dn
-
--- テーブル一覧
-\dt ts_jgasys.*
-
--- テーブル構造確認（例）
-\d ts_jgasys.accession
-```
-
-## データ永続化
-
-デフォルトではコンテナ削除時にデータも消える。データを永続化したい場合は、ボリュームを追加する:
+デフォルトではコンテナ削除時にデータも消える。永続化するにはボリュームを追加:
 
 ```bash
 docker run -d \
@@ -220,7 +224,7 @@ docker run -d \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=jgadb \
-  -e JGA_DB_FILE="${JGA_DB_FILE:-jgadb_staging_20250422.sql}" \
+  -e JGA_DB_FILE=jgadb_staging_20250422.sql \
   -v "$(pwd)/initdb":/docker-entrypoint-initdb.d:ro \
   -v "$(pwd)/dumps":/dumps:ro \
   -v humandbs-jga-shinsei-data:/var/lib/postgresql/data \
