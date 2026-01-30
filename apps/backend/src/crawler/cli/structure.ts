@@ -24,6 +24,7 @@ import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import { saveRelationCache } from "@/crawler/api/jga"
+import { getReleaseDateOverrideForDataset } from "@/crawler/config/mapping"
 import { genDetailUrl } from "@/crawler/config/urls"
 import {
   invertMolTableToDataset,
@@ -173,6 +174,12 @@ const structureMolDataToExperiment = (
   }
 }
 
+// Check if datasetId is JGA/DRA type (will be enriched later)
+
+const isEnrichableDatasetId = (datasetId: string): boolean => {
+  return /^(JGAD|DRA)\d+/.test(datasetId)
+}
+
 // Build single-language dataset
 
 const buildSingleLangDataset = (
@@ -184,15 +191,24 @@ const buildSingleLangDataset = (
   molDataList: NormalizedMolecularData[],
   metadataMap: Map<string, { typeOfData: string | null; criteria: import("@/crawler/types").CriteriaCanonical | null; releaseDate: string | null }>,
   _lang: LangType,
+  onValidationError?: () => void,
 ): SingleLangDataset => {
   const metadata = metadataMap.get(datasetId)
 
   const releaseDate = metadata?.releaseDate ?? versionReleaseDate
   if (!metadata?.releaseDate) {
-    logger.warn("Missing releaseDate in metadata, using versionReleaseDate as fallback", {
-      datasetId,
-      versionReleaseDate,
-    })
+    // Check if this is an enrichable dataset (JGA/DRA) or has override
+    const hasOverride = getReleaseDateOverrideForDataset(humId, datasetId) !== null
+    const isEnrichable = isEnrichableDatasetId(datasetId)
+
+    if (!hasOverride && !isEnrichable) {
+      logger.error("Missing releaseDate in metadata without override, using versionReleaseDate as fallback", {
+        datasetId,
+        humId,
+        versionReleaseDate,
+      })
+      onValidationError?.()
+    }
   }
 
   return {
@@ -280,6 +296,7 @@ interface ProcessResult {
   researchCreated: boolean
   versionsCreated: number
   datasetsCreated: number
+  validationErrors: number
   errors: string[]
 }
 
@@ -288,8 +305,11 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
     researchCreated: false,
     versionsCreated: 0,
     datasetsCreated: 0,
+    validationErrors: 0,
     errors: [],
   }
+
+  const onValidationError = () => { result.validationErrors++ }
 
   try {
     const filesMap = loadNormalizedFilesForHumId(humId)
@@ -419,11 +439,11 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
 
         // Build single-language datasets
         const jaSingleLangDataset = jaData
-          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, jaMolDataForDataset, metadataMap, "ja")
+          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, jaMolDataForDataset, metadataMap, "ja", onValidationError)
           : null
 
         const enSingleLangDataset = enData
-          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, enMolDataForDataset, metadataMap, "en")
+          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, enMolDataForDataset, metadataMap, "en", onValidationError)
           : null
 
         // Create unified dataset
@@ -506,6 +526,7 @@ const main = async (): Promise<void> => {
   let totalResearch = 0
   let totalVersions = 0
   let totalDatasets = 0
+  let totalValidationErrors = 0
   let totalErrors = 0
 
   for (let i = 0; i < humIds.length; i++) {
@@ -515,6 +536,7 @@ const main = async (): Promise<void> => {
     if (result.researchCreated) totalResearch++
     totalVersions += result.versionsCreated
     totalDatasets += result.datasetsCreated
+    totalValidationErrors += result.validationErrors
     totalErrors += result.errors.length
 
     const percent = Math.round(((i + 1) / humIds.length) * 100)
@@ -528,6 +550,7 @@ const main = async (): Promise<void> => {
     research: totalResearch,
     versions: totalVersions,
     datasets: totalDatasets,
+    validationErrors: totalValidationErrors,
     errors: totalErrors,
   })
 }

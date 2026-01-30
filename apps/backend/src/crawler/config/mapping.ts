@@ -344,6 +344,17 @@ export const getCriteriaOverrideForDataset = (
 }
 
 /**
+ * Check if any criteria override exists for a humId
+ * Used to suppress warnings during normalize when override is already defined
+ */
+export const hasCriteriaOverrideForHum = (humId: string): boolean => {
+  const overrides = getDatasetOverrides()
+  const humOverrides = overrides[humId]
+  if (!humOverrides) return false
+  return Object.values(humOverrides).some(o => o.criteria !== undefined)
+}
+
+/**
  * Get releaseDate override for a specific humId and datasetId
  * Returns null if no override exists
  */

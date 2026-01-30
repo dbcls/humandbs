@@ -1,7 +1,8 @@
 /**
  * Output type definitions (ja/en integrated structure)
  *
- * These types represent the final bilingual output after merging ja/en data
+ * These types represent the final bilingual output after merging ja/en data,
+ * including searchable fields for search functionality.
  */
 import type {
   TextValue,
@@ -9,6 +10,7 @@ import type {
   BilingualTextValue,
   BilingualUrlValue,
   CriteriaCanonical,
+  NormalizedPolicy,
   PeriodOfDataUse,
   UrlValue,
 } from "./common"
@@ -23,6 +25,7 @@ export interface Experiment {
     ja: TextValue[]
     en: TextValue[]
   }
+  searchable?: SearchableExperimentFields
 }
 
 /** Dataset (language-integrated) */
@@ -138,4 +141,77 @@ export interface ResearchVersion {
 
   // Language-dependent
   releaseNote: BilingualTextValue
+}
+
+// Searchable types (extracted via LLM + rule-based for search functionality)
+
+/** Subject count type */
+export type SubjectCountType = "individual" | "sample" | "mixed"
+
+/** Health status */
+export type HealthStatus = "healthy" | "affected" | "mixed"
+
+/** Read type */
+export type ReadType = "single-end" | "paired-end"
+
+/** Disease information */
+export interface DiseaseInfo {
+  label: string
+  icd10: string | null
+}
+
+/** Platform information */
+export interface PlatformInfo {
+  vendor: string
+  model: string
+}
+
+/** Data volume with unit */
+export type DataVolumeUnit = "KB" | "MB" | "GB" | "TB"
+
+export interface DataVolume {
+  value: number
+  unit: DataVolumeUnit
+}
+
+/** Experiment-level searchable fields (extracted via LLM + rule-based) */
+export interface SearchableExperimentFields {
+  // Subject/sample info
+  subjectCount: number | null
+  subjectCountType: SubjectCountType | null
+  healthStatus: HealthStatus | null
+
+  // Disease info (multiple diseases supported)
+  diseases: DiseaseInfo[]
+
+  // Biological sample info
+  tissues: string[]
+  isTumor: boolean | null
+  cellLine: string | null
+  population: string | null
+
+  // Experimental method
+  assayType: string | null
+  libraryKits: string[]
+
+  // Platform
+  platformVendor: string | null
+  platformModel: string | null
+  readType: ReadType | null
+  readLength: number | null
+
+  // Target region
+  targets: string | null
+
+  // Data info
+  fileTypes: string[]
+  dataVolume: DataVolume | null
+
+  // Policies (rule-based, not LLM)
+  policies: NormalizedPolicy[]
+}
+
+/** Dataset with additional metadata for LLM extraction */
+export interface SearchableDataset extends Dataset {
+  originalMetadata?: Record<string, unknown> | null
 }

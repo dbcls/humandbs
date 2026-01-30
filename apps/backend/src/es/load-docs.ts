@@ -1,12 +1,10 @@
 /**
- * Load documents from final/ directory into Elasticsearch
+ * Load documents from structured-json directory into Elasticsearch
  *
  * Reads JSON files from:
- * - crawler-results/final/research/
- * - crawler-results/final/research-version/
- * - crawler-results/final/dataset/
- *
- * Falls back to llm-extracted/ if final/ doesn't exist.
+ * - crawler-results/structured-json/research/
+ * - crawler-results/structured-json/research-version/
+ * - crawler-results/structured-json/dataset/
  *
  * Document IDs (bilingual - no lang suffix):
  * - research: {humId}
@@ -156,22 +154,16 @@ function findResultsDir(): string {
 
 /**
  * Get the source directory for a given type
- * Prefers final/ if it exists, otherwise falls back to extracted-json/
  */
 function getSourceDir(type: "research" | "research-version" | "dataset"): string {
   const resultsDir = findResultsDir()
-  const finalDir = join(resultsDir, "final", type)
-  const extractedDir = join(resultsDir, "extracted-json", type)
+  const structuredDir = join(resultsDir, "structured-json", type)
 
-  if (existsSync(finalDir)) {
-    return finalDir
-  }
-  if (existsSync(extractedDir)) {
-    console.log(`Note: final/${type} not found, using extracted-json/${type}`)
-    return extractedDir
+  if (existsSync(structuredDir)) {
+    return structuredDir
   }
 
-  throw new Error(`Neither final/${type} nor extracted-json/${type} directory found`)
+  throw new Error(`structured-json/${type} directory not found`)
 }
 
 /**
@@ -196,7 +188,7 @@ const main = async () => {
   console.log("Loading documents into Elasticsearch...")
   console.log(`ES_NODE: ${ES_NODE}`)
 
-  // Read from final/ (or llm-extracted/ as fallback)
+  // Read from structured-json/
   const researchDir = getSourceDir("research")
   const researchVersionDir = getSourceDir("research-version")
   const datasetDir = getSourceDir("dataset")

@@ -65,6 +65,7 @@ export type {
 } from "./single-lang"
 
 // Output types (ja/en integrated - final output format)
+// Includes searchable types (LLM-extracted + rule-based fields for search)
 export type {
   Experiment,
   Dataset,
@@ -75,10 +76,6 @@ export type {
   Publication,
   Research,
   ResearchVersion,
-} from "./structured"
-
-// Searchable types (LLM-extracted + rule-based fields for search)
-export type {
   SubjectCountType,
   HealthStatus,
   ReadType,
@@ -87,9 +84,8 @@ export type {
   DataVolumeUnit,
   DataVolume,
   SearchableExperimentFields,
-  SearchableExperiment,
   SearchableDataset,
-} from "./extracted"
+} from "./structured"
 
 // API types (enriched with external API data)
 export type {

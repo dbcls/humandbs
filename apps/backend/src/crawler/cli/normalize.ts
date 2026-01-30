@@ -117,13 +117,20 @@ const main = async (): Promise<void> => {
 
   let totalNormalized = 0
   let totalErrors = 0
+  let validationErrors = 0
   let completedFiles = 0
+
+  // Update options with validation error callback
+  const optionsWithCallback: NormalizeOptions = {
+    ...options,
+    onValidationError: () => { validationErrors++ },
+  }
 
   // Process files in batches
   for (let i = 0; i < files.length; i += conc) {
     const batch = files.slice(i, i + conc)
     const results = await Promise.all(
-      batch.map(({ humVersionId, lang }) => normalizeOne(humVersionId, lang, options)),
+      batch.map(({ humVersionId, lang }) => normalizeOne(humVersionId, lang, optionsWithCallback)),
     )
 
     for (let j = 0; j < results.length; j++) {
@@ -146,7 +153,7 @@ const main = async (): Promise<void> => {
   // Save JGA API cache
   saveRelationCache()
 
-  logger.info("Completed", { normalized: totalNormalized, errors: totalErrors })
+  logger.info("Completed", { normalized: totalNormalized, errors: totalErrors, validationErrors })
 }
 
 if (import.meta.main) {

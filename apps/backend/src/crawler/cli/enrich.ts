@@ -2,11 +2,13 @@
 /**
  * Enrich Unified JSON with external API metadata
  *
- * Enriches Unified structure with:
+ * Enriches structured-json in-place with:
  * - DOI search for publications (via Crossref API)
  * - Original metadata from JGAD/DRA APIs
+ *
+ * Idempotent: skips files that are already enriched (unless --force)
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync, cpSync } from "fs"
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs"
 import { join, basename } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
@@ -23,7 +25,7 @@ import type {
   EnrichedPublication,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
-import { getResultsDir, ensureDir } from "@/crawler/utils/io"
+import { getResultsDir } from "@/crawler/utils/io"
 import { logger, setLogLevel } from "@/crawler/utils/logger"
 
 // Types
@@ -32,7 +34,6 @@ interface EnrichArgs {
   humId?: string
   force?: boolean
   noCache?: boolean
-  skipCopy?: boolean
   skipDatasets?: boolean
   skipResearch?: boolean
   delayMs?: number
@@ -50,54 +51,6 @@ interface EnrichResult {
 
 const getStructuredJsonDir = (): string =>
   join(getResultsDir(), "structured-json")
-
-const getEnrichedJsonDir = (): string =>
-  join(getResultsDir(), "enriched-json")
-
-// Copy Functions
-
-const copyStructuredToEnriched = (force: boolean, humId?: string): void => {
-  const srcDir = getStructuredJsonDir()
-  const destDir = getEnrichedJsonDir()
-
-  if (!existsSync(srcDir)) {
-    throw new Error(`Source directory not found: ${srcDir}`)
-  }
-
-  const subdirs = ["research", "research-version", "dataset"]
-
-  for (const subdir of subdirs) {
-    const srcSubdir = join(srcDir, subdir)
-    const destSubdir = join(destDir, subdir)
-
-    if (!existsSync(srcSubdir)) {
-      continue
-    }
-
-    ensureDir(destSubdir)
-
-    const files = readdirSync(srcSubdir).filter(f => f.endsWith(".json"))
-
-    for (const file of files) {
-      // Filter by humId if specified
-      if (humId && !file.startsWith(humId)) {
-        continue
-      }
-
-      const srcPath = join(srcSubdir, file)
-      const destPath = join(destSubdir, file)
-
-      // Skip if destination exists and not force
-      if (!force && existsSync(destPath)) {
-        continue
-      }
-
-      cpSync(srcPath, destPath)
-    }
-  }
-
-  logger.info("Copied structured-json to enriched-json")
-}
 
 // Dataset Enrichment
 
@@ -142,8 +95,9 @@ const enrichDatasets = async (
   humId: string | undefined,
   useCache: boolean,
   delayMs: number,
+  force: boolean,
 ): Promise<{ enriched: number; skipped: number; errors: string[] }> => {
-  const datasetDir = join(getEnrichedJsonDir(), "dataset")
+  const datasetDir = join(getStructuredJsonDir(), "dataset")
   if (!existsSync(datasetDir)) {
     return { enriched: 0, skipped: 0, errors: [] }
   }
@@ -164,9 +118,9 @@ const enrichDatasets = async (
       const content = readFileSync(filePath, "utf-8")
       const dataset = JSON.parse(content) as Dataset
 
-      // Skip if already has originalMetadata (re-enrich when cache is disabled)
+      // Skip if already has originalMetadata (unless --force)
       const existingEnriched = dataset as EnrichedDataset
-      if (useCache && existingEnriched.originalMetadata !== undefined) {
+      if (!force && existingEnriched.originalMetadata !== undefined) {
         skipped++
         continue
       }
@@ -210,8 +164,9 @@ const enrichResearch = async (
   humId: string | undefined,
   useCache: boolean,
   delayMs: number,
+  force: boolean,
 ): Promise<{ enriched: number; skipped: number; errors: string[] }> => {
-  const researchDir = join(getEnrichedJsonDir(), "research")
+  const researchDir = join(getStructuredJsonDir(), "research")
   if (!existsSync(researchDir)) {
     return { enriched: 0, skipped: 0, errors: [] }
   }
@@ -231,12 +186,12 @@ const enrichResearch = async (
       const content = readFileSync(filePath, "utf-8")
       const research = JSON.parse(content) as Research
 
-      // Check if all publications already have DOI
+      // Check if all publications already have DOI (unless --force)
       const needsDoi = research.relatedPublication.some(
         pub => pub.doi === undefined || pub.doi === null,
       )
 
-      if (!needsDoi) {
+      if (!force && !needsDoi) {
         skipped++
         continue
       }
@@ -298,6 +253,7 @@ const enrichResearch = async (
 const main = async (args: EnrichArgs): Promise<EnrichResult> => {
   const useCache = !args.noCache
   const delayMs = args.delayMs ?? DEFAULT_API_DELAY_MS
+  const force = args.force ?? false
 
   const result: EnrichResult = {
     datasetsEnriched: 0,
@@ -307,31 +263,19 @@ const main = async (args: EnrichArgs): Promise<EnrichResult> => {
     errors: [],
   }
 
-  // Step 1: Copy structured-json to enriched-json
-  if (!args.skipCopy) {
-    try {
-      copyStructuredToEnriched(args.force ?? false, args.humId)
-    } catch (error) {
-      const msg = `Copy failed: ${getErrorMessage(error)}`
-      result.errors.push(msg)
-      logger.error("Copy failed", { error: getErrorMessage(error) })
-      return result
-    }
-  }
-
-  // Step 2: Enrich datasets
+  // Enrich datasets
   if (!args.skipDatasets) {
     logger.info("Starting dataset enrichment")
-    const datasetResult = await enrichDatasets(args.humId, useCache, delayMs)
+    const datasetResult = await enrichDatasets(args.humId, useCache, delayMs, force)
     result.datasetsEnriched = datasetResult.enriched
     result.datasetsSkipped = datasetResult.skipped
     result.errors.push(...datasetResult.errors)
   }
 
-  // Step 3: Enrich research (DOI)
+  // Enrich research (DOI)
   if (!args.skipResearch) {
     logger.info("Starting research (DOI) enrichment")
-    const researchResult = await enrichResearch(args.humId, useCache, delayMs)
+    const researchResult = await enrichResearch(args.humId, useCache, delayMs, force)
     result.researchEnriched = researchResult.enriched
     result.researchSkipped = researchResult.skipped
     result.errors.push(...researchResult.errors)
@@ -351,18 +295,13 @@ const argv = await yargs(hideBin(process.argv))
   .option("force", {
     alias: "f",
     type: "boolean",
-    description: "Overwrite enriched-json even if it exists",
+    description: "Re-enrich even if already enriched",
     default: false,
   })
   .option("cache", {
     type: "boolean",
     description: "Use cache for API calls (use --no-cache to disable)",
     default: true,
-  })
-  .option("skip-copy", {
-    type: "boolean",
-    description: "Skip copying structured-json to enriched-json",
-    default: false,
   })
   .option("skip-datasets", {
     type: "boolean",
@@ -404,7 +343,6 @@ const args: EnrichArgs = {
   humId: argv["hum-id"],
   force: argv.force,
   noCache: !argv.cache,
-  skipCopy: argv["skip-copy"],
   skipDatasets: argv["skip-datasets"],
   skipResearch: argv["skip-research"],
   delayMs: argv["delay-ms"],
@@ -414,7 +352,6 @@ logger.info("Starting enrich", {
   humId: args.humId ?? "all",
   force: args.force,
   noCache: args.noCache,
-  skipCopy: args.skipCopy,
   skipDatasets: args.skipDatasets,
   skipResearch: args.skipResearch,
   delayMs: args.delayMs,

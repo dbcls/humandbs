@@ -3,13 +3,10 @@
  */
 import { z } from "zod"
 
-import { normalizePolicies } from "@/crawler/processors/normalize"
 import type {
   TextValue,
   Experiment,
   SearchableExperimentFields,
-  SearchableExperiment,
-  NormalizedPolicy,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { logger } from "@/crawler/utils/logger"
@@ -213,22 +210,8 @@ export const extractFieldsFromExperiment = async (
 }
 
 /**
- * Extract policies from experiment data (rule-based, not LLM)
- */
-const extractPoliciesFromExperiment = (experiment: Experiment): NormalizedPolicy[] => {
-  const policiesField = experiment.data["Policies"]
-  if (!policiesField) return []
-
-  return normalizePolicies(
-    policiesField.ja?.text ?? null,
-    policiesField.en?.text ?? null,
-    policiesField.ja?.rawHtml ?? null,
-    policiesField.en?.rawHtml ?? null,
-  )
-}
-
-/**
  * Process experiments in parallel batches
+ * Merges LLM-extracted fields with existing searchable fields (preserving policies from structure step)
  */
 export const processExperimentsParallel = async (
   experiments: Experiment[],
@@ -236,8 +219,8 @@ export const processExperimentsParallel = async (
   concurrency: number,
   dryRun: boolean,
   config?: OllamaConfig,
-): Promise<SearchableExperiment[]> => {
-  const results: SearchableExperiment[] = new Array(experiments.length)
+): Promise<Experiment[]> => {
+  const results: Experiment[] = new Array(experiments.length)
   const total = experiments.length
 
   for (let i = 0; i < total; i += concurrency) {
@@ -253,12 +236,11 @@ export const processExperimentsParallel = async (
         ? createEmptySearchableFields()
         : await extractFieldsFromExperiment(experiment, originalMetadata, config)
 
-      // Add rule-based policies extraction
-      const policies = extractPoliciesFromExperiment(experiment)
-
+      // Merge LLM-extracted fields with existing searchable (preserve policies from structure step)
+      const existingSearchable = experiment.searchable
       const searchable: SearchableExperimentFields = {
         ...llmSearchable,
-        policies,
+        policies: existingSearchable?.policies ?? [],
       }
 
       return { idx, searchable }

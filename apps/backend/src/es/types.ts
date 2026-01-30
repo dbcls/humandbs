@@ -246,6 +246,5 @@ export type {
   DataVolumeUnit,
   DataVolume,
   SearchableExperimentFields,
-  SearchableExperiment,
   SearchableDataset,
 } from "@/crawler/types"

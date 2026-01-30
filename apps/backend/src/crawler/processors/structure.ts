@@ -22,6 +22,7 @@ import {
   matchControlledAccessUsers,
   matchResearchProjects,
 } from "@/crawler/processors/merge"
+import { normalizePolicies } from "@/crawler/processors/normalize"
 import type {
   LangType,
   TextValue,
@@ -50,6 +51,7 @@ import type {
   ResearchProject,
   Grant,
   Publication,
+  SearchableExperimentFields,
 } from "@/crawler/types"
 
 // Criteria Validation
@@ -599,6 +601,38 @@ export const toBilingualText = (ja: string | null, en: string | null): Bilingual
 export const toBilingualTextValue = (ja: TextValue | null, en: TextValue | null): BilingualTextValue => ({ ja, en })
 
 /**
+ * Create empty searchable fields with only policies populated
+ */
+const createSearchableWithPolicies = (
+  jaPolicies: TextValue | null,
+  enPolicies: TextValue | null,
+): SearchableExperimentFields => ({
+  subjectCount: null,
+  subjectCountType: null,
+  healthStatus: null,
+  diseases: [],
+  tissues: [],
+  isTumor: null,
+  cellLine: null,
+  population: null,
+  assayType: null,
+  libraryKits: [],
+  platformVendor: null,
+  platformModel: null,
+  readType: null,
+  readLength: null,
+  targets: null,
+  fileTypes: [],
+  dataVolume: null,
+  policies: normalizePolicies(
+    jaPolicies?.text ?? null,
+    enPolicies?.text ?? null,
+    jaPolicies?.rawHtml ?? null,
+    enPolicies?.rawHtml ?? null,
+  ),
+})
+
+/**
  * Create unified experiments from ja/en experiments
  */
 export const createUnifiedExperiments = (
@@ -624,6 +658,10 @@ export const createUnifiedExperiments = (
       unifiedData[key] = toBilingualTextValue(jaTextValue, enTextValue)
     }
 
+    // Extract policies from experiment data (rule-based)
+    const jaPolicies = pair.ja?.data["Policies"] ?? null
+    const enPolicies = pair.en?.data["Policies"] ?? null
+
     return {
       header: toBilingualTextValue(pair.ja?.header ?? null, pair.en?.header ?? null),
       data: unifiedData,
@@ -631,6 +669,7 @@ export const createUnifiedExperiments = (
         ja: pair.ja?.footers ?? [],
         en: pair.en?.footers ?? [],
       },
+      searchable: createSearchableWithPolicies(jaPolicies, enPolicies),
     }
   })
 }

@@ -1,15 +1,12 @@
 /**
  * LLM Field Extraction
  *
- * Extracts structured fields from EnrichedDataset using Ollama LLM
- * Reads from enriched-json and outputs to extracted-json
+ * Extracts structured fields from Dataset using Ollama LLM
+ * Updates structured-json in-place with searchable fields
  *
- * Process:
- * 1. Copy enriched-json -> extracted-json (or skip with --skip-copy)
- * 2. For each dataset (latest version only), extract fields using LLM
- * 3. Support --resume to continue from where it left off
+ * Idempotent: skips datasets that already have searchable fields (unless --force)
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from "fs"
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs"
 import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
@@ -21,7 +18,7 @@ import {
 } from "@/crawler/llm/extract"
 import type {
   EnrichedDataset,
-  SearchableExperiment,
+  Experiment,
   SearchableDataset,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
@@ -30,66 +27,23 @@ import { logger, setLogLevel } from "@/crawler/utils/logger"
 
 // I/O
 
-const getEnrichedJsonDir = (): string => {
-  return join(getResultsDir(), "enriched-json", "dataset")
+const getStructuredDatasetDir = (): string => {
+  return join(getResultsDir(), "structured-json", "dataset")
 }
 
-const getExtractedDir = (): string => {
-  const dir = join(getResultsDir(), "extracted-json", "dataset")
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
-  return dir
-}
-
-/**
- * Copy enriched-json to extracted-json (if not already exists)
- */
-const copyEnrichedToExtracted = (force = false): void => {
-  const srcBase = join(getResultsDir(), "enriched-json")
-  const dstBase = join(getResultsDir(), "extracted-json")
-
-  if (!existsSync(srcBase)) {
-    logger.error("Error: enriched-json directory does not exist")
-    logger.error("Please run enrich-unified first")
-    process.exit(1)
-  }
-
-  if (existsSync(dstBase) && !force) {
-    logger.info("extracted-json directory already exists (use --force to overwrite)")
-    return
-  }
-
-  logger.info("Copying enriched-json to extracted-json...")
-  cpSync(srcBase, dstBase, { recursive: true })
-  logger.info("Copy completed")
-}
-
-const readEnrichedDataset = (filename: string): EnrichedDataset | null => {
-  const filePath = join(getEnrichedJsonDir(), filename)
+const readDataset = (filename: string): EnrichedDataset | null => {
+  const filePath = join(getStructuredDatasetDir(), filename)
   if (!existsSync(filePath)) return null
   try {
     return JSON.parse(readFileSync(filePath, "utf8"))
   } catch (error) {
-    logger.error("Failed to read enriched dataset", { filename, error: getErrorMessage(error) })
+    logger.error("Failed to read dataset", { filename, error: getErrorMessage(error) })
     return null
   }
 }
 
-const readExtractedDataset = (filename: string): SearchableDataset | null => {
-  const filePath = join(getExtractedDir(), filename)
-  if (!existsSync(filePath)) return null
-  try {
-    return JSON.parse(readFileSync(filePath, "utf8"))
-  } catch (error) {
-    logger.error("Failed to read extracted dataset", { filename, error: getErrorMessage(error) })
-    return null
-  }
-}
-
-const writeExtractedDataset = (filename: string, data: SearchableDataset): void => {
-  const dir = getExtractedDir()
-  const filePath = join(dir, filename)
+const writeDataset = (filename: string, data: SearchableDataset): void => {
+  const filePath = join(getStructuredDatasetDir(), filename)
   writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
 }
 
@@ -101,9 +55,9 @@ const parseVersionNumber = (version: string): number => {
   return match ? parseInt(match[1], 10) : 0
 }
 
-/** Get list of enriched dataset files */
-const listEnrichedDatasetFiles = (): string[] => {
-  const dir = getEnrichedJsonDir()
+/** Get list of dataset files */
+const listDatasetFiles = (): string[] => {
+  const dir = getStructuredDatasetDir()
   if (!existsSync(dir)) return []
   return readdirSync(dir).filter(f => f.endsWith(".json"))
 }
@@ -159,12 +113,18 @@ const processDataset = async (
   const { datasetId, version } = parsed
   logger.info("Processing dataset", { datasetId, version })
 
-  // Check for existing extracted data (dataset-level resume)
-  const existing = readExtractedDataset(filename)
-  const isCompleted = existing != null && isExtractionComplete(existing)
+  // Read current dataset
+  const dataset = readDataset(filename)
+  if (!dataset) {
+    logger.error("Failed to read dataset", { filename })
+    return
+  }
+
+  const existing = dataset as SearchableDataset
+  const isCompleted = isExtractionComplete(existing)
 
   // --retry-failed: re-extract only failed experiments in completed datasets
-  if (retryFailed && isCompleted && existing) {
+  if (retryFailed && isCompleted) {
     const existingExperiments = existing.experiments
     const failedIndices: number[] = []
     for (let i = 0; i < existingExperiments.length; i++) {
@@ -181,25 +141,18 @@ const processDataset = async (
 
     logger.info("Retrying failed experiments", { filename, failedCount: failedIndices.length, totalCount: existingExperiments.length })
 
-    // Read source data (from enriched-json)
-    const enriched = readEnrichedDataset(filename)
-    if (!enriched) {
-      logger.error("Failed to read enriched dataset", { filename })
-      return
-    }
-
     // Extract only failed experiments
-    const failedExperiments = failedIndices.map(i => enriched.experiments[i])
+    const failedExperiments = failedIndices.map(i => dataset.experiments[i])
     const reExtracted = await processExperimentsParallel(
       failedExperiments,
-      enriched.originalMetadata ?? null,
+      dataset.originalMetadata ?? null,
       experimentConcurrency,
       dryRun,
       ollamaConfig,
     )
 
     // Merge: keep existing successful, replace failed with re-extracted
-    const mergedExperiments: SearchableExperiment[] = [...existingExperiments]
+    const mergedExperiments: Experiment[] = [...existingExperiments]
     for (let j = 0; j < failedIndices.length; j++) {
       mergedExperiments[failedIndices[j]] = reExtracted[j]
     }
@@ -210,10 +163,10 @@ const processDataset = async (
     }
 
     if (!dryRun) {
-      writeExtractedDataset(filename, finalResult)
-      logger.info("Saved dataset (retry-failed)", { output: `extracted-json/dataset/${filename}` })
+      writeDataset(filename, finalResult)
+      logger.info("Saved dataset (retry-failed)", { output: `structured-json/dataset/${filename}` })
     } else {
-      logger.info("[dry-run] Would save dataset (retry-failed)", { output: `extracted-json/dataset/${filename}`, failedCount: failedIndices.length })
+      logger.info("[dry-run] Would save dataset (retry-failed)", { output: `structured-json/dataset/${filename}`, failedCount: failedIndices.length })
     }
     return
   }
@@ -224,34 +177,27 @@ const processDataset = async (
     return
   }
 
-  // Read source data (from enriched-json)
-  const enriched = readEnrichedDataset(filename)
-  if (!enriched) {
-    logger.error("Failed to read enriched dataset", { filename })
-    return
-  }
-
-  logger.debug("Dataset experiments", { count: enriched.experiments.length, experimentConcurrency })
+  logger.debug("Dataset experiments", { count: dataset.experiments.length, experimentConcurrency })
 
   // Process all experiments in parallel batches
   const experiments = await processExperimentsParallel(
-    enriched.experiments,
-    enriched.originalMetadata ?? null,
+    dataset.experiments,
+    dataset.originalMetadata ?? null,
     experimentConcurrency,
     dryRun,
     ollamaConfig,
   )
 
   const finalResult: SearchableDataset = {
-    ...enriched,
+    ...dataset,
     experiments,
   }
 
   if (!dryRun) {
-    writeExtractedDataset(filename, finalResult)
-    logger.info("Saved dataset", { output: `extracted-json/dataset/${filename}` })
+    writeDataset(filename, finalResult)
+    logger.info("Saved dataset", { output: `structured-json/dataset/${filename}` })
   } else {
-    logger.info("[dry-run] Would save dataset", { output: `extracted-json/dataset/${filename}` })
+    logger.info("[dry-run] Would save dataset", { output: `structured-json/dataset/${filename}` })
   }
 }
 
@@ -266,7 +212,6 @@ interface ExtractArgs {
   experimentConcurrency?: number
   dryRun?: boolean
   force?: boolean
-  skipCopy?: boolean
   latestOnly?: boolean
   retryFailed?: boolean
   verbose?: boolean
@@ -283,7 +228,6 @@ const parseArgs = (): ExtractArgs => {
     .option("experiment-concurrency", { alias: "e", type: "number", default: 4, description: "Concurrent experiment LLM calls per dataset" })
     .option("dry-run", { type: "boolean", default: false, description: "Dry run without LLM calls" })
     .option("force", { type: "boolean", default: false, description: "Force reprocess even if already completed" })
-    .option("skip-copy", { type: "boolean", default: false, description: "Skip copying enriched-json to extracted-json" })
     .option("latest-only", { type: "boolean", default: true, description: "Process only the latest version of each dataset" })
     .option("retry-failed", { type: "boolean", default: false, description: "Retry only experiments with empty extracted fields" })
     .option("verbose", { alias: "v", type: "boolean", default: false, description: "Show debug logs" })
@@ -322,12 +266,8 @@ const main = async (): Promise<void> => {
 
   logger.debug("Concurrency settings", { datasetConcurrency: concurrency, experimentConcurrency })
 
-  if (!args.skipCopy && !retryFailed) {
-    copyEnrichedToExtracted(args.force)
-  }
-
   // Get list of dataset files
-  let files = listEnrichedDatasetFiles()
+  let files = listDatasetFiles()
 
   // Filter by specific file
   if (args.file) {
@@ -339,7 +279,7 @@ const main = async (): Promise<void> => {
   if (args.humId && args.humId.length > 0) {
     const humIdSet = new Set(args.humId)
     files = files.filter(f => {
-      const data = readEnrichedDataset(f)
+      const data = readDataset(f)
       return data && humIdSet.has(data.humId)
     })
   }
@@ -371,8 +311,7 @@ const main = async (): Promise<void> => {
     await Promise.all(batch.map(f => processDataset(f, { dryRun, force, retryFailed, experimentConcurrency, ollamaConfig })))
   }
 
-  const outputDir = join(getResultsDir(), "extracted-json")
-  logger.info("Completed", { outputDir })
+  logger.info("Completed", { outputDir: getStructuredDatasetDir() })
 }
 
 if (import.meta.main) {

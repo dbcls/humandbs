@@ -20,7 +20,7 @@ import type {
   Publication,
   ResearchProject,
   SearchableDataset,
-  SearchableExperiment,
+  Experiment,
 } from "@/crawler/types"
 import { getResultsDir } from "@/crawler/utils/io"
 import { logger, setLogLevel } from "@/crawler/utils/logger"
@@ -622,7 +622,7 @@ const EXPERIMENT_HEADERS = [
 
 const experimentToRow = (
   d: SearchableDataset,
-  exp: SearchableExperiment,
+  exp: Experiment,
   expIndex: number,
 ): unknown[] => {
   const s = exp.searchable

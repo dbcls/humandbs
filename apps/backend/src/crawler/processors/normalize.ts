@@ -38,6 +38,7 @@ import {
   getPolicyCanonical,
   getPolicyNormalizeMap,
   getPolicyUrlToCanonicalMap,
+  hasCriteriaOverrideForHum,
 } from "@/crawler/config/mapping"
 import { isValidDatasetId } from "@/crawler/config/patterns"
 import { loadMolDataMappingTable, buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/processors/mapping-table"
@@ -149,10 +150,20 @@ export const normalizeCellValue = (cell: HTMLTableCellElement): string | null =>
 // Criteria normalization
 
 /**
+ * Context for normalization logging
+ */
+export interface NormalizeCriteriaContext {
+  humVersionId?: string
+  datasetId?: string | null
+  onValidationError?: () => void
+}
+
+/**
  * Normalize criteria value to canonical form (single value)
  */
 export const normalizeCriteria = (
   value: string | null | undefined,
+  context?: NormalizeCriteriaContext,
 ): CriteriaCanonical | null => {
   if (!value) return null
 
@@ -170,15 +181,20 @@ export const normalizeCriteria = (
     if (canonical) {
       results.push(canonical)
     } else {
-      logger.warn("Unknown criteria value", { value: part, normalizedKey: key })
+      logger.warn("Unknown criteria value", { value: part, normalizedKey: key, ...context })
     }
   }
 
   if (results.length === 0) return null
 
-  // Warn if multiple criteria values found
+  // Error if multiple criteria values found without override
   if (results.length > 1) {
-    logger.warn("Multiple criteria values found, using first", { values: results })
+    const humId = context?.humVersionId?.split("-v")[0]
+    const hasOverride = humId ? hasCriteriaOverrideForHum(humId) : false
+    if (!hasOverride) {
+      logger.error("Multiple criteria values found without override, using first", { values: results, humVersionId: context?.humVersionId, datasetId: context?.datasetId })
+      context?.onValidationError?.()
+    }
   }
 
   return results[0]
@@ -1214,6 +1230,8 @@ export interface NormalizeOptions {
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>
   /** Function to extract IDs by type from text */
   extractIdsByType: (text: string) => Record<string, string[]>
+  /** Callback when validation error occurs (e.g., multiple criteria without override) */
+  onValidationError?: () => void
 }
 
 /**
@@ -1243,7 +1261,7 @@ export const normalizeParseResult = async (
         ...ds,
         datasetId: ds.datasetId ? fixDatasetId(normalizeText(ds.datasetId, true)) : null,
         typeOfData: ds.typeOfData ? normalizeText(ds.typeOfData, true) : null,
-        criteria: normalizeCriteria(ds.criteria),
+        criteria: normalizeCriteria(ds.criteria, { humVersionId, datasetId: ds.datasetId, onValidationError: options.onValidationError }),
         releaseDate: ds.releaseDate ? fixReleaseDate(normalizeText(ds.releaseDate, true)) : null,
       })),
       footers: detail.summary.footers.map(f => ({
