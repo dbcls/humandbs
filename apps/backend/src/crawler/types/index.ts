@@ -77,7 +77,7 @@ export type {
   ResearchVersion,
 } from "./structured"
 
-// Refined types (LLM-extracted + rule-based fields)
+// Searchable types (LLM-extracted + rule-based fields for search)
 export type {
   SubjectCountType,
   HealthStatus,
@@ -86,9 +86,9 @@ export type {
   PlatformInfo,
   DataVolumeUnit,
   DataVolume,
-  RefinedExperimentFields,
-  RefinedExperiment,
-  RefinedDataset,
+  SearchableExperimentFields,
+  SearchableExperiment,
+  SearchableDataset,
 } from "./extracted"
 
 // API types (enriched with external API data)

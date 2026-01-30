@@ -1,14 +1,14 @@
 import { describe, expect, it } from "bun:test"
 
 import {
-  createEmptyRefinedFields,
-  isEmptyRefinedFields,
-  parseRefinedFields,
+  createEmptySearchableFields,
+  isEmptySearchableFields,
+  parseSearchableFields,
 } from "@/crawler/llm/extract"
 
-describe("createEmptyRefinedFields", () => {
+describe("createEmptySearchableFields", () => {
   it("should return all fields with null or empty defaults", () => {
-    const empty = createEmptyRefinedFields()
+    const empty = createEmptySearchableFields()
     expect(empty.subjectCount).toBeNull()
     expect(empty.subjectCountType).toBeNull()
     expect(empty.healthStatus).toBeNull()
@@ -29,39 +29,39 @@ describe("createEmptyRefinedFields", () => {
   })
 })
 
-describe("isEmptyRefinedFields", () => {
+describe("isEmptySearchableFields", () => {
   it("should return true when all fields are default values", () => {
-    const empty = createEmptyRefinedFields()
-    expect(isEmptyRefinedFields(empty)).toBe(true)
+    const empty = createEmptySearchableFields()
+    expect(isEmptySearchableFields(empty)).toBe(true)
   })
 
   it("should return false when a scalar field has a value", () => {
-    const fields = { ...createEmptyRefinedFields(), subjectCount: 10 }
-    expect(isEmptyRefinedFields(fields)).toBe(false)
+    const fields = { ...createEmptySearchableFields(), subjectCount: 10 }
+    expect(isEmptySearchableFields(fields)).toBe(false)
   })
 
   it("should return false when an enum field has a value", () => {
-    const fields = { ...createEmptyRefinedFields(), healthStatus: "healthy" as const }
-    expect(isEmptyRefinedFields(fields)).toBe(false)
+    const fields = { ...createEmptySearchableFields(), healthStatus: "healthy" as const }
+    expect(isEmptySearchableFields(fields)).toBe(false)
   })
 
   it("should return false when an array field has elements", () => {
-    const fields = { ...createEmptyRefinedFields(), diseases: [{ label: "cancer", icd10: null }] }
-    expect(isEmptyRefinedFields(fields)).toBe(false)
+    const fields = { ...createEmptySearchableFields(), diseases: [{ label: "cancer", icd10: null }] }
+    expect(isEmptySearchableFields(fields)).toBe(false)
   })
 
   it("should return false when tissues array has elements", () => {
-    const fields = { ...createEmptyRefinedFields(), tissues: ["blood"] }
-    expect(isEmptyRefinedFields(fields)).toBe(false)
+    const fields = { ...createEmptySearchableFields(), tissues: ["blood"] }
+    expect(isEmptySearchableFields(fields)).toBe(false)
   })
 
   it("should return false when dataVolume has a value", () => {
-    const fields = { ...createEmptyRefinedFields(), dataVolume: { value: 1.5, unit: "TB" as const } }
-    expect(isEmptyRefinedFields(fields)).toBe(false)
+    const fields = { ...createEmptySearchableFields(), dataVolume: { value: 1.5, unit: "TB" as const } }
+    expect(isEmptySearchableFields(fields)).toBe(false)
   })
 })
 
-describe("parseRefinedFields", () => {
+describe("parseSearchableFields", () => {
   it("should parse valid JSON with all fields", () => {
     const input = JSON.stringify({
       subjectCount: 30,
@@ -83,7 +83,7 @@ describe("parseRefinedFields", () => {
       dataVolume: { value: 1.5, unit: "TB" },
     })
 
-    const result = parseRefinedFields(input)
+    const result = parseSearchableFields(input)
     expect(result.subjectCount).toBe(30)
     expect(result.subjectCountType).toBe("individual")
     expect(result.healthStatus).toBe("mixed")
@@ -102,8 +102,8 @@ describe("parseRefinedFields", () => {
   })
 
   it("should return empty fields for invalid JSON", () => {
-    const result = parseRefinedFields("not json")
-    expect(result).toEqual(createEmptyRefinedFields())
+    const result = parseSearchableFields("not json")
+    expect(result).toEqual(createEmptySearchableFields())
   })
 
   it("should coerce invalid enum values to null", () => {
@@ -113,7 +113,7 @@ describe("parseRefinedFields", () => {
       readType: "other",
     })
 
-    const result = parseRefinedFields(input)
+    const result = parseSearchableFields(input)
     expect(result.subjectCountType).toBeNull()
     expect(result.healthStatus).toBeNull()
     expect(result.readType).toBeNull()
@@ -128,7 +128,7 @@ describe("parseRefinedFields", () => {
       dataVolume: { value: "bad", unit: "GB" },
     })
 
-    const result = parseRefinedFields(input)
+    const result = parseSearchableFields(input)
     expect(result.subjectCount).toBeNull()
     expect(result.diseases).toEqual([])
     expect(result.tissues).toEqual([])
@@ -142,7 +142,7 @@ describe("parseRefinedFields", () => {
       assayType: "RNA-seq",
     })
 
-    const result = parseRefinedFields(input)
+    const result = parseSearchableFields(input)
     expect(result.subjectCount).toBe(10)
     expect(result.assayType).toBe("RNA-seq")
     expect(result.diseases).toEqual([])
@@ -160,15 +160,15 @@ describe("parseRefinedFields", () => {
       ],
     })
 
-    const result = parseRefinedFields(input)
+    const result = parseSearchableFields(input)
     expect(result.diseases).toEqual([{ label: "valid", icd10: "C34" }])
   })
 
   it("should validate dataVolume unit", () => {
     const valid = JSON.stringify({ dataVolume: { value: 100, unit: "GB" } })
-    expect(parseRefinedFields(valid).dataVolume).toEqual({ value: 100, unit: "GB" })
+    expect(parseSearchableFields(valid).dataVolume).toEqual({ value: 100, unit: "GB" })
 
     const invalid = JSON.stringify({ dataVolume: { value: 100, unit: "PB" } })
-    expect(parseRefinedFields(invalid).dataVolume).toBeNull()
+    expect(parseSearchableFields(invalid).dataVolume).toBeNull()
   })
 })

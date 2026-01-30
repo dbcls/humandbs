@@ -7,8 +7,8 @@ import { normalizePolicies } from "@/crawler/processors/normalize"
 import type {
   TextValue,
   Experiment,
-  RefinedExperimentFields,
-  RefinedExperiment,
+  SearchableExperimentFields,
+  SearchableExperiment,
   NormalizedPolicy,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
@@ -41,7 +41,7 @@ const safeFilteredArray = <T extends z.ZodType>(schema: T) =>
     return results
   })
 
-export const RefinedExperimentFieldsSchema = z.object({
+export const SearchableExperimentFieldsSchema = z.object({
   subjectCount: z.number().nullable().catch(null),
   subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable().catch(null),
   healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable().catch(null),
@@ -64,9 +64,9 @@ export const RefinedExperimentFieldsSchema = z.object({
 // Validation Functions
 
 /**
- * Create empty refined fields with default values
+ * Create empty searchable fields with default values
  */
-export const createEmptyRefinedFields = (): RefinedExperimentFields => ({
+export const createEmptySearchableFields = (): SearchableExperimentFields => ({
   subjectCount: null,
   subjectCountType: null,
   healthStatus: null,
@@ -88,10 +88,10 @@ export const createEmptyRefinedFields = (): RefinedExperimentFields => ({
 })
 
 /**
- * Check if refined fields are all default (empty) values
+ * Check if searchable fields are all default (empty) values
  * Note: policies are excluded from this check as they are rule-based, not LLM-extracted
  */
-export const isEmptyRefinedFields = (fields: RefinedExperimentFields): boolean => {
+export const isEmptySearchableFields = (fields: SearchableExperimentFields): boolean => {
   return (
     fields.subjectCount === null &&
     fields.subjectCountType === null &&
@@ -114,15 +114,15 @@ export const isEmptyRefinedFields = (fields: RefinedExperimentFields): boolean =
 }
 
 /**
- * Parse LLM JSON output into RefinedExperimentFields
+ * Parse LLM JSON output into SearchableExperimentFields
  * Note: policies are extracted separately (rule-based) and added as empty array here
  */
-export const parseRefinedFields = (jsonStr: string): RefinedExperimentFields => {
-  const empty = createEmptyRefinedFields()
+export const parseSearchableFields = (jsonStr: string): SearchableExperimentFields => {
+  const empty = createEmptySearchableFields()
 
   try {
     const parsed = JSON.parse(jsonStr)
-    const llmFields = RefinedExperimentFieldsSchema.parse(parsed)
+    const llmFields = SearchableExperimentFieldsSchema.parse(parsed)
     // Add empty policies array (will be populated by rule-based extraction)
     return {
       ...llmFields,
@@ -194,7 +194,7 @@ export const extractFieldsFromExperiment = async (
   experiment: Experiment,
   originalMetadata: Record<string, unknown> | null = null,
   config?: OllamaConfig,
-): Promise<RefinedExperimentFields> => {
+): Promise<SearchableExperimentFields> => {
   const input = convertUnifiedToLlmInput(experiment, originalMetadata)
   const userContent = JSON.stringify(input, null, 2)
 
@@ -205,10 +205,10 @@ export const extractFieldsFromExperiment = async (
 
   try {
     const response = await chat(messages, config)
-    return parseRefinedFields(response)
+    return parseSearchableFields(response)
   } catch (error) {
     logger.error("Failed to extract fields from LLM", { error: getErrorMessage(error) })
-    return createEmptyRefinedFields()
+    return createEmptySearchableFields()
   }
 }
 
@@ -236,8 +236,8 @@ export const processExperimentsParallel = async (
   concurrency: number,
   dryRun: boolean,
   config?: OllamaConfig,
-): Promise<RefinedExperiment[]> => {
-  const results: RefinedExperiment[] = new Array(experiments.length)
+): Promise<SearchableExperiment[]> => {
+  const results: SearchableExperiment[] = new Array(experiments.length)
   const total = experiments.length
 
   for (let i = 0; i < total; i += concurrency) {
@@ -249,25 +249,25 @@ export const processExperimentsParallel = async (
     const batchPromises = batchIndices.map(async (idx) => {
       const experiment = experiments[idx]
 
-      const llmRefined = dryRun
-        ? createEmptyRefinedFields()
+      const llmSearchable = dryRun
+        ? createEmptySearchableFields()
         : await extractFieldsFromExperiment(experiment, originalMetadata, config)
 
       // Add rule-based policies extraction
       const policies = extractPoliciesFromExperiment(experiment)
 
-      const refined: RefinedExperimentFields = {
-        ...llmRefined,
+      const searchable: SearchableExperimentFields = {
+        ...llmSearchable,
         policies,
       }
 
-      return { idx, refined }
+      return { idx, searchable }
     })
 
     const batchResults = await Promise.all(batchPromises)
 
-    for (const { idx, refined } of batchResults) {
-      results[idx] = { ...experiments[idx], refined }
+    for (const { idx, searchable } of batchResults) {
+      results[idx] = { ...experiments[idx], searchable }
     }
   }
 

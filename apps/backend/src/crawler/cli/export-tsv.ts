@@ -19,8 +19,8 @@ import type {
   Grant,
   Publication,
   ResearchProject,
-  RefinedDataset,
-  RefinedExperiment,
+  SearchableDataset,
+  SearchableExperiment,
 } from "@/crawler/types"
 import { getResultsDir } from "@/crawler/utils/io"
 import { logger, setLogLevel } from "@/crawler/utils/logger"
@@ -552,7 +552,7 @@ const DATASET_HEADERS = [
   "comment",
 ]
 
-const datasetToRow = (d: RefinedDataset): unknown[] => {
+const datasetToRow = (d: SearchableDataset): unknown[] => {
   return [
     d.humId,
     d.humVersionId,
@@ -580,7 +580,7 @@ export const exportDatasetTsv = async (options: ExportOptions): Promise<void> =>
     return true
   }
 
-  const datasets = readJsonFiles<RefinedDataset>(dir, filter)
+  const datasets = readJsonFiles<SearchableDataset>(dir, filter)
     .sort(sortByHumIdVersionDataset)
 
   const rows = datasets.map(d => datasetToRow(d) as string[])
@@ -599,33 +599,33 @@ const EXPERIMENT_HEADERS = [
   "experimentIndex",
   "header_ja",
   "header_en",
-  // Refined fields
-  "refined_subjectCount",
-  "refined_subjectCountType",
-  "refined_healthStatus",
-  "refined_diseases",
-  "refined_tissues",
-  "refined_isTumor",
-  "refined_cellLine",
-  "refined_population",
-  "refined_assayType",
-  "refined_libraryKits",
-  "refined_platformVendor",
-  "refined_platformModel",
-  "refined_readType",
-  "refined_readLength",
-  "refined_targets",
-  "refined_fileTypes",
-  "refined_dataVolume",
+  // Searchable fields
+  "searchable_subjectCount",
+  "searchable_subjectCountType",
+  "searchable_healthStatus",
+  "searchable_diseases",
+  "searchable_tissues",
+  "searchable_isTumor",
+  "searchable_cellLine",
+  "searchable_population",
+  "searchable_assayType",
+  "searchable_libraryKits",
+  "searchable_platformVendor",
+  "searchable_platformModel",
+  "searchable_readType",
+  "searchable_readLength",
+  "searchable_targets",
+  "searchable_fileTypes",
+  "searchable_dataVolume",
   "comment",
 ]
 
 const experimentToRow = (
-  d: RefinedDataset,
-  exp: RefinedExperiment,
+  d: SearchableDataset,
+  exp: SearchableExperiment,
   expIndex: number,
 ): unknown[] => {
-  const ref = exp.refined
+  const s = exp.searchable
   return [
     d.humId,
     d.humVersionId,
@@ -634,24 +634,24 @@ const experimentToRow = (
     expIndex,
     bilingualTextValueToJa(exp.header),
     bilingualTextValueToEn(exp.header),
-    // Refined
-    ref?.subjectCount ?? "",
-    ref?.subjectCountType ?? "",
-    ref?.healthStatus ?? "",
-    JSON.stringify(ref?.diseases?.map(dis => dis.icd10 ? `${dis.label}(${dis.icd10})` : dis.label) ?? []),
-    JSON.stringify(ref?.tissues ?? []),
-    ref?.isTumor ?? "",
-    ref?.cellLine ?? "",
-    ref?.population ?? "",
-    ref?.assayType ?? "",
-    JSON.stringify(ref?.libraryKits ?? []),
-    ref?.platformVendor ?? "",
-    ref?.platformModel ?? "",
-    ref?.readType ?? "",
-    ref?.readLength ?? "",
-    ref?.targets ?? "",
-    JSON.stringify(ref?.fileTypes ?? []),
-    ref?.dataVolume ? `${ref.dataVolume.value} ${ref.dataVolume.unit}` : "",
+    // Searchable
+    s?.subjectCount ?? "",
+    s?.subjectCountType ?? "",
+    s?.healthStatus ?? "",
+    JSON.stringify(s?.diseases?.map(dis => dis.icd10 ? `${dis.label}(${dis.icd10})` : dis.label) ?? []),
+    JSON.stringify(s?.tissues ?? []),
+    s?.isTumor ?? "",
+    s?.cellLine ?? "",
+    s?.population ?? "",
+    s?.assayType ?? "",
+    JSON.stringify(s?.libraryKits ?? []),
+    s?.platformVendor ?? "",
+    s?.platformModel ?? "",
+    s?.readType ?? "",
+    s?.readLength ?? "",
+    s?.targets ?? "",
+    JSON.stringify(s?.fileTypes ?? []),
+    s?.dataVolume ? `${s.dataVolume.value} ${s.dataVolume.unit}` : "",
     "", // comment
   ]
 }
@@ -665,7 +665,7 @@ export const exportExperimentTsv = async (options: ExportOptions): Promise<void>
     return true
   }
 
-  const datasets = readJsonFiles<RefinedDataset>(dir, filter)
+  const datasets = readJsonFiles<SearchableDataset>(dir, filter)
     .sort(sortByHumIdVersionDataset)
 
   const rows: string[][] = []

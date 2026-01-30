@@ -1,7 +1,7 @@
 /**
  * Dataset Elasticsearch schema definition
  *
- * Corresponds to RefinedDataset type from crawler/types/extracted.ts
+ * Corresponds to SearchableDataset type from crawler/types/extracted.ts
  */
 import { f, generateMapping } from "./generate-mapping"
 
@@ -45,8 +45,8 @@ export const datasetSchema = {
       }),
     }),
 
-    // Refined fields (LLM-extracted + rule-based)
-    refined: f.object({
+    // Searchable fields (LLM-extracted + rule-based)
+    searchable: f.object({
       // Subject/sample info
       subjectCount: f.integer(),
       subjectCountType: f.keyword(),

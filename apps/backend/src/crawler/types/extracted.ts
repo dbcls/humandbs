@@ -1,7 +1,8 @@
 /**
  * LLM extraction type definitions
  *
- * "refined" indicates data that has been refined/extracted from raw experiment data
+ * "searchable" indicates fields that are extracted/refined for search functionality
+ * These fields are derived from raw experiment data via LLM + rule-based extraction
  */
 import type { NormalizedPolicy } from "./common"
 import type { Experiment, Dataset } from "./structured"
@@ -35,8 +36,8 @@ export interface DataVolume {
   unit: DataVolumeUnit
 }
 
-/** Experiment-level refined fields (extracted via LLM + rule-based) */
-export interface RefinedExperimentFields {
+/** Experiment-level searchable fields (extracted via LLM + rule-based) */
+export interface SearchableExperimentFields {
   // Subject/sample info
   subjectCount: number | null
   subjectCountType: SubjectCountType | null
@@ -72,13 +73,18 @@ export interface RefinedExperimentFields {
   policies: NormalizedPolicy[]
 }
 
-/** Experiment with refined fields */
-export interface RefinedExperiment extends Experiment {
-  refined: RefinedExperimentFields
+/**
+ * Experiment with searchable fields
+ * - Latest version datasets: searchable field is present
+ * - Historical version datasets: searchable field may be undefined
+ */
+export interface SearchableExperiment extends Experiment {
+  searchable?: SearchableExperimentFields
 }
 
-/** Dataset with refined experiments (searchable fields aggregated dynamically) */
-export interface RefinedDataset extends Omit<Dataset, "experiments"> {
-  experiments: RefinedExperiment[]
+/** Dataset with searchable experiments */
+export interface SearchableDataset extends Omit<Dataset, "experiments"> {
+  experiments: SearchableExperiment[]
   originalMetadata?: Record<string, unknown> | null
 }
+

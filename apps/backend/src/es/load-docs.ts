@@ -24,15 +24,16 @@ interface DataVolume {
   unit: "KB" | "MB" | "GB" | "TB"
 }
 
-interface RefinedFields {
+interface SearchableFields {
   dataVolume?: DataVolume | null
   dataVolumeBytes?: number | null
   [key: string]: unknown
 }
 
 interface ExperimentDoc {
-  refined?: RefinedFields
-  extracted?: RefinedFields // Legacy field name, will be renamed to 'refined'
+  searchable?: SearchableFields
+  refined?: SearchableFields // Legacy field name, will be renamed to 'searchable'
+  extracted?: SearchableFields // Legacy field name, will be renamed to 'searchable'
   [key: string]: unknown
 }
 
@@ -110,8 +111,8 @@ const dataVolumeToBytes = (dv: DataVolume | null | undefined): number | null => 
 
 /**
  * Transform dataset document for ES indexing
- * - Rename 'extracted' to 'refined' (for legacy data)
- * - Convert dataVolume to dataVolumeBytes in experiments.refined
+ * - Rename 'refined' or 'extracted' to 'searchable' (for legacy data)
+ * - Convert dataVolume to dataVolumeBytes in experiments.searchable
  */
 const transformDataset = (doc: DatasetDoc): DatasetDoc => {
   if (!doc.experiments) return doc
@@ -119,17 +120,18 @@ const transformDataset = (doc: DatasetDoc): DatasetDoc => {
   return {
     ...doc,
     experiments: doc.experiments.map((exp) => {
-      // Support both 'refined' and legacy 'extracted' field names
-      const refinedData = exp.refined ?? exp.extracted
-      if (!refinedData) return exp
+      // Support 'searchable', 'refined', and legacy 'extracted' field names
+      const searchableData = exp.searchable ?? exp.refined ?? exp.extracted
+      if (!searchableData) return exp
 
-      const { dataVolume, ...restRefined } = refinedData
-       
-      const { extracted, ...restExp } = exp // Remove 'extracted' field if present
+      const { dataVolume, ...restSearchable } = searchableData
+
+      // Remove legacy field names if present
+      const { extracted, refined, ...restExp } = exp
       return {
         ...restExp,
-        refined: {
-          ...restRefined,
+        searchable: {
+          ...restSearchable,
           dataVolumeBytes: dataVolumeToBytes(dataVolume),
         },
       }

@@ -1,8 +1,27 @@
 /**
  * API-specific type definitions
- * Extends crawler/types with authentication, authorization, and workflow types
+ *
+ * This module provides:
+ * - Authentication & authorization types (JWT, AuthUser)
+ * - Research workflow types (status, transitions)
+ * - API request/response schemas (CRUD operations, search, pagination)
+ *
+ * For ES document types and zod schemas, see: @/es/types
+ * For crawler types (structured data), see: @/crawler/types
  */
 import { z } from "zod"
+
+// Re-export ES types for convenience
+export type {
+  EsDataset,
+  EsResearch,
+  EsResearchVersion,
+  EsExperiment,
+  EsPerson,
+  EsGrant,
+  EsPublication,
+  EsSummary,
+} from "@/es/types"
 
 // === Common Schemas ===
 
@@ -167,26 +186,26 @@ const EsPersonSchema = z.object({
   datasetIds: z.array(z.string()).optional(),
   researchTitle: z.string().nullable().optional(),
   periodOfDataUse: z.string().nullable().optional(),
-}).passthrough()
+}).loose()
 
 const EsResearchProjectSchema = z.object({
   name: z.string(),
   url: z.string().nullable().optional(),
-}).passthrough()
+}).loose()
 
 const EsGrantSchema = z.object({
   id: z.string(),
   title: z.string(),
   agency: z.object({
     name: z.string(),
-  }).passthrough(),
-}).passthrough()
+  }).loose(),
+}).loose()
 
 const EsPublicationSchema = z.object({
   title: z.string(),
   doi: z.string().nullable().optional(),
   datasetIds: z.array(z.string()).optional(),
-}).passthrough()
+}).loose()
 
 const EsSummarySchema = z.object({
   aims: z.string(),
@@ -196,7 +215,7 @@ const EsSummarySchema = z.object({
     url: z.string(),
     text: z.string(),
   })),
-}).passthrough()
+}).loose()
 
 export const EsResearchDocSchema = z.object({
   humId: z.string(),
@@ -917,6 +936,25 @@ export const UserIdParamsSchema = z.object({
   userId: z.string(),
 })
 export type UserIdParams = z.infer<typeof UserIdParamsSchema>
+
+// === Simple Response Schemas ===
+
+export const HealthResponseSchema = z.object({
+  status: z.string(),
+  timestamp: z.string(),
+})
+export type HealthResponse = z.infer<typeof HealthResponseSchema>
+
+export const IsAdminResponseSchema = z.object({
+  isAdmin: z.boolean(),
+})
+export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
+
+export const ErrorResponseSchema = z.object({
+  error: z.string(),
+  message: z.string().nullable().optional(),
+})
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
 
 // Re-export schemas for route definitions
 export { DatasetSchema, ResearchSchema, ResearchVersionSchema }

@@ -23,8 +23,8 @@ import type {
   DataVolumeUnit,
   Research,
   Publication,
-  RefinedDataset,
-  RefinedExperimentFields,
+  SearchableDataset,
+  SearchableExperimentFields,
   HealthStatus,
   SubjectCountType,
   ReadType,
@@ -194,7 +194,7 @@ export const importDatasetTsv = (): void => {
     const filename = `${row.datasetId}-${row.version}.json`
     const filePath = join(finalDir, filename)
 
-    const dataset = readJsonFile<RefinedDataset>(filePath)
+    const dataset = readJsonFile<SearchableDataset>(filePath)
     if (!dataset) {
       logger.warn("Skipped: file not found", { filename })
       continue
@@ -250,7 +250,7 @@ export const importExperimentTsv = (): void => {
   for (const [filename, expRows] of groupedRows) {
     const filePath = join(finalDir, filename)
 
-    const dataset = readJsonFile<RefinedDataset>(filePath)
+    const dataset = readJsonFile<SearchableDataset>(filePath)
     if (!dataset) {
       logger.warn("Skipped: file not found", { filename })
       continue
@@ -266,34 +266,34 @@ export const importExperimentTsv = (): void => {
         const exp = dataset.experiments[index]
 
         // Parse diseases from JSON array of strings like ["label(icd10)", "label2"]
-        const diseasesRaw = parseJsonField<string[]>(row.refined_diseases, [])
+        const diseasesRaw = parseJsonField<string[]>(row.searchable_diseases, [])
         const diseases = diseasesRaw
           .map(parseDisease)
           .filter((d): d is DiseaseInfo => d !== null)
 
-        const refined: RefinedExperimentFields = {
-          subjectCount: parseNumberOrNull(row.refined_subjectCount),
-          subjectCountType: (row.refined_subjectCountType as SubjectCountType) || null,
-          healthStatus: (row.refined_healthStatus as HealthStatus) || null,
+        const searchable: SearchableExperimentFields = {
+          subjectCount: parseNumberOrNull(row.searchable_subjectCount),
+          subjectCountType: (row.searchable_subjectCountType as SubjectCountType) || null,
+          healthStatus: (row.searchable_healthStatus as HealthStatus) || null,
           diseases,
-          tissues: parseJsonField<string[]>(row.refined_tissues, []),
-          isTumor: parseBooleanOrNull(row.refined_isTumor),
-          cellLine: row.refined_cellLine || null,
-          population: row.refined_population || null,
-          assayType: row.refined_assayType || null,
-          libraryKits: parseJsonField<string[]>(row.refined_libraryKits, []),
-          platformVendor: row.refined_platformVendor || null,
-          platformModel: row.refined_platformModel || null,
-          readType: (row.refined_readType as ReadType) || null,
-          readLength: parseNumberOrNull(row.refined_readLength),
-          targets: row.refined_targets || null,
-          fileTypes: parseJsonField<string[]>(row.refined_fileTypes, []),
-          dataVolume: parseDataVolume(row.refined_dataVolume),
-          // Policies are rule-based (not LLM), preserved from existing refined or empty
-          policies: exp.refined?.policies ?? [],
+          tissues: parseJsonField<string[]>(row.searchable_tissues, []),
+          isTumor: parseBooleanOrNull(row.searchable_isTumor),
+          cellLine: row.searchable_cellLine || null,
+          population: row.searchable_population || null,
+          assayType: row.searchable_assayType || null,
+          libraryKits: parseJsonField<string[]>(row.searchable_libraryKits, []),
+          platformVendor: row.searchable_platformVendor || null,
+          platformModel: row.searchable_platformModel || null,
+          readType: (row.searchable_readType as ReadType) || null,
+          readLength: parseNumberOrNull(row.searchable_readLength),
+          targets: row.searchable_targets || null,
+          fileTypes: parseJsonField<string[]>(row.searchable_fileTypes, []),
+          dataVolume: parseDataVolume(row.searchable_dataVolume),
+          // Policies are rule-based (not LLM), preserved from existing searchable or empty
+          policies: exp.searchable?.policies ?? [],
         }
 
-        exp.refined = refined
+        exp.searchable = searchable
       }
     }
 

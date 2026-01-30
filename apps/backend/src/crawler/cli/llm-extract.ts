@@ -16,13 +16,13 @@ import { hideBin } from "yargs/helpers"
 
 import { getOllamaConfig, type OllamaConfig } from "@/crawler/llm/client"
 import {
-  isEmptyRefinedFields,
+  isEmptySearchableFields,
   processExperimentsParallel,
 } from "@/crawler/llm/extract"
 import type {
   EnrichedDataset,
-  RefinedExperiment,
-  RefinedDataset,
+  SearchableExperiment,
+  SearchableDataset,
 } from "@/crawler/types"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getResultsDir } from "@/crawler/utils/io"
@@ -76,7 +76,7 @@ const readEnrichedDataset = (filename: string): EnrichedDataset | null => {
   }
 }
 
-const readExtractedDataset = (filename: string): RefinedDataset | null => {
+const readExtractedDataset = (filename: string): SearchableDataset | null => {
   const filePath = join(getExtractedDir(), filename)
   if (!existsSync(filePath)) return null
   try {
@@ -87,7 +87,7 @@ const readExtractedDataset = (filename: string): RefinedDataset | null => {
   }
 }
 
-const writeExtractedDataset = (filename: string, data: RefinedDataset): void => {
+const writeExtractedDataset = (filename: string, data: SearchableDataset): void => {
   const dir = getExtractedDir()
   const filePath = join(dir, filename)
   writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
@@ -139,9 +139,9 @@ const filterLatestVersions = (files: string[]): string[] => {
   return result.sort()
 }
 
-/** Check if extraction is complete by verifying at least one experiment has non-empty refined fields */
-const isExtractionComplete = (dataset: RefinedDataset): boolean => {
-  return dataset.experiments.some(exp => exp.refined != null && !isEmptyRefinedFields(exp.refined))
+/** Check if extraction is complete by verifying at least one experiment has non-empty searchable fields */
+const isExtractionComplete = (dataset: SearchableDataset): boolean => {
+  return dataset.experiments.some(exp => exp.searchable != null && !isEmptySearchableFields(exp.searchable))
 }
 
 /** Process a single dataset with resume support (dataset-level) */
@@ -168,7 +168,8 @@ const processDataset = async (
     const existingExperiments = existing.experiments
     const failedIndices: number[] = []
     for (let i = 0; i < existingExperiments.length; i++) {
-      if (isEmptyRefinedFields(existingExperiments[i].refined)) {
+      const searchable = existingExperiments[i].searchable
+      if (!searchable || isEmptySearchableFields(searchable)) {
         failedIndices.push(i)
       }
     }
@@ -198,12 +199,12 @@ const processDataset = async (
     )
 
     // Merge: keep existing successful, replace failed with re-extracted
-    const mergedExperiments: RefinedExperiment[] = [...existingExperiments]
+    const mergedExperiments: SearchableExperiment[] = [...existingExperiments]
     for (let j = 0; j < failedIndices.length; j++) {
       mergedExperiments[failedIndices[j]] = reExtracted[j]
     }
 
-    const finalResult: RefinedDataset = {
+    const finalResult: SearchableDataset = {
       ...existing,
       experiments: mergedExperiments,
     }
@@ -241,7 +242,7 @@ const processDataset = async (
     ollamaConfig,
   )
 
-  const finalResult: RefinedDataset = {
+  const finalResult: SearchableDataset = {
     ...enriched,
     experiments,
   }
