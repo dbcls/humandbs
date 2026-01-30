@@ -119,7 +119,5 @@
     "hum0201": ["JGAD000687", "JGAD000891"],
     "hum0214": ["JGAD000371", "JGAD000372", "JGAD000373"],
     "hum0248": ["PRJDB10452"]
-  },
-  "additionalJgadByJgas": {},
-  "metadataInheritance": {}
+  }
 }

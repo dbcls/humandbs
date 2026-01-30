@@ -1,0 +1,105 @@
+{
+  "hum0005": {
+    "JGAD000490": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0006": {
+    "JGAD000114": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0094": {
+    "JGAD000447": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0103": {
+    "JGAD000117": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0158": {
+    "JGAD000117": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0184": {
+    "JGAD000117": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0195": {
+    "JGAD000406": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0197": {
+    "hum0197.v12.MAG.v1": {
+      "criteria": "Unrestricted-access",
+      "releaseDate": "2022-12-01"
+    },
+    "hum0197.v12.VIRUS.v1": {
+      "criteria": "Unrestricted-access",
+      "releaseDate": "2022-12-01"
+    },
+    "hum0197.v12.CRISPR.v1": {
+      "criteria": "Unrestricted-access",
+      "releaseDate": "2022-12-01"
+    }
+  },
+  "hum0214": {
+    "JGAD000220": {
+      "criteria": "Controlled-access (Type I)"
+    },
+    "JGAD000406": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0318": {
+    "JGAD000604": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0319": {
+    "JGAD000604": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0350": {
+    "E-GEAD-740": {
+      "criteria": "Unrestricted-access"
+    },
+    "E-GEAD-741": {
+      "criteria": "Unrestricted-access"
+    },
+    "E-GEAD-742": {
+      "criteria": "Unrestricted-access"
+    },
+    "E-GEAD-743": {
+      "criteria": "Unrestricted-access"
+    },
+    "E-GEAD-744": {
+      "criteria": "Unrestricted-access"
+    },
+    "E-GEAD-745": {
+      "criteria": "Unrestricted-access"
+    },
+    "E-GEAD-746": {
+      "criteria": "Unrestricted-access"
+    },
+    "JGAD000822": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0484": {
+    "JGAD000917": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  },
+  "hum0535": {
+    "JGAD000986": {
+      "criteria": "Controlled-access (Type I)"
+    }
+  }
+}

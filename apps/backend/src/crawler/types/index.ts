@@ -19,6 +19,8 @@ export type {
   DatasetIdType,
   PolicyCanonical,
   NormalizedPolicy,
+  DatasetOverrideFields,
+  DatasetOverridesConfig,
 } from "./common"
 
 /** Extracted IDs grouped by type */

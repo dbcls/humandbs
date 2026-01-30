@@ -5,10 +5,10 @@
  * Handles dataset ID extraction, versioning, and bilingual integration
  */
 import {
-  getMetadataInheritance,
   getCriteriaCanonical,
   getCriteriaDisplayValue,
   getCriteriaOverrideForDataset,
+  getReleaseDateOverrideForDataset,
   getIgnoreIdsByHum,
   getInvalidOtherIds,
   applyGlobalIdCorrection,
@@ -277,7 +277,6 @@ export const buildDatasetMetadataMap = (
   molecularData?: NormalizedMolecularData[],
 ): Map<string, DatasetMetadata> => {
   const map = new Map<string, DatasetMetadata>()
-  const metadataInheritance = getMetadataInheritance()
 
   // First pass: add all datasetIds from summary.datasets
   // Use first-wins strategy: existing entries are not overwritten
@@ -291,13 +290,6 @@ export const buildDatasetMetadataMap = (
           releaseDate: ds.releaseDate,
         })
       }
-    }
-  }
-
-  // Apply explicit metadata inheritance from config
-  for (const [childId, parentId] of Object.entries(metadataInheritance)) {
-    if (!map.has(childId) && map.has(parentId)) {
-      map.set(childId, map.get(parentId)!)
     }
   }
 
@@ -671,13 +663,17 @@ export const createUnifiedDataset = (
     console.warn(warning)
   }
 
+  // Get releaseDate: override > existing value > versionReleaseDate
+  const releaseDateOverride = getReleaseDateOverrideForDataset(humId, datasetId)
+  const releaseDate = releaseDateOverride ?? jaDataset?.releaseDate ?? enDataset?.releaseDate ?? versionReleaseDate
+
   return {
     datasetId,
     version,
     versionReleaseDate,
     humId,
     humVersionId,
-    releaseDate: jaDataset?.releaseDate ?? enDataset?.releaseDate ?? versionReleaseDate,
+    releaseDate,
     criteria: validatedCriteria,
     typeOfData: {
       ja: jaDataset?.typeOfData || null,

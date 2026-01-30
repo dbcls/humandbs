@@ -6,7 +6,7 @@
 import { readFileSync } from "fs"
 import { join, dirname } from "path"
 
-import type { CriteriaCanonical, LangType, PolicyCanonical } from "@/crawler/types"
+import type { CriteriaCanonical, DatasetOverridesConfig, LangType, PolicyCanonical } from "@/crawler/types"
 
 // Import locally to avoid circular dependency
 const DETAIL_PAGE_BASE_URL = "https://humandbs.dbcls.jp/"
@@ -122,8 +122,6 @@ interface DatasetIdMappingConfig {
   noSplitIds: string[]
   ignoreIdsByHum: Record<string, string[]>
   additionalIdsByHum: Record<string, string[]>
-  additionalJgadByJgas: Record<string, string[]>
-  metadataInheritance: Record<string, string>
 }
 
 let datasetIdMappingCache: DatasetIdMappingConfig | null = null
@@ -169,16 +167,8 @@ export const getAdditionalIdsByHum = (humId: string): string[] => {
   return getDatasetIdMapping().additionalIdsByHum[humId] ?? []
 }
 
-export const getAdditionalJgadByJgas = (): Record<string, string[]> => {
-  return getDatasetIdMapping().additionalJgadByJgas
-}
-
 export const getIgnoreIdsByHum = (): Record<string, string[]> => {
   return getDatasetIdMapping().ignoreIdsByHum
-}
-
-export const getMetadataInheritance = (): Record<string, string> => {
-  return getDatasetIdMapping().metadataInheritance
 }
 
 export const getInvalidJgasIds = (): Set<string> => {
@@ -328,17 +318,15 @@ export const getMolDataIdFields = (): string[] => {
   return getMolDataFieldMapping().idFields
 }
 
-// Criteria Override
+// Dataset Overrides (criteria + releaseDate を統合)
 
-type CriteriaOverrideConfig = Record<string, Record<string, CriteriaCanonical>>
+let datasetOverridesCache: DatasetOverridesConfig | null = null
 
-let criteriaOverrideCache: CriteriaOverrideConfig | null = null
-
-const getCriteriaOverride = (): CriteriaOverrideConfig => {
-  if (!criteriaOverrideCache) {
-    criteriaOverrideCache = loadConfig<CriteriaOverrideConfig>("criteria-override.json")
+const getDatasetOverrides = (): DatasetOverridesConfig => {
+  if (!datasetOverridesCache) {
+    datasetOverridesCache = loadConfig<DatasetOverridesConfig>("dataset-overrides.json")
   }
-  return criteriaOverrideCache
+  return datasetOverridesCache
 }
 
 /**
@@ -349,23 +337,10 @@ export const getCriteriaOverrideForDataset = (
   humId: string,
   datasetId: string,
 ): CriteriaCanonical | null => {
-  const overrides = getCriteriaOverride()
+  const overrides = getDatasetOverrides()
   const humOverrides = overrides[humId]
   if (!humOverrides) return null
-  return humOverrides[datasetId] ?? null
-}
-
-// releaseDate Override
-
-type ReleaseDateOverrideConfig = Record<string, Record<string, string>>
-
-let releaseDateOverrideCache: ReleaseDateOverrideConfig | null = null
-
-const getReleaseDateOverride = (): ReleaseDateOverrideConfig => {
-  if (!releaseDateOverrideCache) {
-    releaseDateOverrideCache = loadConfig<ReleaseDateOverrideConfig>("releaseDate-override.json")
-  }
-  return releaseDateOverrideCache
+  return humOverrides[datasetId]?.criteria ?? null
 }
 
 /**
@@ -376,9 +351,9 @@ export const getReleaseDateOverrideForDataset = (
   humId: string,
   datasetId: string,
 ): string | null => {
-  const overrides = getReleaseDateOverride()
+  const overrides = getDatasetOverrides()
   const humOverrides = overrides[humId]
   if (!humOverrides) return null
-  return humOverrides[datasetId] ?? null
+  return humOverrides[datasetId]?.releaseDate ?? null
 }
 

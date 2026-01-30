@@ -71,3 +71,12 @@ export interface NormalizedPolicy {
   name: { ja: string; en: string }
   url: string | null
 }
+
+/** Override fields for dataset */
+export interface DatasetOverrideFields {
+  criteria?: CriteriaCanonical
+  releaseDate?: string
+}
+
+/** Dataset overrides config: humId -> datasetId -> override fields */
+export type DatasetOverridesConfig = Record<string, Record<string, DatasetOverrideFields>>

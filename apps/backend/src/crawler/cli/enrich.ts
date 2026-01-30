@@ -14,7 +14,6 @@ import { hideBin } from "yargs/helpers"
 import { batchSearchDois } from "@/crawler/api/doi"
 import { getDraMetadata, getDraReleaseDate, isDraAccession } from "@/crawler/api/dra"
 import { getJgadMetadata, getJgadReleaseDate } from "@/crawler/api/jga"
-import { getReleaseDateOverrideForDataset } from "@/crawler/config/mapping"
 import { DEFAULT_API_DELAY_MS } from "@/crawler/config/urls"
 import type {
   Research,
@@ -175,10 +174,9 @@ const enrichDatasets = async (
       // Get original metadata
       const metadata = await getOriginalMetadata(dataset.datasetId, useCache)
 
-      // Get release date: priority is override > DDBJ Search API > existing value
-      const overrideReleaseDate = getReleaseDateOverrideForDataset(dataset.humId, dataset.datasetId)
-      const ddbjReleaseDate = overrideReleaseDate ? null : await getReleaseDateFromDdbj(dataset.datasetId)
-      const finalReleaseDate = overrideReleaseDate ?? ddbjReleaseDate ?? dataset.releaseDate
+      // Get release date from DDBJ Search API (if available, overwrites existing value)
+      const ddbjReleaseDate = await getReleaseDateFromDdbj(dataset.datasetId)
+      const finalReleaseDate = ddbjReleaseDate ?? dataset.releaseDate
 
       // Write enriched dataset with updated releaseDate
       const enrichedDataset: EnrichedDataset = {
