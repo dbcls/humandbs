@@ -789,6 +789,7 @@ describe("processors/normalize.ts", () => {
         molData,
         mockGetDatasetsFromStudy,
         mockExtractIdsByType,
+        "hum0001",
       )
 
       expect(result.datasetIds).toContain("JGAD000001")
@@ -806,6 +807,7 @@ describe("processors/normalize.ts", () => {
         molData,
         mockGetDatasetsFromStudy,
         mockExtractIdsByType,
+        "hum0001",
       )
 
       expect(result.datasetIds).toContain("JGAD000001")
@@ -830,6 +832,7 @@ describe("processors/normalize.ts", () => {
         molData,
         mockGetDatasetsFromStudy,
         mockExtractIdsByType,
+        "hum0001",
       )
 
       expect(result.datasetIds).toContain("JGAD000005")
@@ -846,6 +849,7 @@ describe("processors/normalize.ts", () => {
         molData,
         mockGetDatasetsFromStudy,
         mockExtractIdsByType,
+        "hum0001",
       )
 
       expect(result.datasetIds).toContain("DRA001234")

@@ -941,10 +941,12 @@ export const extractAndExpandDatasetIdsFromMolData = async (
   molData: NormalizedMolecularData,
   getDatasetsFromStudy: (studyId: string) => Promise<string[]>,
   extractIdsByTypeFn: (text: string) => Partial<Record<DatasetIdType, string[]>>,
+  humId: string,
 ): Promise<ExtractedDatasetIds> => {
   const invalidIdValues = getInvalidOtherIds()
   const invalidJgasIds = getInvalidJgasIds()
   const idFields = getMolDataIdFields()
+  const humIdCorrection = getIdCorrectionByHum(humId)
 
   // Collect IDs from header and data fields
   const idsByType: Partial<Record<DatasetIdType, Set<string>>> = {}
@@ -957,7 +959,9 @@ export const extractAndExpandDatasetIdsFromMolData = async (
       }
       for (const id of ids) {
         if (invalidIdValues.includes(id)) continue
-        const normalizedIds = applyGlobalIdCorrection(id)
+        // Apply hum-specific correction first, then global correction
+        const humCorrectedId = humIdCorrection[id] ?? id
+        const normalizedIds = applyGlobalIdCorrection(humCorrectedId)
         for (const normalizedId of normalizedIds) {
           idsByType[type]!.add(normalizedId)
         }
@@ -1336,6 +1340,9 @@ export const normalizeParseResult = async (
   normalizedDetail.publications = removeUnusedPublications(normalizedDetail.publications)
   normalizedDetail.releases = fixDateInReleases(normalizedDetail.releases)
 
+  // Extract humId from humVersionId (e.g., "hum0014-v37" -> "hum0014")
+  const humId = humVersionId.split("-v")[0]
+
   // Normalize molecular data keys
   for (const molData of normalizedDetail.molecularData) {
     molData.data = normalizeMolData(molData.data, humVersionId, lang)
@@ -1347,11 +1354,9 @@ export const normalizeParseResult = async (
       molData,
       getDatasetsFromStudy,
       extractIdsByType,
+      humId,
     )
   }
-
-  // Extract humId from humVersionId (e.g., "hum0014-v37" -> "hum0014")
-  const humId = humVersionId.split("-v")[0]
   const dataSummaryHumIds = getHumIdsWithDataSummary()
 
   // Build dataset ID registry (molecularData から構築)
