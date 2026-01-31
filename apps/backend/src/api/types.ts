@@ -626,6 +626,7 @@ export const ResearchSearchQuerySchema = z.object({
   // Filter Research by Dataset attributes (comma-separated for OR)
   assayType: z.string().optional(),
   disease: z.string().optional(),
+  diseaseIcd10: z.string().optional(),  // ICD-10 code prefix match
   tissue: z.string().optional(),
   population: z.string().optional(),
   platform: z.string().optional(),
@@ -635,6 +636,44 @@ export const ResearchSearchQuerySchema = z.object({
   hasTumor: booleanFromString,
   hasCellLine: booleanFromString,
   minSubjects: z.coerce.number().int().min(0).optional(),
+  maxSubjects: z.coerce.number().int().min(0).optional(),
+
+  // Extended filters
+  healthStatus: z.string().optional(),  // healthy/affected/mixed
+  subjectCountType: z.string().optional(),  // individual/sample/mixed
+  sex: z.string().optional(),  // male/female/mixed
+  ageGroup: z.string().optional(),  // infant/child/adult/elderly/mixed
+  libraryKits: z.string().optional(),
+  platformModel: z.string().optional(),
+  readType: z.string().optional(),  // single-end/paired-end
+  referenceGenome: z.string().optional(),
+  processedDataTypes: z.string().optional(),
+  hasPhenotypeData: booleanFromString,
+  cellLine: z.string().optional(),  // exact match
+  isTumor: booleanFromString,
+  policyId: z.string().optional(),
+
+  // Range filters
+  minReleaseDate: z.string().optional(),
+  maxReleaseDate: z.string().optional(),
+  minReadLength: z.coerce.number().int().min(0).optional(),
+  maxReadLength: z.coerce.number().int().min(0).optional(),
+  minSequencingDepth: z.coerce.number().min(0).optional(),
+  maxSequencingDepth: z.coerce.number().min(0).optional(),
+  minTargetCoverage: z.coerce.number().min(0).optional(),
+  maxTargetCoverage: z.coerce.number().min(0).optional(),
+  minDataVolumeGb: z.coerce.number().min(0).optional(),
+  maxDataVolumeGb: z.coerce.number().min(0).optional(),
+  minVariantSnv: z.coerce.number().int().min(0).optional(),
+  maxVariantSnv: z.coerce.number().int().min(0).optional(),
+  minVariantIndel: z.coerce.number().int().min(0).optional(),
+  maxVariantIndel: z.coerce.number().int().min(0).optional(),
+  minVariantCnv: z.coerce.number().int().min(0).optional(),
+  maxVariantCnv: z.coerce.number().int().min(0).optional(),
+  minVariantSv: z.coerce.number().int().min(0).optional(),
+  maxVariantSv: z.coerce.number().int().min(0).optional(),
+  minVariantTotal: z.coerce.number().int().min(0).optional(),
+  maxVariantTotal: z.coerce.number().int().min(0).optional(),
 
   // Include facet counts in response
   includeFacets: booleanFromString,
@@ -673,16 +712,54 @@ export const DatasetSearchQuerySchema = z.object({
   criteria: z.string().optional(),  // Comma-separated for OR
   typeOfData: z.string().optional(),  // Partial match
   assayType: z.string().optional(),  // Comma-separated for OR
-  disease: z.string().optional(),  // Partial match
+  disease: z.string().optional(),  // Partial match on label
+  diseaseIcd10: z.string().optional(),  // ICD-10 code prefix match
   tissue: z.string().optional(),  // Comma-separated for OR
   population: z.string().optional(),  // Comma-separated for OR
-  platform: z.string().optional(),  // Partial match
+  platform: z.string().optional(),  // Partial match on vendor
   fileType: z.string().optional(),  // Comma-separated for OR
   hasHealthyControl: booleanFromString,
   hasTumor: booleanFromString,
   hasCellLine: booleanFromString,
   minSubjects: z.coerce.number().int().min(0).optional(),
   maxSubjects: z.coerce.number().int().min(0).optional(),
+
+  // Extended filters
+  healthStatus: z.string().optional(),  // healthy/affected/mixed
+  subjectCountType: z.string().optional(),  // individual/sample/mixed
+  sex: z.string().optional(),  // male/female/mixed
+  ageGroup: z.string().optional(),  // infant/child/adult/elderly/mixed
+  libraryKits: z.string().optional(),
+  platformModel: z.string().optional(),
+  readType: z.string().optional(),  // single-end/paired-end
+  referenceGenome: z.string().optional(),
+  processedDataTypes: z.string().optional(),
+  hasPhenotypeData: booleanFromString,
+  cellLine: z.string().optional(),  // exact match
+  isTumor: booleanFromString,
+  policyId: z.string().optional(),
+
+  // Range filters
+  minReleaseDate: z.string().optional(),
+  maxReleaseDate: z.string().optional(),
+  minReadLength: z.coerce.number().int().min(0).optional(),
+  maxReadLength: z.coerce.number().int().min(0).optional(),
+  minSequencingDepth: z.coerce.number().min(0).optional(),
+  maxSequencingDepth: z.coerce.number().min(0).optional(),
+  minTargetCoverage: z.coerce.number().min(0).optional(),
+  maxTargetCoverage: z.coerce.number().min(0).optional(),
+  minDataVolumeGb: z.coerce.number().min(0).optional(),
+  maxDataVolumeGb: z.coerce.number().min(0).optional(),
+  minVariantSnv: z.coerce.number().int().min(0).optional(),
+  maxVariantSnv: z.coerce.number().int().min(0).optional(),
+  minVariantIndel: z.coerce.number().int().min(0).optional(),
+  maxVariantIndel: z.coerce.number().int().min(0).optional(),
+  minVariantCnv: z.coerce.number().int().min(0).optional(),
+  maxVariantCnv: z.coerce.number().int().min(0).optional(),
+  minVariantSv: z.coerce.number().int().min(0).optional(),
+  maxVariantSv: z.coerce.number().int().min(0).optional(),
+  minVariantTotal: z.coerce.number().int().min(0).optional(),
+  maxVariantTotal: z.coerce.number().int().min(0).optional(),
 
   // Include facet counts in response
   includeFacets: booleanFromString,

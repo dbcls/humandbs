@@ -24,7 +24,7 @@ interface DataVolume {
 
 interface SearchableFields {
   dataVolume?: DataVolume | null
-  dataVolumeBytes?: number | null
+  dataVolumeGb?: number | null
   [key: string]: unknown
 }
 
@@ -86,16 +86,16 @@ const idDataset = (datasetId: string, version: string): string =>
   `${datasetId}-${normVersion(version)}`
 
 /**
- * Convert DataVolume to bytes
+ * Convert DataVolume to GB
  */
-const dataVolumeToBytes = (dv: DataVolume | null | undefined): number | null => {
+const dataVolumeToGb = (dv: DataVolume | null | undefined): number | null => {
   if (!dv || dv.value == null) return null
 
   const multipliers: Record<string, number> = {
-    KB: 1024,
-    MB: 1024 ** 2,
-    GB: 1024 ** 3,
-    TB: 1024 ** 4,
+    KB: 1 / (1024 ** 2),
+    MB: 1 / 1024,
+    GB: 1,
+    TB: 1024,
   }
 
   const multiplier = multipliers[dv.unit]
@@ -104,13 +104,13 @@ const dataVolumeToBytes = (dv: DataVolume | null | undefined): number | null => 
     return null
   }
 
-  return Math.round(dv.value * multiplier)
+  return dv.value * multiplier
 }
 
 /**
  * Transform dataset document for ES indexing
  * - Rename 'refined' or 'extracted' to 'searchable' (for legacy data)
- * - Convert dataVolume to dataVolumeBytes in experiments.searchable
+ * - Convert legacy dataVolume to dataVolumeGb if dataVolumeGb is not already set
  */
 const transformDataset = (doc: DatasetDoc): DatasetDoc => {
   if (!doc.experiments) return doc
@@ -122,15 +122,19 @@ const transformDataset = (doc: DatasetDoc): DatasetDoc => {
       const searchableData = exp.searchable ?? exp.refined ?? exp.extracted
       if (!searchableData) return exp
 
-      const { dataVolume, ...restSearchable } = searchableData
+      const { dataVolume, dataVolumeGb, ...restSearchable } = searchableData
 
       // Remove legacy field names if present
       const { extracted, refined, ...restExp } = exp
+
+      // Use dataVolumeGb if set, otherwise convert from legacy dataVolume
+      const finalDataVolumeGb = dataVolumeGb ?? dataVolumeToGb(dataVolume)
+
       return {
         ...restExp,
         searchable: {
           ...restSearchable,
-          dataVolumeBytes: dataVolumeToBytes(dataVolume),
+          dataVolumeGb: finalDataVolumeGb,
         },
       }
     }),

@@ -3,11 +3,12 @@ import type { estypes } from "@elastic/elasticsearch"
 
 import {
   nestedTermsQuery,
-  nestedTermQuery,
   nestedWildcardQuery,
   nestedExistsQuery,
   nestedRangeQuery,
   doubleNestedWildcardQuery,
+  doubleNestedTermsQuery,
+  nestedBooleanTermQuery,
 } from "@/api/es-query-helpers"
 import type {
   DatasetSearchQuery,
@@ -276,141 +277,338 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
     })
   }
 
-  // assayType filter (comma-separated for OR) - nested query on experiments.refined
+  // assayType filter (comma-separated for OR)
   const assayTypes = splitComma(params.assayType)
   if (assayTypes.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.refined.assayType", assayTypes))
+    must.push(nestedTermsQuery("experiments", "experiments.searchable.assayType", assayTypes))
   }
 
-  // disease filter (partial match) - double nested query on experiments.refined.diseases
+  // disease filter (partial match on label)
   if (params.disease) {
     must.push(doubleNestedWildcardQuery(
       "experiments",
-      "experiments.refined.diseases",
-      "experiments.refined.diseases.label",
+      "experiments.searchable.diseases",
+      "experiments.searchable.diseases.label",
       params.disease,
     ))
   }
 
-  // tissue filter (comma-separated for OR) - nested query on experiments.refined
+  // diseaseIcd10 filter (comma-separated for OR, prefix match)
+  if ("diseaseIcd10" in params && params.diseaseIcd10) {
+    const icd10Codes = splitComma(params.diseaseIcd10)
+    if (icd10Codes.length > 0) {
+      // Use prefix matching for ICD-10 codes (e.g., "C" matches "C34", "C50", etc.)
+      const icd10Should = icd10Codes.map(code => ({
+        nested: {
+          path: "experiments",
+          query: {
+            nested: {
+              path: "experiments.searchable.diseases",
+              query: {
+                prefix: { "experiments.searchable.diseases.icd10": { value: code, case_insensitive: true } },
+              },
+            },
+          },
+        },
+      }))
+      must.push({ bool: { should: icd10Should, minimum_should_match: 1 } })
+    }
+  }
+
+  // tissue filter (comma-separated for OR)
   const tissues = splitComma(params.tissue)
   if (tissues.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.refined.tissues", tissues))
+    must.push(nestedTermsQuery("experiments", "experiments.searchable.tissues", tissues))
   }
 
-  // population filter (comma-separated for OR) - nested query on experiments.refined
+  // population filter (comma-separated for OR)
   const populations = splitComma(params.population)
   if (populations.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.refined.population", populations))
+    must.push(nestedTermsQuery("experiments", "experiments.searchable.population", populations))
   }
 
-  // platform filter (partial match on vendor) - nested query on experiments.refined
+  // platform filter (partial match on vendor)
   if (params.platform) {
-    must.push(nestedWildcardQuery("experiments", "experiments.refined.platformVendor", params.platform))
+    must.push(nestedWildcardQuery("experiments", "experiments.searchable.platformVendor", params.platform))
   }
 
-  // fileType filter (comma-separated for OR) - nested query on experiments.refined
+  // fileType filter (comma-separated for OR)
   const fileTypes = splitComma(params.fileType)
   if (fileTypes.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.refined.fileTypes", fileTypes))
+    must.push(nestedTermsQuery("experiments", "experiments.searchable.fileTypes", fileTypes))
   }
 
-  // Boolean filters - nested query on experiments.refined
+  // healthStatus filter (comma-separated for OR, direct value)
+  if ("healthStatus" in params && params.healthStatus) {
+    const healthStatusValues = splitComma(params.healthStatus)
+    if (healthStatusValues.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.healthStatus", healthStatusValues))
+    }
+  }
+
+  // Legacy hasHealthyControl filter (boolean)
   if (params.hasHealthyControl !== undefined) {
     const healthStatusValues = params.hasHealthyControl ? ["healthy", "mixed"] : ["affected"]
-    must.push(nestedTermsQuery("experiments", "experiments.refined.healthStatus", healthStatusValues))
-  }
-  if (params.hasTumor !== undefined) {
-    must.push(nestedTermQuery("experiments", "experiments.refined.isTumor", params.hasTumor))
-  }
-  if (params.hasCellLine !== undefined) {
-    must.push(nestedExistsQuery("experiments", "experiments.refined.cellLine"))
+    must.push(nestedTermsQuery("experiments", "experiments.searchable.healthStatus", healthStatusValues))
   }
 
-  // Subject count filters - nested query with script aggregation
-  // Note: For exact count filtering, we need to aggregate across experiments
-  // This is a simplified filter that checks if any experiment has subjects
+  // isTumor / hasTumor filter
+  if (params.hasTumor !== undefined) {
+    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.hasTumor))
+  }
+  if ("isTumor" in params && params.isTumor !== undefined) {
+    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.isTumor))
+  }
+
+  // cellLine filter (exact match)
+  if ("cellLine" in params && params.cellLine) {
+    const cellLineValues = splitComma(params.cellLine)
+    if (cellLineValues.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.cellLine", cellLineValues))
+    }
+  }
+
+  // Legacy hasCellLine filter (boolean, checks existence)
+  if (params.hasCellLine !== undefined && params.hasCellLine) {
+    must.push(nestedExistsQuery("experiments", "experiments.searchable.cellLine"))
+  }
+
+  // subjectCountType filter (comma-separated for OR)
+  if ("subjectCountType" in params && params.subjectCountType) {
+    const types = splitComma(params.subjectCountType)
+    if (types.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.subjectCountType", types))
+    }
+  }
+
+  // sex filter (comma-separated for OR)
+  if ("sex" in params && params.sex) {
+    const sexValues = splitComma(params.sex)
+    if (sexValues.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.sex", sexValues))
+    }
+  }
+
+  // ageGroup filter (comma-separated for OR)
+  if ("ageGroup" in params && params.ageGroup) {
+    const ageGroups = splitComma(params.ageGroup)
+    if (ageGroups.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.ageGroup", ageGroups))
+    }
+  }
+
+  // libraryKits filter (comma-separated for OR)
+  if ("libraryKits" in params && params.libraryKits) {
+    const kits = splitComma(params.libraryKits)
+    if (kits.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.libraryKits", kits))
+    }
+  }
+
+  // platformModel filter (comma-separated for OR)
+  if ("platformModel" in params && params.platformModel) {
+    const models = splitComma(params.platformModel)
+    if (models.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.platformModel", models))
+    }
+  }
+
+  // readType filter (comma-separated for OR)
+  if ("readType" in params && params.readType) {
+    const readTypes = splitComma(params.readType)
+    if (readTypes.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.readType", readTypes))
+    }
+  }
+
+  // referenceGenome filter (comma-separated for OR)
+  if ("referenceGenome" in params && params.referenceGenome) {
+    const genomes = splitComma(params.referenceGenome)
+    if (genomes.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.referenceGenome", genomes))
+    }
+  }
+
+  // processedDataTypes filter (comma-separated for OR)
+  if ("processedDataTypes" in params && params.processedDataTypes) {
+    const types = splitComma(params.processedDataTypes)
+    if (types.length > 0) {
+      must.push(nestedTermsQuery("experiments", "experiments.searchable.processedDataTypes", types))
+    }
+  }
+
+  // hasPhenotypeData filter (boolean)
+  if ("hasPhenotypeData" in params && params.hasPhenotypeData !== undefined) {
+    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.hasPhenotypeData", params.hasPhenotypeData))
+  }
+
+  // policyId filter (comma-separated for OR)
+  if ("policyId" in params && params.policyId) {
+    const policyIds = splitComma(params.policyId)
+    if (policyIds.length > 0) {
+      must.push(doubleNestedTermsQuery(
+        "experiments",
+        "experiments.searchable.policies",
+        "experiments.searchable.policies.id",
+        policyIds,
+      ))
+    }
+  }
+
+  // === Range filters ===
+
+  // releaseDate range (top-level field)
+  if ("minReleaseDate" in params && params.minReleaseDate) {
+    must.push({ range: { releaseDate: { gte: params.minReleaseDate } } })
+  }
+  if ("maxReleaseDate" in params && params.maxReleaseDate) {
+    must.push({ range: { releaseDate: { lte: params.maxReleaseDate } } })
+  }
+
+  // subjectCount range
   if (params.minSubjects !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.refined.subjectCount", { gte: 1 }))
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.subjectCount", { gte: params.minSubjects }))
+  }
+  if ("maxSubjects" in params && params.maxSubjects !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.subjectCount", { lte: params.maxSubjects }))
+  }
+
+  // readLength range
+  if ("minReadLength" in params && params.minReadLength !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.readLength", { gte: params.minReadLength }))
+  }
+  if ("maxReadLength" in params && params.maxReadLength !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.readLength", { lte: params.maxReadLength }))
+  }
+
+  // sequencingDepth range
+  if ("minSequencingDepth" in params && params.minSequencingDepth !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.sequencingDepth", { gte: params.minSequencingDepth }))
+  }
+  if ("maxSequencingDepth" in params && params.maxSequencingDepth !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.sequencingDepth", { lte: params.maxSequencingDepth }))
+  }
+
+  // targetCoverage range
+  if ("minTargetCoverage" in params && params.minTargetCoverage !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.targetCoverage", { gte: params.minTargetCoverage }))
+  }
+  if ("maxTargetCoverage" in params && params.maxTargetCoverage !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.targetCoverage", { lte: params.maxTargetCoverage }))
+  }
+
+  // dataVolumeGb range
+  if ("minDataVolumeGb" in params && params.minDataVolumeGb !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.dataVolumeGb", { gte: params.minDataVolumeGb }))
+  }
+  if ("maxDataVolumeGb" in params && params.maxDataVolumeGb !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.dataVolumeGb", { lte: params.maxDataVolumeGb }))
+  }
+
+  // variantCounts range filters
+  if ("minVariantSnv" in params && params.minVariantSnv !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.snv", { gte: params.minVariantSnv }))
+  }
+  if ("maxVariantSnv" in params && params.maxVariantSnv !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.snv", { lte: params.maxVariantSnv }))
+  }
+  if ("minVariantIndel" in params && params.minVariantIndel !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.indel", { gte: params.minVariantIndel }))
+  }
+  if ("maxVariantIndel" in params && params.maxVariantIndel !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.indel", { lte: params.maxVariantIndel }))
+  }
+  if ("minVariantCnv" in params && params.minVariantCnv !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.cnv", { gte: params.minVariantCnv }))
+  }
+  if ("maxVariantCnv" in params && params.maxVariantCnv !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.cnv", { lte: params.maxVariantCnv }))
+  }
+  if ("minVariantSv" in params && params.minVariantSv !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.sv", { gte: params.minVariantSv }))
+  }
+  if ("maxVariantSv" in params && params.maxVariantSv !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.sv", { lte: params.maxVariantSv }))
+  }
+  if ("minVariantTotal" in params && params.minVariantTotal !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.total", { gte: params.minVariantTotal }))
+  }
+  if ("maxVariantTotal" in params && params.maxVariantTotal !== undefined) {
+    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.total", { lte: params.maxVariantTotal }))
   }
 
   return must
 }
 
-const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregationContainer> => ({
-  criteria: { terms: { field: "criteria", size: 10 } },
-  assayType: {
-    nested: { path: "experiments" },
-    aggs: {
-      types: {
-        terms: { field: "experiments.refined.assayType", size: 50 },
-        aggs: { dataset_count: { reverse_nested: {} } },
-      },
+/** Helper to create nested aggregation with reverse_nested for dataset count */
+const nestedFacetAgg = (field: string, size = 50): estypes.AggregationsAggregationContainer => ({
+  nested: { path: "experiments" },
+  aggs: {
+    values: {
+      terms: { field, size },
+      aggs: { dataset_count: { reverse_nested: {} } },
     },
   },
-  disease: {
-    nested: { path: "experiments" },
-    aggs: {
-      diseases_nested: {
-        nested: { path: "experiments.refined.diseases" },
-        aggs: {
-          labels: {
-            terms: { field: "experiments.refined.diseases.label", size: 50 },
-            aggs: {
-              dataset_count: {
-                reverse_nested: {},
-              },
-            },
-          },
+})
+
+/** Helper to create double-nested aggregation (for diseases, policies) */
+const doubleNestedFacetAgg = (
+  innerPath: string,
+  field: string,
+  size = 50,
+): estypes.AggregationsAggregationContainer => ({
+  nested: { path: "experiments" },
+  aggs: {
+    inner: {
+      nested: { path: innerPath },
+      aggs: {
+        values: {
+          terms: { field, size },
+          aggs: { dataset_count: { reverse_nested: {} } },
         },
       },
     },
   },
-  tissue: {
-    nested: { path: "experiments" },
-    aggs: {
-      tissues: {
-        terms: { field: "experiments.refined.tissues", size: 50 },
-        aggs: { dataset_count: { reverse_nested: {} } },
-      },
-    },
-  },
-  population: {
-    nested: { path: "experiments" },
-    aggs: {
-      populations: {
-        terms: { field: "experiments.refined.population", size: 50 },
-        aggs: { dataset_count: { reverse_nested: {} } },
-      },
-    },
-  },
-  platformVendor: {
-    nested: { path: "experiments" },
-    aggs: {
-      vendors: {
-        terms: { field: "experiments.refined.platformVendor", size: 50 },
-        aggs: { dataset_count: { reverse_nested: {} } },
-      },
-    },
-  },
-  fileType: {
-    nested: { path: "experiments" },
-    aggs: {
-      types: {
-        terms: { field: "experiments.refined.fileTypes", size: 50 },
-        aggs: { dataset_count: { reverse_nested: {} } },
-      },
-    },
-  },
-  healthStatus: {
-    nested: { path: "experiments" },
-    aggs: {
-      statuses: {
-        terms: { field: "experiments.refined.healthStatus", size: 10 },
-        aggs: { dataset_count: { reverse_nested: {} } },
-      },
-    },
-  },
+})
+
+const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregationContainer> => ({
+  // Top-level facets
+  criteria: { terms: { field: "criteria", size: 10 } },
+
+  // Basic nested facets
+  assayType: nestedFacetAgg("experiments.searchable.assayType"),
+  tissue: nestedFacetAgg("experiments.searchable.tissues"),
+  population: nestedFacetAgg("experiments.searchable.population"),
+  platformVendor: nestedFacetAgg("experiments.searchable.platformVendor"),
+  fileType: nestedFacetAgg("experiments.searchable.fileTypes"),
+  healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", 10),
+
+  // Extended facets
+  subjectCountType: nestedFacetAgg("experiments.searchable.subjectCountType", 10),
+  isTumor: nestedFacetAgg("experiments.searchable.isTumor", 5),
+  cellLine: nestedFacetAgg("experiments.searchable.cellLine"),
+  sex: nestedFacetAgg("experiments.searchable.sex", 10),
+  ageGroup: nestedFacetAgg("experiments.searchable.ageGroup", 10),
+  libraryKits: nestedFacetAgg("experiments.searchable.libraryKits"),
+  platformModel: nestedFacetAgg("experiments.searchable.platformModel"),
+  readType: nestedFacetAgg("experiments.searchable.readType", 10),
+  referenceGenome: nestedFacetAgg("experiments.searchable.referenceGenome"),
+  processedDataTypes: nestedFacetAgg("experiments.searchable.processedDataTypes"),
+  hasPhenotypeData: nestedFacetAgg("experiments.searchable.hasPhenotypeData", 5),
+
+  // Double-nested facets
+  disease: doubleNestedFacetAgg(
+    "experiments.searchable.diseases",
+    "experiments.searchable.diseases.label",
+  ),
+  diseaseIcd10: doubleNestedFacetAgg(
+    "experiments.searchable.diseases",
+    "experiments.searchable.diseases.icd10",
+  ),
+  policyId: doubleNestedFacetAgg(
+    "experiments.searchable.policies",
+    "experiments.searchable.policies.id",
+  ),
 })
 
 interface TermsBucket {
@@ -571,7 +769,44 @@ const hasDatasetFilters = (params: ResearchSearchQuery): boolean => {
     params.hasHealthyControl !== undefined ||
     params.hasTumor !== undefined ||
     params.hasCellLine !== undefined ||
-    params.minSubjects !== undefined
+    params.minSubjects !== undefined ||
+    // Extended filters
+    ("healthStatus" in params && params.healthStatus) ||
+    ("subjectCountType" in params && params.subjectCountType) ||
+    ("sex" in params && params.sex) ||
+    ("ageGroup" in params && params.ageGroup) ||
+    ("libraryKits" in params && params.libraryKits) ||
+    ("platformModel" in params && params.platformModel) ||
+    ("readType" in params && params.readType) ||
+    ("referenceGenome" in params && params.referenceGenome) ||
+    ("processedDataTypes" in params && params.processedDataTypes) ||
+    ("hasPhenotypeData" in params && params.hasPhenotypeData !== undefined) ||
+    ("policyId" in params && params.policyId) ||
+    ("diseaseIcd10" in params && params.diseaseIcd10) ||
+    ("cellLine" in params && params.cellLine) ||
+    ("isTumor" in params && params.isTumor !== undefined) ||
+    // Range filters
+    ("minReleaseDate" in params && params.minReleaseDate) ||
+    ("maxReleaseDate" in params && params.maxReleaseDate) ||
+    ("maxSubjects" in params && params.maxSubjects !== undefined) ||
+    ("minReadLength" in params && params.minReadLength !== undefined) ||
+    ("maxReadLength" in params && params.maxReadLength !== undefined) ||
+    ("minSequencingDepth" in params && params.minSequencingDepth !== undefined) ||
+    ("maxSequencingDepth" in params && params.maxSequencingDepth !== undefined) ||
+    ("minTargetCoverage" in params && params.minTargetCoverage !== undefined) ||
+    ("maxTargetCoverage" in params && params.maxTargetCoverage !== undefined) ||
+    ("minDataVolumeGb" in params && params.minDataVolumeGb !== undefined) ||
+    ("maxDataVolumeGb" in params && params.maxDataVolumeGb !== undefined) ||
+    ("minVariantSnv" in params && params.minVariantSnv !== undefined) ||
+    ("maxVariantSnv" in params && params.maxVariantSnv !== undefined) ||
+    ("minVariantIndel" in params && params.minVariantIndel !== undefined) ||
+    ("maxVariantIndel" in params && params.maxVariantIndel !== undefined) ||
+    ("minVariantCnv" in params && params.minVariantCnv !== undefined) ||
+    ("maxVariantCnv" in params && params.maxVariantCnv !== undefined) ||
+    ("minVariantSv" in params && params.minVariantSv !== undefined) ||
+    ("maxVariantSv" in params && params.maxVariantSv !== undefined) ||
+    ("minVariantTotal" in params && params.minVariantTotal !== undefined) ||
+    ("maxVariantTotal" in params && params.maxVariantTotal !== undefined)
   )
 }
 

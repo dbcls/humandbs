@@ -80,3 +80,33 @@ export const doubleNestedWildcardQuery = (
     },
   },
 })
+
+/** 二重 nested + terms クエリ */
+export const doubleNestedTermsQuery = (
+  outerPath: string,
+  innerPath: string,
+  field: string,
+  values: string[],
+): estypes.QueryDslQueryContainer => ({
+  nested: {
+    path: outerPath,
+    query: {
+      nested: {
+        path: innerPath,
+        query: { terms: { [field]: values } },
+      },
+    },
+  },
+})
+
+/** nested + boolean term クエリ */
+export const nestedBooleanTermQuery = (
+  path: string,
+  field: string,
+  value: boolean,
+): estypes.QueryDslQueryContainer => ({
+  nested: {
+    path,
+    query: { term: { [field]: value } },
+  },
+})

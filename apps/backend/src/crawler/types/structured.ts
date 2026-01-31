@@ -166,12 +166,27 @@ export interface PlatformInfo {
   model: string
 }
 
-/** Data volume with unit */
+/** Data volume with unit (deprecated, use dataVolumeGb instead) */
 export type DataVolumeUnit = "KB" | "MB" | "GB" | "TB"
 
 export interface DataVolume {
   value: number
   unit: DataVolumeUnit
+}
+
+/** Sex */
+export type Sex = "male" | "female" | "mixed"
+
+/** Age group */
+export type AgeGroup = "infant" | "child" | "adolescent" | "adult" | "elderly" | "mixed"
+
+/** Variant counts */
+export interface VariantCounts {
+  snv: number | null
+  indel: number | null
+  cnv: number | null
+  sv: number | null
+  total: number | null
 }
 
 /** Experiment-level searchable fields (extracted via LLM + rule-based) */
@@ -190,6 +205,10 @@ export interface SearchableExperimentFields {
   cellLine: string | null
   population: string | null
 
+  // Demographics
+  sex: Sex | null
+  ageGroup: AgeGroup | null
+
   // Experimental method
   assayType: string | null
   libraryKits: string[]
@@ -200,12 +219,22 @@ export interface SearchableExperimentFields {
   readType: ReadType | null
   readLength: number | null
 
+  // Sequencing quality
+  sequencingDepth: number | null
+  targetCoverage: number | null
+  referenceGenome: string | null
+
+  // Variant data
+  variantCounts: VariantCounts | null
+  hasPhenotypeData: boolean | null
+
   // Target region
   targets: string | null
 
   // Data info
   fileTypes: string[]
-  dataVolume: DataVolume | null
+  processedDataTypes: string[]
+  dataVolumeGb: number | null
 
   // Policies (rule-based, not LLM)
   policies: NormalizedPolicy[]

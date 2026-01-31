@@ -64,6 +64,10 @@ export const datasetSchema = {
       cellLine: f.keyword(),
       population: f.keyword(),
 
+      // Demographics
+      sex: f.keyword(),
+      ageGroup: f.keyword(),
+
       // Experimental method
       assayType: f.keyword(),
       libraryKits: f.keyword(),
@@ -74,12 +78,28 @@ export const datasetSchema = {
       readType: f.keyword(),
       readLength: f.integer(),
 
-      // Target region (free text)
-      targets: f.text(),
+      // Sequencing quality
+      sequencingDepth: f.float(),
+      targetCoverage: f.float(),
+      referenceGenome: f.keyword(),
+
+      // Variant data
+      variantCounts: f.object({
+        snv: f.long(),
+        indel: f.long(),
+        cnv: f.long(),
+        sv: f.long(),
+        total: f.long(),
+      }),
+      hasPhenotypeData: f.boolean(),
+
+      // Target region (free text with keyword for sorting)
+      targets: f.textKw(),
 
       // Data info
       fileTypes: f.keyword(),
-      dataVolumeBytes: f.long(),
+      processedDataTypes: f.keyword(),
+      dataVolumeGb: f.float(),
 
       // Policies (nested for id/name relationship)
       policies: f.nested({

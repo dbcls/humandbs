@@ -17,6 +17,7 @@ export type FieldType =
   | "date"
   | "integer"
   | "long"
+  | "float"
   | "boolean"
   | "nested"
   | "object"
@@ -39,6 +40,7 @@ export const f = {
   date: (format?: string): FieldDef => ({ type: "date", format }),
   integer: (): FieldDef => ({ type: "integer" }),
   long: (): FieldDef => ({ type: "long" }),
+  float: (): FieldDef => ({ type: "float" }),
   boolean: (): FieldDef => ({ type: "boolean" }),
   flattened: (): FieldDef => ({ type: "flattened" }),
   noindex: (): FieldDef => ({ type: "noindex" }),
@@ -125,6 +127,8 @@ function fieldDefToProperty(def: FieldDef): MappingProperty {
       return { type: "integer" }
     case "long":
       return { type: "long" }
+    case "float":
+      return { type: "float" }
     case "boolean":
       return { type: "boolean" }
     case "flattened":

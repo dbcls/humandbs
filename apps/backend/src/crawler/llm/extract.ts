@@ -21,9 +21,12 @@ const DiseaseInfoSchema = z.object({
   icd10: z.string().nullable().catch(null),
 }).strict()
 
-const DataVolumeSchema = z.object({
-  value: z.number(),
-  unit: z.enum(["KB", "MB", "GB", "TB"]),
+const VariantCountsSchema = z.object({
+  snv: z.number().nullable().catch(null),
+  indel: z.number().nullable().catch(null),
+  cnv: z.number().nullable().catch(null),
+  sv: z.number().nullable().catch(null),
+  total: z.number().nullable().catch(null),
 }).strict()
 
 /** Parse array with element-level filtering: invalid elements are dropped instead of failing the whole array */
@@ -47,15 +50,23 @@ export const SearchableExperimentFieldsSchema = z.object({
   isTumor: z.boolean().nullable().catch(null),
   cellLine: z.string().nullable().catch(null),
   population: z.string().nullable().catch(null),
+  sex: z.enum(["male", "female", "mixed"]).nullable().catch(null),
+  ageGroup: z.enum(["infant", "child", "adolescent", "adult", "elderly", "mixed"]).nullable().catch(null),
   assayType: z.string().nullable().catch(null),
   libraryKits: z.array(z.string()).catch([]),
   platformVendor: z.string().nullable().catch(null),
   platformModel: z.string().nullable().catch(null),
   readType: z.enum(["single-end", "paired-end"]).nullable().catch(null),
   readLength: z.number().nullable().catch(null),
+  sequencingDepth: z.number().nullable().catch(null),
+  targetCoverage: z.number().nullable().catch(null),
+  referenceGenome: z.string().nullable().catch(null),
+  variantCounts: VariantCountsSchema.nullable().catch(null),
+  hasPhenotypeData: z.boolean().nullable().catch(null),
   targets: z.string().nullable().catch(null),
   fileTypes: z.array(z.string()).catch([]),
-  dataVolume: DataVolumeSchema.nullable().catch(null),
+  processedDataTypes: z.array(z.string()).catch([]),
+  dataVolumeGb: z.number().nullable().catch(null),
 })
 
 // Validation Functions
@@ -72,15 +83,23 @@ export const createEmptySearchableFields = (): SearchableExperimentFields => ({
   isTumor: null,
   cellLine: null,
   population: null,
+  sex: null,
+  ageGroup: null,
   assayType: null,
   libraryKits: [],
   platformVendor: null,
   platformModel: null,
   readType: null,
   readLength: null,
+  sequencingDepth: null,
+  targetCoverage: null,
+  referenceGenome: null,
+  variantCounts: null,
+  hasPhenotypeData: null,
   targets: null,
   fileTypes: [],
-  dataVolume: null,
+  processedDataTypes: [],
+  dataVolumeGb: null,
   policies: [],
 })
 
@@ -98,15 +117,23 @@ export const isEmptySearchableFields = (fields: SearchableExperimentFields): boo
     fields.isTumor === null &&
     fields.cellLine === null &&
     fields.population === null &&
+    fields.sex === null &&
+    fields.ageGroup === null &&
     fields.assayType === null &&
     fields.libraryKits.length === 0 &&
     fields.platformVendor === null &&
     fields.platformModel === null &&
     fields.readType === null &&
     fields.readLength === null &&
+    fields.sequencingDepth === null &&
+    fields.targetCoverage === null &&
+    fields.referenceGenome === null &&
+    fields.variantCounts === null &&
+    fields.hasPhenotypeData === null &&
     fields.targets === null &&
     fields.fileTypes.length === 0 &&
-    fields.dataVolume === null
+    fields.processedDataTypes.length === 0 &&
+    fields.dataVolumeGb === null
   )
 }
 

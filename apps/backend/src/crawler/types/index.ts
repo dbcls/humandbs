@@ -83,6 +83,9 @@ export type {
   PlatformInfo,
   DataVolumeUnit,
   DataVolume,
+  Sex,
+  AgeGroup,
+  VariantCounts,
   SearchableExperimentFields,
   SearchableDataset,
 } from "./structured"

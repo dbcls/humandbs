@@ -19,8 +19,6 @@ import type {
   BilingualTextValue,
   CriteriaCanonical,
   DiseaseInfo,
-  DataVolume,
-  DataVolumeUnit,
   Person,
   Grant,
   Publication,
@@ -32,6 +30,9 @@ import type {
   HealthStatus,
   SubjectCountType,
   ReadType,
+  Sex,
+  AgeGroup,
+  VariantCounts,
   TextValue,
 } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
@@ -95,19 +96,6 @@ const parseDisease = (str: string): DiseaseInfo | null => {
     return { label: match[1], icd10: match[2] }
   }
   return { label: str, icd10: null }
-}
-
-const parseDataVolume = (str: string): DataVolume | null => {
-  if (!str) return null
-  // Format: "123.45 GB" or "1.2 TB"
-  const match = str.match(/^([\d.]+)\s*(KB|MB|GB|TB)$/i)
-  if (match) {
-    return {
-      value: parseFloat(match[1]),
-      unit: match[2].toUpperCase() as DataVolumeUnit,
-    }
-  }
-  return null
 }
 
 // Import Research TSV
@@ -665,15 +653,23 @@ export const importExperimentTsv = (): void => {
           isTumor: parseBooleanOrNull(row.searchable_isTumor),
           cellLine: row.searchable_cellLine || null,
           population: row.searchable_population || null,
+          sex: (row.searchable_sex as Sex) || null,
+          ageGroup: (row.searchable_ageGroup as AgeGroup) || null,
           assayType: row.searchable_assayType || null,
           libraryKits: parseJsonField<string[]>(row.searchable_libraryKits, []),
           platformVendor: row.searchable_platformVendor || null,
           platformModel: row.searchable_platformModel || null,
           readType: (row.searchable_readType as ReadType) || null,
           readLength: parseNumberOrNull(row.searchable_readLength),
+          sequencingDepth: parseNumberOrNull(row.searchable_sequencingDepth),
+          targetCoverage: parseNumberOrNull(row.searchable_targetCoverage),
+          referenceGenome: row.searchable_referenceGenome || null,
+          variantCounts: parseJsonField<VariantCounts | null>(row.searchable_variantCounts, null),
+          hasPhenotypeData: parseBooleanOrNull(row.searchable_hasPhenotypeData),
           targets: row.searchable_targets || null,
           fileTypes: parseJsonField<string[]>(row.searchable_fileTypes, []),
-          dataVolume: parseDataVolume(row.searchable_dataVolume),
+          processedDataTypes: parseJsonField<string[]>(row.searchable_processedDataTypes, []),
+          dataVolumeGb: parseNumberOrNull(row.searchable_dataVolumeGb),
           // Policies are rule-based (not LLM), preserved from existing searchable or empty
           policies: exp.searchable?.policies ?? [],
         }

@@ -5,66 +5,19 @@
  */
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
+import { searchDatasets, searchResearches } from "@/api/es-client"
 import { optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec500 } from "@/api/routes/errors"
 import {
+  DatasetSearchQuerySchema,
+  DatasetSearchResponseSchema,
   FacetsResponseSchema,
-  SearchDatasetResultSchema,
-  SearchQuerySchema,
-  SearchResearchResultSchema,
+  ResearchSearchQuerySchema,
+  ResearchSearchResponseSchema,
   SearchResponseSchema,
 } from "@/api/types"
-import type { SearchQuery } from "@/api/types"
+import type { DatasetSearchQuery, ResearchSearchQuery } from "@/api/types"
 import { langType } from "@/types"
-
-// === Specific Search Schemas ===
-
-const ResearchSearchQuerySchema = SearchQuerySchema
-
-const DatasetSearchQuerySchema = z.object({
-  q: z.string().optional(),
-  lang: z.enum(langType).default("en"),
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  sort: z.enum(["relevance", "releaseDate", "datasetId"]).default("relevance"),
-  order: z.enum(["asc", "desc"]).default("desc"),
-  criteria: z.string().optional(),
-  typeOfData: z.string().optional(),
-  minSubjects: z.coerce.number().int().min(0).optional(),
-  maxSubjects: z.coerce.number().int().min(0).optional(),
-})
-
-const ResearchSearchResponseSchema = z.object({
-  data: z.array(SearchResearchResultSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-    hasNext: z.boolean(),
-    hasPrev: z.boolean(),
-  }),
-  facets: z.record(z.string(), z.array(z.object({
-    value: z.string(),
-    count: z.number(),
-  }))).optional(),
-})
-
-const DatasetSearchResponseSchema = z.object({
-  data: z.array(SearchDatasetResultSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-    hasNext: z.boolean(),
-    hasPrev: z.boolean(),
-  }),
-  facets: z.record(z.string(), z.array(z.object({
-    value: z.string(),
-    count: z.number(),
-  }))).optional(),
-})
 
 // === Route Definitions ===
 
@@ -75,7 +28,7 @@ const searchAllRoute = createRoute({
   summary: "Cross-resource Search",
   description: "Search across both Research and Dataset resources. Returns combined results.",
   request: {
-    query: SearchQuerySchema,
+    query: ResearchSearchQuerySchema,
   },
   responses: {
     200: {
@@ -152,19 +105,67 @@ searchRouter.use("*", optionalAuth)
 // GET /search
 searchRouter.openapi(searchAllRoute, async (c) => {
   try {
-    const query = c.req.query() as unknown as SearchQuery
-    // TODO: Implement cross-resource search
+    const query = c.req.valid("query") as ResearchSearchQuery
+
+    // Cross-resource search: search both Research and Dataset, merge results
+    const [researchResults, datasetResults] = await Promise.all([
+      searchResearches({ ...query, includeFacets: true }),
+      searchDatasets({ ...query, includeFacets: true } as DatasetSearchQuery),
+    ])
+
+    // Combine results - Research as SearchResearchResult, Dataset as SearchDatasetResult
+    const combinedData = [
+      ...researchResults.data.map((r) => ({
+        type: "research" as const,
+        humId: r.humId,
+        title: { ja: null, en: r.title },
+        summary: r.methods || undefined,
+        dataProvider: r.dataProvider,
+        releaseDate: r.versions[0]?.releaseDate || undefined,
+        score: undefined,
+        highlights: undefined,
+      })),
+      ...datasetResults.data.map((d) => ({
+        type: "dataset" as const,
+        datasetId: d.datasetId,
+        humId: "", // Not directly available in EsDatasetDoc
+        typeOfData: d.typeOfData ? { ja: d.typeOfData[0] ?? null, en: d.typeOfData[1] ?? null } : undefined,
+        criteria: d.criteria || undefined,
+        score: undefined,
+        highlights: undefined,
+      })),
+    ]
+
+    // Merge facets from both sources
+    const mergedFacets: Record<string, { value: string; count: number }[]> = {}
+    const allFacetKeys = new Set([
+      ...Object.keys(researchResults.facets ?? {}),
+      ...Object.keys(datasetResults.facets ?? {}),
+    ])
+    for (const key of allFacetKeys) {
+      const rFacet = researchResults.facets?.[key] ?? []
+      const dFacet = datasetResults.facets?.[key] ?? []
+      // Merge by value, sum counts
+      const merged = new Map<string, number>()
+      for (const f of rFacet) merged.set(f.value, (merged.get(f.value) ?? 0) + f.count)
+      for (const f of dFacet) merged.set(f.value, (merged.get(f.value) ?? 0) + f.count)
+      mergedFacets[key] = Array.from(merged.entries())
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count)
+    }
+
+    const total = researchResults.pagination.total + datasetResults.pagination.total
     return c.json({
-      data: [],
+      data: combinedData,
       pagination: {
-        page: query.page ?? 1,
-        limit: query.limit ?? 20,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false,
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / query.limit),
+        hasNext: (query.page - 1) * query.limit + query.limit < total,
+        hasPrev: query.page > 1,
       },
-      facets: {},
+      facets: mergedFacets,
     }, 200)
   } catch (error) {
     console.error("Error in cross-resource search:", error)
@@ -175,19 +176,14 @@ searchRouter.openapi(searchAllRoute, async (c) => {
 // GET /search/research
 searchRouter.openapi(searchResearchRoute, async (c) => {
   try {
-    const query = c.req.query() as unknown as SearchQuery
-    // TODO: Implement Research search
+    const query = c.req.valid("query") as ResearchSearchQuery
+    const result = await searchResearches(query)
+
+    // Return ResearchSummary format directly (matches ResearchSearchResponseSchema)
     return c.json({
-      data: [],
-      pagination: {
-        page: query.page ?? 1,
-        limit: query.limit ?? 20,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false,
-      },
-      facets: {},
+      data: result.data,
+      pagination: result.pagination,
+      facets: result.facets,
     }, 200)
   } catch (error) {
     console.error("Error in research search:", error)
@@ -198,19 +194,14 @@ searchRouter.openapi(searchResearchRoute, async (c) => {
 // GET /search/dataset
 searchRouter.openapi(searchDatasetRoute, async (c) => {
   try {
-    const query = c.req.query()
-    // TODO: Implement Dataset search
+    const query = c.req.valid("query") as DatasetSearchQuery
+    const result = await searchDatasets(query)
+
+    // Return EsDatasetDoc format directly (matches DatasetSearchResponseSchema)
     return c.json({
-      data: [],
-      pagination: {
-        page: Number(query.page) || 1,
-        limit: Number(query.limit) || 20,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false,
-      },
-      facets: {},
+      data: result.data,
+      pagination: result.pagination,
+      facets: result.facets,
     }, 200)
   } catch (error) {
     console.error("Error in dataset search:", error)
@@ -221,17 +212,20 @@ searchRouter.openapi(searchDatasetRoute, async (c) => {
 // GET /search/facets
 searchRouter.openapi(getFacetsRoute, async (c) => {
   try {
-    const { lang: _lang, resource: _resource } = c.req.query()
-    // TODO: Implement facet aggregation
-    const facets: Record<string, { value: string; count: number }[]> = {
-      dataProvider: [],
-      criteria: [],
-      typeOfData: [],
-      assayType: [],
-      disease: [],
-      tissue: [],
-      platform: [],
-    }
+    const { lang, resource: _resource } = c.req.valid("query")
+
+    // Fetch facets from Dataset index (primary source for facets)
+    const datasetResult = await searchDatasets({
+      page: 1,
+      limit: 1,
+      lang,
+      sort: "datasetId",
+      order: "asc",
+      includeFacets: true,
+    } as DatasetSearchQuery)
+
+    const facets = datasetResult.facets ?? {}
+
     return c.json({ facets }, 200)
   } catch (error) {
     console.error("Error fetching facets:", error)
