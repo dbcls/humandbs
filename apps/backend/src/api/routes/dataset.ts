@@ -6,9 +6,20 @@
  */
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { getDataset, getResearchByDatasetId, listDatasetVersions, searchDatasets } from "@/api/es-client"
+import {
+  canAccessResearchDoc,
+  createDataset,
+  deleteDataset,
+  getDataset,
+  getDatasetWithSeqNo,
+  getResearchByDatasetId,
+  getResearchDoc,
+  listDatasetVersions,
+  searchDatasets,
+  updateDataset,
+} from "@/api/es-client"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
-import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
+import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
 import {
   CreateDatasetRequestSchema,
   DatasetIdParamsSchema,
@@ -23,7 +34,7 @@ import {
   LinkedResearchesResponseSchema,
   UpdateDatasetRequestSchema,
 } from "@/api/types"
-import type { DatasetIdParams, DatasetSearchQuery, DatasetVersionParams, LangQuery, LangVersionQuery } from "@/api/types"
+import type { DatasetIdParams, DatasetSearchQuery, DatasetVersionParams, LangVersionQuery } from "@/api/types"
 
 // === Route Definitions ===
 
@@ -61,6 +72,7 @@ const createDatasetRoute = createRoute({
     },
     401: ErrorSpec401,
     403: ErrorSpec403,
+    404: ErrorSpec404,
     500: ErrorSpec500,
   },
 })
@@ -103,6 +115,7 @@ const updateDatasetRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -204,17 +217,46 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
   }
 })
 
-// POST /dataset/new (any authenticated user can create a dataset)
+// POST /dataset/new (authenticated user - must be owner of parent Research)
 datasetRouter.openapi(createDatasetRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
-  // Any authenticated user can create a dataset
-  // Dataset visibility is determined by linked Research status
   try {
-    // TODO: Implement create dataset logic
-    return c.json({ error: "Not Implemented", message: "Create dataset not yet implemented" }, 500)
+    const body = await c.req.json()
+
+    // Check if user has access to parent Research
+    const research = await getResearchDoc(body.humId)
+    if (!research) {
+      return c.json({ error: `Research ${body.humId} not found` }, 404)
+    }
+
+    // Deleted research is not accessible
+    if (research.status === "deleted") {
+      return c.json({ error: `Research ${body.humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can create)
+    if (!canAccessResearchDoc(authUser, research)) {
+      return c.json({ error: "Forbidden", message: "Not authorized to create datasets for this research" }, 403)
+    }
+
+    const dataset = await createDataset({
+      humId: body.humId,
+      humVersionId: body.humVersionId,
+      releaseDate: body.releaseDate,
+      criteria: body.criteria,
+      typeOfData: body.typeOfData,
+      experiments: body.experiments,
+    })
+
+    return c.json({
+      ...dataset,
+      ownerId: authUser.userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, 201)
   } catch (error) {
     console.error("Error creating dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -243,9 +285,53 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { datasetId: _datasetId } = c.req.param() as unknown as DatasetIdParams
-    // TODO: Implement update logic
-    return c.json({ error: "Not Implemented", message: "Update dataset not yet implemented" }, 500)
+    const { datasetId } = c.req.param() as unknown as DatasetIdParams
+    const query = c.req.query() as unknown as LangVersionQuery
+    const version = query.version ?? "v1"
+
+    // Get dataset with sequence number for optimistic locking
+    const result = await getDatasetWithSeqNo(datasetId, version)
+    if (!result) {
+      return c.json({ error: `Dataset ${datasetId} version ${version} not found` }, 404)
+    }
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Check if user has access to parent Research
+    const research = await getResearchDoc(doc.humId)
+    if (!research) {
+      return c.json({ error: `Parent Research ${doc.humId} not found` }, 404)
+    }
+
+    // Deleted research is not accessible
+    if (research.status === "deleted") {
+      return c.json({ error: `Parent Research ${doc.humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can update)
+    if (!canAccessResearchDoc(authUser, research)) {
+      return c.json({ error: "Forbidden", message: "Not authorized to update this dataset" }, 403)
+    }
+
+    const body = await c.req.json()
+
+    const updated = await updateDataset(datasetId, version, {
+      releaseDate: body.releaseDate,
+      criteria: body.criteria,
+      typeOfData: body.typeOfData,
+      experiments: body.experiments,
+      humId: body.humId,
+      humVersionId: body.humVersionId,
+    }, seqNo, primaryTerm)
+
+    if (!updated) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    return c.json({
+      ...updated,
+      updatedAt: new Date().toISOString(),
+    }, 200)
   } catch (error) {
     console.error("Error updating dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -262,9 +348,20 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
     return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
   }
   try {
-    const { datasetId: _datasetId } = c.req.param() as unknown as DatasetIdParams
-    // TODO: Implement delete logic
-    return c.json({ error: "Not Implemented", message: "Delete dataset not yet implemented" }, 500)
+    const { datasetId } = c.req.param() as unknown as DatasetIdParams
+    const query = c.req.query() as unknown as LangVersionQuery
+    const version = query.version ?? undefined // If undefined, deletes all versions
+
+    // Check if dataset exists
+    const dataset = await getDataset(datasetId, { version })
+    if (!dataset) {
+      // Already deleted or doesn't exist - idempotent success
+      return c.body(null, 204)
+    }
+
+    await deleteDataset(datasetId, version)
+
+    return c.body(null, 204)
   } catch (error) {
     console.error("Error deleting dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)

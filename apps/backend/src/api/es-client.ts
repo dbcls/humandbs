@@ -21,7 +21,6 @@ import type {
   EsResearchVersionDoc,
   EsResearchDetail,
   ResearchSummary,
-  LangType,
   DatasetVersionItem,
   AuthUser,
 } from "@/api/types"
@@ -1174,8 +1173,8 @@ export const getResearchByDatasetId = async (
  * Admin only - returns list of Research awaiting approval
  */
 export const getPendingReviews = async (
-  page: number = 1,
-  limit: number = 20,
+  page = 1,
+  limit = 20,
 ): Promise<{ data: EsResearchDoc[]; total: number }> => {
   const from = (page - 1) * limit
 
@@ -1200,9 +1199,7 @@ export const getPendingReviews = async (
 }
 
 // === Status Transition Types ===
-// TODO: Research CRUD functions (createResearch, updateResearch, deleteResearch,
-// createResearchVersion, updateResearchUids) will be implemented when API schema
-// is aligned with ES document structure
+// === Research CRUD Functions ===
 
 type ResearchStatus = "draft" | "review" | "published" | "deleted"
 type StatusAction = "submit" | "approve" | "reject" | "unpublish"
@@ -1318,5 +1315,935 @@ export const updateResearchStatus = async (
       }
     }
     throw error
+  }
+}
+
+/**
+ * Update Research UIDs (owner list) with optimistic locking
+ * Admin only - changes who can edit this research
+ * Returns updated uids on success, null on conflict
+ */
+export const updateResearchUids = async (
+  humId: string,
+  uids: string[],
+  seqNo: number,
+  primaryTerm: number,
+): Promise<string[] | null> => {
+  try {
+    const now = new Date().toISOString().split("T")[0]
+
+    await esClient.update({
+      index: ES_INDEX.research,
+      id: humId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          uids,
+          dateModified: now,
+        },
+      },
+      refresh: "wait_for",
+    })
+
+    return uids
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return null // Conflict
+      }
+    }
+    throw error
+  }
+}
+
+// === Research CRUD Operations ===
+
+/**
+ * Generate next humId
+ * humId format: "hum" + 4 digits (hum0001, hum0002, ...)
+ */
+export const generateNextHumId = async (): Promise<string> => {
+  interface MaxIdAggs {
+    max_id: { value: number | null }
+  }
+
+  const res = await esClient.search<unknown, MaxIdAggs>({
+    index: ES_INDEX.research,
+    size: 0,
+    aggs: {
+      max_id: {
+        max: {
+          script: {
+            source: "Integer.parseInt(doc['humId'].value.substring(3))",
+          },
+        },
+      },
+    },
+  })
+
+  const maxNum = res.aggregations?.max_id?.value ?? 0
+  return `hum${String(maxNum + 1).padStart(4, "0")}`
+}
+
+/**
+ * Create Research with initial version (v1)
+ * Admin only - creates Research (status=draft) + ResearchVersion (v1)
+ *
+ * @param params - Research data (title, summary, dataProvider, etc.)
+ * @param uids - User IDs (Keycloak sub) who can edit this research
+ * @param humId - Optional humId (auto-generated if not provided)
+ * @param initialReleaseNote - Optional release note for v1
+ * @returns Created Research and ResearchVersion
+ */
+export const createResearch = async (params: {
+  title: { ja: string | null; en: string | null }
+  summary: {
+    aims: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+    methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+    targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+    url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
+    footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
+  }
+  dataProvider: {
+    name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+    email?: string | null
+    orcid?: string | null
+    organization?: {
+      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      address?: { country?: string | null } | null
+    } | null
+    datasetIds?: string[]
+    researchTitle?: { ja: string | null; en: string | null }
+    periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
+  }[]
+  researchProject: {
+    name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+    url?: { ja: { text: string; url: string } | null; en: { text: string; url: string } | null } | null
+  }[]
+  grant: {
+    id: string[]
+    title: { ja: string | null; en: string | null }
+    agency: { name: { ja: string | null; en: string | null } }
+  }[]
+  relatedPublication: {
+    title: { ja: string | null; en: string | null }
+    doi?: string | null
+    datasetIds?: string[]
+  }[]
+  uids: string[]
+  humId?: string
+  initialReleaseNote?: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+}): Promise<{ research: EsResearchDoc; version: EsResearchVersionDoc }> => {
+  const now = new Date().toISOString().split("T")[0]
+
+  // Generate humId if not provided
+  const humId = params.humId ?? await generateNextHumId()
+  const version = "v1"
+  const humVersionId = `${humId}.${version}`
+
+  // Create Research document
+  const researchDoc: EsResearchDoc = {
+    humId,
+    url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
+    title: params.title,
+    summary: params.summary,
+    dataProvider: params.dataProvider,
+    researchProject: params.researchProject,
+    grant: params.grant,
+    relatedPublication: params.relatedPublication,
+    controlledAccessUser: [],
+    versionIds: [humVersionId],
+    latestVersion: version,
+    datePublished: now,
+    dateModified: now,
+    status: "draft",
+    uids: params.uids,
+  }
+
+  // Create ResearchVersion document (v1)
+  const versionDoc: EsResearchVersionDoc = {
+    humId,
+    humVersionId,
+    version,
+    versionReleaseDate: now,
+    datasets: [],
+    releaseNote: params.initialReleaseNote ?? { ja: null, en: null },
+  }
+
+  // Index documents (version first, then research)
+  // On failure, we attempt to clean up
+  try {
+    await esClient.index({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+      body: versionDoc,
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    throw new Error(`Failed to create ResearchVersion: ${error}`)
+  }
+
+  try {
+    await esClient.index({
+      index: ES_INDEX.research,
+      id: humId,
+      body: researchDoc,
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    // Best effort rollback: delete the version document
+    await esClient.delete({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+    }, { ignore: [404] })
+    throw new Error(`Failed to create Research: ${error}`)
+  }
+
+  return {
+    research: EsResearchDocSchema.parse(researchDoc),
+    version: EsResearchVersionDocSchema.parse(versionDoc),
+  }
+}
+
+/**
+ * Update Research document with optimistic locking
+ * Owner or admin can update
+ *
+ * @param humId - Research ID
+ * @param updates - Fields to update
+ * @param seqNo - Sequence number for optimistic locking
+ * @param primaryTerm - Primary term for optimistic locking
+ * @returns Updated Research document, null on conflict
+ */
+export const updateResearch = async (
+  humId: string,
+  updates: {
+    url?: { ja: string | null; en: string | null }
+    title?: { ja: string | null; en: string | null }
+    summary?: {
+      aims: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
+      footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
+    }
+    dataProvider?: {
+      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      email?: string | null
+      orcid?: string | null
+      organization?: {
+        name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+        address?: { country?: string | null } | null
+      } | null
+      datasetIds?: string[]
+      researchTitle?: { ja: string | null; en: string | null }
+      periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
+    }[]
+    researchProject?: {
+      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      url?: { ja: { text: string; url: string } | null; en: { text: string; url: string } | null } | null
+    }[]
+    grant?: {
+      id: string[]
+      title: { ja: string | null; en: string | null }
+      agency: { name: { ja: string | null; en: string | null } }
+    }[]
+    relatedPublication?: {
+      title: { ja: string | null; en: string | null }
+      doi?: string | null
+      datasetIds?: string[]
+    }[]
+    controlledAccessUser?: {
+      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      email?: string | null
+      orcid?: string | null
+      organization?: {
+        name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+        address?: { country?: string | null } | null
+      } | null
+      datasetIds?: string[]
+      researchTitle?: { ja: string | null; en: string | null }
+      periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
+    }[]
+  },
+  seqNo: number,
+  primaryTerm: number,
+): Promise<EsResearchDoc | null> => {
+  try {
+    const now = new Date().toISOString().split("T")[0]
+
+    await esClient.update({
+      index: ES_INDEX.research,
+      id: humId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          ...updates,
+          dateModified: now,
+        },
+      },
+      refresh: "wait_for",
+    })
+
+    return getResearchDoc(humId)
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return null // Conflict
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Delete Research (logical deletion)
+ * Admin only - sets status to "deleted"
+ *
+ * @param humId - Research ID
+ * @param seqNo - Sequence number for optimistic locking
+ * @param primaryTerm - Primary term for optimistic locking
+ * @returns true on success, false on conflict
+ */
+export const deleteResearch = async (
+  humId: string,
+  seqNo: number,
+  primaryTerm: number,
+): Promise<boolean> => {
+  try {
+    const now = new Date().toISOString().split("T")[0]
+
+    await esClient.update({
+      index: ES_INDEX.research,
+      id: humId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          status: "deleted",
+          dateModified: now,
+        },
+      },
+      refresh: "wait_for",
+    })
+
+    return true
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return false // Conflict
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Create a new Research version
+ * Owner or admin can create
+ *
+ * @param humId - Research ID
+ * @param releaseNote - Release note for the new version
+ * @param datasets - Optional datasets to link (defaults to copying from latest version)
+ * @param seqNo - Sequence number for optimistic locking
+ * @param primaryTerm - Primary term for optimistic locking
+ * @returns Created ResearchVersion, null on conflict
+ */
+export const createResearchVersion = async (
+  humId: string,
+  releaseNote: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null },
+  datasets: { datasetId: string; version: string }[] | undefined,
+  seqNo: number,
+  primaryTerm: number,
+): Promise<EsResearchVersionDoc | null> => {
+  const now = new Date().toISOString().split("T")[0]
+
+  // Get current research to determine new version number
+  const research = await getResearchDoc(humId)
+  if (!research) {
+    throw new Error(`Research ${humId} not found`)
+  }
+
+  // Calculate new version number
+  const currentVersionNum = research.versionIds.length
+  const newVersion = `v${currentVersionNum + 1}`
+  const newHumVersionId = `${humId}.${newVersion}`
+
+  // If datasets not provided, copy from latest version
+  let datasetsToUse = datasets
+  if (datasetsToUse === undefined) {
+    const latestVersion = await getResearchVersion(humId, {})
+    datasetsToUse = latestVersion?.datasets ?? []
+  }
+
+  // Create new ResearchVersion document
+  const versionDoc: EsResearchVersionDoc = {
+    humId,
+    humVersionId: newHumVersionId,
+    version: newVersion,
+    versionReleaseDate: now,
+    datasets: datasetsToUse,
+    releaseNote,
+  }
+
+  // Index the version document first
+  try {
+    await esClient.index({
+      index: ES_INDEX.researchVersion,
+      id: newHumVersionId,
+      body: versionDoc,
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    throw new Error(`Failed to create ResearchVersion: ${error}`)
+  }
+
+  // Update Research to add new version to versionIds and update latestVersion
+  try {
+    await esClient.update({
+      index: ES_INDEX.research,
+      id: humId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          versionIds: [...research.versionIds, newHumVersionId],
+          latestVersion: newVersion,
+          dateModified: now,
+        },
+      },
+      refresh: "wait_for",
+    })
+  } catch (error: unknown) {
+    // Best effort rollback: delete the version document
+    await esClient.delete({
+      index: ES_INDEX.researchVersion,
+      id: newHumVersionId,
+    }, { ignore: [404] })
+
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return null // Conflict
+      }
+    }
+    throw error
+  }
+
+  return EsResearchVersionDocSchema.parse(versionDoc)
+}
+
+/**
+ * Get ResearchVersion document with sequence number for optimistic locking
+ */
+export const getResearchVersionWithSeqNo = async (
+  humVersionId: string,
+): Promise<{ doc: EsResearchVersionDoc; seqNo: number; primaryTerm: number } | null> => {
+  const res = await esClient.get<EsResearchVersionDoc>({
+    index: ES_INDEX.researchVersion,
+    id: humVersionId,
+  }, { ignore: [404] })
+
+  if (!res.found || !res._source) return null
+
+  return {
+    doc: EsResearchVersionDocSchema.parse(res._source),
+    seqNo: res._seq_no ?? 0,
+    primaryTerm: res._primary_term ?? 0,
+  }
+}
+
+/**
+ * Link a Dataset to a Research (updates latest ResearchVersion)
+ * Owner or admin can link
+ *
+ * @param humId - Research ID
+ * @param datasetId - Dataset ID to link
+ * @param version - Dataset version to link
+ * @returns Updated datasets array, null on conflict or not found
+ */
+export const linkDatasetToResearch = async (
+  humId: string,
+  datasetId: string,
+  version: string,
+): Promise<{ datasetId: string; version: string }[] | null> => {
+  // Get latest ResearchVersion
+  const latestVersion = await getResearchVersion(humId, {})
+  if (!latestVersion) {
+    return null
+  }
+
+  const humVersionId = latestVersion.humVersionId
+
+  // Get with sequence number for optimistic locking
+  const versionWithSeq = await getResearchVersionWithSeqNo(humVersionId)
+  if (!versionWithSeq) {
+    return null
+  }
+
+  const { doc, seqNo, primaryTerm } = versionWithSeq
+
+  // Check if dataset is already linked
+  const isAlreadyLinked = doc.datasets.some(
+    d => d.datasetId === datasetId && d.version === version,
+  )
+  if (isAlreadyLinked) {
+    return doc.datasets // Already linked, return current state
+  }
+
+  // Add dataset to the list
+  const newDatasets = [...doc.datasets, { datasetId, version }]
+
+  try {
+    await esClient.update({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          datasets: newDatasets,
+        },
+      },
+      refresh: "wait_for",
+    })
+
+    return newDatasets
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return null // Conflict
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Unlink a Dataset from a Research (updates latest ResearchVersion)
+ * Owner or admin can unlink
+ *
+ * @param humId - Research ID
+ * @param datasetId - Dataset ID to unlink
+ * @param version - Optional: specific version to unlink (if not provided, unlinks all versions)
+ * @returns true on success, false on conflict or not found
+ */
+export const unlinkDatasetFromResearch = async (
+  humId: string,
+  datasetId: string,
+  version?: string,
+): Promise<boolean> => {
+  // Get latest ResearchVersion
+  const latestVersion = await getResearchVersion(humId, {})
+  if (!latestVersion) {
+    return false
+  }
+
+  const humVersionId = latestVersion.humVersionId
+
+  // Get with sequence number for optimistic locking
+  const versionWithSeq = await getResearchVersionWithSeqNo(humVersionId)
+  if (!versionWithSeq) {
+    return false
+  }
+
+  const { doc, seqNo, primaryTerm } = versionWithSeq
+
+  // Filter out the dataset(s)
+  const newDatasets = version
+    ? doc.datasets.filter(d => !(d.datasetId === datasetId && d.version === version))
+    : doc.datasets.filter(d => d.datasetId !== datasetId)
+
+  // If nothing was removed, still return success
+  if (newDatasets.length === doc.datasets.length) {
+    return true // Nothing to unlink, but not an error
+  }
+
+  try {
+    await esClient.update({
+      index: ES_INDEX.researchVersion,
+      id: humVersionId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          datasets: newDatasets,
+        },
+      },
+      refresh: "wait_for",
+    })
+
+    return true
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return false // Conflict
+      }
+    }
+    throw error
+  }
+}
+
+// === Dataset CRUD Operations ===
+
+/**
+ * Get Dataset document with sequence number for optimistic locking
+ */
+export const getDatasetWithSeqNo = async (
+  datasetId: string,
+  version: string,
+): Promise<{ doc: EsDatasetDoc; seqNo: number; primaryTerm: number } | null> => {
+  const id = `${datasetId}-${version}`
+  const res = await esClient.get<EsDatasetDoc>({
+    index: ES_INDEX.dataset,
+    id,
+  }, { ignore: [404] })
+
+  if (!res.found || !res._source) return null
+
+  return {
+    doc: EsDatasetDocSchema.parse(res._source),
+    seqNo: res._seq_no ?? 0,
+    primaryTerm: res._primary_term ?? 0,
+  }
+}
+
+/**
+ * Generate a draft Dataset ID
+ * Format: DRAFT-{humId}-{uuid}
+ */
+export const generateDraftDatasetId = (humId: string): string => {
+  const uuid = crypto.randomUUID().split("-")[0] // Short UUID (first 8 chars)
+  return `DRAFT-${humId}-${uuid}`
+}
+
+/**
+ * Get the next version number for a dataset
+ */
+const getNextDatasetVersion = async (datasetId: string): Promise<string> => {
+  interface MaxVersionAggs {
+    max_version: { value: number | null }
+  }
+
+  const res = await esClient.search<unknown, MaxVersionAggs>({
+    index: ES_INDEX.dataset,
+    size: 0,
+    query: { term: { datasetId } },
+    aggs: {
+      max_version: {
+        max: {
+          script: {
+            source: "Integer.parseInt(doc['version'].value.substring(1))",
+          },
+        },
+      },
+    },
+  })
+
+  const maxNum = res.aggregations?.max_version?.value ?? 0
+  return `v${maxNum + 1}`
+}
+
+/**
+ * Create a new Dataset
+ * Authenticated user (parent Research owner) can create
+ *
+ * @param params - Dataset data
+ * @param autoLinkToResearch - Whether to auto-link to ResearchVersion (default: true)
+ * @returns Created Dataset document
+ */
+export const createDataset = async (params: {
+  datasetId?: string // Optional: auto-generates DRAFT-{humId}-{uuid} if not provided
+  humId: string
+  humVersionId: string
+  releaseDate: string
+  criteria: "Controlled-access (Type I)" | "Controlled-access (Type II)" | "Unrestricted-access"
+  typeOfData: { ja: string | null; en: string | null }
+  experiments: {
+    header: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+    data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
+    footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
+  }[]
+}, autoLinkToResearch = true): Promise<EsDatasetDoc> => {
+  const now = new Date().toISOString().split("T")[0]
+
+  // Generate datasetId if not provided
+  const datasetId = params.datasetId ?? generateDraftDatasetId(params.humId)
+
+  // Get the next version number
+  const version = await getNextDatasetVersion(datasetId)
+
+  // Create Dataset document
+  const datasetDoc: EsDatasetDoc = {
+    datasetId,
+    version,
+    versionReleaseDate: now,
+    humId: params.humId,
+    humVersionId: params.humVersionId,
+    releaseDate: params.releaseDate,
+    criteria: params.criteria,
+    typeOfData: params.typeOfData,
+    experiments: params.experiments,
+  }
+
+  const esId = `${datasetId}-${version}`
+
+  // Index the dataset document
+  try {
+    await esClient.index({
+      index: ES_INDEX.dataset,
+      id: esId,
+      body: datasetDoc,
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    throw new Error(`Failed to create Dataset: ${error}`)
+  }
+
+  // Auto-link to ResearchVersion if requested
+  if (autoLinkToResearch) {
+    try {
+      // Extract humId from humVersionId (e.g., "hum0001.v1" -> "hum0001")
+      const humId = params.humVersionId.split(".")[0]
+      await linkDatasetToResearch(humId, datasetId, version)
+    } catch (error) {
+      // Log warning but don't fail the dataset creation
+      console.warn(`Failed to auto-link dataset to research: ${error}`)
+    }
+  }
+
+  return EsDatasetDocSchema.parse(datasetDoc)
+}
+
+/**
+ * Update Dataset document with optimistic locking
+ * Owner or admin can update
+ *
+ * @param datasetId - Dataset ID
+ * @param version - Dataset version
+ * @param updates - Fields to update
+ * @param seqNo - Sequence number for optimistic locking
+ * @param primaryTerm - Primary term for optimistic locking
+ * @returns Updated Dataset document, null on conflict
+ */
+export const updateDataset = async (
+  datasetId: string,
+  version: string,
+  updates: {
+    releaseDate?: string
+    criteria?: "Controlled-access (Type I)" | "Controlled-access (Type II)" | "Unrestricted-access"
+    typeOfData?: { ja: string | null; en: string | null }
+    experiments?: {
+      header: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
+      data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
+      footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
+    }[]
+    humId?: string
+    humVersionId?: string
+  },
+  seqNo: number,
+  primaryTerm: number,
+): Promise<EsDatasetDoc | null> => {
+  const esId = `${datasetId}-${version}`
+
+  try {
+    await esClient.update({
+      index: ES_INDEX.dataset,
+      id: esId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: updates,
+      },
+      refresh: "wait_for",
+    })
+
+    const result = await getDatasetWithSeqNo(datasetId, version)
+    return result?.doc ?? null
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return null // Conflict
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Replace Dataset ID (for converting draft ID to official ID)
+ * Owner or admin can replace
+ *
+ * This is a complex operation:
+ * 1. Get old Dataset document
+ * 2. Create new document with new datasetId
+ * 3. Update ResearchVersion.datasets references
+ * 4. Delete old document
+ *
+ * @param oldDatasetId - Current dataset ID
+ * @param version - Dataset version
+ * @param newDatasetId - New dataset ID
+ * @returns Updated Dataset document, null on not found
+ */
+export const replaceDatasetId = async (
+  oldDatasetId: string,
+  version: string,
+  newDatasetId: string,
+): Promise<EsDatasetDoc | null> => {
+  // Get old dataset
+  const oldResult = await getDatasetWithSeqNo(oldDatasetId, version)
+  if (!oldResult) {
+    return null
+  }
+
+  const oldDoc = oldResult.doc
+  const oldEsId = `${oldDatasetId}-${version}`
+  const newEsId = `${newDatasetId}-${version}`
+
+  // Create new document with new datasetId
+  const newDoc: EsDatasetDoc = {
+    ...oldDoc,
+    datasetId: newDatasetId,
+  }
+
+  // Index the new document
+  try {
+    await esClient.index({
+      index: ES_INDEX.dataset,
+      id: newEsId,
+      body: newDoc,
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    throw new Error(`Failed to create new Dataset with ID ${newDatasetId}: ${error}`)
+  }
+
+  // Update ResearchVersion.datasets references
+  const humId = oldDoc.humId
+  try {
+    const latestVersion = await getResearchVersion(humId, {})
+    if (latestVersion) {
+      const versionWithSeq = await getResearchVersionWithSeqNo(latestVersion.humVersionId)
+      if (versionWithSeq) {
+        const { doc: versionDoc, seqNo, primaryTerm } = versionWithSeq
+        const newDatasets = versionDoc.datasets.map(d =>
+          d.datasetId === oldDatasetId && d.version === version
+            ? { datasetId: newDatasetId, version }
+            : d,
+        )
+
+        await esClient.update({
+          index: ES_INDEX.researchVersion,
+          id: latestVersion.humVersionId,
+          if_seq_no: seqNo,
+          if_primary_term: primaryTerm,
+          body: {
+            doc: { datasets: newDatasets },
+          },
+          refresh: "wait_for",
+        })
+      }
+    }
+  } catch (error) {
+    // If reference update fails, delete the new document and rethrow
+    await esClient.delete({
+      index: ES_INDEX.dataset,
+      id: newEsId,
+    }, { ignore: [404] })
+    throw new Error(`Failed to update ResearchVersion references: ${error}`)
+  }
+
+  // Delete old document
+  try {
+    await esClient.delete({
+      index: ES_INDEX.dataset,
+      id: oldEsId,
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    // Log warning but don't fail - new document exists
+    console.warn(`Failed to delete old Dataset ${oldEsId}: ${error}`)
+  }
+
+  return EsDatasetDocSchema.parse(newDoc)
+}
+
+/**
+ * Delete Dataset (physical deletion)
+ * Admin only - removes from ES and ResearchVersion.datasets
+ *
+ * @param datasetId - Dataset ID
+ * @param version - Dataset version to delete (or all versions if not specified)
+ * @returns true on success
+ */
+export const deleteDataset = async (
+  datasetId: string,
+  version?: string,
+): Promise<boolean> => {
+  if (version) {
+    // Delete specific version
+    const esId = `${datasetId}-${version}`
+
+    // Get the dataset to find humId
+    const dataset = await getDataset(datasetId, { version })
+    if (!dataset) {
+      return true // Already deleted
+    }
+
+    // Remove from ResearchVersion.datasets
+    await unlinkDatasetFromResearch(dataset.humId, datasetId, version)
+
+    // Delete the document
+    await esClient.delete({
+      index: ES_INDEX.dataset,
+      id: esId,
+      refresh: "wait_for",
+    }, { ignore: [404] })
+
+    return true
+  } else {
+    // Delete all versions of this dataset
+    // First, get all versions
+    const { hits } = await esClient.search<EsDatasetDoc>({
+      index: ES_INDEX.dataset,
+      size: 1000,
+      query: { term: { datasetId } },
+      _source: ["version", "humId"],
+    })
+
+    if (hits.hits.length === 0) {
+      return true // Already deleted
+    }
+
+    // Get humId from first hit for unlinking
+    const firstHit = hits.hits[0]?._source
+    if (firstHit) {
+      // Remove all versions from ResearchVersion.datasets
+      await unlinkDatasetFromResearch(firstHit.humId, datasetId)
+    }
+
+    // Delete all documents
+    await esClient.deleteByQuery({
+      index: ES_INDEX.dataset,
+      query: { term: { datasetId } },
+      refresh: true,
+    })
+
+    return true
   }
 }

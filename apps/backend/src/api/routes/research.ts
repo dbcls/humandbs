@@ -7,12 +7,21 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import {
+  canAccessResearchDoc,
   canPerformTransition,
+  createResearch,
+  createResearchVersion,
+  deleteResearch,
   getResearchDetail,
+  getResearchDoc,
   getResearchWithSeqNo,
+  linkDatasetToResearch,
   listResearchVersionsSorted,
   searchResearches,
+  unlinkDatasetFromResearch,
+  updateResearch,
   updateResearchStatus,
+  updateResearchUids,
   validateStatusTransition,
 } from "@/api/es-client"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
@@ -32,10 +41,12 @@ import {
   ResearchVersionsResponseSchema,
   StatusTransitionResponseSchema,
   UpdateResearchRequestSchema,
+  UpdateUidsRequestSchema,
+  UpdateUidsResponseSchema,
   VersionParamsSchema,
   VersionResponseSchema,
 } from "@/api/types"
-import type { HumIdParams, LangVersionQuery, LinkParams, ResearchSearchQuery, VersionParams } from "@/api/types"
+import type { HumIdParams, LangVersionQuery, LinkParams, ResearchSearchQuery, UpdateUidsRequest, VersionParams } from "@/api/types"
 
 // === Route Definitions ===
 
@@ -115,6 +126,7 @@ const updateResearchRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -133,6 +145,7 @@ const deleteResearchRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -195,6 +208,7 @@ const createVersionRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -236,6 +250,7 @@ const linkDatasetRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -254,6 +269,7 @@ const unlinkDatasetRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -346,6 +362,29 @@ const unpublishRoute = createRoute({
   },
 })
 
+const updateUidsRoute = createRoute({
+  method: "put",
+  path: "/{humId}/uids",
+  tags: ["Research"],
+  summary: "Update Research UIDs",
+  description: "Update the UIDs (owner list) of a research. Requires admin.",
+  request: {
+    params: HumIdParamsSchema,
+    body: { content: { "application/json": { schema: UpdateUidsRequestSchema } } },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: UpdateUidsResponseSchema } },
+      description: "UIDs updated successfully",
+    },
+    401: ErrorSpec401,
+    403: ErrorSpec403,
+    404: ErrorSpec404,
+    409: ErrorSpec409,
+    500: ErrorSpec500,
+  },
+})
+
 // === Router ===
 
 export const researchRouter = new OpenAPIHono()
@@ -375,9 +414,27 @@ researchRouter.openapi(createResearchRoute, async (c) => {
     return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
   }
   try {
-    // TODO: Implement create research logic
-    // Requires type mapping between API schema and ES document structure
-    return c.json({ error: "Not Implemented", message: "Create research not yet implemented" }, 500)
+    const body = await c.req.json()
+
+    const result = await createResearch({
+      title: body.title,
+      summary: body.summary,
+      dataProvider: body.dataProvider,
+      researchProject: body.researchProject,
+      grant: body.grant,
+      relatedPublication: body.relatedPublication,
+      uids: body.uids,
+      initialReleaseNote: body.initialReleaseNote,
+    })
+
+    // Return the created research with status
+    // Note: createResearch always returns status="draft", but TypeScript needs explicit cast
+    const { status, ...rest } = result.research
+    return c.json({
+      ...rest,
+      status: status as "draft" | "review" | "published",
+      datasets: [],
+    }, 201)
   } catch (error) {
     console.error("Error creating research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -406,10 +463,50 @@ researchRouter.openapi(updateResearchRoute, async (c) => {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement update logic
-    // Requires type mapping between API schema and ES document structure
-    return c.json({ error: "Not Implemented", message: "Update research not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can update)
+    if (!authUser.isAdmin && !doc.uids.includes(authUser.userId)) {
+      return c.json({ error: "Forbidden", message: "Not authorized to update this research" }, 403)
+    }
+
+    const body = await c.req.json()
+
+    const updated = await updateResearch(humId, {
+      url: body.url,
+      title: body.title,
+      summary: body.summary,
+      dataProvider: body.dataProvider,
+      researchProject: body.researchProject,
+      grant: body.grant,
+      relatedPublication: body.relatedPublication,
+      controlledAccessUser: body.controlledAccessUser,
+    }, seqNo, primaryTerm)
+
+    if (!updated) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    // Note: updateResearch returns docs that should not have status="deleted", but TypeScript needs explicit cast
+    const { status: updatedStatus, ...restUpdated } = updated
+    return c.json({
+      ...restUpdated,
+      status: updatedStatus as "draft" | "review" | "published",
+      datasets: [],
+    }, 200)
   } catch (error) {
     console.error("Error updating research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -426,9 +523,27 @@ researchRouter.openapi(deleteResearchRoute, async (c) => {
     return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement delete logic
-    return c.json({ error: "Not Implemented", message: "Delete research not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Already deleted
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    const deleted = await deleteResearch(humId, seqNo, primaryTerm)
+    if (!deleted) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    return c.body(null, 204)
   } catch (error) {
     console.error("Error deleting research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -481,9 +596,48 @@ researchRouter.openapi(createVersionRoute, async (c) => {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement create version logic
-    return c.json({ error: "Not Implemented", message: "Create version not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can create version)
+    if (!authUser.isAdmin && !doc.uids.includes(authUser.userId)) {
+      return c.json({ error: "Forbidden", message: "Not authorized to create version for this research" }, 403)
+    }
+
+    const body = await c.req.json()
+
+    const newVersion = await createResearchVersion(
+      humId,
+      body.releaseNote,
+      body.datasets,
+      seqNo,
+      primaryTerm,
+    )
+
+    if (!newVersion) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    return c.json({
+      humId: newVersion.humId,
+      humVersionId: newVersion.humVersionId,
+      version: newVersion.version,
+      versionReleaseDate: newVersion.versionReleaseDate,
+      releaseNote: newVersion.releaseNote,
+      datasets: [], // Empty initially, datasets can be linked later
+    }, 201)
   } catch (error) {
     console.error("Error creating version:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -511,9 +665,36 @@ researchRouter.openapi(linkDatasetRoute, async (c) => {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { humId: _humId, datasetId: _datasetId } = c.req.param() as unknown as LinkParams
-    // TODO: Implement link dataset logic
-    return c.json({ error: "Not Implemented", message: "Link dataset not yet implemented" }, 500)
+    const { humId, datasetId } = c.req.param() as unknown as LinkParams
+
+    // Get research to check permissions
+    const research = await getResearchDoc(humId)
+    if (!research) {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Deleted research is not accessible
+    if (research.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can link)
+    if (!canAccessResearchDoc(authUser, research)) {
+      return c.json({ error: "Forbidden", message: "Not authorized to link datasets to this research" }, 403)
+    }
+
+    // Get the version from query param or use "v1" as default
+    const query = c.req.query()
+    const version = query.version ?? "v1"
+
+    const updatedDatasets = await linkDatasetToResearch(humId, datasetId, version)
+    if (!updatedDatasets) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    // Get full dataset details
+    const detail = await getResearchDetail(humId, {}, authUser)
+    return c.json({ data: detail?.datasets ?? [] }, 201)
   } catch (error) {
     console.error("Error linking dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -527,9 +708,34 @@ researchRouter.openapi(unlinkDatasetRoute, async (c) => {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { humId: _humId, datasetId: _datasetId } = c.req.param() as unknown as LinkParams
-    // TODO: Implement unlink dataset logic
-    return c.json({ error: "Not Implemented", message: "Unlink dataset not yet implemented" }, 500)
+    const { humId, datasetId } = c.req.param() as unknown as LinkParams
+
+    // Get research to check permissions
+    const research = await getResearchDoc(humId)
+    if (!research) {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Deleted research is not accessible
+    if (research.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can unlink)
+    if (!canAccessResearchDoc(authUser, research)) {
+      return c.json({ error: "Forbidden", message: "Not authorized to unlink datasets from this research" }, 403)
+    }
+
+    // Get the version from query param (optional - if not provided, unlinks all versions)
+    const query = c.req.query()
+    const version = query.version
+
+    const success = await unlinkDatasetFromResearch(humId, datasetId, version)
+    if (!success) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    return c.body(null, 204)
   } catch (error) {
     console.error("Error unlinking dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -738,6 +944,47 @@ researchRouter.openapi(unpublishRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error unpublishing research:", error)
+    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+  }
+})
+
+// PUT /research/{humId}/uids
+researchRouter.openapi(updateUidsRoute, async (c) => {
+  const authUser = c.get("authUser")
+  if (!authUser) {
+    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+  }
+  if (!authUser.isAdmin) {
+    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+  }
+  try {
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    const body = await c.req.json() as UpdateUidsRequest
+
+    // Update uids
+    const updatedUids = await updateResearchUids(humId, body.uids, seqNo, primaryTerm)
+    if (!updatedUids) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    return c.json({
+      humId,
+      uids: updatedUids,
+    }, 200)
+  } catch (error) {
+    console.error("Error updating research uids:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
   }
 })

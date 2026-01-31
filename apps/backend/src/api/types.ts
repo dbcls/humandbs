@@ -505,6 +505,25 @@ export const ResearchListResponseSchema = z.object({
 })
 export type ResearchListResponse = z.infer<typeof ResearchListResponseSchema>
 
+// === Research UIDs API ===
+
+/**
+ * Update Research UIDs (owner list) request
+ */
+export const UpdateUidsRequestSchema = z.object({
+  uids: z.array(z.string()).describe("Keycloak sub (UUID) array of users who can edit this research"),
+})
+export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
+
+/**
+ * Update UIDs response
+ */
+export const UpdateUidsResponseSchema = z.object({
+  humId: z.string(),
+  uids: z.array(z.string()),
+})
+export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>
+
 // === Version API ===
 
 /**
@@ -1055,44 +1074,6 @@ export const PendingReviewsResponseSchema = z.object({
 })
 export type PendingReviewsResponse = z.infer<typeof PendingReviewsResponseSchema>
 
-/**
- * User info for admin
- * Note: isAdmin is determined by admin_uids.json, not stored per user
- */
-export const UserInfoSchema = z.object({
-  userId: z.string(),
-  username: z.string(),
-  email: z.string().optional(),
-  isAdmin: z.boolean(),
-  createdAt: z.string().optional(),
-})
-export type UserInfo = z.infer<typeof UserInfoSchema>
-
-/**
- * Users list response
- */
-export const UsersListResponseSchema = z.object({
-  data: z.array(UserInfoSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-    hasNext: z.boolean(),
-    hasPrev: z.boolean(),
-  }),
-})
-export type UsersListResponse = z.infer<typeof UsersListResponseSchema>
-
-/**
- * Update user admin status request
- * Note: This updates the admin_uids.json file
- */
-export const UpdateUserAdminRequestSchema = z.object({
-  isAdmin: z.boolean(),
-})
-export type UpdateUserAdminRequest = z.infer<typeof UpdateUserAdminRequestSchema>
-
 // === Link API (Research-Dataset relationship) ===
 
 /**
@@ -1166,11 +1147,6 @@ export const LinkParamsSchema = z.object({
   datasetId: z.string(),
 })
 export type LinkParams = z.infer<typeof LinkParamsSchema>
-
-export const UserIdParamsSchema = z.object({
-  userId: z.string(),
-})
-export type UserIdParams = z.infer<typeof UserIdParamsSchema>
 
 // === Simple Response Schemas ===
 

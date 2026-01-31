@@ -8,7 +8,6 @@ import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
 import { researchRouter } from "@/api/routes/research"
 import { searchRouter } from "@/api/routes/search"
-import { usersRouter } from "@/api/routes/users"
 
 // Environment variables
 const API_URL_PREFIX = process.env.HUMANDBS_API_URL_PREFIX || ""
@@ -24,7 +23,6 @@ export const createApp = () => {
 
   // Utility routes
   api.route("/health", healthRouter)
-  api.route("/users", usersRouter)
 
   // API routes (singular form)
   api.route("/research", researchRouter)
@@ -91,7 +89,6 @@ Only admins can approve/reject submissions and unpublish content.
       { name: "Dataset Versions", description: "Dataset versioning operations" },
       { name: "Search", description: "Full-text and faceted search" },
       { name: "Admin", description: "Administrative operations (requires admin role)" },
-      { name: "Users", description: "User-related operations" },
     ],
   })
 
