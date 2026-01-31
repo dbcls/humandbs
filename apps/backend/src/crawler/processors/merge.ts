@@ -4,6 +4,7 @@
  * Matches and merges ja/en data for bilingual output
  * Handles experiments, publications, grants, controlled access users, research projects
  */
+import { extractAccessionIdFromText } from "@/crawler/config/patterns"
 import type {
   SingleLangExperiment,
   SingleLangPublication,
@@ -56,31 +57,12 @@ type ResearchProjectMatchType =
 
 // Accession ID Extraction
 
-const ACCESSION_PATTERNS = [
-  /JGAD\d+/,
-  /JGAS\d+/,
-  /DRA\d+/,
-  /DRR\d+/,
-  /DRS\d+/,
-  /DRX\d+/,
-  /GEA\d+/,
-  /PRJDB\d+/,
-]
-
 /**
  * Extract accession ID from experiment header
  */
 export const extractAccessionId = (exp: SingleLangExperiment): string | null => {
   const headerText = exp.header?.text ?? ""
-
-  for (const pattern of ACCESSION_PATTERNS) {
-    const match = headerText.match(pattern)
-    if (match) {
-      return match[0]
-    }
-  }
-
-  return null
+  return extractAccessionIdFromText(headerText)
 }
 
 // Header Normalization

@@ -11,20 +11,9 @@ import { JSDOM } from "jsdom"
 import type { LangType, RawRelease } from "@/crawler/types"
 import { logger } from "@/crawler/utils/logger"
 
-import { cleanText, cleanInnerHtml } from "./utils"
+import { cleanText, cleanInnerHtml, compareHeaders } from "./utils"
 
 // Utility functions
-
-/**
- * Compare two arrays for equality
- */
-const sameArray = (a: string[], b: string[]): boolean => {
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false
-  }
-  return true
-}
 
 /**
  * Convert version format from dot to hyphen
@@ -52,10 +41,8 @@ const EXPECT_HEADERS_EN = ["Research ID", "Release Date", "Type of Data"]
  * Validate release table headers match expected format
  */
 export const validateTableHeaders = (headers: string[], lang: LangType): boolean => {
-  if (lang === "ja") {
-    return sameArray(headers, EXPECT_HEADERS_JA)
-  }
-  return sameArray(headers, EXPECT_HEADERS_EN)
+  const expected = lang === "ja" ? EXPECT_HEADERS_JA : EXPECT_HEADERS_EN
+  return compareHeaders(headers, expected)
 }
 
 /**

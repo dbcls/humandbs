@@ -23,27 +23,22 @@ import { parseDetailPage } from "@/crawler/parsers/detail"
 import { humIdToTitle } from "@/crawler/parsers/home"
 import { parseReleasePage } from "@/crawler/parsers/release"
 import type { LangType, CrawlArgs, CrawlOneResult, CrawlHumIdResult } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getHtmlDir, writeParsedJson, getResultsDir } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 
 // CLI argument parsing
 
 const parseArgs = (): CrawlArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
-    .option("lang", { choices: ["ja", "en"] as const, describe: "Language to parse" })
-    .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent parses" })
-    .option("verbose", { alias: "v", type: "boolean", default: false, describe: "Show debug logs" })
-    .option("quiet", { alias: "q", type: "boolean", default: false, describe: "Show only warnings and errors" })
-    .parseSync() as CrawlArgs
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
+      .option("lang", { choices: ["ja", "en"] as const, describe: "Language to parse" })
+      .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent parses" }),
+  ).parseSync() as CrawlArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 

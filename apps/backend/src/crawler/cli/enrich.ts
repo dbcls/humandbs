@@ -24,9 +24,10 @@ import type {
   EnrichedDataset,
   EnrichedPublication,
 } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getResultsDir } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 
 // Types
 
@@ -286,58 +287,44 @@ const main = async (args: EnrichArgs): Promise<EnrichResult> => {
 
 // CLI
 
-const argv = await yargs(hideBin(process.argv))
-  .option("hum-id", {
-    alias: "i",
-    type: "string",
-    description: "Process only the specified humId",
-  })
-  .option("force", {
-    alias: "f",
-    type: "boolean",
-    description: "Re-enrich even if already enriched",
-    default: false,
-  })
-  .option("cache", {
-    type: "boolean",
-    description: "Use cache for API calls (use --no-cache to disable)",
-    default: true,
-  })
-  .option("skip-datasets", {
-    type: "boolean",
-    description: "Skip dataset enrichment",
-    default: false,
-  })
-  .option("skip-research", {
-    type: "boolean",
-    description: "Skip research (DOI) enrichment",
-    default: false,
-  })
-  .option("delay-ms", {
-    type: "number",
-    description: "Delay between API calls in milliseconds",
-    default: 100,
-  })
-  .option("verbose", {
-    alias: "v",
-    type: "boolean",
-    description: "Show debug logs",
-    default: false,
-  })
-  .option("quiet", {
-    alias: "q",
-    type: "boolean",
-    description: "Show only warnings and errors",
-    default: false,
-  })
+const argv = await withCommonOptions(
+  yargs(hideBin(process.argv))
+    .option("hum-id", {
+      alias: "i",
+      type: "string",
+      description: "Process only the specified humId",
+    })
+    .option("force", {
+      alias: "f",
+      type: "boolean",
+      description: "Re-enrich even if already enriched",
+      default: false,
+    })
+    .option("cache", {
+      type: "boolean",
+      description: "Use cache for API calls (use --no-cache to disable)",
+      default: true,
+    })
+    .option("skip-datasets", {
+      type: "boolean",
+      description: "Skip dataset enrichment",
+      default: false,
+    })
+    .option("skip-research", {
+      type: "boolean",
+      description: "Skip research (DOI) enrichment",
+      default: false,
+    })
+    .option("delay-ms", {
+      type: "number",
+      description: "Delay between API calls in milliseconds",
+      default: 100,
+    }),
+)
   .help()
   .parse()
 
-if (argv.verbose) {
-  setLogLevel("debug")
-} else if (argv.quiet) {
-  setLogLevel("warn")
-}
+applyLogLevel(argv)
 
 const args: EnrichArgs = {
   humId: argv["hum-id"],

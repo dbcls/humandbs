@@ -29,8 +29,9 @@ import type {
   SubjectCountType,
   ReadType,
 } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getResultsDir } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 import {
   parseTsv,
   parseJsonField,
@@ -336,33 +337,17 @@ interface CliArgs {
 }
 
 const parseArgs = (): CliArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("force", {
-      alias: "f",
-      type: "boolean",
-      default: false,
-      description: "Force overwrite final directory",
-    })
-    .option("verbose", {
-      alias: "v",
-      type: "boolean",
-      default: false,
-      description: "Show debug logs",
-    })
-    .option("quiet", {
-      alias: "q",
-      type: "boolean",
-      default: false,
-      description: "Show only warnings and errors",
-    })
-    .parseSync() as CliArgs
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("force", {
+        alias: "f",
+        type: "boolean",
+        default: false,
+        description: "Force overwrite final directory",
+      }),
+  ).parseSync() as CliArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 

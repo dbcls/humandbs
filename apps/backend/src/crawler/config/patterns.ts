@@ -92,3 +92,29 @@ export const isValidDatasetId = (id: string): boolean => {
   }
   return false
 }
+
+/**
+ * Accession ID patterns for experiment header extraction
+ * These are simpler patterns (no digit count) for matching accession IDs in text
+ */
+export const ACCESSION_PATTERNS: RegExp[] = [
+  /JGAD\d+/,
+  /JGAS\d+/,
+  /DRA\d+/,
+  /DRR\d+/,
+  /DRS\d+/,
+  /DRX\d+/,
+  /GEA\d+/,
+  /PRJDB\d+/,
+]
+
+/**
+ * Extract accession ID from text string
+ */
+export const extractAccessionIdFromText = (text: string): string | null => {
+  for (const pattern of ACCESSION_PATTERNS) {
+    const match = text.match(pattern)
+    if (match) return match[0]
+  }
+  return null
+}

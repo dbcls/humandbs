@@ -92,35 +92,43 @@ export const listFiles = (dir: string, pattern?: string): string[] => {
 
 // Path generation functions
 
+/** Subdirectory mappings for crawler-results */
+const RESULT_SUBDIRS = {
+  html: "html",
+  parsed: "detail-json",
+  normalized: "normalized-json",
+  enriched: "enriched",
+  extracted: "extracted",
+  externalCache: "external-cache",
+  structuredJson: "structured-json",
+  structuredResearch: "structured-json/research",
+  structuredResearchVersion: "structured-json/research-version",
+  structuredDataset: "structured-json/dataset",
+} as const
+
+export type ResultSubdirKey = keyof typeof RESULT_SUBDIRS
+
+/** Get a subdirectory path within crawler-results */
+export const getSubdir = (key: ResultSubdirKey): string =>
+  join(getResultsDir(), RESULT_SUBDIRS[key])
+
 /** Get the path to the HTML cache directory */
-export const getHtmlDir = (): string => {
-  return join(getResultsDir(), "html")
-}
+export const getHtmlDir = (): string => getSubdir("html")
 
 /** Get the path to the parsed JSON directory */
-export const getParsedDir = (): string => {
-  return join(getResultsDir(), "detail-json")
-}
+export const getParsedDir = (): string => getSubdir("parsed")
 
 /** Get the path to the normalized JSON directory */
-export const getNormalizedDir = (): string => {
-  return join(getResultsDir(), "normalized-json")
-}
+export const getNormalizedDir = (): string => getSubdir("normalized")
 
 /** Get the path to the enriched JSON directory */
-export const getEnrichedDir = (): string => {
-  return join(getResultsDir(), "enriched")
-}
+export const getEnrichedDir = (): string => getSubdir("enriched")
 
 /** Get the path to the extracted JSON directory */
-export const getExtractedDir = (): string => {
-  return join(getResultsDir(), "extracted")
-}
+export const getExtractedDir = (): string => getSubdir("extracted")
 
 /** Get the path to the external cache directory */
-export const getExternalCacheDir = (): string => {
-  return join(getResultsDir(), "external-cache")
-}
+export const getExternalCacheDir = (): string => getSubdir("externalCache")
 
 /**
  * Generate the path for a parsed JSON file
@@ -211,24 +219,16 @@ export const listNormalizedFiles = (opts: {
 // Structured JSON paths
 
 /** Get the path to the structured JSON directory */
-export const getStructuredJsonDir = (): string => {
-  return join(getResultsDir(), "structured-json")
-}
+export const getStructuredJsonDir = (): string => getSubdir("structuredJson")
 
 /** Get the path to the structured research directory */
-export const getStructuredResearchDir = (): string => {
-  return join(getStructuredJsonDir(), "research")
-}
+export const getStructuredResearchDir = (): string => getSubdir("structuredResearch")
 
 /** Get the path to the structured research version directory */
-export const getStructuredResearchVersionDir = (): string => {
-  return join(getStructuredJsonDir(), "research-version")
-}
+export const getStructuredResearchVersionDir = (): string => getSubdir("structuredResearchVersion")
 
 /** Get the path to the structured dataset directory */
-export const getStructuredDatasetDir = (): string => {
-  return join(getStructuredJsonDir(), "dataset")
-}
+export const getStructuredDatasetDir = (): string => getSubdir("structuredDataset")
 
 /**
  * Generate the path for a structured research JSON file

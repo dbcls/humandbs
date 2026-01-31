@@ -25,13 +25,14 @@ import { extractIdsByType } from "@/crawler/config/patterns"
 import { DEFAULT_CONCURRENCY, MAX_CONCURRENCY, HUMANDBS_BASE_URL } from "@/crawler/config/urls"
 import { normalizeParseResult, type NormalizeOptions } from "@/crawler/processors/normalize"
 import type { LangType, RawParseResult } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import {
   listParsedFiles,
   readParsedJson,
   writeNormalizedJson,
 } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 
 // CLI argument types
 
@@ -39,27 +40,21 @@ interface NormalizeArgs {
   humId?: string
   lang?: LangType
   concurrency: number
-  verbose: boolean
-  quiet: boolean
+  verbose?: boolean
+  quiet?: boolean
 }
 
 // CLI argument parsing
 
 const parseArgs = (): NormalizeArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
-    .option("lang", { choices: ["ja", "en"] as const, describe: "Language to normalize" })
-    .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent normalizations" })
-    .option("verbose", { alias: "v", type: "boolean", default: false, describe: "Show debug logs" })
-    .option("quiet", { alias: "q", type: "boolean", default: false, describe: "Show only warnings and errors" })
-    .parseSync() as NormalizeArgs
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
+      .option("lang", { choices: ["ja", "en"] as const, describe: "Language to normalize" })
+      .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent normalizations" }),
+  ).parseSync() as NormalizeArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 

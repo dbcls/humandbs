@@ -6,10 +6,11 @@
  */
 import { join } from "path"
 
-import { DEFAULT_API_DELAY_MS } from "@/crawler/config/urls"
 import { getErrorMessage } from "@/crawler/utils/error"
-import { getExternalCacheDir, ensureDir, readJson, writeJson, fileExists } from "@/crawler/utils/io"
+import { getExternalCacheDir, readJson, writeJson, fileExists } from "@/crawler/utils/io"
 import { logger } from "@/crawler/utils/logger"
+
+import { createCachedClient } from "./client"
 
 // Types
 
@@ -56,15 +57,6 @@ const DDBJ_SEARCH_BASE_URL = "https://ddbj.nig.ac.jp/search/resources"
 const RELATION_CACHE_FILE_NAME = "jga-relation.json"
 
 // Cache Directory
-
-const getCacheDir = (): string => {
-  const dir = join(getExternalCacheDir(), "jgad")
-  ensureDir(dir)
-  return dir
-}
-
-const getCachePath = (datasetId: string): string =>
-  join(getCacheDir(), `${datasetId}.json`)
 
 const getRelationCacheFilePath = (): string =>
   join(getExternalCacheDir(), RELATION_CACHE_FILE_NAME)
@@ -219,13 +211,21 @@ export const clearJgaApiCache = (): void => {
   cacheModified = false
 }
 
-// JGAD Metadata
+// JGAD Metadata - uses createCachedClient
 
-interface CachedJgadMetadata {
-  accession: string
-  notFound?: boolean
-  [key: string]: unknown
-}
+const jgadClient = createCachedClient<Record<string, unknown>>(
+  {
+    cacheDir: "jgad",
+    getCacheKey: (id) => id,
+  },
+  async (datasetId) => {
+    const response = await fetchJgadFromApi(datasetId)
+    if (!response?.found || !response._source?.properties) {
+      return null
+    }
+    return response._source.properties
+  },
+)
 
 /**
  * Get JGAD metadata with caching
@@ -238,39 +238,7 @@ export const getJgadMetadata = async (
   if (!datasetId.startsWith("JGAD")) {
     return null
   }
-
-  const cachePath = getCachePath(datasetId)
-
-  // Check cache
-  if (useCache && fileExists(cachePath)) {
-    const cached = readJson<CachedJgadMetadata>(cachePath)
-    if (cached?.notFound) {
-      logger.debug("JGAD cache hit (not found)", { datasetId })
-      return null
-    }
-    logger.debug("JGAD cache hit", { datasetId })
-    return cached as Record<string, unknown>
-  }
-
-  // Fetch from API
-  const response = await fetchJgadFromApi(datasetId)
-  if (!response) {
-    return null
-  }
-
-  if (!response.found || !response._source?.properties) {
-    // Cache empty result
-    writeJson(cachePath, { accession: datasetId, notFound: true })
-    return null
-  }
-
-  // Return properties directly
-  const properties = response._source.properties
-
-  // Cache the result
-  writeJson(cachePath, properties)
-
-  return properties
+  return jgadClient.get(datasetId, useCache)
 }
 
 /**
@@ -279,26 +247,15 @@ export const getJgadMetadata = async (
 export const batchGetJgadMetadata = async (
   datasetIds: string[],
   useCache = true,
-  delayMs = DEFAULT_API_DELAY_MS,
 ): Promise<Map<string, Record<string, unknown>>> => {
-  const result = new Map<string, Record<string, unknown>>()
-
   const jgadIds = datasetIds.filter(id => id.startsWith("JGAD"))
-
-  for (let i = 0; i < jgadIds.length; i++) {
-    const datasetId = jgadIds[i]
-    const metadata = await getJgadMetadata(datasetId, useCache)
-
-    if (metadata) {
-      result.set(datasetId, metadata)
-    }
-
-    if (i < jgadIds.length - 1 && !useCache) {
-      await new Promise(r => setTimeout(r, delayMs))
-    }
+  const result = await jgadClient.getMany(jgadIds, useCache)
+  // Filter out null values for the return type
+  const filtered = new Map<string, Record<string, unknown>>()
+  for (const [k, v] of result) {
+    if (v !== null) filtered.set(k, v)
   }
-
-  return result
+  return filtered
 }
 
 /**

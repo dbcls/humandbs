@@ -633,9 +633,9 @@ const createSearchableWithPolicies = (
 })
 
 /**
- * Create unified experiments from ja/en experiments
+ * Merge ja/en experiments into bilingual experiments
  */
-export const createUnifiedExperiments = (
+export const mergeExperiments = (
   jaExperiments: SingleLangExperiment[],
   enExperiments: SingleLangExperiment[],
 ): Experiment[] => {
@@ -675,9 +675,9 @@ export const createUnifiedExperiments = (
 }
 
 /**
- * Create unified dataset
+ * Merge ja/en datasets into bilingual dataset
  */
-export const createUnifiedDataset = (
+export const mergeDataset = (
   datasetId: string,
   version: string,
   versionReleaseDate: string,
@@ -686,7 +686,7 @@ export const createUnifiedDataset = (
   jaDataset: SingleLangDataset | null,
   enDataset: SingleLangDataset | null,
 ): Dataset => {
-  const experiments = createUnifiedExperiments(
+  const experiments = mergeExperiments(
     jaDataset?.experiments ?? [],
     enDataset?.experiments ?? [],
   )
@@ -723,9 +723,9 @@ export const createUnifiedDataset = (
 }
 
 /**
- * Create unified summary
+ * Merge ja/en summaries into bilingual summary
  */
-export const createUnifiedSummary = (
+export const mergeSummary = (
   jaSummary: SingleLangResearch["summary"] | null,
   enSummary: SingleLangResearch["summary"] | null,
 ): Summary => ({
@@ -743,9 +743,9 @@ export const createUnifiedSummary = (
 })
 
 /**
- * Create unified data provider
+ * Merge ja/en data providers into bilingual persons
  */
-export const createUnifiedDataProvider = (
+export const mergeDataProvider = (
   jaProviders: SingleLangPerson[],
   enProviders: SingleLangPerson[],
 ): Person[] => {
@@ -776,9 +776,9 @@ export const createUnifiedDataProvider = (
 }
 
 /**
- * Create unified controlled access users
+ * Merge ja/en controlled access users into bilingual persons
  */
-export const createUnifiedControlledAccessUsers = (
+export const mergeControlledAccessUsers = (
   jaUsers: SingleLangPerson[],
   enUsers: SingleLangPerson[],
 ): Person[] => {
@@ -802,9 +802,9 @@ export const createUnifiedControlledAccessUsers = (
 }
 
 /**
- * Create unified research projects
+ * Merge ja/en research projects into bilingual projects
  */
-export const createUnifiedResearchProjects = (
+export const mergeResearchProjects = (
   jaProjects: SingleLangResearchProject[],
   enProjects: SingleLangResearchProject[],
 ): ResearchProject[] => {
@@ -822,9 +822,9 @@ export const createUnifiedResearchProjects = (
 }
 
 /**
- * Create unified grants
+ * Merge ja/en grants into bilingual grants
  */
-export const createUnifiedGrants = (
+export const mergeGrants = (
   jaGrants: SingleLangGrant[],
   enGrants: SingleLangGrant[],
 ): Grant[] => {
@@ -840,9 +840,9 @@ export const createUnifiedGrants = (
 }
 
 /**
- * Create unified publications
+ * Merge ja/en publications into bilingual publications
  */
-export const createUnifiedPublications = (
+export const mergePublications = (
   jaPubs: SingleLangPublication[],
   enPubs: SingleLangPublication[],
 ): Publication[] => {
@@ -856,9 +856,9 @@ export const createUnifiedPublications = (
 }
 
 /**
- * Create unified research
+ * Merge ja/en research into bilingual research
  */
-export const createUnifiedResearch = (
+export const mergeResearch = (
   humId: string,
   jaResearch: SingleLangResearch | null,
   enResearch: SingleLangResearch | null,
@@ -866,27 +866,27 @@ export const createUnifiedResearch = (
   humId,
   url: toBilingualText(jaResearch?.url ?? null, enResearch?.url ?? null),
   title: toBilingualText(jaResearch?.title ?? null, enResearch?.title ?? null),
-  summary: createUnifiedSummary(
+  summary: mergeSummary(
     jaResearch?.summary ?? null,
     enResearch?.summary ?? null,
   ),
-  dataProvider: createUnifiedDataProvider(
+  dataProvider: mergeDataProvider(
     jaResearch?.dataProvider ?? [],
     enResearch?.dataProvider ?? [],
   ),
-  researchProject: createUnifiedResearchProjects(
+  researchProject: mergeResearchProjects(
     jaResearch?.researchProject ?? [],
     enResearch?.researchProject ?? [],
   ),
-  grant: createUnifiedGrants(
+  grant: mergeGrants(
     jaResearch?.grant ?? [],
     enResearch?.grant ?? [],
   ),
-  relatedPublication: createUnifiedPublications(
+  relatedPublication: mergePublications(
     jaResearch?.relatedPublication ?? [],
     enResearch?.relatedPublication ?? [],
   ),
-  controlledAccessUser: createUnifiedControlledAccessUsers(
+  controlledAccessUser: mergeControlledAccessUsers(
     jaResearch?.controlledAccessUser ?? [],
     enResearch?.controlledAccessUser ?? [],
   ),
@@ -902,9 +902,9 @@ export const createUnifiedResearch = (
 })
 
 /**
- * Create unified research version
+ * Merge ja/en research versions into bilingual research version
  */
-export const createUnifiedResearchVersion = (
+export const mergeResearchVersion = (
   humVersionId: string,
   jaVersion: SingleLangResearchVersion | null,
   enVersion: SingleLangResearchVersion | null,

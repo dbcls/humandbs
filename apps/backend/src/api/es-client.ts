@@ -1,6 +1,14 @@
 import { Client, HttpConnection } from "@elastic/elasticsearch"
 import type { estypes } from "@elastic/elasticsearch"
 
+import {
+  nestedTermsQuery,
+  nestedTermQuery,
+  nestedWildcardQuery,
+  nestedExistsQuery,
+  nestedRangeQuery,
+  doubleNestedWildcardQuery,
+} from "@/api/es-query-helpers"
 import type {
   DatasetSearchQuery,
   DatasetSearchResponse,
@@ -271,113 +279,59 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
   // assayType filter (comma-separated for OR) - nested query on experiments.refined
   const assayTypes = splitComma(params.assayType)
   if (assayTypes.length > 0) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { terms: { "experiments.refined.assayType": assayTypes } },
-      },
-    })
+    must.push(nestedTermsQuery("experiments", "experiments.refined.assayType", assayTypes))
   }
 
   // disease filter (partial match) - double nested query on experiments.refined.diseases
   if (params.disease) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: {
-          nested: {
-            path: "experiments.refined.diseases",
-            query: {
-              wildcard: { "experiments.refined.diseases.label": { value: `*${params.disease}*`, case_insensitive: true } },
-            },
-          },
-        },
-      },
-    })
+    must.push(doubleNestedWildcardQuery(
+      "experiments",
+      "experiments.refined.diseases",
+      "experiments.refined.diseases.label",
+      params.disease,
+    ))
   }
 
   // tissue filter (comma-separated for OR) - nested query on experiments.refined
   const tissues = splitComma(params.tissue)
   if (tissues.length > 0) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { terms: { "experiments.refined.tissues": tissues } },
-      },
-    })
+    must.push(nestedTermsQuery("experiments", "experiments.refined.tissues", tissues))
   }
 
   // population filter (comma-separated for OR) - nested query on experiments.refined
   const populations = splitComma(params.population)
   if (populations.length > 0) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { terms: { "experiments.refined.population": populations } },
-      },
-    })
+    must.push(nestedTermsQuery("experiments", "experiments.refined.population", populations))
   }
 
   // platform filter (partial match on vendor) - nested query on experiments.refined
   if (params.platform) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: {
-          wildcard: { "experiments.refined.platformVendor": { value: `*${params.platform}*`, case_insensitive: true } },
-        },
-      },
-    })
+    must.push(nestedWildcardQuery("experiments", "experiments.refined.platformVendor", params.platform))
   }
 
   // fileType filter (comma-separated for OR) - nested query on experiments.refined
   const fileTypes = splitComma(params.fileType)
   if (fileTypes.length > 0) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { terms: { "experiments.refined.fileTypes": fileTypes } },
-      },
-    })
+    must.push(nestedTermsQuery("experiments", "experiments.refined.fileTypes", fileTypes))
   }
 
   // Boolean filters - nested query on experiments.refined
   if (params.hasHealthyControl !== undefined) {
     const healthStatusValues = params.hasHealthyControl ? ["healthy", "mixed"] : ["affected"]
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { terms: { "experiments.refined.healthStatus": healthStatusValues } },
-      },
-    })
+    must.push(nestedTermsQuery("experiments", "experiments.refined.healthStatus", healthStatusValues))
   }
   if (params.hasTumor !== undefined) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { term: { "experiments.refined.isTumor": params.hasTumor } },
-      },
-    })
+    must.push(nestedTermQuery("experiments", "experiments.refined.isTumor", params.hasTumor))
   }
   if (params.hasCellLine !== undefined) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { exists: { field: "experiments.refined.cellLine" } },
-      },
-    })
+    must.push(nestedExistsQuery("experiments", "experiments.refined.cellLine"))
   }
 
   // Subject count filters - nested query with script aggregation
   // Note: For exact count filtering, we need to aggregate across experiments
   // This is a simplified filter that checks if any experiment has subjects
   if (params.minSubjects !== undefined) {
-    must.push({
-      nested: {
-        path: "experiments",
-        query: { range: { "experiments.refined.subjectCount": { gte: 1 } } },
-      },
-    })
+    must.push(nestedRangeQuery("experiments", "experiments.refined.subjectCount", { gte: 1 }))
   }
 
   return must
@@ -464,7 +418,6 @@ interface TermsBucket {
   doc_count: number
   dataset_count?: { doc_count: number }
 }
-interface NestedAgg { doc_count: number; [key: string]: { buckets?: TermsBucket[] } | number | unknown }
 
 const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => {
   if (!aggs) return {}

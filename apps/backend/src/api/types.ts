@@ -135,7 +135,7 @@ const DatasetSchema = z.object({
   versionReleaseDate: z.string(),
   humId: z.string(),
   humVersionId: z.string(),
-  releaseDate: z.array(z.string()),
+  releaseDate: z.string(),
   criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
     ja: z.string().nullable(),
@@ -157,7 +157,7 @@ export const EsDatasetDocSchema = z.object({
   version: z.string(),
   typeOfData: z.array(z.string()).nullable().optional(),
   criteria: CriteriaCanonicalSchema.nullable().optional(),
-  releaseDate: z.array(z.string()).nullable().optional(),
+  releaseDate: z.string().nullable().optional(),
   experiments: z.array(EsExperimentSchema),
 })
 export type EsDatasetDoc = z.infer<typeof EsDatasetDocSchema>
@@ -248,7 +248,7 @@ export const DatasetVersionItemSchema = z.object({
   version: z.string(),
   typeOfData: z.array(z.string()).nullable().optional(),
   criteria: CriteriaCanonicalSchema.nullable().optional(),
-  releaseDate: z.array(z.string()).nullable().optional(),
+  releaseDate: z.string().nullable().optional(),
 })
 export type DatasetVersionItem = z.infer<typeof DatasetVersionItemSchema>
 
@@ -511,7 +511,7 @@ export const CreateDatasetRequestSchema = z.object({
   humVersionId: z.string(),
 
   // Dataset fields
-  releaseDate: z.array(z.string()),
+  releaseDate: z.string(),
   criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
     ja: z.string().nullable(),
@@ -528,7 +528,7 @@ export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
 export const UpdateDatasetRequestSchema = z.object({
   humId: z.string(),
   humVersionId: z.string(),
-  releaseDate: z.array(z.string()),
+  releaseDate: z.string(),
   criteria: CriteriaCanonicalSchema,
   typeOfData: z.object({
     ja: z.string().nullable(),

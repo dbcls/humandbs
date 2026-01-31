@@ -21,9 +21,10 @@ import type {
   Experiment,
   SearchableDataset,
 } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getResultsDir } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 
 // I/O
 
@@ -219,27 +220,21 @@ interface ExtractArgs {
 }
 
 const parseArgs = (): ExtractArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("file", { alias: "f", type: "string", description: "Process single file (by datasetId)" })
-    .option("hum-id", { alias: "i", type: "array", string: true, description: "Process datasets for specified humIds" })
-    .option("dataset-id", { alias: "d", type: "array", string: true, description: "Process specific datasetIds" })
-    .option("model", { alias: "m", type: "string", description: "Ollama model name (e.g. llama3.3:70b)" })
-    .option("concurrency", { alias: "c", type: "number", default: 4, description: "Concurrent dataset processing" })
-    .option("experiment-concurrency", { alias: "e", type: "number", default: 4, description: "Concurrent experiment LLM calls per dataset" })
-    .option("dry-run", { type: "boolean", default: false, description: "Dry run without LLM calls" })
-    .option("force", { type: "boolean", default: false, description: "Force reprocess even if already completed" })
-    .option("latest-only", { type: "boolean", default: true, description: "Process only the latest version of each dataset" })
-    .option("retry-failed", { type: "boolean", default: false, description: "Retry only experiments with empty extracted fields" })
-    .option("verbose", { alias: "v", type: "boolean", default: false, description: "Show debug logs" })
-    .option("quiet", { alias: "q", type: "boolean", default: false, description: "Show only warnings and errors" })
-    .parseSync() as ExtractArgs
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("file", { alias: "f", type: "string", description: "Process single file (by datasetId)" })
+      .option("hum-id", { alias: "i", type: "array", string: true, description: "Process datasets for specified humIds" })
+      .option("dataset-id", { alias: "d", type: "array", string: true, description: "Process specific datasetIds" })
+      .option("model", { alias: "m", type: "string", description: "Ollama model name (e.g. llama3.3:70b)" })
+      .option("concurrency", { alias: "c", type: "number", default: 4, description: "Concurrent dataset processing" })
+      .option("experiment-concurrency", { alias: "e", type: "number", default: 4, description: "Concurrent experiment LLM calls per dataset" })
+      .option("dry-run", { type: "boolean", default: false, description: "Dry run without LLM calls" })
+      .option("force", { type: "boolean", default: false, description: "Force reprocess even if already completed" })
+      .option("latest-only", { type: "boolean", default: true, description: "Process only the latest version of each dataset" })
+      .option("retry-failed", { type: "boolean", default: false, description: "Retry only experiments with empty extracted fields" }),
+  ).parseSync() as ExtractArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 

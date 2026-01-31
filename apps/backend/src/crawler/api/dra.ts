@@ -4,12 +4,10 @@
  * Fetches metadata from DDBJ Search API for DRA/ERA/SRA accessions
  * Results are cached to external-cache/dra/ directory
  */
-import { join } from "path"
-
-import { DEFAULT_API_DELAY_MS } from "@/crawler/config/urls"
 import { getErrorMessage } from "@/crawler/utils/error"
-import { getExternalCacheDir, ensureDir, readJson, writeJson, fileExists } from "@/crawler/utils/io"
 import { logger } from "@/crawler/utils/logger"
+
+import { createCachedClient } from "./client"
 
 // Types
 
@@ -48,17 +46,6 @@ const ACCESSION_RESOURCE_MAP: Record<string, string> = {
   SRS: "sra-sample",
   SRP: "sra-study",
 }
-
-// Cache Directory
-
-const getCacheDir = (): string => {
-  const dir = join(getExternalCacheDir(), "dra")
-  ensureDir(dir)
-  return dir
-}
-
-const getCachePath = (accession: string): string =>
-  join(getCacheDir(), `${accession}.json`)
 
 // Helper Functions
 
@@ -107,11 +94,21 @@ const fetchDraFromApi = async (accession: string): Promise<DraApiResponse | null
 export const isDraAccession = (accession: string): boolean =>
   getResourceType(accession) !== null
 
-interface CachedDraMetadata {
-  accession: string
-  notFound?: boolean
-  [key: string]: unknown
-}
+// DRA Metadata - uses createCachedClient
+
+const draClient = createCachedClient<Record<string, unknown>>(
+  {
+    cacheDir: "dra",
+    getCacheKey: (id) => id,
+  },
+  async (accession) => {
+    const response = await fetchDraFromApi(accession)
+    if (!response?.found || !response._source?.properties) {
+      return null
+    }
+    return response._source.properties
+  },
+)
 
 /**
  * Get DRA metadata with caching
@@ -124,39 +121,7 @@ export const getDraMetadata = async (
   if (!getResourceType(accession)) {
     return null
   }
-
-  const cachePath = getCachePath(accession)
-
-  // Check cache
-  if (useCache && fileExists(cachePath)) {
-    const cached = readJson<CachedDraMetadata>(cachePath)
-    if (cached?.notFound) {
-      logger.debug("DRA cache hit (not found)", { accession })
-      return null
-    }
-    logger.debug("DRA cache hit", { accession })
-    return cached as Record<string, unknown>
-  }
-
-  // Fetch from API
-  const response = await fetchDraFromApi(accession)
-  if (!response) {
-    return null
-  }
-
-  if (!response.found || !response._source?.properties) {
-    // Cache empty result
-    writeJson(cachePath, { accession, notFound: true })
-    return null
-  }
-
-  // Return properties directly
-  const properties = response._source.properties
-
-  // Cache the result
-  writeJson(cachePath, properties)
-
-  return properties
+  return draClient.get(accession, useCache)
 }
 
 /**
@@ -165,26 +130,15 @@ export const getDraMetadata = async (
 export const batchGetDraMetadata = async (
   accessions: string[],
   useCache = true,
-  delayMs = DEFAULT_API_DELAY_MS,
 ): Promise<Map<string, Record<string, unknown>>> => {
-  const result = new Map<string, Record<string, unknown>>()
-
   const validAccessions = accessions.filter(acc => getResourceType(acc) !== null)
-
-  for (let i = 0; i < validAccessions.length; i++) {
-    const accession = validAccessions[i]
-    const metadata = await getDraMetadata(accession, useCache)
-
-    if (metadata) {
-      result.set(accession, metadata)
-    }
-
-    if (i < validAccessions.length - 1) {
-      await new Promise(r => setTimeout(r, delayMs))
-    }
+  const result = await draClient.getMany(validAccessions, useCache)
+  // Filter out null values for the return type
+  const filtered = new Map<string, Record<string, unknown>>()
+  for (const [k, v] of result) {
+    if (v !== null) filtered.set(k, v)
   }
-
-  return result
+  return filtered
 }
 
 /**

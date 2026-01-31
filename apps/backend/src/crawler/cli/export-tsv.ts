@@ -22,8 +22,9 @@ import type {
   SearchableDataset,
   Experiment,
 } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getResultsDir } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 import { escapeForTsv, toTsvRow } from "@/crawler/utils/tsv"
 
 // Options
@@ -710,40 +711,26 @@ export const exportAllTsv = async (options: ExportOptions): Promise<void> => {
 interface CliArgs {
   humId?: string
   output?: string
+  verbose?: boolean
+  quiet?: boolean
 }
 
 const parseArgs = (): CliArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("hum-id", {
-      alias: "i",
-      type: "string",
-      description: "Filter by humId (e.g., hum0001)",
-    })
-    .option("output", {
-      alias: "o",
-      type: "string",
-      description: "Output directory (default: crawler-results/tsv)",
-    })
-    .option("verbose", {
-      alias: "v",
-      type: "boolean",
-      description: "Show debug logs",
-      default: false,
-    })
-    .option("quiet", {
-      alias: "q",
-      type: "boolean",
-      description: "Show only warnings and errors",
-      default: false,
-    })
-    .parseSync() as CliArgs & { verbose?: boolean; quiet?: boolean }
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("hum-id", {
+        alias: "i",
+        type: "string",
+        description: "Filter by humId (e.g., hum0001)",
+      })
+      .option("output", {
+        alias: "o",
+        type: "string",
+        description: "Output directory (default: crawler-results/tsv)",
+      }),
+  ).parseSync() as CliArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 

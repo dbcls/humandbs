@@ -37,9 +37,9 @@ import {
   buildDatasetIdExpansionMap,
   assignBilingualDatasetVersion,
   trackBilingualVersion,
-  createUnifiedDataset,
-  createUnifiedResearch,
-  createUnifiedResearchVersion,
+  mergeDataset,
+  mergeResearch,
+  mergeResearchVersion,
   getIgnoredDatasetIds,
 } from "@/crawler/processors/structure"
 import type {
@@ -51,6 +51,7 @@ import type {
   SingleLangResearch,
   SingleLangResearchVersion,
 } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import {
   getNormalizedDir,
@@ -59,33 +60,27 @@ import {
   writeStructuredResearchVersion,
   writeStructuredDataset,
 } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 
 // CLI argument types
 
 interface StructureArgs {
   humId?: string
   force?: boolean
-  verbose: boolean
-  quiet: boolean
+  verbose?: boolean
+  quiet?: boolean
 }
 
 // CLI argument parsing
 
 const parseArgs = (): StructureArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
-    .option("force", { alias: "f", type: "boolean", default: false, describe: "Overwrite existing files" })
-    .option("verbose", { alias: "v", type: "boolean", default: false, describe: "Show debug logs" })
-    .option("quiet", { alias: "q", type: "boolean", default: false, describe: "Show only warnings and errors" })
-    .parseSync() as StructureArgs
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
+      .option("force", { alias: "f", type: "boolean", default: false, describe: "Overwrite existing files" }),
+  ).parseSync() as StructureArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 
@@ -447,7 +442,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
           : null
 
         // Create unified dataset
-        const dataset = createUnifiedDataset(
+        const dataset = mergeDataset(
           datasetId,
           datasetVersion,
           releaseDate,
@@ -477,7 +472,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       const jaResearchVersion = jaVersions.find(v => v.humVersionId === humVersionId) ?? null
       const enResearchVersion = enVersions.find(v => v.humVersionId === humVersionId) ?? null
 
-      const researchVersion = createUnifiedResearchVersion(
+      const researchVersion = mergeResearchVersion(
         humVersionId,
         jaResearchVersion,
         enResearchVersion,
@@ -496,7 +491,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestVersion, firstReleaseDate, lastReleaseDate, expansionMap)
       : null
 
-    const research = createUnifiedResearch(humId, jaLatestResearch, enLatestResearch)
+    const research = mergeResearch(humId, jaLatestResearch, enLatestResearch)
 
     writeStructuredResearch(humId, research)
     result.researchCreated = true

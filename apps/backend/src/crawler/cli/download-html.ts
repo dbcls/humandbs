@@ -18,27 +18,22 @@ import { shouldSkipPage, genReleaseUrl } from "@/crawler/config/mapping"
 import { DEFAULT_CONCURRENCY, MAX_CONCURRENCY, MAX_VERSION, genDetailUrl } from "@/crawler/config/urls"
 import { parseAllHumIds } from "@/crawler/parsers/home"
 import type { LangType, CrawlArgs } from "@/crawler/types"
+import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { fetchHtmlCached } from "@/crawler/utils/http"
 import { getResultsDir } from "@/crawler/utils/io"
-import { logger, setLogLevel } from "@/crawler/utils/logger"
+import { logger } from "@/crawler/utils/logger"
 
 const parseArgs = (): CrawlArgs => {
-  const args = yargs(hideBin(process.argv))
-    .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
-    .option("lang", { choices: ["ja", "en"] as const, describe: "Language to download" })
-    .option("force", { alias: "f", type: "boolean", default: false, describe: "Ignore existing cache and re-download" })
-    .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent downloads" })
-    .option("verbose", { alias: "v", type: "boolean", default: false, describe: "Show debug logs" })
-    .option("quiet", { alias: "q", type: "boolean", default: false, describe: "Show only warnings and errors" })
-    .parseSync() as CrawlArgs
+  const args = withCommonOptions(
+    yargs(hideBin(process.argv))
+      .option("hum-id", { alias: "i", type: "string", describe: "Target humId (e.g., hum0001)" })
+      .option("lang", { choices: ["ja", "en"] as const, describe: "Language to download" })
+      .option("force", { alias: "f", type: "boolean", default: false, describe: "Ignore existing cache and re-download" })
+      .option("concurrency", { type: "number", default: DEFAULT_CONCURRENCY, describe: "Number of concurrent downloads" }),
+  ).parseSync() as CrawlArgs
 
-  if (args.verbose) {
-    setLogLevel("debug")
-  } else if (args.quiet) {
-    setLogLevel("warn")
-  }
-
+  applyLogLevel(args)
   return args
 }
 
