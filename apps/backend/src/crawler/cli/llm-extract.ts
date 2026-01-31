@@ -195,8 +195,12 @@ const runWorkerPool = async (
     startNextJob()
   }
 
-  // Wait for all workers to complete
-  await Promise.all(workers)
+  // Wait for all jobs to complete
+  // Note: Promise.all(workers) only waits for initial promises,
+  // not those added later via startNextJob(). Poll until done.
+  while (completed < jobs.length) {
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
 
   return results
 }

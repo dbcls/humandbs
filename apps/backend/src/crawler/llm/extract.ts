@@ -219,36 +219,36 @@ export const parseSearchableFields = (jsonStr: string): SearchableExperimentFiel
 
 // LLM Input Conversion
 
-/** Input structure for bilingual extraction from Unified structure */
+/** Input structure for bilingual extraction (text only, no rawHtml) */
 interface BilingualExperimentInput {
   en: {
-    header: TextValue | null
-    data: Record<string, TextValue | null>
-    footers: TextValue[]
+    header: string | null
+    data: Record<string, string | null>
+    footers: string[]
   } | null
   ja: {
-    header: TextValue | null
-    data: Record<string, TextValue | null>
-    footers: TextValue[]
+    header: string | null
+    data: Record<string, string | null>
+    footers: string[]
   } | null
   externalMetadata: Record<string, unknown> | null
 }
 
 /**
  * Convert Experiment to LLM input format
- * Separates ja/en fields from unified structure for the prompt format
+ * Extracts only text fields (excludes rawHtml to reduce token count)
  */
 const convertUnifiedToLlmInput = (
   experiment: Experiment,
   originalMetadata: Record<string, unknown> | null,
 ): BilingualExperimentInput => {
-  const jaData: Record<string, TextValue | null> = {}
-  const enData: Record<string, TextValue | null> = {}
+  const jaData: Record<string, string | null> = {}
+  const enData: Record<string, string | null> = {}
 
   for (const [key, value] of Object.entries(experiment.data)) {
     if (value) {
-      jaData[key] = value.ja
-      enData[key] = value.en
+      jaData[key] = value.ja?.text ?? null
+      enData[key] = value.en?.text ?? null
     } else {
       jaData[key] = null
       enData[key] = null
@@ -257,14 +257,14 @@ const convertUnifiedToLlmInput = (
 
   return {
     en: experiment.header.en ? {
-      header: experiment.header.en,
+      header: experiment.header.en.text,
       data: enData,
-      footers: experiment.footers.en,
+      footers: experiment.footers.en.map(f => f.text),
     } : null,
     ja: experiment.header.ja ? {
-      header: experiment.header.ja,
+      header: experiment.header.ja.text,
       data: jaData,
-      footers: experiment.footers.ja,
+      footers: experiment.footers.ja.map(f => f.text),
     } : null,
     externalMetadata: originalMetadata,
   }

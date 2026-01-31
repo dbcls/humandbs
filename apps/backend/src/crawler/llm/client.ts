@@ -36,7 +36,7 @@ export interface OllamaConfig {
 
 const DEFAULT_BASE_URL = "http://localhost:1143"
 const DEFAULT_MODEL = "llama3.3:70b"
-const DEFAULT_NUM_CTX = 16384
+const DEFAULT_NUM_CTX = 4096
 const MAX_RETRIES = 3
 const INITIAL_RETRY_DELAY_MS = 2000
 
