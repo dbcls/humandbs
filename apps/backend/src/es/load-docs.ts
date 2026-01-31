@@ -44,6 +44,8 @@ interface DatasetDoc {
 
 interface ResearchDoc {
   humId: string
+  status?: string
+  uids?: string[]
   [key: string]: unknown
 }
 
@@ -106,6 +108,16 @@ const dataVolumeToGb = (dv: DataVolume | null | undefined): number | null => {
 
   return dv.value * multiplier
 }
+
+/**
+ * Transform research document for ES indexing
+ * - Add default status and uids if not present
+ */
+const transformResearch = (doc: ResearchDoc): ResearchDoc => ({
+  ...doc,
+  status: doc.status ?? "published",
+  uids: doc.uids ?? [],
+})
 
 /**
  * Transform dataset document for ES indexing
@@ -270,7 +282,7 @@ const main = async () => {
   }
 
   // Index documents (no lang suffix in IDs)
-  await bulkIndex("research", researchDocs, (d) => idResearch(d.humId))
+  await bulkIndex("research", researchDocs, (d) => idResearch(d.humId), transformResearch)
   await bulkIndex("researchVersion", researchVersionDocs, (d) =>
     idResearchVersion(d.humId, d.version),
   )

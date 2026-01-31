@@ -33,7 +33,6 @@ export interface SingleLangResearchVersion {
   version: string
   versionReleaseDate: string
   releaseDate: string
-  datasetIds: string[]
   releaseNote: TextValue
 }
 
@@ -93,6 +92,6 @@ export interface SingleLangResearch {
   controlledAccessUser: SingleLangPerson[]
   versionIds: string[]
   latestVersion: string
-  firstReleaseDate: string
-  lastReleaseDate: string
+  datePublished: string
+  dateModified: string
 }

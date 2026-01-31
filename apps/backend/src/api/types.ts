@@ -144,101 +144,136 @@ const DatasetSchema = z.object({
   experiments: z.array(ExperimentSchema),
 })
 
-// ES Doc schemas (legacy format used in current ES indices)
+// === ES Doc schemas (BilingualText format - matches actual ES indices) ===
+
+// Research status
+export const ResearchStatusSchema = z.enum(["draft", "review", "published", "deleted"])
+export type EsResearchStatus = z.infer<typeof ResearchStatusSchema>
+
+// Dataset reference (for ResearchVersion.datasets)
+export const DatasetRefSchema = z.object({
+  datasetId: z.string(),
+  version: z.string(),
+})
+export type DatasetRef = z.infer<typeof DatasetRefSchema>
+
+// Experiment (BilingualText format)
 const EsExperimentSchema = z.object({
-  header: z.string(),
-  data: z.record(z.string(), z.string().nullable()),
-  footers: z.array(z.string()),
+  header: BilingualTextValueSchema,
+  data: z.record(z.string(), BilingualTextValueSchema.nullable()),
+  footers: z.object({
+    ja: z.array(TextValueSchema),
+    en: z.array(TextValueSchema),
+  }),
+  searchable: z.unknown().optional(), // SearchableExperimentFields
 })
 
+// Dataset document
 export const EsDatasetDocSchema = z.object({
   datasetId: z.string(),
-  lang: z.enum(langType),
   version: z.string(),
-  typeOfData: z.array(z.string()).nullable().optional(),
-  criteria: CriteriaCanonicalSchema.nullable().optional(),
-  releaseDate: z.string().nullable().optional(),
+  versionReleaseDate: z.string(),
+  humId: z.string(),
+  humVersionId: z.string(),
+  releaseDate: z.string(),
+  criteria: CriteriaCanonicalSchema,
+  typeOfData: BilingualTextSchema,
   experiments: z.array(EsExperimentSchema),
 })
 export type EsDatasetDoc = z.infer<typeof EsDatasetDocSchema>
 
+// ResearchVersion document
 export const EsResearchVersionDocSchema = z.object({
   humId: z.string(),
-  lang: z.enum(langType),
-  version: z.string(),
   humVersionId: z.string(),
-  datasets: z.array(z.string()),
-  releaseDate: z.string(),
-  releaseNote: z.array(z.string()),
+  version: z.string(),
+  versionReleaseDate: z.string(),
+  datasets: z.array(DatasetRefSchema),
+  releaseNote: BilingualTextValueSchema,
 })
 export type EsResearchVersionDoc = z.infer<typeof EsResearchVersionDocSchema>
 
+// Person (BilingualText format)
 const EsPersonSchema = z.object({
-  name: z.string(),
+  name: BilingualTextValueSchema,
   email: z.string().nullable().optional(),
   orcid: z.string().nullable().optional(),
   organization: z.object({
-    name: z.string(),
+    name: BilingualTextValueSchema,
     address: z.object({
       country: z.string().nullable().optional(),
     }).nullable().optional(),
   }).nullable().optional(),
   datasetIds: z.array(z.string()).optional(),
-  researchTitle: z.string().nullable().optional(),
-  periodOfDataUse: z.string().nullable().optional(),
-}).loose()
+  researchTitle: BilingualTextSchema.optional(),
+  periodOfDataUse: PeriodOfDataUseSchema.nullable().optional(),
+})
 
+// Research project (BilingualText format)
 const EsResearchProjectSchema = z.object({
-  name: z.string(),
-  url: z.string().nullable().optional(),
-}).loose()
+  name: BilingualTextValueSchema,
+  url: BilingualUrlValueSchema.nullable().optional(),
+})
 
+// Grant (BilingualText format)
 const EsGrantSchema = z.object({
-  id: z.string(),
-  title: z.string(),
+  id: z.array(z.string()),
+  title: BilingualTextSchema,
   agency: z.object({
-    name: z.string(),
-  }).loose(),
-}).loose()
+    name: BilingualTextSchema,
+  }),
+})
 
+// Publication (BilingualText format)
 const EsPublicationSchema = z.object({
-  title: z.string(),
+  title: BilingualTextSchema,
   doi: z.string().nullable().optional(),
   datasetIds: z.array(z.string()).optional(),
-}).loose()
+})
 
+// Summary (BilingualText format)
 const EsSummarySchema = z.object({
-  aims: z.string(),
-  methods: z.string(),
-  targets: z.string(),
-  url: z.array(z.object({
-    url: z.string(),
-    text: z.string(),
-  })),
-}).loose()
+  aims: BilingualTextValueSchema,
+  methods: BilingualTextValueSchema,
+  targets: BilingualTextValueSchema,
+  url: z.object({
+    ja: z.array(UrlValueSchema),
+    en: z.array(UrlValueSchema),
+  }),
+  footers: z.object({
+    ja: z.array(TextValueSchema),
+    en: z.array(TextValueSchema),
+  }),
+})
 
+// Research document
 export const EsResearchDocSchema = z.object({
   humId: z.string(),
-  lang: z.enum(langType),
-  title: z.string(),
-  url: z.string(),
+  url: BilingualTextSchema,
+  title: BilingualTextSchema,
+  summary: EsSummarySchema,
   dataProvider: z.array(EsPersonSchema),
   researchProject: z.array(EsResearchProjectSchema),
   grant: z.array(EsGrantSchema),
   relatedPublication: z.array(EsPublicationSchema),
   controlledAccessUser: z.array(EsPersonSchema),
-  summary: EsSummarySchema,
-  versions: z.array(z.string()),
+  versionIds: z.array(z.string()),
+  latestVersion: z.string(),
+  datePublished: z.string(),
+  dateModified: z.string(),
+  status: ResearchStatusSchema,
+  uids: z.array(z.string()),
 })
 export type EsResearchDoc = z.infer<typeof EsResearchDocSchema>
 
+// Research detail (Research + ResearchVersion info + Datasets)
 export const EsResearchDetailSchema = EsResearchDocSchema
-  .omit({ versions: true })
+  .omit({ versionIds: true })
   .extend({
     humVersionId: z.string(),
     version: z.string(),
-    releaseDate: z.string(),
-    releaseNote: z.array(z.string()),
+    versionReleaseDate: z.string(),
+    releaseNote: BilingualTextValueSchema,
     datasets: z.array(EsDatasetDocSchema),
   })
 export type EsResearchDetail = z.infer<typeof EsResearchDetailSchema>
@@ -246,7 +281,7 @@ export type EsResearchDetail = z.infer<typeof EsResearchDetailSchema>
 // Dataset version item (for version list)
 export const DatasetVersionItemSchema = z.object({
   version: z.string(),
-  typeOfData: z.array(z.string()).nullable().optional(),
+  typeOfData: BilingualTextSchema.nullable().optional(),
   criteria: CriteriaCanonicalSchema.nullable().optional(),
   releaseDate: z.string().nullable().optional(),
 })
@@ -289,8 +324,8 @@ const ResearchSchema = z.object({
   controlledAccessUser: z.array(PersonSchema),
   versionIds: z.array(z.string()),
   latestVersion: z.string(),
-  firstReleaseDate: z.string(),
-  lastReleaseDate: z.string(),
+  datePublished: z.string(),
+  dateModified: z.string(),
 })
 
 const ResearchVersionSchema = z.object({
@@ -298,7 +333,7 @@ const ResearchVersionSchema = z.object({
   humVersionId: z.string(),
   version: z.string(),
   versionReleaseDate: z.string(),
-  datasetIds: z.array(z.string()),
+  datasets: z.array(DatasetRefSchema),
   releaseNote: BilingualTextValueSchema,
 })
 
@@ -361,9 +396,7 @@ export const StatusTransitions: Record<StatusAction, { from: ResearchStatus; to:
  */
 export const ResearchWithStatusSchema = ResearchSchema.extend({
   status: z.enum(ResearchStatus),
-  researcherUids: z.array(z.string()).default([]), // UIDs of researchers who can edit this research
-  createdAt: z.string(), // ISO 8601
-  updatedAt: z.string(), // ISO 8601
+  uids: z.array(z.string()).default([]), // Keycloak sub (UUID) of users who can edit this research
 })
 export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
 
@@ -401,7 +434,7 @@ export type ErrorCode = (typeof ErrorCode)[number]
 /**
  * Create research request
  * Creates Research + initial ResearchVersion (v1) simultaneously
- * Note: humId, versionIds, latestVersion, firstReleaseDate, lastReleaseDate are auto-generated
+ * Note: humId, versionIds, latestVersion, datePublished, dateModified are auto-generated
  */
 export const CreateResearchRequestSchema = z.object({
   // Research fields (ja/en both required)
@@ -412,8 +445,8 @@ export const CreateResearchRequestSchema = z.object({
   grant: z.array(GrantSchema),
   relatedPublication: z.array(PublicationSchema),
 
-  // Admin assigns researcher UIDs
-  researcherUids: z.array(z.string()),
+  // Admin assigns owner UIDs
+  uids: z.array(z.string()),
 
   // Initial version release note (optional)
   initialReleaseNote: BilingualTextValueSchema.optional(),
@@ -422,7 +455,7 @@ export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
 
 /**
  * Update research request (full replacement)
- * Note: humId, versionIds, latestVersion, firstReleaseDate, lastReleaseDate cannot be changed
+ * Note: humId, versionIds, latestVersion, datePublished, dateModified cannot be changed
  */
 export const UpdateResearchRequestSchema = z.object({
   url: BilingualTextSchema,
@@ -479,7 +512,7 @@ export type ResearchListResponse = z.infer<typeof ResearchListResponseSchema>
  */
 export const CreateVersionRequestSchema = z.object({
   releaseNote: BilingualTextValueSchema,
-  datasetIds: z.array(z.string()).optional(), // Datasets to link (optional)
+  datasets: z.array(DatasetRefSchema).optional(), // Datasets to link (optional)
 })
 export type CreateVersionRequest = z.infer<typeof CreateVersionRequestSchema>
 
@@ -780,6 +813,130 @@ export const DatasetSearchResponseSchema = z.object({
 })
 export type DatasetSearchResponse = z.infer<typeof DatasetSearchResponseSchema>
 
+// === POST Search API (api-spec.md compliant) ===
+
+/**
+ * Range filter for numeric/date values
+ */
+const RangeFilterSchema = z.object({
+  min: z.union([z.string(), z.number()]).optional(),
+  max: z.union([z.string(), z.number()]).optional(),
+})
+
+/**
+ * Dataset filters for POST search (used in both Research and Dataset search)
+ * Values are arrays (OR logic within each filter)
+ */
+export const DatasetFiltersSchema = z.object({
+  // Facet filters (category values)
+  criteria: z.array(z.string()).optional(),
+  subjectCountType: z.array(z.enum(["individual", "sample", "mixed"])).optional(),
+  healthStatus: z.array(z.enum(["healthy", "affected", "mixed"])).optional(),
+  disease: z.string().optional(), // Partial match
+  diseaseIcd10: z.array(z.string()).optional(), // Prefix match
+  tissue: z.array(z.string()).optional(),
+  isTumor: z.boolean().optional(),
+  cellLine: z.array(z.string()).optional(),
+  population: z.array(z.string()).optional(),
+  sex: z.array(z.enum(["male", "female", "mixed"])).optional(),
+  ageGroup: z.array(z.enum(["infant", "child", "adult", "elderly", "mixed"])).optional(),
+  assayType: z.array(z.string()).optional(),
+  libraryKits: z.array(z.string()).optional(),
+  platformVendor: z.string().optional(), // Partial match
+  platformModel: z.array(z.string()).optional(),
+  readType: z.array(z.enum(["single-end", "paired-end"])).optional(),
+  referenceGenome: z.array(z.string()).optional(),
+  fileType: z.array(z.string()).optional(),
+  processedDataTypes: z.array(z.string()).optional(),
+  hasPhenotypeData: z.boolean().optional(),
+  policyId: z.array(z.string()).optional(),
+
+  // Range filters
+  releaseDate: RangeFilterSchema.optional(),
+  subjectCount: RangeFilterSchema.optional(),
+  readLength: RangeFilterSchema.optional(),
+  sequencingDepth: RangeFilterSchema.optional(),
+  targetCoverage: RangeFilterSchema.optional(),
+  dataVolumeGb: RangeFilterSchema.optional(),
+  variantSnv: RangeFilterSchema.optional(),
+  variantIndel: RangeFilterSchema.optional(),
+  variantCnv: RangeFilterSchema.optional(),
+  variantSv: RangeFilterSchema.optional(),
+  variantTotal: RangeFilterSchema.optional(),
+})
+export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>
+
+/**
+ * POST /research/search request body
+ */
+export const ResearchSearchBodySchema = z.object({
+  // Pagination
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+
+  // Sort
+  sort: z.enum(["humId", "datePublished", "dateModified"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
+
+  // Free-text search
+  query: z.string().optional(), // Searches title, summary
+
+  // Date range filters
+  datePublished: RangeFilterSchema.optional(),
+  dateModified: RangeFilterSchema.optional(),
+
+  // Dataset attribute filters (parent-child filter)
+  datasetFilters: DatasetFiltersSchema.optional(),
+
+  // Options
+  includeFacets: z.boolean().default(false),
+  fields: z.array(z.string()).optional(), // Additional fields to return
+})
+export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>
+
+/**
+ * POST /dataset/search request body
+ */
+export const DatasetSearchBodySchema = z.object({
+  // Pagination
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+
+  // Sort
+  sort: z.enum(["datasetId", "releaseDate"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
+
+  // Free-text search (two independent types)
+  metadataQuery: z.string().optional(), // Searches typeOfData, targets
+  experimentQuery: z.string().optional(), // Searches experiments.data
+
+  // Parent Research filter
+  humId: z.string().optional(),
+
+  // Dataset filters
+  filters: DatasetFiltersSchema.optional(),
+
+  // Options
+  includeFacets: z.boolean().default(false),
+  fields: z.array(z.string()).optional(), // Additional fields to return
+})
+export type DatasetSearchBody = z.infer<typeof DatasetSearchBodySchema>
+
+/**
+ * Single facet field response
+ */
+export const FacetFieldResponseSchema = z.object({
+  fieldName: z.string(),
+  values: z.array(z.string()),
+})
+export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>
+
+/**
+ * All facets response (GET /facets)
+ */
+export const AllFacetsResponseSchema = z.record(z.string(), z.array(z.string()))
+export type AllFacetsResponse = z.infer<typeof AllFacetsResponseSchema>
+
 // === Search API ===
 
 /**
@@ -884,7 +1041,7 @@ export type FacetsResponse = z.infer<typeof FacetsResponseSchema>
 export const PendingReviewItemSchema = z.object({
   humId: z.string(),
   title: BilingualTextSchema,
-  researcherUids: z.array(z.string()),
+  uids: z.array(z.string()),
   submittedAt: z.string(),
 })
 export type PendingReviewItem = z.infer<typeof PendingReviewItemSchema>
@@ -948,9 +1105,10 @@ export type LinkedDatasetsResponse = z.infer<typeof LinkedDatasetsResponseSchema
 
 /**
  * Linked researches response
+ * Note: Uses EsResearchDetailSchema (without versionIds) for API responses
  */
 export const LinkedResearchesResponseSchema = z.object({
-  data: z.array(ResearchResponseSchema),
+  data: z.array(EsResearchDetailSchema),
 })
 export type LinkedResearchesResponse = z.infer<typeof LinkedResearchesResponseSchema>
 

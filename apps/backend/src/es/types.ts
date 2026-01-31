@@ -185,6 +185,10 @@ export type EsSummary = z.infer<typeof EsSummarySchema>
 
 // === ES Research Schema ===
 
+export const ResearchStatusSchema = z.enum(["draft", "review", "published", "deleted"])
+
+export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
+
 export const EsResearchSchema = z.object({
   humId: z.string(),
   url: BilingualTextSchema,
@@ -197,20 +201,29 @@ export const EsResearchSchema = z.object({
   controlledAccessUser: z.array(EsPersonSchema),
   versionIds: z.array(z.string()),
   latestVersion: z.string(),
-  firstReleaseDate: z.string(),
-  lastReleaseDate: z.string(),
+  datePublished: z.string(),
+  dateModified: z.string(),
+  status: ResearchStatusSchema,
+  uids: z.array(z.string()),
 })
 
 export type EsResearch = z.infer<typeof EsResearchSchema>
 
 // === ES Research Version Schema ===
 
+export const DatasetRefSchema = z.object({
+  datasetId: z.string(),
+  version: z.string(),
+})
+
+export type DatasetRef = z.infer<typeof DatasetRefSchema>
+
 export const EsResearchVersionSchema = z.object({
   humId: z.string(),
   humVersionId: z.string(),
   version: z.string(),
   versionReleaseDate: z.string(),
-  datasetIds: z.array(z.string()),
+  datasets: z.array(DatasetRefSchema),
   releaseNote: BilingualTextValueSchema,
 })
 

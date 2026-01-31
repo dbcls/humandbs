@@ -905,9 +905,15 @@ export const mergeResearch = (
     ),
   ],
   latestVersion: jaResearch?.latestVersion ?? enResearch?.latestVersion ?? "",
-  firstReleaseDate: jaResearch?.firstReleaseDate ?? enResearch?.firstReleaseDate ?? "",
-  lastReleaseDate: jaResearch?.lastReleaseDate ?? enResearch?.lastReleaseDate ?? "",
+  datePublished: jaResearch?.datePublished ?? enResearch?.datePublished ?? "",
+  dateModified: jaResearch?.dateModified ?? enResearch?.dateModified ?? "",
 })
+
+/** Dataset reference for research version */
+export interface DatasetRefArg {
+  datasetId: string
+  version: string
+}
 
 /**
  * Merge ja/en research versions into bilingual research version
@@ -916,17 +922,13 @@ export const mergeResearchVersion = (
   humVersionId: string,
   jaVersion: SingleLangResearchVersion | null,
   enVersion: SingleLangResearchVersion | null,
+  datasets: DatasetRefArg[],
 ): ResearchVersion => ({
   humId: jaVersion?.humId ?? enVersion?.humId ?? "",
   humVersionId,
   version: jaVersion?.version ?? enVersion?.version ?? "",
   versionReleaseDate: jaVersion?.releaseDate ?? enVersion?.releaseDate ?? "",
-  datasetIds: [
-    ...new Set([
-      ...(jaVersion?.datasetIds ?? []),
-      ...(enVersion?.datasetIds ?? []),
-    ]),
-  ],
+  datasets,
   releaseNote: toBilingualTextValue(
     jaVersion?.releaseNote ?? null,
     enVersion?.releaseNote ?? null,

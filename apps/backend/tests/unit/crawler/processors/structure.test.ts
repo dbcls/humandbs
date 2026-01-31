@@ -489,8 +489,8 @@ describe("processors/structure.ts", () => {
         controlledAccessUser: [],
         versionIds: ["hum0001-v1"],
         latestVersion: "v1",
-        firstReleaseDate: "2024-01-15",
-        lastReleaseDate: "2024-01-15",
+        datePublished: "2024-01-15",
+        dateModified: "2024-01-15",
       }
       const enResearch: SingleLangResearch = {
         humId: "hum0001",
@@ -510,8 +510,8 @@ describe("processors/structure.ts", () => {
         controlledAccessUser: [],
         versionIds: ["hum0001-v1"],
         latestVersion: "v1",
-        firstReleaseDate: "2024-01-15",
-        lastReleaseDate: "2024-01-15",
+        datePublished: "2024-01-15",
+        dateModified: "2024-01-15",
       }
 
       const result = mergeResearch("hum0001", jaResearch, enResearch)
@@ -543,7 +543,6 @@ describe("processors/structure.ts", () => {
         version: "v1",
         versionReleaseDate: "2024-01-15",
         releaseDate: "2024-01-15",
-        datasetIds: ["JGAD000001"],
         releaseNote: createTextValue("初回リリース"),
       }
       const enVersion: SingleLangResearchVersion = {
@@ -552,27 +551,28 @@ describe("processors/structure.ts", () => {
         version: "v1",
         versionReleaseDate: "2024-01-15",
         releaseDate: "2024-01-15",
-        datasetIds: ["JGAD000001"],
         releaseNote: createTextValue("Initial release"),
       }
+      const datasets = [{ datasetId: "JGAD000001", version: "v1" }]
 
-      const result = mergeResearchVersion("hum0001-v1", jaVersion, enVersion)
+      const result = mergeResearchVersion("hum0001-v1", jaVersion, enVersion, datasets)
 
       expect(result.humVersionId).toBe("hum0001-v1")
       expect(result.version).toBe("v1")
       expect(result.releaseNote.ja?.text).toBe("初回リリース")
       expect(result.releaseNote.en?.text).toBe("Initial release")
-      expect(result.datasetIds).toContain("JGAD000001")
+      expect(result.datasets).toHaveLength(1)
+      expect(result.datasets[0].datasetId).toBe("JGAD000001")
+      expect(result.datasets[0].version).toBe("v1")
     })
 
-    it("should deduplicate datasetIds", () => {
+    it("should use provided datasets array", () => {
       const jaVersion: SingleLangResearchVersion = {
         humId: "hum0001",
         humVersionId: "hum0001-v1",
         version: "v1",
         versionReleaseDate: "2024-01-15",
         releaseDate: "2024-01-15",
-        datasetIds: ["JGAD000001", "JGAD000002"],
         releaseNote: createTextValue(""),
       }
       const enVersion: SingleLangResearchVersion = {
@@ -581,24 +581,30 @@ describe("processors/structure.ts", () => {
         version: "v1",
         versionReleaseDate: "2024-01-15",
         releaseDate: "2024-01-15",
-        datasetIds: ["JGAD000001", "JGAD000003"],
         releaseNote: createTextValue(""),
       }
+      const datasets = [
+        { datasetId: "JGAD000001", version: "v1" },
+        { datasetId: "JGAD000002", version: "v1" },
+        { datasetId: "JGAD000003", version: "v2" },
+      ]
 
-      const result = mergeResearchVersion("hum0001-v1", jaVersion, enVersion)
+      const result = mergeResearchVersion("hum0001-v1", jaVersion, enVersion, datasets)
 
-      expect(result.datasetIds).toHaveLength(3)
-      expect(result.datasetIds).toContain("JGAD000001")
-      expect(result.datasetIds).toContain("JGAD000002")
-      expect(result.datasetIds).toContain("JGAD000003")
+      expect(result.datasets).toHaveLength(3)
+      expect(result.datasets[0].datasetId).toBe("JGAD000001")
+      expect(result.datasets[1].datasetId).toBe("JGAD000002")
+      expect(result.datasets[2].datasetId).toBe("JGAD000003")
+      expect(result.datasets[2].version).toBe("v2")
     })
 
     it("should handle null versions", () => {
-      const result = mergeResearchVersion("hum0001-v1", null, null)
+      const result = mergeResearchVersion("hum0001-v1", null, null, [])
 
       expect(result.humVersionId).toBe("hum0001-v1")
       expect(result.humId).toBe("")
       expect(result.version).toBe("")
+      expect(result.datasets).toHaveLength(0)
     })
   })
 })

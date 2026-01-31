@@ -143,8 +143,8 @@ const researchToRow = (r: Research): unknown[] => {
     r.url.en ?? "",
     JSON.stringify(r.versionIds),
     r.latestVersion,
-    r.firstReleaseDate,
-    r.lastReleaseDate,
+    r.datePublished,
+    r.dateModified,
     "", // comment
   ]
 }
@@ -505,7 +505,7 @@ const researchVersionToRow = (rv: ResearchVersion): unknown[] => {
     rv.versionReleaseDate,
     bilingualTextValueToJa(rv.releaseNote),
     bilingualTextValueToEn(rv.releaseNote),
-    JSON.stringify(rv.datasetIds),
+    JSON.stringify(rv.datasets),
     "", // comment
   ]
 }

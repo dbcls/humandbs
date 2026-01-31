@@ -126,8 +126,14 @@ export interface Research {
   latestVersion: string
 
   // Timestamps
-  firstReleaseDate: string
-  lastReleaseDate: string
+  datePublished: string
+  dateModified: string
+}
+
+/** Dataset reference with version */
+export interface DatasetRef {
+  datasetId: string
+  version: string
 }
 
 /** Research version (language-integrated) */
@@ -137,7 +143,7 @@ export interface ResearchVersion {
   humVersionId: string
   version: string
   versionReleaseDate: string
-  datasetIds: string[]
+  datasets: DatasetRef[]
 
   // Language-dependent
   releaseNote: BilingualTextValue

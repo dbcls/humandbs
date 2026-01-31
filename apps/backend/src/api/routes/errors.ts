@@ -93,6 +93,15 @@ export const ApiErrorSpec500 = {
   description: "Internal Server Error",
 }
 
+// Legacy error specs for 409
+export const ErrorSpec409 = {
+  content: {
+    "application/json": {
+      schema: ErrorResponseSchema,
+    },
+  },
+  description: "Conflict",
+}
+
 // Backward compatibility aliases
 export const ErrorSpec400 = ApiErrorSpec400
-export const ErrorSpec409 = ApiErrorSpec409

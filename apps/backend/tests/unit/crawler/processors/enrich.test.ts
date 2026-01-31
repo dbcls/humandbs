@@ -53,8 +53,8 @@ const createMockResearch = (overrides?: Partial<Research>): Research => ({
   controlledAccessUser: [],
   versionIds: ["hum0001-v1"],
   latestVersion: "v1",
-  firstReleaseDate: "2024-01-15",
-  lastReleaseDate: "2024-01-15",
+  datePublished: "2024-01-15",
+  dateModified: "2024-01-15",
   ...overrides,
 })
 

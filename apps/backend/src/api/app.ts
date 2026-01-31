@@ -29,8 +29,10 @@ export const createApp = () => {
   // API routes (singular form)
   api.route("/research", researchRouter)
   api.route("/dataset", datasetRouter)
-  api.route("/search", searchRouter)
   api.route("/admin", adminRouter)
+
+  // Search routes mounted at root level for POST /research/search, POST /dataset/search, GET /facets
+  api.route("/", searchRouter)
 
   // Mount API routes with optional prefix
   if (API_URL_PREFIX) {

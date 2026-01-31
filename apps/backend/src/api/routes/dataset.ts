@@ -6,7 +6,7 @@
  */
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { getDataset, listDatasetVersions, searchDatasets } from "@/api/es-client"
+import { getDataset, getResearchByDatasetId, listDatasetVersions, searchDatasets } from "@/api/es-client"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import {
@@ -195,7 +195,8 @@ datasetRouter.use("*", optionalAuth)
 datasetRouter.openapi(listDatasetsRoute, async (c) => {
   try {
     const query = c.req.query() as unknown as DatasetSearchQuery
-    const datasetsData = await searchDatasets(query)
+    const authUser = c.get("authUser")
+    const datasetsData = await searchDatasets(query, authUser)
     return c.json(datasetsData, 200)
   } catch (error) {
     console.error("Error fetching datasets:", error)
@@ -225,7 +226,8 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
   try {
     const { datasetId } = c.req.param() as unknown as DatasetIdParams
     const query = c.req.query() as unknown as LangVersionQuery
-    const dataset = await getDataset(datasetId, query)
+    const authUser = c.get("authUser")
+    const dataset = await getDataset(datasetId, { version: query.version ?? undefined }, authUser)
     if (dataset === null) return c.json({ error: `Dataset with datasetId ${datasetId} not found` }, 404)
     return c.json(dataset, 200)
   } catch (error) {
@@ -273,8 +275,9 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
 datasetRouter.openapi(listVersionsRoute, async (c) => {
   try {
     const { datasetId } = c.req.param() as unknown as DatasetIdParams
-    const query = c.req.query() as unknown as LangQuery
-    const versions = await listDatasetVersions(datasetId, query.lang)
+    const authUser = c.get("authUser")
+    const versions = await listDatasetVersions(datasetId, authUser)
+    if (versions === null) return c.json({ error: `Dataset with datasetId ${datasetId} not found` }, 404)
     return c.json({ data: versions }, 200)
   } catch (error) {
     console.error("Error fetching dataset versions:", error)
@@ -286,8 +289,8 @@ datasetRouter.openapi(listVersionsRoute, async (c) => {
 datasetRouter.openapi(getVersionRoute, async (c) => {
   try {
     const { datasetId, version } = c.req.param() as unknown as DatasetVersionParams
-    const query = c.req.query() as unknown as LangQuery
-    const dataset = await getDataset(datasetId, { lang: query.lang, version })
+    const authUser = c.get("authUser")
+    const dataset = await getDataset(datasetId, { version }, authUser)
     if (dataset === null) return c.json({ error: `Dataset version ${version} not found` }, 404)
     return c.json(dataset, 200)
   } catch (error) {
@@ -299,9 +302,15 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
 // GET /dataset/{datasetId}/research
 datasetRouter.openapi(listLinkedResearchesRoute, async (c) => {
   try {
-    const { datasetId: _datasetId } = c.req.param() as unknown as DatasetIdParams
-    // TODO: Implement query to find researches that link to this dataset
-    return c.json({ error: "Not Implemented", message: "List linked researches not yet implemented" }, 500)
+    const { datasetId } = c.req.param() as unknown as DatasetIdParams
+    const authUser = c.get("authUser")
+
+    // Get the parent Research for this Dataset
+    const research = await getResearchByDatasetId(datasetId, authUser)
+    if (!research) return c.json({ error: `Dataset ${datasetId} not found or no linked research` }, 404)
+
+    // Return as array since the schema expects LinkedResearchesResponse
+    return c.json({ data: [research] }, 200)
   } catch (error) {
     console.error("Error fetching linked researches:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)

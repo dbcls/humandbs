@@ -23,8 +23,12 @@ export const researchSchema = {
   latestVersion: f.keyword(),
 
   // Timestamps
-  firstReleaseDate: f.date(),
-  lastReleaseDate: f.date(),
+  datePublished: f.date(),
+  dateModified: f.date(),
+
+  // Status and ownership
+  status: f.keyword(),
+  uids: f.keyword(),
 
   // Summary section
   summary: f.object({

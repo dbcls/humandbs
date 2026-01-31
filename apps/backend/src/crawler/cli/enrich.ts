@@ -209,7 +209,7 @@ const enrichResearch = async (
       const doiResults = await batchSearchDois(
         humIdFromFile,
         publications,
-        research.firstReleaseDate,
+        research.datePublished,
         useCache,
         delayMs,
       )

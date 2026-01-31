@@ -76,6 +76,7 @@ export type {
   Publication,
   Research,
   ResearchVersion,
+  DatasetRef,
   SubjectCountType,
   HealthStatus,
   ReadType,

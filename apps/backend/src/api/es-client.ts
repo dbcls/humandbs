@@ -23,7 +23,7 @@ import type {
   ResearchSummary,
   LangType,
   DatasetVersionItem,
-  LangVersionQuery,
+  AuthUser,
 } from "@/api/types"
 import {
   EsDatasetDocSchema,
@@ -50,6 +50,82 @@ const createEsClient = () => {
 }
 
 const esClient = createEsClient()
+
+// === Authorization Filters ===
+
+/**
+ * Build Elasticsearch filter based on user authorization level
+ *
+ * - public (authUser=null): Only `status=published`
+ * - auth (authUser!=null, !isAdmin): `status=published` OR `uids` contains userId
+ * - admin: No filter (can see all)
+ */
+export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQueryContainer | null => {
+  if (authUser?.isAdmin) {
+    // Admin can see everything
+    return null
+  }
+
+  if (authUser) {
+    // Authenticated user: published OR own resources (userId in uids)
+    return {
+      bool: {
+        should: [
+          { term: { status: "published" } },
+          { term: { uids: authUser.userId } },
+        ],
+        minimum_should_match: 1,
+      },
+    }
+  }
+
+  // Public: only published
+  return { term: { status: "published" } }
+}
+
+/**
+ * Check if user can access a specific Research based on status and uids
+ */
+export const canAccessResearchDoc = (
+  authUser: AuthUser | null,
+  researchDoc: EsResearchDoc,
+): boolean => {
+  if (authUser?.isAdmin) return true
+  if (researchDoc.status === "published") return true
+  if (authUser && researchDoc.uids.includes(authUser.userId)) return true
+  return false
+}
+
+/**
+ * Get humIds of published Research for Dataset filtering
+ * Used when Dataset visibility depends on parent Research status
+ */
+export const getPublishedHumIds = async (authUser: AuthUser | null): Promise<string[] | null> => {
+  if (authUser?.isAdmin) {
+    // Admin can see all datasets
+    return null
+  }
+
+  const statusFilter = buildStatusFilter(authUser)
+  if (!statusFilter) return null
+
+  interface HumIdAggs {
+    humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
+  }
+
+  const res = await esClient.search<unknown, HumIdAggs>({
+    index: ES_INDEX.research,
+    size: 0,
+    query: statusFilter,
+    aggs: {
+      humIds: { terms: { field: "humId", size: 10000 } },
+    },
+  })
+
+  const buckets = res.aggregations?.humIds?.buckets
+  if (!Array.isArray(buckets)) return []
+  return buckets.map(b => b.key)
+}
 
 // === utils ===
 
@@ -84,9 +160,8 @@ const mgetMap = async <T>(
 
 export const getResearchDoc = async (
   humId: string,
-  lang: LangType = "en",
 ): Promise<EsResearchDoc | null> => {
-  const id = `${humId}-${lang}`
+  const id = humId // lang suffix removed (BilingualText format)
   const res = await esClient.get<EsResearchDoc>({
     index: ES_INDEX.research,
     id,
@@ -96,10 +171,10 @@ export const getResearchDoc = async (
 
 export const getResearchVersion = async (
   humId: string,
-  { lang = "en", version }: LangVersionQuery,
+  { version }: { version?: string },
 ): Promise<EsResearchVersionDoc | null> => {
   if (version) {
-    const id = `${humId}-${version}-${lang}`
+    const id = `${humId}-${version}` // lang suffix removed (BilingualText format)
     const res = await esClient.get<EsResearchVersionDoc>({
       index: ES_INDEX.researchVersion,
       id,
@@ -111,14 +186,10 @@ export const getResearchVersion = async (
   const { hits } = await esClient.search<EsResearchVersionDoc>({
     index: ES_INDEX.researchVersion,
     size: 1,
-    query: {
-      bool: {
-        must: [{ term: { humId } }, { term: { lang } }],
-      },
-    },
+    query: { term: { humId } },
     sort: [
       { version: { order: "desc" } },
-      { releaseDate: { order: "desc" } },
+      { versionReleaseDate: { order: "desc" } },
     ],
     _source: true,
     track_total_hits: false,
@@ -129,25 +200,33 @@ export const getResearchVersion = async (
 
 export const getResearchDetail = async (
   humId: string,
-  { lang = "en", version }: LangVersionQuery,
+  { version }: { version?: string },
+  authUser: AuthUser | null = null,
 ): Promise<EsResearchDetail | null> => {
   const [researchDoc, researchVersionDoc] = await Promise.all([
-    getResearchDoc(humId, lang),
-    getResearchVersion(humId, { lang, version }),
+    getResearchDoc(humId),
+    getResearchVersion(humId, { version }),
   ])
   if (!researchDoc || !researchVersionDoc) return null
 
-  const dsIds = researchVersionDoc.datasets
+  // Authorization check: verify user can access this Research
+  if (!canAccessResearchDoc(authUser, researchDoc)) {
+    return null // Return null to hide existence from unauthorized users
+  }
+
+  // datasets is now { datasetId, version }[]
+  const dsRefs = researchVersionDoc.datasets
+  const dsIds = dsRefs.map(ref => `${ref.datasetId}-${ref.version}`)
   const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, EsDatasetDocSchema.parse)
   const datasets = dsIds.map(id => dsMap.get(id)).filter((x): x is EsDatasetDoc => !!x)
 
-  const { versions, ...researchDocRest } = researchDoc
+  const { versionIds: _versionIds, ...researchDocRest } = researchDoc
 
   return EsResearchDetailSchema.parse({
     ...researchDocRest,
     humVersionId: researchVersionDoc.humVersionId,
     version: researchVersionDoc.version,
-    releaseDate: researchVersionDoc.releaseDate,
+    versionReleaseDate: researchVersionDoc.versionReleaseDate,
     releaseNote: researchVersionDoc.releaseNote,
     datasets,
   })
@@ -155,87 +234,124 @@ export const getResearchDetail = async (
 
 export const listResearchVersions = async (
   humId: string,
-  lang: LangType = "en",
+  authUser: AuthUser | null = null,
 ): Promise<EsResearchVersionDoc[] | null> => {
   const res = await esClient.get<EsResearchDoc>({
     index: ES_INDEX.research,
-    id: `${humId}-${lang}`,
+    id: humId, // lang suffix removed (BilingualText format)
   }, { ignore: [404] })
   if (!res.found || !res._source) return null
   const researchDoc = EsResearchDocSchema.parse(res._source)
 
-  const rvIds = researchDoc.versions ?? []
+  // Authorization check: verify user can access this Research
+  if (!canAccessResearchDoc(authUser, researchDoc)) {
+    return null // Return null to hide existence from unauthorized users
+  }
+
+  const rvIds = researchDoc.versionIds ?? []
   if (rvIds.length === 0) return []
   const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, EsResearchVersionDocSchema.parse)
 
   return rvIds
-    .map(id => rvMap.get(id))
+    .map((id: string) => rvMap.get(id))
     .filter((x): x is EsResearchVersionDoc => !!x)
 }
 
 export const listResearchVersionsSorted = async (
   humId: string,
-  lang: LangType = "en",
+  authUser: AuthUser | null = null,
 ): Promise<EsResearchVersionDoc[] | null> => {
-  const rows = await listResearchVersions(humId, lang)
+  const rows = await listResearchVersions(humId, authUser)
   if (!rows) return null
   const verNum = (v: string) => Number(/^v(\d+)$/.exec(v)?.[1] ?? -1)
   rows.sort((a, b) => verNum(b.version) - verNum(a.version))
   return rows
 }
 
+/**
+ * Check if user can access a Dataset based on parent Research status
+ */
+const canAccessDataset = async (
+  authUser: AuthUser | null,
+  dataset: EsDatasetDoc,
+): Promise<boolean> => {
+  if (authUser?.isAdmin) return true
+
+  // Get parent Research and check access
+  const researchDoc = await getResearchDoc(dataset.humId)
+  if (!researchDoc) return false
+
+  return canAccessResearchDoc(authUser, researchDoc)
+}
+
 export const getDataset = async (
   datasetId: string,
-  { lang = "en", version }: LangVersionQuery,
+  { version }: { version?: string },
+  authUser: AuthUser | null = null,
 ): Promise<EsDatasetDoc | null> => {
+  let dataset: EsDatasetDoc | null = null
+
   if (version) {
-    const id = `${datasetId}-${version}-${lang}`
+    const id = `${datasetId}-${version}` // lang suffix removed (BilingualText format)
     const res = await esClient.get<EsDatasetDoc>({
       index: ES_INDEX.dataset,
       id,
     }, { ignore: [404] })
-    return res.found && res._source ? EsDatasetDocSchema.parse(res._source) : null
+    dataset = res.found && res._source ? EsDatasetDocSchema.parse(res._source) : null
+  } else {
+    // If the version is not specified, get the latest version
+    const { hits } = await esClient.search<EsDatasetDoc>({
+      index: ES_INDEX.dataset,
+      size: 1,
+      query: { term: { datasetId } },
+      sort: [
+        { version: { order: "desc" } },
+        { releaseDate: { order: "desc" } },
+      ],
+      _source: true,
+      track_total_hits: false,
+    })
+    const hit = hits.hits[0]
+    dataset = hit && hit._source ? EsDatasetDocSchema.parse(hit._source) : null
   }
 
-  // If the version is not specified, get the latest version
-  const { hits } = await esClient.search<EsDatasetDoc>({
-    index: ES_INDEX.dataset,
-    size: 1,
-    query: {
-      bool: {
-        must: [{ term: { datasetId } }, { term: { lang } }],
-      },
-    },
-    sort: [
-      { version: { order: "desc" } },
-      { releaseDate: { order: "desc" } },
-    ],
-    _source: true,
-    track_total_hits: false,
-  })
-  const hit = hits.hits[0]
-  return hit && hit._source ? EsDatasetDocSchema.parse(hit._source) : null
+  if (!dataset) return null
+
+  // Authorization check: verify user can access parent Research
+  const canAccess = await canAccessDataset(authUser, dataset)
+  if (!canAccess) return null
+
+  return dataset
 }
 
 export const listDatasetVersions = async (
   datasetId: string,
-  lang: LangType = "en",
-): Promise<DatasetVersionItem[]> => {
+  authUser: AuthUser | null = null,
+): Promise<DatasetVersionItem[] | null> => {
   const res = await esClient.search<EsDatasetDoc>({
     index: ES_INDEX.dataset,
     size: 500,
-    query: { bool: { must: [{ term: { datasetId } }, { term: { lang } }] } },
+    query: { term: { datasetId } },
     sort: [
       { version: { order: "desc" } },
       { releaseDate: { order: "desc" } },
     ],
-    _source: ["version", "typeOfData", "criteria", "releaseDate"],
+    _source: ["version", "typeOfData", "criteria", "releaseDate", "humId"],
     track_total_hits: false,
   })
 
   const rows = res.hits.hits
     .map(h => h._source)
     .filter((d): d is EsDatasetDoc => !!d)
+
+  if (rows.length === 0) return []
+
+  // Authorization check: verify user can access parent Research (all versions share same humId)
+  const firstRow = rows[0]
+  const researchDoc = await getResearchDoc(firstRow.humId)
+  if (!researchDoc || !canAccessResearchDoc(authUser, researchDoc)) {
+    return null // Return null to indicate not found/unauthorized
+  }
 
   return rows.map(d => ({
     version: d.version,
@@ -659,12 +775,31 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
   return facets
 }
 
-export const searchDatasets = async (params: DatasetSearchQuery): Promise<DatasetSearchResponse> => {
-  const { page, limit, lang, sort, order, q, includeFacets } = params
+export const searchDatasets = async (
+  params: DatasetSearchQuery,
+  authUser: AuthUser | null = null,
+): Promise<DatasetSearchResponse> => {
+  const { page, limit, sort, order, q, includeFacets } = params
   const from = (page - 1) * limit
 
-  // Build query
-  const must: estypes.QueryDslQueryContainer[] = [{ term: { lang } }]
+  // Build query (lang filter removed - documents are BilingualText)
+  const must: estypes.QueryDslQueryContainer[] = []
+
+  // Apply authorization filter: Dataset visibility depends on parent Research status
+  // Get humIds of accessible Research, then filter Datasets by those humIds
+  const accessibleHumIds = await getPublishedHumIds(authUser)
+  if (accessibleHumIds !== null) {
+    if (accessibleHumIds.length === 0) {
+      // No accessible Research, return empty result
+      return {
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        facets: includeFacets ? {} : undefined,
+      }
+    }
+    must.push({ terms: { humId: accessibleHumIds } })
+  }
+
   must.push(...buildDatasetFilterClauses(params))
 
   // Full-text search
@@ -812,9 +947,9 @@ const hasDatasetFilters = (params: ResearchSearchQuery): boolean => {
 
 const getHumIdsByDatasetFilters = async (
   params: ResearchSearchQuery,
-  lang: LangType,
 ): Promise<string[]> => {
-  const must: estypes.QueryDslQueryContainer[] = [{ term: { lang } }]
+  // lang filter removed - documents are BilingualText
+  const must: estypes.QueryDslQueryContainer[] = []
   must.push(...buildDatasetFilterClauses(params))
 
   interface HumIdAggs {
@@ -835,14 +970,17 @@ const getHumIdsByDatasetFilters = async (
   return buckets.map(b => b.key)
 }
 
-export const searchResearches = async (params: ResearchSearchQuery): Promise<ResearchSearchResponse> => {
+export const searchResearches = async (
+  params: ResearchSearchQuery,
+  authUser: AuthUser | null = null,
+): Promise<ResearchSearchResponse> => {
   const { page, limit, lang, sort, order, q, releasedAfter, releasedBefore, includeFacets } = params
   const from = (page - 1) * limit
 
   // Step 1: If Dataset filters are present, get humIds from Dataset index
   let humIdFilter: string[] | null = null
   if (hasDatasetFilters(params)) {
-    humIdFilter = await getHumIdsByDatasetFilters(params, lang)
+    humIdFilter = await getHumIdsByDatasetFilters(params)
     if (humIdFilter.length === 0) {
       // No matching datasets, return empty result
       return {
@@ -853,8 +991,14 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
     }
   }
 
-  // Step 2: Build Research query
-  const must: estypes.QueryDslQueryContainer[] = [{ term: { lang } }]
+  // Step 2: Build Research query (lang filter removed - documents are BilingualText)
+  const must: estypes.QueryDslQueryContainer[] = []
+
+  // Apply authorization filter
+  const statusFilter = buildStatusFilter(authUser)
+  if (statusFilter) {
+    must.push(statusFilter)
+  }
 
   if (humIdFilter) {
     must.push({ terms: { humId: humIdFilter } })
@@ -890,12 +1034,12 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
     })
   }
 
-  // Date range filters
+  // Date range filters (renamed: lastReleaseDate → dateModified, firstReleaseDate → datePublished)
   if (releasedAfter) {
-    must.push({ range: { lastReleaseDate: { gte: releasedAfter } } })
+    must.push({ range: { dateModified: { gte: releasedAfter } } })
   }
   if (releasedBefore) {
-    must.push({ range: { firstReleaseDate: { lte: releasedBefore } } })
+    must.push({ range: { datePublished: { lte: releasedBefore } } })
   }
 
   // Sort configuration
@@ -905,7 +1049,7 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
   } else if (sort === "title") {
     sortSpec = [{ "title.kw": { order } }, { humId: { order: "asc" } }]
   } else if (sort === "releaseDate") {
-    sortSpec = [{ lastReleaseDate: { order, missing: "_last" } }, { humId: { order: "asc" } }]
+    sortSpec = [{ dateModified: { order, missing: "_last" } }, { humId: { order: "asc" } }]
   } else {
     sortSpec = [{ humId: { order } }]
   }
@@ -914,9 +1058,9 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
     index: ES_INDEX.research,
     from,
     size: limit,
-    query: { bool: { must } },
+    query: must.length > 0 ? { bool: { must } } : { match_all: {} },
     sort: sortSpec,
-    _source: ["humId", "lang", "title", "versions", "dataProvider", "summary"],
+    _source: ["humId", "title", "versionIds", "dataProvider", "summary"],
     track_total_hits: true,
   })
 
@@ -924,42 +1068,59 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
     .map(hit => hit._source)
     .filter((doc): doc is EsResearchDoc => !!doc)
     .map(doc => EsResearchDocSchema.pick({
-      humId: true, lang: true, title: true, versions: true, dataProvider: true, summary: true,
+      humId: true, title: true, versionIds: true, dataProvider: true, summary: true,
     }).parse(doc))
 
   // Fetch version and dataset details
-  const rvIds = base.flatMap(doc => doc.versions)
+  const rvIds = base.flatMap(doc => doc.versionIds)
   const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, EsResearchVersionDocSchema.parse)
 
-  const dsIds = uniq(Array.from(rvMap.values()).flatMap(rv => rv.datasets))
+  // datasets is now { datasetId, version }[], convert to ES IDs
+  const dsRefs = Array.from(rvMap.values()).flatMap(rv => rv.datasets)
+  const dsIds = uniq(dsRefs.map(ref => `${ref.datasetId}-${ref.version}`))
   const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, EsDatasetDocSchema.parse)
 
-  const data: ResearchSummary[] = base.map(d => {
-    const rvs = d.versions.map(id => rvMap.get(id)).filter((x): x is EsResearchVersionDoc => !!x)
-    const datasets = rvs.flatMap(rv => rv.datasets.map(id => dsMap.get(id))).filter((x): x is EsDatasetDoc => !!x)
+  // Helper to extract text from BilingualTextValue
+  const extractText = (value: { ja: { text: string } | null; en: { text: string } | null } | null | undefined): string => {
+    if (!value) return ""
+    return value[lang]?.text ?? value.ja?.text ?? value.en?.text ?? ""
+  }
 
-    const versions = rvs.map(rv => ({ version: rv.version, releaseDate: rv.releaseDate }))
-    const methods = d.summary?.methods ?? ""
+  // Helper to extract string from BilingualText
+  const extractStr = (value: { ja: string | null; en: string | null } | null | undefined): string => {
+    if (!value) return ""
+    return value[lang] ?? value.ja ?? value.en ?? ""
+  }
+
+  const data: ResearchSummary[] = base.map(d => {
+    const rvs = d.versionIds.map(id => rvMap.get(id)).filter((x): x is EsResearchVersionDoc => !!x)
+    const datasetRefs = rvs.flatMap(rv => rv.datasets)
+    const datasets = datasetRefs.map(ref => dsMap.get(`${ref.datasetId}-${ref.version}`)).filter((x): x is EsDatasetDoc => !!x)
+
+    const versions = rvs.map(rv => ({ version: rv.version, releaseDate: rv.versionReleaseDate }))
+    const methods = extractText(d.summary?.methods)
     const datasetIds = uniq(datasets.map(ds => ds.datasetId))
-    const typeOfData = uniq(datasets.flatMap(ds => ds.typeOfData ?? []).filter((x): x is string => !!x))
+    // typeOfData is now BilingualText, extract as array with both languages
+    const typeOfData = uniq(datasets.map(ds => extractStr(ds.typeOfData)).filter(x => !!x))
     const platforms = uniq(
       datasets
-        .flatMap(ds => ds.experiments.map(e => e.data["Platform"]))
-        .filter((p): p is string => !!p),
+        .flatMap(ds => ds.experiments.map(e => extractText(e.data["Platform"])))
+        .filter(p => !!p),
     )
-    const targets = d.summary?.targets ?? ""
-    const dataProvider = uniq((d.dataProvider ?? []).map(p => p.name).filter((x): x is string => !!x))
+    const targets = extractText(d.summary?.targets)
+    // dataProvider.name is BilingualTextValue, extract text
+    const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
     const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
 
-    return { humId: d.humId, lang: d.lang, title: d.title, versions, methods, datasetIds, typeOfData, platforms, targets, dataProvider, criteria }
+    return { humId: d.humId, lang, title: extractStr(d.title), versions, methods, datasetIds, typeOfData, platforms, targets, dataProvider, criteria }
   })
 
   const total = esTotal(res.hits.total)
 
-  // Get facets from Dataset index if requested
+  // Get facets from Dataset index if requested (lang filter removed)
   let facets: FacetsMap | undefined
   if (includeFacets) {
-    const datasetFacetQuery: estypes.QueryDslQueryContainer[] = [{ term: { lang } }]
+    const datasetFacetQuery: estypes.QueryDslQueryContainer[] = []
     if (humIdFilter) {
       datasetFacetQuery.push({ terms: { humId: humIdFilter } })
     } else if (data.length > 0) {
@@ -969,7 +1130,7 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
     const facetRes = await esClient.search({
       index: ES_INDEX.dataset,
       size: 0,
-      query: { bool: { must: datasetFacetQuery } },
+      query: datasetFacetQuery.length > 0 ? { bool: { must: datasetFacetQuery } } : { match_all: {} },
       aggs: buildFacetAggregations(),
     })
 
@@ -987,5 +1148,175 @@ export const searchResearches = async (params: ResearchSearchQuery): Promise<Res
       hasPrev: from > 0,
     },
     facets,
+  }
+}
+
+// === Additional API Functions ===
+
+/**
+ * Get Research by Dataset ID
+ * Returns the parent Research that contains the specified Dataset
+ */
+export const getResearchByDatasetId = async (
+  datasetId: string,
+  authUser: AuthUser | null = null,
+): Promise<EsResearchDetail | null> => {
+  // First, get the Dataset to find its humId
+  const dataset = await getDataset(datasetId, {}, authUser)
+  if (!dataset) return null
+
+  // Get the Research detail using the humId from the Dataset
+  return getResearchDetail(dataset.humId, {}, authUser)
+}
+
+/**
+ * Get pending reviews (Research with status='review')
+ * Admin only - returns list of Research awaiting approval
+ */
+export const getPendingReviews = async (
+  page: number = 1,
+  limit: number = 20,
+): Promise<{ data: EsResearchDoc[]; total: number }> => {
+  const from = (page - 1) * limit
+
+  const res = await esClient.search<EsResearchDoc>({
+    index: ES_INDEX.research,
+    from,
+    size: limit,
+    query: { term: { status: "review" } },
+    sort: [{ dateModified: { order: "desc" } }],
+    _source: true,
+    track_total_hits: true,
+  })
+
+  const data = res.hits.hits
+    .map(hit => hit._source)
+    .filter((doc): doc is EsResearchDoc => !!doc)
+    .map(doc => EsResearchDocSchema.parse(doc))
+
+  const total = esTotal(res.hits.total)
+
+  return { data, total }
+}
+
+// === Status Transition Types ===
+// TODO: Research CRUD functions (createResearch, updateResearch, deleteResearch,
+// createResearchVersion, updateResearchUids) will be implemented when API schema
+// is aligned with ES document structure
+
+type ResearchStatus = "draft" | "review" | "published" | "deleted"
+type StatusAction = "submit" | "approve" | "reject" | "unpublish"
+
+interface StatusTransition {
+  from: ResearchStatus
+  to: ResearchStatus
+  allowedBy: "owner" | "admin"
+}
+
+const STATUS_TRANSITIONS: Record<StatusAction, StatusTransition> = {
+  submit: { from: "draft", to: "review", allowedBy: "owner" },
+  approve: { from: "review", to: "published", allowedBy: "admin" },
+  reject: { from: "review", to: "draft", allowedBy: "admin" },
+  unpublish: { from: "published", to: "draft", allowedBy: "admin" },
+}
+
+// === Status Transition Functions ===
+
+/**
+ * Validate status transition
+ * Returns error message if invalid, null if valid
+ */
+export const validateStatusTransition = (
+  currentStatus: ResearchStatus,
+  action: StatusAction,
+): string | null => {
+  const transition = STATUS_TRANSITIONS[action]
+  if (!transition) {
+    return `Unknown action: ${action}`
+  }
+  if (currentStatus !== transition.from) {
+    return `Cannot ${action} from status '${currentStatus}'. Expected '${transition.from}'.`
+  }
+  return null
+}
+
+/**
+ * Check if user is allowed to perform status transition
+ */
+export const canPerformTransition = (
+  authUser: AuthUser | null,
+  research: EsResearchDoc,
+  action: StatusAction,
+): boolean => {
+  if (!authUser) return false
+
+  const transition = STATUS_TRANSITIONS[action]
+  if (!transition) return false
+
+  if (transition.allowedBy === "admin") {
+    return authUser.isAdmin
+  }
+
+  // owner action: must be admin or in uids
+  return authUser.isAdmin || research.uids.includes(authUser.userId)
+}
+
+/**
+ * Get Research document with sequence number for optimistic locking
+ */
+export const getResearchWithSeqNo = async (
+  humId: string,
+): Promise<{ doc: EsResearchDoc; seqNo: number; primaryTerm: number } | null> => {
+  const res = await esClient.get<EsResearchDoc>({
+    index: ES_INDEX.research,
+    id: humId,
+  }, { ignore: [404] })
+
+  if (!res.found || !res._source) return null
+
+  return {
+    doc: EsResearchDocSchema.parse(res._source),
+    seqNo: res._seq_no ?? 0,
+    primaryTerm: res._primary_term ?? 0,
+  }
+}
+
+/**
+ * Update Research status with optimistic locking
+ * Returns updated document on success, null on conflict
+ */
+export const updateResearchStatus = async (
+  humId: string,
+  newStatus: ResearchStatus,
+  seqNo: number,
+  primaryTerm: number,
+): Promise<EsResearchDoc | null> => {
+  try {
+    const now = new Date().toISOString().split("T")[0]
+
+    await esClient.update({
+      index: ES_INDEX.research,
+      id: humId,
+      if_seq_no: seqNo,
+      if_primary_term: primaryTerm,
+      body: {
+        doc: {
+          status: newStatus,
+          dateModified: now,
+        },
+      },
+    })
+
+    // Fetch and return updated document
+    return getResearchDoc(humId)
+  } catch (error: unknown) {
+    // Check for version conflict
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) {
+        return null // Conflict
+      }
+    }
+    throw error
   }
 }

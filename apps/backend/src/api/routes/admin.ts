@@ -2,13 +2,15 @@
  * Admin API Routes
  *
  * Handles administrative operations such as pending reviews, user management,
- * and role assignment. All routes require admin authentication.
+ * and role assignment. Most routes require admin authentication.
  */
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
-import { requireAdmin, requireAuth } from "@/api/middleware/auth"
+import { getPendingReviews } from "@/api/es-client"
+import { requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import {
+  IsAdminResponseSchema,
   PendingReviewsResponseSchema,
   UpdateUserAdminRequestSchema,
   UserIdParamsSchema,
@@ -18,6 +20,22 @@ import {
 import type { UpdateUserAdminRequest, UserIdParams } from "@/api/types"
 
 // === Route Definitions ===
+
+const isAdminRoute = createRoute({
+  method: "get",
+  path: "/is-admin",
+  tags: ["Admin"],
+  summary: "Check Admin Status",
+  description: "Check if the current user is an admin. Requires authentication.",
+  responses: {
+    200: {
+      content: { "application/json": { schema: IsAdminResponseSchema } },
+      description: "Admin status of current user",
+    },
+    401: ErrorSpec401,
+    500: ErrorSpec500,
+  },
+})
 
 const getPendingReviewsRoute = createRoute({
   method: "get",
@@ -114,23 +132,52 @@ const updateUserAdminRoute = createRoute({
 
 export const adminRouter = new OpenAPIHono()
 
+// Apply requireAuth to all routes
 adminRouter.use("*", requireAuth)
-adminRouter.use("*", requireAdmin)
 
-// GET /admin/pending-reviews
+// GET /admin/is-admin - requires auth but not admin
+adminRouter.openapi(isAdminRoute, async (c) => {
+  const authUser = c.get("authUser")
+  if (!authUser) {
+    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+  }
+  return c.json({ isAdmin: authUser.isAdmin }, 200)
+})
+
+// GET /admin/pending-reviews - requires admin
 adminRouter.openapi(getPendingReviewsRoute, async (c) => {
+  const authUser = c.get("authUser")
+  if (!authUser?.isAdmin) {
+    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+  }
+
   try {
-    const { page: _page, limit: _limit } = c.req.query()
-    // TODO: Query Elasticsearch for researches with status='review'
-    return c.json({ data: [], total: 0 }, 200)
+    const { page, limit } = c.req.valid("query")
+
+    const result = await getPendingReviews(page, limit)
+
+    // Transform EsResearchDoc to PendingReviewItem format
+    const data = result.data.map(doc => ({
+      humId: doc.humId,
+      title: doc.title,
+      uids: doc.uids,
+      submittedAt: doc.dateModified, // Use dateModified as submittedAt approximation
+    }))
+
+    return c.json({ data, total: result.total }, 200)
   } catch (error) {
     console.error("Error fetching pending reviews:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
   }
 })
 
-// GET /admin/users
+// GET /admin/users - requires admin
 adminRouter.openapi(listUsersRoute, async (c) => {
+  const authUser = c.get("authUser")
+  if (!authUser?.isAdmin) {
+    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+  }
+
   try {
     const { page, limit, isAdmin: _isAdmin, search: _search } = c.req.query()
     // TODO: Implement user listing via Keycloak Admin API
@@ -151,8 +198,13 @@ adminRouter.openapi(listUsersRoute, async (c) => {
   }
 })
 
-// GET /admin/users/{userId}
+// GET /admin/users/{userId} - requires admin
 adminRouter.openapi(getUserRoute, async (c) => {
+  const authUser = c.get("authUser")
+  if (!authUser?.isAdmin) {
+    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+  }
+
   try {
     const { userId: _userId } = c.req.param() as unknown as UserIdParams
     // TODO: Fetch user from Keycloak Admin API
@@ -163,8 +215,13 @@ adminRouter.openapi(getUserRoute, async (c) => {
   }
 })
 
-// PATCH /admin/users/{userId}/admin
+// PATCH /admin/users/{userId}/admin - requires admin
 adminRouter.openapi(updateUserAdminRoute, async (c) => {
+  const authUser = c.get("authUser")
+  if (!authUser?.isAdmin) {
+    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+  }
+
   try {
     const { userId: _userId } = c.req.param() as unknown as UserIdParams
     const _body = await c.req.json() as UpdateUserAdminRequest

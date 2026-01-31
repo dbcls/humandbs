@@ -227,8 +227,8 @@ const buildSingleLangResearch = (
   lang: LangType,
   versionIds: string[],
   latestVersion: string,
-  firstReleaseDate: string,
-  lastReleaseDate: string,
+  datePublished: string,
+  dateModified: string,
   expansionMap: Map<string, Set<string>>,
 ): SingleLangResearch => ({
   humId,
@@ -248,8 +248,8 @@ const buildSingleLangResearch = (
   controlledAccessUser: structureControlledAccessUsers(normalized.controlledAccessUsers, expansionMap),
   versionIds,
   latestVersion,
-  firstReleaseDate,
-  lastReleaseDate,
+  datePublished,
+  dateModified,
 })
 
 // Build single-language research version
@@ -259,7 +259,6 @@ const buildSingleLangResearchVersion = (
   humId: string,
   version: string,
   releaseDate: string,
-  datasetIds: string[],
   releaseNote: import("@/crawler/types").TextValue | undefined,
 ): SingleLangResearchVersion => ({
   humId,
@@ -267,7 +266,6 @@ const buildSingleLangResearchVersion = (
   version,
   versionReleaseDate: releaseDate,
   releaseDate,
-  datasetIds,
   releaseNote: releaseNote ?? { text: "", rawHtml: "" },
 })
 
@@ -366,8 +364,8 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
     // Process each version
     const jaVersions: SingleLangResearchVersion[] = []
     const enVersions: SingleLangResearchVersion[] = []
-    let firstReleaseDate = ""
-    let lastReleaseDate = ""
+    let datePublished = ""
+    let dateModified = ""
 
     for (const humVersionId of sortedVersions) {
       const versionFiles = filesMap.get(humVersionId)!
@@ -379,11 +377,11 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       const versionData = jaData ?? enData!
       const releaseDate = getReleaseDate(versionData, humVersionId)
 
-      if (!firstReleaseDate || releaseDate < firstReleaseDate) {
-        firstReleaseDate = releaseDate
+      if (!datePublished || releaseDate < datePublished) {
+        datePublished = releaseDate
       }
-      if (!lastReleaseDate || releaseDate > lastReleaseDate) {
-        lastReleaseDate = releaseDate
+      if (!dateModified || releaseDate > dateModified) {
+        dateModified = releaseDate
       }
 
       // Get version number
@@ -403,13 +401,11 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       }
 
       const versionInvertedMap = invertMolTableToDataset(versionAllMolData)
-      const versionDatasetIds: string[] = []
+      const versionDatasetRefs: { datasetId: string; version: string }[] = []
 
       // Process each dataset
       for (const [datasetId, molDataList] of versionInvertedMap.entries()) {
         if (ignoredDatasetIds.has(datasetId)) continue
-
-        versionDatasetIds.push(datasetId)
 
         // Get ja/en molData for this dataset
         const jaMolDataForDataset = jaData
@@ -431,6 +427,9 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
         )
 
         trackBilingualVersion(datasetId, datasetVersion, jaExperiments, enExperiments, datasetVersions)
+
+        // Add to version dataset refs
+        versionDatasetRefs.push({ datasetId, version: datasetVersion })
 
         // Build single-language datasets
         const jaSingleLangDataset = jaData
@@ -462,10 +461,10 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       const enReleaseNote = enData ? getReleaseNote(enData, humVersionId) : undefined
 
       if (jaData) {
-        jaVersions.push(buildSingleLangResearchVersion(humVersionId, humId, version, releaseDate, versionDatasetIds, jaReleaseNote))
+        jaVersions.push(buildSingleLangResearchVersion(humVersionId, humId, version, releaseDate, jaReleaseNote))
       }
       if (enData) {
-        enVersions.push(buildSingleLangResearchVersion(humVersionId, humId, version, releaseDate, versionDatasetIds, enReleaseNote))
+        enVersions.push(buildSingleLangResearchVersion(humVersionId, humId, version, releaseDate, enReleaseNote))
       }
 
       // Write research version
@@ -476,6 +475,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
         humVersionId,
         jaResearchVersion,
         enResearchVersion,
+        versionDatasetRefs,
       )
 
       writeStructuredResearchVersion(humVersionId, researchVersion)
@@ -485,10 +485,10 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
     // Build research
     const versionIds = sortedVersions
     const jaLatestResearch = jaLatest
-      ? buildSingleLangResearch(humId, jaLatest, "ja", versionIds, latestVersion, firstReleaseDate, lastReleaseDate, expansionMap)
+      ? buildSingleLangResearch(humId, jaLatest, "ja", versionIds, latestVersion, datePublished, dateModified, expansionMap)
       : null
     const enLatestResearch = enLatest
-      ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestVersion, firstReleaseDate, lastReleaseDate, expansionMap)
+      ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestVersion, datePublished, dateModified, expansionMap)
       : null
 
     const research = mergeResearch(humId, jaLatestResearch, enLatestResearch)

@@ -153,7 +153,7 @@ export const enrichResearch = async (
   const doiResults = await apiClient.batchSearchDois(
     research.humId,
     publications,
-    research.firstReleaseDate,
+    research.datePublished,
     useCache,
     delayMs,
   )

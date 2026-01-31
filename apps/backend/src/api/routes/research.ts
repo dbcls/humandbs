@@ -6,7 +6,15 @@
  */
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { getResearchDetail, listResearchVersionsSorted, searchResearches } from "@/api/es-client"
+import {
+  canPerformTransition,
+  getResearchDetail,
+  getResearchWithSeqNo,
+  listResearchVersionsSorted,
+  searchResearches,
+  updateResearchStatus,
+  validateStatusTransition,
+} from "@/api/es-client"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
 import {
@@ -27,7 +35,7 @@ import {
   VersionParamsSchema,
   VersionResponseSchema,
 } from "@/api/types"
-import type { HumIdParams, LangQuery, LangVersionQuery, LinkParams, ResearchSearchQuery, VersionParams } from "@/api/types"
+import type { HumIdParams, LangVersionQuery, LinkParams, ResearchSearchQuery, VersionParams } from "@/api/types"
 
 // === Route Definitions ===
 
@@ -348,7 +356,8 @@ researchRouter.use("*", optionalAuth)
 researchRouter.openapi(listResearchRoute, async (c) => {
   try {
     const query = c.req.query() as unknown as ResearchSearchQuery
-    const researches = await searchResearches(query)
+    const authUser = c.get("authUser")
+    const researches = await searchResearches(query, authUser)
     return c.json(researches, 200)
   } catch (error) {
     console.error("Error fetching research list:", error)
@@ -367,6 +376,7 @@ researchRouter.openapi(createResearchRoute, async (c) => {
   }
   try {
     // TODO: Implement create research logic
+    // Requires type mapping between API schema and ES document structure
     return c.json({ error: "Not Implemented", message: "Create research not yet implemented" }, 500)
   } catch (error) {
     console.error("Error creating research:", error)
@@ -379,7 +389,8 @@ researchRouter.openapi(getResearchRoute, async (c) => {
   try {
     const { humId } = c.req.param() as unknown as HumIdParams
     const query = c.req.query() as unknown as LangVersionQuery
-    const detail = await getResearchDetail(humId, query)
+    const authUser = c.get("authUser")
+    const detail = await getResearchDetail(humId, { version: query.version ?? undefined }, authUser)
     if (!detail) return c.json({ error: `Research with humId ${humId} not found` }, 404)
     return c.json(detail, 200)
   } catch (error) {
@@ -397,6 +408,7 @@ researchRouter.openapi(updateResearchRoute, async (c) => {
   try {
     const { humId: _humId } = c.req.param() as unknown as HumIdParams
     // TODO: Implement update logic
+    // Requires type mapping between API schema and ES document structure
     return c.json({ error: "Not Implemented", message: "Update research not yet implemented" }, 500)
   } catch (error) {
     console.error("Error updating research:", error)
@@ -427,8 +439,8 @@ researchRouter.openapi(deleteResearchRoute, async (c) => {
 researchRouter.openapi(listVersionsRoute, async (c) => {
   try {
     const { humId } = c.req.param() as unknown as HumIdParams
-    const query = c.req.query() as unknown as LangQuery
-    const versions = await listResearchVersionsSorted(humId, query.lang)
+    const authUser = c.get("authUser")
+    const versions = await listResearchVersionsSorted(humId, authUser)
     if (versions === null) return c.json({ error: `Research with humId ${humId} not found` }, 404)
     return c.json({ data: versions }, 200)
   } catch (error) {
@@ -440,10 +452,22 @@ researchRouter.openapi(listVersionsRoute, async (c) => {
 // GET /research/{humId}/versions/{version}
 researchRouter.openapi(getVersionRoute, async (c) => {
   try {
-    const { humId: _humId, version: _version } = c.req.param() as unknown as VersionParams
-    const _query = c.req.query() as unknown as LangQuery
-    // TODO: Implement get specific version logic
-    return c.json({ error: "Not Implemented", message: "Get version not yet implemented" }, 500)
+    const { humId, version } = c.req.param() as unknown as VersionParams
+    const authUser = c.get("authUser")
+
+    // Use getResearchDetail with specific version
+    const detail = await getResearchDetail(humId, { version }, authUser)
+    if (!detail) return c.json({ error: `Research version ${humId}/${version} not found` }, 404)
+
+    // Return version-specific response
+    return c.json({
+      humId: detail.humId,
+      humVersionId: detail.humVersionId,
+      version: detail.version,
+      versionReleaseDate: detail.versionReleaseDate,
+      releaseNote: detail.releaseNote,
+      datasets: detail.datasets,
+    }, 200)
   } catch (error) {
     console.error("Error fetching version:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -470,8 +494,8 @@ researchRouter.openapi(createVersionRoute, async (c) => {
 researchRouter.openapi(listLinkedDatasetsRoute, async (c) => {
   try {
     const { humId } = c.req.param() as unknown as HumIdParams
-    const query = c.req.query() as unknown as LangQuery
-    const detail = await getResearchDetail(humId, { lang: query.lang })
+    const authUser = c.get("authUser")
+    const detail = await getResearchDetail(humId, {}, authUser)
     if (!detail) return c.json({ error: `Research with humId ${humId} not found` }, 404)
     return c.json({ data: detail.datasets ?? [] }, 200)
   } catch (error) {
@@ -519,9 +543,46 @@ researchRouter.openapi(submitRoute, async (c) => {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement submit logic
-    return c.json({ error: "Not Implemented", message: "Submit not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Check permission (owner or admin can submit)
+    if (!canPerformTransition(authUser, doc, "submit")) {
+      return c.json({ error: "Forbidden", message: "Not authorized to submit this research" }, 403)
+    }
+
+    // Validate transition
+    const validationError = validateStatusTransition(doc.status, "submit")
+    if (validationError) {
+      return c.json({ error: "Conflict", message: validationError }, 409)
+    }
+
+    // Update status
+    const updated = await updateResearchStatus(humId, "review", seqNo, primaryTerm)
+    if (!updated) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    // doc.status is validated to be "draft" by validateStatusTransition
+    const previousStatus = doc.status as "draft" | "review" | "published"
+
+    return c.json({
+      humId,
+      previousStatus,
+      currentStatus: "review" as const,
+      action: "submit" as const,
+      timestamp: new Date().toISOString(),
+    }, 200)
   } catch (error) {
     console.error("Error submitting research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -538,9 +599,41 @@ researchRouter.openapi(approveRoute, async (c) => {
     return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement approve logic
-    return c.json({ error: "Not Implemented", message: "Approve not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Validate transition
+    const validationError = validateStatusTransition(doc.status, "approve")
+    if (validationError) {
+      return c.json({ error: "Conflict", message: validationError }, 409)
+    }
+
+    // Update status
+    const updated = await updateResearchStatus(humId, "published", seqNo, primaryTerm)
+    if (!updated) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    // doc.status is validated to be "review" by validateStatusTransition
+    const previousStatus = doc.status as "draft" | "review" | "published"
+
+    return c.json({
+      humId,
+      previousStatus,
+      currentStatus: "published" as const,
+      action: "approve" as const,
+      timestamp: new Date().toISOString(),
+    }, 200)
   } catch (error) {
     console.error("Error approving research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -557,9 +650,41 @@ researchRouter.openapi(rejectRoute, async (c) => {
     return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement reject logic
-    return c.json({ error: "Not Implemented", message: "Reject not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Validate transition
+    const validationError = validateStatusTransition(doc.status, "reject")
+    if (validationError) {
+      return c.json({ error: "Conflict", message: validationError }, 409)
+    }
+
+    // Update status
+    const updated = await updateResearchStatus(humId, "draft", seqNo, primaryTerm)
+    if (!updated) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    // doc.status is validated to be "review" by validateStatusTransition
+    const previousStatus = doc.status as "draft" | "review" | "published"
+
+    return c.json({
+      humId,
+      previousStatus,
+      currentStatus: "draft" as const,
+      action: "reject" as const,
+      timestamp: new Date().toISOString(),
+    }, 200)
   } catch (error) {
     console.error("Error rejecting research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -576,9 +701,41 @@ researchRouter.openapi(unpublishRoute, async (c) => {
     return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
   }
   try {
-    const { humId: _humId } = c.req.param() as unknown as HumIdParams
-    // TODO: Implement unpublish logic
-    return c.json({ error: "Not Implemented", message: "Unpublish not yet implemented" }, 500)
+    const { humId } = c.req.param() as unknown as HumIdParams
+
+    // Get research with sequence number for optimistic locking
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
+
+    const { doc, seqNo, primaryTerm } = result
+
+    // Deleted research is not accessible
+    if (doc.status === "deleted") {
+      return c.json({ error: `Research ${humId} not found` }, 404)
+    }
+
+    // Validate transition
+    const validationError = validateStatusTransition(doc.status, "unpublish")
+    if (validationError) {
+      return c.json({ error: "Conflict", message: validationError }, 409)
+    }
+
+    // Update status
+    const updated = await updateResearchStatus(humId, "draft", seqNo, primaryTerm)
+    if (!updated) {
+      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    }
+
+    // doc.status is validated to be "published" by validateStatusTransition
+    const previousStatus = doc.status as "draft" | "review" | "published"
+
+    return c.json({
+      humId,
+      previousStatus,
+      currentStatus: "draft" as const,
+      action: "unpublish" as const,
+      timestamp: new Date().toISOString(),
+    }, 200)
   } catch (error) {
     console.error("Error unpublishing research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
