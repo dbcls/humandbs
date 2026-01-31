@@ -1,7 +1,7 @@
 /**
  * TSV Export
  *
- * Exports data from extracted-json directory to TSV files for manual editing
+ * Exports data from structured-json directory to TSV files for manual editing
  * All TSV files are sorted by humId
  * Uses Unified (ja/en integrated) data format
  */
@@ -98,8 +98,8 @@ const getTsvDir = (outputDir?: string): string => {
   return base
 }
 
-const getExtractedDir = (type: "research" | "research-version" | "dataset"): string => {
-  return join(getResultsDir(), "extracted-json", type)
+const getStructuredDir = (type: "research" | "research-version" | "dataset"): string => {
+  return join(getResultsDir(), "structured-json", type)
 }
 
 // Read JSON Functions
@@ -152,7 +152,7 @@ const researchToRow = (r: Research): unknown[] => {
 export const exportResearchTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -204,7 +204,7 @@ const researchSummaryToRow = (r: Research): unknown[] => {
 export const exportResearchSummaryTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-summary.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -256,7 +256,7 @@ const dataProviderToRows = (r: Research): unknown[][] => {
 export const exportDataProviderTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-data-provider.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -307,7 +307,7 @@ const grantToRows = (r: Research): unknown[][] => {
 export const exportGrantTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-grant.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -356,7 +356,7 @@ const publicationToRows = (r: Research): unknown[][] => {
 export const exportPublicationTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-publication.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -405,7 +405,7 @@ const projectToRows = (r: Research): unknown[][] => {
 export const exportProjectTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-project.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -466,7 +466,7 @@ const cauToRows = (r: Research): unknown[][] => {
 export const exportCauTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-cau.tsv...")
 
-  const dir = getExtractedDir("research")
+  const dir = getStructuredDir("research")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -513,7 +513,7 @@ const researchVersionToRow = (rv: ResearchVersion): unknown[] => {
 export const exportResearchVersionTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting research-version.tsv...")
 
-  const dir = getExtractedDir("research-version")
+  const dir = getStructuredDir("research-version")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.startsWith(options.humId)) return false
     return true
@@ -546,10 +546,6 @@ const DATASET_HEADERS = [
   "typeOfData_en",
   "criteria",
   "releaseDate",
-  // Manual curation fields
-  "ageGroup",
-  "region",
-  "sex",
   "comment",
 ]
 
@@ -562,12 +558,8 @@ const datasetToRow = (d: SearchableDataset): unknown[] => {
     d.versionReleaseDate,
     d.typeOfData.ja ?? "",
     d.typeOfData.en ?? "",
-    JSON.stringify(d.criteria),
-    JSON.stringify(d.releaseDate),
-    // Manual curation fields (empty by default)
-    "", // ageGroup
-    "", // region
-    "", // sex
+    d.criteria ?? "",
+    d.releaseDate ?? "",
     "", // comment
   ]
 }
@@ -575,7 +567,7 @@ const datasetToRow = (d: SearchableDataset): unknown[] => {
 export const exportDatasetTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting dataset.tsv...")
 
-  const dir = getExtractedDir("dataset")
+  const dir = getStructuredDir("dataset")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.includes(options.humId)) return false
     return true
@@ -660,7 +652,7 @@ const experimentToRow = (
 export const exportExperimentTsv = async (options: ExportOptions): Promise<void> => {
   logger.info("Exporting experiment.tsv...")
 
-  const dir = getExtractedDir("dataset")
+  const dir = getStructuredDir("dataset")
   const filter = (filename: string): boolean => {
     if (options.humId && !filename.includes(options.humId)) return false
     return true
@@ -681,6 +673,70 @@ export const exportExperimentTsv = async (options: ExportOptions): Promise<void>
   writeTsv(join(tsvDir, "experiment.tsv"), EXPERIMENT_HEADERS, rows)
 }
 
+// Export Dataset Latest TSV
+
+export const exportDatasetLatestTsv = async (options: ExportOptions): Promise<void> => {
+  logger.info("Exporting dataset-latest.tsv...")
+
+  // Read researches to get latestVersion for each humId
+  const researchDir = getStructuredDir("research")
+  const researches = readJsonFiles<Research>(researchDir)
+  const latestVersionMap = new Map<string, string>()
+  for (const r of researches) {
+    latestVersionMap.set(r.humId, r.latestVersion)
+  }
+
+  const dir = getStructuredDir("dataset")
+  const filter = (filename: string): boolean => {
+    if (options.humId && !filename.includes(options.humId)) return false
+    return true
+  }
+
+  const datasets = readJsonFiles<SearchableDataset>(dir, filter)
+    .filter(d => d.version === latestVersionMap.get(d.humId))
+    .sort(sortByHumIdVersionDataset)
+
+  const rows = datasets.map(d => datasetToRow(d) as string[])
+
+  const tsvDir = getTsvDir(options.output)
+  writeTsv(join(tsvDir, "dataset-latest.tsv"), DATASET_HEADERS, rows)
+}
+
+// Export Experiment Latest TSV
+
+export const exportExperimentLatestTsv = async (options: ExportOptions): Promise<void> => {
+  logger.info("Exporting experiment-latest.tsv...")
+
+  // Read researches to get latestVersion for each humId
+  const researchDir = getStructuredDir("research")
+  const researches = readJsonFiles<Research>(researchDir)
+  const latestVersionMap = new Map<string, string>()
+  for (const r of researches) {
+    latestVersionMap.set(r.humId, r.latestVersion)
+  }
+
+  const dir = getStructuredDir("dataset")
+  const filter = (filename: string): boolean => {
+    if (options.humId && !filename.includes(options.humId)) return false
+    return true
+  }
+
+  const datasets = readJsonFiles<SearchableDataset>(dir, filter)
+    .filter(d => d.version === latestVersionMap.get(d.humId))
+    .sort(sortByHumIdVersionDataset)
+
+  const rows: string[][] = []
+  for (const d of datasets) {
+    for (let i = 0; i < d.experiments.length; i++) {
+      const exp = d.experiments[i]
+      rows.push(experimentToRow(d, exp, i) as string[])
+    }
+  }
+
+  const tsvDir = getTsvDir(options.output)
+  writeTsv(join(tsvDir, "experiment-latest.tsv"), EXPERIMENT_HEADERS, rows)
+}
+
 // Export All
 
 export const exportAllTsv = async (options: ExportOptions): Promise<void> => {
@@ -698,9 +754,13 @@ export const exportAllTsv = async (options: ExportOptions): Promise<void> => {
   // Research Version
   await exportResearchVersionTsv(options)
 
-  // Dataset and Experiment
+  // Dataset and Experiment (all versions)
   await exportDatasetTsv(options)
   await exportExperimentTsv(options)
+
+  // Dataset and Experiment (latest version only)
+  await exportDatasetLatestTsv(options)
+  await exportExperimentLatestTsv(options)
 
   const outputDir = getTsvDir(options.output)
   logger.info("Completed", { outputDir })

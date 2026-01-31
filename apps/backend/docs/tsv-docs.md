@@ -8,18 +8,21 @@ TSV ファイルは `crawler-results/tsv/` にある。
 
 | ファイル | 内容 | 1行 = | インポート |
 |---------|------|-------|----------|
-| `research.tsv` | 研究の基本情報 | 1つの humId | - |
-| `research-summary.tsv` | 研究の概要（目的・方法・対象） | 1つの humId | - |
-| `research-data-provider.tsv` | データ提供者 | 1人の提供者 | - |
-| `research-grant.tsv` | 助成金 | 1件の助成金 | - |
+| `research.tsv` | 研究の基本情報 | 1つの humId | ✓ |
+| `research-summary.tsv` | 研究の概要（目的・方法・対象） | 1つの humId | ✓ |
+| `research-data-provider.tsv` | データ提供者 | 1人の提供者 | ✓ |
+| `research-grant.tsv` | 助成金 | 1件の助成金 | ✓ |
 | `research-publication.tsv` | 関連論文 | 1件の論文 | ✓ |
-| `research-project.tsv` | 研究プロジェクト | 1件のプロジェクト | - |
-| `research-cau.tsv` | 制限公開データ利用者 | 1人の利用者 | - |
-| `research-version.tsv` | バージョンごとのリリースノート | 1つのバージョン | - |
-| `dataset.tsv` | データセット | 1つのデータセット | ✓ |
-| `experiment.tsv` | 実験 | 1つの実験 | ✓ |
+| `research-project.tsv` | 研究プロジェクト | 1件のプロジェクト | ✓ |
+| `research-cau.tsv` | 制限公開データ利用者 | 1人の利用者 | ✓ |
+| `research-version.tsv` | バージョンごとのリリースノート | 1つのバージョン | ✓ |
+| `dataset.tsv` | データセット（全バージョン） | 1つのデータセット | ✓ |
+| `experiment.tsv` | 実験（全バージョン） | 1つの実験 | ✓ |
+| `dataset-latest.tsv` | データセット（最新版のみ） | 1つのデータセット | - |
+| `experiment-latest.tsv` | 実験（最新版のみ） | 1つの実験 | - |
 
-※「インポート」列が ✓ のファイルは `bun run crawler:import-tsv` で JSON に反映される。それ以外は確認用。
+※「インポート」列が ✓ のファイルは `bun run crawler:import-tsv` で JSON に反映される。
+※ `-latest.tsv` ファイルは各研究の最新バージョンのみを含むエクスポート専用ファイル。
 
 ## 編集ルール
 
@@ -34,14 +37,44 @@ TSV ファイルは `crawler-results/tsv/` にある。
 | データ容量 | `123.45 GB` | `数値 単位`（単位: KB, MB, GB, TB） |
 | 疾患（diseases） | `["Cancer(C00-C97)","Diabetes"]` | `ラベル(ICD10)` または `ラベル` |
 
+### 編集可否について
+
+各フィールドには「編集」列があり、以下のルールに従う:
+
+- **空欄**: 編集可能
+- **禁止**: 識別子またはシステム管理フィールドのため編集禁止
+
+識別子（humId, url, datasetId, version など）を編集すると、インポート時にデータが正しくマッチングされないため注意。
+
 ### comment カラム
 
-各行の最後にある `comment` カラムは自由記述用。
+各行の最後にある `comment` カラムは自由記述用。インポート時は無視される。
 
 例:
 
 - 「要確認: タイトルの英語訳が不明」
 - 「修正済み: 誤字を訂正」
+
+### index フィールドの編集
+
+`research-data-provider.tsv`, `research-grant.tsv`, `research-publication.tsv`, `research-project.tsv`, `research-cau.tsv` の `index` フィールドは編集可能。
+
+**用途:**
+- 行の追加: 新しい index 番号を指定して行を追加
+- 行の分離: 1つの行を複数行に分離（例: 複数人が詰め込まれた提供者を分離）
+- 順序の変更: index 番号を変更して並び順を調整
+
+**例: Data Provider の分離**
+```
+# 元の TSV（index=0 に 2 人が詰め込まれている）
+humId    index  name_ja
+hum0001  0      山田太郎、鈴木花子
+
+# 編集後の TSV（2 行に分離）
+humId    index  name_ja
+hum0001  0      山田太郎
+hum0001  1      鈴木花子
+```
 
 ## データ生成ロジック
 
@@ -160,7 +193,7 @@ Molecular Data テーブル
 |---------|------|------|
 | `humId` | 研究 ID | 禁止 |
 | `url_ja` / `url_en` | ページ URL | 禁止 |
-| `index` | 提供者の順番（0始まり） | 禁止 |
+| `index` | 提供者の順番（0始まり） | |
 | `name_ja` / `name_en` | 氏名 | |
 | `email` | メールアドレス | |
 | `orcid` | ORCID ID | |
@@ -174,7 +207,7 @@ Molecular Data テーブル
 |---------|------|------|
 | `humId` | 研究 ID | 禁止 |
 | `url_ja` / `url_en` | ページ URL | 禁止 |
-| `index` | 助成金の順番 | 禁止 |
+| `index` | 助成金の順番 | |
 | `grantId` | 助成金番号（JSON 配列） | |
 | `title_ja` / `title_en` | 助成金名・プロジェクト名 | |
 | `agency_name_ja` / `agency_name_en` | 助成機関名 | |
@@ -186,10 +219,10 @@ Molecular Data テーブル
 |---------|------|------|
 | `humId` | 研究 ID | 禁止 |
 | `url_ja` / `url_en` | ページ URL | 禁止 |
-| `index` | 論文の順番 | 禁止 |
+| `index` | 論文の順番 | |
 | `title_ja` / `title_en` | 論文タイトル | |
 | `doi` | DOI | |
-| `datasetIds` | 関連データセット ID（JSON 配列） | |
+| `datasetIds` | 関連データセット ID（JSON 配列） | 禁止 |
 | `comment` | メモ | |
 
 ### research-project.tsv
@@ -198,7 +231,7 @@ Molecular Data テーブル
 |---------|------|------|
 | `humId` | 研究 ID | 禁止 |
 | `url_ja` / `url_en` | ページ URL | 禁止 |
-| `index` | プロジェクトの順番 | 禁止 |
+| `index` | プロジェクトの順番 | |
 | `name_ja` / `name_en` | プロジェクト名 | |
 | `project_url_ja` / `project_url_en` | プロジェクト URL | |
 | `comment` | メモ | |
@@ -209,12 +242,12 @@ Molecular Data テーブル
 |---------|------|------|
 | `humId` | 研究 ID | 禁止 |
 | `url_ja` / `url_en` | ページ URL | 禁止 |
-| `index` | 利用者の順番 | 禁止 |
+| `index` | 利用者の順番 | |
 | `name_ja` / `name_en` | 氏名 | |
 | `organization_name_ja` / `organization_name_en` | 所属機関名 | |
 | `organization_country` | 国 | |
 | `researchTitle_ja` / `researchTitle_en` | 研究タイトル | |
-| `datasetIds` | 利用データセット ID（JSON 配列） | |
+| `datasetIds` | 利用データセット ID（JSON 配列） | 禁止 |
 | `periodOfDataUse_start` | 利用開始日 | |
 | `periodOfDataUse_end` | 利用終了日 | |
 | `comment` | メモ | |
@@ -231,7 +264,7 @@ Molecular Data テーブル
 | `datasetIds` | データセット ID リスト（JSON 配列） | 禁止 |
 | `comment` | メモ | |
 
-### dataset.tsv
+### dataset.tsv / dataset-latest.tsv
 
 | カラム名 | 説明 | 編集 |
 |---------|------|------|
@@ -241,16 +274,14 @@ Molecular Data テーブル
 | `datasetId` | データセット ID（例: JGAD000001） | 禁止 |
 | `versionReleaseDate` | リリース日 | 禁止 |
 | `typeOfData_ja` / `typeOfData_en` | データ種別 | |
-| `criteria` | 公開区分（JSON 配列） | |
-| `releaseDate` | 公開日（JSON 配列） | |
-| `ageGroup` | 年齢層（手動キュレーション用） | |
-| `region` | 地域（手動キュレーション用） | |
-| `sex` | 性別（手動キュレーション用） | |
+| `criteria` | 公開区分 | |
+| `releaseDate` | 公開日 | |
 | `comment` | メモ | |
 
-※ 検索用の集計フィールド（疾患、組織、実験手法等）は各 experiment の refined フィールドから動的に集計されるため、dataset.tsv には含まれない。
+※ `criteria` と `releaseDate` は単一値（配列ではない）。
+※ `-latest.tsv` は各研究の最新バージョンの dataset のみを出力するエクスポート専用ファイル。
 
-### experiment.tsv
+### experiment.tsv / experiment-latest.tsv
 
 | カラム名 | 説明 | 編集 |
 |---------|------|------|
@@ -259,27 +290,28 @@ Molecular Data テーブル
 | `version` | バージョン | 禁止 |
 | `datasetId` | データセット ID | 禁止 |
 | `experimentIndex` | 実験の順番 | 禁止 |
-| `header_ja` / `header_en` | 実験ヘッダー | 禁止 |
-| `refined_subjectCount` | 被験者/サンプル数 | |
-| `refined_subjectCountType` | カウント単位（individual/sample/mixed） | |
-| `refined_healthStatus` | 健康状態（healthy/affected/mixed） | |
-| `refined_diseases` | 疾患リスト（`["ラベル(ICD10)"]`） | |
-| `refined_tissues` | 組織リスト | |
-| `refined_isTumor` | 腫瘍かどうか（true/false） | |
-| `refined_cellLine` | 細胞株名 | |
-| `refined_population` | 集団 | |
-| `refined_assayType` | 実験手法 | |
-| `refined_libraryKits` | ライブラリキットリスト | |
-| `refined_platformVendor` | プラットフォームベンダー | |
-| `refined_platformModel` | プラットフォームモデル | |
-| `refined_readType` | リードタイプ（single-end/paired-end） | |
-| `refined_readLength` | リード長 | |
-| `refined_targets` | ターゲット領域 | |
-| `refined_fileTypes` | ファイル形式リスト | |
-| `refined_dataVolume` | データ容量（例: `123.45 GB`） | |
+| `header_ja` / `header_en` | 実験ヘッダー | |
+| `searchable_subjectCount` | 被験者/サンプル数 | |
+| `searchable_subjectCountType` | カウント単位（individual/sample/mixed） | |
+| `searchable_healthStatus` | 健康状態（healthy/affected/mixed） | |
+| `searchable_diseases` | 疾患リスト（`["ラベル(ICD10)"]`） | |
+| `searchable_tissues` | 組織リスト | |
+| `searchable_isTumor` | 腫瘍かどうか（true/false） | |
+| `searchable_cellLine` | 細胞株名 | |
+| `searchable_population` | 集団 | |
+| `searchable_assayType` | 実験手法 | |
+| `searchable_libraryKits` | ライブラリキットリスト | |
+| `searchable_platformVendor` | プラットフォームベンダー | |
+| `searchable_platformModel` | プラットフォームモデル | |
+| `searchable_readType` | リードタイプ（single-end/paired-end） | |
+| `searchable_readLength` | リード長 | |
+| `searchable_targets` | ターゲット領域 | |
+| `searchable_fileTypes` | ファイル形式リスト | |
+| `searchable_dataVolume` | データ容量（例: `123.45 GB`） | |
 | `comment` | メモ | |
 
-※ `refined_*` フィールドは LLM による抽出 + ルールベースの正規化で生成される。
+※ `searchable_*` フィールドは LLM による抽出 + ルールベースの正規化で生成される。
+※ `-latest.tsv` は各研究の最新バージョンの experiment のみを出力するエクスポート専用ファイル。
 
 ## スプレッドシートでの編集
 

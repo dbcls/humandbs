@@ -2,32 +2,37 @@
  * TSV Import
  *
  * Imports manually edited TSV files back into JSON format
- * Merges TSV changes into extracted-json JSON files and outputs to final/ directory
+ * Merges TSV changes into structured-json JSON files (in-place update)
  * Uses Unified (ja/en integrated) data format
  *
  * Process:
- * 1. Copy extracted-json → final
- * 2. Read TSV files
- * 3. Merge TSV edits into final JSON files
+ * 1. Read TSV files
+ * 2. Merge TSV edits into structured-json JSON files
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs"
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs"
 import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import type {
   BilingualText,
+  BilingualTextValue,
   CriteriaCanonical,
   DiseaseInfo,
   DataVolume,
   DataVolumeUnit,
-  Research,
+  Person,
+  Grant,
   Publication,
+  Research,
+  ResearchProject,
+  ResearchVersion,
   SearchableDataset,
   SearchableExperimentFields,
   HealthStatus,
   SubjectCountType,
   ReadType,
+  TextValue,
 } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getResultsDir } from "@/crawler/utils/io"
@@ -35,7 +40,6 @@ import { logger } from "@/crawler/utils/logger"
 import {
   parseTsv,
   parseJsonField,
-  parseJsonFieldOrNull,
   parseNumberOrNull,
   parseBooleanOrNull,
   type TsvRow,
@@ -47,35 +51,8 @@ const getTsvDir = (): string => {
   return join(getResultsDir(), "tsv")
 }
 
-const getFinalDir = (type: "research" | "research-version" | "dataset"): string => {
-  const dir = join(getResultsDir(), "final", type)
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
-  return dir
-}
-
-/**
- * Copy extracted-json to final (if not already exists)
- */
-export const copyExtractedToFinal = (force = false): void => {
-  const srcBase = join(getResultsDir(), "extracted-json")
-  const dstBase = join(getResultsDir(), "final")
-
-  if (!existsSync(srcBase)) {
-    logger.error("Error: extracted-json directory does not exist")
-    logger.error("Please run extract-fields-unified first")
-    process.exit(1)
-  }
-
-  if (existsSync(dstBase) && !force) {
-    logger.info("final directory already exists (use --force to overwrite)")
-    return
-  }
-
-  logger.info("Copying extracted-json to final...")
-  cpSync(srcBase, dstBase, { recursive: true })
-  logger.info("Copy completed")
+const getStructuredDir = (type: "research" | "research-version" | "dataset"): string => {
+  return join(getResultsDir(), "structured-json", type)
 }
 
 // Read/Write JSON
@@ -96,6 +73,17 @@ const parseBilingualText = (ja: string, en: string): BilingualText => {
   return {
     ja: ja || null,
     en: en || null,
+  }
+}
+
+const parseBilingualTextValue = (
+  jaText: string,
+  enText: string,
+  existing?: BilingualTextValue | null,
+): BilingualTextValue => {
+  return {
+    ja: jaText ? { text: jaText, rawHtml: existing?.ja?.rawHtml ?? "" } : null,
+    en: enText ? { text: enText, rawHtml: existing?.en?.rawHtml ?? "" } : null,
   }
 }
 
@@ -122,6 +110,216 @@ const parseDataVolume = (str: string): DataVolume | null => {
   return null
 }
 
+// Import Research TSV
+
+export const importResearchTsv = (): void => {
+  logger.info("Importing research.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  const structuredDir = getStructuredDir("research")
+  let updated = 0
+
+  for (const row of rows) {
+    const filename = `${row.humId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Update editable fields only
+    research.title = parseBilingualText(row.title_ja ?? "", row.title_en ?? "")
+
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research files", { count: updated })
+}
+
+// Import Research Summary TSV
+
+export const importResearchSummaryTsv = (): void => {
+  logger.info("Importing research-summary.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-summary.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-summary.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  const structuredDir = getStructuredDir("research")
+  let updated = 0
+
+  for (const row of rows) {
+    const filename = `${row.humId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Update editable fields only
+    research.summary.aims = parseBilingualTextValue(
+      row.aims_ja ?? "",
+      row.aims_en ?? "",
+      research.summary.aims,
+    )
+    research.summary.methods = parseBilingualTextValue(
+      row.methods_ja ?? "",
+      row.methods_en ?? "",
+      research.summary.methods,
+    )
+    research.summary.targets = parseBilingualTextValue(
+      row.targets_ja ?? "",
+      row.targets_en ?? "",
+      research.summary.targets,
+    )
+
+    // Parse footers (JSON array of strings)
+    const footersJa = parseJsonField<string[]>(row.footers_ja, [])
+    const footersEn = parseJsonField<string[]>(row.footers_en, [])
+    research.summary.footers = {
+      ja: footersJa.map((text): TextValue => ({ text, rawHtml: "" })),
+      en: footersEn.map((text): TextValue => ({ text, rawHtml: "" })),
+    }
+
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research-summary files", { count: updated })
+}
+
+// Import Data Provider TSV
+
+export const importDataProviderTsv = (): void => {
+  logger.info("Importing research-data-provider.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-data-provider.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-data-provider.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  // Group by humId
+  const groupedRows = new Map<string, TsvRow[]>()
+  for (const row of rows) {
+    const key = row.humId
+    const existing = groupedRows.get(key) ?? []
+    existing.push(row)
+    groupedRows.set(key, existing)
+  }
+
+  const structuredDir = getStructuredDir("research")
+  let updated = 0
+
+  for (const [humId, dpRows] of groupedRows) {
+    const filename = `${humId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Sort by index and rebuild array
+    dpRows.sort((a, b) => parseInt(a.index ?? "0") - parseInt(b.index ?? "0"))
+
+    const newDataProviders: Person[] = dpRows.map(row => ({
+      name: parseBilingualTextValue(row.name_ja ?? "", row.name_en ?? ""),
+      email: row.email || null,
+      orcid: row.orcid || null,
+      organization: (row.organization_name_ja || row.organization_name_en || row.organization_country)
+        ? {
+            name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
+            address: row.organization_country ? { country: row.organization_country } : null,
+          }
+        : null,
+    }))
+
+    research.dataProvider = newDataProviders
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research-data-provider files", { count: updated })
+}
+
+// Import Grant TSV
+
+export const importGrantTsv = (): void => {
+  logger.info("Importing research-grant.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-grant.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-grant.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  // Group by humId
+  const groupedRows = new Map<string, TsvRow[]>()
+  for (const row of rows) {
+    const key = row.humId
+    const existing = groupedRows.get(key) ?? []
+    existing.push(row)
+    groupedRows.set(key, existing)
+  }
+
+  const structuredDir = getStructuredDir("research")
+  let updated = 0
+
+  for (const [humId, grantRows] of groupedRows) {
+    const filename = `${humId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Sort by index and rebuild array
+    grantRows.sort((a, b) => parseInt(a.index ?? "0") - parseInt(b.index ?? "0"))
+
+    const newGrants: Grant[] = grantRows.map(row => ({
+      id: parseJsonField<string[]>(row.grantId, []),
+      title: parseBilingualText(row.title_ja ?? "", row.title_en ?? ""),
+      agency: {
+        name: parseBilingualText(row.agency_name_ja ?? "", row.agency_name_en ?? ""),
+      },
+    }))
+
+    research.grant = newGrants
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research-grant files", { count: updated })
+}
+
 // Import Publication TSV
 
 export const importPublicationTsv = (): void => {
@@ -146,12 +344,12 @@ export const importPublicationTsv = (): void => {
   }
 
   // Update each research file
-  const finalDir = getFinalDir("research")
+  const structuredDir = getStructuredDir("research")
   let updated = 0
 
   for (const [humId, pubRows] of groupedRows) {
     const filename = `${humId}.json`
-    const filePath = join(finalDir, filename)
+    const filePath = join(structuredDir, filename)
 
     const research = readJsonFile<Research>(filePath)
     if (!research) {
@@ -159,11 +357,20 @@ export const importPublicationTsv = (): void => {
       continue
     }
 
-    // Build new publications array
-    const newPubs: Publication[] = pubRows.map(row => ({
+    // Sort by index and rebuild array
+    pubRows.sort((a, b) => parseInt(a.index ?? "0") - parseInt(b.index ?? "0"))
+
+    // Preserve datasetIds from existing publications (keyed by index)
+    const existingDatasetIds = new Map<number, string[]>()
+    for (let i = 0; i < research.relatedPublication.length; i++) {
+      existingDatasetIds.set(i, research.relatedPublication[i].datasetIds ?? [])
+    }
+
+    const newPubs: Publication[] = pubRows.map((row, i) => ({
       title: parseBilingualText(row.title_ja ?? "", row.title_en ?? ""),
       doi: row.doi || null,
-      datasetIds: parseJsonField<string[]>(row.datasetIds, []),
+      // Preserve existing datasetIds (not editable via TSV)
+      datasetIds: existingDatasetIds.get(parseInt(row.index ?? String(i))) ?? [],
     }))
 
     research.relatedPublication = newPubs
@@ -171,7 +378,177 @@ export const importPublicationTsv = (): void => {
     updated++
   }
 
-  logger.info("Updated research files", { count: updated })
+  logger.info("Updated research-publication files", { count: updated })
+}
+
+// Import Research Project TSV
+
+export const importResearchProjectTsv = (): void => {
+  logger.info("Importing research-project.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-project.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-project.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  // Group by humId
+  const groupedRows = new Map<string, TsvRow[]>()
+  for (const row of rows) {
+    const key = row.humId
+    const existing = groupedRows.get(key) ?? []
+    existing.push(row)
+    groupedRows.set(key, existing)
+  }
+
+  const structuredDir = getStructuredDir("research")
+  let updated = 0
+
+  for (const [humId, projectRows] of groupedRows) {
+    const filename = `${humId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Sort by index and rebuild array
+    projectRows.sort((a, b) => parseInt(a.index ?? "0") - parseInt(b.index ?? "0"))
+
+    const newProjects: ResearchProject[] = projectRows.map(row => ({
+      name: parseBilingualTextValue(row.name_ja ?? "", row.name_en ?? ""),
+      url: (row.project_url_ja || row.project_url_en)
+        ? {
+            ja: row.project_url_ja ? { url: row.project_url_ja, text: "", rawHtml: "" } : null,
+            en: row.project_url_en ? { url: row.project_url_en, text: "", rawHtml: "" } : null,
+          }
+        : null,
+    }))
+
+    research.researchProject = newProjects
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research-project files", { count: updated })
+}
+
+// Import Controlled Access User TSV
+
+export const importCauTsv = (): void => {
+  logger.info("Importing research-cau.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-cau.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-cau.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  // Group by humId
+  const groupedRows = new Map<string, TsvRow[]>()
+  for (const row of rows) {
+    const key = row.humId
+    const existing = groupedRows.get(key) ?? []
+    existing.push(row)
+    groupedRows.set(key, existing)
+  }
+
+  const structuredDir = getStructuredDir("research")
+  let updated = 0
+
+  for (const [humId, cauRows] of groupedRows) {
+    const filename = `${humId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const research = readJsonFile<Research>(filePath)
+    if (!research) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Sort by index and rebuild array
+    cauRows.sort((a, b) => parseInt(a.index ?? "0") - parseInt(b.index ?? "0"))
+
+    // Preserve datasetIds from existing CAUs (keyed by index)
+    const existingDatasetIds = new Map<number, string[]>()
+    for (let i = 0; i < research.controlledAccessUser.length; i++) {
+      existingDatasetIds.set(i, research.controlledAccessUser[i].datasetIds ?? [])
+    }
+
+    const newCaus: Person[] = cauRows.map((row, i) => ({
+      name: parseBilingualTextValue(row.name_ja ?? "", row.name_en ?? ""),
+      organization: (row.organization_name_ja || row.organization_name_en || row.organization_country)
+        ? {
+            name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
+            address: row.organization_country ? { country: row.organization_country } : null,
+          }
+        : null,
+      researchTitle: parseBilingualText(row.researchTitle_ja ?? "", row.researchTitle_en ?? ""),
+      // Preserve existing datasetIds (not editable via TSV)
+      datasetIds: existingDatasetIds.get(parseInt(row.index ?? String(i))) ?? [],
+      periodOfDataUse: (row.periodOfDataUse_start || row.periodOfDataUse_end)
+        ? {
+            startDate: row.periodOfDataUse_start || null,
+            endDate: row.periodOfDataUse_end || null,
+          }
+        : null,
+    }))
+
+    research.controlledAccessUser = newCaus
+    writeJsonFile(filePath, research)
+    updated++
+  }
+
+  logger.info("Updated research-cau files", { count: updated })
+}
+
+// Import Research Version TSV
+
+export const importResearchVersionTsv = (): void => {
+  logger.info("Importing research-version.tsv...")
+
+  const tsvPath = join(getTsvDir(), "research-version.tsv")
+  if (!existsSync(tsvPath)) {
+    logger.info("Skipped: research-version.tsv not found")
+    return
+  }
+
+  const content = readFileSync(tsvPath, "utf8")
+  const rows = parseTsv(content)
+
+  const structuredDir = getStructuredDir("research-version")
+  let updated = 0
+
+  for (const row of rows) {
+    const filename = `${row.humVersionId}.json`
+    const filePath = join(structuredDir, filename)
+
+    const version = readJsonFile<ResearchVersion>(filePath)
+    if (!version) {
+      logger.warn("Skipped: file not found", { filename })
+      continue
+    }
+
+    // Update editable fields only
+    version.releaseNote = parseBilingualTextValue(
+      row.releaseNote_ja ?? "",
+      row.releaseNote_en ?? "",
+      version.releaseNote,
+    )
+
+    writeJsonFile(filePath, version)
+    updated++
+  }
+
+  logger.info("Updated research-version files", { count: updated })
 }
 
 // Import Dataset TSV
@@ -188,12 +565,12 @@ export const importDatasetTsv = (): void => {
   const content = readFileSync(tsvPath, "utf8")
   const rows = parseTsv(content)
 
-  const finalDir = getFinalDir("dataset")
+  const structuredDir = getStructuredDir("dataset")
   let updated = 0
 
   for (const row of rows) {
     const filename = `${row.datasetId}-${row.version}.json`
-    const filePath = join(finalDir, filename)
+    const filePath = join(structuredDir, filename)
 
     const dataset = readJsonFile<SearchableDataset>(filePath)
     if (!dataset) {
@@ -201,19 +578,19 @@ export const importDatasetTsv = (): void => {
       continue
     }
 
-    // Update bilingual fields
+    // Update editable fields
     dataset.typeOfData = parseBilingualText(row.typeOfData_ja ?? "", row.typeOfData_en ?? "")
-    // criteria is now a single value, not an array
-    const criteriaValue = parseJsonFieldOrNull<CriteriaCanonical>(row.criteria)
-    dataset.criteria = criteriaValue ?? "Unrestricted-access"
-    const parsedReleaseDate = parseJsonFieldOrNull<string>(row.releaseDate)
-    if (!parsedReleaseDate) {
-      logger.warn("Missing releaseDate, using versionReleaseDate as fallback", {
-        datasetId: dataset.datasetId,
-        versionReleaseDate: dataset.versionReleaseDate,
-      })
+
+    // criteria is a single value (not array)
+    const criteriaValue = row.criteria as CriteriaCanonical | undefined
+    if (criteriaValue) {
+      dataset.criteria = criteriaValue
     }
-    dataset.releaseDate = parsedReleaseDate ?? dataset.versionReleaseDate
+
+    // releaseDate is a single value (not array)
+    if (row.releaseDate) {
+      dataset.releaseDate = row.releaseDate
+    }
 
     writeJsonFile(filePath, dataset)
     updated++
@@ -245,11 +622,11 @@ export const importExperimentTsv = (): void => {
     groupedRows.set(filename, existing)
   }
 
-  const finalDir = getFinalDir("dataset")
+  const structuredDir = getStructuredDir("dataset")
   let updated = 0
 
   for (const [filename, expRows] of groupedRows) {
-    const filePath = join(finalDir, filename)
+    const filePath = join(structuredDir, filename)
 
     const dataset = readJsonFile<SearchableDataset>(filePath)
     if (!dataset) {
@@ -258,13 +635,20 @@ export const importExperimentTsv = (): void => {
     }
 
     // Sort rows by experimentIndex
-    expRows.sort((a, b) => parseInt(a.experimentIndex) - parseInt(b.experimentIndex))
+    expRows.sort((a, b) => parseInt(a.experimentIndex ?? "0") - parseInt(b.experimentIndex ?? "0"))
 
     // Update experiments
     for (const row of expRows) {
-      const index = parseInt(row.experimentIndex)
+      const index = parseInt(row.experimentIndex ?? "0")
       if (index >= 0 && index < dataset.experiments.length) {
         const exp = dataset.experiments[index]
+
+        // Update header (editable)
+        exp.header = parseBilingualTextValue(
+          row.header_ja ?? "",
+          row.header_en ?? "",
+          exp.header,
+        )
 
         // Parse diseases from JSON array of strings like ["label(icd10)", "label2"]
         const diseasesRaw = parseJsonField<string[]>(row.searchable_diseases, [])
@@ -305,46 +689,80 @@ export const importExperimentTsv = (): void => {
   logger.info("Updated dataset files", { count: updated })
 }
 
+// Verify structured-json directory exists
+
+const verifyStructuredJsonExists = (): boolean => {
+  const srcBase = join(getResultsDir(), "structured-json")
+
+  if (!existsSync(srcBase)) {
+    logger.error("Error: structured-json directory does not exist")
+    logger.error("Please run crawler:structure first")
+    return false
+  }
+
+  // Check subdirectories
+  const requiredDirs = ["research", "research-version", "dataset"]
+  for (const dir of requiredDirs) {
+    const dirPath = join(srcBase, dir)
+    if (!existsSync(dirPath)) {
+      logger.error(`Error: structured-json/${dir} directory does not exist`)
+      return false
+    }
+  }
+
+  return true
+}
+
 // Import All
 
-export const importAllTsv = (force: boolean): void => {
+export const importAllTsv = (): void => {
   logger.info("Starting TSV import...")
 
-  // Step 1: Copy extracted-json to final
-  copyExtractedToFinal(force)
+  // Verify structured-json exists
+  if (!verifyStructuredJsonExists()) {
+    process.exit(1)
+  }
 
-  // Step 2: Import TSV files
   const tsvDir = getTsvDir()
   if (!existsSync(tsvDir)) {
     logger.info("TSV directory not found. Nothing to import.")
     return
   }
 
+  // List available TSV files
+  const tsvFiles = readdirSync(tsvDir).filter(f => f.endsWith(".tsv"))
+  logger.info("Found TSV files", { files: tsvFiles })
+
+  // Import research-related TSV files
+  importResearchTsv()
+  importResearchSummaryTsv()
+  importDataProviderTsv()
+  importGrantTsv()
   importPublicationTsv()
+  importResearchProjectTsv()
+  importCauTsv()
+
+  // Import research version TSV
+  importResearchVersionTsv()
+
+  // Import dataset and experiment TSV
   importDatasetTsv()
   importExperimentTsv()
 
-  const outputDir = join(getResultsDir(), "final")
+  const outputDir = join(getResultsDir(), "structured-json")
   logger.info("Completed", { outputDir })
 }
 
 // CLI
 
 interface CliArgs {
-  force?: boolean
   verbose?: boolean
   quiet?: boolean
 }
 
 const parseArgs = (): CliArgs => {
   const args = withCommonOptions(
-    yargs(hideBin(process.argv))
-      .option("force", {
-        alias: "f",
-        type: "boolean",
-        default: false,
-        description: "Force overwrite final directory",
-      }),
+    yargs(hideBin(process.argv)),
   ).parseSync() as CliArgs
 
   applyLogLevel(args)
@@ -352,8 +770,8 @@ const parseArgs = (): CliArgs => {
 }
 
 const main = (): void => {
-  const args = parseArgs()
-  importAllTsv(args.force ?? false)
+  parseArgs()
+  importAllTsv()
 }
 
 if (import.meta.main) {
