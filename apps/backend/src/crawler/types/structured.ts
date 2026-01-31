@@ -178,7 +178,7 @@ export interface DataVolume {
 export type Sex = "male" | "female" | "mixed"
 
 /** Age group */
-export type AgeGroup = "infant" | "child" | "adolescent" | "adult" | "elderly" | "mixed"
+export type AgeGroup = "infant" | "child" | "adult" | "elderly" | "mixed"
 
 /** Variant counts */
 export interface VariantCounts {

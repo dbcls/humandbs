@@ -14,14 +14,69 @@ import { logger } from "@/crawler/utils/logger"
 import { chat, type OllamaMessage, type OllamaConfig } from "./client"
 import { EXTRACTION_PROMPT } from "./prompts"
 
-// Zod Schemas
+// Zod Schemas - Shared enum and object definitions (single source of truth)
 
-const DiseaseInfoSchema = z.object({
+const SubjectCountTypeEnum = z.enum(["individual", "sample", "mixed"])
+const HealthStatusEnum = z.enum(["healthy", "affected", "mixed"])
+const SexEnum = z.enum(["male", "female", "mixed"])
+const AgeGroupEnum = z.enum(["infant", "child", "adult", "elderly", "mixed"])
+const ReadTypeEnum = z.enum(["single-end", "paired-end"])
+
+const DiseaseInfoBaseSchema = z.object({
   label: z.string(),
+  icd10: z.string().nullable(),
+})
+
+const VariantCountsBaseSchema = z.object({
+  snv: z.number().nullable(),
+  indel: z.number().nullable(),
+  cnv: z.number().nullable(),
+  sv: z.number().nullable(),
+  total: z.number().nullable(),
+})
+
+/**
+ * Base schema for LLM output (used for JSON Schema generation)
+ * This is the single source of truth for field definitions
+ */
+const LlmOutputBaseSchema = z.object({
+  subjectCount: z.number().nullable(),
+  subjectCountType: SubjectCountTypeEnum.nullable(),
+  healthStatus: HealthStatusEnum.nullable(),
+  diseases: z.array(DiseaseInfoBaseSchema),
+  tissues: z.array(z.string()),
+  isTumor: z.boolean().nullable(),
+  cellLine: z.string().nullable(),
+  population: z.string().nullable(),
+  sex: SexEnum.nullable(),
+  ageGroup: AgeGroupEnum.nullable(),
+  assayType: z.string().nullable(),
+  libraryKits: z.array(z.string()),
+  platformVendor: z.string().nullable(),
+  platformModel: z.string().nullable(),
+  readType: ReadTypeEnum.nullable(),
+  readLength: z.number().nullable(),
+  sequencingDepth: z.number().nullable(),
+  targetCoverage: z.number().nullable(),
+  referenceGenome: z.string().nullable(),
+  variantCounts: VariantCountsBaseSchema.nullable(),
+  hasPhenotypeData: z.boolean().nullable(),
+  targets: z.string().nullable(),
+  fileTypes: z.array(z.string()),
+  processedDataTypes: z.array(z.string()),
+  dataVolumeGb: z.number().nullable(),
+})
+
+/** JSON Schema for Ollama structured outputs */
+export const llmOutputJsonSchema = z.toJSONSchema(LlmOutputBaseSchema)
+
+// Validation schemas with .catch() for error recovery
+
+const DiseaseInfoWithCatch = DiseaseInfoBaseSchema.extend({
   icd10: z.string().nullable().catch(null),
 }).strict()
 
-const VariantCountsSchema = z.object({
+const VariantCountsWithCatch = VariantCountsBaseSchema.extend({
   snv: z.number().nullable().catch(null),
   indel: z.number().nullable().catch(null),
   cnv: z.number().nullable().catch(null),
@@ -41,27 +96,31 @@ const safeFilteredArray = <T extends z.ZodType>(schema: T) =>
     return results
   })
 
+/**
+ * Validation schema with .catch() for graceful error recovery
+ * Derives from LlmOutputBaseSchema but adds fallback values for invalid data
+ */
 export const SearchableExperimentFieldsSchema = z.object({
   subjectCount: z.number().nullable().catch(null),
-  subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable().catch(null),
-  healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable().catch(null),
-  diseases: safeFilteredArray(DiseaseInfoSchema),
+  subjectCountType: SubjectCountTypeEnum.nullable().catch(null),
+  healthStatus: HealthStatusEnum.nullable().catch(null),
+  diseases: safeFilteredArray(DiseaseInfoWithCatch),
   tissues: z.array(z.string()).catch([]),
   isTumor: z.boolean().nullable().catch(null),
   cellLine: z.string().nullable().catch(null),
   population: z.string().nullable().catch(null),
-  sex: z.enum(["male", "female", "mixed"]).nullable().catch(null),
-  ageGroup: z.enum(["infant", "child", "adolescent", "adult", "elderly", "mixed"]).nullable().catch(null),
+  sex: SexEnum.nullable().catch(null),
+  ageGroup: AgeGroupEnum.nullable().catch(null),
   assayType: z.string().nullable().catch(null),
   libraryKits: z.array(z.string()).catch([]),
   platformVendor: z.string().nullable().catch(null),
   platformModel: z.string().nullable().catch(null),
-  readType: z.enum(["single-end", "paired-end"]).nullable().catch(null),
+  readType: ReadTypeEnum.nullable().catch(null),
   readLength: z.number().nullable().catch(null),
   sequencingDepth: z.number().nullable().catch(null),
   targetCoverage: z.number().nullable().catch(null),
   referenceGenome: z.string().nullable().catch(null),
-  variantCounts: VariantCountsSchema.nullable().catch(null),
+  variantCounts: VariantCountsWithCatch.nullable().catch(null),
   hasPhenotypeData: z.boolean().nullable().catch(null),
   targets: z.string().nullable().catch(null),
   fileTypes: z.array(z.string()).catch([]),
@@ -228,7 +287,7 @@ export const extractFieldsFromExperiment = async (
   ]
 
   try {
-    const response = await chat(messages, config)
+    const response = await chat(messages, config, llmOutputJsonSchema)
     return parseSearchableFields(response)
   } catch (error) {
     logger.error("Failed to extract fields from LLM", { error: getErrorMessage(error) })

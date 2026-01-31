@@ -206,7 +206,6 @@ describe("parseSearchableFields", () => {
   it("should validate ageGroup enum", () => {
     expect(parseSearchableFields(JSON.stringify({ ageGroup: "infant" })).ageGroup).toBe("infant")
     expect(parseSearchableFields(JSON.stringify({ ageGroup: "child" })).ageGroup).toBe("child")
-    expect(parseSearchableFields(JSON.stringify({ ageGroup: "adolescent" })).ageGroup).toBe("adolescent")
     expect(parseSearchableFields(JSON.stringify({ ageGroup: "adult" })).ageGroup).toBe("adult")
     expect(parseSearchableFields(JSON.stringify({ ageGroup: "elderly" })).ageGroup).toBe("elderly")
     expect(parseSearchableFields(JSON.stringify({ ageGroup: "mixed" })).ageGroup).toBe("mixed")

@@ -14,7 +14,7 @@ export interface OllamaMessage {
 interface OllamaRequest {
   model: string
   messages: OllamaMessage[]
-  format?: "json"
+  format?: "json" | Record<string, unknown>
   stream?: boolean
   options?: Record<string, unknown>
 }
@@ -60,17 +60,21 @@ const sleep = (ms: number): Promise<void> =>
 
 /**
  * Send a chat request to Ollama API with retry logic
+ * @param messages - Chat messages
+ * @param config - Ollama configuration
+ * @param format - Output format: "json" for JSON mode, or a JSON Schema object for structured outputs
  */
 export const chat = async (
   messages: OllamaMessage[],
   config?: OllamaConfig,
+  format: "json" | Record<string, unknown> = "json",
 ): Promise<string> => {
   const effectiveConfig = { ...getOllamaConfig(), ...config }
 
   const request: OllamaRequest = {
     model: effectiveConfig.model,
     messages,
-    format: "json",
+    format,
     stream: false,
     options: {
       num_ctx: effectiveConfig.numCtx,

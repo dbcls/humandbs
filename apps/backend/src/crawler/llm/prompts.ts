@@ -29,36 +29,6 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
 5. For libraryKits, extract ALL mentioned kit names as an array.
 6. Return ONLY valid JSON. No explanation or markdown.
 
-## Output Schema
-
-{
-  "subjectCount": number | null,
-  "subjectCountType": "individual" | "sample" | "mixed" | null,
-  "healthStatus": "healthy" | "affected" | "mixed" | null,
-  "diseases": [{ "label": string, "icd10": string | null }],
-  "tissues": [string],
-  "isTumor": boolean | null,
-  "cellLine": string | null,
-  "population": string | null,
-  "sex": "male" | "female" | "mixed" | null,
-  "ageGroup": "infant" | "child" | "adolescent" | "adult" | "elderly" | "mixed" | null,
-  "assayType": string | null,
-  "libraryKits": [string],
-  "platformVendor": string | null,
-  "platformModel": string | null,
-  "readType": "single-end" | "paired-end" | null,
-  "readLength": number | null,
-  "sequencingDepth": number | null,
-  "targetCoverage": number | null,
-  "referenceGenome": string | null,
-  "variantCounts": { "snv": number|null, "indel": number|null, "cnv": number|null, "sv": number|null, "total": number|null } | null,
-  "hasPhenotypeData": boolean | null,
-  "targets": string | null,
-  "fileTypes": [string],
-  "processedDataTypes": [string],
-  "dataVolumeGb": number | null
-}
-
 ## Field Guide
 
 - subjectCount: Total participants. Sum groups if multiple (e.g. "20 patients + 10 controls" → 30). null if unclear.
@@ -72,8 +42,7 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
 - sex: "male" if only male subjects, "female" if only female, "mixed" if both mentioned. null if not stated.
 - ageGroup: Age category of subjects. Use:
   - "infant" (0-1 years)
-  - "child" (2-11 years)
-  - "adolescent" (12-17 years)
+  - "child" (2-17 years)
   - "adult" (18-64 years)
   - "elderly" (65+ years)
   - "mixed" if multiple age groups mentioned
