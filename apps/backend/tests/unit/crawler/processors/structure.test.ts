@@ -1,0 +1,604 @@
+import { describe, expect, it } from "bun:test"
+
+import {
+  validateAndCorrectCriteria,
+  convertCriteriaToDisplay,
+  expandDatasetIds,
+  mergeExperiments,
+  mergeDataset,
+  mergeSummary,
+  mergeDataProvider,
+  mergeGrants,
+  mergePublications,
+  mergeResearch,
+  mergeResearchVersion,
+  toBilingualText,
+  toBilingualTextValue,
+} from "@/crawler/processors/structure"
+import type {
+  SingleLangExperiment,
+  SingleLangDataset,
+  SingleLangResearch,
+  SingleLangResearchVersion,
+  SingleLangPerson,
+  SingleLangGrant,
+  SingleLangPublication,
+  TextValue,
+} from "@/crawler/types"
+
+const createTextValue = (text: string): TextValue => ({
+  text,
+  rawHtml: `<span>${text}</span>`,
+})
+
+describe("processors/structure.ts", () => {
+  // ===========================================================================
+  // validateAndCorrectCriteria
+  // ===========================================================================
+  describe("validateAndCorrectCriteria", () => {
+    it("should return criteria unchanged when valid", () => {
+      const result = validateAndCorrectCriteria("hum0001", "JGAD000001", "Controlled-access (Type I)")
+
+      expect(result.criteria).toBe("Controlled-access (Type I)")
+      expect(result.warnings).toHaveLength(0)
+    })
+
+    it("should return warning for empty criteria with JGA dataset", () => {
+      const result = validateAndCorrectCriteria("hum0001", "JGAD000001", null)
+
+      expect(result.criteria).toBe("Controlled-access (Type I)")
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toContain("criteria is empty")
+    })
+
+    it("should return warning for empty criteria with non-JGA dataset", () => {
+      const result = validateAndCorrectCriteria("hum0001", "DRA001234", null)
+
+      expect(result.criteria).toBe("Unrestricted-access")
+      expect(result.warnings).toHaveLength(1)
+    })
+
+    it("should return warning for JGA dataset with Unrestricted-access", () => {
+      const result = validateAndCorrectCriteria("hum0001", "JGAD000001", "Unrestricted-access")
+
+      expect(result.criteria).toBe("Unrestricted-access")
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toContain("should not be Unrestricted-access")
+    })
+
+    it("should return warning for DRA dataset with Controlled-access", () => {
+      const result = validateAndCorrectCriteria("hum0001", "DRA001234", "Controlled-access (Type I)")
+
+      expect(result.criteria).toBe("Controlled-access (Type I)")
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toContain("Expected Unrestricted-access")
+    })
+
+    it("should handle E-GEAD prefix correctly", () => {
+      const result = validateAndCorrectCriteria("hum0001", "E-GEAD-123", "Controlled-access (Type I)")
+
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toContain("Expected Unrestricted-access")
+    })
+  })
+
+  // ===========================================================================
+  // convertCriteriaToDisplay
+  // ===========================================================================
+  describe("convertCriteriaToDisplay", () => {
+    it("should convert Type I to Japanese display", () => {
+      const result = convertCriteriaToDisplay("Controlled-access (Type I)", "ja")
+      expect(result).toBe("制限公開 (Type I)")
+    })
+
+    it("should convert Type I to English display", () => {
+      const result = convertCriteriaToDisplay("Controlled-access (Type I)", "en")
+      expect(result).toBe("Controlled-access (Type I)")
+    })
+
+    it("should convert Unrestricted-access to Japanese display", () => {
+      const result = convertCriteriaToDisplay("Unrestricted-access", "ja")
+      expect(result).toBe("非制限公開")
+    })
+
+    it("should return null for null input", () => {
+      expect(convertCriteriaToDisplay(null, "ja")).toBeNull()
+    })
+  })
+
+  // ===========================================================================
+  // expandDatasetIds
+  // ===========================================================================
+  describe("expandDatasetIds", () => {
+    it("should expand dataset IDs using expansion map", () => {
+      const expansionMap = new Map<string, Set<string>>()
+      expansionMap.set("JGAS000001", new Set(["JGAD000001", "JGAD000002"]))
+
+      const result = expandDatasetIds(["JGAS000001"], expansionMap)
+
+      expect(result).toContain("JGAD000001")
+      expect(result).toContain("JGAD000002")
+    })
+
+    it("should return original ID when no expansion exists", () => {
+      const expansionMap = new Map<string, Set<string>>()
+
+      const result = expandDatasetIds(["JGAD000001"], expansionMap)
+
+      expect(result).toEqual(["JGAD000001"])
+    })
+
+    it("should sort expanded IDs", () => {
+      const expansionMap = new Map<string, Set<string>>()
+      expansionMap.set("JGAS000001", new Set(["JGAD000003", "JGAD000001", "JGAD000002"]))
+
+      const result = expandDatasetIds(["JGAS000001"], expansionMap)
+
+      expect(result).toEqual(["JGAD000001", "JGAD000002", "JGAD000003"])
+    })
+
+    it("should handle multiple input IDs", () => {
+      const expansionMap = new Map<string, Set<string>>()
+      expansionMap.set("JGAS000001", new Set(["JGAD000001"]))
+      expansionMap.set("JGAS000002", new Set(["JGAD000002"]))
+
+      const result = expandDatasetIds(["JGAS000001", "JGAS000002"], expansionMap)
+
+      expect(result).toContain("JGAD000001")
+      expect(result).toContain("JGAD000002")
+    })
+
+    it("should deduplicate expanded IDs", () => {
+      const expansionMap = new Map<string, Set<string>>()
+      expansionMap.set("JGAS000001", new Set(["JGAD000001"]))
+      expansionMap.set("JGAS000002", new Set(["JGAD000001"]))
+
+      const result = expandDatasetIds(["JGAS000001", "JGAS000002"], expansionMap)
+
+      expect(result).toEqual(["JGAD000001"])
+    })
+  })
+
+  // ===========================================================================
+  // toBilingualText / toBilingualTextValue
+  // ===========================================================================
+  describe("toBilingualText", () => {
+    it("should create bilingual text from ja and en strings", () => {
+      const result = toBilingualText("日本語", "English")
+      expect(result).toEqual({ ja: "日本語", en: "English" })
+    })
+
+    it("should handle null values", () => {
+      const result = toBilingualText(null, "English")
+      expect(result).toEqual({ ja: null, en: "English" })
+    })
+  })
+
+  describe("toBilingualTextValue", () => {
+    it("should create bilingual text value from ja and en TextValues", () => {
+      const ja = createTextValue("日本語")
+      const en = createTextValue("English")
+      const result = toBilingualTextValue(ja, en)
+
+      expect(result.ja?.text).toBe("日本語")
+      expect(result.en?.text).toBe("English")
+    })
+
+    it("should handle null values", () => {
+      const en = createTextValue("English")
+      const result = toBilingualTextValue(null, en)
+
+      expect(result.ja).toBeNull()
+      expect(result.en?.text).toBe("English")
+    })
+  })
+
+  // ===========================================================================
+  // mergeExperiments
+  // ===========================================================================
+  describe("mergeExperiments", () => {
+    it("should merge ja and en experiments", () => {
+      const jaExps: SingleLangExperiment[] = [
+        {
+          header: createTextValue("JGAD000001"),
+          data: { "サンプル数": createTextValue("100") },
+          footers: [],
+        },
+      ]
+      const enExps: SingleLangExperiment[] = [
+        {
+          header: createTextValue("JGAD000001"),
+          data: { "Sample Size": createTextValue("100") },
+          footers: [],
+        },
+      ]
+
+      const result = mergeExperiments(jaExps, enExps)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].header.ja?.text).toBe("JGAD000001")
+      expect(result[0].header.en?.text).toBe("JGAD000001")
+      expect(result[0].data["サンプル数"]?.ja?.text).toBe("100")
+      expect(result[0].data["Sample Size"]?.en?.text).toBe("100")
+    })
+
+    it("should handle empty arrays", () => {
+      const result = mergeExperiments([], [])
+      expect(result).toEqual([])
+    })
+
+    it("should handle unmatched experiments", () => {
+      const jaExps: SingleLangExperiment[] = [
+        { header: createTextValue("JA only"), data: {}, footers: [] },
+      ]
+      const enExps: SingleLangExperiment[] = []
+
+      const result = mergeExperiments(jaExps, enExps)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].header.ja?.text).toBe("JA only")
+      expect(result[0].header.en).toBeNull()
+    })
+  })
+
+  // ===========================================================================
+  // mergeDataset
+  // ===========================================================================
+  describe("mergeDataset", () => {
+    it("should merge ja and en datasets", () => {
+      const jaDataset: SingleLangDataset = {
+        datasetId: "JGAD000001",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        releaseDate: "2024-01-15",
+        criteria: "Controlled-access (Type I)",
+        typeOfData: "WGS",
+        experiments: [],
+      }
+      const enDataset: SingleLangDataset = {
+        datasetId: "JGAD000001",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        releaseDate: "2024-01-15",
+        criteria: "Controlled-access (Type I)",
+        typeOfData: "Whole Genome Sequencing",
+        experiments: [],
+      }
+
+      const result = mergeDataset(
+        "JGAD000001",
+        "v1",
+        "2024-01-15",
+        "hum0001",
+        "hum0001-v1",
+        jaDataset,
+        enDataset,
+      )
+
+      expect(result.datasetId).toBe("JGAD000001")
+      expect(result.version).toBe("v1")
+      expect(result.criteria).toBe("Controlled-access (Type I)")
+      expect(result.typeOfData.ja).toBe("WGS")
+      expect(result.typeOfData.en).toBe("Whole Genome Sequencing")
+    })
+
+    it("should handle null ja dataset", () => {
+      const enDataset: SingleLangDataset = {
+        datasetId: "JGAD000001",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        releaseDate: "2024-01-15",
+        criteria: "Controlled-access (Type I)",
+        typeOfData: "WGS",
+        experiments: [],
+      }
+
+      const result = mergeDataset(
+        "JGAD000001",
+        "v1",
+        "2024-01-15",
+        "hum0001",
+        "hum0001-v1",
+        null,
+        enDataset,
+      )
+
+      expect(result.criteria).toBe("Controlled-access (Type I)")
+      expect(result.typeOfData.ja).toBeNull()
+      expect(result.typeOfData.en).toBe("WGS")
+    })
+  })
+
+  // ===========================================================================
+  // mergeSummary
+  // ===========================================================================
+  describe("mergeSummary", () => {
+    it("should merge ja and en summaries", () => {
+      const jaSummary: SingleLangResearch["summary"] = {
+        aims: createTextValue("目的"),
+        methods: createTextValue("方法"),
+        targets: createTextValue("対象"),
+        url: [{ text: "サイト", url: "https://example.com" }],
+        footers: [],
+      }
+      const enSummary: SingleLangResearch["summary"] = {
+        aims: createTextValue("Aims"),
+        methods: createTextValue("Methods"),
+        targets: createTextValue("Targets"),
+        url: [{ text: "Site", url: "https://example.com" }],
+        footers: [],
+      }
+
+      const result = mergeSummary(jaSummary, enSummary)
+
+      expect(result.aims.ja?.text).toBe("目的")
+      expect(result.aims.en?.text).toBe("Aims")
+      expect(result.methods.ja?.text).toBe("方法")
+      expect(result.methods.en?.text).toBe("Methods")
+      expect(result.url.ja).toHaveLength(1)
+      expect(result.url.en).toHaveLength(1)
+    })
+
+    it("should handle null summaries", () => {
+      const result = mergeSummary(null, null)
+
+      expect(result.aims.ja).toBeNull()
+      expect(result.aims.en).toBeNull()
+    })
+  })
+
+  // ===========================================================================
+  // mergeDataProvider
+  // ===========================================================================
+  describe("mergeDataProvider", () => {
+    it("should merge ja and en data providers", () => {
+      const jaProviders: SingleLangPerson[] = [
+        {
+          name: createTextValue("山田太郎"),
+          organization: { name: createTextValue("東京大学") },
+        },
+      ]
+      const enProviders: SingleLangPerson[] = [
+        {
+          name: createTextValue("Taro Yamada"),
+          organization: { name: createTextValue("University of Tokyo") },
+        },
+      ]
+
+      const result = mergeDataProvider(jaProviders, enProviders)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].name.ja?.text).toBe("山田太郎")
+      expect(result[0].name.en?.text).toBe("Taro Yamada")
+      expect(result[0].organization?.name.ja?.text).toBe("東京大学")
+      expect(result[0].organization?.name.en?.text).toBe("University of Tokyo")
+    })
+
+    it("should handle different lengths", () => {
+      const jaProviders: SingleLangPerson[] = [
+        { name: createTextValue("山田太郎"), organization: null },
+        { name: createTextValue("鈴木一郎"), organization: null },
+      ]
+      const enProviders: SingleLangPerson[] = [
+        { name: createTextValue("Taro Yamada"), organization: null },
+      ]
+
+      const result = mergeDataProvider(jaProviders, enProviders)
+
+      expect(result).toHaveLength(2)
+      expect(result[1].name.ja?.text).toBe("鈴木一郎")
+      expect(result[1].name.en).toBeNull()
+    })
+  })
+
+  // ===========================================================================
+  // mergeGrants
+  // ===========================================================================
+  describe("mergeGrants", () => {
+    it("should merge ja and en grants by grantId", () => {
+      const jaGrants: SingleLangGrant[] = [
+        { id: ["JP12345"], title: "ゲノム研究", agency: { name: "JSPS" } },
+      ]
+      const enGrants: SingleLangGrant[] = [
+        { id: ["JP12345"], title: "Genome Research", agency: { name: "JSPS" } },
+      ]
+
+      const result = mergeGrants(jaGrants, enGrants)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toContain("JP12345")
+      expect(result[0].title.ja).toBe("ゲノム研究")
+      expect(result[0].title.en).toBe("Genome Research")
+    })
+
+    it("should handle unmatched grants", () => {
+      const jaGrants: SingleLangGrant[] = [
+        { id: ["JP11111"], title: "研究A", agency: { name: "機関A" } },
+      ]
+      const enGrants: SingleLangGrant[] = [
+        { id: ["JP22222"], title: "Research B", agency: { name: "Agency B" } },
+      ]
+
+      const result = mergeGrants(jaGrants, enGrants)
+
+      expect(result).toHaveLength(1)
+    })
+  })
+
+  // ===========================================================================
+  // mergePublications
+  // ===========================================================================
+  describe("mergePublications", () => {
+    it("should merge ja and en publications by DOI", () => {
+      const jaPubs: SingleLangPublication[] = [
+        { title: "論文タイトル", doi: "10.1234/test", datasetIds: ["JGAD000001"] },
+      ]
+      const enPubs: SingleLangPublication[] = [
+        { title: "Paper Title", doi: "10.1234/test", datasetIds: ["JGAD000001"] },
+      ]
+
+      const result = mergePublications(jaPubs, enPubs)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].title.ja).toBe("論文タイトル")
+      expect(result[0].title.en).toBe("Paper Title")
+      expect(result[0].doi).toBe("10.1234/test")
+    })
+
+    it("should handle publications without DOI", () => {
+      const jaPubs: SingleLangPublication[] = [
+        { title: "日本語の論文", doi: null, datasetIds: ["JGAD000001"] },
+      ]
+      const enPubs: SingleLangPublication[] = [
+        { title: "English paper completely different", doi: null, datasetIds: ["JGAD000001"] },
+      ]
+
+      const result = mergePublications(jaPubs, enPubs)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].datasetIds).toContain("JGAD000001")
+    })
+  })
+
+  // ===========================================================================
+  // mergeResearch
+  // ===========================================================================
+  describe("mergeResearch", () => {
+    it("should merge ja and en research", () => {
+      const jaResearch: SingleLangResearch = {
+        humId: "hum0001",
+        url: "https://humandbs.dbcls.jp/hum0001",
+        title: "研究タイトル",
+        summary: {
+          aims: createTextValue("目的"),
+          methods: createTextValue("方法"),
+          targets: createTextValue("対象"),
+          url: [],
+          footers: [],
+        },
+        dataProvider: [],
+        researchProject: [],
+        grant: [],
+        relatedPublication: [],
+        controlledAccessUser: [],
+        versionIds: ["hum0001-v1"],
+        latestVersion: "v1",
+        firstReleaseDate: "2024-01-15",
+        lastReleaseDate: "2024-01-15",
+      }
+      const enResearch: SingleLangResearch = {
+        humId: "hum0001",
+        url: "https://humandbs.dbcls.jp/en/hum0001",
+        title: "Research Title",
+        summary: {
+          aims: createTextValue("Aims"),
+          methods: createTextValue("Methods"),
+          targets: createTextValue("Targets"),
+          url: [],
+          footers: [],
+        },
+        dataProvider: [],
+        researchProject: [],
+        grant: [],
+        relatedPublication: [],
+        controlledAccessUser: [],
+        versionIds: ["hum0001-v1"],
+        latestVersion: "v1",
+        firstReleaseDate: "2024-01-15",
+        lastReleaseDate: "2024-01-15",
+      }
+
+      const result = mergeResearch("hum0001", jaResearch, enResearch)
+
+      expect(result.humId).toBe("hum0001")
+      expect(result.title.ja).toBe("研究タイトル")
+      expect(result.title.en).toBe("Research Title")
+      expect(result.summary.aims.ja?.text).toBe("目的")
+      expect(result.summary.aims.en?.text).toBe("Aims")
+    })
+
+    it("should handle null research", () => {
+      const result = mergeResearch("hum0001", null, null)
+
+      expect(result.humId).toBe("hum0001")
+      expect(result.title.ja).toBeNull()
+      expect(result.title.en).toBeNull()
+    })
+  })
+
+  // ===========================================================================
+  // mergeResearchVersion
+  // ===========================================================================
+  describe("mergeResearchVersion", () => {
+    it("should merge ja and en research versions", () => {
+      const jaVersion: SingleLangResearchVersion = {
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        releaseDate: "2024-01-15",
+        datasetIds: ["JGAD000001"],
+        releaseNote: createTextValue("初回リリース"),
+      }
+      const enVersion: SingleLangResearchVersion = {
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        releaseDate: "2024-01-15",
+        datasetIds: ["JGAD000001"],
+        releaseNote: createTextValue("Initial release"),
+      }
+
+      const result = mergeResearchVersion("hum0001-v1", jaVersion, enVersion)
+
+      expect(result.humVersionId).toBe("hum0001-v1")
+      expect(result.version).toBe("v1")
+      expect(result.releaseNote.ja?.text).toBe("初回リリース")
+      expect(result.releaseNote.en?.text).toBe("Initial release")
+      expect(result.datasetIds).toContain("JGAD000001")
+    })
+
+    it("should deduplicate datasetIds", () => {
+      const jaVersion: SingleLangResearchVersion = {
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        releaseDate: "2024-01-15",
+        datasetIds: ["JGAD000001", "JGAD000002"],
+        releaseNote: createTextValue(""),
+      }
+      const enVersion: SingleLangResearchVersion = {
+        humId: "hum0001",
+        humVersionId: "hum0001-v1",
+        version: "v1",
+        versionReleaseDate: "2024-01-15",
+        releaseDate: "2024-01-15",
+        datasetIds: ["JGAD000001", "JGAD000003"],
+        releaseNote: createTextValue(""),
+      }
+
+      const result = mergeResearchVersion("hum0001-v1", jaVersion, enVersion)
+
+      expect(result.datasetIds).toHaveLength(3)
+      expect(result.datasetIds).toContain("JGAD000001")
+      expect(result.datasetIds).toContain("JGAD000002")
+      expect(result.datasetIds).toContain("JGAD000003")
+    })
+
+    it("should handle null versions", () => {
+      const result = mergeResearchVersion("hum0001-v1", null, null)
+
+      expect(result.humVersionId).toBe("hum0001-v1")
+      expect(result.humId).toBe("")
+      expect(result.version).toBe("")
+    })
+  })
+})
