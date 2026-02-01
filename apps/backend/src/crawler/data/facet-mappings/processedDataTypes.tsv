@@ -1,0 +1,126 @@
+aligned	__DELETE__
+aligned reads	__DELETE__
+bai	BAI
+BAI	
+bam	BAM
+BAM	
+bam [ref: hg19]	BAM
+bam [ref: hg19/hg38]	BAM
+bam [ref: hg38]	BAM
+barcodes.tsv	__DELETE__
+bed	BED
+BED	
+bedpe	BEDPE
+BEDPE	
+bigwig	BigWig
+BigWig	
+bpm	BPM
+BPM	
+bw	BigWig
+called	__DELETE__
+cloupe	Cloupe
+Cloupe	
+contig_fasta	__DELETE__
+count data	__DELETE__
+csv	CSV
+CSV	
+csv.gz	CSV.GZ
+CSV.GZ	
+data_dictionary	__DELETE__
+DNA	__DELETE__
+document	__DELETE__
+expression data	__DELETE__
+expression matrix data	__DELETE__
+fast5	FAST5
+FAST5	
+fasta	FASTA
+FASTA	
+fastq	FASTQ
+FASTQ	
+features.tsv	__DELETE__
+fpkm	__DELETE__
+gDNA	__DELETE__
+gene expression	__DELETE__
+genomic variant data	__DELETE__
+genotype	__DELETE__
+genotype call	__DELETE__
+genotype data	__DELETE__
+genotypes	__DELETE__
+gvcf	GVCF
+GVCF	
+gwas	__DELETE__
+gwas summary statistics	__DELETE__
+h5	HDF5
+HDF5	
+html	HTML
+HTML	
+idat	IDAT
+IDAT	
+image	__DELETE__
+imputation	__DELETE__
+imputation(1000 genomes Phase 3 v5 )	__DELETE__
+imputed genotypes	__DELETE__
+intensity data	__DELETE__
+json	JSON
+JSON	
+matrix	__DELETE__
+matrix.mtx	__DELETE__
+metabolomics data	__DELETE__
+microarray	__DELETE__
+microarray data	__DELETE__
+mtx	MTX
+MTX	
+other	__DELETE__
+parquet	Parquet
+Parquet	
+phenotype	__DELETE__
+phenotypes	__DELETE__
+plink.assoc	PLINK Assoc
+PLINK Assoc	
+plink binary	PLINK Binary
+PLINK Binary	
+png	PNG
+PNG	
+qc	__DELETE__
+qpcr	__DELETE__
+qptiff	QPTIFF
+QPTIFF	
+raw	__DELETE__
+rds	RDS
+RDS	
+RNA-seq	__DELETE__
+sequencing	__DELETE__
+tab	TAB
+TAB	
+tabix	Tabix
+Tabix	
+tbi	TBI
+TBI	
+tdf	TDF
+TDF	
+tif	TIFF
+tiff	TIFF
+TIFF	
+tpm list	__DELETE__
+tsv	TSV
+TSV	
+tsv.gz	TSV.GZ
+TSV.GZ	
+txt	TXT
+TXT	
+txt.gz	TXT.GZ
+TXT.GZ	
+variant	__DELETE__
+variant-called	__DELETE__
+variants	__DELETE__
+vcf	VCF
+VCF	
+wig	WIG
+WIG	
+xenium	__DELETE__
+xlsx	XLSX
+XLSX	
+zarr	Zarr
+Zarr	
+zip	ZIP
+ZIP	

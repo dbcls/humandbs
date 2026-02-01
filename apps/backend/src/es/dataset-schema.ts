@@ -73,8 +73,7 @@ export const datasetSchema = {
       libraryKits: f.keyword(),
 
       // Platform
-      platformVendor: f.keyword(),
-      platformModel: f.keyword(),
+      platforms: f.keyword(),
       readType: f.keyword(),
       readLength: f.integer(),
 

@@ -15,19 +15,18 @@ describe("createEmptySearchableFields", () => {
     expect(empty.diseases).toEqual([])
     expect(empty.tissues).toEqual([])
     expect(empty.isTumor).toBeNull()
-    expect(empty.cellLine).toBeNull()
-    expect(empty.population).toBeNull()
+    expect(empty.cellLine).toEqual([])
+    expect(empty.population).toEqual([])
     expect(empty.sex).toBeNull()
     expect(empty.ageGroup).toBeNull()
-    expect(empty.assayType).toBeNull()
+    expect(empty.assayType).toEqual([])
     expect(empty.libraryKits).toEqual([])
-    expect(empty.platformVendor).toBeNull()
-    expect(empty.platformModel).toBeNull()
+    expect(empty.platforms).toEqual([])
     expect(empty.readType).toBeNull()
     expect(empty.readLength).toBeNull()
     expect(empty.sequencingDepth).toBeNull()
     expect(empty.targetCoverage).toBeNull()
-    expect(empty.referenceGenome).toBeNull()
+    expect(empty.referenceGenome).toEqual([])
     expect(empty.variantCounts).toBeNull()
     expect(empty.hasPhenotypeData).toBeNull()
     expect(empty.targets).toBeNull()
@@ -78,19 +77,18 @@ describe("parseSearchableFields", () => {
       diseases: [{ label: "lung cancer", icd10: "C34" }],
       tissues: ["tumor tissue", "blood"],
       isTumor: true,
-      cellLine: null,
-      population: "Japanese",
+      cellLine: [],
+      population: ["Japanese"],
       sex: "mixed",
       ageGroup: "adult",
-      assayType: "WGS",
+      assayType: ["WGS"],
       libraryKits: ["TruSeq DNA"],
-      platformVendor: "Illumina",
-      platformModel: "NovaSeq 6000",
+      platforms: [{ vendor: "Illumina", model: "NovaSeq 6000" }],
       readType: "paired-end",
       readLength: 150,
       sequencingDepth: 30,
       targetCoverage: 95,
-      referenceGenome: "GRCh38",
+      referenceGenome: ["GRCh38"],
       variantCounts: { snv: 5000000, indel: null, cnv: null, sv: null, total: null },
       hasPhenotypeData: true,
       targets: null,
@@ -106,18 +104,17 @@ describe("parseSearchableFields", () => {
     expect(result.diseases).toEqual([{ label: "lung cancer", icd10: "C34" }])
     expect(result.tissues).toEqual(["tumor tissue", "blood"])
     expect(result.isTumor).toBe(true)
-    expect(result.population).toBe("Japanese")
+    expect(result.population).toEqual(["Japanese"])
     expect(result.sex).toBe("mixed")
     expect(result.ageGroup).toBe("adult")
-    expect(result.assayType).toBe("WGS")
+    expect(result.assayType).toEqual(["WGS"])
     expect(result.libraryKits).toEqual(["TruSeq DNA"])
-    expect(result.platformVendor).toBe("Illumina")
-    expect(result.platformModel).toBe("NovaSeq 6000")
+    expect(result.platforms).toEqual([{ vendor: "Illumina", model: "NovaSeq 6000" }])
     expect(result.readType).toBe("paired-end")
     expect(result.readLength).toBe(150)
     expect(result.sequencingDepth).toBe(30)
     expect(result.targetCoverage).toBe(95)
-    expect(result.referenceGenome).toBe("GRCh38")
+    expect(result.referenceGenome).toEqual(["GRCh38"])
     expect(result.variantCounts).toEqual({ snv: 5000000, indel: null, cnv: null, sv: null, total: null })
     expect(result.hasPhenotypeData).toBe(true)
     expect(result.fileTypes).toEqual(["FASTQ", "BAM"])
@@ -163,15 +160,15 @@ describe("parseSearchableFields", () => {
   it("should handle partial input with missing fields", () => {
     const input = JSON.stringify({
       subjectCount: 10,
-      assayType: "RNA-seq",
+      assayType: ["RNA-seq"],
     })
 
     const result = parseSearchableFields(input)
     expect(result.subjectCount).toBe(10)
-    expect(result.assayType).toBe("RNA-seq")
+    expect(result.assayType).toEqual(["RNA-seq"])
     expect(result.diseases).toEqual([])
     expect(result.tissues).toEqual([])
-    expect(result.platformVendor).toBeNull()
+    expect(result.platforms).toEqual([])
   })
 
   it("should filter invalid disease entries", () => {

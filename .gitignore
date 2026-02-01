@@ -180,6 +180,8 @@ dist
 
 # === our custom rules ===
 apps/backend/crawler-results*
+apps/backend/src/crawler/data/icd10/icd10-master.txt
+apps/backend/src/crawler/data/icd10/icd10-labels.json
 es-data
 ollama-data
 

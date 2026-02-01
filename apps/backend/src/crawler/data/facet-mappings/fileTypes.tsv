@@ -1,0 +1,147 @@
+ab1	AB1
+AB1	
+adat	ADAT
+ADAT	
+amf	AMF
+AMF	
+bai	BAI
+BAI	
+.bam	BAM
+bam	BAM
+BAM	
+barcodes.tsv	__DELETE__
+barcodes.tsv.gz	__DELETE__
+BCF	
+.bed	BED
+bed	BED
+BED	
+bedpe	BEDPE
+BEDPE	
+bigwig	BigWig
+BigWig	
+.bim	BIM
+BIM	
+bin	BIN
+BIN	
+bw	BigWig
+CEL	
+CHP	
+cloupe	Cloupe
+Cloupe	
+contig_fasta	__DELETE__
+.csv	CSV
+csv	CSV
+CSV	
+csv.gz	CSV.GZ
+CSV.GZ	
+.fam	FAM
+FAM	
+fast5	FAST5
+FAST5	
+fasta	FASTA
+FASTA	
+.fastq	FASTQ
+fastq	FASTQ
+FASTQ	
+fastq.gz	FASTQ.GZ
+FASTQ.GZ	
+features.tsv	__DELETE__
+features.tsv.gz	__DELETE__
+.gen	GEN
+GEN	
+genotype	__DELETE__
+GTF	
+gvcf	GVCF
+GVCF	
+.gwas	GWAS
+gwas	GWAS
+GWAS	
+h5	HDF5
+.hard	HARD
+HARD	
+HDF5	
+html	HTML
+HTML	
+idat	IDAT
+IDAT	
+jpg	JPG
+JPG	
+json	JSON
+JSON	
+map	MAP
+MAP	
+matrix	__DELETE__
+matrix.mtx	__DELETE__
+matrix.mtx.gz	__DELETE__
+mtx	MTX
+MTX	
+mtx.gz	MTX.GZ
+MTX.GZ	
+ome.tif	OME-TIFF
+OME-TIFF	
+parquet	Parquet
+Parquet	
+ped	PED
+PED	
+phenotype	__DELETE__
+phenotype data	__DELETE__
+plink	PLINK
+PLINK	
+png	PNG
+PNG	
+pptx	PPTX
+PPTX	
+qptiff	QPTIFF
+QPTIFF	
+raw array data	__DELETE__
+raw_count	__DELETE__
+rds	RDS
+RDS	
+svs	SVS
+SVS	
+tab	TAB
+TAB	
+tabix	Tabix
+Tabix	
+tbi	TBI
+TBI	
+tdf	TDF
+TDF	
+text	__DELETE__
+tif	TIFF
+tiff	TIFF
+TIFF	
+.tsv	TSV
+tsv	TSV
+TSV	
+tsv.gz	TSV.GZ
+TSV.GZ	
+.txt	TXT
+txt	TXT
+TXT	
+.txt.gz	TXT.GZ
+txt.gz	TXT.GZ
+TXT.GZ	
+.vcf	VCF
+vcf	VCF
+VCF	
+vcf.gz	VCF.GZ
+VCF.GZ	
+wiff	WIFF
+WIFF	
+wiff.scan	WIFF.SCAN
+WIFF.SCAN	
+wig	WIG
+WIG	
+xenium	__DELETE__
+xls	XLS
+XLS	
+xlsx	XLSX
+XLSX	
+xlx	XLX
+XLX	
+zarr	Zarr
+Zarr	
+.zip	ZIP
+zip	ZIP
+ZIP	

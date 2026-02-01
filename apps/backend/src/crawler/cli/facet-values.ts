@@ -2,31 +2,36 @@
 /**
  * Facet Values Collector CLI
  *
- * Collects unique values from searchable fields and generates mapping files.
+ * Collects unique values from searchable fields and generates TSV mapping files.
  * Preserves existing normalizedTo settings when updating.
+ * New values are marked as __PENDING__ for review.
  *
  * Usage:
  *   bun run crawler:facet-values [options]
  *
  * Options:
  *   --latest-only    Process only the latest version of each dataset (default: true)
- *   -o, --output     Output directory (default: crawler-results/facet-values)
+ *   -o, --output     Output directory (default: src/crawler/data/facet-mappings)
  */
-import { existsSync, readdirSync } from "fs"
-import { join } from "path"
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs"
+import { dirname, join } from "path"
+import { fileURLToPath } from "url"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import {
   ValueCounter,
-  generateFieldMapping,
+  generateFieldTsvMapping,
+  parseTsv,
+  generateTsv,
   FACET_FIELD_NAMES,
-  type FacetMapping,
+  MAPPING_PENDING,
+  type TsvMappingEntry,
   type FacetFieldName,
 } from "@/crawler/processors/facet-values"
 import type { SearchableDataset, Experiment } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
-import { getResultsDir, readJson, writeJson, ensureDir } from "@/crawler/utils/io"
+import { getResultsDir, readJson, ensureDir } from "@/crawler/utils/io"
 import { logger } from "@/crawler/utils/logger"
 
 // Types
@@ -43,8 +48,11 @@ interface Args {
 const getStructuredDatasetDir = (): string =>
   join(getResultsDir(), "structured-json", "dataset")
 
-const getDefaultOutputDir = (): string =>
-  join(getResultsDir(), "facet-values")
+const getDefaultOutputDir = (): string => {
+  // Default to src/crawler/data/facet-mappings relative to this file
+  const __dirname = dirname(fileURLToPath(import.meta.url))
+  return join(__dirname, "..", "data", "facet-mappings")
+}
 
 // Dataset Processing
 
@@ -91,16 +99,21 @@ const filterLatestVersions = (files: string[]): string[] => {
   return result.sort()
 }
 
-/** Read existing mapping file */
-const readExistingMapping = (outputDir: string, fieldName: FacetFieldName): FacetMapping | null => {
-  const filePath = join(outputDir, `${fieldName}.json`)
-  return readJson<FacetMapping>(filePath)
+/** Read existing TSV mapping file */
+const readExistingTsvMapping = (outputDir: string, fieldName: FacetFieldName): TsvMappingEntry[] => {
+  const filePath = join(outputDir, `${fieldName}.tsv`)
+  if (!existsSync(filePath)) {
+    return []
+  }
+  const content = readFileSync(filePath, "utf-8")
+  return parseTsv(content)
 }
 
-/** Write mapping file */
-const writeMapping = (outputDir: string, fieldName: FacetFieldName, mapping: FacetMapping): void => {
-  const filePath = join(outputDir, `${fieldName}.json`)
-  writeJson(filePath, mapping)
+/** Write TSV mapping file */
+const writeTsvMapping = (outputDir: string, fieldName: FacetFieldName, entries: TsvMappingEntry[]): void => {
+  const filePath = join(outputDir, `${fieldName}.tsv`)
+  const content = generateTsv(entries)
+  writeFileSync(filePath, content)
 }
 
 // Main
@@ -153,29 +166,44 @@ const main = async (args: Args): Promise<void> => {
   // Ensure output directory exists
   ensureDir(output)
 
-  // Generate and write mapping files
+  // Generate and write TSV mapping files
+  let totalNewValues = 0
+  let totalPendingValues = 0
+
   for (const fieldName of FACET_FIELD_NAMES) {
-    const existingMapping = readExistingMapping(output, fieldName)
-    const mapping = generateFieldMapping(counter, fieldName, existingMapping)
+    const existingEntries = readExistingTsvMapping(output, fieldName)
+    const { entries, newValues } = generateFieldTsvMapping(counter, fieldName, existingEntries)
 
-    writeMapping(output, fieldName, mapping)
+    writeTsvMapping(output, fieldName, entries)
 
-    const newValues = mapping.values.filter(v => {
-      if (!existingMapping) return true
-      return !existingMapping.values.some(e => e.value === v.value)
-    }).length
+    // Count pending values (including newly added ones)
+    const pendingCount = entries.filter(e => e.normalizedTo === MAPPING_PENDING).length
 
-    logger.info(`Generated ${fieldName}.json`, {
-      uniqueValues: mapping.values.length,
-      newValues,
-      total: mapping.total,
+    totalNewValues += newValues.length
+    totalPendingValues += pendingCount
+
+    // Log new values if any
+    if (newValues.length > 0) {
+      logger.info(`New values in ${fieldName}:`, { newValues })
+    }
+
+    logger.info(`Generated ${fieldName}.tsv`, {
+      uniqueValues: entries.length,
+      newValues: newValues.length,
+      pending: pendingCount,
     })
   }
 
   logger.info("Completed", {
     outputDir: output,
     fields: FACET_FIELD_NAMES.length,
+    totalNewValues,
+    totalPendingValues,
   })
+
+  if (totalPendingValues > 0) {
+    logger.warn(`${totalPendingValues} values are marked as ${MAPPING_PENDING}. Please review and set normalizedTo values.`)
+  }
 }
 
 // CLI

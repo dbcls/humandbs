@@ -4,7 +4,6 @@
 import { z } from "zod"
 
 import type {
-  TextValue,
   Experiment,
   SearchableExperimentFields,
 } from "@/crawler/types"
@@ -27,6 +26,11 @@ const DiseaseInfoBaseSchema = z.object({
   icd10: z.string().nullable(),
 })
 
+const PlatformInfoBaseSchema = z.object({
+  vendor: z.string(),
+  model: z.string(),
+})
+
 const VariantCountsBaseSchema = z.object({
   snv: z.number().nullable(),
   indel: z.number().nullable(),
@@ -46,19 +50,18 @@ const LlmOutputBaseSchema = z.object({
   diseases: z.array(DiseaseInfoBaseSchema),
   tissues: z.array(z.string()),
   isTumor: z.boolean().nullable(),
-  cellLine: z.string().nullable(),
-  population: z.string().nullable(),
+  cellLine: z.array(z.string()),
+  population: z.array(z.string()),
   sex: SexEnum.nullable(),
   ageGroup: AgeGroupEnum.nullable(),
-  assayType: z.string().nullable(),
+  assayType: z.array(z.string()),
   libraryKits: z.array(z.string()),
-  platformVendor: z.string().nullable(),
-  platformModel: z.string().nullable(),
+  platforms: z.array(PlatformInfoBaseSchema),
   readType: ReadTypeEnum.nullable(),
   readLength: z.number().nullable(),
   sequencingDepth: z.number().nullable(),
   targetCoverage: z.number().nullable(),
-  referenceGenome: z.string().nullable(),
+  referenceGenome: z.array(z.string()),
   variantCounts: VariantCountsBaseSchema.nullable(),
   hasPhenotypeData: z.boolean().nullable(),
   targets: z.string().nullable(),
@@ -84,6 +87,11 @@ const VariantCountsWithCatch = VariantCountsBaseSchema.extend({
   total: z.number().nullable().catch(null),
 }).strict()
 
+const PlatformInfoWithCatch = PlatformInfoBaseSchema.extend({
+  vendor: z.string().catch(""),
+  model: z.string().catch(""),
+}).strict()
+
 /** Parse array with element-level filtering: invalid elements are dropped instead of failing the whole array */
 const safeFilteredArray = <T extends z.ZodType>(schema: T) =>
   z.unknown().transform((val): z.output<T>[] => {
@@ -107,19 +115,18 @@ export const SearchableExperimentFieldsSchema = z.object({
   diseases: safeFilteredArray(DiseaseInfoWithCatch),
   tissues: z.array(z.string()).catch([]),
   isTumor: z.boolean().nullable().catch(null),
-  cellLine: z.string().nullable().catch(null),
-  population: z.string().nullable().catch(null),
+  cellLine: z.array(z.string()).catch([]),
+  population: z.array(z.string()).catch([]),
   sex: SexEnum.nullable().catch(null),
   ageGroup: AgeGroupEnum.nullable().catch(null),
-  assayType: z.string().nullable().catch(null),
+  assayType: z.array(z.string()).catch([]),
   libraryKits: z.array(z.string()).catch([]),
-  platformVendor: z.string().nullable().catch(null),
-  platformModel: z.string().nullable().catch(null),
+  platforms: safeFilteredArray(PlatformInfoWithCatch),
   readType: ReadTypeEnum.nullable().catch(null),
   readLength: z.number().nullable().catch(null),
   sequencingDepth: z.number().nullable().catch(null),
   targetCoverage: z.number().nullable().catch(null),
-  referenceGenome: z.string().nullable().catch(null),
+  referenceGenome: z.array(z.string()).catch([]),
   variantCounts: VariantCountsWithCatch.nullable().catch(null),
   hasPhenotypeData: z.boolean().nullable().catch(null),
   targets: z.string().nullable().catch(null),
@@ -140,19 +147,18 @@ export const createEmptySearchableFields = (): SearchableExperimentFields => ({
   diseases: [],
   tissues: [],
   isTumor: null,
-  cellLine: null,
-  population: null,
+  cellLine: [],
+  population: [],
   sex: null,
   ageGroup: null,
-  assayType: null,
+  assayType: [],
   libraryKits: [],
-  platformVendor: null,
-  platformModel: null,
+  platforms: [],
   readType: null,
   readLength: null,
   sequencingDepth: null,
   targetCoverage: null,
-  referenceGenome: null,
+  referenceGenome: [],
   variantCounts: null,
   hasPhenotypeData: null,
   targets: null,
@@ -174,19 +180,18 @@ export const isEmptySearchableFields = (fields: SearchableExperimentFields): boo
     fields.diseases.length === 0 &&
     fields.tissues.length === 0 &&
     fields.isTumor === null &&
-    fields.cellLine === null &&
-    fields.population === null &&
+    fields.cellLine.length === 0 &&
+    fields.population.length === 0 &&
     fields.sex === null &&
     fields.ageGroup === null &&
-    fields.assayType === null &&
+    fields.assayType.length === 0 &&
     fields.libraryKits.length === 0 &&
-    fields.platformVendor === null &&
-    fields.platformModel === null &&
+    fields.platforms.length === 0 &&
     fields.readType === null &&
     fields.readLength === null &&
     fields.sequencingDepth === null &&
     fields.targetCoverage === null &&
-    fields.referenceGenome === null &&
+    fields.referenceGenome.length === 0 &&
     fields.variantCounts === null &&
     fields.hasPhenotypeData === null &&
     fields.targets === null &&

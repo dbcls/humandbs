@@ -37,8 +37,8 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
 - diseases: ALL diseases. label in English, icd10 only if explicitly stated in text.
 - tissues: ALL specimen/tissue types mentioned (e.g. ["skin", "PBMC"]). Empty [] if none.
 - isTumor: true if tumor/cancer tissue, false if normal, null if unclear.
-- cellLine: Cell line name if used (e.g. "HeLa"). null if none.
-- population: Population/ethnicity if stated (e.g. "Japanese", "East Asian"). Check externalMetadata TITLE/DESCRIPTION. null if not stated.
+- cellLine: Array of cell line names if used (e.g. ["HeLa", "HepG2"]). Empty [] if none.
+- population: Array of population/ethnicity if stated (e.g. ["Japanese", "East Asian"]). Check externalMetadata TITLE/DESCRIPTION. Empty [] if not stated.
 - sex: "male" if only male subjects, "female" if only female, "mixed" if both mentioned. null if not stated.
 - ageGroup: Age category of subjects. Use:
   - "infant" (0-1 years)
@@ -47,15 +47,16 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
   - "elderly" (65+ years)
   - "mixed" if multiple age groups mentioned
   - null if not stated
-- assayType: Experimental method as written (e.g. "RNA-seq", "Exome", "WGS"). null if not stated.
+- assayType: Array of experimental methods as written (e.g. ["RNA-seq", "WGS"], ["ChIP-seq", "ATAC-seq"]). Empty [] if not stated.
 - libraryKits: ALL library prep kit names. Empty [] if none.
-- platformVendor: Manufacturer (e.g. "Illumina"). null if not stated.
-- platformModel: Instrument model (e.g. "HiSeq 2000"). null if not stated.
+- platforms: Array of platform objects with vendor and model. Extract ALL platforms if multiple used.
+  Example: [{ "vendor": "Illumina", "model": "NovaSeq 6000" }, { "vendor": "Thermo Fisher", "model": "Ion Proton" }]
+  Empty [] if none stated.
 - readType: "single-end" or "paired-end". null if not stated.
 - readLength: Read length in bp (number only). null if not stated.
 - sequencingDepth: Average sequencing depth/coverage as number (e.g. "30x" → 30, "168x" → 168). Look in "Coverage" field. null if not stated.
 - targetCoverage: Target region coverage percentage as number (e.g. "95%" → 95). null if not stated.
-- referenceGenome: Reference genome version as stated (e.g. "GRCh38", "hg19", "GRCh37"). Look in "Reference Sequence" field. null if not stated.
+- referenceGenome: Array of reference genome versions as stated (e.g. ["GRCh38"], ["hg19", "hg38"]). Look in "Reference Sequence" field. Empty [] if not stated.
 - variantCounts: Variant counts by type. Look in "SNV Number", "INDEL Number", "CNV Number", "SV Number", "Total Number of Variants" fields.
   - snv: SNV count (number or null)
   - indel: INDEL count (number or null)
@@ -106,19 +107,18 @@ Output:
   "diseases": [{ "label": "lung cancer", "icd10": "C34" }],
   "tissues": ["tumor tissue", "peripheral blood"],
   "isTumor": true,
-  "cellLine": null,
-  "population": "Japanese",
+  "cellLine": [],
+  "population": ["Japanese"],
   "sex": "mixed",
   "ageGroup": "adult",
-  "assayType": "WGS",
+  "assayType": ["WGS"],
   "libraryKits": ["TruSeq DNA PCR-Free Library Prep Kit"],
-  "platformVendor": "Illumina",
-  "platformModel": "NovaSeq 6000",
+  "platforms": [{ "vendor": "Illumina", "model": "NovaSeq 6000" }],
   "readType": "paired-end",
   "readLength": 150,
   "sequencingDepth": 30,
   "targetCoverage": null,
-  "referenceGenome": "GRCh38",
+  "referenceGenome": ["GRCh38"],
   "variantCounts": { "snv": 5000000, "indel": null, "cnv": null, "sv": null, "total": null },
   "hasPhenotypeData": true,
   "targets": null,

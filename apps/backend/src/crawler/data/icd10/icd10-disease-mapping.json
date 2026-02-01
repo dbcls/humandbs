@@ -1,0 +1,4118 @@
+{
+  "atopic dermatitis|L20.9": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "psoriasis|L40.9": {
+    "label": "Psoriasis, unspecified",
+    "icd10": "L409"
+  },
+  "neoplastic disease|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "colon cancer|": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "ovarian cancer|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "invasive breast carcinoma|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "ductal carcinoma in situ|D051": {
+    "label": "Intraductal carcinoma in situ",
+    "icd10": "D051"
+  },
+  "neuroendocrine carcinoma of lung|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "Inflammatory Bowel Disease|": {
+    "label": "Noninfective gastroenteritis and colitis, unspecified",
+    "icd10": "K529"
+  },
+  "Ulcerative Colitis|K519": {
+    "label": "Ulcerative colitis, unspecified",
+    "icd10": "K519"
+  },
+  "Crohn's disease|K509": {
+    "label": "Crohn disease, unspecified",
+    "icd10": "K509"
+  },
+  "GAPPS|D139": {
+    "label": "Benign neoplasm: Ill-defined sites within the digestive system",
+    "icd10": "D139"
+  },
+  "BHD-associated RCC|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "chRCC|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "sporadic oncocytoma|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "RCC|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "BHD|Q878": {
+    "label": "Other specified congenital malformation syndromes, not elsewhere classified",
+    "icd10": "Q878"
+  },
+  "renal cell carcinoma|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "pancreatic cancer|C25.3": {
+    "label": "Malignant neoplasm: Pancreatic duct",
+    "icd10": "C253"
+  },
+  "intraductal papillary mucinous tumor|D13.6": {
+    "label": "Benign neoplasm: Pancreas",
+    "icd10": "D136"
+  },
+  "pancreatic ductal carcinoma|C25.3": {
+    "label": "Malignant neoplasm: Pancreatic duct",
+    "icd10": "C253"
+  },
+  "intraductal papillary mucinous neoplasm|D13.6": {
+    "label": "Benign neoplasm: Pancreas",
+    "icd10": "D136"
+  },
+  "acute myeloid leukemia|C920": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "mediastinal germ cell tumor|C383": {
+    "label": "Malignant neoplasm: Mediastinum, part unspecified",
+    "icd10": "C383"
+  },
+  "melanoma|C43.9": {
+    "label": "Malignant neoplasm: Malignant melanoma of skin, unspecified",
+    "icd10": "C439"
+  },
+  "kidney cancer|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "renal cancer|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "enclosing body myositis|G724": {
+    "label": "Inflammatory myopathy, not elsewhere classified",
+    "icd10": "G724"
+  },
+  "polymyositis|M332": {
+    "label": "Polymyositis",
+    "icd10": "M332"
+  },
+  "rheumatoid arthritis|M05": {
+    "label": "Seropositive rheumatoid arthritis, unspecified",
+    "icd10": "M059"
+  },
+  "graves' disease|C719": {
+    "label": "Thyrotoxicosis with diffuse goitre",
+    "icd10": "E050"
+  },
+  "type 1 diabetes mellitus|E10": {
+    "label": "Type 1 diabetes mellitus: Without complications",
+    "icd10": "E109"
+  },
+  "bronchial asthma|J45": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "atopic dermatitis|L20": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "pollinosis|J301": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "cardiomyopathy|I42.0": {
+    "label": "Dilated cardiomyopathy",
+    "icd10": "I420"
+  },
+  "hypertrophic cardiomyopathy|": {
+    "label": "Obstructive hypertrophic cardiomyopathy",
+    "icd10": "I421"
+  },
+  "arrhythmogenic right ventricular cardiomyopathy|": {
+    "label": "Other restrictive cardiomyopathy",
+    "icd10": "I425"
+  },
+  "myotonic dystrophy|": {
+    "label": "Myotonic disorders",
+    "icd10": "G711"
+  },
+  "neuromuscular disorder|G70.9": {
+    "label": "Myoneural disorder, unspecified",
+    "icd10": "G709"
+  },
+  "Charcot-Marie-Tooth disease (CMT)|G60.0": {
+    "label": "Hereditary motor and sensory neuropathy",
+    "icd10": "G600"
+  },
+  "frontotemporal dementia (FTD)|G31.0": {
+    "label": "Circumscribed brain atrophy",
+    "icd10": "G310"
+  },
+  "familial amyotrophic lateral sclerosis (Familial ALS)|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "myopathy|G72.9": {
+    "label": "Myopathy, unspecified",
+    "icd10": "G729"
+  },
+  "sporadic amyotrophic lateral sclerosis (Sporadic ALS)|G82.1": {
+    "label": "Spastic paraplegia",
+    "icd10": "G821"
+  },
+  "motor neuron disease (MND)|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "spastic paraplegia|G82.1": {
+    "label": "Spastic paraplegia",
+    "icd10": "G821"
+  },
+  "Familial ALS|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "Myopathy|G72.9": {
+    "label": "Myopathy, unspecified",
+    "icd10": "G729"
+  },
+  "Sporadic ALS|G82.1": {
+    "label": "Spastic paraplegia",
+    "icd10": "G821"
+  },
+  "Spastic paraplegia|G82.1": {
+    "label": "Spastic paraplegia",
+    "icd10": "G821"
+  },
+  "chronic sinusitis|J329": {
+    "label": "Chronic sinusitis, unspecified",
+    "icd10": "J329"
+  },
+  "Parkinson's disease|G20": {
+    "label": "Parkinson disease",
+    "icd10": "G20"
+  },
+  "familial amyotrophic lateral sclerosis|": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "Sjögren's syndrome|M35.0": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "non-syndromic hearing loss|H90": {
+    "label": "Sensorineural hearing loss, unspecified",
+    "icd10": "H905"
+  },
+  "rheumatoid arthritis|M06.9": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "microscopic polyangiitis|M31.7": {
+    "label": "Microscopic polyangiitis",
+    "icd10": "M317"
+  },
+  "systemic scleroderma|M34": {
+    "label": "Systemic sclerosis, unspecified",
+    "icd10": "M349"
+  },
+  "scleroderma renal crisis|M34": {
+    "label": "Systemic sclerosis, unspecified",
+    "icd10": "M349"
+  },
+  "suicide|X83": {
+    "label": "Intentional self-harm by other specified means",
+    "icd10": "X83"
+  },
+  "basal cell nevus syndrome|Q859": {
+    "label": "Phakomatosis, unspecified",
+    "icd10": "Q859"
+  },
+  "liver cancer|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "intrahepatic bile duct carcinoma|C221": {
+    "label": "Malignant neoplasm: Intrahepatic bile duct carcinoma",
+    "icd10": "C221"
+  },
+  "mixed liver cancer|C227": {
+    "label": "Malignant neoplasm: Other specified carcinomas of liver",
+    "icd10": "C227"
+  },
+  "Total Cholesterol|E78.0": {
+    "label": "Pure hypercholesterolaemia",
+    "icd10": "E780"
+  },
+  "HDL Cholesterol|E78.0": {
+    "label": "Pure hypercholesterolaemia",
+    "icd10": "E780"
+  },
+  "LDL Cholesterol|E78.0": {
+    "label": "Pure hypercholesterolaemia",
+    "icd10": "E780"
+  },
+  "Triglycerides|E78.0": {
+    "label": "Pure hypercholesterolaemia",
+    "icd10": "E780"
+  },
+  "Blood Glucose|R73.9": {
+    "label": "Hyperglycaemia, unspecified",
+    "icd10": "R739"
+  },
+  "Hemoglobin A1c|R73.9": {
+    "label": "Hyperglycaemia, unspecified",
+    "icd10": "R739"
+  },
+  "rheumatoid arthritis|": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "Alzheimer's disease|F00": {
+    "label": "Dementia in Alzheimer disease, unspecified",
+    "icd10": "F009"
+  },
+  "mild cognitive impairment|F06.7": {
+    "label": "Mild cognitive disorder",
+    "icd10": "F067"
+  },
+  "Lung cancer|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "Breast cancer|": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "Gastric cancer|": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "Colorectal cancer|": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "Prostate cancer|": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "Heart failure|": {
+    "label": "Heart failure, unspecified",
+    "icd10": "I509"
+  },
+  "Myocardial infarction|": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "Unstable angina|": {
+    "label": "Unstable angina",
+    "icd10": "I200"
+  },
+  "Stable angina|": {
+    "label": "Angina pectoris, unspecified",
+    "icd10": "I209"
+  },
+  "Cardiac arrhythmias|": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "Arteriosclerosis obliterans|": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "Brain infarction|": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "Intracranial aneurysm|": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "Interstitial pneumonitis & pulmonary fibrosis|": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "Pulmonary emphysema|": {
+    "label": "Emphysema, unspecified",
+    "icd10": "J439"
+  },
+  "Bronchial asthma|": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "Chronic hepatitis C|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "Liver cirrhosis|": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "Cataract|": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "Glaucoma|": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "Epilepsy|": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "Periodontal disease|": {
+    "label": "Periodontosis",
+    "icd10": "K054"
+  },
+  "Urolithiasis|": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "Nephrotic syndrome|": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "Uterine myoma|": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "Endometriosis|": {
+    "label": "Endometriosis, unspecified",
+    "icd10": "N809"
+  },
+  "Osteoporosis|": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "Rheumatoid arthritis|": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "Amyotrophic lateral sclerosis|": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "Hay fever|": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "Atopic dermatitis|": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "Drug eruptions|": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "Hyperlipidemias|": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "Diabetes mellitus|": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "Basedow disease|": {
+    "label": "Thyrotoxicosis with diffuse goitre",
+    "icd10": "E050"
+  },
+  "breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "small cell lung cancer|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "neuroglial tumor|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "Rhabdomyosarcoma|": {
+    "label": "Malignant neoplasm: Connective and soft tissue of head, face and neck",
+    "icd10": "C490"
+  },
+  "Pleuropulmonary blastoma|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "Pancreoblastoma|": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "infiltrating duct carcinoma of breast|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "ductal carcinoma in situ of breast|D051": {
+    "label": "Intraductal carcinoma in situ",
+    "icd10": "D051"
+  },
+  "invasive breast ductal carcinoma|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "non-invasive breast ductal carcinoma|D051": {
+    "label": "Intraductal carcinoma in situ",
+    "icd10": "D051"
+  },
+  "diffuse large B-cell lymphoma|C83.3": {
+    "label": "Diffuse large B-cell lymphoma",
+    "icd10": "C833"
+  },
+  "SRS|Q871": {
+    "label": "Congenital malformation syndromes predominantly associated with short stature",
+    "icd10": "Q871"
+  },
+  "liver cirrhosis|K746": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "hepatocellular carcinoma|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "chronic gastritis with gastric cancer|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "gastric submucosal tumor|D371": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Stomach",
+    "icd10": "D371"
+  },
+  "gastric cancer|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "esophageal cancer|": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "artificial abortion|O049": {
+    "label": "Medical abortion: Complete or unspecified, without complication",
+    "icd10": "O049"
+  },
+  "heart disease|": {
+    "label": "Heart disease, unspecified",
+    "icd10": "I519"
+  },
+  "gastric cancer|": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "rectal cancer|": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "dementia|": {
+    "label": "Unspecified dementia",
+    "icd10": "F03"
+  },
+  "lung cancer|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "breast cancer|": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "colorectal cancer|": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "prostate cancer|": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "heart failure|": {
+    "label": "Heart failure, unspecified",
+    "icd10": "I509"
+  },
+  "myocardial infarction|": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "unstable angina|": {
+    "label": "Unstable angina",
+    "icd10": "I200"
+  },
+  "stable angina|": {
+    "label": "Angina pectoris, unspecified",
+    "icd10": "I209"
+  },
+  "cardiac arrhythmias|": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "arteriosclerosis obliterans|": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "brain infarction|": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "intracranial aneurysm|": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "interstitial pneumonitis & pulmonary fibrosis|": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "pulmonary emphysema|": {
+    "label": "Emphysema, unspecified",
+    "icd10": "J439"
+  },
+  "bronchial asthma|": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "chronic hepatitis C|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "liver cirrhosis|": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "cataract|": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "glaucoma|": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "epilepsy|": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "periodontal disease|": {
+    "label": "Periodontosis",
+    "icd10": "K054"
+  },
+  "urolithiasis|": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "nephrotic syndrome|": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "uterine myoma|": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "endometriosis|": {
+    "label": "Endometriosis, unspecified",
+    "icd10": "N809"
+  },
+  "osteoporosis|": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "amyotrophic lateral sclerosis|": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "hay fever|": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "atopic dermatitis|": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "drug eruptions|": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "hyperlipidemias|": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "diabetes mellitus|": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "basedow disease|": {
+    "label": "Thyrotoxicosis with diffuse goitre",
+    "icd10": "E050"
+  },
+  "serrated polyp|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "cervical cancer|C53": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "不整脈 (I499)|I499": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "気管支喘息 (J459)|J459": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "アトピー性皮膚炎 (L209)|L209": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "白内障 (H269)|H269": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "脳動脈瘤 (I671)|I671": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "子宮頸がん (C539)|C539": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "B型慢性肝炎 (B181)|B181": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "C型慢性肝炎 (B182)|B182": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "COPD (J449)|J449": {
+    "label": "Chronic obstructive pulmonary disease, unspecified",
+    "icd10": "J449"
+  },
+  "肝硬変 (K746)|K746": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "薬疹 (L270)|L270": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "子宮体がん (C549)|C549": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "子宮内膜症 (N809)|N809": {
+    "label": "Endometriosis, unspecified",
+    "icd10": "N809"
+  },
+  "てんかん (G409)|G409": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "食道がん (C159)|C159": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "胃がん (C169)|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "緑内障 (H409)|H409": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "バセドウ病 (E050)|E050": {
+    "label": "Thyrotoxicosis with diffuse goitre",
+    "icd10": "E050"
+  },
+  "造血器腫瘍 (C81-96)|C81-96": {
+    "label": "Malignant neoplasm of lymphoid, haematopoietic and related tissue, unspecified",
+    "icd10": "C969"
+  },
+  "肝がん (C220)|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "脳梗塞 (I639)|I639": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "ケロイド (L910)|L910": {
+    "label": "Hypertrophic scar",
+    "icd10": "L910"
+  },
+  "肺がん (C349)|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "ネフローゼ症候群 (N049)|N049": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "骨粗鬆症 (M8199)|M8199": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "卵巣がん (C56)|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "膵がん (C259)|C259": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "歯周病 (K054)|K054": {
+    "label": "Periodontosis",
+    "icd10": "K054"
+  },
+  "ASO (I709)|I709": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "花粉症 (J301)|J301": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "前立腺がん (C61)|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "肺結核 (A169)|A169": {
+    "label": "Respiratory tuberculosis unspecified, without mention of bacteriological or histological confirmation",
+    "icd10": "A169"
+  },
+  "関節リウマチ (M0690)|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "糖尿病 (E14)|E14": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "尿路結石症 (N209)|N209": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "子宮筋腫 (D259)|D259": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "乳がん (C509)|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "non-infiltrating intraductal carcinoma|D051": {
+    "label": "Intraductal carcinoma in situ",
+    "icd10": "D051"
+  },
+  "WM|C880": {
+    "label": "Waldenström macroglobulinaemia",
+    "icd10": "C880"
+  },
+  "non IgM-type LPL|C830": {
+    "label": "Small cell B-cell lymphoma",
+    "icd10": "C830"
+  },
+  "type 2 diabetes|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "endometrioid adenocarcinoma of uterus|C541": {
+    "label": "Malignant neoplasm: Endometrium",
+    "icd10": "C541"
+  },
+  "VHL disease|Q858": {
+    "label": "Other phakomatoses, not elsewhere classified",
+    "icd10": "Q858"
+  },
+  "hereditary clear cell renal cell carcinoma|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "Von Hippel-Lindau disease|Q858": {
+    "label": "Other phakomatoses, not elsewhere classified",
+    "icd10": "Q858"
+  },
+  "atrial fibrillation|": {
+    "label": "Atrial fibrillation and atrial flutter, unspecified",
+    "icd10": "I489"
+  },
+  "muscular dystrophy|": {
+    "label": "Muscular dystrophy",
+    "icd10": "G710"
+  },
+  "diffuse-type gastric carcinoma|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "neuroblastoma|C749": {
+    "label": "Malignant neoplasm: Adrenal gland, unspecified",
+    "icd10": "C749"
+  },
+  "hepatoblastoma|C222": {
+    "label": "Malignant neoplasm: Hepatoblastoma",
+    "icd10": "C222"
+  },
+  "pediatric germ cell tumors|C809": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "acute myeloid leukemia|C92.0": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "myelodysplastic syndrome|D46": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "myelodysplastic syndromes|D46": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "Helicobacter pylori infected gastric cancer|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "Helicobacter pylori uninfected gastric cancer|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "liver cell cancer|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "liver cell carcinoma|C22.0": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "systemic sclerosis|M340": {
+    "label": "Progressive systemic sclerosis",
+    "icd10": "M340"
+  },
+  "ATL|": {
+    "label": "Adult T-cell lymphoma/leukaemia [HTLV-1-associated]",
+    "icd10": "C915"
+  },
+  "Wilson's disease|E83.0": {
+    "label": "Disorders of copper metabolism",
+    "icd10": "E830"
+  },
+  "juvenile nephronophthisis type 1|N19": {
+    "label": "Unspecified kidney failure",
+    "icd10": "N19"
+  },
+  "giant cell tumor of bone|C419": {
+    "label": "Malignant neoplasm: Bone and articular cartilage, unspecified",
+    "icd10": "C419"
+  },
+  "chondrosarcoma|C499": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "histiocytic sarcoma|C499": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "synovial sarcoma|C499": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "2型糖尿病|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "malignant melanoma|C21.0": {
+    "label": "Malignant neoplasm: Anus, unspecified",
+    "icd10": "C210"
+  },
+  "malignant melanoma|C30.0": {
+    "label": "Malignant neoplasm: Nasal cavity",
+    "icd10": "C300"
+  },
+  "malignant melanoma|C31.9": {
+    "label": "Malignant neoplasm: Accessory sinus, unspecified",
+    "icd10": "C319"
+  },
+  "malignant melanoma|C43.1": {
+    "label": "Malignant neoplasm: Malignant melanoma of eyelid, including canthus",
+    "icd10": "C431"
+  },
+  "malignant melanoma|C43.3": {
+    "label": "Malignant neoplasm: Malignant melanoma of other and unspecified parts of face",
+    "icd10": "C433"
+  },
+  "malignant melanoma|C43.4": {
+    "label": "Malignant neoplasm: Malignant melanoma of scalp and neck",
+    "icd10": "C434"
+  },
+  "malignant melanoma|C43.5": {
+    "label": "Malignant neoplasm: Malignant melanoma of trunk",
+    "icd10": "C435"
+  },
+  "malignant melanoma|C43.6": {
+    "label": "Malignant neoplasm: Malignant melanoma of upper limb, including shoulder",
+    "icd10": "C436"
+  },
+  "malignant melanoma|C43.7": {
+    "label": "Malignant neoplasm: Malignant melanoma of lower limb, including hip",
+    "icd10": "C437"
+  },
+  "malignant melanoma|C51.1": {
+    "label": "Malignant neoplasm: Labium minus",
+    "icd10": "C511"
+  },
+  "malignant melanoma|C52": {
+    "label": "Malignant neoplasm of vagina",
+    "icd10": "C52"
+  },
+  "malignant melanoma|C53.9": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "malignant melanoma|C60.9": {
+    "label": "Malignant neoplasm: Penis, unspecified",
+    "icd10": "C609"
+  },
+  "malignant melanoma|C67.9": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "malignant melanoma|C69.0": {
+    "label": "Malignant neoplasm: Conjunctiva",
+    "icd10": "C690"
+  },
+  "sebaceous adenoma|D23.7": {
+    "label": "Benign neoplasm: Skin of lower limb, including hip",
+    "icd10": "D237"
+  },
+  "familial myelodysplastic syndrome|D46": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "colon cancer|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "bile duct obstruction|Q44.2": {
+    "label": "Atresia of bile ducts",
+    "icd10": "Q442"
+  },
+  "triple negative breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "triple-negative breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "lung adenocarcinoma|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "lung adenocarcinoma|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "desmoid tumor|D48.1": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Connective and other soft tissue",
+    "icd10": "D481"
+  },
+  "pulmonary pleomorphic carcinoma|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "colorectal cancer|C189": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "estrogen receptor positive breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "HER2 positive breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "salivary gland ductal carcinoma|C089": {
+    "label": "Malignant neoplasm: Major salivary gland, unspecified",
+    "icd10": "C089"
+  },
+  "brain aneurysm|": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "uterine cancer|": {
+    "label": "Malignant neoplasm of uterus, part unspecified",
+    "icd10": "C55"
+  },
+  "asthma|": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "liver cell carcinoma|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "genetic cardiovascular disease|I42": {
+    "label": "Cardiomyopathy, unspecified",
+    "icd10": "I429"
+  },
+  "hereditary cardiovascular disease|I42": {
+    "label": "Cardiomyopathy, unspecified",
+    "icd10": "I429"
+  },
+  "ovarian clear cell adenocarcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "Hyperlipidemia|E78.5": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "astrocytoma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "oligodendroglioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "cerebellar glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "Systemic sclerosis|M340": {
+    "label": "Progressive systemic sclerosis",
+    "icd10": "M340"
+  },
+  "ANCA-associated Vasculitis|M318": {
+    "label": "Other specified necrotizing vasculopathies",
+    "icd10": "M318"
+  },
+  "Systemic Lupus Erythematosus|M329": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "estrogen receptor-positive breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "HER2-positive breast cancer|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "colon cancer|C189": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "prostate cancer|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "stomach cancer|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "diabetic nephropathy and diabetic retinopathy|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "brain glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "lung cancer|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "colon cancer|C18.9": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "extranodal NK/T-cell lymphoma, nasal type|C86.0": {
+    "label": "Extranodal NK/T-cell lymphoma, nasal type",
+    "icd10": "C860"
+  },
+  "WS|Q253": {
+    "label": "Stenosis of aorta",
+    "icd10": "Q253"
+  },
+  "fetal growth restriction|P059": {
+    "label": "Slow fetal growth, unspecified",
+    "icd10": "P059"
+  },
+  "pregnancy-induced hypertension|O149": {
+    "label": "Pre-eclampsia, unspecified",
+    "icd10": "O149"
+  },
+  "trisomy 18|Q913": {
+    "label": "Edwards syndrome, unspecified",
+    "icd10": "Q913"
+  },
+  "clavicular hyperostosis|Q870": {
+    "label": "Congenital malformation syndromes predominantly affecting facial appearance",
+    "icd10": "Q870"
+  },
+  "clavicular bone deformity|Q870": {
+    "label": "Congenital malformation syndromes predominantly affecting facial appearance",
+    "icd10": "Q870"
+  },
+  "pancreatic cancer|C25": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "colon cancer|C19": {
+    "label": "Malignant neoplasm of rectosigmoid junction",
+    "icd10": "C19"
+  },
+  "colon cancer|C20": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "lymphoma|C81": {
+    "label": "Hodgkin lymphoma, unspecified",
+    "icd10": "C819"
+  },
+  "lymphoma|C82": {
+    "label": "Follicular lymphoma, unspecified",
+    "icd10": "C829"
+  },
+  "lymphoma|C83": {
+    "label": "Non-follicular (diffuse) lymphoma, unspecified",
+    "icd10": "C839"
+  },
+  "lymphoma|C84": {
+    "label": "Mature T/NK-cell lymphoma, unspecified",
+    "icd10": "C849"
+  },
+  "lymphoma|C85": {
+    "label": "Non-Hodgkin lymphoma, unspecified",
+    "icd10": "C859"
+  },
+  "lymphoma|C86": {
+    "label": "Extranodal NK/T-cell lymphoma, nasal type",
+    "icd10": "C860"
+  },
+  "lymphoma|C88": {
+    "label": "Malignant immunoproliferative disease, unspecified",
+    "icd10": "C889"
+  },
+  "lymphoma|C91": {
+    "label": "Lymphoid leukaemia, unspecified",
+    "icd10": "C919"
+  },
+  "autism spectrum disorder|F849": {
+    "label": "Pervasive developmental disorder, unspecified",
+    "icd10": "F849"
+  },
+  "pediatric B-cell precursor acute lymphoblastic leukemia|C910": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "pediatric acute myeloid leukemia|C920": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "B-cell precursor lymphoblastic leukemia|C91.3": {
+    "label": "Prolymphocytic leukaemia of B-cell type",
+    "icd10": "C913"
+  },
+  "T-ALL|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "malignant mesothelioma|D48": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Neoplasm of uncertain or unknown behaviour, unspecified",
+    "icd10": "D489"
+  },
+  "familial malignant mesothelioma|D48": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Neoplasm of uncertain or unknown behaviour, unspecified",
+    "icd10": "D489"
+  },
+  "stomach cancer|C16.9": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "Hirschsprung disease|": {
+    "label": "Hirschsprung disease",
+    "icd10": "Q431"
+  },
+  "osteoarthritis|M06": {
+    "label": "Arthrosis, unspecified",
+    "icd10": "M199"
+  },
+  "COVID-19|U071": {
+    "label": "COVID-19, virus identified",
+    "icd10": "U071"
+  },
+  "biliary tract cancer|C22": {
+    "label": "Malignant neoplasm: Liver, unspecified",
+    "icd10": "C229"
+  },
+  "biliary tract cancer|C23": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "biliary tract cancer|C24": {
+    "label": "Malignant neoplasm: Biliary tract, unspecified",
+    "icd10": "C249"
+  },
+  "biliary tract cancer|C221": {
+    "label": "Malignant neoplasm: Intrahepatic bile duct carcinoma",
+    "icd10": "C221"
+  },
+  "biliary tract cancer|C240": {
+    "label": "Malignant neoplasm: Extrahepatic bile duct",
+    "icd10": "C240"
+  },
+  "biliary tract cancer|C248": {
+    "label": "Malignant neoplasm: Overlapping lesion of biliary tract",
+    "icd10": "C248"
+  },
+  "Philadelphia chromosome negative ALL|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "Charcot-Marie-Tooth disease|G60.0": {
+    "label": "Hereditary motor and sensory neuropathy",
+    "icd10": "G600"
+  },
+  "frontotemporal dementia|G31.0": {
+    "label": "Circumscribed brain atrophy",
+    "icd10": "G310"
+  },
+  "familial amyotrophic lateral sclerosis|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "sporadic amyotrophic lateral sclerosis|G82.1": {
+    "label": "Spastic paraplegia",
+    "icd10": "G821"
+  },
+  "motor neuron disease|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "B cell precursor acute lymphoblastic leukemia with Down syndrome|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "B-cell precursor acute lymphoblastic leukemia|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "Down syndrome|": {
+    "label": "Down syndrome, unspecified",
+    "icd10": "Q909"
+  },
+  "pediatric B-cell precursor acute lymphoblastic leukemia|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "C型肝炎|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "gastrointestinal inflammatory disease|K51": {
+    "label": "Ulcerative colitis, unspecified",
+    "icd10": "K519"
+  },
+  "neoplastic disease|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "neoplastic disease|C19": {
+    "label": "Malignant neoplasm of rectosigmoid junction",
+    "icd10": "C19"
+  },
+  "neoplastic disease|C20": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "B|B181": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "C|B182": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "COPD|J449": {
+    "label": "Chronic obstructive pulmonary disease, unspecified",
+    "icd10": "J449"
+  },
+  "ASO|I709": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "precursor B-cell acute lymphoblastic leukemia|C910": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "hepatitis B|": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "liver cancer|": {
+    "label": "Malignant neoplasm: Liver, unspecified",
+    "icd10": "C229"
+  },
+  "cancer|C00-D48": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "gastrointestinal stromal tumor (GIST)|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "gastrointestinal stromal tumor|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "colorectal cancer|C18.9": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "chronic tonsillitis|J35.0": {
+    "label": "Chronic tonsillitis",
+    "icd10": "J350"
+  },
+  "不整脈|I499": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "気管支喘息|J459": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "アトピー性皮膚炎|L209": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "白内障|H269": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "脳動脈瘤|I671": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "子宮頸がん|C539": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "B型慢性肝炎|B181": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "C型慢性肝炎|B182": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "肝硬変|K746": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "薬疹|L270": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "子宮体がん|C549": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "子宮内膜症|N809": {
+    "label": "Endometriosis, unspecified",
+    "icd10": "N809"
+  },
+  "てんかん|G409": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "食道がん|C159": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "胃がん|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "緑内障|H409": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "バセドウ病|E050": {
+    "label": "Thyrotoxicosis with diffuse goitre",
+    "icd10": "E050"
+  },
+  "造血器腫瘍|C81-96": {
+    "label": "Malignant neoplasm of lymphoid, haematopoietic and related tissue, unspecified",
+    "icd10": "C969"
+  },
+  "肝がん|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "脳梗塞|I639": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "ケロイド|L910": {
+    "label": "Hypertrophic scar",
+    "icd10": "L910"
+  },
+  "肺がん|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "ネフローゼ症候群|N049": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "骨粗鬆症|M8199": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "卵巣がん|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "膵がん|C259": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "歯周病|K054": {
+    "label": "Periodontosis",
+    "icd10": "K054"
+  },
+  "花粉症|J301": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "前立腺がん|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "肺結核|A169": {
+    "label": "Respiratory tuberculosis unspecified, without mention of bacteriological or histological confirmation",
+    "icd10": "A169"
+  },
+  "関節リウマチ|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "糖尿病|E14": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "尿路結石症|N209": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "子宮筋腫|D259": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "乳がん|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "acute encephalitis|G934": {
+    "label": "Encephalopathy, unspecified",
+    "icd10": "G934"
+  },
+  "neuroglioma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "hydatidiform mole|O010": {
+    "label": "Classical hydatidiform mole",
+    "icd10": "O010"
+  },
+  "B-ALL|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "interstitial cystitis|N301": {
+    "label": "Interstitial cystitis (chronic)",
+    "icd10": "N301"
+  },
+  "hepatitis B virus|": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "breast cancer|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "progressive urinary tract urothelial cancer|C67": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "urothelial cancer of renal pelvis and ureter|C65": {
+    "label": "Malignant neoplasm of renal pelvis",
+    "icd10": "C65"
+  },
+  "malignant neoplasm of ureter|C66": {
+    "label": "Malignant neoplasm of ureter",
+    "icd10": "C66"
+  },
+  "transitional cell carcinoma of the urinary tract|C65": {
+    "label": "Malignant neoplasm of renal pelvis",
+    "icd10": "C65"
+  },
+  "transitional cell carcinoma of the urinary tract|C66": {
+    "label": "Malignant neoplasm of ureter",
+    "icd10": "C66"
+  },
+  "transitional cell carcinoma of the urinary tract|C67.9": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "IgA nephropathy|": {
+    "label": "Recurrent and persistent haematuria: Other",
+    "icd10": "N028"
+  },
+  "early diabetic changes|": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "IgA deposition disease|": {
+    "label": "Recurrent and persistent haematuria: Other",
+    "icd10": "N028"
+  },
+  "focal segmental glomerulosclerosis|": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "renal sclerosis and diabetic nephropathy|": {
+    "label": "Glomerular disorders in diabetes mellitus",
+    "icd10": "N083"
+  },
+  "renal sclerosis and IgA deposition disease|": {
+    "label": "Recurrent and persistent haematuria: Other",
+    "icd10": "N028"
+  },
+  "diabetic nephropathy|": {
+    "label": "Glomerular disorders in diabetes mellitus",
+    "icd10": "N083"
+  },
+  "IgA deposition|": {
+    "label": "Recurrent and persistent haematuria: Other",
+    "icd10": "N028"
+  },
+  "glomerular hyperplasia|": {
+    "label": "Unspecified nephritic syndrome: Other",
+    "icd10": "N058"
+  },
+  "nephrosclerosis|": {
+    "label": "Hypertensive renal disease without renal failure",
+    "icd10": "I129"
+  },
+  "tubulointerstitial nephritis|": {
+    "label": "Tubulo-interstitial nephritis, not specified as acute or chronic",
+    "icd10": "N12"
+  },
+  "POEMS syndrome|C90.2": {
+    "label": "Extramedullary plasmacytoma",
+    "icd10": "C902"
+  },
+  "multiple myeloma|C90.0": {
+    "label": "Multiple myeloma",
+    "icd10": "C900"
+  },
+  "monoclonal gammopathy of undetermined significance (MGUS)|D47.2": {
+    "label": "Monoclonal gammopathy of undetermined significance (MGUS)",
+    "icd10": "D472"
+  },
+  "Diabetes|E11.9": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "myasthenia gravis|G70.0": {
+    "label": "Myasthenia gravis",
+    "icd10": "G700"
+  },
+  "malignant melanoma|C43": {
+    "label": "Malignant neoplasm: Malignant melanoma of skin, unspecified",
+    "icd10": "C439"
+  },
+  "malignant pleural mesothelioma|C450": {
+    "label": "Mesothelioma of pleura",
+    "icd10": "C450"
+  },
+  "Gorlin syndrome|Q859": {
+    "label": "Phakomatosis, unspecified",
+    "icd10": "Q859"
+  },
+  "外耳道扁平上皮がん|C44.2": {
+    "label": "Malignant neoplasm: Skin of ear and external auricular canal",
+    "icd10": "C442"
+  },
+  "gastric ulcer|K25.9": {
+    "label": "Gastric ulcer: Unspecified as acute or chronic, without haemorrhage or perforation",
+    "icd10": "K259"
+  },
+  "duodenal ulcer|K26.9": {
+    "label": "Duodenal ulcer: Unspecified as acute or chronic, without haemorrhage or perforation",
+    "icd10": "K269"
+  },
+  "peptic ulcer|K27.9": {
+    "label": "Peptic ulcer, site unspecified: Unspecified as acute or chronic, without haemorrhage or perforation",
+    "icd10": "K279"
+  },
+  "rectal cancer|C20": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "妊娠高血圧腎症|O149": {
+    "label": "Pre-eclampsia, unspecified",
+    "icd10": "O149"
+  },
+  "head and neck cancer|C760": {
+    "label": "Malignant neoplasm of other and ill-defined sites: Head, face and neck",
+    "icd10": "C760"
+  },
+  "不整脈(I499)|I499": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "気管支喘息(J459)|J459": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "アトピー性皮膚炎(L209)|L209": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "白内障(H269)|H269": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "脳動脈瘤(I671)|I671": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "子宮頸がん(C539)|C539": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "B型慢性肝炎(B181)|B181": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "C型慢性肝炎(B182)|B182": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "COPD(J449)|J449": {
+    "label": "Chronic obstructive pulmonary disease, unspecified",
+    "icd10": "J449"
+  },
+  "肝硬変(K746)|K746": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "薬疹(L270)|L270": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "子宮体がん(C549)|C549": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "子宮内膜症(N809)|N809": {
+    "label": "Endometriosis, unspecified",
+    "icd10": "N809"
+  },
+  "てんかん(G409)|G409": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "食道がん(C159)|C159": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "胃がん(C169)|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "緑内障(H409)|H409": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "バセドウ病(E050)|E050": {
+    "label": "Thyrotoxicosis with diffuse goitre",
+    "icd10": "E050"
+  },
+  "造血器腫瘍(C81-96)|C81-96": {
+    "label": "Malignant neoplasm of lymphoid, haematopoietic and related tissue, unspecified",
+    "icd10": "C969"
+  },
+  "肝がん(C220)|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "脳梗塞(I639)|I639": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "ケロイド(L910)|L910": {
+    "label": "Hypertrophic scar",
+    "icd10": "L910"
+  },
+  "肺がん(C349)|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "ネフローゼ症候群(N049)|N049": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "骨粗鬆症(M8199)|M8199": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "卵巣がん(C56)|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "膵がん(C259)|C259": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "歯周病(K054)|K054": {
+    "label": "Periodontosis",
+    "icd10": "K054"
+  },
+  "ASO(I709)|I709": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "花粉症(J301)|J301": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "前立腺がん(C61)|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "肺結核(A169)|A169": {
+    "label": "Respiratory tuberculosis unspecified, without mention of bacteriological or histological confirmation",
+    "icd10": "A169"
+  },
+  "関節リウマチ(M0690)|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "糖尿病(E14)|E14": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "尿路結石症(N209)|N209": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "子宮筋腫(D259)|D259": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "乳がん(C509)|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "Behcet's syndrome|M35.2": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "esophageal cancer|C15.9": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "psoriasis|L400": {
+    "label": "Psoriasis vulgaris",
+    "icd10": "L400"
+  },
+  "adenocarcinoma of colon|D01.0": {
+    "label": "Carcinoma in situ: Colon",
+    "icd10": "D010"
+  },
+  "Alzheimer's disease|G309": {
+    "label": "Alzheimer disease, unspecified",
+    "icd10": "G309"
+  },
+  "lung pleomorphic carcinoma|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "salivary gland ductal carcinoma|C08.9": {
+    "label": "Malignant neoplasm: Major salivary gland, unspecified",
+    "icd10": "C089"
+  },
+  "hepatitis C|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "blood glucose level|R73.0": {
+    "label": "Abnormal glucose tolerance test",
+    "icd10": "R730"
+  },
+  "lipid metabolism disorder|E78.5": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "splenic epithelial cyst|": {
+    "label": "Disease of spleen, unspecified",
+    "icd10": "D739"
+  },
+  "rheumatoid arthritis|M690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "IgG4-related disease|M359": {
+    "label": "Systemic involvement of connective tissue, unspecified",
+    "icd10": "M359"
+  },
+  "primary Sjögren's syndrome|M350": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "lung adenocarcinoma|C34.9": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "congenital deafness|H905": {
+    "label": "Sensorineural hearing loss, unspecified",
+    "icd10": "H905"
+  },
+  "non-small cell lung cancer|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "cancer|C00-C97": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "hepatitis B|B18": {
+    "label": "Chronic viral hepatitis, unspecified",
+    "icd10": "B189"
+  },
+  "liver cancer|C22": {
+    "label": "Malignant neoplasm: Liver, unspecified",
+    "icd10": "C229"
+  },
+  "diabetes and nephropathy|": {
+    "label": "Glomerular disorders in diabetes mellitus",
+    "icd10": "N083"
+  },
+  "cardiovascular disorder|": {
+    "label": "Heart disease, unspecified",
+    "icd10": "I519"
+  },
+  "respiratory dysfunction|": {
+    "label": "Other specified respiratory disorders",
+    "icd10": "J988"
+  },
+  "BHD-related kidney cancer|Q878": {
+    "label": "Other specified congenital malformation syndromes, not elsewhere classified",
+    "icd10": "Q878"
+  },
+  "HLRCC-related kidney cancer|": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "VHL-related kidney cancer|Q858": {
+    "label": "Other phakomatoses, not elsewhere classified",
+    "icd10": "Q858"
+  },
+  "sporadic clear cell renal cell carcinoma|": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "small intestine cancer|C17": {
+    "label": "Malignant neoplasm: Small intestine, unspecified",
+    "icd10": "C179"
+  },
+  "epilepsy|G402": {
+    "label": "Localization-related (focal)(partial) symptomatic epilepsy and epileptic syndromes with complex partial seizures",
+    "icd10": "G402"
+  },
+  "bipolar disorder|F319": {
+    "label": "Bipolar affective disorder, unspecified",
+    "icd10": "F319"
+  },
+  "schizophrenia|F209": {
+    "label": "Schizophrenia, unspecified",
+    "icd10": "F209"
+  },
+  "malignant melanoma|C439": {
+    "label": "Malignant neoplasm: Malignant melanoma of skin, unspecified",
+    "icd10": "C439"
+  },
+  "intestinal metaplasia|": {
+    "label": "Disease of oesophagus, unspecified",
+    "icd10": "K229"
+  },
+  "Hypertension|I10-I15": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "cancer|C169": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "cancer|C170": {
+    "label": "Malignant neoplasm: Duodenum",
+    "icd10": "C170"
+  },
+  "cancer|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "cancer|C20": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "cancer|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "cancer|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "cancer|C433": {
+    "label": "Malignant neoplasm: Malignant melanoma of other and unspecified parts of face",
+    "icd10": "C433"
+  },
+  "cancer|C437": {
+    "label": "Malignant neoplasm: Malignant melanoma of lower limb, including hip",
+    "icd10": "C437"
+  },
+  "cancer|C445": {
+    "label": "Malignant neoplasm: Skin of trunk",
+    "icd10": "C445"
+  },
+  "cancer|C541": {
+    "label": "Malignant neoplasm: Endometrium",
+    "icd10": "C541"
+  },
+  "cancer|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "cancer|C787": {
+    "label": "Secondary malignant neoplasm of liver and intrahepatic bile duct",
+    "icd10": "C787"
+  },
+  "cancer|C793": {
+    "label": "Secondary malignant neoplasm of brain and cerebral meninges",
+    "icd10": "C793"
+  },
+  "cancer|C795": {
+    "label": "Secondary malignant neoplasm of bone and bone marrow",
+    "icd10": "C795"
+  },
+  "cancer|C08.1": {
+    "label": "Malignant neoplasm: Sublingual gland",
+    "icd10": "C081"
+  },
+  "MDS|D46": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "adult T-cell leukemia/lymphoma|C91.5": {
+    "label": "Adult T-cell lymphoma/leukaemia [HTLV-1-associated]",
+    "icd10": "C915"
+  },
+  "ATL|C91.5": {
+    "label": "Adult T-cell lymphoma/leukaemia [HTLV-1-associated]",
+    "icd10": "C915"
+  },
+  "familial hypercholesterolemia|E780": {
+    "label": "Pure hypercholesterolaemia",
+    "icd10": "E780"
+  },
+  "Systemic Sclerosis|M340": {
+    "label": "Progressive systemic sclerosis",
+    "icd10": "M340"
+  },
+  "hepatoblastoma|": {
+    "label": "Malignant neoplasm: Hepatoblastoma",
+    "icd10": "C222"
+  },
+  "pancreatoblastoma|": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "neoplastic disease|": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Neoplasm of uncertain or unknown behaviour, unspecified",
+    "icd10": "D489"
+  },
+  "small cell lung cancer|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "colon cancer|C18-20": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "duodenal cancer|C17": {
+    "label": "Malignant neoplasm: Small intestine, unspecified",
+    "icd10": "C179"
+  },
+  "esophageal cancer|C15": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "diabetes|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "hypertension|I10": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "non-alcoholic fatty liver disease with diabetes|K75.81": {
+    "label": "Other specified inflammatory liver diseases",
+    "icd10": "K758"
+  },
+  "chronic kidney disease stage G1|N18.1": {
+    "label": "Chronic kidney disease, stage 1",
+    "icd10": "N181"
+  },
+  "chronic kidney disease stage G2|N18.2": {
+    "label": "Chronic kidney disease, stage 2",
+    "icd10": "N182"
+  },
+  "chronic kidney disease stage G4|N18.4": {
+    "label": "Chronic kidney disease, stage 4",
+    "icd10": "N184"
+  },
+  "chronic kidney disease stage G5|N18.5": {
+    "label": "Chronic kidney disease, stage 5",
+    "icd10": "N185"
+  },
+  "AML|C920": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "malignant neoplasm of colon|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "malignant neoplasm of rectum|C19": {
+    "label": "Malignant neoplasm of rectosigmoid junction",
+    "icd10": "C19"
+  },
+  "malignant neoplasm of anus and anal canal|C21": {
+    "label": "Malignant neoplasm: Anus, unspecified",
+    "icd10": "C210"
+  },
+  "malignant neoplasm of other and ill-defined digestive organs|C26": {
+    "label": "Malignant neoplasm: Ill-defined sites within the digestive system",
+    "icd10": "C269"
+  },
+  "AQP4 antibody positive NMOSD|G360": {
+    "label": "Neuromyelitis optica [Devic]",
+    "icd10": "G360"
+  },
+  "neurofibromatosis type 1|Q85.0": {
+    "label": "Neurofibromatosis (nonmalignant)",
+    "icd10": "Q850"
+  },
+  "Crohn's disease|K50": {
+    "label": "Crohn disease, unspecified",
+    "icd10": "K509"
+  },
+  "stomach cancer|": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "heart muscle disease|I42.0": {
+    "label": "Dilated cardiomyopathy",
+    "icd10": "I420"
+  },
+  "Myositis|M339": {
+    "label": "Dermatopolymyositis, unspecified",
+    "icd10": "M339"
+  },
+  "Myositis|M332": {
+    "label": "Polymyositis",
+    "icd10": "M332"
+  },
+  "Mixed Connective Tissue Disease|M351": {
+    "label": "Other overlap syndromes",
+    "icd10": "M351"
+  },
+  "Sjögren's Syndrome|M350": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "Rheumatoid Arthritis|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "Behçet's Disease|M352": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "Adult Onset Still's Disease|M0610": {
+    "label": "Adult-onset Still disease",
+    "icd10": "M061"
+  },
+  "Takayasu's Arteritis|M314": {
+    "label": "Aortic arch syndrome [Takayasu]",
+    "icd10": "M314"
+  },
+  "rheumatoid arthritis|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "lung cancer|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "autoimmune diseases|L400": {
+    "label": "Psoriasis vulgaris",
+    "icd10": "L400"
+  },
+  "autoimmune diseases|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "autoimmune diseases|M329": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "autoimmune diseases|J840": {
+    "label": "Alveolar and parietoalveolar conditions",
+    "icd10": "J840"
+  },
+  "autoimmune diseases|G35": {
+    "label": "Multiple sclerosis",
+    "icd10": "G35"
+  },
+  "systemic lupus erythematosus|M329": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "ALS|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "autism spectrum disorder|F84.0": {
+    "label": "Childhood autism",
+    "icd10": "F840"
+  },
+  "pancreatic cancer|C25.9": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "ovarian cancer|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "serous adenocarcinoma of ovary|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "mucinous adenocarcinoma of ovary|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "endometrioid adenocarcinoma of ovary|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "primary biliary cirrhosis|K743": {
+    "label": "Primary biliary cirrhosis",
+    "icd10": "K743"
+  },
+  "Bart-Hogg-Dube syndrome|": {
+    "label": "Other phakomatoses, not elsewhere classified",
+    "icd10": "Q858"
+  },
+  "open-angle glaucoma|H401": {
+    "label": "Primary open-angle glaucoma",
+    "icd10": "H401"
+  },
+  "central nervous system lymphoma|C859": {
+    "label": "Non-Hodgkin lymphoma, unspecified",
+    "icd10": "C859"
+  },
+  "primary central nervous system lymphoma|C859": {
+    "label": "Non-Hodgkin lymphoma, unspecified",
+    "icd10": "C859"
+  },
+  "chronic myelomonocytic leukemia|C93.1": {
+    "label": "Chronic myelomonocytic leukaemia",
+    "icd10": "C931"
+  },
+  "chronic myelomonocytic leukemia (CMML)|C93.1": {
+    "label": "Chronic myelomonocytic leukaemia",
+    "icd10": "C931"
+  },
+  "nephrotic syndrome|N049": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "鎖骨頭蓋骨異形成症|Q870": {
+    "label": "Congenital malformation syndromes predominantly affecting facial appearance",
+    "icd10": "Q870"
+  },
+  "familial sudden death due to arrhythmia|": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "NAFLD|": {
+    "label": "Fatty (change of) liver, not elsewhere classified",
+    "icd10": "K760"
+  },
+  "Acute Myeloid Leukemia|C920": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "obesity|E669": {
+    "label": "Obesity, unspecified",
+    "icd10": "E669"
+  },
+  "impaired glucose regulation|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "abnormal glucose tolerance|R730": {
+    "label": "Abnormal glucose tolerance test",
+    "icd10": "R730"
+  },
+  "neuromuscular disorders|G70.9": {
+    "label": "Myoneural disorder, unspecified",
+    "icd10": "G709"
+  },
+  "liver cell carcinoma|C22.2": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "colon cancer|D01.0": {
+    "label": "Carcinoma in situ: Colon",
+    "icd10": "D010"
+  },
+  "hypertensive disorders of pregnancy|O149": {
+    "label": "Pre-eclampsia, unspecified",
+    "icd10": "O149"
+  },
+  "familial autonomic dysfunction|G90.1": {
+    "label": "Familial dysautonomia [Riley-Day]",
+    "icd10": "G901"
+  },
+  "salivary duct carcinoma|C089": {
+    "label": "Malignant neoplasm: Major salivary gland, unspecified",
+    "icd10": "C089"
+  },
+  "adenomyosis|N80.0": {
+    "label": "Endometriosis of uterus",
+    "icd10": "N800"
+  },
+  "osteosarcoma|C41.9": {
+    "label": "Malignant neoplasm: Bone and articular cartilage, unspecified",
+    "icd10": "C419"
+  },
+  "optic glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "primary lung cancer|C340": {
+    "label": "Malignant neoplasm: Main bronchus",
+    "icd10": "C340"
+  },
+  "diabetic kidney disease and diabetic retinopathy|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "retinoblastoma|C692": {
+    "label": "Malignant neoplasm: Retina",
+    "icd10": "C692"
+  },
+  "brain tumor|C719": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "papillary thyroid carcinoma|": {
+    "label": "Malignant neoplasm of thyroid gland",
+    "icd10": "C73"
+  },
+  "renal crisis scleroderma|M34": {
+    "label": "Systemic sclerosis, unspecified",
+    "icd10": "M349"
+  },
+  "non-small cell lung cancer|C34.9": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "myocardial infarction|I21": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "dementia|F00-03": {
+    "label": "Unspecified dementia",
+    "icd10": "F03"
+  },
+  "cervical cancer|C539": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "invasive ductal carcinoma|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "invasive breast cancer|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "non-invasive breast cancer|D051": {
+    "label": "Intraductal carcinoma in situ",
+    "icd10": "D051"
+  },
+  "familial interstitial pneumonia|J84.9": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "RALD|D763": {
+    "label": "Other histiocytosis syndromes",
+    "icd10": "D763"
+  },
+  "gastric carcinoma|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "uterine cancer|C549": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "colon cancer|C18.6": {
+    "label": "Malignant neoplasm: Descending colon",
+    "icd10": "C186"
+  },
+  "ATL|C915": {
+    "label": "Adult T-cell lymphoma/leukaemia [HTLV-1-associated]",
+    "icd10": "C915"
+  },
+  "narcolepsy-cataplexy|": {
+    "label": "Narcolepsy and cataplexy",
+    "icd10": "G474"
+  },
+  "Pancreaticoblastoma|": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "blood glucose level|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "cholesterol level|E78": {
+    "label": "Disorder of lipoprotein metabolism, unspecified",
+    "icd10": "E789"
+  },
+  "colorectal cancer|C18-C21": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "bile duct cancer|C23": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "gallbladder cancer|C24": {
+    "label": "Malignant neoplasm: Biliary tract, unspecified",
+    "icd10": "C249"
+  },
+  "endometrial cancer|C54": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "lymphoma|C81-C86": {
+    "label": "Non-Hodgkin lymphoma, unspecified",
+    "icd10": "C859"
+  },
+  "leukemia|C90-C93": {
+    "label": "Leukaemia, unspecified",
+    "icd10": "C959"
+  },
+  "cerebral infarction|I63": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "migraine|G45.9": {
+    "label": "Transient cerebral ischaemic attack, unspecified",
+    "icd10": "G459"
+  },
+  "hypertension|I67.1": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "epilepsy|G40": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "asthma|J45": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "tuberculosis|A15-A19": {
+    "label": "Respiratory tuberculosis unspecified, without mention of bacteriological or histological confirmation",
+    "icd10": "A169"
+  },
+  "chronic obstructive pulmonary disease|J44.9": {
+    "label": "Chronic obstructive pulmonary disease, unspecified",
+    "icd10": "J449"
+  },
+  "interstitial lung disease|J84.1-9": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "myocardial infarction|I21.0-9": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "angina pectoris|I20.0": {
+    "label": "Unstable angina",
+    "icd10": "I200"
+  },
+  "cardiac arrhythmia|I20.1": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "heart failure|I50": {
+    "label": "Heart failure, unspecified",
+    "icd10": "I509"
+  },
+  "atherosclerosis|I70.9": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "chronic hepatitis|B18.1": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "liver cirrhosis|B18.2": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "primary biliary cholangitis|K74.6": {
+    "label": "Primary biliary cirrhosis",
+    "icd10": "K743"
+  },
+  "nephrotic syndrome|N04": {
+    "label": "Nephrotic syndrome: Unspecified",
+    "icd10": "N049"
+  },
+  "chronic kidney disease|N20-N23": {
+    "label": "Chronic kidney disease, unspecified",
+    "icd10": "N189"
+  },
+  "osteoporosis|M80-M81": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "type 2 diabetes mellitus|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "dyslipidemia|E78.0-5": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "hypothyroidism|E05.0": {
+    "label": "Hypothyroidism, unspecified",
+    "icd10": "E039"
+  },
+  "rheumatoid arthritis|M05-M06": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "psoriasis|L20": {
+    "label": "Psoriasis, unspecified",
+    "icd10": "L409"
+  },
+  "atopic dermatitis|L51.1-2": {
+    "label": "Atopic dermatitis, unspecified",
+    "icd10": "L209"
+  },
+  "seborrheic dermatitis|L27.0": {
+    "label": "Seborrhoeic dermatitis, unspecified",
+    "icd10": "L219"
+  },
+  "uterine fibroid|D25": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "endometriosis|N80": {
+    "label": "Endometriosis, unspecified",
+    "icd10": "N809"
+  },
+  "febrile seizure|R56.0": {
+    "label": "Febrile convulsions",
+    "icd10": "R560"
+  },
+  "glaucoma|H40": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "age-related macular degeneration|H25-H26": {
+    "label": "Degeneration of macula and posterior pole",
+    "icd10": "H353"
+  },
+  "periodontal disease|K05": {
+    "label": "Periodontosis",
+    "icd10": "K054"
+  },
+  "amyotrophic lateral sclerosis|G12.2": {
+    "label": "Motor neuron disease",
+    "icd10": "G122"
+  },
+  "ischemic stroke|I61": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "malignant neoplasm of brain|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "hypertensive disorders of pregnancy|O14.9": {
+    "label": "Pre-eclampsia, unspecified",
+    "icd10": "O149"
+  },
+  "JPSC-AD|R90.8": {
+    "label": "Other abnormal findings on diagnostic imaging of central nervous system",
+    "icd10": "R908"
+  },
+  "pemphigoid|L12.0": {
+    "label": "Bullous pemphigoid",
+    "icd10": "L120"
+  },
+  "Sjögren's syndrome|M350": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "Sicca|": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "malignant neuroepithelioma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "duodenal cancer|C17.0": {
+    "label": "Malignant neoplasm: Duodenum",
+    "icd10": "C170"
+  },
+  "bile duct cancer|C24.0": {
+    "label": "Malignant neoplasm: Extrahepatic bile duct",
+    "icd10": "C240"
+  },
+  "lung adenocarcinoma|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "lung adenocarcinoma|C34.2": {
+    "label": "Malignant neoplasm: Middle lobe, bronchus or lung",
+    "icd10": "C342"
+  },
+  "lung adenocarcinoma|C34.3": {
+    "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+    "icd10": "C343"
+  },
+  "EB virus-related lymphoma|D849": {
+    "label": "Immunodeficiency, unspecified",
+    "icd10": "D849"
+  },
+  "acute mixed-type leukemia|C950": {
+    "label": "Acute leukaemia of unspecified cell type",
+    "icd10": "C950"
+  },
+  "invasive ductal carcinoma and lobular carcinoma|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "pancreatic ductal cancer|C25.3": {
+    "label": "Malignant neoplasm: Pancreatic duct",
+    "icd10": "C253"
+  },
+  "neuromyelitis optica spectrum disorder (NMOSD)|G36.0": {
+    "label": "Neuromyelitis optica [Devic]",
+    "icd10": "G360"
+  },
+  "gastric cancer|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "dedifferentiated liposarcoma|C480": {
+    "label": "Malignant neoplasm: Retroperitoneum",
+    "icd10": "C480"
+  },
+  "dedifferentiated liposarcoma|C490": {
+    "label": "Malignant neoplasm: Connective and soft tissue of head, face and neck",
+    "icd10": "C490"
+  },
+  "dedifferentiated liposarcoma|C492": {
+    "label": "Malignant neoplasm: Connective and soft tissue of lower limb, including hip",
+    "icd10": "C492"
+  },
+  "dedifferentiated liposarcoma|C493": {
+    "label": "Malignant neoplasm: Connective and soft tissue of thorax",
+    "icd10": "C493"
+  },
+  "hereditary breast and ovarian cancer syndrome|R798": {
+    "label": "Other specified abnormal findings of blood chemistry",
+    "icd10": "R798"
+  },
+  "myotonic dystrophy type 1|G71.1": {
+    "label": "Myotonic disorders",
+    "icd10": "G711"
+  },
+  "糖尿病|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "高血圧症|I10": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "recessive anemia with excess of blasts|D61.9": {
+    "label": "Aplastic anaemia, unspecified",
+    "icd10": "D619"
+  },
+  "cold agglutinin disease|D59.1": {
+    "label": "Other autoimmune haemolytic anaemias",
+    "icd10": "D591"
+  },
+  "lung tumor|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "CHARGE syndrome|Q878": {
+    "label": "Other specified congenital malformation syndromes, not elsewhere classified",
+    "icd10": "Q878"
+  },
+  "B型肝炎|": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "mixed hepatocellular carcinoma and intrahepatic cholangiocarcinoma|C227": {
+    "label": "Malignant neoplasm: Other specified carcinomas of liver",
+    "icd10": "C227"
+  },
+  "stomach cancer|C161": {
+    "label": "Malignant neoplasm: Fundus of stomach",
+    "icd10": "C161"
+  },
+  "Usher syndrome|": {
+    "label": "Other specified hearing loss",
+    "icd10": "H918"
+  },
+  "PBC|K743": {
+    "label": "Primary biliary cirrhosis",
+    "icd10": "K743"
+  },
+  "liver tumor|C22.0": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "liver tumor|C22.2": {
+    "label": "Malignant neoplasm: Hepatoblastoma",
+    "icd10": "C222"
+  },
+  "pediatric hepatoblastoma|C22.0": {
+    "label": "Malignant neoplasm: Hepatoblastoma",
+    "icd10": "C222"
+  },
+  "hepatoblastoma|C22.2": {
+    "label": "Malignant neoplasm: Hepatoblastoma",
+    "icd10": "C222"
+  },
+  "liver cancer|C22.0": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "liver cancer|C22.2": {
+    "label": "Malignant neoplasm: Hepatoblastoma",
+    "icd10": "C222"
+  },
+  "PCNSL|": {
+    "label": "Diffuse large B-cell lymphoma",
+    "icd10": "C833"
+  },
+  "idiopathic hypersomnia|G47.11": {
+    "label": "Disorders of excessive somnolence [hypersomnias]",
+    "icd10": "G471"
+  },
+  "narcolepsy|": {
+    "label": "Narcolepsy and cataplexy",
+    "icd10": "G474"
+  },
+  "coronary artery disease|I20-25": {
+    "label": "Chronic ischaemic heart disease, unspecified",
+    "icd10": "I259"
+  },
+  "uterine cancer|C54.9": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "pregnancy|O35.3": {
+    "label": "Maternal care for (suspected) damage to fetus from viral disease in mother",
+    "icd10": "O353"
+  },
+  "rectal cancer|C19": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "rectosigmoid cancer|C20": {
+    "label": "Malignant neoplasm of rectosigmoid junction",
+    "icd10": "C19"
+  },
+  "cardiovascular disease|I00-I99": {
+    "label": "Heart disease, unspecified",
+    "icd10": "I519"
+  },
+  "infertility with normal ovarian function|N71.1": {
+    "label": "Chronic inflammatory disease of uterus",
+    "icd10": "N711"
+  },
+  "chronic endometritis|N71.1": {
+    "label": "Chronic inflammatory disease of uterus",
+    "icd10": "N711"
+  },
+  "malignant pleural mesothelioma|": {
+    "label": "Mesothelioma of pleura",
+    "icd10": "C450"
+  },
+  "pleural mesothelioma|C450": {
+    "label": "Mesothelioma of pleura",
+    "icd10": "C450"
+  },
+  "systemic sclerosis|M34": {
+    "label": "Systemic sclerosis, unspecified",
+    "icd10": "M349"
+  },
+  "type 2 diabetes|": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "essential hypertension|": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "Fabry disease|E752": {
+    "label": "Other sphingolipidosis",
+    "icd10": "E752"
+  },
+  "head and neck cancer|": {
+    "label": "Malignant neoplasm of other and ill-defined sites: Head, face and neck",
+    "icd10": "C760"
+  },
+  "laryngeal cancer|C32.1": {
+    "label": "Malignant neoplasm: Supraglottis",
+    "icd10": "C321"
+  },
+  "tongue root cancer|C01": {
+    "label": "Malignant neoplasm of base of tongue",
+    "icd10": "C01"
+  },
+  "piriform sinus cancer|C12": {
+    "label": "Malignant neoplasm of piriform sinus",
+    "icd10": "C12"
+  },
+  "hypopharyngeal cancer|C13.2": {
+    "label": "Malignant neoplasm: Posterior wall of hypopharynx",
+    "icd10": "C132"
+  },
+  "hypertension|I10-I15": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "hyperlipidemia|E78": {
+    "label": "Disorder of lipoprotein metabolism, unspecified",
+    "icd10": "E789"
+  },
+  "esophageal squamous cell carcinoma|C15": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "thymus cancer|C37": {
+    "label": "Malignant neoplasm of thymus",
+    "icd10": "C37"
+  },
+  "porokeratosis|Q82.8": {
+    "label": "Other specified congenital malformations of skin",
+    "icd10": "Q828"
+  },
+  "palmoplantar keratoderma|Q82.8": {
+    "label": "Other specified congenital malformations of skin",
+    "icd10": "Q828"
+  },
+  "cervical small cell carcinoma|": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "cerebral cavernous hemangioma|D180": {
+    "label": "Haemangioma, any site",
+    "icd10": "D180"
+  },
+  "vertebral hemangioma|D180": {
+    "label": "Haemangioma, any site",
+    "icd10": "D180"
+  },
+  "orbital cavernous hemangioma|D180": {
+    "label": "Haemangioma, any site",
+    "icd10": "D180"
+  },
+  "ICF syndrome|D800": {
+    "label": "Hereditary hypogammaglobulinaemia",
+    "icd10": "D800"
+  },
+  "anemia|": {
+    "label": "Anaemia, unspecified",
+    "icd10": "D649"
+  },
+  "colorectal adenoma or early colorectal cancer|": {
+    "label": "Benign neoplasm: Colon, unspecified",
+    "icd10": "D126"
+  },
+  "myelodysplastic syndrome|": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "chronic myelomonocytic leukemia|": {
+    "label": "Chronic myelomonocytic leukaemia",
+    "icd10": "C931"
+  },
+  "bipolar disorder|F31": {
+    "label": "Bipolar affective disorder, unspecified",
+    "icd10": "F319"
+  },
+  "pulmonary large cell neuroendocrine carcinoma|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "pulmonary large cell neuroendocrine carcinoma|C34.3": {
+    "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+    "icd10": "C343"
+  },
+  "intracranial germ cell tumor|C719": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "infiltrating ductal carcinoma of breast|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "invasive ductal carcinoma of breast|C509": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "thymoma|C37": {
+    "label": "Malignant neoplasm of thymus",
+    "icd10": "C37"
+  },
+  "myasthenia gravis|G700": {
+    "label": "Myasthenia gravis",
+    "icd10": "G700"
+  },
+  "thymic hyperplasia|E32.0": {
+    "label": "Persistent hyperplasia of thymus",
+    "icd10": "E320"
+  },
+  "lung neuroendocrine carcinoma|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "頭蓋咽頭腫|C752": {
+    "label": "Malignant neoplasm: Craniopharyngeal duct",
+    "icd10": "C752"
+  },
+  "Metabolic syndrome|E88.8": {
+    "label": "Other specified metabolic disorders",
+    "icd10": "E888"
+  },
+  "pancreatic cancer|": {
+    "label": "Malignant neoplasm: Pancreas, unspecified",
+    "icd10": "C259"
+  },
+  "autism|F84.0": {
+    "label": "Childhood autism",
+    "icd10": "F840"
+  },
+  "malignant transformation of ovarian mature teratoma|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "AML|C92.0": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "MDS|": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "PBC|": {
+    "label": "Primary biliary cirrhosis",
+    "icd10": "K743"
+  },
+  "pure red cell aplasia|D600": {
+    "label": "Chronic acquired pure red cell aplasia",
+    "icd10": "D600"
+  },
+  "aplastic anemia|D61.3": {
+    "label": "Idiopathic aplastic anaemia",
+    "icd10": "D613"
+  },
+  "granular lymphocytic leukemia|C917": {
+    "label": "Other lymphoid leukaemia",
+    "icd10": "C917"
+  },
+  "LQTS|I45.81": {
+    "label": "Other specified conduction disorders",
+    "icd10": "I458"
+  },
+  "bladder cancer|C67": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "lung cancer|C34.3": {
+    "label": "Malignant neoplasm: Lower lobe, bronchus or lung",
+    "icd10": "C343"
+  },
+  "hereditary tumor|C00-C97": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "HPV-associated oropharyngeal cancer|C10": {
+    "label": "Malignant neoplasm: Oropharynx, unspecified",
+    "icd10": "C109"
+  },
+  "Non-HPV-associated oropharyngeal cancer|C10": {
+    "label": "Malignant neoplasm: Oropharynx, unspecified",
+    "icd10": "C109"
+  },
+  "abortion|O049": {
+    "label": "Medical abortion: Complete or unspecified, without complication",
+    "icd10": "O049"
+  },
+  "NAFLD|K76.0": {
+    "label": "Fatty (change of) liver, not elsewhere classified",
+    "icd10": "K760"
+  },
+  "NASH|K75.81": {
+    "label": "Other specified inflammatory liver diseases",
+    "icd10": "K758"
+  },
+  "NASH-HCC|C220": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "COVID-19|U07.1": {
+    "label": "COVID-19, virus identified",
+    "icd10": "U071"
+  },
+  "leukemia|": {
+    "label": "Leukaemia, unspecified",
+    "icd10": "C959"
+  },
+  "unspecified disorder of heart|I47": {
+    "label": "Paroxysmal tachycardia, unspecified",
+    "icd10": "I479"
+  },
+  "transient cerebral ischemic attacks and related syndromes|I67.1": {
+    "label": "Transient cerebral ischaemic attack, unspecified",
+    "icd10": "G459"
+  },
+  "hypertensive heart disease without heart failure|I11": {
+    "label": "Hypertensive heart disease without (congestive) heart failure",
+    "icd10": "I119"
+  },
+  "malignant neoplasm of breast|C50": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "diabetes mellitus type 1|E10": {
+    "label": "Type 1 diabetes mellitus: Without complications",
+    "icd10": "E109"
+  },
+  "diabetes mellitus type 2|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "other disorders of lipid metabolism|E88.8": {
+    "label": "Other specified metabolic disorders",
+    "icd10": "E888"
+  },
+  "malignant neoplasm of colon|C18-C21": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "psoriasis|L51.1-2": {
+    "label": "Psoriasis, unspecified",
+    "icd10": "L409"
+  },
+  "other disorders of skin and subcutaneous tissue|L27.0": {
+    "label": "Generalized skin eruption due to drugs and medicaments",
+    "icd10": "L270"
+  },
+  "malignant neoplasm of cervix uteri|C53": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "chronic viral hepatitis|B18.1": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "other chronic viral hepatitis|B18.2": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "malignant neoplasm of liver and intrahepatic bile duct|C22": {
+    "label": "Malignant neoplasm: Liver, unspecified",
+    "icd10": "C229"
+  },
+  "allergic rhinitis|J30.1": {
+    "label": "Allergic rhinitis due to pollen",
+    "icd10": "J301"
+  },
+  "disorders of lipoprotein metabolism|E78.0-5": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "other disorders of lipoprotein metabolism|E78.8-9": {
+    "label": "Disorder of lipoprotein metabolism, unspecified",
+    "icd10": "E789"
+  },
+  "other interstitial pulmonary diseases|J84.1-9": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "lupus erythematosus|L91.0": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "other disorders of liver|K74.6": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "malignant neoplasm of lung|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "malignant neoplasm of ovary|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "malignant neoplasm of uterus, part unspecified|C55": {
+    "label": "Malignant neoplasm of uterus, part unspecified",
+    "icd10": "C55"
+  },
+  "malignant neoplasm of prostate|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "essential hypertension|I20.1": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "other forms of heart disease|I20.8": {
+    "label": "Other forms of angina pectoris",
+    "icd10": "I208"
+  },
+  "heart disease, unspecified|I20.9": {
+    "label": "Angina pectoris, unspecified",
+    "icd10": "I209"
+  },
+  "malignant neoplasm of stomach|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "calculus of kidney and ureter|N20-N23": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "unspecified kidney disease|I20.0": {
+    "label": "Disorder of kidney and ureter, unspecified",
+    "icd10": "N289"
+  },
+  "malignant neoplasm of corpus uteri|C54": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "aggressive periodontitis|": {
+    "label": "Chronic periodontitis",
+    "icd10": "K053"
+  },
+  "renal cell carcinoma (RCC)|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "cancer|": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "sarcoma|C40-41": {
+    "label": "Malignant neoplasm: Bone and articular cartilage, unspecified",
+    "icd10": "C419"
+  },
+  "colon cancer|C17-20": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "uterine cancer|C54": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "uterine sarcoma|C54": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "hypopharyngeal cancer|C13": {
+    "label": "Malignant neoplasm: Hypopharynx, unspecified",
+    "icd10": "C139"
+  },
+  "adenoid cystic carcinoma|C07-08": {
+    "label": "Malignant neoplasm: Major salivary gland, unspecified",
+    "icd10": "C089"
+  },
+  "cancer of unknown primary origin|D48": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Neoplasm of uncertain or unknown behaviour, unspecified",
+    "icd10": "D489"
+  },
+  "pineal gland glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "B-type hepatitis|": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "C-type hepatitis|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "Spastic Paraplegia|G82.1": {
+    "label": "Spastic paraplegia",
+    "icd10": "G821"
+  },
+  "castration-resistant prostate cancer|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "urinary tract cancer|C66": {
+    "label": "Malignant neoplasm of ureter",
+    "icd10": "C66"
+  },
+  "urinary tract urothelial carcinoma|C66": {
+    "label": "Malignant neoplasm of ureter",
+    "icd10": "C66"
+  },
+  "multiple lung cancer|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "esophageal squamous cell carcinoma|C153": {
+    "label": "Malignant neoplasm: Upper third of oesophagus",
+    "icd10": "C153"
+  },
+  "esophageal squamous cell carcinoma|C154": {
+    "label": "Malignant neoplasm: Middle third of oesophagus",
+    "icd10": "C154"
+  },
+  "esophageal squamous cell carcinoma|C155": {
+    "label": "Malignant neoplasm: Lower third of oesophagus",
+    "icd10": "C155"
+  },
+  "colorectal adenoma|D126": {
+    "label": "Benign neoplasm: Colon, unspecified",
+    "icd10": "D126"
+  },
+  "early colorectal cancer|C189": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "bronchial asthma|J45.9": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "colorectal cancer|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "colorectal cancer|C19": {
+    "label": "Malignant neoplasm of rectosigmoid junction",
+    "icd10": "C19"
+  },
+  "colorectal cancer|C20": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "SCA31|": {
+    "label": "Early-onset cerebellar ataxia",
+    "icd10": "G111"
+  },
+  "autoimmune disease|L400": {
+    "label": "Psoriasis vulgaris",
+    "icd10": "L400"
+  },
+  "autoimmune disease|M0690": {
+    "label": "Rheumatoid arthritis, unspecified",
+    "icd10": "M069"
+  },
+  "autoimmune disease|M329": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "autoimmune disease|J840": {
+    "label": "Alveolar and parietoalveolar conditions",
+    "icd10": "J840"
+  },
+  "autoimmune disease|G35": {
+    "label": "Multiple sclerosis",
+    "icd10": "G35"
+  },
+  "infertility|N96": {
+    "label": "Female infertility, unspecified",
+    "icd10": "N979"
+  },
+  "end-stage kidney cancer|C64": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "atrial fibrillation|I48": {
+    "label": "Atrial fibrillation and atrial flutter, unspecified",
+    "icd10": "I489"
+  },
+  "abdominal aortic aneurysm|I71.3": {
+    "label": "Abdominal aortic aneurysm, ruptured",
+    "icd10": "I713"
+  },
+  "abdominal aortic aneurysm|I71.4": {
+    "label": "Abdominal aortic aneurysm, without mention of rupture",
+    "icd10": "I714"
+  },
+  "dedifferentiated liposarcoma|C49": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "giant cell tumor of tendon sheath|D21": {
+    "label": "Benign neoplasm: Connective and other soft tissue, unspecified",
+    "icd10": "D219"
+  },
+  "Philadelphia chromosome negative B-cell acute lymphoblastic leukemia|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "digestive organ cancer|": {
+    "label": "Malignant neoplasm: Ill-defined sites within the digestive system",
+    "icd10": "C269"
+  },
+  "B lymphoma|": {
+    "label": "Non-Hodgkin lymphoma, unspecified",
+    "icd10": "C859"
+  },
+  "esophageal gastric junction cancer|C15.8": {
+    "label": "Malignant neoplasm: Overlapping lesion of oesophagus",
+    "icd10": "C158"
+  },
+  "gastric cancer|C16.9": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "SJS/TEN|L511": {
+    "label": "Bullous erythema multiforme",
+    "icd10": "L511"
+  },
+  "ARDS|": {
+    "label": "Adult respiratory distress syndrome",
+    "icd10": "J80"
+  },
+  "ear canal cancer|C442": {
+    "label": "Malignant neoplasm: Skin of ear and external auricular canal",
+    "icd10": "C442"
+  },
+  "multiple sclerosis|G35": {
+    "label": "Multiple sclerosis",
+    "icd10": "G35"
+  },
+  "systemic lupus erythematosus|M32.9": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "ovarian clear cell adenocarcinoma|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "high-grade serous carcinoma|C56": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "neuromuscular disorder|": {
+    "label": "Myopathy, unspecified",
+    "icd10": "G729"
+  },
+  "esophageal squamous cell carcinoma|C15.9": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "multiple myeloma|C90": {
+    "label": "Multiple myeloma",
+    "icd10": "C900"
+  },
+  "sarcoma|D48.1": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Connective and other soft tissue",
+    "icd10": "D481"
+  },
+  "urinary tract epithelial cancer|C679": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "urothelial carcinoma|C679": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "endometrial cancer|C54.1": {
+    "label": "Malignant neoplasm: Endometrium",
+    "icd10": "C541"
+  },
+  "hereditary prostate cancer|C61": {
+    "label": "Malignant neoplasm of prostate",
+    "icd10": "C61"
+  },
+  "Behçet's disease|M35.2": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "paroxysmal atrial fibrillation|I48.0": {
+    "label": "Paroxysmal atrial fibrillation",
+    "icd10": "I480"
+  },
+  "acute encephalopathy with febrile seizures|G934": {
+    "label": "Encephalopathy, unspecified",
+    "icd10": "G934"
+  },
+  "psoriasis|L40": {
+    "label": "Psoriasis, unspecified",
+    "icd10": "L409"
+  },
+  "inflammatory bowel disease|": {
+    "label": "Noninfective gastroenteritis and colitis, unspecified",
+    "icd10": "K529"
+  },
+  "ulcerative colitis|K519": {
+    "label": "Ulcerative colitis, unspecified",
+    "icd10": "K519"
+  },
+  "intestinal Behcet's disease|M352": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "inflammatory bowel disease, unspecified|K523": {
+    "label": "Indeterminate colitis",
+    "icd10": "K523"
+  },
+  "Chronic kidney disease|N18": {
+    "label": "Chronic kidney disease, unspecified",
+    "icd10": "N189"
+  },
+  "Hypertension|I10": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "lung adenocarcinoma|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "chorioangioma of uterus|O01": {
+    "label": "Hydatidiform mole, unspecified",
+    "icd10": "O019"
+  },
+  "CHM|O01": {
+    "label": "Hydatidiform mole, unspecified",
+    "icd10": "O019"
+  },
+  "juvenile myelomonocytic leukemia|C933": {
+    "label": "Juvenile myelomonocytic leukaemia",
+    "icd10": "C933"
+  },
+  "genitourinary prolapse|N81": {
+    "label": "Female genital prolapse, unspecified",
+    "icd10": "N819"
+  },
+  "undifferentiated pleomorphic sarcoma|C49": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "tenosynovial giant cell tumor|D21": {
+    "label": "Benign neoplasm: Connective and other soft tissue, unspecified",
+    "icd10": "D219"
+  },
+  "uterine corpus cancer|C54.9": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "uterus cancer|C54.9": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "myasthenia gravis|G70.01": {
+    "label": "Myasthenia gravis",
+    "icd10": "G700"
+  },
+  "uterine cancer|C54.1": {
+    "label": "Malignant neoplasm: Endometrium",
+    "icd10": "C541"
+  },
+  "cerebral aneurysm|": {
+    "label": "Cerebral aneurysm, nonruptured",
+    "icd10": "I671"
+  },
+  "atherosclerosis|": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "arrhythmia|": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "cerebral infarction|": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "bile duct cancer|": {
+    "label": "Malignant neoplasm: Extrahepatic bile duct",
+    "icd10": "C240"
+  },
+  "hypersensitivity syndrome|": {
+    "label": "Anaphylactic shock, unspecified",
+    "icd10": "T782"
+  },
+  "uterine fibroids|": {
+    "label": "Leiomyoma of uterus, unspecified",
+    "icd10": "D259"
+  },
+  "rhabdomyosarcoma|C499": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "Ewing sarcoma|C419": {
+    "label": "Malignant neoplasm: Bone and articular cartilage, unspecified",
+    "icd10": "C419"
+  },
+  "undifferentiated sarcoma|C499": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "malignant rhabdoid tumor|C809": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "liposarcoma|C499": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "malignant peripheral nerve sheath tumor|C479": {
+    "label": "Malignant neoplasm: Peripheral nerves and autonomic nervous system, unspecified",
+    "icd10": "C479"
+  },
+  "NUT carcinoma|C80.9": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "subcutaneous panniculitis-like T-cell lymphoma|C863": {
+    "label": "Subcutaneous panniculitis-like T-cell lymphoma",
+    "icd10": "C863"
+  },
+  "acute lymphoblastic leukemia|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "acute lymphoblastic leukemia with KMT2A gene rearrangement|C91.0": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "acute lymphoblastic leukemia with KMT2A gene rearrangement|": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "HBV|": {
+    "label": "Chronic viral hepatitis B without delta-agent: other and unspecified phase",
+    "icd10": "B1819"
+  },
+  "pulmonary alveolar proteinosis|J840": {
+    "label": "Alveolar and parietoalveolar conditions",
+    "icd10": "J840"
+  },
+  "diabetes|": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "hepatitis C virus infection|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "congenital iris coloboma|Q131": {
+    "label": "Absence of iris",
+    "icd10": "Q131"
+  },
+  "endometrial hyperplasia|N850": {
+    "label": "Endometrial glandular hyperplasia",
+    "icd10": "N850"
+  },
+  "SJS|": {
+    "label": "Bullous erythema multiforme",
+    "icd10": "L511"
+  },
+  "HHV-6 infection|": {
+    "label": "Other specified viral infections characterized by skin and mucous membrane lesions",
+    "icd10": "B088"
+  },
+  "lipid disorder|E78": {
+    "label": "Disorder of lipoprotein metabolism, unspecified",
+    "icd10": "E789"
+  },
+  "ovarian high-grade serous carcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "ovarian endometrioid carcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "ovarian carcinosarcoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "ovarian de-differentiated carcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "ovarian clear cell carcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "ovarian metastatic tumors|": {
+    "label": "Secondary malignant neoplasm of other specified sites",
+    "icd10": "C798"
+  },
+  "ovarian borderline tumors|": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Ovary",
+    "icd10": "D391"
+  },
+  "ovarian mucinous carcinoma/borderline|": {
+    "label": "Neoplasm of uncertain or unknown behaviour: Ovary",
+    "icd10": "D391"
+  },
+  "ovarian low-grade serous carcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "MSI-H colorectal cancer|C18": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "Langerhans cell histiocytosis|C96.6": {
+    "label": "Unifocal Langerhans-cell histiocytosis",
+    "icd10": "C966"
+  },
+  "tongue cancer|C01": {
+    "label": "Malignant neoplasm of base of tongue",
+    "icd10": "C01"
+  },
+  "tongue cancer|C02": {
+    "label": "Malignant neoplasm: Tongue, unspecified",
+    "icd10": "C029"
+  },
+  "tuberculosis|A15-A16": {
+    "label": "Respiratory tuberculosis unspecified, without mention of bacteriological or histological confirmation",
+    "icd10": "A169"
+  },
+  "hepatitis|B16-B17.0": {
+    "label": "Chronic viral hepatitis, unspecified",
+    "icd10": "B189"
+  },
+  "liver disease|B18.0-B18.1": {
+    "label": "Chronic viral hepatitis, unspecified",
+    "icd10": "B189"
+  },
+  "cirrhosis of liver|K74.3-K74.6": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "gallbladder cancer|C23-C24": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "lung cancer|C33-C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "corpus uteri cancer|C54": {
+    "label": "Malignant neoplasm: Corpus uteri, unspecified",
+    "icd10": "C549"
+  },
+  "thyroid cancer|C81": {
+    "label": "Malignant neoplasm of thyroid gland",
+    "icd10": "C73"
+  },
+  "diabetes mellitus|E05": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "hyperlipidemia|E78.0-E78.5": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "spinal cord disease|G12": {
+    "label": "Spinal muscular atrophy, unspecified",
+    "icd10": "G129"
+  },
+  "epilepsy|G40-G41": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "glaucoma|H25-H26": {
+    "label": "Glaucoma, unspecified",
+    "icd10": "H409"
+  },
+  "cataract|H40-H42": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "ischemic heart disease|I20": {
+    "label": "Angina pectoris, unspecified",
+    "icd10": "I209"
+  },
+  "hypertensive heart disease|I21-I22": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "cerebrovascular disease|I60": {
+    "label": "Subarachnoid haemorrhage, unspecified",
+    "icd10": "I609"
+  },
+  "stroke|I63": {
+    "label": "Cerebral infarction, unspecified",
+    "icd10": "I639"
+  },
+  "atherosclerosis|I70": {
+    "label": "Generalized and unspecified atherosclerosis",
+    "icd10": "I709"
+  },
+  "chronic obstructive pulmonary disease|J41-J44": {
+    "label": "Chronic obstructive pulmonary disease, unspecified",
+    "icd10": "J449"
+  },
+  "asthma|J45-J46": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "pneumonia|J80-J84": {
+    "label": "Pneumonia, unspecified",
+    "icd10": "J189"
+  },
+  "erythroid hypoplasia|D600": {
+    "label": "Chronic acquired pure red cell aplasia",
+    "icd10": "D600"
+  },
+  "adenocarcinoma of the lung|C349": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "adenocarcinoma of the lung|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "adult T-cell leukemia/lymphoma|": {
+    "label": "Adult T-cell lymphoma/leukaemia [HTLV-1-associated]",
+    "icd10": "C915"
+  },
+  "Moyamoya disease|I675": {
+    "label": "Moyamoya disease",
+    "icd10": "I675"
+  },
+  "non-Moyamoya cerebrovascular disorder|": {
+    "label": "Cerebrovascular disease, unspecified",
+    "icd10": "I679"
+  },
+  "liver cell carcinoma|C227": {
+    "label": "Malignant neoplasm: Other specified carcinomas of liver",
+    "icd10": "C227"
+  },
+  "hepatitis B|B169": {
+    "label": "Acute hepatitis B without delta-agent and without hepatic coma",
+    "icd10": "B169"
+  },
+  "sarcoid myopathy|D86.8": {
+    "label": "Sarcoidosis of other and combined sites",
+    "icd10": "D868"
+  },
+  "other muscular diseases|": {
+    "label": "Myopathy, unspecified",
+    "icd10": "G729"
+  },
+  "myopathy|G73.7": {
+    "label": "Myopathy in other diseases classified elsewhere",
+    "icd10": "G737"
+  },
+  "colorectal cancer|D01.0": {
+    "label": "Carcinoma in situ: Colon",
+    "icd10": "D010"
+  },
+  "gastrointestinal stromal tumor|": {
+    "label": "Malignant neoplasm: Connective and soft tissue, unspecified",
+    "icd10": "C499"
+  },
+  "high-grade serous ovarian carcinoma|C56.12": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "ovarian clear cell adenocarcinoma|C56.14": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "lymphoma of cervix and vagina|C82.9": {
+    "label": "Follicular lymphoma, unspecified",
+    "icd10": "C829"
+  },
+  "systemic scleroderma with renal crisis|M34": {
+    "label": "Systemic sclerosis, unspecified",
+    "icd10": "M349"
+  },
+  "angina pectoris|I20": {
+    "label": "Angina pectoris, unspecified",
+    "icd10": "I209"
+  },
+  "acute myocardial infarction|I21": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "subsequent myocardial infarction|I22": {
+    "label": "Subsequent myocardial infarction of unspecified site",
+    "icd10": "I229"
+  },
+  "unspecified myocardial infarction|I23": {
+    "label": "Haemopericardium as current complication following acute myocardial infarction",
+    "icd10": "I230"
+  },
+  "other acute ischaemic heart diseases|I24": {
+    "label": "Acute ischaemic heart disease, unspecified",
+    "icd10": "I249"
+  },
+  "chronic ischaemic heart disease|I25": {
+    "label": "Chronic ischaemic heart disease, unspecified",
+    "icd10": "I259"
+  },
+  "other heart diseases|I44": {
+    "label": "Atrioventricular block, first degree",
+    "icd10": "I440"
+  },
+  "other conduction disorders|I45": {
+    "label": "Conduction disorder, unspecified",
+    "icd10": "I459"
+  },
+  "cardiac arrest|I46": {
+    "label": "Cardiac arrest, unspecified",
+    "icd10": "I469"
+  },
+  "paroxysmal tachycardia|I47": {
+    "label": "Paroxysmal tachycardia, unspecified",
+    "icd10": "I479"
+  },
+  "other cardiac arrhythmias|I48": {
+    "label": "Atrial fibrillation and atrial flutter, unspecified",
+    "icd10": "I489"
+  },
+  "unspecified cardiac arrhythmia|I49": {
+    "label": "Cardiac arrhythmia, unspecified",
+    "icd10": "I499"
+  },
+  "hyperlipidaemia|E78": {
+    "label": "Disorder of lipoprotein metabolism, unspecified",
+    "icd10": "E789"
+  },
+  "subarachnoid haemorrhage|I60": {
+    "label": "Subarachnoid haemorrhage, unspecified",
+    "icd10": "I609"
+  },
+  "intracerebral haemorrhage|I61": {
+    "label": "Intracerebral haemorrhage, unspecified",
+    "icd10": "I619"
+  },
+  "other intracranial haemorrhage|I62": {
+    "label": "Intracranial haemorrhage (nontraumatic), unspecified",
+    "icd10": "I629"
+  },
+  "stroke, not specified as haemorrhage or infarction|I64": {
+    "label": "Stroke, not specified as haemorrhage or infarction",
+    "icd10": "I64"
+  },
+  "age-related cataract|H25": {
+    "label": "Senile cataract, unspecified",
+    "icd10": "H259"
+  },
+  "other cataract|H26": {
+    "label": "Cataract, unspecified",
+    "icd10": "H269"
+  },
+  "disorders of lens|H28": {
+    "label": "Diabetic cataract",
+    "icd10": "H280"
+  },
+  "status asthmaticus|J46": {
+    "label": "Status asthmaticus",
+    "icd10": "J46"
+  },
+  "calculus of kidney and ureter|N20": {
+    "label": "Urinary calculus, unspecified",
+    "icd10": "N209"
+  },
+  "other disorders of kidney and ureter|N21": {
+    "label": "Calculus of lower urinary tract, unspecified",
+    "icd10": "N219"
+  },
+  "cystitis|N22": {
+    "label": "Cystitis, unspecified",
+    "icd10": "N309"
+  },
+  "allergic rhinitis|J30.2": {
+    "label": "Other seasonal allergic rhinitis",
+    "icd10": "J302"
+  },
+  "neuromyelitis optica spectrum disorder|G36.0": {
+    "label": "Neuromyelitis optica [Devic]",
+    "icd10": "G360"
+  },
+  "interstitial pneumonitis and pulmonary fibrosis|": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "chronic hepatitis c|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "placenta disorders|O82.0": {
+    "label": "Placental disorder, unspecified",
+    "icd10": "O439"
+  },
+  "placenta disorders|O80.0": {
+    "label": "Placental disorder, unspecified",
+    "icd10": "O439"
+  },
+  "tuberous sclerosis|Q851": {
+    "label": "Tuberous sclerosis",
+    "icd10": "Q851"
+  },
+  "MDM2 amplified uterine leiomyosarcoma|": {
+    "label": "Malignant neoplasm of uterus, part unspecified",
+    "icd10": "C55"
+  },
+  "MDM2-amplified uterine leiomyosarcoma|": {
+    "label": "Malignant neoplasm of uterus, part unspecified",
+    "icd10": "C55"
+  },
+  "hepatocellular carcinoma|C22.0": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "metastatic hepatocellular carcinoma|C22.7": {
+    "label": "Malignant neoplasm: Other specified carcinomas of liver",
+    "icd10": "C227"
+  },
+  "breast cancer|C50.9": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "rectosigmoid junction cancer|C19": {
+    "label": "Malignant neoplasm of rectosigmoid junction",
+    "icd10": "C19"
+  },
+  "follicular lymphoma|C82": {
+    "label": "Follicular lymphoma, unspecified",
+    "icd10": "C829"
+  },
+  "burkitt lymphoma|C83": {
+    "label": "Burkitt lymphoma",
+    "icd10": "C837"
+  },
+  "lymphoblastic lymphoma|C84": {
+    "label": "Lymphoblastic (diffuse) lymphoma",
+    "icd10": "C835"
+  },
+  "diffuse large b-cell lymphoma|C85": {
+    "label": "Diffuse large B-cell lymphoma",
+    "icd10": "C833"
+  },
+  "hodgkin lymphoma|C86": {
+    "label": "Hodgkin lymphoma, unspecified",
+    "icd10": "C819"
+  },
+  "multiple myeloma|C88": {
+    "label": "Multiple myeloma",
+    "icd10": "C900"
+  },
+  "other lymphoid neoplasms|C91": {
+    "label": "Lymphoid leukaemia, unspecified",
+    "icd10": "C919"
+  },
+  "1型糖尿病|E10": {
+    "label": "Type 1 diabetes mellitus: Without complications",
+    "icd10": "E109"
+  },
+  "Metabolic Syndrome|E88.8": {
+    "label": "Other specified metabolic disorders",
+    "icd10": "E888"
+  },
+  "panic disorder|F410": {
+    "label": "Panic disorder [episodic paroxysmal anxiety]",
+    "icd10": "F410"
+  },
+  "FBPase deficiency|E74.1": {
+    "label": "Disorders of fructose metabolism",
+    "icd10": "E741"
+  },
+  "Philadelphia chromosome negative ALL|": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "Philadelphia chromosome positive ALL|": {
+    "label": "Acute lymphoblastic leukaemia [ALL]",
+    "icd10": "C910"
+  },
+  "tongue cancer|C02.9": {
+    "label": "Malignant neoplasm: Tongue, unspecified",
+    "icd10": "C029"
+  },
+  "Crohn disease|K509": {
+    "label": "Crohn disease, unspecified",
+    "icd10": "K509"
+  },
+  "ulcerative colitis|": {
+    "label": "Ulcerative colitis, unspecified",
+    "icd10": "K519"
+  },
+  "cytomegalovirus enteritis|": {
+    "label": "Cytomegaloviral disease, unspecified",
+    "icd10": "B259"
+  },
+  "Nephronophthisis type 1|N19": {
+    "label": "Unspecified kidney failure",
+    "icd10": "N19"
+  },
+  "liver cell carcinoma, mixed|C227": {
+    "label": "Malignant neoplasm: Other specified carcinomas of liver",
+    "icd10": "C227"
+  },
+  "mild cognitive disorder|F06.7": {
+    "label": "Mild cognitive disorder",
+    "icd10": "F067"
+  },
+  "intestinal Behçet's disease|M352": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "inflammatory bowel disease, unclassified|K523": {
+    "label": "Indeterminate colitis",
+    "icd10": "K523"
+  },
+  "hyperlipidemia|E78.5": {
+    "label": "Hyperlipidaemia, unspecified",
+    "icd10": "E785"
+  },
+  "大腸・直腸がん|C189": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "心不全|I509": {
+    "label": "Heart failure, unspecified",
+    "icd10": "I509"
+  },
+  "肺線維症|J849": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "胆嚢・胆管がん|C23": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "虚血性心疾患|I200": {
+    "label": "Unstable angina",
+    "icd10": "I200"
+  },
+  "bile duct cancer|C22.1": {
+    "label": "Malignant neoplasm: Intrahepatic bile duct carcinoma",
+    "icd10": "C221"
+  },
+  "mucus-producing solid-dominant adenocarcinoma of lung|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "pulmonary adenocarcinoma harboring EML4-ALK variant 3|C34.1": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "esophageal cancer|C34.1": {
+    "label": "Malignant neoplasm: Cervical part of oesophagus",
+    "icd10": "C150"
+  },
+  "pemphigus|L10.0/L10.2": {
+    "label": "Pemphigus vulgaris",
+    "icd10": "L100"
+  },
+  "虚血性心疾患|I200、I209、I219": {
+    "label": "Unstable angina",
+    "icd10": "I200"
+  },
+  "心不全|I500": {
+    "label": "Congestive heart failure",
+    "icd10": "I500"
+  },
+  "肺線維症|J841": {
+    "label": "Other interstitial pulmonary diseases with fibrosis",
+    "icd10": "J841"
+  },
+  "虚血性心疾患|I209": {
+    "label": "Angina pectoris, unspecified",
+    "icd10": "I209"
+  },
+  "虚血性心疾患|I219": {
+    "label": "Acute myocardial infarction, unspecified",
+    "icd10": "I219"
+  },
+  "大腸がん|C189": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "直腸がん|C20": {
+    "label": "Malignant neoplasm of rectum",
+    "icd10": "C20"
+  },
+  "胆嚢がん|C23": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "胆管がん|C240": {
+    "label": "Malignant neoplasm: Extrahepatic bile duct",
+    "icd10": "C240"
+  }
+}

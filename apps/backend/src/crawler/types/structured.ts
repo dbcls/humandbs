@@ -172,14 +172,6 @@ export interface PlatformInfo {
   model: string
 }
 
-/** Data volume with unit (deprecated, use dataVolumeGb instead) */
-export type DataVolumeUnit = "KB" | "MB" | "GB" | "TB"
-
-export interface DataVolume {
-  value: number
-  unit: DataVolumeUnit
-}
-
 /** Sex */
 export type Sex = "male" | "female" | "mixed"
 
@@ -208,27 +200,26 @@ export interface SearchableExperimentFields {
   // Biological sample info
   tissues: string[]
   isTumor: boolean | null
-  cellLine: string | null
-  population: string | null
+  cellLine: string[]
+  population: string[]
 
   // Demographics
   sex: Sex | null
   ageGroup: AgeGroup | null
 
   // Experimental method
-  assayType: string | null
+  assayType: string[]
   libraryKits: string[]
 
   // Platform
-  platformVendor: string | null
-  platformModel: string | null
+  platforms: PlatformInfo[]
   readType: ReadType | null
   readLength: number | null
 
   // Sequencing quality
   sequencingDepth: number | null
   targetCoverage: number | null
-  referenceGenome: string | null
+  referenceGenome: string[]
 
   // Variant data
   variantCounts: VariantCounts | null

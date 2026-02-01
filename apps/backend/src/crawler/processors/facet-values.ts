@@ -4,28 +4,61 @@
  * Collects unique values from searchable fields across all datasets
  * and generates mapping files for facet normalization.
  */
-import type { SearchableExperimentFields, DiseaseInfo } from "@/crawler/types"
+import type { SearchableExperimentFields, PlatformInfo } from "@/crawler/types"
+
+// Constants
+
+/** Special value indicating the entry should be deleted from searchable fields */
+export const MAPPING_DELETE = "__DELETE__"
+
+/** Special value indicating the entry is pending review (use original value as-is) */
+export const MAPPING_PENDING = "__PENDING__"
 
 // Types
 
-/** Entry for a facet value */
-export interface FacetValueEntry {
+/**
+ * TSV mapping entry (without count - count is only for logging)
+ *
+ * normalizedTo behavior:
+ * - "" (empty string): This value itself is the canonical form (confirmed)
+ * - "SomeValue": Normalize to "SomeValue"
+ * - "__DELETE__": Delete this value (not a valid value for this field)
+ * - "__PENDING__": Pending review (new value, use original as-is with warning)
+ */
+export interface TsvMappingEntry {
   value: string
-  count: number
   normalizedTo: string
 }
 
-/** Facet mapping file structure */
+/**
+ * Entry for a facet value (used during collection with count)
+ *
+ * normalizedTo behavior:
+ * - "" (empty string): This value itself is the canonical form
+ * - "SomeValue": Normalize to "SomeValue"
+ * - null: Delete this value (not a valid value for this field)
+ */
+export interface FacetValueEntry {
+  value: string
+  count: number
+  normalizedTo: string | null
+}
+
+/** Facet mapping file structure (legacy JSON format) */
 export interface FacetMapping {
   values: FacetValueEntry[]
   total: number
+}
+
+/** TSV-based facet mapping (new format) */
+export interface TsvFacetMapping {
+  entries: TsvMappingEntry[]
 }
 
 /** Facet field names that can be normalized */
 export type FacetFieldName =
   | "assayType"
   | "cellLine"
-  | "diseases"
   | "fileTypes"
   | "libraryKits"
   | "platformModel"
@@ -39,7 +72,6 @@ export type FacetFieldName =
 export const FACET_FIELD_NAMES: FacetFieldName[] = [
   "assayType",
   "cellLine",
-  "diseases",
   "fileTypes",
   "libraryKits",
   "platformModel",
@@ -58,27 +90,15 @@ export const extractValuesFromSearchable = (
 ): Map<FacetFieldName, string[]> => {
   const result = new Map<FacetFieldName, string[]>()
 
-  // String fields (nullable)
-  const stringFields: { name: FacetFieldName; value: string | null }[] = [
-    { name: "assayType", value: searchable.assayType },
-    { name: "cellLine", value: searchable.cellLine },
-    { name: "platformModel", value: searchable.platformModel },
-    { name: "platformVendor", value: searchable.platformVendor },
-    { name: "population", value: searchable.population },
-    { name: "referenceGenome", value: searchable.referenceGenome },
-  ]
-
-  for (const { name, value } of stringFields) {
-    if (value !== null && value !== undefined && value.trim() !== "") {
-      result.set(name, [value])
-    }
-  }
-
   // Array fields
   const arrayFields: { name: FacetFieldName; values: string[] }[] = [
+    { name: "assayType", values: searchable.assayType ?? [] },
+    { name: "cellLine", values: searchable.cellLine ?? [] },
     { name: "fileTypes", values: searchable.fileTypes ?? [] },
     { name: "libraryKits", values: searchable.libraryKits ?? [] },
+    { name: "population", values: searchable.population ?? [] },
     { name: "processedDataTypes", values: searchable.processedDataTypes ?? [] },
+    { name: "referenceGenome", values: searchable.referenceGenome ?? [] },
     { name: "tissues", values: searchable.tissues ?? [] },
   ]
 
@@ -89,13 +109,20 @@ export const extractValuesFromSearchable = (
     }
   }
 
-  // Disease labels (special handling for DiseaseInfo[])
-  const diseaseLabels = (searchable.diseases ?? [])
-    .map((d: DiseaseInfo) => d.label)
-    .filter((label): label is string => label !== null && label !== undefined && label.trim() !== "")
+  // Platform vendor and model (special handling for PlatformInfo[])
+  const platforms = searchable.platforms ?? []
+  const platformVendors = platforms
+    .map((p: PlatformInfo) => p.vendor)
+    .filter((v): v is string => v !== null && v !== undefined && v.trim() !== "")
+  const platformModels = platforms
+    .map((p: PlatformInfo) => p.model)
+    .filter((m): m is string => m !== null && m !== undefined && m.trim() !== "")
 
-  if (diseaseLabels.length > 0) {
-    result.set("diseases", diseaseLabels)
+  if (platformVendors.length > 0) {
+    result.set("platformVendor", platformVendors)
+  }
+  if (platformModels.length > 0) {
+    result.set("platformModel", platformModels)
   }
 
   return result
@@ -148,8 +175,8 @@ export const mergeWithExistingMapping = (
   counts: Map<string, number>,
   existingMapping: FacetMapping | null,
 ): FacetMapping => {
-  // Create a map of existing normalizedTo values
-  const existingNormalizedTo = new Map<string, string>()
+  // Create a map of existing normalizedTo values (including null)
+  const existingNormalizedTo = new Map<string, string | null>()
   if (existingMapping) {
     for (const entry of existingMapping.values) {
       existingNormalizedTo.set(entry.value, entry.normalizedTo)
@@ -161,10 +188,14 @@ export const mergeWithExistingMapping = (
   let total = 0
 
   for (const [value, count] of counts) {
+    // Preserve existing normalizedTo (including null), default to "" for new values
+    const normalizedTo = existingNormalizedTo.has(value)
+      ? existingNormalizedTo.get(value)!
+      : ""
     values.push({
       value,
       count,
-      normalizedTo: existingNormalizedTo.get(value) ?? "",
+      normalizedTo,
     })
     total += count
   }
@@ -197,4 +228,116 @@ export const generateFieldMapping = (
 ): FacetMapping => {
   const counts = counter.getFieldCounts(fieldName)
   return mergeWithExistingMapping(counts, existingMapping)
+}
+
+// TSV I/O Functions
+
+/**
+ * Parse TSV content into mapping entries
+ * Format: value<TAB>normalizedTo (no header)
+ */
+export const parseTsv = (content: string): TsvMappingEntry[] => {
+  const entries: TsvMappingEntry[] = []
+  const lines = content.split("\n")
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed === "") continue
+
+    const parts = trimmed.split("\t")
+    if (parts.length < 1) continue
+
+    const value = parts[0]
+    const normalizedTo = parts.length >= 2 ? parts[1] : ""
+
+    entries.push({ value, normalizedTo })
+  }
+
+  return entries
+}
+
+/**
+ * Generate TSV content from mapping entries
+ * Format: value<TAB>normalizedTo (no header)
+ */
+export const generateTsv = (entries: TsvMappingEntry[]): string => {
+  const lines = entries.map(entry => `${entry.value}\t${entry.normalizedTo}`)
+  return lines.join("\n") + "\n"
+}
+
+/**
+ * Merge existing TSV mapping with new counts
+ * - Preserves existing normalizedTo values
+ * - New values get __PENDING__ as normalizedTo
+ * - Values no longer present are kept (for tracking removed values)
+ */
+export const mergeWithExistingTsvMapping = (
+  counts: Map<string, number>,
+  existingEntries: TsvMappingEntry[],
+): { entries: TsvMappingEntry[]; newValues: string[] } => {
+  // Create a map of existing normalizedTo values
+  const existingNormalizedTo = new Map<string, string>()
+  for (const entry of existingEntries) {
+    existingNormalizedTo.set(entry.value, entry.normalizedTo)
+  }
+
+  // Build new entries array
+  const entries: TsvMappingEntry[] = []
+  const newValues: string[] = []
+
+  for (const [value] of counts) {
+    if (existingNormalizedTo.has(value)) {
+      // Preserve existing normalizedTo
+      entries.push({
+        value,
+        normalizedTo: existingNormalizedTo.get(value)!,
+      })
+    } else {
+      // New value - mark as pending
+      entries.push({
+        value,
+        normalizedTo: MAPPING_PENDING,
+      })
+      newValues.push(value)
+    }
+  }
+
+  // Add entries from existing mapping that are no longer present
+  // (keep them so users can see what was removed)
+  for (const entry of existingEntries) {
+    if (!counts.has(entry.value)) {
+      entries.push(entry)
+    }
+  }
+
+  // Sort by value alphabetically
+  entries.sort((a, b) => a.value.localeCompare(b.value))
+
+  return { entries, newValues }
+}
+
+/**
+ * Generate TSV mapping for a single field
+ */
+export const generateFieldTsvMapping = (
+  counter: ValueCounter,
+  fieldName: FacetFieldName,
+  existingEntries: TsvMappingEntry[],
+): { entries: TsvMappingEntry[]; newValues: string[] } => {
+  const counts = counter.getFieldCounts(fieldName)
+  return mergeWithExistingTsvMapping(counts, existingEntries)
+}
+
+/**
+ * Convert TsvMappingEntry[] to FacetMapping for compatibility with normalize functions
+ * Note: count is not available from TSV, so it's set to 0
+ */
+export const tsvToFacetMapping = (entries: TsvMappingEntry[]): FacetMapping => {
+  const values: FacetValueEntry[] = entries.map(entry => ({
+    value: entry.value,
+    count: 0,
+    // Convert __DELETE__ to null for backward compatibility with normalize logic
+    normalizedTo: entry.normalizedTo === MAPPING_DELETE ? null : entry.normalizedTo,
+  }))
+  return { values, total: 0 }
 }

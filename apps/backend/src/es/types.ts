@@ -37,9 +37,14 @@ export const BilingualUrlValueSchema = z.object({
 
 // === SearchableExperimentFields Zod Schema ===
 
+/**
+ * Disease info schema for ES documents
+ * Note: icd10 is required (not nullable) because icd10-normalize step
+ * ensures all diseases have a valid ICD10 code before ES indexing
+ */
 export const DiseaseInfoSchema = z.object({
   label: z.string(),
-  icd10: z.string().nullable(),
+  icd10: z.string(),
 })
 
 export const DataVolumeSchema = z.object({
@@ -53,6 +58,11 @@ export const NormalizedPolicySchema = z.object({
   url: z.string().nullable(),
 })
 
+export const PlatformInfoSchema = z.object({
+  vendor: z.string(),
+  model: z.string(),
+})
+
 export const SearchableExperimentFieldsSchema = z.object({
   subjectCount: z.number().nullable(),
   subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable(),
@@ -60,12 +70,11 @@ export const SearchableExperimentFieldsSchema = z.object({
   diseases: z.array(DiseaseInfoSchema),
   tissues: z.array(z.string()),
   isTumor: z.boolean().nullable(),
-  cellLine: z.string().nullable(),
-  population: z.string().nullable(),
-  assayType: z.string().nullable(),
+  cellLine: z.array(z.string()),
+  population: z.array(z.string()),
+  assayType: z.array(z.string()),
   libraryKits: z.array(z.string()),
-  platformVendor: z.string().nullable(),
-  platformModel: z.string().nullable(),
+  platforms: z.array(PlatformInfoSchema),
   readType: z.enum(["single-end", "paired-end"]).nullable(),
   readLength: z.number().nullable(),
   targets: z.string().nullable(),
