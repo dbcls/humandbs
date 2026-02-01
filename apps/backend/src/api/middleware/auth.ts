@@ -14,6 +14,7 @@ import * as jose from "jose"
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
 
+import { CACHE_TTL } from "../constants"
 import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
@@ -22,63 +23,74 @@ const OIDC_ISSUER_URL = process.env.OIDC_ISSUER_URL || "https://idp-staging.ddbj
 const OIDC_CLIENT_ID = process.env.OIDC_CLIENT_ID || "humandbs-dev"
 const ADMIN_UID_FILE = process.env.ADMIN_UID_FILE || path.join(process.cwd(), "admin_uids.json")
 
-// Cache for JWKS
-let jwksCache: jose.JWTVerifyGetKey | null = null
-let jwksCacheExpiry = 0
-const JWKS_CACHE_TTL = 3600 * 1000 // 1 hour
+// === TTL Cache Factory ===
 
-// Cache for admin UIDs
-let adminUidsCache: string[] = []
-let adminUidsCacheExpiry = 0
-const ADMIN_UIDS_CACHE_TTL = 60 * 1000 // 1 minute (shorter for faster updates)
+interface TtlCache<T> {
+  get: () => T | null
+  set: (value: T) => void
+}
+
+const createTtlCache = <T>(ttl: number): TtlCache<T> => {
+  let cache: T | null = null
+  let expiry = 0
+
+  return {
+    get: () => {
+      if (cache && Date.now() < expiry) return cache
+      return null
+    },
+    set: (value: T) => {
+      cache = value
+      expiry = Date.now() + ttl
+    },
+  }
+}
+
+// Caches using factory pattern
+const jwksCache = createTtlCache<jose.JWTVerifyGetKey>(CACHE_TTL.JWKS)
+const adminUidsCache = createTtlCache<string[]>(CACHE_TTL.ADMIN_UIDS)
 
 /**
  * Get JWKS from Keycloak (with caching)
  */
 async function getJwks(): Promise<jose.JWTVerifyGetKey> {
-  const now = Date.now()
-  if (jwksCache && now < jwksCacheExpiry) {
-    return jwksCache
-  }
+  const cached = jwksCache.get()
+  if (cached) return cached
 
   const jwksUrl = `${OIDC_ISSUER_URL}/protocol/openid-connect/certs`
-  jwksCache = jose.createRemoteJWKSet(new URL(jwksUrl))
-  jwksCacheExpiry = now + JWKS_CACHE_TTL
+  const jwks = jose.createRemoteJWKSet(new URL(jwksUrl))
+  jwksCache.set(jwks)
 
-  return jwksCache
+  return jwks
 }
 
 /**
  * Load admin UIDs from file (with caching)
  */
 async function getAdminUids(): Promise<string[]> {
-  const now = Date.now()
-  if (adminUidsCache.length > 0 && now < adminUidsCacheExpiry) {
-    return adminUidsCache
-  }
+  const cached = adminUidsCache.get()
+  if (cached) return cached
 
+  let uids: string[] = []
   try {
     const content = await fs.readFile(ADMIN_UID_FILE, "utf-8")
     const parsed = JSON.parse(content)
     if (Array.isArray(parsed)) {
-      adminUidsCache = parsed.filter((uid): uid is string => typeof uid === "string")
+      uids = parsed.filter((uid): uid is string => typeof uid === "string")
     } else {
       console.warn("admin_uids.json is not an array, using empty list")
-      adminUidsCache = []
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       // File doesn't exist, use empty list (no admins)
       console.warn(`Admin UID file not found: ${ADMIN_UID_FILE}`)
-      adminUidsCache = []
     } else {
       console.error("Error loading admin UIDs:", error)
-      adminUidsCache = []
     }
   }
 
-  adminUidsCacheExpiry = now + ADMIN_UIDS_CACHE_TTL
-  return adminUidsCache
+  adminUidsCache.set(uids)
+  return uids
 }
 
 /**

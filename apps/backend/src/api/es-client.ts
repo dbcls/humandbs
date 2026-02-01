@@ -50,6 +50,36 @@ const createEsClient = () => {
 
 const esClient = createEsClient()
 
+// === Optimistic Lock Helper ===
+
+/**
+ * Check if an error is an ES version conflict (409)
+ */
+export const isConflictError = (error: unknown): boolean => {
+  if (error && typeof error === "object" && "meta" in error) {
+    const esError = error as { meta?: { statusCode?: number } }
+    return esError.meta?.statusCode === 409
+  }
+  return false
+}
+
+/**
+ * Execute an ES update operation with optimistic locking
+ * Returns null on conflict, throws on other errors
+ */
+export const withOptimisticLock = async <T>(
+  operation: () => Promise<T>,
+): Promise<T | null> => {
+  try {
+    return await operation()
+  } catch (error: unknown) {
+    if (isConflictError(error)) {
+      return null
+    }
+    throw error
+  }
+}
+
 // === Authorization Filters ===
 
 /**
@@ -365,8 +395,75 @@ export const listDatasetVersions = async (
 const splitComma = (s: string | undefined): string[] =>
   s ? s.split(",").map(v => v.trim()).filter(Boolean) : []
 
-const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQuery): estypes.QueryDslQueryContainer[] => {
-  const must: estypes.QueryDslQueryContainer[] = []
+// === Filter Definitions (Table-Driven) ===
+
+const NESTED_TERMS_FILTERS: { param: string; field: string }[] = [
+  { param: "assayType", field: "experiments.searchable.assayType" },
+  { param: "tissue", field: "experiments.searchable.tissues" },
+  { param: "population", field: "experiments.searchable.population" },
+  { param: "fileType", field: "experiments.searchable.fileTypes" },
+  { param: "healthStatus", field: "experiments.searchable.healthStatus" },
+  { param: "subjectCountType", field: "experiments.searchable.subjectCountType" },
+  { param: "sex", field: "experiments.searchable.sex" },
+  { param: "ageGroup", field: "experiments.searchable.ageGroup" },
+  { param: "libraryKits", field: "experiments.searchable.libraryKits" },
+  { param: "platformModel", field: "experiments.searchable.platformModel" },
+  { param: "readType", field: "experiments.searchable.readType" },
+  { param: "referenceGenome", field: "experiments.searchable.referenceGenome" },
+  { param: "processedDataTypes", field: "experiments.searchable.processedDataTypes" },
+  { param: "cellLine", field: "experiments.searchable.cellLine" },
+]
+
+const NESTED_RANGE_FILTERS: { minParam: string; maxParam: string; field: string }[] = [
+  { minParam: "minSubjects", maxParam: "maxSubjects", field: "experiments.searchable.subjectCount" },
+  { minParam: "minReadLength", maxParam: "maxReadLength", field: "experiments.searchable.readLength" },
+  { minParam: "minSequencingDepth", maxParam: "maxSequencingDepth", field: "experiments.searchable.sequencingDepth" },
+  { minParam: "minTargetCoverage", maxParam: "maxTargetCoverage", field: "experiments.searchable.targetCoverage" },
+  { minParam: "minDataVolumeGb", maxParam: "maxDataVolumeGb", field: "experiments.searchable.dataVolumeGb" },
+  { minParam: "minVariantSnv", maxParam: "maxVariantSnv", field: "experiments.searchable.variantCounts.snv" },
+  { minParam: "minVariantIndel", maxParam: "maxVariantIndel", field: "experiments.searchable.variantCounts.indel" },
+  { minParam: "minVariantCnv", maxParam: "maxVariantCnv", field: "experiments.searchable.variantCounts.cnv" },
+  { minParam: "minVariantSv", maxParam: "maxVariantSv", field: "experiments.searchable.variantCounts.sv" },
+  { minParam: "minVariantTotal", maxParam: "maxVariantTotal", field: "experiments.searchable.variantCounts.total" },
+]
+
+type QueryContainer = estypes.QueryDslQueryContainer
+type FilterParams = Record<string, unknown>
+
+const buildNestedTermsFilters = (params: FilterParams): QueryContainer[] => {
+  const clauses: QueryContainer[] = []
+  for (const { param, field } of NESTED_TERMS_FILTERS) {
+    const value = params[param]
+    if (typeof value === "string" && value) {
+      const values = splitComma(value)
+      if (values.length > 0) {
+        clauses.push(nestedTermsQuery("experiments", field, values))
+      }
+    }
+  }
+  return clauses
+}
+
+const buildNestedRangeFilters = (params: FilterParams): QueryContainer[] => {
+  const clauses: QueryContainer[] = []
+  for (const { minParam, maxParam, field } of NESTED_RANGE_FILTERS) {
+    const minVal = params[minParam]
+    const maxVal = params[maxParam]
+    if (minVal !== undefined && minVal !== null) {
+      clauses.push(nestedRangeQuery("experiments", field, { gte: minVal as number }))
+    }
+    if (maxVal !== undefined && maxVal !== null) {
+      clauses.push(nestedRangeQuery("experiments", field, { lte: maxVal as number }))
+    }
+  }
+  return clauses
+}
+
+const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQuery): QueryContainer[] => {
+  const must: QueryContainer[] = []
+  const p = params as FilterParams
+
+  // === Top-level filters ===
 
   // humId filter (Dataset only)
   if ("humId" in params && params.humId) {
@@ -379,7 +476,7 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
     must.push({ terms: { criteria: criteriaValues } })
   }
 
-  // typeOfData filter (partial match, Dataset only)
+  // typeOfData filter (partial match, bilingual wildcard)
   if ("typeOfData" in params && params.typeOfData) {
     must.push({
       bool: {
@@ -392,13 +489,60 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
     })
   }
 
-  // assayType filter (comma-separated for OR)
-  const assayTypes = splitComma(params.assayType)
-  if (assayTypes.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.searchable.assayType", assayTypes))
+  // releaseDate range (top-level)
+  if ("minReleaseDate" in params && params.minReleaseDate) {
+    must.push({ range: { releaseDate: { gte: params.minReleaseDate } } })
+  }
+  if ("maxReleaseDate" in params && params.maxReleaseDate) {
+    must.push({ range: { releaseDate: { lte: params.maxReleaseDate } } })
   }
 
-  // disease filter (partial match on label)
+  // === Nested terms filters (table-driven) ===
+  must.push(...buildNestedTermsFilters(p))
+
+  // === Nested range filters (table-driven) ===
+  must.push(...buildNestedRangeFilters(p))
+
+  // === Nested boolean filters ===
+
+  // isTumor / hasTumor
+  if (params.hasTumor !== undefined) {
+    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.hasTumor))
+  }
+  if ("isTumor" in params && params.isTumor !== undefined) {
+    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.isTumor))
+  }
+
+  // hasPhenotypeData
+  if ("hasPhenotypeData" in params && params.hasPhenotypeData !== undefined) {
+    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.hasPhenotypeData", params.hasPhenotypeData))
+  }
+
+  // === Nested wildcard filters ===
+
+  // platform (partial match on vendor)
+  if (params.platform) {
+    must.push(nestedWildcardQuery("experiments", "experiments.searchable.platformVendor", params.platform))
+  }
+
+  // === Nested exists filters ===
+
+  // hasCellLine (legacy, checks existence)
+  if (params.hasCellLine !== undefined && params.hasCellLine) {
+    must.push(nestedExistsQuery("experiments", "experiments.searchable.cellLine"))
+  }
+
+  // === Legacy filters ===
+
+  // hasHealthyControl (converts to healthStatus values)
+  if (params.hasHealthyControl !== undefined) {
+    const healthStatusValues = params.hasHealthyControl ? ["healthy", "mixed"] : ["affected"]
+    must.push(nestedTermsQuery("experiments", "experiments.searchable.healthStatus", healthStatusValues))
+  }
+
+  // === Double-nested filters ===
+
+  // disease (partial match on label)
   if (params.disease) {
     must.push(doubleNestedWildcardQuery(
       "experiments",
@@ -408,11 +552,10 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
     ))
   }
 
-  // diseaseIcd10 filter (comma-separated for OR, prefix match)
+  // diseaseIcd10 (prefix match)
   if ("diseaseIcd10" in params && params.diseaseIcd10) {
     const icd10Codes = splitComma(params.diseaseIcd10)
     if (icd10Codes.length > 0) {
-      // Use prefix matching for ICD-10 codes (e.g., "C" matches "C34", "C50", etc.)
       const icd10Should = icd10Codes.map(code => ({
         nested: {
           path: "experiments",
@@ -430,134 +573,7 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
     }
   }
 
-  // tissue filter (comma-separated for OR)
-  const tissues = splitComma(params.tissue)
-  if (tissues.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.searchable.tissues", tissues))
-  }
-
-  // population filter (comma-separated for OR)
-  const populations = splitComma(params.population)
-  if (populations.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.searchable.population", populations))
-  }
-
-  // platform filter (partial match on vendor)
-  if (params.platform) {
-    must.push(nestedWildcardQuery("experiments", "experiments.searchable.platformVendor", params.platform))
-  }
-
-  // fileType filter (comma-separated for OR)
-  const fileTypes = splitComma(params.fileType)
-  if (fileTypes.length > 0) {
-    must.push(nestedTermsQuery("experiments", "experiments.searchable.fileTypes", fileTypes))
-  }
-
-  // healthStatus filter (comma-separated for OR, direct value)
-  if ("healthStatus" in params && params.healthStatus) {
-    const healthStatusValues = splitComma(params.healthStatus)
-    if (healthStatusValues.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.healthStatus", healthStatusValues))
-    }
-  }
-
-  // Legacy hasHealthyControl filter (boolean)
-  if (params.hasHealthyControl !== undefined) {
-    const healthStatusValues = params.hasHealthyControl ? ["healthy", "mixed"] : ["affected"]
-    must.push(nestedTermsQuery("experiments", "experiments.searchable.healthStatus", healthStatusValues))
-  }
-
-  // isTumor / hasTumor filter
-  if (params.hasTumor !== undefined) {
-    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.hasTumor))
-  }
-  if ("isTumor" in params && params.isTumor !== undefined) {
-    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.isTumor))
-  }
-
-  // cellLine filter (exact match)
-  if ("cellLine" in params && params.cellLine) {
-    const cellLineValues = splitComma(params.cellLine)
-    if (cellLineValues.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.cellLine", cellLineValues))
-    }
-  }
-
-  // Legacy hasCellLine filter (boolean, checks existence)
-  if (params.hasCellLine !== undefined && params.hasCellLine) {
-    must.push(nestedExistsQuery("experiments", "experiments.searchable.cellLine"))
-  }
-
-  // subjectCountType filter (comma-separated for OR)
-  if ("subjectCountType" in params && params.subjectCountType) {
-    const types = splitComma(params.subjectCountType)
-    if (types.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.subjectCountType", types))
-    }
-  }
-
-  // sex filter (comma-separated for OR)
-  if ("sex" in params && params.sex) {
-    const sexValues = splitComma(params.sex)
-    if (sexValues.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.sex", sexValues))
-    }
-  }
-
-  // ageGroup filter (comma-separated for OR)
-  if ("ageGroup" in params && params.ageGroup) {
-    const ageGroups = splitComma(params.ageGroup)
-    if (ageGroups.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.ageGroup", ageGroups))
-    }
-  }
-
-  // libraryKits filter (comma-separated for OR)
-  if ("libraryKits" in params && params.libraryKits) {
-    const kits = splitComma(params.libraryKits)
-    if (kits.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.libraryKits", kits))
-    }
-  }
-
-  // platformModel filter (comma-separated for OR)
-  if ("platformModel" in params && params.platformModel) {
-    const models = splitComma(params.platformModel)
-    if (models.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.platformModel", models))
-    }
-  }
-
-  // readType filter (comma-separated for OR)
-  if ("readType" in params && params.readType) {
-    const readTypes = splitComma(params.readType)
-    if (readTypes.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.readType", readTypes))
-    }
-  }
-
-  // referenceGenome filter (comma-separated for OR)
-  if ("referenceGenome" in params && params.referenceGenome) {
-    const genomes = splitComma(params.referenceGenome)
-    if (genomes.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.referenceGenome", genomes))
-    }
-  }
-
-  // processedDataTypes filter (comma-separated for OR)
-  if ("processedDataTypes" in params && params.processedDataTypes) {
-    const types = splitComma(params.processedDataTypes)
-    if (types.length > 0) {
-      must.push(nestedTermsQuery("experiments", "experiments.searchable.processedDataTypes", types))
-    }
-  }
-
-  // hasPhenotypeData filter (boolean)
-  if ("hasPhenotypeData" in params && params.hasPhenotypeData !== undefined) {
-    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.hasPhenotypeData", params.hasPhenotypeData))
-  }
-
-  // policyId filter (comma-separated for OR)
+  // policyId (double-nested terms)
   if ("policyId" in params && params.policyId) {
     const policyIds = splitComma(params.policyId)
     if (policyIds.length > 0) {
@@ -568,88 +584,6 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
         policyIds,
       ))
     }
-  }
-
-  // === Range filters ===
-
-  // releaseDate range (top-level field)
-  if ("minReleaseDate" in params && params.minReleaseDate) {
-    must.push({ range: { releaseDate: { gte: params.minReleaseDate } } })
-  }
-  if ("maxReleaseDate" in params && params.maxReleaseDate) {
-    must.push({ range: { releaseDate: { lte: params.maxReleaseDate } } })
-  }
-
-  // subjectCount range
-  if (params.minSubjects !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.subjectCount", { gte: params.minSubjects }))
-  }
-  if ("maxSubjects" in params && params.maxSubjects !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.subjectCount", { lte: params.maxSubjects }))
-  }
-
-  // readLength range
-  if ("minReadLength" in params && params.minReadLength !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.readLength", { gte: params.minReadLength }))
-  }
-  if ("maxReadLength" in params && params.maxReadLength !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.readLength", { lte: params.maxReadLength }))
-  }
-
-  // sequencingDepth range
-  if ("minSequencingDepth" in params && params.minSequencingDepth !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.sequencingDepth", { gte: params.minSequencingDepth }))
-  }
-  if ("maxSequencingDepth" in params && params.maxSequencingDepth !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.sequencingDepth", { lte: params.maxSequencingDepth }))
-  }
-
-  // targetCoverage range
-  if ("minTargetCoverage" in params && params.minTargetCoverage !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.targetCoverage", { gte: params.minTargetCoverage }))
-  }
-  if ("maxTargetCoverage" in params && params.maxTargetCoverage !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.targetCoverage", { lte: params.maxTargetCoverage }))
-  }
-
-  // dataVolumeGb range
-  if ("minDataVolumeGb" in params && params.minDataVolumeGb !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.dataVolumeGb", { gte: params.minDataVolumeGb }))
-  }
-  if ("maxDataVolumeGb" in params && params.maxDataVolumeGb !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.dataVolumeGb", { lte: params.maxDataVolumeGb }))
-  }
-
-  // variantCounts range filters
-  if ("minVariantSnv" in params && params.minVariantSnv !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.snv", { gte: params.minVariantSnv }))
-  }
-  if ("maxVariantSnv" in params && params.maxVariantSnv !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.snv", { lte: params.maxVariantSnv }))
-  }
-  if ("minVariantIndel" in params && params.minVariantIndel !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.indel", { gte: params.minVariantIndel }))
-  }
-  if ("maxVariantIndel" in params && params.maxVariantIndel !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.indel", { lte: params.maxVariantIndel }))
-  }
-  if ("minVariantCnv" in params && params.minVariantCnv !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.cnv", { gte: params.minVariantCnv }))
-  }
-  if ("maxVariantCnv" in params && params.maxVariantCnv !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.cnv", { lte: params.maxVariantCnv }))
-  }
-  if ("minVariantSv" in params && params.minVariantSv !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.sv", { gte: params.minVariantSv }))
-  }
-  if ("maxVariantSv" in params && params.maxVariantSv !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.sv", { lte: params.maxVariantSv }))
-  }
-  if ("minVariantTotal" in params && params.minVariantTotal !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.total", { gte: params.minVariantTotal }))
-  }
-  if ("maxVariantTotal" in params && params.maxVariantTotal !== undefined) {
-    must.push(nestedRangeQuery("experiments", "experiments.searchable.variantCounts.total", { lte: params.maxVariantTotal }))
   }
 
   return must

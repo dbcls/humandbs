@@ -1,8 +1,11 @@
 import { swaggerUI } from "@hono/swagger-ui"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { cors } from "hono/cors"
+import { HTTPException } from "hono/http-exception"
 import { logger } from "hono/logger"
 
+import { ERROR_MESSAGES } from "@/api/constants"
+import { isConflictError } from "@/api/es-client"
 import { adminRouter } from "@/api/routes/admin"
 import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
@@ -95,6 +98,33 @@ Only admins can approve/reject submissions and unpublish content.
   app.get(docsPath, swaggerUI({
     url: openApiJsonPath,
   }))
+
+  // Global error handler
+  app.onError((err, c) => {
+    console.error("Unhandled error:", err)
+
+    // Handle HTTPException from Hono
+    if (err instanceof HTTPException) {
+      return c.json(
+        { error: err.message, message: err.cause ? String(err.cause) : null },
+        err.status,
+      )
+    }
+
+    // Handle ES version conflict (409)
+    if (isConflictError(err)) {
+      return c.json(
+        { error: "Conflict", message: ERROR_MESSAGES.CONFLICT },
+        409,
+      )
+    }
+
+    // Default to 500 Internal Server Error
+    return c.json(
+      { error: ERROR_MESSAGES.INTERNAL_ERROR, message: String(err) },
+      500,
+    )
+  })
 
   return app
 }

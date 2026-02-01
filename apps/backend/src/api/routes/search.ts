@@ -24,6 +24,44 @@ import type { DatasetSearchBody, DatasetSearchQuery, ResearchSearchBody, Researc
 
 // === Helper: Convert POST body to GET query format ===
 
+// Table-driven conversion for array fields (POST arrays -> GET comma-separated)
+const ARRAY_FIELD_MAPPINGS: { from: string; to: string }[] = [
+  { from: "criteria", to: "criteria" },
+  { from: "subjectCountType", to: "subjectCountType" },
+  { from: "healthStatus", to: "healthStatus" },
+  { from: "diseaseIcd10", to: "diseaseIcd10" },
+  { from: "tissue", to: "tissue" },
+  { from: "cellLine", to: "cellLine" },
+  { from: "population", to: "population" },
+  { from: "sex", to: "sex" },
+  { from: "ageGroup", to: "ageGroup" },
+  { from: "assayType", to: "assayType" },
+  { from: "libraryKits", to: "libraryKits" },
+  { from: "platformModel", to: "platformModel" },
+  { from: "readType", to: "readType" },
+  { from: "referenceGenome", to: "referenceGenome" },
+  { from: "fileType", to: "fileType" },
+  { from: "processedDataTypes", to: "processedDataTypes" },
+  { from: "policyId", to: "policyId" },
+]
+
+// Table-driven conversion for range fields
+const RANGE_FIELD_MAPPINGS: { from: string; minTo: string; maxTo: string }[] = [
+  { from: "releaseDate", minTo: "minReleaseDate", maxTo: "maxReleaseDate" },
+  { from: "subjectCount", minTo: "minSubjects", maxTo: "maxSubjects" },
+  { from: "readLength", minTo: "minReadLength", maxTo: "maxReadLength" },
+  { from: "sequencingDepth", minTo: "minSequencingDepth", maxTo: "maxSequencingDepth" },
+  { from: "targetCoverage", minTo: "minTargetCoverage", maxTo: "maxTargetCoverage" },
+  { from: "dataVolumeGb", minTo: "minDataVolumeGb", maxTo: "maxDataVolumeGb" },
+  { from: "variantSnv", minTo: "minVariantSnv", maxTo: "maxVariantSnv" },
+  { from: "variantIndel", minTo: "minVariantIndel", maxTo: "maxVariantIndel" },
+  { from: "variantCnv", minTo: "minVariantCnv", maxTo: "maxVariantCnv" },
+  { from: "variantSv", minTo: "minVariantSv", maxTo: "maxVariantSv" },
+  { from: "variantTotal", minTo: "minVariantTotal", maxTo: "maxVariantTotal" },
+]
+
+interface RangeValue { min?: string | number; max?: string | number }
+
 /**
  * Convert DatasetFilters (POST format) to query params (GET format)
  * POST uses arrays, GET uses comma-separated strings
@@ -31,56 +69,37 @@ import type { DatasetSearchBody, DatasetSearchQuery, ResearchSearchBody, Researc
 const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Partial<DatasetSearchQuery> => {
   if (!filters) return {}
 
-  const query: Partial<DatasetSearchQuery> = {}
+  const query: Record<string, unknown> = {}
+  const f = filters as Record<string, unknown>
 
-  // Array to comma-separated string
-  if (filters.criteria) query.criteria = filters.criteria.join(",")
-  if (filters.subjectCountType) query.subjectCountType = filters.subjectCountType.join(",")
-  if (filters.healthStatus) query.healthStatus = filters.healthStatus.join(",")
+  // Convert array fields to comma-separated strings
+  for (const { from, to } of ARRAY_FIELD_MAPPINGS) {
+    const value = f[from]
+    if (Array.isArray(value) && value.length > 0) {
+      query[to] = value.join(",")
+    }
+  }
+
+  // Convert range fields
+  for (const { from, minTo, maxTo } of RANGE_FIELD_MAPPINGS) {
+    const range = f[from] as RangeValue | undefined
+    if (range?.min !== undefined) {
+      query[minTo] = typeof range.min === "string" ? range.min : Number(range.min)
+    }
+    if (range?.max !== undefined) {
+      query[maxTo] = typeof range.max === "string" ? range.max : Number(range.max)
+    }
+  }
+
+  // Direct string fields
   if (filters.disease) query.disease = filters.disease
-  if (filters.diseaseIcd10) query.diseaseIcd10 = filters.diseaseIcd10.join(",")
-  if (filters.tissue) query.tissue = filters.tissue.join(",")
-  if (filters.isTumor !== undefined) query.isTumor = filters.isTumor
-  if (filters.cellLine) query.cellLine = filters.cellLine.join(",")
-  if (filters.population) query.population = filters.population.join(",")
-  if (filters.sex) query.sex = filters.sex.join(",")
-  if (filters.ageGroup) query.ageGroup = filters.ageGroup.join(",")
-  if (filters.assayType) query.assayType = filters.assayType.join(",")
-  if (filters.libraryKits) query.libraryKits = filters.libraryKits.join(",")
   if (filters.platformVendor) query.platform = filters.platformVendor
-  if (filters.platformModel) query.platformModel = filters.platformModel.join(",")
-  if (filters.readType) query.readType = filters.readType.join(",")
-  if (filters.referenceGenome) query.referenceGenome = filters.referenceGenome.join(",")
-  if (filters.fileType) query.fileType = filters.fileType.join(",")
-  if (filters.processedDataTypes) query.processedDataTypes = filters.processedDataTypes.join(",")
+
+  // Boolean fields
+  if (filters.isTumor !== undefined) query.isTumor = filters.isTumor
   if (filters.hasPhenotypeData !== undefined) query.hasPhenotypeData = filters.hasPhenotypeData
-  if (filters.policyId) query.policyId = filters.policyId.join(",")
 
-  // Range filters
-  if (filters.releaseDate?.min) query.minReleaseDate = String(filters.releaseDate.min)
-  if (filters.releaseDate?.max) query.maxReleaseDate = String(filters.releaseDate.max)
-  if (filters.subjectCount?.min !== undefined) query.minSubjects = Number(filters.subjectCount.min)
-  if (filters.subjectCount?.max !== undefined) query.maxSubjects = Number(filters.subjectCount.max)
-  if (filters.readLength?.min !== undefined) query.minReadLength = Number(filters.readLength.min)
-  if (filters.readLength?.max !== undefined) query.maxReadLength = Number(filters.readLength.max)
-  if (filters.sequencingDepth?.min !== undefined) query.minSequencingDepth = Number(filters.sequencingDepth.min)
-  if (filters.sequencingDepth?.max !== undefined) query.maxSequencingDepth = Number(filters.sequencingDepth.max)
-  if (filters.targetCoverage?.min !== undefined) query.minTargetCoverage = Number(filters.targetCoverage.min)
-  if (filters.targetCoverage?.max !== undefined) query.maxTargetCoverage = Number(filters.targetCoverage.max)
-  if (filters.dataVolumeGb?.min !== undefined) query.minDataVolumeGb = Number(filters.dataVolumeGb.min)
-  if (filters.dataVolumeGb?.max !== undefined) query.maxDataVolumeGb = Number(filters.dataVolumeGb.max)
-  if (filters.variantSnv?.min !== undefined) query.minVariantSnv = Number(filters.variantSnv.min)
-  if (filters.variantSnv?.max !== undefined) query.maxVariantSnv = Number(filters.variantSnv.max)
-  if (filters.variantIndel?.min !== undefined) query.minVariantIndel = Number(filters.variantIndel.min)
-  if (filters.variantIndel?.max !== undefined) query.maxVariantIndel = Number(filters.variantIndel.max)
-  if (filters.variantCnv?.min !== undefined) query.minVariantCnv = Number(filters.variantCnv.min)
-  if (filters.variantCnv?.max !== undefined) query.maxVariantCnv = Number(filters.variantCnv.max)
-  if (filters.variantSv?.min !== undefined) query.minVariantSv = Number(filters.variantSv.min)
-  if (filters.variantSv?.max !== undefined) query.maxVariantSv = Number(filters.variantSv.max)
-  if (filters.variantTotal?.min !== undefined) query.minVariantTotal = Number(filters.variantTotal.min)
-  if (filters.variantTotal?.max !== undefined) query.maxVariantTotal = Number(filters.variantTotal.max)
-
-  return query
+  return query as Partial<DatasetSearchQuery>
 }
 
 /**

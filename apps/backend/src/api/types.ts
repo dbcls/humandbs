@@ -73,6 +73,7 @@ const CriteriaCanonicalSchema = z.enum([
 
 // === Complex type schemas ===
 
+// Unified Person schema (used for both API requests and ES documents)
 const PersonSchema = z.object({
   name: BilingualTextValueSchema,
   email: z.string().nullable().optional(),
@@ -88,23 +89,33 @@ const PersonSchema = z.object({
   periodOfDataUse: PeriodOfDataUseSchema.nullable().optional(),
 })
 
+// Alias for ES documents (same structure)
+const EsPersonSchema = PersonSchema
+
+// Unified ResearchProject schema
 const ResearchProjectSchema = z.object({
   name: BilingualTextValueSchema,
   url: BilingualUrlValueSchema.nullable().optional(),
 })
+const EsResearchProjectSchema = ResearchProjectSchema
 
+// Unified Grant schema
 const GrantSchema = z.object({
   id: z.array(z.string()),
   title: BilingualTextSchema,
   agency: z.object({ name: BilingualTextSchema }),
 })
+const EsGrantSchema = GrantSchema
 
+// Unified Publication schema
 const PublicationSchema = z.object({
   title: BilingualTextSchema,
   doi: z.string().nullable().optional(),
   datasetIds: z.array(z.string()).optional(),
 })
+const EsPublicationSchema = PublicationSchema
 
+// Unified Summary schema
 const SummarySchema = z.object({
   aims: BilingualTextValueSchema,
   methods: BilingualTextValueSchema,
@@ -118,8 +129,10 @@ const SummarySchema = z.object({
     en: z.array(TextValueSchema),
   }),
 })
+const EsSummarySchema = SummarySchema
 
-const ExperimentSchema = z.object({
+// Unified Experiment schema (base, without searchable)
+const ExperimentSchemaBase = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
   footers: z.object({
@@ -127,6 +140,7 @@ const ExperimentSchema = z.object({
     en: z.array(TextValueSchema),
   }),
 })
+const ExperimentSchema = ExperimentSchemaBase
 
 // Dataset schema matching crawler unified.ts (for API responses)
 const DatasetSchema = z.object({
@@ -157,14 +171,8 @@ export const DatasetRefSchema = z.object({
 })
 export type DatasetRef = z.infer<typeof DatasetRefSchema>
 
-// Experiment (BilingualText format)
-const EsExperimentSchema = z.object({
-  header: BilingualTextValueSchema,
-  data: z.record(z.string(), BilingualTextValueSchema.nullable()),
-  footers: z.object({
-    ja: z.array(TextValueSchema),
-    en: z.array(TextValueSchema),
-  }),
+// ES Experiment extends base with searchable field
+const EsExperimentSchema = ExperimentSchemaBase.extend({
   searchable: z.unknown().optional(), // SearchableExperimentFields
 })
 
@@ -192,59 +200,6 @@ export const EsResearchVersionDocSchema = z.object({
   releaseNote: BilingualTextValueSchema,
 })
 export type EsResearchVersionDoc = z.infer<typeof EsResearchVersionDocSchema>
-
-// Person (BilingualText format)
-const EsPersonSchema = z.object({
-  name: BilingualTextValueSchema,
-  email: z.string().nullable().optional(),
-  orcid: z.string().nullable().optional(),
-  organization: z.object({
-    name: BilingualTextValueSchema,
-    address: z.object({
-      country: z.string().nullable().optional(),
-    }).nullable().optional(),
-  }).nullable().optional(),
-  datasetIds: z.array(z.string()).optional(),
-  researchTitle: BilingualTextSchema.optional(),
-  periodOfDataUse: PeriodOfDataUseSchema.nullable().optional(),
-})
-
-// Research project (BilingualText format)
-const EsResearchProjectSchema = z.object({
-  name: BilingualTextValueSchema,
-  url: BilingualUrlValueSchema.nullable().optional(),
-})
-
-// Grant (BilingualText format)
-const EsGrantSchema = z.object({
-  id: z.array(z.string()),
-  title: BilingualTextSchema,
-  agency: z.object({
-    name: BilingualTextSchema,
-  }),
-})
-
-// Publication (BilingualText format)
-const EsPublicationSchema = z.object({
-  title: BilingualTextSchema,
-  doi: z.string().nullable().optional(),
-  datasetIds: z.array(z.string()).optional(),
-})
-
-// Summary (BilingualText format)
-const EsSummarySchema = z.object({
-  aims: BilingualTextValueSchema,
-  methods: BilingualTextValueSchema,
-  targets: BilingualTextValueSchema,
-  url: z.object({
-    ja: z.array(UrlValueSchema),
-    en: z.array(UrlValueSchema),
-  }),
-  footers: z.object({
-    ja: z.array(TextValueSchema),
-    en: z.array(TextValueSchema),
-  }),
-})
 
 // Research document
 export const EsResearchDocSchema = z.object({
