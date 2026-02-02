@@ -113,7 +113,7 @@ export function Navbar() {
           <div className="flex items-center gap-1 md:gap-2">
             <ShoppingCartButton />
 
-            <span className="hidden text-xs sm:inline">{user.name}</span>
+            <span className="mx-4 hidden text-xs sm:inline">{user.name}</span>
             <form method="post" action={"/auth/logout"}>
               <Button type="submit">Logout</Button>
             </form>
