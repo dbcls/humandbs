@@ -2,6 +2,24 @@
 
 HumanDBs メタデータを編集するためのガイド。
 
+## どの TSV をいつ編集するか
+
+| 目的 | 編集するファイル | 説明 |
+|------|-----------------|------|
+| 研究タイトルの修正 | `research.tsv` | タイトルの翻訳漏れ、誤字修正 |
+| 研究概要の修正 | `research-summary.tsv` | 目的・方法・対象の翻訳漏れ、誤字修正 |
+| 提供者情報の分離 | `research-data-provider.tsv` | 複数人が詰め込まれた行を分離 |
+| 実験メタデータの修正 | `experiment.tsv` | **最も重要**。searchable フィールドの修正 |
+| LLM 抽出エラーの修正 | `experiment.tsv` | 疾患名、組織名、アッセイ種別等の誤抽出修正 |
+| 手動でのメタデータ追加 | `experiment.tsv` | LLM が抽出できなかった情報を補完 |
+
+### 典型的な編集フロー
+
+1. **LLM 抽出結果の確認**: `experiment-latest.tsv` で最新版のみを確認
+2. **エラーの修正**: `experiment.tsv` で該当行を修正
+3. **TSV インポート**: `bun run crawler:import-tsv` で JSON に反映
+4. **ES 再ロード**: `bun run es:load-docs` で検索に反映
+
 ## ファイル一覧
 
 TSV ファイルは `crawler-results/tsv/` にある。
@@ -310,8 +328,27 @@ Molecular Data テーブル
 | `searchable_dataVolume` | データ容量（例: `123.45 GB`） | |
 | `comment` | メモ | |
 
-※ `searchable_*` フィールドは LLM による抽出 + ルールベースの正規化で生成される。
+※ `searchable_*` フィールドは LLM による抽出 + ルールベースの正規化で生成される。詳細は [LLM フィールド抽出](./llm-extract-design.md) を参照。
 ※ `-latest.tsv` は各研究の最新バージョンの experiment のみを出力するエクスポート専用ファイル。
+
+### searchable フィールドの詳細
+
+`searchable_*` フィールドはファセット検索に使用される重要なフィールド。
+
+| フィールド | 用途 | 値の例 | 編集のコツ |
+|-----------|------|--------|-----------|
+| `searchable_diseases` | 疾患名フィルタ | `["lung cancer(C34)"]` | `ラベル(ICD10)` 形式。ICD10 は省略可 |
+| `searchable_tissues` | 組織フィルタ | `["peripheral blood","skin"]` | 英語で記載。正規化は facet-normalize で |
+| `searchable_assayType` | 実験手法フィルタ | `["WGS","RNA-seq"]` | 表記揺れは facet-normalize で統一 |
+| `searchable_subjectCount` | 被験者数範囲検索 | `100` | 数値のみ。複数グループは合算 |
+| `searchable_healthStatus` | 健康状態フィルタ | `affected` | healthy/affected/mixed のいずれか |
+| `searchable_platforms` | プラットフォームフィルタ | `["Illumina NovaSeq 6000"]` | `ベンダー モデル` 形式 |
+
+**編集の注意点**:
+
+- **LLM が抽出できなかった情報**: 手動で追加可能
+- **LLM の誤抽出**: 修正後、import-tsv で反映
+- **正規化は不要**: 表記揺れは facet-normalize ステップで自動統一
 
 ## スプレッドシートでの編集
 
