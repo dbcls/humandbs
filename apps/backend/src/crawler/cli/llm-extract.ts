@@ -5,6 +5,7 @@
  * Updates structured-json in-place with searchable fields
  *
  * Idempotent: skips experiments that already have non-empty searchable fields (unless --force)
+ * Resume-friendly: each job writes its result immediately after completion
  */
 import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs"
 import { join } from "path"
@@ -19,7 +20,6 @@ import {
 } from "@/crawler/llm/extract"
 import type {
   EnrichedDataset,
-  Experiment,
   SearchableDataset,
   SearchableExperimentFields,
 } from "@/crawler/types"
@@ -33,15 +33,12 @@ import { logger } from "@/crawler/utils/logger"
 interface ExperimentJob {
   datasetFilename: string
   experimentIndex: number
-  experiment: Experiment
-  originalMetadata: Record<string, unknown> | null
+  retryCount: number
 }
 
-interface JobResult {
-  datasetFilename: string
-  experimentIndex: number
-  searchable: SearchableExperimentFields
-}
+// Constants
+
+const MAX_RETRIES = 3
 
 // I/O
 
@@ -63,6 +60,29 @@ const readDataset = (filename: string): EnrichedDataset | null => {
 const writeDataset = (filename: string, data: SearchableDataset): void => {
   const filePath = join(getStructuredDatasetDir(), filename)
   writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8")
+}
+
+// Dataset file lock to prevent concurrent writes
+const datasetLocks = new Map<string, Promise<void>>()
+
+const withDatasetLock = async <T>(filename: string, fn: () => Promise<T>): Promise<T> => {
+  // Wait for existing lock
+  const existing = datasetLocks.get(filename)
+  if (existing) {
+    await existing
+  }
+
+  // Create new lock
+  let resolve: () => void
+  const lock = new Promise<void>(r => { resolve = r })
+  datasetLocks.set(filename, lock)
+
+  try {
+    return await fn()
+  } finally {
+    resolve!()
+    datasetLocks.delete(filename)
+  }
 }
 
 // Dataset Processing
@@ -114,95 +134,124 @@ const filterLatestVersions = (files: string[]): string[] => {
 // Worker Pool
 
 /**
- * Run jobs in a worker pool with fixed concurrency
- * Returns results grouped by dataset filename
+ * Process a single job: extract fields and write result to file
+ * Returns true if successful, false if should retry
  */
-const runWorkerPool = async (
-  jobs: ExperimentJob[],
-  concurrency: number,
+const processJob = async (
+  job: ExperimentJob,
   dryRun: boolean,
-  ollamaConfig?: OllamaConfig,
-  onProgress?: (completed: number, total: number, failed: number) => void,
-): Promise<Map<string, JobResult[]>> => {
-  const results = new Map<string, JobResult[]>()
-  let completed = 0
-  let failed = 0
-  let jobIndex = 0
+  ollamaConfig: OllamaConfig,
+): Promise<boolean> => {
+  return withDatasetLock(job.datasetFilename, async () => {
+    // Read current dataset state
+    const dataset = readDataset(job.datasetFilename)
+    if (!dataset) {
+      logger.error("Failed to read dataset", { filename: job.datasetFilename })
+      return true // Don't retry, dataset is broken
+    }
 
-  const processJob = async (job: ExperimentJob): Promise<void> => {
+    const experiment = dataset.experiments[job.experimentIndex]
+    if (!experiment) {
+      logger.error("Experiment not found", { filename: job.datasetFilename, index: job.experimentIndex })
+      return true // Don't retry
+    }
+
     try {
       const llmSearchable = dryRun
         ? createEmptySearchableFields()
-        : await extractFieldsFromExperiment(job.experiment, job.originalMetadata, ollamaConfig)
+        : await extractFieldsFromExperiment(experiment, dataset.originalMetadata ?? null, ollamaConfig)
 
       // Preserve policies from structure step
-      const existingSearchable = job.experiment.searchable
+      const existingSearchable = experiment.searchable
       const searchable: SearchableExperimentFields = {
         ...llmSearchable,
         policies: existingSearchable?.policies ?? [],
       }
 
-      // Store result
-      const datasetResults = results.get(job.datasetFilename) ?? []
-      datasetResults.push({
-        datasetFilename: job.datasetFilename,
-        experimentIndex: job.experimentIndex,
+      // Update and write immediately
+      const updatedExperiments = [...dataset.experiments]
+      updatedExperiments[job.experimentIndex] = {
+        ...experiment,
         searchable,
-      })
-      results.set(job.datasetFilename, datasetResults)
+      }
+
+      const updatedDataset: SearchableDataset = {
+        ...dataset,
+        experiments: updatedExperiments,
+      }
+
+      if (!dryRun) {
+        writeDataset(job.datasetFilename, updatedDataset)
+      }
+
+      return true // Success
     } catch (error) {
-      logger.error("Failed to process experiment", {
-        datasetFilename: job.datasetFilename,
+      logger.warn("Job failed", {
+        filename: job.datasetFilename,
         experimentIndex: job.experimentIndex,
+        retryCount: job.retryCount,
         error: getErrorMessage(error),
       })
-
-      // Store empty result for failed job
-      const datasetResults = results.get(job.datasetFilename) ?? []
-      const existingSearchable = job.experiment.searchable
-      datasetResults.push({
-        datasetFilename: job.datasetFilename,
-        experimentIndex: job.experimentIndex,
-        searchable: {
-          ...createEmptySearchableFields(),
-          policies: existingSearchable?.policies ?? [],
-        },
-      })
-      results.set(job.datasetFilename, datasetResults)
-      failed++
+      return false // Should retry
     }
+  })
+}
 
-    completed++
-    onProgress?.(completed, jobs.length, failed)
+/**
+ * Run queue-based worker pool
+ * Each worker consumes jobs from the queue
+ * Failed jobs are re-queued immediately (no delay)
+ */
+const runWorkerPool = async (
+  initialJobs: ExperimentJob[],
+  concurrency: number,
+  dryRun: boolean,
+  ollamaConfig: OllamaConfig,
+  onProgress?: (completed: number, total: number, failed: number) => void,
+): Promise<{ completed: number; failed: number }> => {
+  const queue: ExperimentJob[] = [...initialJobs]
+  const totalJobs = initialJobs.length
+
+  let completed = 0
+  let failed = 0
+
+  const runWorker = async (): Promise<void> => {
+    while (true) {
+      const job = queue.shift()
+      if (!job) break // Queue is empty
+
+      const success = await processJob(job, dryRun, ollamaConfig)
+
+      if (success) {
+        completed++
+        onProgress?.(completed, totalJobs, failed)
+      } else {
+        // Retry: re-queue with incremented retry count
+        if (job.retryCount < MAX_RETRIES) {
+          queue.push({ ...job, retryCount: job.retryCount + 1 })
+        } else {
+          // Max retries reached, mark as failed
+          logger.error("Job failed after max retries", {
+            filename: job.datasetFilename,
+            experimentIndex: job.experimentIndex,
+          })
+          completed++
+          failed++
+          onProgress?.(completed, totalJobs, failed)
+        }
+      }
+    }
   }
 
-  // Start initial workers
+  // Start workers
   const workers: Promise<void>[] = []
-
-  const startNextJob = (): void => {
-    if (jobIndex < jobs.length) {
-      const job = jobs[jobIndex++]
-      const worker = processJob(job).then(() => {
-        // When done, start next job
-        startNextJob()
-      })
-      workers.push(worker)
-    }
+  for (let i = 0; i < concurrency; i++) {
+    workers.push(runWorker())
   }
 
-  // Start up to `concurrency` jobs initially
-  for (let i = 0; i < Math.min(concurrency, jobs.length); i++) {
-    startNextJob()
-  }
+  await Promise.all(workers)
 
-  // Wait for all jobs to complete
-  // Note: Promise.all(workers) only waits for initial promises,
-  // not those added later via startNextJob(). Poll until done.
-  while (completed < jobs.length) {
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-
-  return results
+  return { completed, failed }
 }
 
 // CLI
@@ -212,6 +261,7 @@ interface ExtractArgs {
   humId?: string[]
   datasetId?: string[]
   model?: string
+  timeout?: number
   concurrency?: number
   dryRun?: boolean
   force?: boolean
@@ -227,6 +277,7 @@ const parseArgs = (): ExtractArgs => {
       .option("hum-id", { alias: "i", type: "array", string: true, description: "Process datasets for specified humIds" })
       .option("dataset-id", { alias: "d", type: "array", string: true, description: "Process specific datasetIds" })
       .option("model", { alias: "m", type: "string", description: "Ollama model name (e.g. llama3.3:70b)" })
+      .option("timeout", { alias: "t", type: "number", description: "Request timeout in milliseconds (default: 300000)" })
       .option("concurrency", { alias: "c", type: "number", default: 16, description: "Concurrent LLM calls" })
       .option("dry-run", { type: "boolean", default: false, description: "Dry run without LLM calls" })
       .option("force", { type: "boolean", default: false, description: "Force reprocess all experiments" })
@@ -243,8 +294,9 @@ const main = async (): Promise<void> => {
   const ollamaConfig: OllamaConfig = {
     ...getOllamaConfig(),
     ...(args.model ? { model: args.model } : {}),
+    ...(args.timeout ? { timeout: args.timeout } : {}),
   }
-  logger.info("Ollama configuration", { api: ollamaConfig.baseUrl, model: ollamaConfig.model })
+  logger.info("Ollama configuration", { api: ollamaConfig.baseUrl, model: ollamaConfig.model, timeout: ollamaConfig.timeout })
 
   const dryRun = args.dryRun ?? false
   const concurrency = args.concurrency ?? 16
@@ -288,9 +340,8 @@ const main = async (): Promise<void> => {
     return
   }
 
-  // Collect jobs from all datasets
+  // Collect jobs: find experiments without searchable fields
   const jobs: ExperimentJob[] = []
-  const datasetCache = new Map<string, EnrichedDataset>()
 
   for (const filename of files) {
     const dataset = readDataset(filename)
@@ -298,7 +349,6 @@ const main = async (): Promise<void> => {
       logger.error("Failed to read dataset", { filename })
       continue
     }
-    datasetCache.set(filename, dataset)
 
     for (let i = 0; i < dataset.experiments.length; i++) {
       const exp = dataset.experiments[i]
@@ -308,8 +358,7 @@ const main = async (): Promise<void> => {
         jobs.push({
           datasetFilename: filename,
           experimentIndex: i,
-          experiment: exp,
-          originalMetadata: dataset.originalMetadata ?? null,
+          retryCount: 0,
         })
       }
     }
@@ -321,11 +370,11 @@ const main = async (): Promise<void> => {
   }
 
   const datasetCount = new Set(jobs.map(j => j.datasetFilename)).size
-  logger.info("Starting extraction", { datasetCount, experimentCount: jobs.length, concurrency })
+  logger.info("Starting extraction", { jobCount: jobs.length, datasetCount, concurrency })
 
   // Progress tracking
   let lastProgressLog = 0
-  const progressInterval = 100 // Log every 100 experiments
+  const progressInterval = 100
   const onProgress = (completed: number, total: number, failed: number): void => {
     if (completed - lastProgressLog >= progressInterval || completed === total) {
       const percent = Math.round((completed / total) * 100)
@@ -335,43 +384,11 @@ const main = async (): Promise<void> => {
   }
 
   // Run worker pool
-  const results = await runWorkerPool(jobs, concurrency, dryRun, ollamaConfig, onProgress)
-
-  // Apply results to datasets and save
-  let experimentsFailed = 0
-  for (const [filename, jobResults] of results.entries()) {
-    const dataset = datasetCache.get(filename)
-    if (!dataset) continue
-
-    // Create updated experiments array
-    const updatedExperiments = [...dataset.experiments]
-    for (const result of jobResults) {
-      updatedExperiments[result.experimentIndex] = {
-        ...updatedExperiments[result.experimentIndex],
-        searchable: result.searchable,
-      }
-      // Count failed extractions
-      if (isEmptySearchableFields(result.searchable)) {
-        experimentsFailed++
-      }
-    }
-
-    const finalResult: SearchableDataset = {
-      ...dataset,
-      experiments: updatedExperiments,
-    }
-
-    if (!dryRun) {
-      writeDataset(filename, finalResult)
-      logger.debug("Saved dataset", { output: `structured-json/dataset/${filename}` })
-    } else {
-      logger.debug("[dry-run] Would save dataset", { output: `structured-json/dataset/${filename}` })
-    }
-  }
+  const result = await runWorkerPool(jobs, concurrency, dryRun, ollamaConfig, onProgress)
 
   logger.info("Completed", {
-    experimentsProcessed: jobs.length,
-    experimentsFailed,
+    experimentsProcessed: result.completed,
+    experimentsFailed: result.failed,
     outputDir: getStructuredDatasetDir(),
   })
 }

@@ -37,8 +37,7 @@ export interface OllamaConfig {
 const DEFAULT_BASE_URL = "http://localhost:1143"
 const DEFAULT_MODEL = "llama3.3:70b"
 const DEFAULT_NUM_CTX = 4096
-const MAX_RETRIES = 3
-const INITIAL_RETRY_DELAY_MS = 2000
+const DEFAULT_TIMEOUT = 300000
 
 /**
  * Get Ollama configuration from environment variables
@@ -46,20 +45,17 @@ const INITIAL_RETRY_DELAY_MS = 2000
 export const getOllamaConfig = (): Required<OllamaConfig> => ({
   baseUrl: process.env.OLLAMA_BASE_URL || DEFAULT_BASE_URL,
   model: process.env.OLLAMA_MODEL || DEFAULT_MODEL,
-  timeout: 300000,
+  timeout: process.env.OLLAMA_TIMEOUT
+    ? parseInt(process.env.OLLAMA_TIMEOUT, 10)
+    : DEFAULT_TIMEOUT,
   numCtx: process.env.OLLAMA_NUM_CTX
     ? parseInt(process.env.OLLAMA_NUM_CTX, 10)
     : DEFAULT_NUM_CTX,
 })
 
 /**
- * Sleep for a given number of milliseconds
- */
-const sleep = (ms: number): Promise<void> =>
-  new Promise(resolve => setTimeout(resolve, ms))
-
-/**
- * Send a chat request to Ollama API with retry logic
+ * Send a chat request to Ollama API (single attempt, no retry)
+ * Retry logic is handled at the worker pool level for better parallelism
  * @param messages - Chat messages
  * @param config - Ollama configuration
  * @param format - Output format: "json" for JSON mode, or a JSON Schema object for structured outputs
@@ -83,42 +79,30 @@ export const chat = async (
 
   logger.debug("Ollama chat request", { model: effectiveConfig.model, messageCount: messages.length })
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), effectiveConfig.timeout)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), effectiveConfig.timeout)
 
-    try {
-      const response = await fetch(`${effectiveConfig.baseUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-        signal: controller.signal,
-      })
+  try {
+    const response = await fetch(`${effectiveConfig.baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal: controller.signal,
+    })
 
-      if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`)
-      }
-
-      const json = (await response.json()) as OllamaResponse
-      logger.debug("Ollama chat response received", { contentLength: json.message.content.length })
-      return json.message.content
-    } catch (error) {
-      const isTimeout = error instanceof Error && error.name === "AbortError"
-      const errorMsg = isTimeout ? "Request timed out" : getErrorMessage(error)
-
-      if (attempt < MAX_RETRIES) {
-        const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
-        logger.warn("Ollama request failed, retrying", { attempt, maxRetries: MAX_RETRIES, delayMs, error: errorMsg })
-        await sleep(delayMs)
-      } else {
-        logger.error("Ollama request failed after all retries", { attempts: MAX_RETRIES, error: errorMsg })
-        throw error
-      }
-    } finally {
-      clearTimeout(timeoutId)
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`)
     }
-  }
 
-  // Unreachable, but TypeScript needs this
-  throw new Error("Unexpected: exceeded max retries without throwing")
+    const json = (await response.json()) as OllamaResponse
+    logger.debug("Ollama chat response received", { contentLength: json.message.content.length })
+    return json.message.content
+  } catch (error) {
+    const isTimeout = error instanceof Error && error.name === "AbortError"
+    const errorMsg = isTimeout ? "Request timed out" : getErrorMessage(error)
+    logger.warn("Ollama request failed", { error: errorMsg })
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
