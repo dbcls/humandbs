@@ -1,0 +1,124 @@
+{
+  "idCorrection": {
+    "global": {
+      "AP023461-AP024084": [
+        "PRJDB10452"
+      ],
+      "35 Dieases": [
+        "35 Diseases"
+      ],
+      "35 Diseases": [
+        "35 Diseases"
+      ],
+      "35疾患": [
+        "35疾患"
+      ],
+      "hum0009v1.CpG.v1": [
+        "hum0009.v1.CpG.v1"
+      ],
+      "hum0014.v7.POAG-1.v1": [
+        "hum0014.v7.POAG.v1"
+      ],
+      "hum0072.v1.narco.v1": [
+        "hum0072.v1.nrc.v1"
+      ],
+      "hum0014.v12.T2DMw.v1": [
+        "hum0014.v12.T2DMwN.v1"
+      ],
+      "JGAS000031": [
+        "JGAS000314"
+      ]
+    },
+    "publication": {
+      "MTBK214": [
+        "MTBKS214"
+      ],
+      "DRA00908": [
+        "DRA000908"
+      ],
+      "DRA0017996": [
+        "DRA017996"
+      ],
+      "JGA0000012": [
+        "JGAD000012"
+      ],
+      "T2DM (JSNP)": [
+        "hum0014.v2.jsnp.dm.v1"
+      ],
+      "Osteoporosis (JSNP)": [
+        "hum0014.v2.jsnp.op.v1"
+      ]
+    },
+    "byHum": {
+      "hum0161": {
+        "JGAS000688": "JGAD000688"
+      },
+      "hum0318": {
+        "JGAS000487": "JGAS000483",
+        "JGAD000604": "JGAD000600"
+      },
+      "hum0344": {
+        "JGAS000535": "JGAS000533"
+      }
+    }
+  },
+  "idFormatConversion": {
+    "jgaxToJgas": {
+      "JGAX000007488": "JGAS000038",
+      "JGAX000007522": "JGAS000038",
+      "JGAX000007532": "JGAS000038",
+      "JGAX000007538": "JGAS000038"
+    },
+    "oldJgaToJgas": {
+      "JGA000074": "JGAS000073",
+      "JGA000117": "JGAS000107",
+      "JGA000122": "JGAS000112"
+    }
+  },
+  "invalidIds": {
+    "jgas": [
+      "JGAS000000",
+      "JGAS000525",
+      "JGAS000775"
+    ],
+    "other": [
+      "E-GEAD-000",
+      "GSE202023",
+      "EGAD00001000822",
+      "EGAD00001001105"
+    ]
+  },
+  "noSplitIds": [
+    "T2DM (JSNP)",
+    "Osteoporosis (JSNP)"
+  ],
+  "ignoreIdsByHum": {
+    "hum0009": ["hum0009.v1.CpG.v1"],
+    "hum0014": ["JGAD000134"],
+    "hum0086": ["hum0040", "hum0112", "JGAD000038", "JGAD000121"],
+    "hum0112": ["hum0086", "JGAD000073", "JGAD000115"],
+    "hum0158": ["JGAD000117"],
+    "hum0184": ["hum0015.v3.3.5kjpnv2.v1", "JGAD000117"],
+    "hum0195": ["JGAD000406"],
+    "hum0214": ["E-GEAD-344", "JGAD000731", "JGAD000220"],
+    "hum0218": ["JGAD000309"],
+    "hum0226": ["JGAD000320", "JGAD000321"],
+    "hum0227": ["JGAD000322", "JGAD000323"],
+    "hum0257": ["GSE202023"],
+    "hum0318": [],
+    "hum0383": ["JGAD000727"],
+    "hum0512": ["JGAD000960"]
+  },
+  "additionalIdsByHum": {
+    "hum0068": ["JGAD000670", "JGAD000887"],
+    "hum0094": ["JGAD000457"],
+    "hum0103": ["JGAD000403"],
+    "hum0120": ["JGAD000312"],
+    "hum0158": ["JGAD000404"],
+    "hum0197": ["JGAD000772"],
+    "hum0200": ["JGAD000307", "JGAD000308"],
+    "hum0201": ["JGAD000687", "JGAD000891"],
+    "hum0214": ["JGAD000371", "JGAD000372", "JGAD000373"],
+    "hum0248": ["PRJDB10452"]
+  }
+}

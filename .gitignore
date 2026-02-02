@@ -181,9 +181,9 @@ dist
 .DS_Store
 
 # === our custom rules ===
-apps/backend/tests
 apps/backend/crawler-results*
-apps/backend/jga-example
+apps/backend/src/crawler/data/icd10/icd10-master.txt
+apps/backend/src/crawler/data/icd10/icd10-labels.json
 es-data
 ollama-data
 

@@ -9,9 +9,26 @@
   },
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",
-    "crawler": "bun run src/crawler/app.ts",
+    "crawler:download-html": "bun run src/crawler/cli/download-html.ts",
+    "crawler:parse-html": "bun run src/crawler/cli/parse-html.ts",
+    "crawler:normalize": "bun run src/crawler/cli/normalize.ts",
+    "crawler:structure": "bun run src/crawler/cli/structure.ts",
+    "crawler:enrich": "bun run src/crawler/cli/enrich.ts",
+    "crawler:llm-extract": "bun run src/crawler/cli/llm-extract.ts",
+    "crawler:icd10-normalize": "bun run src/crawler/cli/icd10-normalize.ts",
+    "crawler:facet-values": "bun run src/crawler/cli/facet-values.ts",
+    "crawler:facet-normalize": "bun run src/crawler/cli/facet-normalize.ts",
+    "crawler:export-tsv": "bun run src/crawler/cli/export-tsv.ts",
+    "crawler:import-tsv": "bun run src/crawler/cli/import-tsv.ts",
     "es:load-mappings": "node src/es/load-mappings.ts",
-    "es:load-docs": "node src/es/load-docs.ts"
+    "es:load-docs": "node src/es/load-docs.ts",
+    "test": "bun test tests/unit",
+    "test:watch": "bun test tests/unit --watch",
+    "test:integration": "bun test tests/integration",
+    "test:all": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix"
   },
   "devDependencies": {
     "@humandbs/eslint-config": "workspace:*",

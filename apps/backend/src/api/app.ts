@@ -1,12 +1,20 @@
 import { swaggerUI } from "@hono/swagger-ui"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { cors } from "hono/cors"
+import { HTTPException } from "hono/http-exception"
 import { logger } from "hono/logger"
 
-import { datasetsRouter } from "@/api/routes/datasets"
+import { ERROR_MESSAGES } from "@/api/constants"
+import { isConflictError } from "@/api/es-client"
+import { adminRouter } from "@/api/routes/admin"
+import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
-import { researchesRouter } from "@/api/routes/researches"
-import { usersRouter } from "@/api/routes/users"
+import { researchRouter } from "@/api/routes/research"
+import { searchRouter } from "@/api/routes/search"
+import { statsRouter } from "@/api/routes/stats"
+
+// Environment variables
+const API_URL_PREFIX = process.env.HUMANDBS_API_URL_PREFIX || ""
 
 export const createApp = () => {
   const app = new OpenAPIHono()
@@ -14,27 +22,112 @@ export const createApp = () => {
   app.use("*", cors())
   app.use("*", logger())
 
-  // routes
-  app.route("/health", healthRouter)
-  app.route("/users", usersRouter)
-  app.route("/researches", researchesRouter)
-  app.route("/datasets", datasetsRouter)
+  // Create a sub-app for API routes
+  const api = new OpenAPIHono()
+
+  // Utility routes
+  api.route("/health", healthRouter)
+  api.route("/stats", statsRouter)
+
+  // API routes (singular form)
+  api.route("/research", researchRouter)
+  api.route("/dataset", datasetRouter)
+  api.route("/admin", adminRouter)
+
+  // Search routes mounted at root level for POST /research/search, POST /dataset/search, GET /facets
+  api.route("/", searchRouter)
+
+  // Mount API routes with optional prefix
+  if (API_URL_PREFIX) {
+    app.route(API_URL_PREFIX, api)
+  } else {
+    app.route("/", api)
+  }
+
+  // OpenAPI docs path (adjusted for prefix)
+  const docsPath = API_URL_PREFIX ? `${API_URL_PREFIX}/docs` : "/docs"
+  const openApiJsonPath = `${docsPath}/openapi.json`
 
   // OpenAPI docs
-  app.doc("/openapi.json", {
+  app.doc(openApiJsonPath, {
     openapi: "3.0.0",
     info: {
-      title: "HumanDB Backend API",
-      version: "1.0.0",
-      description: "API for accessing HumanDB research data",
+      title: "HumanDBs Backend API",
+      version: "2.0.0",
+      description: `
+HumanDBs REST API for accessing research database information.
+
+## Authentication
+
+This API uses Keycloak OIDC for authentication. Include a Bearer token in the Authorization header:
+
+\`\`\`
+Authorization: Bearer <access_token>
+\`\`\`
+
+## Roles
+
+- **public**: Unauthenticated users can read published resources
+- **researcher**: Can create and manage their own resources
+- **admin**: Full access to all resources and administrative functions
+
+## Resource Naming
+
+API endpoints use singular resource names (e.g., \`/research\`, \`/dataset\`).
+
+## Status Workflow
+
+Research resources follow a publication workflow:
+- **draft** → **review** → **published**
+
+Only admins can approve/reject submissions and unpublish content.
+      `.trim(),
     },
-    servers: [
-      { url: "/api" },
+    servers: API_URL_PREFIX ? [{ url: API_URL_PREFIX }] : undefined,
+    tags: [
+      { name: "Health", description: "Health check endpoints" },
+      { name: "Stats", description: "Statistics about published resources" },
+      { name: "Research", description: "Research resource CRUD operations" },
+      { name: "Research Versions", description: "Research versioning operations" },
+      { name: "Research Datasets", description: "Manage dataset links for research" },
+      { name: "Research Status", description: "Research publication workflow (draft → review → published)" },
+      { name: "Dataset", description: "Dataset resource CRUD operations" },
+      { name: "Dataset Versions", description: "Dataset versioning operations" },
+      { name: "Search", description: "Full-text and faceted search" },
+      { name: "Admin", description: "Administrative operations (requires admin role)" },
     ],
   })
-  app.get("/docs", swaggerUI({
-    url: "./openapi.json",
+
+  app.get(docsPath, swaggerUI({
+    url: openApiJsonPath,
   }))
+
+  // Global error handler
+  app.onError((err, c) => {
+    console.error("Unhandled error:", err)
+
+    // Handle HTTPException from Hono
+    if (err instanceof HTTPException) {
+      return c.json(
+        { error: err.message, message: err.cause ? String(err.cause) : null },
+        err.status,
+      )
+    }
+
+    // Handle ES version conflict (409)
+    if (isConflictError(err)) {
+      return c.json(
+        { error: "Conflict", message: ERROR_MESSAGES.CONFLICT },
+        409,
+      )
+    }
+
+    // Default to 500 Internal Server Error
+    return c.json(
+      { error: ERROR_MESSAGES.INTERNAL_ERROR, message: String(err) },
+      500,
+    )
+  })
 
   return app
 }

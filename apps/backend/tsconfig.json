@@ -1,36 +1,13 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    // Enable latest features
-    "lib": [
-      "ESNext",
-      "DOM"
-    ],
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleDetection": "force",
-    "jsx": "react-jsx",
-    "allowJs": true,
-    // Bundler mode
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-    // Best practices
-    "strict": true,
-    "skipLibCheck": true,
-    "noFallthroughCasesInSwitch": true,
-    // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
+    // Node.js 環境のため DOM ライブラリは不要
+    "lib": ["ESNext"],
+    // パスエイリアス設定
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*",
-      ],
-      "@/types": [
-        "types/shared-types.ts",
-      ],
+      "@/*": ["src/*"],
+      "@/types": ["types/shared-types.ts"]
     }
   }
 }
