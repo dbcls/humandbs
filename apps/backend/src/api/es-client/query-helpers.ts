@@ -1,6 +1,12 @@
+/**
+ * Elasticsearch query helper functions
+ *
+ * This module provides helper functions for building nested and double-nested
+ * Elasticsearch queries used in search operations.
+ */
 import type { estypes } from "@elastic/elasticsearch"
 
-/** nested + terms クエリ */
+/** nested + terms query */
 export const nestedTermsQuery = (
   path: string,
   field: string,
@@ -12,7 +18,7 @@ export const nestedTermsQuery = (
   },
 })
 
-/** nested + term クエリ (単一値) */
+/** nested + term query (single value) */
 export const nestedTermQuery = (
   path: string,
   field: string,
@@ -24,7 +30,7 @@ export const nestedTermQuery = (
   },
 })
 
-/** nested + wildcard クエリ (部分一致) */
+/** nested + wildcard query (partial match) */
 export const nestedWildcardQuery = (
   path: string,
   field: string,
@@ -38,7 +44,7 @@ export const nestedWildcardQuery = (
   },
 })
 
-/** nested + exists クエリ */
+/** nested + exists query */
 export const nestedExistsQuery = (
   path: string,
   field: string,
@@ -49,7 +55,7 @@ export const nestedExistsQuery = (
   },
 })
 
-/** nested + range クエリ */
+/** nested + range query */
 export const nestedRangeQuery = (
   path: string,
   field: string,
@@ -61,7 +67,7 @@ export const nestedRangeQuery = (
   },
 })
 
-/** 二重 nested + wildcard クエリ */
+/** double nested + wildcard query */
 export const doubleNestedWildcardQuery = (
   outerPath: string,
   innerPath: string,
@@ -81,7 +87,7 @@ export const doubleNestedWildcardQuery = (
   },
 })
 
-/** 二重 nested + terms クエリ */
+/** double nested + terms query */
 export const doubleNestedTermsQuery = (
   outerPath: string,
   innerPath: string,
@@ -99,7 +105,7 @@ export const doubleNestedTermsQuery = (
   },
 })
 
-/** nested + boolean term クエリ */
+/** nested + boolean term query */
 export const nestedBooleanTermQuery = (
   path: string,
   field: string,

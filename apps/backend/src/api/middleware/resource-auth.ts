@@ -10,7 +10,7 @@ import { createMiddleware } from "hono/factory"
 
 import { ERROR_MESSAGES } from "@/api/constants"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { getResearchWithSeqNo } from "@/api/es-client/operations"
+import { getResearchWithSeqNo } from "@/api/es-client/research"
 import {
   forbiddenResponse,
   notFoundResponse,

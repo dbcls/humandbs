@@ -12,7 +12,7 @@
 // === Re-exports from api/types ===
 
 // Lang type
-export { langType } from "@/api/types"
+export { LANG_TYPES } from "@/api/types"
 export type { LangType } from "@/api/types"
 
 // Query parameters

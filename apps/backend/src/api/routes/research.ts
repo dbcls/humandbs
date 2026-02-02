@@ -8,20 +8,22 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
 import { PAGINATION } from "@/api/constants"
 import { canAccessResearchDoc, validateStatusTransition } from "@/api/es-client/auth"
+import { createDataset } from "@/api/es-client/dataset"
 import {
-  createDataset,
   createResearch,
-  createResearchVersion,
   deleteResearch,
   getResearchDetail,
   getResearchDoc,
-  getResearchVersion,
-  listResearchVersionsSorted,
-  searchResearches,
   updateResearch,
   updateResearchStatus,
   updateResearchUids,
-} from "@/api/es-client/operations"
+} from "@/api/es-client/research"
+import {
+  createResearchVersion,
+  getResearchVersion,
+  listResearchVersionsSorted,
+} from "@/api/es-client/research-version"
+import { searchResearches } from "@/api/es-client/search"
 import { optionalAuth } from "@/api/middleware/auth"
 import { loadResearchAndAuthorize } from "@/api/middleware/resource-auth"
 import {

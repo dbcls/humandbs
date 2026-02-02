@@ -274,12 +274,12 @@ Dataset が「初回更新」かどうかは、ResearchVersion.datasets の参�
 
 | コード | HTTP Status | 説明 |
 |--------|-------------|------|
-| `VALIDATION_ERROR` | 400 | リクエストバリデーション失敗 |
-| `UNAUTHORIZED` | 401 | 認証が必要 |
-| `FORBIDDEN` | 403 | 権限不足 |
-| `NOT_FOUND` | 404 | リソースが見つからない |
-| `CONFLICT` | 409 | 状態遷移エラー、楽観的ロック失敗 |
-| `INTERNAL_ERROR` | 500 | サーバー内部エラー |
+| `Validation Error` | 400 | リクエストバリデーション失敗 |
+| `Unauthorized` | 401 | 認証が必要 |
+| `Forbidden` | 403 | 権限不足 |
+| `Not Found` | 404 | リソースが見つからない |
+| `Conflict` | 409 | 状態遷移エラー、楽観的ロック失敗 |
+| `Internal Server Error` | 500 | サーバー内部エラー |
 
 ## 型定義の構成
 

@@ -12,11 +12,11 @@ import {
   getDataset,
   getDatasetWithSeqNo,
   getResearchByDatasetId,
-  getResearchDoc,
   listDatasetVersions,
-  searchDatasets,
   updateDataset,
-} from "@/api/es-client/operations"
+} from "@/api/es-client/dataset"
+import { getResearchDoc } from "@/api/es-client/research"
+import { searchDatasets } from "@/api/es-client/search"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
 import {
   ErrorSpec401,

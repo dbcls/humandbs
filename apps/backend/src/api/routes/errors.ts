@@ -28,7 +28,7 @@ export const ErrorSpec500 = createErrorSpec("Internal Server Error")
  * 400 Validation Error response
  */
 export const validationErrorResponse = (c: Context, message: string) =>
-  c.json({ error: "VALIDATION_ERROR", message }, 400)
+  c.json({ error: "Validation Error", message }, 400)
 
 /**
  * 401 Unauthorized response

@@ -10,7 +10,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
 import { ARRAY_FIELD_MAPPINGS, RANGE_FIELD_MAPPINGS } from "@/api/es-client/filters"
-import { searchDatasets, searchResearches } from "@/api/es-client/operations"
+import { searchDatasets, searchResearches } from "@/api/es-client/search"
 import { optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec400, ErrorSpec500, validationErrorResponse, serverErrorResponse } from "@/api/routes/errors"
 import {
