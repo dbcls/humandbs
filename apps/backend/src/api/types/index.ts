@@ -34,6 +34,8 @@ export type { EsResearchStatus } from "@/api/types/workflow"
 export {
   DatasetRefSchema,
   EsDatasetDocSchema,
+  EsDatasetDocWithMergedSchema,
+  MergedSearchableSchema,
   EsResearchVersionDocSchema,
   EsResearchDocSchema,
   EsResearchDetailSchema,
@@ -42,6 +44,8 @@ export {
 export type {
   DatasetRef,
   EsDatasetDoc,
+  EsDatasetDocWithMerged,
+  MergedSearchable,
   EsResearchVersionDoc,
   EsResearchDoc,
   EsResearchDetail,

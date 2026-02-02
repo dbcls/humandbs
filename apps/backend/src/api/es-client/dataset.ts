@@ -9,23 +9,15 @@
  */
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
+import { getResearchDoc } from "@/api/es-client/research"
 import {
   getResearchVersion,
   getResearchVersionWithSeqNo,
   linkDatasetToResearch,
   unlinkDatasetFromResearch,
 } from "@/api/es-client/research-version"
-import { EsDatasetDocSchema, EsResearchDocSchema } from "@/api/types"
-import type { AuthUser, DatasetVersionItem, EsDatasetDoc, EsResearchDetail, EsResearchDoc } from "@/api/types"
-
-// === Internal helper to get Research doc ===
-const getResearchDocInternal = async (humId: string): Promise<EsResearchDoc | null> => {
-  const res = await esClient.get<EsResearchDoc>({
-    index: ES_INDEX.research,
-    id: humId,
-  }, { ignore: [404] })
-  return res.found && res._source ? EsResearchDocSchema.parse(res._source) : null
-}
+import { EsDatasetDocSchema } from "@/api/types"
+import type { AuthUser, DatasetVersionItem, EsDatasetDoc, EsResearchDetail } from "@/api/types"
 
 // === Dataset Retrieval ===
 
@@ -39,7 +31,7 @@ const canAccessDataset = async (
   if (authUser?.isAdmin) return true
 
   // Get parent Research and check access
-  const researchDoc = await getResearchDocInternal(dataset.humId)
+  const researchDoc = await getResearchDoc(dataset.humId)
   if (!researchDoc) return false
 
   return canAccessResearchDoc(authUser, researchDoc)
@@ -131,7 +123,7 @@ export const listDatasetVersions = async (
 
   // Authorization check: verify user can access parent Research (all versions share same humId)
   const firstRow = rows[0]
-  const researchDoc = await getResearchDocInternal(firstRow.humId)
+  const researchDoc = await getResearchDoc(firstRow.humId)
   if (!researchDoc || !canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to indicate not found/unauthorized
   }

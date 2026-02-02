@@ -58,7 +58,7 @@ import {
   VersionParamsSchema,
   VersionResponseSchema,
 } from "@/api/types"
-import type { HumIdParams, LangVersionQuery, ResearchListingQuery, UpdateUidsRequest, VersionParams } from "@/api/types"
+import type { UpdateUidsRequest } from "@/api/types"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
 // === Route Definitions ===
@@ -544,7 +544,7 @@ researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ adminOnly: true })
 // GET /research
 researchRouter.openapi(listResearchRoute, async (c) => {
   try {
-    const query = c.req.query() as unknown as ResearchListingQuery
+    const query = c.req.valid("query")
     const authUser = c.get("authUser")
 
     // Validate status filter permissions per api-spec.md
@@ -619,8 +619,8 @@ researchRouter.openapi(createResearchRoute, async (c) => {
 // GET /research/{humId}
 researchRouter.openapi(getResearchRoute, async (c) => {
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-    const query = c.req.query() as unknown as LangVersionQuery
+    const { humId } = c.req.valid("param")
+    const query = c.req.valid("query")
     const authUser = c.get("authUser")
     const detail = await getResearchDetail(humId, { version: query.version ?? undefined }, authUser)
     if (!detail) return notFoundResponse(c, `Research with humId ${humId} not found`)
@@ -696,7 +696,7 @@ researchRouter.openapi(deleteResearchRoute, async (c) => {
 // GET /research/{humId}/versions
 researchRouter.openapi(listVersionsRoute, async (c) => {
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
+    const { humId } = c.req.valid("param")
     const authUser = c.get("authUser")
     const versions = await listResearchVersionsSorted(humId, authUser)
     if (versions === null) return notFoundResponse(c, `Research with humId ${humId} not found`)
@@ -710,7 +710,7 @@ researchRouter.openapi(listVersionsRoute, async (c) => {
 // GET /research/{humId}/versions/{version}
 researchRouter.openapi(getVersionRoute, async (c) => {
   try {
-    const { humId, version } = c.req.param() as unknown as VersionParams
+    const { humId, version } = c.req.valid("param")
     const authUser = c.get("authUser")
 
     // Use getResearchDetail with specific version
@@ -771,8 +771,8 @@ researchRouter.openapi(createVersionRoute, async (c) => {
 // GET /research/{humId}/dataset
 researchRouter.openapi(listLinkedDatasetsRoute, async (c) => {
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-    const query = c.req.query()
+    const { humId } = c.req.valid("param")
+    const query = c.req.valid("query")
     const page = Number(query.page) || 1
     const limit = Number(query.limit) || PAGINATION.DEFAULT_LIMIT
     const authUser = c.get("authUser")
@@ -810,7 +810,7 @@ researchRouter.openapi(createDatasetForResearchRoute, async (c) => {
     return unauthorizedResponse(c)
   }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
+    const { humId } = c.req.valid("param")
     const body = await c.req.json()
 
     // Get research to check permissions and status

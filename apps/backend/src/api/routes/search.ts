@@ -81,7 +81,7 @@ const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQue
   return {
     page: body.page,
     limit: body.limit,
-    lang: "en", // Default, can be extended
+    lang: body.lang ?? "ja",
     sort: body.sort ? sortMap[body.sort] ?? "humId" : "humId",
     order: body.order,
     q: body.query,
@@ -105,7 +105,7 @@ const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearchQuery 
   return {
     page: body.page,
     limit: body.limit,
-    lang: "en", // Default, can be extended
+    lang: body.lang ?? "ja",
     sort: body.sort ?? "datasetId",
     order: body.order,
     q: body.query, // Unified query parameter (S2)

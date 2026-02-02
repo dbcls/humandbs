@@ -101,6 +101,10 @@ export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>
  * POST /research/search request body
  */
 export const ResearchSearchBodySchema = z.object({
+  // Language
+  lang: z.enum(["ja", "en"]).optional().default("ja")
+    .describe("Response language for bilingual fields"),
+
   // Pagination
   page: z.number().int().min(1).default(1)
     .describe("Page number for pagination (1-indexed)"),
@@ -141,6 +145,10 @@ export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>
  * POST /dataset/search request body
  */
 export const DatasetSearchBodySchema = z.object({
+  // Language
+  lang: z.enum(["ja", "en"]).optional().default("ja")
+    .describe("Response language for bilingual fields"),
+
   // Pagination
   page: z.number().int().min(1).default(1)
     .describe("Page number for pagination (1-indexed)"),

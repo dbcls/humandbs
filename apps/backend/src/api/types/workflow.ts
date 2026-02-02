@@ -18,8 +18,10 @@ export type EsResearchStatus = z.infer<typeof ResearchStatusSchema>
 
 /**
  * Research publication status
+ * Note: "deleted" is included for type compatibility with ES documents,
+ * but deleted resources are filtered out in API responses (return 404)
  */
-export const RESEARCH_STATUS = ["draft", "review", "published"] as const
+export const RESEARCH_STATUS = ["draft", "review", "published", "deleted"] as const
 export type ResearchStatus = (typeof RESEARCH_STATUS)[number]
 
 /**

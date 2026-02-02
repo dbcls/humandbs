@@ -46,22 +46,5 @@ export const isConflictError = (error: unknown): boolean => {
   return false
 }
 
-/**
- * Execute an ES update operation with optimistic locking
- * Returns null on conflict, throws on other errors
- */
-export const withOptimisticLock = async <T>(
-  operation: () => Promise<T>,
-): Promise<T | null> => {
-  try {
-    return await operation()
-  } catch (error: unknown) {
-    if (isConflictError(error)) {
-      return null
-    }
-    throw error
-  }
-}
-
 // Re-export estypes for use in other modules
 export type { estypes }

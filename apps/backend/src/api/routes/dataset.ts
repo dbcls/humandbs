@@ -37,13 +37,13 @@ import {
   DatasetVersionParamsSchema,
   DatasetVersionsResponseSchema,
   DatasetWithMetadataSchema,
-  EsDatasetDocSchema,
+  EsDatasetDocWithMergedSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   LinkedResearchesResponseSchema,
   UpdateDatasetRequestSchema,
 } from "@/api/types"
-import type { DatasetIdParams, DatasetListingQuery, DatasetVersionParams, LangVersionQuery } from "@/api/types"
+// Types are now inferred from c.req.valid()
 import { addMergedSearchable } from "@/api/utils/merge-searchable"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
@@ -86,15 +86,17 @@ const getDatasetRoute = createRoute({
 - authenticated: Published + Datasets linked to own Research
 - admin: All Datasets
 
-Returns the latest version by default. Use GET /dataset/{datasetId}/versions/{version} for a specific version.`,
+Returns the latest version by default. Use GET /dataset/{datasetId}/versions/{version} for a specific version.
+
+Response includes \`mergedSearchable\` field which aggregates all experiment searchable fields.`,
   request: {
     params: DatasetIdParamsSchema,
     query: LangVersionQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: EsDatasetDocSchema } },
-      description: "Dataset detail",
+      content: { "application/json": { schema: EsDatasetDocWithMergedSchema } },
+      description: "Dataset detail with merged searchable fields",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,
@@ -119,6 +121,7 @@ const updateDatasetRoute = createRoute({
 - Subsequent updates modify the same version until Research is published`,
   request: {
     params: DatasetIdParamsSchema,
+    query: LangVersionQuerySchema,
     body: { content: { "application/json": { schema: UpdateDatasetRequestSchema } } },
   },
   responses: {
@@ -151,6 +154,7 @@ const deleteDatasetRoute = createRoute({
 - Use version query parameter to delete a specific version only`,
   request: {
     params: DatasetIdParamsSchema,
+    query: LangVersionQuerySchema,
   },
   responses: {
     204: { description: "Dataset deleted successfully" },
@@ -190,15 +194,17 @@ const getVersionRoute = createRoute({
   summary: "Get Specific Version",
   description: `Get a specific version of a Dataset.
 
-Version format: v1, v2, v3, etc.`,
+Version format: v1, v2, v3, etc.
+
+Response includes \`mergedSearchable\` field which aggregates all experiment searchable fields.`,
   request: {
     params: DatasetVersionParamsSchema,
     query: LangQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: EsDatasetDocSchema } },
-      description: "Version detail",
+      content: { "application/json": { schema: EsDatasetDocWithMergedSchema } },
+      description: "Version detail with merged searchable fields",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,
@@ -236,7 +242,7 @@ datasetRouter.use("*", optionalAuth)
 // GET /dataset
 datasetRouter.openapi(listDatasetsRoute, async (c) => {
   try {
-    const query = c.req.query() as unknown as DatasetListingQuery
+    const query = c.req.valid("query")
     const authUser = c.get("authUser")
     // Convert listing query to search query format
     const datasetsData = await searchDatasets({
@@ -259,15 +265,14 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
 // GET /dataset/{datasetId}
 datasetRouter.openapi(getDatasetRoute, async (c) => {
   try {
-    const { datasetId } = c.req.param() as unknown as DatasetIdParams
-    const query = c.req.query() as unknown as LangVersionQuery
+    const { datasetId } = c.req.valid("param")
+    const query = c.req.valid("query")
     const authUser = c.get("authUser")
     const dataset = await getDataset(datasetId, { version: query.version ?? undefined }, authUser)
     if (dataset === null) return notFoundResponse(c, `Dataset with datasetId ${datasetId} not found`)
-    // Add mergedSearchable for convenience (aggregates all experiment searchable fields)
-    // Note: This extends the response beyond the OpenAPI schema
-    const datasetWithMerged = addMergedSearchable(dataset as Parameters<typeof addMergedSearchable>[0])
-    return c.json(maybeStripRawHtml(datasetWithMerged, query.includeRawHtml ?? false) as unknown as typeof dataset, 200)
+    // Add mergedSearchable (aggregates all experiment searchable fields)
+    const datasetWithMerged = addMergedSearchable(dataset)
+    return c.json(maybeStripRawHtml(datasetWithMerged, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching dataset detail:", error)
     return serverErrorResponse(c, error)
@@ -281,8 +286,8 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     return unauthorizedResponse(c)
   }
   try {
-    const { datasetId } = c.req.param() as unknown as DatasetIdParams
-    const query = c.req.query() as unknown as LangVersionQuery
+    const { datasetId } = c.req.valid("param")
+    const query = c.req.valid("query")
     const version = query.version ?? "v1"
 
     // Get dataset with sequence number for optimistic locking (used as fallback)
@@ -354,8 +359,8 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
     return forbiddenResponse(c, "Admin access required")
   }
   try {
-    const { datasetId } = c.req.param() as unknown as DatasetIdParams
-    const query = c.req.query() as unknown as LangVersionQuery
+    const { datasetId } = c.req.valid("param")
+    const query = c.req.valid("query")
     const version = query.version ?? undefined // If undefined, deletes all versions
 
     // Check if dataset exists
@@ -389,7 +394,7 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
 // GET /dataset/{datasetId}/versions
 datasetRouter.openapi(listVersionsRoute, async (c) => {
   try {
-    const { datasetId } = c.req.param() as unknown as DatasetIdParams
+    const { datasetId } = c.req.valid("param")
     const authUser = c.get("authUser")
     const versions = await listDatasetVersions(datasetId, authUser)
     if (versions === null) return notFoundResponse(c, `Dataset with datasetId ${datasetId} not found`)
@@ -403,13 +408,13 @@ datasetRouter.openapi(listVersionsRoute, async (c) => {
 // GET /dataset/{datasetId}/versions/{version}
 datasetRouter.openapi(getVersionRoute, async (c) => {
   try {
-    const { datasetId, version } = c.req.param() as unknown as DatasetVersionParams
+    const { datasetId, version } = c.req.valid("param")
     const authUser = c.get("authUser")
     const dataset = await getDataset(datasetId, { version }, authUser)
     if (dataset === null) return notFoundResponse(c, `Dataset version ${version} not found`)
-    // Add mergedSearchable for convenience
-    const datasetWithMerged = addMergedSearchable(dataset as Parameters<typeof addMergedSearchable>[0])
-    return c.json(datasetWithMerged as unknown as typeof dataset, 200)
+    // Add mergedSearchable (aggregates all experiment searchable fields)
+    const datasetWithMerged = addMergedSearchable(dataset)
+    return c.json(datasetWithMerged, 200)
   } catch (error) {
     console.error("Error fetching dataset version:", error)
     return serverErrorResponse(c, error)
@@ -419,7 +424,7 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
 // GET /dataset/{datasetId}/research
 datasetRouter.openapi(listLinkedResearchesRoute, async (c) => {
   try {
-    const { datasetId } = c.req.param() as unknown as DatasetIdParams
+    const { datasetId } = c.req.valid("param")
     const authUser = c.get("authUser")
 
     // Get the parent Research for this Dataset

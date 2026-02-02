@@ -5,7 +5,7 @@
  */
 
 // Client and configuration
-export { esClient, ES_INDEX, isConflictError, withOptimisticLock } from "@/api/es-client/client"
+export { esClient, ES_INDEX, isConflictError } from "@/api/es-client/client"
 export type { estypes } from "@/api/es-client/client"
 
 // Authorization

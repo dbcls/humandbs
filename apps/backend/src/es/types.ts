@@ -114,15 +114,15 @@ export type {
 // === ES-specific schemas (extensions for ES documents) ===
 
 /**
- * Disease info schema for ES documents
- * Note: icd10 is required (not nullable) because icd10-normalize step
- * ensures all diseases have a valid ICD10 code before ES indexing
+ * Normalized disease info schema for ES documents
+ * Differs from CrawlerDiseaseInfoSchema: icd10 is required (not nullable)
+ * because icd10-normalize step ensures all diseases have a valid ICD10 code before ES indexing
  */
-export const DiseaseInfoSchema = z.object({
+export const NormalizedDiseaseSchema = z.object({
   label: z.string(),
   icd10: z.string(), // Required in ES (normalized from crawler's nullable version)
 })
-export type EsDiseaseInfo = z.infer<typeof DiseaseInfoSchema>
+export type NormalizedDisease = z.infer<typeof NormalizedDiseaseSchema>
 
 /**
  * Data volume with unit for ES documents
@@ -144,7 +144,7 @@ export const SearchableExperimentFieldsSchema = z.object({
   healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable(),
 
   // Disease info (multiple diseases supported)
-  diseases: z.array(DiseaseInfoSchema),
+  diseases: z.array(NormalizedDiseaseSchema),
 
   // Biological sample info
   tissues: z.array(z.string()),

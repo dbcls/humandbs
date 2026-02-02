@@ -56,6 +56,9 @@ export const conflictResponse = (c: Context, message = "Resource was modified by
 
 /**
  * 500 Internal Server Error response
+ * Note: Details are logged server-side only, response contains generic message
  */
-export const serverErrorResponse = (c: Context, error: unknown) =>
-  c.json({ error: "Internal Server Error", message: String(error) }, 500)
+export const serverErrorResponse = (c: Context, error: unknown) => {
+  console.error("Internal server error:", error)
+  return c.json({ error: "Internal Server Error", message: "An unexpected error occurred" }, 500)
+}
