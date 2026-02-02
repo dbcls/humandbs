@@ -1,6 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { User } from "better-auth";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Locale } from "use-intl";
 import { z } from "zod";
@@ -25,6 +24,8 @@ import {
   authMiddleware,
   hasPermissionMiddleware,
 } from "@/middleware/authMiddleware";
+
+import { SessionUser } from "./user";
 
 export interface DocumentVersionListItemResponse {
   statuses: DocumentVersionStatus[];
@@ -111,19 +112,20 @@ export const $getDocumentVersions = createServerFn({
     })) satisfies DocumentVersionListItemResponse[];
   });
 
-export const getDocumentVersionsListQueryOptions = ({
-  contentId,
-}: {
-  contentId: string | null;
-}) =>
+export const getDocumentVersionsListQueryOptions = (
+  data: {
+    contentId: string | null;
+  } | null
+) =>
   queryOptions({
-    queryKey: ["documents", contentId, "versions"],
+    queryKey: ["documents", data?.contentId, "versions"],
     queryFn: () => {
-      if (!contentId) return Promise.resolve([]);
-      return $getDocumentVersions({ data: { contentId } });
+      if (!data) throw new Error("Invalid data");
+      if (!data.contentId) return Promise.resolve([]);
+      return $getDocumentVersions({ data: { contentId: data.contentId } });
     },
     staleTime: 5 * 1000 * 60,
-    enabled: !!contentId,
+    enabled: !!data && !!data.contentId,
   });
 
 const selectDocumentVersionSchema = documentVersionSchema.pick({
@@ -151,6 +153,12 @@ export interface DocumentVersionContentResponse {
   author: Author;
 }
 
+const getDocVersionSchema = selectDocumentVersionSchema.partial({
+  versionNumber: true,
+});
+
+const getStatusDocVersionSchema = getDocVersionSchema.omit({ status: true });
+
 /**
  * Get document version with content
  */
@@ -158,7 +166,7 @@ export const $getDocumentVersion = createServerFn({
   method: "GET",
 })
   .middleware([hasPermissionMiddleware])
-  .inputValidator(selectDocumentVersionSchema)
+  .inputValidator(getDocVersionSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "view");
 
@@ -166,9 +174,12 @@ export const $getDocumentVersion = createServerFn({
       where: (table) =>
         and(
           eq(table.contentId, data.contentId),
-          eq(table.versionNumber, data.versionNumber),
+          data.versionNumber !== undefined
+            ? eq(table.versionNumber, data.versionNumber)
+            : undefined,
           eq(table.status, data.status)
         ),
+      orderBy: (table, { desc }) => [desc(table.versionNumber)],
       with: {
         translations: true,
         author: {
@@ -201,59 +212,57 @@ export const $getDocumentVersion = createServerFn({
     } satisfies DocumentVersionContentResponse;
   });
 
-export const getDocumentVersionDraftQueryOptions = ({
-  contentId,
-  versionNumber,
-}: {
-  contentId: string;
-  versionNumber: number;
-}) =>
+export const getDocumentVersionDraftQueryOptions = (
+  data: z.infer<typeof getStatusDocVersionSchema> | null
+) =>
   queryOptions({
     queryKey: [
       "documents",
-      contentId,
+      data?.contentId,
       "versions",
-      versionNumber,
+      data?.versionNumber,
       DOCUMENT_VERSION_STATUS.DRAFT,
     ],
-    queryFn: () =>
-      $getDocumentVersion({
+    queryFn: () => {
+      if (!data) throw new Error("Missing data");
+
+      return $getDocumentVersion({
         data: {
-          contentId,
-          versionNumber,
+          contentId: data.contentId,
+          versionNumber: data.versionNumber,
           status: DOCUMENT_VERSION_STATUS.DRAFT,
         },
-      }),
+      });
+    },
 
     staleTime: 5 * 1000 * 60,
-    enabled: !!contentId && !!versionNumber,
+    enabled: !!data,
   });
 
-export const getDocumentVersionPublishedQueryOptions = ({
-  contentId,
-  versionNumber,
-}: {
-  contentId: string;
-  versionNumber: number;
-}) =>
+export const getDocumentVersionPublishedQueryOptions = (
+  data: z.infer<typeof getStatusDocVersionSchema> | null
+) =>
   queryOptions({
     queryKey: [
       "documents",
-      contentId,
+      data?.contentId,
       "versions",
-      versionNumber,
+      data?.versionNumber,
       DOCUMENT_VERSION_STATUS.PUBLISHED,
     ],
-    queryFn: () =>
-      $getDocumentVersion({
+    queryFn: () => {
+      if (!data) throw new Error("Missing data");
+
+      return $getDocumentVersion({
         data: {
-          contentId,
-          versionNumber,
+          contentId: data.contentId,
+          versionNumber: data.versionNumber,
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
         },
-      }),
+      });
+    },
     staleTime: 5 * 1000 * 60,
-    enabled: !!contentId && !!versionNumber,
+    enabled: !!data,
   });
 
 /** Create new document version */
@@ -294,13 +303,17 @@ export const $createDocumentVersion = createServerFn({
     return result;
   });
 
+const cloneDocVersionInputSchema = selectDocumentVersionSchema.omit({
+  status: true,
+});
+
 /**
  * Clone documentVersion into new version
  */
 export const $cloneDocumentVersion = createServerFn({
   method: "POST",
 })
-  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
+  .inputValidator(cloneDocVersionInputSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "create");
@@ -367,11 +380,13 @@ export const $cloneDocumentVersion = createServerFn({
     return result;
   });
 
+const deleteDocVersioSchema = cloneDocVersionInputSchema;
+
 /** Delete document version */
 export const $deleteDocumentVersion = createServerFn({
   method: "POST",
 })
-  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
+  .inputValidator(deleteDocVersioSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
@@ -440,12 +455,14 @@ export const $saveDocumentVersion = createServerFn({
     await upsertDocVersion({ data, user: context.user });
   });
 
+const publishDocVersionDraftSchema = cloneDocVersionInputSchema;
+
 /**
  * Publish documentVersion draft and delete draft
  */
 export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .inputValidator(draftVersionSchema.omit({ status: true }))
+  .inputValidator(publishDocVersionDraftSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "publish");
 
@@ -482,7 +499,7 @@ async function upsertDocVersion({
   data:
     | z.infer<typeof draftVersionSchema>
     | z.infer<typeof publishedVersionSchema>;
-  user: User | undefined;
+  user: SessionUser;
 }) {
   const { contentId, versionNumber, translations, status } = data;
 
@@ -495,7 +512,7 @@ async function upsertDocVersion({
         contentId,
         versionNumber,
         status,
-        authorId: user!.id,
+        authorId: user.id,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({

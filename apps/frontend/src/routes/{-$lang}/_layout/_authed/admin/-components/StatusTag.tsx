@@ -1,6 +1,7 @@
+import { cva, VariantProps } from "class-variance-authority";
+
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";
-import { cva, VariantProps } from "class-variance-authority";
 
 const statusTagVariants = cva(
   "rounded-sm px-2 py-0 text-2xs border capitalize inline-block transition-colors",
@@ -46,7 +47,7 @@ export function Tag({
   className,
 }: {
   tag: string;
-  isActive: boolean;
+  isActive?: boolean;
   className?: string;
 }) {
   return (

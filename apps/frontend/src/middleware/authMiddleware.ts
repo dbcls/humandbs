@@ -7,6 +7,10 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
     const { user, session } = await $getAuthUser();
 
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
     return next({ context: { user, session } });
   }
 );

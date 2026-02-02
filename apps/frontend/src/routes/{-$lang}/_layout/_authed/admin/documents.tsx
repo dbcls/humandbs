@@ -6,7 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
 
 import { DocumentsList } from "./-components/DocumentsList";
-import { DocumentVersionContent } from "./-components/DocumentVersionContent";
+import {
+  DocumentVersion,
+  DocumentVersionContent,
+} from "./-components/DocumentVersion";
 import { DocumentVersionsList } from "./-components/DocumentVersionsList";
 
 export const Route = createFileRoute(
@@ -45,7 +48,7 @@ function RouteComponent() {
 
       {selectedContentId ? (
         <>
-          <Card className="w-80" caption="Versions">
+          {/*<Card className="w-80" caption="Versions">
             <Suspense
               fallback={
                 <div>
@@ -58,17 +61,8 @@ function RouteComponent() {
                 onSelect={setSelectedVersion}
               />
             </Suspense>
-          </Card>
-          {selectedVersion?.versionNumber ? (
-            <DocumentVersionContent
-              key={selectedVersion.contentId + selectedVersion.versionNumber}
-              documentVersionItem={selectedVersion}
-            />
-          ) : (
-            <Card className="flex-1" captionSize={"sm"} caption="Details">
-              Select a version
-            </Card>
-          )}
+          </Card>*/}
+          {<DocumentVersion contentId={selectedContentId} />}
         </>
       ) : (
         <div> No document selected </div>

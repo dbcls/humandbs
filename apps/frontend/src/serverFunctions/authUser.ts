@@ -15,13 +15,7 @@ import {
 import { type SessionUser } from "./user";
 
 interface AuthUserResponse {
-  user: {
-    id: string;
-    role?: UserRole;
-    username?: string;
-    name?: string;
-    email?: string;
-  } | null;
+  user: SessionUser | null;
   session: SessionMeta | null;
 }
 
