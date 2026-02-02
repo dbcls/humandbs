@@ -967,29 +967,6 @@ interface DatasetFilters {
 }
 ```
 
-## 残課題
+## 実装計画
 
-1. **fields パラメータの詳細設計**: フロントエンド要件を確認後、対応フィールドを決定。
-
-2. **searchable merge ロジック**: Dataset の experiments 以下の searchable を merge するロジックの実装。
-
-3. **`loadResearchAndAuthorize` ミドルウェア適用**: routes/research.ts, routes/dataset.ts に適用してハンドラを簡素化。
-
-4. **`updateResearch` から url パラメータを削除**: url は humId から自動生成されるため、更新不可にする。
-
-5. **GET /research から q パラメータを削除**: 検索機能は POST /research/search に統合する。
-
-6. **GET /admin/pending-reviews を削除**: GET /research に status パラメータを追加し、`?status=review` で代替する。
-
-7. **createResearch の全フィールド optional 化**: title, summary, dataProvider 等を optional にし、省略時はデフォルト値を設定する。
-
-8. **includeRawHtml パラメータの実装**: GET /research, GET /research/{humId}, GET /dataset, GET /dataset/{datasetId} に `includeRawHtml` パラメータを追加。デフォルトは false で rawHtml を除外する。
-
-9. **createResearchVersion の datasets 自動コピー**: POST /research/{humId}/versions/new で datasets パラメータを削除し、前バージョンの datasets を draft Research の dataset list に自動コピーする。
-
-10. **Dataset 更新/削除時の draft Research 自動更新**:
-    - PUT /dataset/{datasetId}/update: 初回更新時に新 version を作成し、draft Research の dataset list を自動更新。2回目以降は同じ version を上書き。
-    - POST /dataset/{datasetId}/delete: draft Research の dataset list から参照を自動削除。
-    - いずれも親 Research が draft 状態でのみ実行可能。
-
-11. **GET /stats の実装**: Research/Dataset のカウントとファセット集計を返す統計 API を実装する。
+詳細は [api-impl-plan.md](./api-impl-plan.md) を参照。

@@ -907,7 +907,7 @@ export const searchResearches = async (
   params: ResearchSearchQuery,
   authUser: AuthUser | null = null,
 ): Promise<ResearchSearchResponse> => {
-  const { page, limit, lang, sort, order, q, releasedAfter, releasedBefore, includeFacets } = params
+  const { page, limit, lang, sort, order, releasedAfter, releasedBefore, includeFacets, status: requestedStatus } = params
   const from = (page - 1) * limit
 
   // Step 1: If Dataset filters are present, get humIds from Dataset index
@@ -927,45 +927,52 @@ export const searchResearches = async (
   // Step 2: Build Research query (lang filter removed - documents are BilingualText)
   const must: estypes.QueryDslQueryContainer[] = []
 
-  // Apply authorization filter
-  const statusFilter = buildStatusFilter(authUser)
-  if (statusFilter) {
-    must.push(statusFilter)
+  // Status filter logic:
+  // - If explicit status requested, use it (with authorization check)
+  // - Otherwise, apply default authorization filter
+  if (requestedStatus) {
+    // Check authorization for requested status
+    // public: can only request "published"
+    // authenticated: can request "draft", "review", "published" (own resources only)
+    // admin: can request any status including "deleted"
+    if (!authUser && requestedStatus !== "published") {
+      // Public user requesting non-published - return empty (forbidden handled in route)
+      return {
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        facets: includeFacets ? {} : undefined,
+      }
+    }
+    if (authUser && !authUser.isAdmin && requestedStatus === "deleted") {
+      // Non-admin requesting deleted - return empty
+      return {
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        facets: includeFacets ? {} : undefined,
+      }
+    }
+
+    // Apply status filter
+    must.push({ term: { status: requestedStatus } })
+
+    // For non-admin authenticated users requesting non-published status, also filter by uids
+    if (authUser && !authUser.isAdmin && requestedStatus !== "published") {
+      must.push({ term: { uids: authUser.userId } })
+    }
+  } else {
+    // No explicit status requested - apply default authorization filter
+    const statusFilter = buildStatusFilter(authUser)
+    if (statusFilter) {
+      must.push(statusFilter)
+    }
   }
 
   if (humIdFilter) {
     must.push({ terms: { humId: humIdFilter } })
   }
 
-  // Full-text search
-  if (q) {
-    must.push({
-      bool: {
-        should: [
-          { match: { "title.ja": { query: q, boost: 2 } } },
-          { match: { "title.en": { query: q, boost: 2 } } },
-          { match: { "summary.aims.ja.text": q } },
-          { match: { "summary.aims.en.text": q } },
-          { match: { "summary.methods.ja.text": q } },
-          { match: { "summary.methods.en.text": q } },
-          {
-            nested: {
-              path: "dataProvider",
-              query: {
-                bool: {
-                  should: [
-                    { match: { "dataProvider.name.ja.text": q } },
-                    { match: { "dataProvider.name.en.text": q } },
-                  ],
-                },
-              },
-            },
-          },
-        ],
-        minimum_should_match: 1,
-      },
-    })
-  }
+  // Note: Full-text search via 'q' parameter has been removed from GET /research.
+  // Use POST /research/search for full-text search capabilities.
 
   // Date range filters (renamed: lastReleaseDate → dateModified, firstReleaseDate → datePublished)
   if (releasedAfter) {
@@ -977,8 +984,10 @@ export const searchResearches = async (
 
   // Sort configuration
   let sortSpec: estypes.Sort
-  if (sort === "relevance" && q) {
-    sortSpec = [{ _score: { order: "desc" } }, { humId: { order: "asc" } }]
+  if (sort === "relevance") {
+    // Relevance sort is only meaningful with full-text search (POST /search)
+    // For GET /research without query, fall back to humId
+    sortSpec = [{ humId: { order } }]
   } else if (sort === "title") {
     sortSpec = [{ "title.kw": { order } }, { humId: { order: "asc" } }]
   } else if (sort === "releaseDate") {
@@ -1214,14 +1223,14 @@ export const getResearchWithSeqNo = async (
 
 /**
  * Update Research status with optimistic locking
- * Returns updated document on success, null on conflict
+ * Returns updated document with sequence info on success, null on conflict
  */
 export const updateResearchStatus = async (
   humId: string,
   newStatus: ResearchStatus,
   seqNo: number,
   primaryTerm: number,
-): Promise<EsResearchDoc | null> => {
+): Promise<{ doc: EsResearchDoc; seqNo: number; primaryTerm: number; dateModified: string } | null> => {
   try {
     const now = new Date().toISOString().split("T")[0]
 
@@ -1236,10 +1245,19 @@ export const updateResearchStatus = async (
           dateModified: now,
         },
       },
+      refresh: "wait_for",
     })
 
-    // Fetch and return updated document
-    return getResearchDoc(humId)
+    // Fetch updated document with new sequence info
+    const result = await getResearchWithSeqNo(humId)
+    if (!result) return null
+
+    return {
+      doc: result.doc,
+      seqNo: result.seqNo,
+      primaryTerm: result.primaryTerm,
+      dateModified: now,
+    }
   } catch (error: unknown) {
     // Check for version conflict
     if (error && typeof error === "object" && "meta" in error) {
@@ -1333,15 +1351,15 @@ export const generateNextHumId = async (): Promise<string> => {
  * @returns Created Research and ResearchVersion
  */
 export const createResearch = async (params: {
-  title: { ja: string | null; en: string | null }
-  summary: {
+  title?: { ja: string | null; en: string | null }
+  summary?: {
     aims: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
     footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
   }
-  dataProvider: {
+  dataProvider?: {
     name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     email?: string | null
     orcid?: string | null
@@ -1353,21 +1371,21 @@ export const createResearch = async (params: {
     researchTitle?: { ja: string | null; en: string | null }
     periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
   }[]
-  researchProject: {
+  researchProject?: {
     name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     url?: { ja: { text: string; url: string } | null; en: { text: string; url: string } | null } | null
   }[]
-  grant: {
+  grant?: {
     id: string[]
     title: { ja: string | null; en: string | null }
     agency: { name: { ja: string | null; en: string | null } }
   }[]
-  relatedPublication: {
+  relatedPublication?: {
     title: { ja: string | null; en: string | null }
     doi?: string | null
     datasetIds?: string[]
   }[]
-  uids: string[]
+  uids?: string[]
   humId?: string
   initialReleaseNote?: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
 }): Promise<{ research: EsResearchDoc; version: EsResearchVersionDoc }> => {
@@ -1378,23 +1396,32 @@ export const createResearch = async (params: {
   const version = "v1"
   const humVersionId = `${humId}.${version}`
 
-  // Create Research document
+  // Default summary structure
+  const defaultSummary = {
+    aims: { ja: null, en: null },
+    methods: { ja: null, en: null },
+    targets: { ja: null, en: null },
+    url: { ja: [], en: [] },
+    footers: { ja: [], en: [] },
+  }
+
+  // Create Research document with defaults for optional fields
   const researchDoc: EsResearchDoc = {
     humId,
     url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
-    title: params.title,
-    summary: params.summary,
-    dataProvider: params.dataProvider,
-    researchProject: params.researchProject,
-    grant: params.grant,
-    relatedPublication: params.relatedPublication,
+    title: params.title ?? { ja: null, en: null },
+    summary: params.summary ?? defaultSummary,
+    dataProvider: params.dataProvider ?? [],
+    researchProject: params.researchProject ?? [],
+    grant: params.grant ?? [],
+    relatedPublication: params.relatedPublication ?? [],
     controlledAccessUser: [],
     versionIds: [humVersionId],
     latestVersion: version,
     datePublished: now,
     dateModified: now,
     status: "draft",
-    uids: params.uids,
+    uids: params.uids ?? [],
   }
 
   // Create ResearchVersion document (v1)

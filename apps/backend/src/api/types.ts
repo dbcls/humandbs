@@ -244,14 +244,16 @@ export type DatasetVersionItem = z.infer<typeof DatasetVersionItemSchema>
 
 // Lang version query
 export const LangVersionQuerySchema = z.object({
-  lang: z.enum(langType).default("en"),
+  lang: z.enum(langType).default("ja"),
   version: z.string().regex(/^v\d+$/).nullable().optional(),
+  includeRawHtml: z.coerce.boolean().default(false),
 })
 export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>
 
 // Lang query
 export const LangQuerySchema = z.object({
-  lang: z.enum(langType).default("en"),
+  lang: z.enum(langType).default("ja"),
+  includeRawHtml: z.coerce.boolean().default(false),
 })
 export type LangQuery = z.infer<typeof LangQuerySchema>
 
@@ -390,18 +392,22 @@ export type ErrorCode = (typeof ErrorCode)[number]
  * Create research request
  * Creates Research + initial ResearchVersion (v1) simultaneously
  * Note: humId, versionIds, latestVersion, datePublished, dateModified are auto-generated
+ * All fields are optional - defaults will be used for missing fields
  */
 export const CreateResearchRequestSchema = z.object({
-  // Research fields (ja/en both required)
-  title: BilingualTextSchema,
-  summary: SummarySchema,
-  dataProvider: z.array(PersonSchema),
-  researchProject: z.array(ResearchProjectSchema),
-  grant: z.array(GrantSchema),
-  relatedPublication: z.array(PublicationSchema),
+  // Optional humId - auto-generated if not provided (hum0001, hum0002, ...)
+  humId: z.string().optional(),
 
-  // Admin assigns owner UIDs
-  uids: z.array(z.string()),
+  // Research fields - all optional with defaults
+  title: BilingualTextSchema.optional(),
+  summary: SummarySchema.optional(),
+  dataProvider: z.array(PersonSchema).optional(),
+  researchProject: z.array(ResearchProjectSchema).optional(),
+  grant: z.array(GrantSchema).optional(),
+  relatedPublication: z.array(PublicationSchema).optional(),
+
+  // Admin assigns owner UIDs (optional, defaults to empty array)
+  uids: z.array(z.string()).optional(),
 
   // Initial version release note (optional)
   initialReleaseNote: BilingualTextValueSchema.optional(),
@@ -410,10 +416,10 @@ export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
 
 /**
  * Update research request (full replacement)
- * Note: humId, versionIds, latestVersion, datePublished, dateModified cannot be changed
+ * Note: humId, url, versionIds, latestVersion, datePublished, dateModified cannot be changed
+ * url is auto-generated from humId
  */
 export const UpdateResearchRequestSchema = z.object({
-  url: BilingualTextSchema,
   title: BilingualTextSchema,
   summary: SummarySchema,
   dataProvider: z.array(PersonSchema),
@@ -464,9 +470,12 @@ export type ResearchListResponse = z.infer<typeof ResearchListResponseSchema>
 
 /**
  * Update Research UIDs (owner list) request
+ * Includes optimistic locking fields
  */
 export const UpdateUidsRequestSchema = z.object({
   uids: z.array(z.string()).describe("Keycloak sub (UUID) array of users who can edit this research"),
+  _seq_no: z.number().describe("Sequence number for optimistic locking"),
+  _primary_term: z.number().describe("Primary term for optimistic locking"),
 })
 export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
 
@@ -483,10 +492,10 @@ export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>
 
 /**
  * Create version request
+ * Note: datasets are automatically copied from the previous version
  */
 export const CreateVersionRequestSchema = z.object({
-  releaseNote: BilingualTextValueSchema,
-  datasets: z.array(DatasetRefSchema).optional(), // Datasets to link (optional)
+  releaseNote: BilingualTextValueSchema.optional(),
 })
 export type CreateVersionRequest = z.infer<typeof CreateVersionRequestSchema>
 
@@ -619,12 +628,12 @@ export const ResearchSearchQuerySchema = z.object({
   // Pagination
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  lang: z.enum(langType).default("en"),
+  lang: z.enum(langType).default("ja"),
   sort: z.enum(["humId", "title", "releaseDate", "relevance"]).default("humId"),
   order: z.enum(["asc", "desc"]).default("asc"),
 
-  // Full-text search
-  q: z.string().optional(),
+  // Status filter (admin only for non-published)
+  status: z.enum(["draft", "review", "published", "deleted"]).optional(),
 
   // Research-specific filters
   releasedAfter: z.string().optional(),  // ISO 8601 date
@@ -684,6 +693,9 @@ export const ResearchSearchQuerySchema = z.object({
 
   // Include facet counts in response
   includeFacets: booleanFromString,
+
+  // Include rawHtml fields in response (default: false)
+  includeRawHtml: z.coerce.boolean().default(false),
 })
 export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>
 
@@ -707,7 +719,7 @@ export const DatasetSearchQuerySchema = z.object({
   // Pagination
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  lang: z.enum(langType).default("en"),
+  lang: z.enum(langType).default("ja"),
   sort: z.enum(["datasetId", "releaseDate", "subjectCount", "relevance"]).default("datasetId"),
   order: z.enum(["asc", "desc"]).default("asc"),
 
@@ -770,6 +782,9 @@ export const DatasetSearchQuerySchema = z.object({
 
   // Include facet counts in response
   includeFacets: booleanFromString,
+
+  // Include rawHtml fields in response (default: false)
+  includeRawHtml: z.coerce.boolean().default(false),
 })
 export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 
@@ -816,7 +831,7 @@ export const DatasetFiltersSchema = z.object({
   ageGroup: z.array(z.enum(["infant", "child", "adult", "elderly", "mixed"])).optional(),
   assayType: z.array(z.string()).optional(),
   libraryKits: z.array(z.string()).optional(),
-  platformVendor: z.string().optional(), // Partial match
+  platform: z.array(z.string()).optional(), // Facet selection (vendor or model)
   platformModel: z.array(z.string()).optional(),
   readType: z.array(z.enum(["single-end", "paired-end"])).optional(),
   referenceGenome: z.array(z.string()).optional(),
@@ -849,7 +864,7 @@ export const ResearchSearchBodySchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
 
   // Sort
-  sort: z.enum(["humId", "datePublished", "dateModified"]).optional(),
+  sort: z.enum(["humId", "datePublished", "dateModified", "relevance"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 
   // Free-text search
@@ -877,12 +892,11 @@ export const DatasetSearchBodySchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
 
   // Sort
-  sort: z.enum(["datasetId", "releaseDate"]).optional(),
+  sort: z.enum(["datasetId", "releaseDate", "relevance"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 
-  // Free-text search (two independent types)
-  metadataQuery: z.string().optional(), // Searches typeOfData, targets
-  experimentQuery: z.string().optional(), // Searches experiments.data
+  // S2: Free-text search (unified query instead of separate metadataQuery/experimentQuery)
+  query: z.string().optional(), // Searches typeOfData, experiments
 
   // Parent Research filter
   humId: z.string().optional(),
@@ -897,18 +911,27 @@ export const DatasetSearchBodySchema = z.object({
 export type DatasetSearchBody = z.infer<typeof DatasetSearchBodySchema>
 
 /**
- * Single facet field response
+ * Facet value with count
+ */
+export const FacetValueWithCountSchema = z.object({
+  value: z.string(),
+  count: z.number(),
+})
+export type FacetValueWithCount = z.infer<typeof FacetValueWithCountSchema>
+
+/**
+ * Single facet field response (with counts)
  */
 export const FacetFieldResponseSchema = z.object({
   fieldName: z.string(),
-  values: z.array(z.string()),
+  values: z.array(FacetValueWithCountSchema),
 })
 export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>
 
 /**
- * All facets response (GET /facets)
+ * All facets response (GET /facets) - with counts
  */
-export const AllFacetsResponseSchema = z.record(z.string(), z.array(z.string()))
+export const AllFacetsResponseSchema = z.record(z.string(), z.array(FacetValueWithCountSchema))
 export type AllFacetsResponse = z.infer<typeof AllFacetsResponseSchema>
 
 // === Search API ===
@@ -1007,27 +1030,20 @@ export const FacetsResponseSchema = z.object({
 })
 export type FacetsResponse = z.infer<typeof FacetsResponseSchema>
 
-// === Admin API ===
+// === Create Dataset for Research ===
 
 /**
- * Pending review item
+ * Create dataset request for POST /research/{humId}/dataset/new
+ * All fields are optional - defaults will be used
  */
-export const PendingReviewItemSchema = z.object({
-  humId: z.string(),
-  title: BilingualTextSchema,
-  uids: z.array(z.string()),
-  submittedAt: z.string(),
+export const CreateDatasetForResearchRequestSchema = z.object({
+  datasetId: z.string().optional(), // Auto-generated as DRAFT-{humId}-{uuid} if not provided
+  releaseDate: z.string().optional(),
+  criteria: CriteriaCanonicalSchema.optional(),
+  typeOfData: BilingualTextSchema.optional(),
+  experiments: z.array(ExperimentSchemaBase).optional(),
 })
-export type PendingReviewItem = z.infer<typeof PendingReviewItemSchema>
-
-/**
- * Pending reviews response
- */
-export const PendingReviewsResponseSchema = z.object({
-  data: z.array(PendingReviewItemSchema),
-  total: z.number(),
-})
-export type PendingReviewsResponse = z.infer<typeof PendingReviewsResponseSchema>
+export type CreateDatasetForResearchRequest = z.infer<typeof CreateDatasetForResearchRequestSchema>
 
 // === Link API (Research-Dataset relationship) ===
 
@@ -1051,15 +1067,23 @@ export type LinkedResearchesResponse = z.infer<typeof LinkedResearchesResponseSc
 // === Status Transition API ===
 
 /**
- * Status transition response
+ * Workflow response (for submit, approve, reject, unpublish)
+ * Returns current state for optimistic locking
  */
-export const StatusTransitionResponseSchema = z.object({
+export const WorkflowResponseSchema = z.object({
   humId: z.string(),
-  previousStatus: z.enum(ResearchStatus),
-  currentStatus: z.enum(ResearchStatus),
-  action: z.enum(StatusAction),
-  timestamp: z.string(),
+  status: z.enum(ResearchStatus),
+  dateModified: z.string(),
+  _seq_no: z.number(),
+  _primary_term: z.number(),
 })
+export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>
+
+/**
+ * Status transition response (legacy, kept for reference)
+ * @deprecated Use WorkflowResponseSchema instead
+ */
+export const StatusTransitionResponseSchema = WorkflowResponseSchema
 export type StatusTransitionResponse = z.infer<typeof StatusTransitionResponseSchema>
 
 // === Utility Types ===
@@ -1121,6 +1145,19 @@ export const ErrorResponseSchema = z.object({
   message: z.string().nullable().optional(),
 })
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
+
+// === Stats API ===
+
+/**
+ * Stats response (GET /stats)
+ * Returns counts and facets for published resources
+ */
+export const StatsResponseSchema = z.object({
+  researchCount: z.number(),
+  datasetCount: z.number(),
+  facets: z.record(z.string(), z.array(FacetValueWithCountSchema)),
+})
+export type StatsResponse = z.infer<typeof StatsResponseSchema>
 
 // Re-export schemas for route definitions
 export { DatasetSchema, ResearchSchema, ResearchVersionSchema }

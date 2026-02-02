@@ -82,8 +82,6 @@ export type {
   ReadType,
   DiseaseInfo,
   PlatformInfo,
-  DataVolumeUnit,
-  DataVolume,
   Sex,
   AgeGroup,
   VariantCounts,

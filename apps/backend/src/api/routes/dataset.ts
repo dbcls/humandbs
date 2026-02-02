@@ -35,6 +35,8 @@ import {
   UpdateDatasetRequestSchema,
 } from "@/api/types"
 import type { DatasetIdParams, DatasetSearchQuery, DatasetVersionParams, LangVersionQuery } from "@/api/types"
+import { addMergedSearchable } from "@/api/utils/merge-searchable"
+import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
 // === Route Definitions ===
 
@@ -210,7 +212,7 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
     const query = c.req.query() as unknown as DatasetSearchQuery
     const authUser = c.get("authUser")
     const datasetsData = await searchDatasets(query, authUser)
-    return c.json(datasetsData, 200)
+    return c.json(maybeStripRawHtml(datasetsData, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching datasets:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -271,7 +273,10 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
     const authUser = c.get("authUser")
     const dataset = await getDataset(datasetId, { version: query.version ?? undefined }, authUser)
     if (dataset === null) return c.json({ error: `Dataset with datasetId ${datasetId} not found` }, 404)
-    return c.json(dataset, 200)
+    // Add mergedSearchable for convenience (aggregates all experiment searchable fields)
+    // Note: This extends the response beyond the OpenAPI schema
+    const datasetWithMerged = addMergedSearchable(dataset as Parameters<typeof addMergedSearchable>[0])
+    return c.json(maybeStripRawHtml(datasetWithMerged, query.includeRawHtml ?? false) as unknown as typeof dataset, 200)
   } catch (error) {
     console.error("Error fetching dataset detail:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -311,6 +316,11 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     // Check permission (owner or admin can update)
     if (!canAccessResearchDoc(authUser, research)) {
       return c.json({ error: "Forbidden", message: "Not authorized to update this dataset" }, 403)
+    }
+
+    // D1: Check that parent Research is in draft status
+    if (research.status !== "draft") {
+      return c.json({ error: "Forbidden", message: "Cannot update dataset: parent Research is not in draft status" }, 403)
     }
 
     const body = await c.req.json()
@@ -359,6 +369,18 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
       return c.body(null, 204)
     }
 
+    // D2: Check that parent Research is in draft status
+    const research = await getResearchDoc(dataset.humId)
+    if (!research) {
+      return c.json({ error: `Parent Research ${dataset.humId} not found` }, 404)
+    }
+    if (research.status === "deleted") {
+      return c.json({ error: `Parent Research ${dataset.humId} not found` }, 404)
+    }
+    if (research.status !== "draft") {
+      return c.json({ error: "Forbidden", message: "Cannot delete dataset: parent Research is not in draft status" }, 403)
+    }
+
     await deleteDataset(datasetId, version)
 
     return c.body(null, 204)
@@ -389,7 +411,9 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
     const authUser = c.get("authUser")
     const dataset = await getDataset(datasetId, { version }, authUser)
     if (dataset === null) return c.json({ error: `Dataset version ${version} not found` }, 404)
-    return c.json(dataset, 200)
+    // Add mergedSearchable for convenience
+    const datasetWithMerged = addMergedSearchable(dataset as Parameters<typeof addMergedSearchable>[0])
+    return c.json(datasetWithMerged as unknown as typeof dataset, 200)
   } catch (error) {
     console.error("Error fetching dataset version:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)

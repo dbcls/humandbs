@@ -93,7 +93,7 @@ const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Pa
 
   // Direct string fields
   if (filters.disease) query.disease = filters.disease
-  if (filters.platformVendor) query.platform = filters.platformVendor
+  if (filters.platform) query.platform = filters.platform
 
   // Boolean fields
   if (filters.isTumor !== undefined) query.isTumor = filters.isTumor
@@ -140,7 +140,7 @@ const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearchQuery 
     lang: "en", // Default, can be extended
     sort: body.sort ?? "datasetId",
     order: body.order,
-    q: body.metadataQuery || body.experimentQuery, // Combine queries
+    q: body.query, // Unified query parameter (S2)
     humId: body.humId,
     includeFacets: body.includeFacets,
     ...filters,
@@ -190,11 +190,11 @@ const getFacetsRoute = createRoute({
   path: "/facets",
   tags: ["Search"],
   summary: "Get All Facet Values",
-  description: "Get available facet values for UI filter dropdowns. Returns value lists without counts.",
+  description: "Get available facet values with counts for UI filter dropdowns.",
   responses: {
     200: {
       content: { "application/json": { schema: AllFacetsResponseSchema } },
-      description: "All facet values grouped by field",
+      description: "All facet values with counts grouped by field",
     },
     500: ErrorSpec500,
   },
@@ -283,13 +283,8 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
       includeFacets: true,
     } as DatasetSearchQuery, authUser)
 
-    // Convert facets to value-only format (without counts)
-    const facets: Record<string, string[]> = {}
-    for (const [key, items] of Object.entries(result.facets ?? {})) {
-      facets[key] = items.map(item => item.value)
-    }
-
-    return c.json(facets, 200)
+    // Return facets with counts (S4)
+    return c.json(result.facets ?? {}, 200)
   } catch (error) {
     console.error("Error fetching facets:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -312,10 +307,10 @@ searchRouter.openapi(getFacetFieldRoute, async (c) => {
       includeFacets: true,
     } as DatasetSearchQuery, authUser)
 
-    const fieldFacet = result.facets?.[fieldName]
-    const values = fieldFacet ? fieldFacet.map(item => item.value) : []
+    // Return facet values with counts (S5)
+    const fieldFacet = result.facets?.[fieldName] ?? []
 
-    return c.json({ fieldName, values }, 200)
+    return c.json({ fieldName, values: fieldFacet }, 200)
   } catch (error) {
     console.error("Error fetching facet field:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)

@@ -4,18 +4,18 @@
  * Handles CRUD operations, versioning, status transitions, and dataset linking
  * for Research resources.
  */
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
+import { PAGINATION } from "@/api/constants"
 import {
   canAccessResearchDoc,
-  canPerformTransition,
+  createDataset,
   createResearch,
   createResearchVersion,
   deleteResearch,
   getResearchDetail,
   getResearchDoc,
-  getResearchWithSeqNo,
-  linkDatasetToResearch,
+  getResearchVersion,
   listResearchVersionsSorted,
   searchResearches,
   unlinkDatasetFromResearch,
@@ -24,17 +24,18 @@ import {
   updateResearchUids,
   validateStatusTransition,
 } from "@/api/es-client"
-import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
+import { optionalAuth } from "@/api/middleware/auth"
+import { loadResearchAndAuthorize } from "@/api/middleware/resource-auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
 import {
   CreateResearchRequestSchema,
   CreateVersionRequestSchema,
+  EsDatasetDocSchema,
   EsResearchDetailSchema,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   LinkParamsSchema,
-  LinkedDatasetsResponseSchema,
   ResearchResponseSchema,
   ResearchSearchQuerySchema,
   ResearchSearchResponseSchema,
@@ -47,6 +48,7 @@ import {
   VersionResponseSchema,
 } from "@/api/types"
 import type { HumIdParams, LangVersionQuery, LinkParams, ResearchSearchQuery, UpdateUidsRequest, VersionParams } from "@/api/types"
+import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
 // === Route Definitions ===
 
@@ -218,34 +220,72 @@ const listLinkedDatasetsRoute = createRoute({
   path: "/{humId}/dataset",
   tags: ["Research Datasets"],
   summary: "List Linked Datasets",
-  description: "List all datasets linked to this research",
+  description: "List all datasets linked to this research with pagination",
   request: {
     params: HumIdParamsSchema,
-    query: LangQuerySchema,
+    query: z.object({
+      lang: z.enum(["ja", "en"]).default("ja"),
+      page: z.coerce.number().int().min(1).default(1),
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+    }),
   },
   responses: {
     200: {
-      content: { "application/json": { schema: LinkedDatasetsResponseSchema } },
-      description: "List of linked datasets",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(EsDatasetDocSchema),
+            pagination: z.object({
+              page: z.number(),
+              limit: z.number(),
+              total: z.number(),
+              totalPages: z.number(),
+              hasNext: z.boolean(),
+              hasPrev: z.boolean(),
+            }),
+          }),
+        },
+      },
+      description: "List of linked datasets with pagination",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
 })
 
-const linkDatasetRoute = createRoute({
+const createDatasetForResearchRoute = createRoute({
   method: "post",
-  path: "/{humId}/dataset/{datasetId}/new",
+  path: "/{humId}/dataset/new",
   tags: ["Research Datasets"],
-  summary: "Link Dataset",
-  description: "Link a dataset to this research. Requires owner or admin.",
+  summary: "Create Dataset for Research",
+  description: "Create a new dataset and link it to this research. Requires owner or admin. Parent Research must be in draft status.",
   request: {
-    params: LinkParamsSchema,
+    params: HumIdParamsSchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            datasetId: z.string().optional(),
+            releaseDate: z.string().optional(),
+            criteria: z.enum([
+              "Controlled-access (Type I)",
+              "Controlled-access (Type II)",
+              "Unrestricted-access",
+            ]).optional(),
+            typeOfData: z.object({
+              ja: z.string().nullable(),
+              en: z.string().nullable(),
+            }).optional(),
+            experiments: z.array(z.unknown()).optional(),
+          }),
+        },
+      },
+    },
   },
   responses: {
     201: {
-      content: { "application/json": { schema: LinkedDatasetsResponseSchema } },
-      description: "Dataset linked successfully",
+      content: { "application/json": { schema: EsDatasetDocSchema } },
+      description: "Dataset created and linked successfully",
     },
     401: ErrorSpec401,
     403: ErrorSpec403,
@@ -391,13 +431,24 @@ export const researchRouter = new OpenAPIHono()
 
 researchRouter.use("*", optionalAuth)
 
+// Apply resource authorization middleware to routes that modify research
+// These routes require authentication and ownership check
+researchRouter.use("/:humId/update", loadResearchAndAuthorize({ requireOwnership: true }))
+researchRouter.use("/:humId/delete", loadResearchAndAuthorize({ adminOnly: true }))
+researchRouter.use("/:humId/versions/new", loadResearchAndAuthorize({ requireOwnership: true }))
+researchRouter.use("/:humId/submit", loadResearchAndAuthorize({ requireOwnership: true }))
+researchRouter.use("/:humId/approve", loadResearchAndAuthorize({ adminOnly: true }))
+researchRouter.use("/:humId/reject", loadResearchAndAuthorize({ adminOnly: true }))
+researchRouter.use("/:humId/unpublish", loadResearchAndAuthorize({ adminOnly: true }))
+researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ adminOnly: true }))
+
 // GET /research
 researchRouter.openapi(listResearchRoute, async (c) => {
   try {
     const query = c.req.query() as unknown as ResearchSearchQuery
     const authUser = c.get("authUser")
     const researches = await searchResearches(query, authUser)
-    return c.json(researches, 200)
+    return c.json(maybeStripRawHtml(researches, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching research list:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -417,6 +468,7 @@ researchRouter.openapi(createResearchRoute, async (c) => {
     const body = await c.req.json()
 
     const result = await createResearch({
+      humId: body.humId,
       title: body.title,
       summary: body.summary,
       dataProvider: body.dataProvider,
@@ -449,7 +501,7 @@ researchRouter.openapi(getResearchRoute, async (c) => {
     const authUser = c.get("authUser")
     const detail = await getResearchDetail(humId, { version: query.version ?? undefined }, authUser)
     if (!detail) return c.json({ error: `Research with humId ${humId} not found` }, 404)
-    return c.json(detail, 200)
+    return c.json(maybeStripRawHtml(detail, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching research detail:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
@@ -457,36 +509,16 @@ researchRouter.openapi(getResearchRoute, async (c) => {
 })
 
 // PUT /research/{humId}/update
+// Middleware: loadResearchAndAuthorize({ requireOwnership: true })
 researchRouter.openapi(updateResearchRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    // Check permission (owner or admin can update)
-    if (!authUser.isAdmin && !doc.uids.includes(authUser.userId)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to update this research" }, 403)
-    }
+    // Research is preloaded by middleware with auth/ownership checks
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm } = research
 
     const body = await c.req.json()
 
     const updated = await updateResearch(humId, {
-      url: body.url,
       title: body.title,
       summary: body.summary,
       dataProvider: body.dataProvider,
@@ -514,29 +546,12 @@ researchRouter.openapi(updateResearchRoute, async (c) => {
 })
 
 // POST /research/{humId}/delete
+// Middleware: loadResearchAndAuthorize({ adminOnly: true })
 researchRouter.openapi(deleteResearchRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  if (!canDeleteResource(authUser)) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Already deleted
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
+    // Research is preloaded by middleware with admin check
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm } = research
 
     const deleted = await deleteResearch(humId, seqNo, primaryTerm)
     if (!deleted) {
@@ -590,38 +605,19 @@ researchRouter.openapi(getVersionRoute, async (c) => {
 })
 
 // POST /research/{humId}/versions/new
+// Middleware: loadResearchAndAuthorize({ requireOwnership: true })
 researchRouter.openapi(createVersionRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    // Check permission (owner or admin can create version)
-    if (!authUser.isAdmin && !doc.uids.includes(authUser.userId)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to create version for this research" }, 403)
-    }
+    // Research is preloaded by middleware with auth/ownership checks
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm } = research
 
     const body = await c.req.json()
 
     const newVersion = await createResearchVersion(
       humId,
-      body.releaseNote,
-      body.datasets,
+      body.releaseNote ?? { ja: null, en: null },
+      undefined, // datasets are auto-copied from previous version
       seqNo,
       primaryTerm,
     )
@@ -648,26 +644,48 @@ researchRouter.openapi(createVersionRoute, async (c) => {
 researchRouter.openapi(listLinkedDatasetsRoute, async (c) => {
   try {
     const { humId } = c.req.param() as unknown as HumIdParams
+    const query = c.req.query()
+    const page = Number(query.page) || 1
+    const limit = Number(query.limit) || PAGINATION.DEFAULT_LIMIT
     const authUser = c.get("authUser")
+
     const detail = await getResearchDetail(humId, {}, authUser)
     if (!detail) return c.json({ error: `Research with humId ${humId} not found` }, 404)
-    return c.json({ data: detail.datasets ?? [] }, 200)
+
+    const datasets = detail.datasets ?? []
+    const total = datasets.length
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit)
+    const start = (page - 1) * limit
+    const paginatedData = datasets.slice(start, start + limit)
+
+    return c.json({
+      data: paginatedData,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    }, 200)
   } catch (error) {
     console.error("Error fetching linked datasets:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
   }
 })
 
-// POST /research/{humId}/dataset/{datasetId}/new
-researchRouter.openapi(linkDatasetRoute, async (c) => {
+// POST /research/{humId}/dataset/new
+researchRouter.openapi(createDatasetForResearchRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
     return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
   }
   try {
-    const { humId, datasetId } = c.req.param() as unknown as LinkParams
+    const { humId } = c.req.param() as unknown as HumIdParams
+    const body = await c.req.json()
 
-    // Get research to check permissions
+    // Get research to check permissions and status
     const research = await getResearchDoc(humId)
     if (!research) {
       return c.json({ error: `Research ${humId} not found` }, 404)
@@ -678,25 +696,36 @@ researchRouter.openapi(linkDatasetRoute, async (c) => {
       return c.json({ error: `Research ${humId} not found` }, 404)
     }
 
-    // Check permission (owner or admin can link)
+    // Check permission (owner or admin can create datasets)
     if (!canAccessResearchDoc(authUser, research)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to link datasets to this research" }, 403)
+      return c.json({ error: "Forbidden", message: "Not authorized to create datasets for this research" }, 403)
     }
 
-    // Get the version from query param or use "v1" as default
-    const query = c.req.query()
-    const version = query.version ?? "v1"
-
-    const updatedDatasets = await linkDatasetToResearch(humId, datasetId, version)
-    if (!updatedDatasets) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+    // Check that Research is in draft status
+    if (research.status !== "draft") {
+      return c.json({ error: "Forbidden", message: "Cannot create dataset: parent Research is not in draft status" }, 403)
     }
 
-    // Get full dataset details
-    const detail = await getResearchDetail(humId, {}, authUser)
-    return c.json({ data: detail?.datasets ?? [] }, 201)
+    // Get latest ResearchVersion to determine humVersionId
+    const latestVersion = await getResearchVersion(humId, {})
+    if (!latestVersion) {
+      return c.json({ error: `Research ${humId} has no version` }, 500)
+    }
+
+    // Create dataset with defaults for optional fields
+    const dataset = await createDataset({
+      datasetId: body.datasetId,
+      humId,
+      humVersionId: latestVersion.humVersionId,
+      releaseDate: body.releaseDate ?? new Date().toISOString().split("T")[0],
+      criteria: body.criteria ?? "Controlled-access (Type I)",
+      typeOfData: body.typeOfData ?? { ja: null, en: null },
+      experiments: body.experiments ?? [],
+    })
+
+    return c.json(dataset, 201)
   } catch (error) {
-    console.error("Error linking dataset:", error)
+    console.error("Error creating dataset for research:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
   }
 })
@@ -743,32 +772,15 @@ researchRouter.openapi(unlinkDatasetRoute, async (c) => {
 })
 
 // POST /research/{humId}/submit
+// Middleware: loadResearchAndAuthorize({ requireOwnership: true })
 researchRouter.openapi(submitRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    // Check permission (owner or admin can submit)
-    if (!canPerformTransition(authUser, doc, "submit")) {
-      return c.json({ error: "Forbidden", message: "Not authorized to submit this research" }, 403)
-    }
+    // Research is preloaded by middleware with auth/ownership checks
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm, status } = research
 
     // Validate transition
-    const validationError = validateStatusTransition(doc.status, "submit")
+    const validationError = validateStatusTransition(status, "submit")
     if (validationError) {
       return c.json({ error: "Conflict", message: validationError }, 409)
     }
@@ -779,15 +791,12 @@ researchRouter.openapi(submitRoute, async (c) => {
       return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
     }
 
-    // doc.status is validated to be "draft" by validateStatusTransition
-    const previousStatus = doc.status as "draft" | "review" | "published"
-
     return c.json({
       humId,
-      previousStatus,
-      currentStatus: "review" as const,
-      action: "submit" as const,
-      timestamp: new Date().toISOString(),
+      status: "review" as const,
+      dateModified: updated.dateModified,
+      _seq_no: updated.seqNo,
+      _primary_term: updated.primaryTerm,
     }, 200)
   } catch (error) {
     console.error("Error submitting research:", error)
@@ -796,30 +805,15 @@ researchRouter.openapi(submitRoute, async (c) => {
 })
 
 // POST /research/{humId}/approve
+// Middleware: loadResearchAndAuthorize({ adminOnly: true })
 researchRouter.openapi(approveRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  if (!authUser.isAdmin) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
+    // Research is preloaded by middleware with admin check
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm, status } = research
 
     // Validate transition
-    const validationError = validateStatusTransition(doc.status, "approve")
+    const validationError = validateStatusTransition(status, "approve")
     if (validationError) {
       return c.json({ error: "Conflict", message: validationError }, 409)
     }
@@ -830,15 +824,12 @@ researchRouter.openapi(approveRoute, async (c) => {
       return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
     }
 
-    // doc.status is validated to be "review" by validateStatusTransition
-    const previousStatus = doc.status as "draft" | "review" | "published"
-
     return c.json({
       humId,
-      previousStatus,
-      currentStatus: "published" as const,
-      action: "approve" as const,
-      timestamp: new Date().toISOString(),
+      status: "published" as const,
+      dateModified: updated.dateModified,
+      _seq_no: updated.seqNo,
+      _primary_term: updated.primaryTerm,
     }, 200)
   } catch (error) {
     console.error("Error approving research:", error)
@@ -847,30 +838,15 @@ researchRouter.openapi(approveRoute, async (c) => {
 })
 
 // POST /research/{humId}/reject
+// Middleware: loadResearchAndAuthorize({ adminOnly: true })
 researchRouter.openapi(rejectRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  if (!authUser.isAdmin) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
+    // Research is preloaded by middleware with admin check
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm, status } = research
 
     // Validate transition
-    const validationError = validateStatusTransition(doc.status, "reject")
+    const validationError = validateStatusTransition(status, "reject")
     if (validationError) {
       return c.json({ error: "Conflict", message: validationError }, 409)
     }
@@ -881,15 +857,12 @@ researchRouter.openapi(rejectRoute, async (c) => {
       return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
     }
 
-    // doc.status is validated to be "review" by validateStatusTransition
-    const previousStatus = doc.status as "draft" | "review" | "published"
-
     return c.json({
       humId,
-      previousStatus,
-      currentStatus: "draft" as const,
-      action: "reject" as const,
-      timestamp: new Date().toISOString(),
+      status: "draft" as const,
+      dateModified: updated.dateModified,
+      _seq_no: updated.seqNo,
+      _primary_term: updated.primaryTerm,
     }, 200)
   } catch (error) {
     console.error("Error rejecting research:", error)
@@ -898,30 +871,15 @@ researchRouter.openapi(rejectRoute, async (c) => {
 })
 
 // POST /research/{humId}/unpublish
+// Middleware: loadResearchAndAuthorize({ adminOnly: true })
 researchRouter.openapi(unpublishRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  if (!authUser.isAdmin) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
+    // Research is preloaded by middleware with admin check
+    const research = c.get("research")!
+    const { humId, seqNo, primaryTerm, status } = research
 
     // Validate transition
-    const validationError = validateStatusTransition(doc.status, "unpublish")
+    const validationError = validateStatusTransition(status, "unpublish")
     if (validationError) {
       return c.json({ error: "Conflict", message: validationError }, 409)
     }
@@ -932,15 +890,12 @@ researchRouter.openapi(unpublishRoute, async (c) => {
       return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
     }
 
-    // doc.status is validated to be "published" by validateStatusTransition
-    const previousStatus = doc.status as "draft" | "review" | "published"
-
     return c.json({
       humId,
-      previousStatus,
-      currentStatus: "draft" as const,
-      action: "unpublish" as const,
-      timestamp: new Date().toISOString(),
+      status: "draft" as const,
+      dateModified: updated.dateModified,
+      _seq_no: updated.seqNo,
+      _primary_term: updated.primaryTerm,
     }, 200)
   } catch (error) {
     console.error("Error unpublishing research:", error)
@@ -949,32 +904,17 @@ researchRouter.openapi(unpublishRoute, async (c) => {
 })
 
 // PUT /research/{humId}/uids
+// Middleware: loadResearchAndAuthorize({ adminOnly: true })
 researchRouter.openapi(updateUidsRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  if (!authUser.isAdmin) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
-  }
   try {
-    const { humId } = c.req.param() as unknown as HumIdParams
-
-    // Get research with sequence number for optimistic locking
-    const result = await getResearchWithSeqNo(humId)
-    if (!result) return c.json({ error: `Research ${humId} not found` }, 404)
-
-    const { doc, seqNo, primaryTerm } = result
-
-    // Deleted research is not accessible
-    if (doc.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
+    // Research is preloaded by middleware with admin check
+    const research = c.get("research")!
+    const { humId } = research
 
     const body = await c.req.json() as UpdateUidsRequest
 
-    // Update uids
-    const updatedUids = await updateResearchUids(humId, body.uids, seqNo, primaryTerm)
+    // Use optimistic lock values from request body
+    const updatedUids = await updateResearchUids(humId, body.uids, body._seq_no, body._primary_term)
     if (!updatedUids) {
       return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
     }

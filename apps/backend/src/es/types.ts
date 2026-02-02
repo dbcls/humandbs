@@ -63,23 +63,64 @@ export const PlatformInfoSchema = z.object({
   model: z.string(),
 })
 
+export const VariantCountsSchema = z.object({
+  snv: z.number().nullable(),
+  indel: z.number().nullable(),
+  cnv: z.number().nullable(),
+  sv: z.number().nullable(),
+  total: z.number().nullable(),
+})
+
 export const SearchableExperimentFieldsSchema = z.object({
+  // Subject/sample info
   subjectCount: z.number().nullable(),
   subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable(),
   healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable(),
+
+  // Disease info (multiple diseases supported)
   diseases: z.array(DiseaseInfoSchema),
+
+  // Biological sample info
   tissues: z.array(z.string()),
   isTumor: z.boolean().nullable(),
   cellLine: z.array(z.string()),
   population: z.array(z.string()),
+
+  // Demographics
+  sex: z.enum(["male", "female", "mixed"]).nullable(),
+  ageGroup: z.enum(["infant", "child", "adult", "elderly", "mixed"]).nullable(),
+
+  // Experimental method
   assayType: z.array(z.string()),
   libraryKits: z.array(z.string()),
+
+  // Platform
   platforms: z.array(PlatformInfoSchema),
+  // Flattened for ES facet aggregation
+  platformVendor: z.string().nullable().optional(),
+  platformModel: z.string().nullable().optional(),
   readType: z.enum(["single-end", "paired-end"]).nullable(),
   readLength: z.number().nullable(),
+
+  // Sequencing quality
+  sequencingDepth: z.number().nullable(),
+  targetCoverage: z.number().nullable(),
+  referenceGenome: z.array(z.string()),
+
+  // Target region
   targets: z.string().nullable(),
+
+  // Variant data
+  variantCounts: VariantCountsSchema.nullable(),
+  hasPhenotypeData: z.boolean().nullable(),
+
+  // Data info
   fileTypes: z.array(z.string()),
+  processedDataTypes: z.array(z.string()),
   dataVolume: DataVolumeSchema.nullable(),
+  dataVolumeGb: z.number().nullable(), // Converted from dataVolume for easy range filtering
+
+  // Policies (rule-based, not LLM)
   policies: z.array(NormalizedPolicySchema),
 })
 
@@ -265,8 +306,6 @@ export type {
   HealthStatus,
   ReadType,
   DiseaseInfo,
-  DataVolumeUnit,
-  DataVolume,
   SearchableExperimentFields,
   SearchableDataset,
 } from "@/crawler/types"

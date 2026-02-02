@@ -11,6 +11,7 @@ import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
 import { researchRouter } from "@/api/routes/research"
 import { searchRouter } from "@/api/routes/search"
+import { statsRouter } from "@/api/routes/stats"
 
 // Environment variables
 const API_URL_PREFIX = process.env.HUMANDBS_API_URL_PREFIX || ""
@@ -26,6 +27,7 @@ export const createApp = () => {
 
   // Utility routes
   api.route("/health", healthRouter)
+  api.route("/stats", statsRouter)
 
   // API routes (singular form)
   api.route("/research", researchRouter)
@@ -84,6 +86,7 @@ Only admins can approve/reject submissions and unpublish content.
     servers: API_URL_PREFIX ? [{ url: API_URL_PREFIX }] : undefined,
     tags: [
       { name: "Health", description: "Health check endpoints" },
+      { name: "Stats", description: "Statistics about published resources" },
       { name: "Research", description: "Research resource CRUD operations" },
       { name: "Research Versions", description: "Research versioning operations" },
       { name: "Research Datasets", description: "Manage dataset links for research" },

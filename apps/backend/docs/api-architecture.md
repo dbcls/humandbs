@@ -204,6 +204,18 @@ Dataset の version は親 Research のライフサイクルと連動して管�
    - Research が published になる
    - この時点で Dataset の version が確定し、public から見えるようになる
 
+### 「初回更新」の判定
+
+Dataset が「初回更新」かどうかは、ResearchVersion.datasets の参照 version と比較して判定する:
+
+- **初回更新**: Dataset.version == ResearchVersion.datasets[該当datasetId].version
+  - 前バージョンからコピーされた状態
+  - 新 version を作成し、ResearchVersion.datasets を更新
+
+- **2回目以降**: Dataset.version != ResearchVersion.datasets[該当datasetId].version
+  - 既にこの draft サイクルで version が上がっている
+  - 既存 version を上書き
+
 ### バージョン番号
 
 - フォーマット: `v1`, `v2`, `v3`, ...
