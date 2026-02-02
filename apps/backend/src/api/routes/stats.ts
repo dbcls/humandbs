@@ -6,7 +6,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import { searchDatasets, searchResearches } from "@/api/es-client"
-import { ErrorSpec500 } from "@/api/routes/errors"
+import { ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import { StatsResponseSchema } from "@/api/types"
 import type { DatasetSearchQuery, ResearchSearchQuery, StatsFacetCount } from "@/api/types"
 
@@ -102,6 +102,6 @@ statsRouter.openapi(getStatsRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error fetching stats:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })

@@ -59,7 +59,7 @@ const booleanFromString = z.preprocess(
 // === API-specific schemas (using imported schemas from es/types) ===
 
 // Experiment schema for API requests (without searchable field)
-const ExperimentSchemaBase = z.object({
+export const ExperimentSchemaBase = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
   footers: z.object({
@@ -526,9 +526,18 @@ export const ResearchSearchQuerySchema = z.object({
   // Status filter (admin only for non-published)
   status: z.enum(["draft", "review", "published", "deleted"]).optional(),
 
-  // Research-specific filters
+  // Full-text search
+  q: z.string().optional(),
+
+  // Research-specific filters (legacy, kept for backwards compatibility)
   releasedAfter: z.string().optional(),  // ISO 8601 date
   releasedBefore: z.string().optional(), // ISO 8601 date
+
+  // Date range filters for POST search
+  minDatePublished: z.string().optional(), // datePublished >= (ISO 8601 date)
+  maxDatePublished: z.string().optional(), // datePublished <= (ISO 8601 date)
+  minDateModified: z.string().optional(),  // dateModified >= (ISO 8601 date)
+  maxDateModified: z.string().optional(),  // dateModified <= (ISO 8601 date)
 
   // Filter Research by Dataset attributes (comma-separated for OR)
   assayType: z.string().optional(),

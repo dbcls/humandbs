@@ -405,7 +405,7 @@ const NESTED_TERMS_FILTERS: { param: string; field: string }[] = [
   { param: "sex", field: "experiments.searchable.sex" },
   { param: "ageGroup", field: "experiments.searchable.ageGroup" },
   { param: "libraryKits", field: "experiments.searchable.libraryKits" },
-  { param: "platform", field: "experiments.searchable.platformModel" },
+  // platform is handled separately (vendor + model matching)
   { param: "readType", field: "experiments.searchable.readType" },
   { param: "referenceGenome", field: "experiments.searchable.referenceGenome" },
   { param: "processedDataTypes", field: "experiments.searchable.processedDataTypes" },
@@ -501,6 +501,52 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
   // === Nested range filters (table-driven) ===
   must.push(...buildNestedRangeFilters(p))
 
+  // === Platform filter (vendor + model matching) ===
+  // Platform values are in format "Vendor Model" (e.g., "Illumina NovaSeq 6000")
+  // We match against both platformVendor and platformModel fields
+  if ("platform" in params && params.platform) {
+    const platformValues = splitComma(params.platform as string)
+    if (platformValues.length > 0) {
+      const platformShould = platformValues.map(platform => {
+        const parts = platform.split(" ")
+        // If we have "Vendor Model" format, match both fields
+        if (parts.length >= 2) {
+          const vendor = parts[0]
+          const model = parts.slice(1).join(" ")
+          return {
+            nested: {
+              path: "experiments",
+              query: {
+                bool: {
+                  must: [
+                    { term: { "experiments.searchable.platformVendor": vendor } },
+                    { term: { "experiments.searchable.platformModel": model } },
+                  ],
+                },
+              },
+            },
+          }
+        }
+        // Otherwise, try to match against either vendor or model
+        return {
+          nested: {
+            path: "experiments",
+            query: {
+              bool: {
+                should: [
+                  { term: { "experiments.searchable.platformVendor": platform } },
+                  { term: { "experiments.searchable.platformModel": platform } },
+                ],
+                minimum_should_match: 1,
+              },
+            },
+          },
+        }
+      })
+      must.push({ bool: { should: platformShould, minimum_should_match: 1 } })
+    }
+  }
+
   // === Nested boolean filters ===
 
   // isTumor
@@ -593,6 +639,23 @@ const doubleNestedFacetAgg = (
   },
 })
 
+/** Helper to create platform composite aggregation (vendor + model) */
+const platformFacetAgg = (size = 50): estypes.AggregationsAggregationContainer => ({
+  nested: { path: "experiments" },
+  aggs: {
+    vendorModel: {
+      composite: {
+        size,
+        sources: [
+          { vendor: { terms: { field: "experiments.searchable.platformVendor", missing_bucket: true } } },
+          { model: { terms: { field: "experiments.searchable.platformModel", missing_bucket: true } } },
+        ],
+      },
+      aggs: { dataset_count: { reverse_nested: {} } },
+    },
+  },
+})
+
 const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregationContainer> => ({
   // Top-level facets
   criteria: { terms: { field: "criteria", size: 10 } },
@@ -601,7 +664,7 @@ const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregatio
   assayType: nestedFacetAgg("experiments.searchable.assayType"),
   tissue: nestedFacetAgg("experiments.searchable.tissues"),
   population: nestedFacetAgg("experiments.searchable.population"),
-  platform: nestedFacetAgg("experiments.searchable.platformModel"),
+  platform: platformFacetAgg(),
   fileType: nestedFacetAgg("experiments.searchable.fileTypes"),
   healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", 10),
 
@@ -638,6 +701,12 @@ interface TermsBucket {
   dataset_count?: { doc_count: number }
 }
 
+interface CompositeBucket {
+  key: { vendor?: string | null; model?: string | null }
+  doc_count: number
+  dataset_count?: { doc_count: number }
+}
+
 const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => {
   if (!aggs) return {}
   const facets: FacetsMap = {}
@@ -649,10 +718,52 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
       count: b.dataset_count?.doc_count ?? b.doc_count,
     }))
 
+  // Extract platform composite buckets (vendor + model)
+  const extractPlatformBuckets = (buckets: CompositeBucket[]) =>
+    buckets
+      .map(b => {
+        const vendor = b.key.vendor ?? ""
+        const model = b.key.model ?? ""
+        // Combine vendor and model, filter out empty combinations
+        const value = [vendor, model].filter(Boolean).join(" ").trim()
+        return {
+          value,
+          count: b.dataset_count?.doc_count ?? b.doc_count,
+        }
+      })
+      .filter(item => item.value !== "") // Skip empty platform values
+
+  // Find vendorModel composite aggregation for platform
+  const findPlatformBuckets = (obj: unknown): CompositeBucket[] | null => {
+    if (!obj || typeof obj !== "object") return null
+    const o = obj as Record<string, unknown>
+
+    // Check for vendorModel composite aggregation
+    if ("vendorModel" in o && o.vendorModel && typeof o.vendorModel === "object") {
+      const vendorModel = o.vendorModel as Record<string, unknown>
+      if ("buckets" in vendorModel && Array.isArray(vendorModel.buckets)) {
+        return vendorModel.buckets as CompositeBucket[]
+      }
+    }
+
+    // Search nested objects
+    for (const [key, val] of Object.entries(o)) {
+      if (key === "doc_count") continue
+      if (typeof val === "object" && val !== null) {
+        const found = findPlatformBuckets(val)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
   // Recursively find buckets in nested aggregations
   const findBuckets = (obj: unknown): TermsBucket[] | null => {
     if (!obj || typeof obj !== "object") return null
     const o = obj as Record<string, unknown>
+
+    // Skip vendorModel (handled separately for platform)
+    if ("vendorModel" in o) return null
 
     // Direct buckets
     if ("buckets" in o && Array.isArray(o.buckets)) {
@@ -671,6 +782,15 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
   }
 
   for (const [key, agg] of Object.entries(aggs)) {
+    // Special handling for platform (composite aggregation)
+    if (key === "platform") {
+      const platformBuckets = findPlatformBuckets(agg)
+      if (platformBuckets) {
+        facets[key] = extractPlatformBuckets(platformBuckets)
+      }
+      continue
+    }
+
     const buckets = findBuckets(agg)
     if (buckets) {
       facets[key] = extractBuckets(buckets)
@@ -875,7 +995,12 @@ export const searchResearches = async (
   params: ResearchSearchQuery,
   authUser: AuthUser | null = null,
 ): Promise<ResearchSearchResponse> => {
-  const { page, limit, lang, sort, order, releasedAfter, releasedBefore, includeFacets, status: requestedStatus } = params
+  const {
+    page, limit, lang, sort, order, q,
+    releasedAfter, releasedBefore,
+    minDatePublished, maxDatePublished, minDateModified, maxDateModified,
+    includeFacets, status: requestedStatus,
+  } = params
   const from = (page - 1) * limit
 
   // Step 1: If Dataset filters are present, get humIds from Dataset index
@@ -939,10 +1064,28 @@ export const searchResearches = async (
     must.push({ terms: { humId: humIdFilter } })
   }
 
-  // Note: Full-text search via 'q' parameter has been removed from GET /research.
-  // Use POST /research/search for full-text search capabilities.
+  // Full-text search
+  if (q) {
+    must.push({
+      multi_match: {
+        query: q,
+        fields: [
+          "title.ja^2",
+          "title.en^2",
+          "summary.aims.ja.text",
+          "summary.aims.en.text",
+          "summary.methods.ja.text",
+          "summary.methods.en.text",
+          "summary.targets.ja.text",
+          "summary.targets.en.text",
+        ],
+        type: "best_fields",
+        fuzziness: "AUTO",
+      },
+    })
+  }
 
-  // Date range filters (renamed: lastReleaseDate → dateModified, firstReleaseDate → datePublished)
+  // Date range filters (legacy: releasedAfter/releasedBefore)
   if (releasedAfter) {
     must.push({ range: { dateModified: { gte: releasedAfter } } })
   }
@@ -950,11 +1093,27 @@ export const searchResearches = async (
     must.push({ range: { datePublished: { lte: releasedBefore } } })
   }
 
+  // Date range filters (new: minDatePublished/maxDatePublished, minDateModified/maxDateModified)
+  if (minDatePublished) {
+    must.push({ range: { datePublished: { gte: minDatePublished } } })
+  }
+  if (maxDatePublished) {
+    must.push({ range: { datePublished: { lte: maxDatePublished } } })
+  }
+  if (minDateModified) {
+    must.push({ range: { dateModified: { gte: minDateModified } } })
+  }
+  if (maxDateModified) {
+    must.push({ range: { dateModified: { lte: maxDateModified } } })
+  }
+
   // Sort configuration
   let sortSpec: estypes.Sort
-  if (sort === "relevance") {
-    // Relevance sort is only meaningful with full-text search (POST /search)
-    // For GET /research without query, fall back to humId
+  if (sort === "relevance" && q) {
+    // Relevance sort with full-text search query
+    sortSpec = [{ _score: { order: "desc" } }, { humId: { order: "asc" } }]
+  } else if (sort === "relevance") {
+    // Relevance sort without query - fall back to humId
     sortSpec = [{ humId: { order } }]
   } else if (sort === "title") {
     sortSpec = [{ "title.kw": { order } }, { humId: { order: "asc" } }]

@@ -25,12 +25,24 @@ import {
 } from "@/api/es-client"
 import { optionalAuth } from "@/api/middleware/auth"
 import { loadResearchAndAuthorize } from "@/api/middleware/resource-auth"
-import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
+import {
+  ErrorSpec401,
+  ErrorSpec403,
+  ErrorSpec404,
+  ErrorSpec409,
+  ErrorSpec500,
+  conflictResponse,
+  forbiddenResponse,
+  notFoundResponse,
+  serverErrorResponse,
+  unauthorizedResponse,
+} from "@/api/routes/errors"
 import {
   CreateResearchRequestSchema,
   CreateVersionRequestSchema,
   EsDatasetDocSchema,
   EsResearchDetailSchema,
+  ExperimentSchemaBase,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
@@ -274,7 +286,7 @@ const createDatasetForResearchRoute = createRoute({
               ja: z.string().nullable(),
               en: z.string().nullable(),
             }).optional(),
-            experiments: z.array(z.unknown()).optional(),
+            experiments: z.array(ExperimentSchemaBase).optional(),
           }),
         },
       },
@@ -440,7 +452,7 @@ researchRouter.openapi(listResearchRoute, async (c) => {
     return c.json(maybeStripRawHtml(researches, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching research list:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -448,10 +460,10 @@ researchRouter.openapi(listResearchRoute, async (c) => {
 researchRouter.openapi(createResearchRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+    return unauthorizedResponse(c)
   }
   if (!authUser.isAdmin) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+    return forbiddenResponse(c, "Admin access required")
   }
   try {
     const body = await c.req.json()
@@ -478,7 +490,7 @@ researchRouter.openapi(createResearchRoute, async (c) => {
     }, 201)
   } catch (error) {
     console.error("Error creating research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -489,11 +501,11 @@ researchRouter.openapi(getResearchRoute, async (c) => {
     const query = c.req.query() as unknown as LangVersionQuery
     const authUser = c.get("authUser")
     const detail = await getResearchDetail(humId, { version: query.version ?? undefined }, authUser)
-    if (!detail) return c.json({ error: `Research with humId ${humId} not found` }, 404)
+    if (!detail) return notFoundResponse(c, `Research with humId ${humId} not found`)
     return c.json(maybeStripRawHtml(detail, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching research detail:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -518,7 +530,7 @@ researchRouter.openapi(updateResearchRoute, async (c) => {
     }, seqNo, primaryTerm)
 
     if (!updated) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     // Note: updateResearch returns docs that should not have status="deleted", but TypeScript needs explicit cast
@@ -530,7 +542,7 @@ researchRouter.openapi(updateResearchRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error updating research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -544,13 +556,13 @@ researchRouter.openapi(deleteResearchRoute, async (c) => {
 
     const deleted = await deleteResearch(humId, seqNo, primaryTerm)
     if (!deleted) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.body(null, 204)
   } catch (error) {
     console.error("Error deleting research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -560,11 +572,11 @@ researchRouter.openapi(listVersionsRoute, async (c) => {
     const { humId } = c.req.param() as unknown as HumIdParams
     const authUser = c.get("authUser")
     const versions = await listResearchVersionsSorted(humId, authUser)
-    if (versions === null) return c.json({ error: `Research with humId ${humId} not found` }, 404)
+    if (versions === null) return notFoundResponse(c, `Research with humId ${humId} not found`)
     return c.json({ data: versions }, 200)
   } catch (error) {
     console.error("Error fetching research versions:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -576,7 +588,7 @@ researchRouter.openapi(getVersionRoute, async (c) => {
 
     // Use getResearchDetail with specific version
     const detail = await getResearchDetail(humId, { version }, authUser)
-    if (!detail) return c.json({ error: `Research version ${humId}/${version} not found` }, 404)
+    if (!detail) return notFoundResponse(c, `Research version ${humId}/${version} not found`)
 
     // Return version-specific response
     return c.json({
@@ -589,7 +601,7 @@ researchRouter.openapi(getVersionRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error fetching version:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -612,7 +624,7 @@ researchRouter.openapi(createVersionRoute, async (c) => {
     )
 
     if (!newVersion) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -625,7 +637,7 @@ researchRouter.openapi(createVersionRoute, async (c) => {
     }, 201)
   } catch (error) {
     console.error("Error creating version:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -639,7 +651,7 @@ researchRouter.openapi(listLinkedDatasetsRoute, async (c) => {
     const authUser = c.get("authUser")
 
     const detail = await getResearchDetail(humId, {}, authUser)
-    if (!detail) return c.json({ error: `Research with humId ${humId} not found` }, 404)
+    if (!detail) return notFoundResponse(c, `Research with humId ${humId} not found`)
 
     const datasets = detail.datasets ?? []
     const total = datasets.length
@@ -660,7 +672,7 @@ researchRouter.openapi(listLinkedDatasetsRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error fetching linked datasets:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -668,7 +680,7 @@ researchRouter.openapi(listLinkedDatasetsRoute, async (c) => {
 researchRouter.openapi(createDatasetForResearchRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+    return unauthorizedResponse(c)
   }
   try {
     const { humId } = c.req.param() as unknown as HumIdParams
@@ -677,28 +689,28 @@ researchRouter.openapi(createDatasetForResearchRoute, async (c) => {
     // Get research to check permissions and status
     const research = await getResearchDoc(humId)
     if (!research) {
-      return c.json({ error: `Research ${humId} not found` }, 404)
+      return notFoundResponse(c, `Research ${humId} not found`)
     }
 
     // Deleted research is not accessible
     if (research.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
+      return notFoundResponse(c, `Research ${humId} not found`)
     }
 
     // Check permission (owner or admin can create datasets)
     if (!canAccessResearchDoc(authUser, research)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to create datasets for this research" }, 403)
+      return forbiddenResponse(c, "Not authorized to create datasets for this research")
     }
 
     // Check that Research is in draft status
     if (research.status !== "draft") {
-      return c.json({ error: "Forbidden", message: "Cannot create dataset: parent Research is not in draft status" }, 403)
+      return forbiddenResponse(c, "Cannot create dataset: parent Research is not in draft status")
     }
 
     // Get latest ResearchVersion to determine humVersionId
     const latestVersion = await getResearchVersion(humId, {})
     if (!latestVersion) {
-      return c.json({ error: `Research ${humId} has no version` }, 500)
+      return serverErrorResponse(c, `Research ${humId} has no version`)
     }
 
     // Create dataset with defaults for optional fields
@@ -715,7 +727,7 @@ researchRouter.openapi(createDatasetForResearchRoute, async (c) => {
     return c.json(dataset, 201)
   } catch (error) {
     console.error("Error creating dataset for research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -730,13 +742,13 @@ researchRouter.openapi(submitRoute, async (c) => {
     // Validate transition
     const validationError = validateStatusTransition(status, "submit")
     if (validationError) {
-      return c.json({ error: "Conflict", message: validationError }, 409)
+      return conflictResponse(c, validationError)
     }
 
     // Update status
     const updated = await updateResearchStatus(humId, "review", seqNo, primaryTerm)
     if (!updated) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -748,7 +760,7 @@ researchRouter.openapi(submitRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error submitting research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -763,13 +775,13 @@ researchRouter.openapi(approveRoute, async (c) => {
     // Validate transition
     const validationError = validateStatusTransition(status, "approve")
     if (validationError) {
-      return c.json({ error: "Conflict", message: validationError }, 409)
+      return conflictResponse(c, validationError)
     }
 
     // Update status
     const updated = await updateResearchStatus(humId, "published", seqNo, primaryTerm)
     if (!updated) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -781,7 +793,7 @@ researchRouter.openapi(approveRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error approving research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -796,13 +808,13 @@ researchRouter.openapi(rejectRoute, async (c) => {
     // Validate transition
     const validationError = validateStatusTransition(status, "reject")
     if (validationError) {
-      return c.json({ error: "Conflict", message: validationError }, 409)
+      return conflictResponse(c, validationError)
     }
 
     // Update status
     const updated = await updateResearchStatus(humId, "draft", seqNo, primaryTerm)
     if (!updated) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -814,7 +826,7 @@ researchRouter.openapi(rejectRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error rejecting research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -829,13 +841,13 @@ researchRouter.openapi(unpublishRoute, async (c) => {
     // Validate transition
     const validationError = validateStatusTransition(status, "unpublish")
     if (validationError) {
-      return c.json({ error: "Conflict", message: validationError }, 409)
+      return conflictResponse(c, validationError)
     }
 
     // Update status
     const updated = await updateResearchStatus(humId, "draft", seqNo, primaryTerm)
     if (!updated) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -847,7 +859,7 @@ researchRouter.openapi(unpublishRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error unpublishing research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -864,7 +876,7 @@ researchRouter.openapi(updateUidsRoute, async (c) => {
     // Use optimistic lock values from request body
     const updatedUids = await updateResearchUids(humId, body.uids, body._seq_no, body._primary_term)
     if (!updatedUids) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -873,6 +885,6 @@ researchRouter.openapi(updateUidsRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error updating research uids:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })

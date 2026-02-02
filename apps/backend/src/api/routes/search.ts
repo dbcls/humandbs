@@ -11,7 +11,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
 import { searchDatasets, searchResearches } from "@/api/es-client"
 import { optionalAuth } from "@/api/middleware/auth"
-import { ErrorSpec500 } from "@/api/routes/errors"
+import { ErrorSpec400, ErrorSpec500, validationErrorResponse, serverErrorResponse } from "@/api/routes/errors"
 import {
   AllFacetsResponseSchema,
   DatasetSearchBodySchema,
@@ -93,7 +93,6 @@ const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Pa
 
   // Direct string fields
   if (filters.disease) query.disease = filters.disease
-  if (filters.platform) query.platform = filters.platform
 
   // Boolean fields
   if (filters.isTumor !== undefined) query.isTumor = filters.isTumor
@@ -121,8 +120,12 @@ const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQue
     sort: body.sort ? sortMap[body.sort] ?? "humId" : "humId",
     order: body.order,
     q: body.query,
-    releasedAfter: body.dateModified?.min ? String(body.dateModified.min) : undefined,
-    releasedBefore: body.datePublished?.max ? String(body.datePublished.max) : undefined,
+    // datePublished range (first release date)
+    minDatePublished: body.datePublished?.min ? String(body.datePublished.min) : undefined,
+    maxDatePublished: body.datePublished?.max ? String(body.datePublished.max) : undefined,
+    // dateModified range (last update date)
+    minDateModified: body.dateModified?.min ? String(body.dateModified.min) : undefined,
+    maxDateModified: body.dateModified?.max ? String(body.dateModified.max) : undefined,
     includeFacets: body.includeFacets,
     ...datasetFilters,
   } as ResearchSearchQuery
@@ -163,6 +166,7 @@ const postResearchSearchRoute = createRoute({
       content: { "application/json": { schema: ResearchSearchResponseSchema } },
       description: "Research search results with optional facets",
     },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })
@@ -181,6 +185,7 @@ const postDatasetSearchRoute = createRoute({
       content: { "application/json": { schema: DatasetSearchResponseSchema } },
       description: "Dataset search results with optional facets",
     },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })
@@ -229,7 +234,12 @@ searchRouter.use("*", optionalAuth)
 // POST /research/search
 searchRouter.openapi(postResearchSearchRoute, async (c) => {
   try {
-    const body = await c.req.json() as ResearchSearchBody
+    const rawBody = await c.req.json()
+    const parseResult = ResearchSearchBodySchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      return validationErrorResponse(c, parseResult.error.message)
+    }
+    const body = parseResult.data
     const authUser = c.get("authUser")
 
     // Convert POST body to GET query format for existing searchResearches function
@@ -243,14 +253,19 @@ searchRouter.openapi(postResearchSearchRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error in POST research search:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
 // POST /dataset/search
 searchRouter.openapi(postDatasetSearchRoute, async (c) => {
   try {
-    const body = await c.req.json() as DatasetSearchBody
+    const rawBody = await c.req.json()
+    const parseResult = DatasetSearchBodySchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      return validationErrorResponse(c, parseResult.error.message)
+    }
+    const body = parseResult.data
     const authUser = c.get("authUser")
 
     // Convert POST body to GET query format for existing searchDatasets function
@@ -264,7 +279,7 @@ searchRouter.openapi(postDatasetSearchRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error in POST dataset search:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -287,7 +302,7 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
     return c.json(result.facets ?? {}, 200)
   } catch (error) {
     console.error("Error fetching facets:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -313,6 +328,6 @@ searchRouter.openapi(getFacetFieldRoute, async (c) => {
     return c.json({ fieldName, values: fieldFacet }, 200)
   } catch (error) {
     console.error("Error fetching facet field:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })

@@ -18,7 +18,18 @@ import {
   updateDataset,
 } from "@/api/es-client"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
-import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
+import {
+  ErrorSpec401,
+  ErrorSpec403,
+  ErrorSpec404,
+  ErrorSpec409,
+  ErrorSpec500,
+  conflictResponse,
+  forbiddenResponse,
+  notFoundResponse,
+  serverErrorResponse,
+  unauthorizedResponse,
+} from "@/api/routes/errors"
 import {
   DatasetIdParamsSchema,
   DatasetListingQuerySchema,
@@ -202,7 +213,7 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
     return c.json(maybeStripRawHtml(datasetsData, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching datasets:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -213,14 +224,14 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
     const query = c.req.query() as unknown as LangVersionQuery
     const authUser = c.get("authUser")
     const dataset = await getDataset(datasetId, { version: query.version ?? undefined }, authUser)
-    if (dataset === null) return c.json({ error: `Dataset with datasetId ${datasetId} not found` }, 404)
+    if (dataset === null) return notFoundResponse(c, `Dataset with datasetId ${datasetId} not found`)
     // Add mergedSearchable for convenience (aggregates all experiment searchable fields)
     // Note: This extends the response beyond the OpenAPI schema
     const datasetWithMerged = addMergedSearchable(dataset as Parameters<typeof addMergedSearchable>[0])
     return c.json(maybeStripRawHtml(datasetWithMerged, query.includeRawHtml ?? false) as unknown as typeof dataset, 200)
   } catch (error) {
     console.error("Error fetching dataset detail:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -228,7 +239,7 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
 datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+    return unauthorizedResponse(c)
   }
   try {
     const { datasetId } = c.req.param() as unknown as DatasetIdParams
@@ -238,7 +249,7 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     // Get dataset with sequence number for optimistic locking
     const result = await getDatasetWithSeqNo(datasetId, version)
     if (!result) {
-      return c.json({ error: `Dataset ${datasetId} version ${version} not found` }, 404)
+      return notFoundResponse(c, `Dataset ${datasetId} version ${version} not found`)
     }
 
     const { doc, seqNo, primaryTerm } = result
@@ -246,22 +257,22 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     // Check if user has access to parent Research
     const research = await getResearchDoc(doc.humId)
     if (!research) {
-      return c.json({ error: `Parent Research ${doc.humId} not found` }, 404)
+      return notFoundResponse(c, `Parent Research ${doc.humId} not found`)
     }
 
     // Deleted research is not accessible
     if (research.status === "deleted") {
-      return c.json({ error: `Parent Research ${doc.humId} not found` }, 404)
+      return notFoundResponse(c, `Parent Research ${doc.humId} not found`)
     }
 
     // Check permission (owner or admin can update)
     if (!canAccessResearchDoc(authUser, research)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to update this dataset" }, 403)
+      return forbiddenResponse(c, "Not authorized to update this dataset")
     }
 
     // D1: Check that parent Research is in draft status
     if (research.status !== "draft") {
-      return c.json({ error: "Forbidden", message: "Cannot update dataset: parent Research is not in draft status" }, 403)
+      return forbiddenResponse(c, "Cannot update dataset: parent Research is not in draft status")
     }
 
     const body = await c.req.json()
@@ -276,7 +287,7 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     }, seqNo, primaryTerm)
 
     if (!updated) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
+      return conflictResponse(c)
     }
 
     return c.json({
@@ -285,7 +296,7 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     }, 200)
   } catch (error) {
     console.error("Error updating dataset:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -293,10 +304,10 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 datasetRouter.openapi(deleteDatasetRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+    return unauthorizedResponse(c)
   }
   if (!canDeleteResource(authUser)) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+    return forbiddenResponse(c, "Admin access required")
   }
   try {
     const { datasetId } = c.req.param() as unknown as DatasetIdParams
@@ -313,13 +324,13 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
     // D2: Check that parent Research is in draft status
     const research = await getResearchDoc(dataset.humId)
     if (!research) {
-      return c.json({ error: `Parent Research ${dataset.humId} not found` }, 404)
+      return notFoundResponse(c, `Parent Research ${dataset.humId} not found`)
     }
     if (research.status === "deleted") {
-      return c.json({ error: `Parent Research ${dataset.humId} not found` }, 404)
+      return notFoundResponse(c, `Parent Research ${dataset.humId} not found`)
     }
     if (research.status !== "draft") {
-      return c.json({ error: "Forbidden", message: "Cannot delete dataset: parent Research is not in draft status" }, 403)
+      return forbiddenResponse(c, "Cannot delete dataset: parent Research is not in draft status")
     }
 
     await deleteDataset(datasetId, version)
@@ -327,7 +338,7 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
     return c.body(null, 204)
   } catch (error) {
     console.error("Error deleting dataset:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -337,11 +348,11 @@ datasetRouter.openapi(listVersionsRoute, async (c) => {
     const { datasetId } = c.req.param() as unknown as DatasetIdParams
     const authUser = c.get("authUser")
     const versions = await listDatasetVersions(datasetId, authUser)
-    if (versions === null) return c.json({ error: `Dataset with datasetId ${datasetId} not found` }, 404)
+    if (versions === null) return notFoundResponse(c, `Dataset with datasetId ${datasetId} not found`)
     return c.json({ data: versions }, 200)
   } catch (error) {
     console.error("Error fetching dataset versions:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -351,13 +362,13 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
     const { datasetId, version } = c.req.param() as unknown as DatasetVersionParams
     const authUser = c.get("authUser")
     const dataset = await getDataset(datasetId, { version }, authUser)
-    if (dataset === null) return c.json({ error: `Dataset version ${version} not found` }, 404)
+    if (dataset === null) return notFoundResponse(c, `Dataset version ${version} not found`)
     // Add mergedSearchable for convenience
     const datasetWithMerged = addMergedSearchable(dataset as Parameters<typeof addMergedSearchable>[0])
     return c.json(datasetWithMerged as unknown as typeof dataset, 200)
   } catch (error) {
     console.error("Error fetching dataset version:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
 
@@ -369,12 +380,12 @@ datasetRouter.openapi(listLinkedResearchesRoute, async (c) => {
 
     // Get the parent Research for this Dataset
     const research = await getResearchByDatasetId(datasetId, authUser)
-    if (!research) return c.json({ error: `Dataset ${datasetId} not found or no linked research` }, 404)
+    if (!research) return notFoundResponse(c, `Dataset ${datasetId} not found or no linked research`)
 
     // Return as array since the schema expects LinkedResearchesResponse
     return c.json({ data: [research] }, 200)
   } catch (error) {
     console.error("Error fetching linked researches:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
+    return serverErrorResponse(c, error)
   }
 })
