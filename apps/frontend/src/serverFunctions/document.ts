@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { ContentId } from "@/config/content-config";
 import { db } from "@/db/database";
 import { document } from "@/db/schema";
 import { insertDocumentSchema } from "@/db/types";
@@ -14,7 +15,7 @@ export const $getDocuments = createServerFn({
 }).handler(async () => {
   const documents = await db.query.document.findMany();
 
-  return documents;
+  return documents as { createdAt: Date; contentId: ContentId }[];
 });
 
 export function getDocumentsQueryOptions() {

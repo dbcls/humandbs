@@ -1,6 +1,13 @@
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { CopyIcon, Trash2Icon } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
-
 import { cn } from "@/lib/utils";
 import {
   $cloneDocumentVersion,
@@ -10,15 +17,9 @@ import {
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import useConfirmationStore from "@/stores/confirmationStore";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { CopyIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { StatusTag } from "./StatusTag";
+
 import { AddNewButton } from "./AddNewButton";
+import { StatusTag } from "./StatusTag";
 
 export function DocumentVersionsList({
   contentId,
@@ -150,7 +151,7 @@ export function DocumentVersionsList({
         <AddNewButton onClick={handleAddNewVersion} />
       </li>
 
-      {versions.map((v, index) => {
+      {versions.map((v) => {
         const isActive = selectedVersion?.versionNumber === v.versionNumber;
         return (
           <ListItem

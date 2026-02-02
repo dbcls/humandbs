@@ -1,3 +1,13 @@
+import { useForm } from "@tanstack/react-form";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { Trash2Icon } from "lucide-react";
+import { useState } from "react";
+import { useTranslations } from "use-intl";
+
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ContentId } from "@/config/content-config";
 import { cn } from "@/lib/utils";
 import {
   $createDocument,
@@ -16,16 +27,7 @@ import {
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { useForm } from "@tanstack/react-form";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { Trash2Icon } from "lucide-react";
-import { useState } from "react";
-import { useTranslations } from "use-intl";
-import z from "zod";
+
 import { AddNewButton } from "./AddNewButton";
 
 export function DocumentsList({
@@ -45,7 +47,7 @@ export function DocumentsList({
   const { openConfirmation } = useConfirmationStore();
 
   const { mutate: createDocument } = useMutation({
-    mutationFn: (contentId: string) =>
+    mutationFn: (contentId: ContentId) =>
       $createDocument({ data: { contentId: contentId } }),
 
     onMutate: async (contentId) => {
@@ -109,7 +111,7 @@ export function DocumentsList({
     },
 
     onSubmit: async ({ value }) => {
-      createDocument(value.contentId);
+      createDocument(value.contentId as ContentId);
     },
   });
 
@@ -137,21 +139,21 @@ export function DocumentsList({
                 name="contentId"
                 validators={{
                   onChangeAsyncDebounceMs: 500,
-                  onChangeAsync: z
-                    .string()
-                    .min(1)
-                    .max(100)
-                    .refine(
-                      async (value) => {
-                        const isExisting = await $validateDocumentContentId({
-                          data: value,
-                        });
-                        return !isExisting;
-                      },
-                      {
-                        message: "Document with this contentId already exists",
-                      }
-                    ),
+                  onChangeAsync: async ({ value }) => {
+                    if (!value || value.length < 1) {
+                      return "Content ID is required";
+                    }
+                    if (value.length > 100) {
+                      return "Content ID must be 100 characters or less";
+                    }
+                    const isExisting = await $validateDocumentContentId({
+                      data: value as ContentId,
+                    });
+                    if (isExisting) {
+                      return "Document with this contentId already exists";
+                    }
+                    return undefined;
+                  },
                 }}
               >
                 {(field) => {
@@ -165,9 +167,7 @@ export function DocumentsList({
                       />
                       {!field.state.meta.isValid && (
                         <em role="alert" className="text-danger text-xs">
-                          {field.state.meta.errors
-                            .map((e) => e?.message)
-                            .join(", ")}
+                          {field.state.meta.errors.join(", ")}
                         </em>
                       )}
                     </Label>
@@ -198,7 +198,7 @@ export function DocumentsList({
             onClick={() => onSelectDoc(doc.contentId)}
             isActive={isActive}
           >
-            <span>{t(doc.contentId as any)} </span>
+            <span>{t(doc.contentId)} </span>
             <Button
               variant={"ghost"}
               size={"slim"}
