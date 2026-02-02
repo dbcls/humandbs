@@ -17,7 +17,9 @@ import {
 } from "@/api/es-client/dataset"
 import { getResearchDoc } from "@/api/es-client/research"
 import { searchDatasets } from "@/api/es-client/search"
+import { logger } from "@/api/logger"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
+import { getRequestId } from "@/api/middleware/request-id"
 import {
   ErrorSpec401,
   ErrorSpec403,
@@ -257,7 +259,8 @@ datasetRouter.openapi(listDatasetsRoute, async (c) => {
     }, authUser)
     return c.json(maybeStripRawHtml(datasetsData, query.includeRawHtml ?? false), 200)
   } catch (error) {
-    console.error("Error fetching datasets:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching datasets", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -274,7 +277,8 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
     const datasetWithMerged = addMergedSearchable(dataset)
     return c.json(maybeStripRawHtml(datasetWithMerged, query.includeRawHtml ?? false), 200)
   } catch (error) {
-    console.error("Error fetching dataset detail:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching dataset detail", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -344,7 +348,8 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
       updatedAt: new Date().toISOString(),
     }, 200)
   } catch (error) {
-    console.error("Error updating dataset:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error updating dataset", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -386,7 +391,8 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
 
     return c.body(null, 204)
   } catch (error) {
-    console.error("Error deleting dataset:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error deleting dataset", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -400,7 +406,8 @@ datasetRouter.openapi(listVersionsRoute, async (c) => {
     if (versions === null) return notFoundResponse(c, `Dataset with datasetId ${datasetId} not found`)
     return c.json({ data: versions }, 200)
   } catch (error) {
-    console.error("Error fetching dataset versions:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching dataset versions", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -416,7 +423,8 @@ datasetRouter.openapi(getVersionRoute, async (c) => {
     const datasetWithMerged = addMergedSearchable(dataset)
     return c.json(datasetWithMerged, 200)
   } catch (error) {
-    console.error("Error fetching dataset version:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching dataset version", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -434,7 +442,8 @@ datasetRouter.openapi(listLinkedResearchesRoute, async (c) => {
     // Return as array since the schema expects LinkedResearchesResponse
     return c.json({ data: [research] }, 200)
   } catch (error) {
-    console.error("Error fetching linked researches:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching linked researches", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })

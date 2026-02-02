@@ -30,6 +30,19 @@ export {
 export type { ResearchStatus, StatusAction } from "@/api/types/workflow"
 export type { EsResearchStatus } from "@/api/types/workflow"
 
+// === Facets ===
+export {
+  DATASET_FACET_NAMES,
+  RESEARCH_FACET_NAMES,
+  isValidFacetName,
+} from "@/api/types/facets"
+export type {
+  DatasetFacetName,
+  ResearchFacetName,
+  FacetValue,
+  TypedFacetsMap,
+} from "@/api/types/facets"
+
 // === ES Documents ===
 export {
   DatasetRefSchema,
@@ -114,6 +127,9 @@ export {
   ApiErrorResponseSchema,
   ERROR_CODES,
   ErrorResponseSchema,
+  ProblemDetailsSchema,
+  // Response meta
+  ResponseMetaSchema,
   // Research API
   CreateResearchRequestSchema,
   UpdateResearchRequestSchema,
@@ -172,6 +188,8 @@ export type {
   ApiErrorResponse,
   ErrorCode,
   ErrorResponse,
+  ProblemDetails,
+  ResponseMeta,
   CreateResearchRequest,
   UpdateResearchRequest,
   ResearchWithStatus,

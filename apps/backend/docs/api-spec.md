@@ -231,21 +231,44 @@ GET /dataset/{datasetId}/versions/v1
 
 ### エラーレスポンス
 
+エラーレスポンスは [RFC 7807 Problem Details](https://tools.ietf.org/html/rfc7807) 形式に準拠する。
+
 ```json
 {
-  "error": "Not Found",
-  "message": "Research hum0001 not found"
+  "type": "https://humandbs.dbcls.jp/errors/not-found",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Research with ID 'hum0001' was not found",
+  "instance": "/research/hum0001",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "requestId": "req-abc123"
 }
 ```
 
-| コード | HTTP Status | 説明 |
-|--------|-------------|------|
-| `VALIDATION_ERROR` | 400 | 入力値バリデーション失敗 |
-| `Unauthorized` | 401 | 認証なし/無効 |
-| `Forbidden` | 403 | 権限なし |
-| `Not Found` | 404 | リソースが存在しない |
-| `Conflict` | 409 | 状態競合（無効な遷移、楽観的ロック失敗） |
-| `Internal Server Error` | 500 | サーバーエラー |
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `type` | string | エラー種別を識別する URI |
+| `title` | string | エラーの概要 |
+| `status` | number | HTTP ステータスコード |
+| `detail` | string | エラーの詳細メッセージ |
+| `instance` | string | エラーが発生したリクエストパス |
+| `timestamp` | string | エラー発生時刻（ISO 8601） |
+| `requestId` | string | リクエスト追跡用 ID（X-Request-ID ヘッダーと同じ） |
+
+**エラー種別**:
+
+| type URI | HTTP Status | 説明 |
+|----------|-------------|------|
+| `.../validation-error` | 400 | 入力値バリデーション失敗 |
+| `.../unauthorized` | 401 | 認証なし/無効 |
+| `.../forbidden` | 403 | 権限なし |
+| `.../not-found` | 404 | リソースが存在しない |
+| `.../conflict` | 409 | 状態競合（無効な遷移、楽観的ロック失敗） |
+| `.../internal-error` | 500 | サーバーエラー |
+
+**リクエスト追跡**:
+
+全リクエストに `X-Request-ID` ヘッダーが付与される。クライアントがリクエスト時に `X-Request-ID` を指定した場合はその値を使用し、指定がない場合はサーバーで UUID を生成する。エラー発生時は `requestId` フィールドにこの値が含まれるため、ログとの突き合わせに使用できる。
 
 ### 楽観的ロック（同時編集の競合検出）
 

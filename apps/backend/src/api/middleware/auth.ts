@@ -15,6 +15,7 @@ import * as fs from "node:fs/promises"
 import * as path from "node:path"
 
 import { CACHE_TTL } from "../constants"
+import { logger } from "../logger"
 import { forbiddenResponse, unauthorizedResponse } from "../routes/errors"
 import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
@@ -79,14 +80,14 @@ async function getAdminUids(): Promise<string[]> {
     if (Array.isArray(parsed)) {
       uids = parsed.filter((uid): uid is string => typeof uid === "string")
     } else {
-      console.warn("admin_uids.json is not an array, using empty list")
+      logger.warn("admin_uids.json is not an array, using empty list")
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       // File doesn't exist, use empty list (no admins)
-      console.warn(`Admin UID file not found: ${ADMIN_UID_FILE}`)
+      logger.warn("Admin UID file not found", { path: ADMIN_UID_FILE })
     } else {
-      console.error("Error loading admin UIDs:", error)
+      logger.error("Error loading admin UIDs", { error: String(error) })
     }
   }
 
@@ -128,18 +129,18 @@ async function verifyToken(token: string): Promise<JwtClaims | null> {
 
     const parseResult = JwtClaimsSchema.safeParse(payload)
     if (!parseResult.success) {
-      console.error("JWT claims validation failed:", parseResult.error)
+      logger.error("JWT claims validation failed", { error: parseResult.error.message })
       return null
     }
 
     return parseResult.data
   } catch (error) {
     if (error instanceof jose.errors.JWTExpired) {
-      console.warn("JWT token expired")
+      logger.warn("JWT token expired")
     } else if (error instanceof jose.errors.JWTClaimValidationFailed) {
-      console.warn("JWT claim validation failed:", error.message)
+      logger.warn("JWT claim validation failed", { message: error.message })
     } else {
-      console.error("JWT verification error:", error)
+      logger.error("JWT verification error", { error: String(error) })
     }
     return null
   }

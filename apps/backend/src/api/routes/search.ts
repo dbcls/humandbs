@@ -11,7 +11,9 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
 import { ARRAY_FIELD_MAPPINGS, RANGE_FIELD_MAPPINGS } from "@/api/es-client/filters"
 import { searchDatasets, searchResearches } from "@/api/es-client/search"
+import { logger } from "@/api/logger"
 import { optionalAuth } from "@/api/middleware/auth"
+import { getRequestId } from "@/api/middleware/request-id"
 import { ErrorSpec400, ErrorSpec500, validationErrorResponse, serverErrorResponse } from "@/api/routes/errors"
 import {
   AllFacetsResponseSchema,
@@ -249,7 +251,8 @@ searchRouter.openapi(postResearchSearchRoute, async (c) => {
       facets: result.facets,
     }, 200)
   } catch (error) {
-    console.error("Error in POST research search:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error in POST research search", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -275,7 +278,8 @@ searchRouter.openapi(postDatasetSearchRoute, async (c) => {
       facets: result.facets,
     }, 200)
   } catch (error) {
-    console.error("Error in POST dataset search:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error in POST dataset search", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -298,7 +302,8 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
     // Return facets with counts (S4)
     return c.json(result.facets ?? {}, 200)
   } catch (error) {
-    console.error("Error fetching facets:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching facets", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
@@ -324,7 +329,8 @@ searchRouter.openapi(getFacetFieldRoute, async (c) => {
 
     return c.json({ fieldName, values: fieldFacet }, 200)
   } catch (error) {
-    console.error("Error fetching facet field:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching facet field", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })

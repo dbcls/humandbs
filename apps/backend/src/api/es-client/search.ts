@@ -11,7 +11,7 @@ import type { estypes } from "@elastic/elasticsearch"
 
 import { buildStatusFilter, getPublishedHumIds } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
-import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS } from "@/api/es-client/filters"
+import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
   splitComma,
   nestedFacetAgg,
@@ -499,55 +499,6 @@ export const searchDatasets = async (
 }
 
 // === Research Search ===
-
-const hasDatasetFilters = (params: ResearchSearchQuery): boolean => {
-  return !!(
-    params.assayType ||
-    params.disease ||
-    params.tissue ||
-    params.population ||
-    params.platform ||
-    params.criteria ||
-    params.fileType ||
-    params.minSubjects !== undefined ||
-    // Extended filters
-    ("healthStatus" in params && params.healthStatus) ||
-    ("subjectCountType" in params && params.subjectCountType) ||
-    ("sex" in params && params.sex) ||
-    ("ageGroup" in params && params.ageGroup) ||
-    ("libraryKits" in params && params.libraryKits) ||
-    ("readType" in params && params.readType) ||
-    ("referenceGenome" in params && params.referenceGenome) ||
-    ("processedDataTypes" in params && params.processedDataTypes) ||
-    ("hasPhenotypeData" in params && params.hasPhenotypeData !== undefined) ||
-    ("policyId" in params && params.policyId) ||
-    ("diseaseIcd10" in params && params.diseaseIcd10) ||
-    ("cellLine" in params && params.cellLine) ||
-    ("isTumor" in params && params.isTumor !== undefined) ||
-    // Range filters
-    ("minReleaseDate" in params && params.minReleaseDate) ||
-    ("maxReleaseDate" in params && params.maxReleaseDate) ||
-    ("maxSubjects" in params && params.maxSubjects !== undefined) ||
-    ("minReadLength" in params && params.minReadLength !== undefined) ||
-    ("maxReadLength" in params && params.maxReadLength !== undefined) ||
-    ("minSequencingDepth" in params && params.minSequencingDepth !== undefined) ||
-    ("maxSequencingDepth" in params && params.maxSequencingDepth !== undefined) ||
-    ("minTargetCoverage" in params && params.minTargetCoverage !== undefined) ||
-    ("maxTargetCoverage" in params && params.maxTargetCoverage !== undefined) ||
-    ("minDataVolumeGb" in params && params.minDataVolumeGb !== undefined) ||
-    ("maxDataVolumeGb" in params && params.maxDataVolumeGb !== undefined) ||
-    ("minVariantSnv" in params && params.minVariantSnv !== undefined) ||
-    ("maxVariantSnv" in params && params.maxVariantSnv !== undefined) ||
-    ("minVariantIndel" in params && params.minVariantIndel !== undefined) ||
-    ("maxVariantIndel" in params && params.maxVariantIndel !== undefined) ||
-    ("minVariantCnv" in params && params.minVariantCnv !== undefined) ||
-    ("maxVariantCnv" in params && params.maxVariantCnv !== undefined) ||
-    ("minVariantSv" in params && params.minVariantSv !== undefined) ||
-    ("maxVariantSv" in params && params.maxVariantSv !== undefined) ||
-    ("minVariantTotal" in params && params.minVariantTotal !== undefined) ||
-    ("maxVariantTotal" in params && params.maxVariantTotal !== undefined)
-  )
-}
 
 const getHumIdsByDatasetFilters = async (
   params: ResearchSearchQuery,

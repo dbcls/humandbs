@@ -6,6 +6,8 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import { searchDatasets, searchResearches } from "@/api/es-client/search"
+import { logger } from "@/api/logger"
+import { getRequestId } from "@/api/middleware/request-id"
 import { ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import { StatsResponseSchema } from "@/api/types"
 import type { DatasetSearchQuery, ResearchSearchQuery, StatsFacetCount } from "@/api/types"
@@ -101,7 +103,8 @@ statsRouter.openapi(getStatsRoute, async (c) => {
       facets: mergedFacets,
     }, 200)
   } catch (error) {
-    console.error("Error fetching stats:", error)
+    const requestId = getRequestId(c)
+    logger.error("Error fetching stats", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })

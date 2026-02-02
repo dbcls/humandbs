@@ -16,6 +16,7 @@ import {
   linkDatasetToResearch,
   unlinkDatasetFromResearch,
 } from "@/api/es-client/research-version"
+import { logger } from "@/api/logger"
 import { EsDatasetDocSchema } from "@/api/types"
 import type { AuthUser, DatasetVersionItem, EsDatasetDoc, EsResearchDetail } from "@/api/types"
 
@@ -238,7 +239,7 @@ export const createDataset = async (params: {
       await linkDatasetToResearch(humId, datasetId, version)
     } catch (error) {
       // Log warning but don't fail the dataset creation
-      console.warn(`Failed to auto-link dataset to research: ${error}`)
+      logger.warn("Failed to auto-link dataset to research", { error: String(error) })
     }
   }
 
@@ -396,7 +397,7 @@ export const replaceDatasetId = async (
     })
   } catch (error) {
     // Log warning but don't fail - new document exists
-    console.warn(`Failed to delete old Dataset ${oldEsId}: ${error}`)
+    logger.warn("Failed to delete old Dataset", { oldEsId, error: String(error) })
   }
 
   return EsDatasetDocSchema.parse(newDoc)

@@ -2,14 +2,16 @@ import { swaggerUI } from "@hono/swagger-ui"
 import { OpenAPIHono } from "@hono/zod-openapi"
 import { cors } from "hono/cors"
 import { HTTPException } from "hono/http-exception"
-import { logger } from "hono/logger"
 
 import { ERROR_MESSAGES } from "@/api/constants"
+import { isAppError, toProblemDetails, createProblemDetails } from "@/api/errors"
 import { isConflictError } from "@/api/es-client/client"
+import { logger } from "@/api/logger"
+import { getRequestId, requestIdMiddleware } from "@/api/middleware/request-id"
 import { adminRouter } from "@/api/routes/admin"
 import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
-import { researchRouter } from "@/api/routes/research"
+import { researchRouter } from "@/api/routes/research/index"
 import { searchRouter } from "@/api/routes/search"
 import { statsRouter } from "@/api/routes/stats"
 
@@ -19,8 +21,26 @@ const API_URL_PREFIX = process.env.HUMANDBS_API_URL_PREFIX || ""
 export const createApp = () => {
   const app = new OpenAPIHono()
 
+  // Middleware
+  app.use("*", requestIdMiddleware)
   app.use("*", cors())
-  app.use("*", logger())
+
+  // Request logging middleware
+  app.use("*", async (c, next) => {
+    const start = Date.now()
+    const requestId = getRequestId(c)
+    const method = c.req.method
+    const path = c.req.path
+
+    logger.info("Request received", { requestId, method, path })
+
+    await next()
+
+    const duration = Date.now() - start
+    const status = c.res.status
+
+    logger.info("Request completed", { requestId, method, path, status, duration })
+  })
 
   // Create a sub-app for API routes
   const api = new OpenAPIHono()
@@ -132,31 +152,64 @@ Only admins can approve/reject submissions and unpublish content.
     url: openApiJsonPath,
   }))
 
-  // Global error handler
+  // Global error handler with RFC 7807 Problem Details support
   app.onError((err, c) => {
-    console.error("Unhandled error:", err)
+    const requestId = getRequestId(c)
+    const instance = c.req.path
+
+    // Handle custom AppError - return RFC 7807 format
+    if (isAppError(err)) {
+      const logLevel = err.statusCode >= 500 ? "error" : "warn"
+      logger[logLevel](`${err.code}: ${err.message}`, {
+        requestId,
+        status: err.statusCode,
+        code: err.code,
+      })
+      const problemDetails = toProblemDetails(err, requestId, instance)
+      return c.json(problemDetails, err.statusCode)
+    }
 
     // Handle HTTPException from Hono
     if (err instanceof HTTPException) {
-      return c.json(
-        { error: err.message, message: err.cause ? String(err.cause) : null },
-        err.status,
+      logger.warn("HTTP exception", { requestId, status: err.status, message: err.message })
+      const code = err.status === 401 ? "UNAUTHORIZED"
+        : err.status === 403 ? "FORBIDDEN"
+        : err.status === 404 ? "NOT_FOUND"
+        : err.status === 409 ? "CONFLICT"
+        : "INTERNAL_ERROR"
+      const problemDetails = createProblemDetails(
+        err.status as 400 | 401 | 403 | 404 | 409 | 500,
+        code,
+        err.cause ? String(err.cause) : err.message,
+        requestId,
+        instance,
       )
+      return c.json(problemDetails, err.status)
     }
 
     // Handle ES version conflict (409)
     if (isConflictError(err)) {
-      return c.json(
-        { error: "Conflict", message: ERROR_MESSAGES.CONFLICT },
+      logger.warn("Conflict error", { requestId, message: ERROR_MESSAGES.CONFLICT })
+      const problemDetails = createProblemDetails(
         409,
+        "CONFLICT",
+        ERROR_MESSAGES.CONFLICT,
+        requestId,
+        instance,
       )
+      return c.json(problemDetails, 409)
     }
 
     // Default to 500 Internal Server Error
-    return c.json(
-      { error: ERROR_MESSAGES.INTERNAL_ERROR, message: String(err) },
+    logger.error("Unhandled error", { requestId, error: String(err), stack: (err as Error).stack })
+    const problemDetails = createProblemDetails(
       500,
+      "INTERNAL_ERROR",
+      "An unexpected error occurred",
+      requestId,
+      instance,
     )
+    return c.json(problemDetails, 500)
   })
 
   return app

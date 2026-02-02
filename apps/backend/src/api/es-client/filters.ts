@@ -130,3 +130,74 @@ export const RANGE_FIELD_MAPPINGS: RangeFieldMapping[] = [
   { from: "variantSv", minTo: "minVariantSv", maxTo: "maxVariantSv" },
   { from: "variantTotal", minTo: "minVariantTotal", maxTo: "maxVariantTotal" },
 ]
+
+// === Dataset Filter Parameters ===
+// All query parameters that filter by Dataset attributes
+// Used by hasDatasetFilters() in search.ts
+
+/**
+ * String/array filter parameter names (presence check)
+ */
+export const DATASET_STRING_FILTER_PARAMS = [
+  "assayType",
+  "disease",
+  "tissue",
+  "population",
+  "platform",
+  "criteria",
+  "fileType",
+  "healthStatus",
+  "subjectCountType",
+  "sex",
+  "ageGroup",
+  "libraryKits",
+  "readType",
+  "referenceGenome",
+  "processedDataTypes",
+  "policyId",
+  "diseaseIcd10",
+  "cellLine",
+] as const
+
+/**
+ * Boolean filter parameter names (undefined check)
+ */
+export const DATASET_BOOLEAN_FILTER_PARAMS = [
+  "hasPhenotypeData",
+  "isTumor",
+] as const
+
+/**
+ * Range filter parameter names (min/max, undefined check)
+ * Collected from NESTED_RANGE_FILTERS plus date range
+ */
+export const DATASET_RANGE_FILTER_PARAMS = [
+  "minReleaseDate",
+  "maxReleaseDate",
+  ...NESTED_RANGE_FILTERS.flatMap((f) => [f.minParam, f.maxParam]),
+] as const
+
+/**
+ * Check if params contain any Dataset filter
+ *
+ * @param params - Query parameters to check
+ * @returns true if any Dataset filter is present
+ */
+export function hasDatasetFilters(params: Record<string, unknown>): boolean {
+  // Check string filters (truthy check)
+  for (const param of DATASET_STRING_FILTER_PARAMS) {
+    if (params[param]) return true
+  }
+
+  // Check boolean filters (defined check)
+  for (const param of DATASET_BOOLEAN_FILTER_PARAMS) {
+    if (params[param] !== undefined) return true
+  }
+
+  // Check range filters (defined check)
+  for (const param of DATASET_RANGE_FILTER_PARAMS) {
+    if (params[param] !== undefined) return true
+  }
+
+  return false
+}

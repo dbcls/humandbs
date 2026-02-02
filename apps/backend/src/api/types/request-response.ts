@@ -65,20 +65,6 @@ export const DatasetSchema = z.object({
 // === Error Responses ===
 
 /**
- * Extended error response with details
- */
-export const ApiErrorResponseSchema = z.object({
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-    details: z.unknown().optional(),
-    requestId: z.string().optional(),
-    timestamp: z.string(),
-  }),
-})
-export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>
-
-/**
  * Error codes
  */
 export const ERROR_CODES = [
@@ -91,11 +77,62 @@ export const ERROR_CODES = [
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
 
+/**
+ * Legacy error response (for backwards compatibility during transition)
+ */
 export const ErrorResponseSchema = z.object({
   error: z.string(),
   message: z.string().nullable().optional(),
 })
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
+
+/**
+ * RFC 7807 Problem Details for HTTP APIs
+ * @see https://tools.ietf.org/html/rfc7807
+ */
+export const ProblemDetailsSchema = z.object({
+  /** URI reference identifying the problem type */
+  type: z.string().url(),
+  /** Short, human-readable summary of the problem type */
+  title: z.string(),
+  /** HTTP status code */
+  status: z.number().int().min(400).max(599),
+  /** Human-readable explanation specific to this occurrence */
+  detail: z.string().optional(),
+  /** URI reference for the specific occurrence (usually the request path) */
+  instance: z.string().optional(),
+  /** ISO 8601 timestamp of when the error occurred */
+  timestamp: z.string(),
+  /** Request ID for correlation */
+  requestId: z.string().optional(),
+})
+export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
+
+/**
+ * Extended error response with details (legacy format)
+ */
+export const ApiErrorResponseSchema = z.object({
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z.unknown().optional(),
+    requestId: z.string().optional(),
+    timestamp: z.string(),
+  }),
+})
+export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>
+
+// === Response Meta Schema ===
+
+/**
+ * Meta information for single resource responses
+ * Contains optimistic locking fields
+ */
+export const ResponseMetaSchema = z.object({
+  _seq_no: z.number(),
+  _primary_term: z.number(),
+})
+export type ResponseMeta = z.infer<typeof ResponseMetaSchema>
 
 // === Research API ===
 

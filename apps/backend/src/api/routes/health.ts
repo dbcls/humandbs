@@ -1,5 +1,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
+import { logger } from "@/api/logger"
+import { getRequestId } from "@/api/middleware/request-id"
 import { ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import { HealthResponseSchema } from "@/types"
 
@@ -34,7 +36,8 @@ healthRouter.openapi(healthRoute, async (c) => {
 
     return c.json(validatedResponse, 200)
   } catch (error) {
-    console.error("Response validation error:", error)
+    const requestId = getRequestId(c)
+    logger.error("Response validation error", { requestId, error: String(error) })
     return serverErrorResponse(c, error)
   }
 })
