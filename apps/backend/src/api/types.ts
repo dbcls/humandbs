@@ -259,21 +259,30 @@ export type ErrorCode = (typeof ErrorCode)[number]
  */
 export const CreateResearchRequestSchema = z.object({
   // Optional humId - auto-generated if not provided (hum0001, hum0002, ...)
-  humId: z.string().optional(),
+  humId: z.string().optional()
+    .describe("Research ID (e.g., 'hum0001'). Auto-generated if not provided."),
 
   // Research fields - all optional with defaults
-  title: BilingualTextSchema.optional(),
-  summary: SummarySchema.optional(),
-  dataProvider: z.array(PersonSchema).optional(),
-  researchProject: z.array(ResearchProjectSchema).optional(),
-  grant: z.array(GrantSchema).optional(),
-  relatedPublication: z.array(PublicationSchema).optional(),
+  title: BilingualTextSchema.optional()
+    .describe("Research title in Japanese and English"),
+  summary: SummarySchema.optional()
+    .describe("Research summary including aims, methods, and targets"),
+  dataProvider: z.array(PersonSchema).optional()
+    .describe("Data providers (researchers providing the data)"),
+  researchProject: z.array(ResearchProjectSchema).optional()
+    .describe("Related research projects"),
+  grant: z.array(GrantSchema).optional()
+    .describe("Funding grants"),
+  relatedPublication: z.array(PublicationSchema).optional()
+    .describe("Related publications (papers, preprints)"),
 
   // Admin assigns owner UIDs (optional, defaults to empty array)
-  uids: z.array(z.string()).optional(),
+  uids: z.array(z.string()).optional()
+    .describe("Keycloak user IDs (sub) who can edit this Research. Admin-only field."),
 
   // Initial version release note (optional)
-  initialReleaseNote: BilingualTextValueSchema.optional(),
+  initialReleaseNote: BilingualTextValueSchema.optional()
+    .describe("Release note for the initial version (v1)"),
 })
 export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
 
@@ -284,15 +293,24 @@ export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
  * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateResearchRequestSchema = z.object({
-  title: BilingualTextSchema,
-  summary: SummarySchema,
-  dataProvider: z.array(PersonSchema),
-  researchProject: z.array(ResearchProjectSchema),
-  grant: z.array(GrantSchema),
-  relatedPublication: z.array(PublicationSchema),
-  controlledAccessUser: z.array(PersonSchema),
-  _seq_no: z.number().describe("Sequence number for optimistic locking"),
-  _primary_term: z.number().describe("Primary term for optimistic locking"),
+  title: BilingualTextSchema
+    .describe("Research title in Japanese and English"),
+  summary: SummarySchema
+    .describe("Research summary including aims, methods, and targets"),
+  dataProvider: z.array(PersonSchema)
+    .describe("Data providers (researchers providing the data)"),
+  researchProject: z.array(ResearchProjectSchema)
+    .describe("Related research projects"),
+  grant: z.array(GrantSchema)
+    .describe("Funding grants"),
+  relatedPublication: z.array(PublicationSchema)
+    .describe("Related publications (papers, preprints)"),
+  controlledAccessUser: z.array(PersonSchema)
+    .describe("Users with controlled access to the data"),
+  _seq_no: z.number()
+    .describe("Sequence number for optimistic locking. Obtained from GET response."),
+  _primary_term: z.number()
+    .describe("Primary term for optimistic locking. Obtained from GET response."),
 })
 export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>
 
@@ -499,23 +517,32 @@ export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
  */
 export const ResearchListingQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  lang: z.enum(langType).default("ja"),
-  sort: z.enum(["humId", "title", "releaseDate"]).default("humId"),
-  order: z.enum(["asc", "desc"]).default("asc"),
+  page: z.coerce.number().int().min(1).default(1)
+    .describe("Page number for pagination (1-indexed)"),
+  limit: z.coerce.number().int().min(1).max(100).default(20)
+    .describe("Number of items per page (max: 100)"),
+  lang: z.enum(langType).default("ja")
+    .describe("Response language for bilingual fields"),
+  sort: z.enum(["humId", "title", "releaseDate"]).default("humId")
+    .describe("Sort field"),
+  order: z.enum(["asc", "desc"]).default("asc")
+    .describe("Sort order"),
 
   // Status filter (admin only for non-published)
-  status: z.enum(["draft", "review", "published", "deleted"]).optional(),
+  status: z.enum(["draft", "review", "published", "deleted"]).optional()
+    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
 
   // Optional humId filter for specific research
-  humId: z.string().optional(),
+  humId: z.string().optional()
+    .describe("Filter by specific Research ID"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString,
+  includeFacets: booleanFromString
+    .describe("Include facet aggregation counts in response"),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false),
+  includeRawHtml: z.coerce.boolean().default(false)
+    .describe("Include rawHtml fields (e.g., summary.aims.rawHtml) in response"),
 })
 export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>
 
@@ -523,81 +550,138 @@ export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>
 
 export const ResearchSearchQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  lang: z.enum(langType).default("ja"),
-  sort: z.enum(["humId", "title", "releaseDate", "relevance"]).default("humId"),
-  order: z.enum(["asc", "desc"]).default("asc"),
+  page: z.coerce.number().int().min(1).default(1)
+    .describe("Page number for pagination (1-indexed)"),
+  limit: z.coerce.number().int().min(1).max(100).default(20)
+    .describe("Number of items per page (max: 100)"),
+  lang: z.enum(langType).default("ja")
+    .describe("Response language for bilingual fields"),
+  sort: z.enum(["humId", "title", "releaseDate", "relevance"]).default("humId")
+    .describe("Sort field. Use 'relevance' for full-text search ranking"),
+  order: z.enum(["asc", "desc"]).default("asc")
+    .describe("Sort order (default: desc when sort=relevance)"),
 
   // Status filter (admin only for non-published)
-  status: z.enum(["draft", "review", "published", "deleted"]).optional(),
+  status: z.enum(["draft", "review", "published", "deleted"]).optional()
+    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
 
   // Full-text search
-  q: z.string().optional(),
+  q: z.string().optional()
+    .describe("Full-text search query. Searches title, aims, methods, and targets"),
 
   // Research-specific filters (legacy, kept for backwards compatibility)
-  releasedAfter: z.string().optional(),  // ISO 8601 date
-  releasedBefore: z.string().optional(), // ISO 8601 date
+  releasedAfter: z.string().optional()
+    .describe("Filter by release date >= (ISO 8601 date, legacy)"),
+  releasedBefore: z.string().optional()
+    .describe("Filter by release date <= (ISO 8601 date, legacy)"),
 
   // Date range filters for POST search
-  minDatePublished: z.string().optional(), // datePublished >= (ISO 8601 date)
-  maxDatePublished: z.string().optional(), // datePublished <= (ISO 8601 date)
-  minDateModified: z.string().optional(),  // dateModified >= (ISO 8601 date)
-  maxDateModified: z.string().optional(),  // dateModified <= (ISO 8601 date)
+  minDatePublished: z.string().optional()
+    .describe("Filter by datePublished >= (ISO 8601 date)"),
+  maxDatePublished: z.string().optional()
+    .describe("Filter by datePublished <= (ISO 8601 date)"),
+  minDateModified: z.string().optional()
+    .describe("Filter by dateModified >= (ISO 8601 date)"),
+  maxDateModified: z.string().optional()
+    .describe("Filter by dateModified <= (ISO 8601 date)"),
 
   // Filter Research by Dataset attributes (comma-separated for OR)
-  assayType: z.string().optional(),
-  disease: z.string().optional(),
-  diseaseIcd10: z.string().optional(),  // ICD-10 code prefix match
-  tissue: z.string().optional(),
-  population: z.string().optional(),
-  platform: z.string().optional(),
-  criteria: z.string().optional(),
-  fileType: z.string().optional(),
-  minSubjects: z.coerce.number().int().min(0).optional(),
-  maxSubjects: z.coerce.number().int().min(0).optional(),
+  assayType: z.string().optional()
+    .describe("Filter by assay type (comma-separated for OR, e.g., 'WGS,WES')"),
+  disease: z.string().optional()
+    .describe("Filter by disease label (partial match)"),
+  diseaseIcd10: z.string().optional()
+    .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
+  tissue: z.string().optional()
+    .describe("Filter by tissue type (comma-separated for OR)"),
+  population: z.string().optional()
+    .describe("Filter by population (comma-separated for OR)"),
+  platform: z.string().optional()
+    .describe("Filter by sequencing platform (comma-separated for OR)"),
+  criteria: z.string().optional()
+    .describe("Filter by data access criteria: Controlled-access (Type I/II), Unrestricted-access"),
+  fileType: z.string().optional()
+    .describe("Filter by file type (comma-separated for OR)"),
+  minSubjects: z.coerce.number().int().min(0).optional()
+    .describe("Minimum subject count"),
+  maxSubjects: z.coerce.number().int().min(0).optional()
+    .describe("Maximum subject count"),
 
   // Extended filters
-  healthStatus: z.string().optional(),  // healthy/affected/mixed (use this instead of hasHealthyControl)
-  subjectCountType: z.string().optional(),  // individual/sample/mixed
-  sex: z.string().optional(),  // male/female/mixed
-  ageGroup: z.string().optional(),  // infant/child/adult/elderly/mixed
-  libraryKits: z.string().optional(),
-  readType: z.string().optional(),  // single-end/paired-end
-  referenceGenome: z.string().optional(),
-  processedDataTypes: z.string().optional(),
-  hasPhenotypeData: booleanFromString,
-  cellLine: z.string().optional(),  // exact match
-  isTumor: booleanFromString,
-  policyId: z.string().optional(),
+  healthStatus: z.string().optional()
+    .describe("Filter by health status: healthy, affected, mixed (comma-separated for OR)"),
+  subjectCountType: z.string().optional()
+    .describe("Filter by subject count type: individual, sample, mixed"),
+  sex: z.string().optional()
+    .describe("Filter by sex: male, female, mixed (comma-separated for OR)"),
+  ageGroup: z.string().optional()
+    .describe("Filter by age group: infant, child, adult, elderly, mixed (comma-separated for OR)"),
+  libraryKits: z.string().optional()
+    .describe("Filter by library preparation kit (comma-separated for OR)"),
+  readType: z.string().optional()
+    .describe("Filter by read type: single-end, paired-end"),
+  referenceGenome: z.string().optional()
+    .describe("Filter by reference genome (comma-separated for OR)"),
+  processedDataTypes: z.string().optional()
+    .describe("Filter by processed data types (comma-separated for OR)"),
+  hasPhenotypeData: booleanFromString
+    .describe("Filter by presence of phenotype data"),
+  cellLine: z.string().optional()
+    .describe("Filter by cell line (exact match)"),
+  isTumor: booleanFromString
+    .describe("Filter by tumor sample status"),
+  policyId: z.string().optional()
+    .describe("Filter by data access policy ID"),
 
   // Range filters
-  minReleaseDate: z.string().optional(),
-  maxReleaseDate: z.string().optional(),
-  minReadLength: z.coerce.number().int().min(0).optional(),
-  maxReadLength: z.coerce.number().int().min(0).optional(),
-  minSequencingDepth: z.coerce.number().min(0).optional(),
-  maxSequencingDepth: z.coerce.number().min(0).optional(),
-  minTargetCoverage: z.coerce.number().min(0).optional(),
-  maxTargetCoverage: z.coerce.number().min(0).optional(),
-  minDataVolumeGb: z.coerce.number().min(0).optional(),
-  maxDataVolumeGb: z.coerce.number().min(0).optional(),
-  minVariantSnv: z.coerce.number().int().min(0).optional(),
-  maxVariantSnv: z.coerce.number().int().min(0).optional(),
-  minVariantIndel: z.coerce.number().int().min(0).optional(),
-  maxVariantIndel: z.coerce.number().int().min(0).optional(),
-  minVariantCnv: z.coerce.number().int().min(0).optional(),
-  maxVariantCnv: z.coerce.number().int().min(0).optional(),
-  minVariantSv: z.coerce.number().int().min(0).optional(),
-  maxVariantSv: z.coerce.number().int().min(0).optional(),
-  minVariantTotal: z.coerce.number().int().min(0).optional(),
-  maxVariantTotal: z.coerce.number().int().min(0).optional(),
+  minReleaseDate: z.string().optional()
+    .describe("Filter by Dataset release date >= (ISO 8601 date)"),
+  maxReleaseDate: z.string().optional()
+    .describe("Filter by Dataset release date <= (ISO 8601 date)"),
+  minReadLength: z.coerce.number().int().min(0).optional()
+    .describe("Minimum read length (bp)"),
+  maxReadLength: z.coerce.number().int().min(0).optional()
+    .describe("Maximum read length (bp)"),
+  minSequencingDepth: z.coerce.number().min(0).optional()
+    .describe("Minimum sequencing depth (x)"),
+  maxSequencingDepth: z.coerce.number().min(0).optional()
+    .describe("Maximum sequencing depth (x)"),
+  minTargetCoverage: z.coerce.number().min(0).optional()
+    .describe("Minimum target coverage (%)"),
+  maxTargetCoverage: z.coerce.number().min(0).optional()
+    .describe("Maximum target coverage (%)"),
+  minDataVolumeGb: z.coerce.number().min(0).optional()
+    .describe("Minimum data volume (GB)"),
+  maxDataVolumeGb: z.coerce.number().min(0).optional()
+    .describe("Maximum data volume (GB)"),
+  minVariantSnv: z.coerce.number().int().min(0).optional()
+    .describe("Minimum SNV variant count"),
+  maxVariantSnv: z.coerce.number().int().min(0).optional()
+    .describe("Maximum SNV variant count"),
+  minVariantIndel: z.coerce.number().int().min(0).optional()
+    .describe("Minimum indel variant count"),
+  maxVariantIndel: z.coerce.number().int().min(0).optional()
+    .describe("Maximum indel variant count"),
+  minVariantCnv: z.coerce.number().int().min(0).optional()
+    .describe("Minimum CNV variant count"),
+  maxVariantCnv: z.coerce.number().int().min(0).optional()
+    .describe("Maximum CNV variant count"),
+  minVariantSv: z.coerce.number().int().min(0).optional()
+    .describe("Minimum SV variant count"),
+  maxVariantSv: z.coerce.number().int().min(0).optional()
+    .describe("Maximum SV variant count"),
+  minVariantTotal: z.coerce.number().int().min(0).optional()
+    .describe("Minimum total variant count"),
+  maxVariantTotal: z.coerce.number().int().min(0).optional()
+    .describe("Maximum total variant count"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString,
+  includeFacets: booleanFromString
+    .describe("Include facet aggregation counts in response"),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false),
+  includeRawHtml: z.coerce.boolean().default(false)
+    .describe("Include rawHtml fields in response"),
 })
 export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>
 
@@ -623,20 +707,28 @@ export type ResearchSearchResponse = z.infer<typeof ResearchSearchResponseSchema
  */
 export const DatasetListingQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  lang: z.enum(langType).default("ja"),
-  sort: z.enum(["datasetId", "releaseDate"]).default("datasetId"),
-  order: z.enum(["asc", "desc"]).default("asc"),
+  page: z.coerce.number().int().min(1).default(1)
+    .describe("Page number for pagination (1-indexed)"),
+  limit: z.coerce.number().int().min(1).max(100).default(20)
+    .describe("Number of items per page (max: 100)"),
+  lang: z.enum(langType).default("ja")
+    .describe("Response language for bilingual fields"),
+  sort: z.enum(["datasetId", "releaseDate"]).default("datasetId")
+    .describe("Sort field"),
+  order: z.enum(["asc", "desc"]).default("asc")
+    .describe("Sort order"),
 
   // Parent Research ID filter
-  humId: z.string().optional(),
+  humId: z.string().optional()
+    .describe("Filter by parent Research ID"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString,
+  includeFacets: booleanFromString
+    .describe("Include facet aggregation counts in response"),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false),
+  includeRawHtml: z.coerce.boolean().default(false)
+    .describe("Include rawHtml fields in response"),
 })
 export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>
 
@@ -644,70 +736,122 @@ export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>
 
 export const DatasetSearchQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  lang: z.enum(langType).default("ja"),
-  sort: z.enum(["datasetId", "releaseDate", "subjectCount", "relevance"]).default("datasetId"),
-  order: z.enum(["asc", "desc"]).default("asc"),
+  page: z.coerce.number().int().min(1).default(1)
+    .describe("Page number for pagination (1-indexed)"),
+  limit: z.coerce.number().int().min(1).max(100).default(20)
+    .describe("Number of items per page (max: 100)"),
+  lang: z.enum(langType).default("ja")
+    .describe("Response language for bilingual fields"),
+  sort: z.enum(["datasetId", "releaseDate", "subjectCount", "relevance"]).default("datasetId")
+    .describe("Sort field. Use 'relevance' for full-text search ranking"),
+  order: z.enum(["asc", "desc"]).default("asc")
+    .describe("Sort order (default: desc when sort=relevance)"),
 
   // Full-text search
-  q: z.string().optional(),
+  q: z.string().optional()
+    .describe("Full-text search query. Searches experiments (header, data, footers)"),
 
   // Dataset filters
-  humId: z.string().optional(),  // Parent Research ID (exact match)
-  criteria: z.string().optional(),  // Comma-separated for OR
-  typeOfData: z.string().optional(),  // Partial match
-  assayType: z.string().optional(),  // Comma-separated for OR
-  disease: z.string().optional(),  // Partial match on label
-  diseaseIcd10: z.string().optional(),  // ICD-10 code prefix match
-  tissue: z.string().optional(),  // Comma-separated for OR
-  population: z.string().optional(),  // Comma-separated for OR
-  platform: z.string().optional(),  // Comma-separated for OR (platform model)
-  fileType: z.string().optional(),  // Comma-separated for OR
-  minSubjects: z.coerce.number().int().min(0).optional(),
-  maxSubjects: z.coerce.number().int().min(0).optional(),
+  humId: z.string().optional()
+    .describe("Filter by parent Research ID (exact match)"),
+  criteria: z.string().optional()
+    .describe("Filter by data access criteria (comma-separated for OR)"),
+  typeOfData: z.string().optional()
+    .describe("Filter by data type (partial match)"),
+  assayType: z.string().optional()
+    .describe("Filter by assay type (comma-separated for OR)"),
+  disease: z.string().optional()
+    .describe("Filter by disease label (partial match)"),
+  diseaseIcd10: z.string().optional()
+    .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
+  tissue: z.string().optional()
+    .describe("Filter by tissue type (comma-separated for OR)"),
+  population: z.string().optional()
+    .describe("Filter by population (comma-separated for OR)"),
+  platform: z.string().optional()
+    .describe("Filter by sequencing platform model (comma-separated for OR)"),
+  fileType: z.string().optional()
+    .describe("Filter by file type (comma-separated for OR)"),
+  minSubjects: z.coerce.number().int().min(0).optional()
+    .describe("Minimum subject count"),
+  maxSubjects: z.coerce.number().int().min(0).optional()
+    .describe("Maximum subject count"),
 
   // Extended filters
-  healthStatus: z.string().optional(),  // healthy/affected/mixed (use this instead of hasHealthyControl)
-  subjectCountType: z.string().optional(),  // individual/sample/mixed
-  sex: z.string().optional(),  // male/female/mixed
-  ageGroup: z.string().optional(),  // infant/child/adult/elderly/mixed
-  libraryKits: z.string().optional(),
-  readType: z.string().optional(),  // single-end/paired-end
-  referenceGenome: z.string().optional(),
-  processedDataTypes: z.string().optional(),
-  hasPhenotypeData: booleanFromString,
-  cellLine: z.string().optional(),  // exact match
-  isTumor: booleanFromString,
-  policyId: z.string().optional(),
+  healthStatus: z.string().optional()
+    .describe("Filter by health status: healthy, affected, mixed (comma-separated for OR)"),
+  subjectCountType: z.string().optional()
+    .describe("Filter by subject count type: individual, sample, mixed"),
+  sex: z.string().optional()
+    .describe("Filter by sex: male, female, mixed (comma-separated for OR)"),
+  ageGroup: z.string().optional()
+    .describe("Filter by age group: infant, child, adult, elderly, mixed (comma-separated for OR)"),
+  libraryKits: z.string().optional()
+    .describe("Filter by library preparation kit (comma-separated for OR)"),
+  readType: z.string().optional()
+    .describe("Filter by read type: single-end, paired-end"),
+  referenceGenome: z.string().optional()
+    .describe("Filter by reference genome (comma-separated for OR)"),
+  processedDataTypes: z.string().optional()
+    .describe("Filter by processed data types (comma-separated for OR)"),
+  hasPhenotypeData: booleanFromString
+    .describe("Filter by presence of phenotype data"),
+  cellLine: z.string().optional()
+    .describe("Filter by cell line (exact match)"),
+  isTumor: booleanFromString
+    .describe("Filter by tumor sample status"),
+  policyId: z.string().optional()
+    .describe("Filter by data access policy ID"),
 
   // Range filters
-  minReleaseDate: z.string().optional(),
-  maxReleaseDate: z.string().optional(),
-  minReadLength: z.coerce.number().int().min(0).optional(),
-  maxReadLength: z.coerce.number().int().min(0).optional(),
-  minSequencingDepth: z.coerce.number().min(0).optional(),
-  maxSequencingDepth: z.coerce.number().min(0).optional(),
-  minTargetCoverage: z.coerce.number().min(0).optional(),
-  maxTargetCoverage: z.coerce.number().min(0).optional(),
-  minDataVolumeGb: z.coerce.number().min(0).optional(),
-  maxDataVolumeGb: z.coerce.number().min(0).optional(),
-  minVariantSnv: z.coerce.number().int().min(0).optional(),
-  maxVariantSnv: z.coerce.number().int().min(0).optional(),
-  minVariantIndel: z.coerce.number().int().min(0).optional(),
-  maxVariantIndel: z.coerce.number().int().min(0).optional(),
-  minVariantCnv: z.coerce.number().int().min(0).optional(),
-  maxVariantCnv: z.coerce.number().int().min(0).optional(),
-  minVariantSv: z.coerce.number().int().min(0).optional(),
-  maxVariantSv: z.coerce.number().int().min(0).optional(),
-  minVariantTotal: z.coerce.number().int().min(0).optional(),
-  maxVariantTotal: z.coerce.number().int().min(0).optional(),
+  minReleaseDate: z.string().optional()
+    .describe("Filter by release date >= (ISO 8601 date)"),
+  maxReleaseDate: z.string().optional()
+    .describe("Filter by release date <= (ISO 8601 date)"),
+  minReadLength: z.coerce.number().int().min(0).optional()
+    .describe("Minimum read length (bp)"),
+  maxReadLength: z.coerce.number().int().min(0).optional()
+    .describe("Maximum read length (bp)"),
+  minSequencingDepth: z.coerce.number().min(0).optional()
+    .describe("Minimum sequencing depth (x)"),
+  maxSequencingDepth: z.coerce.number().min(0).optional()
+    .describe("Maximum sequencing depth (x)"),
+  minTargetCoverage: z.coerce.number().min(0).optional()
+    .describe("Minimum target coverage (%)"),
+  maxTargetCoverage: z.coerce.number().min(0).optional()
+    .describe("Maximum target coverage (%)"),
+  minDataVolumeGb: z.coerce.number().min(0).optional()
+    .describe("Minimum data volume (GB)"),
+  maxDataVolumeGb: z.coerce.number().min(0).optional()
+    .describe("Maximum data volume (GB)"),
+  minVariantSnv: z.coerce.number().int().min(0).optional()
+    .describe("Minimum SNV variant count"),
+  maxVariantSnv: z.coerce.number().int().min(0).optional()
+    .describe("Maximum SNV variant count"),
+  minVariantIndel: z.coerce.number().int().min(0).optional()
+    .describe("Minimum indel variant count"),
+  maxVariantIndel: z.coerce.number().int().min(0).optional()
+    .describe("Maximum indel variant count"),
+  minVariantCnv: z.coerce.number().int().min(0).optional()
+    .describe("Minimum CNV variant count"),
+  maxVariantCnv: z.coerce.number().int().min(0).optional()
+    .describe("Maximum CNV variant count"),
+  minVariantSv: z.coerce.number().int().min(0).optional()
+    .describe("Minimum SV variant count"),
+  maxVariantSv: z.coerce.number().int().min(0).optional()
+    .describe("Maximum SV variant count"),
+  minVariantTotal: z.coerce.number().int().min(0).optional()
+    .describe("Minimum total variant count"),
+  maxVariantTotal: z.coerce.number().int().min(0).optional()
+    .describe("Maximum total variant count"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString,
+  includeFacets: booleanFromString
+    .describe("Include facet aggregation counts in response"),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false),
+  includeRawHtml: z.coerce.boolean().default(false)
+    .describe("Include rawHtml fields in response"),
 })
 export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 
@@ -741,39 +885,70 @@ const RangeFilterSchema = z.object({
  */
 export const DatasetFiltersSchema = z.object({
   // Facet filters (category values)
-  criteria: z.array(z.string()).optional(),
-  subjectCountType: z.array(z.enum(["individual", "sample", "mixed"])).optional(),
-  healthStatus: z.array(z.enum(["healthy", "affected", "mixed"])).optional(),
-  disease: z.string().optional(), // Partial match
-  diseaseIcd10: z.array(z.string()).optional(), // Prefix match
-  tissue: z.array(z.string()).optional(),
-  isTumor: z.boolean().optional(),
-  cellLine: z.array(z.string()).optional(),
-  population: z.array(z.string()).optional(),
-  sex: z.array(z.enum(["male", "female", "mixed"])).optional(),
-  ageGroup: z.array(z.enum(["infant", "child", "adult", "elderly", "mixed"])).optional(),
-  assayType: z.array(z.string()).optional(),
-  libraryKits: z.array(z.string()).optional(),
-  platform: z.array(z.string()).optional(), // Platform (vendor or model)
-  readType: z.array(z.enum(["single-end", "paired-end"])).optional(),
-  referenceGenome: z.array(z.string()).optional(),
-  fileType: z.array(z.string()).optional(),
-  processedDataTypes: z.array(z.string()).optional(),
-  hasPhenotypeData: z.boolean().optional(),
-  policyId: z.array(z.string()).optional(),
+  criteria: z.array(z.string()).optional()
+    .describe("Data access criteria: Controlled-access (Type I/II), Unrestricted-access. Array for OR logic."),
+  subjectCountType: z.array(z.enum(["individual", "sample", "mixed"])).optional()
+    .describe("Subject count type: individual, sample, or mixed"),
+  healthStatus: z.array(z.enum(["healthy", "affected", "mixed"])).optional()
+    .describe("Health status: healthy, affected, or mixed"),
+  disease: z.string().optional()
+    .describe("Disease label partial match (free-text search)"),
+  diseaseIcd10: z.array(z.string()).optional()
+    .describe("ICD-10 disease codes (prefix match, e.g., 'C34' matches 'C34.1')"),
+  tissue: z.array(z.string()).optional()
+    .describe("Tissue types (facet selection)"),
+  isTumor: z.boolean().optional()
+    .describe("Filter by tumor sample status"),
+  cellLine: z.array(z.string()).optional()
+    .describe("Cell line names (facet selection)"),
+  population: z.array(z.string()).optional()
+    .describe("Population groups (facet selection)"),
+  sex: z.array(z.enum(["male", "female", "mixed"])).optional()
+    .describe("Biological sex: male, female, or mixed"),
+  ageGroup: z.array(z.enum(["infant", "child", "adult", "elderly", "mixed"])).optional()
+    .describe("Age groups: infant, child, adult, elderly, or mixed"),
+  assayType: z.array(z.string()).optional()
+    .describe("Assay types (e.g., WGS, WES, RNA-seq)"),
+  libraryKits: z.array(z.string()).optional()
+    .describe("Library preparation kits"),
+  platform: z.array(z.string()).optional()
+    .describe("Sequencing platforms (e.g., 'Illumina NovaSeq 6000')"),
+  readType: z.array(z.enum(["single-end", "paired-end"])).optional()
+    .describe("Read type: single-end or paired-end"),
+  referenceGenome: z.array(z.string()).optional()
+    .describe("Reference genomes (e.g., GRCh38, GRCh37)"),
+  fileType: z.array(z.string()).optional()
+    .describe("File types (e.g., FASTQ, BAM, VCF)"),
+  processedDataTypes: z.array(z.string()).optional()
+    .describe("Processed data types available"),
+  hasPhenotypeData: z.boolean().optional()
+    .describe("Filter by presence of phenotype data"),
+  policyId: z.array(z.string()).optional()
+    .describe("Data access policy IDs"),
 
   // Range filters
-  releaseDate: RangeFilterSchema.optional(),
-  subjectCount: RangeFilterSchema.optional(),
-  readLength: RangeFilterSchema.optional(),
-  sequencingDepth: RangeFilterSchema.optional(),
-  targetCoverage: RangeFilterSchema.optional(),
-  dataVolumeGb: RangeFilterSchema.optional(),
-  variantSnv: RangeFilterSchema.optional(),
-  variantIndel: RangeFilterSchema.optional(),
-  variantCnv: RangeFilterSchema.optional(),
-  variantSv: RangeFilterSchema.optional(),
-  variantTotal: RangeFilterSchema.optional(),
+  releaseDate: RangeFilterSchema.optional()
+    .describe("Dataset release date range (ISO 8601 format, e.g., {min: '2020-01-01', max: '2024-12-31'})"),
+  subjectCount: RangeFilterSchema.optional()
+    .describe("Subject count range (e.g., {min: 100, max: 1000})"),
+  readLength: RangeFilterSchema.optional()
+    .describe("Read length range in base pairs"),
+  sequencingDepth: RangeFilterSchema.optional()
+    .describe("Sequencing depth range (x)"),
+  targetCoverage: RangeFilterSchema.optional()
+    .describe("Target coverage range (%)"),
+  dataVolumeGb: RangeFilterSchema.optional()
+    .describe("Data volume range in GB"),
+  variantSnv: RangeFilterSchema.optional()
+    .describe("SNV variant count range"),
+  variantIndel: RangeFilterSchema.optional()
+    .describe("Indel variant count range"),
+  variantCnv: RangeFilterSchema.optional()
+    .describe("CNV variant count range"),
+  variantSv: RangeFilterSchema.optional()
+    .describe("SV variant count range"),
+  variantTotal: RangeFilterSchema.optional()
+    .describe("Total variant count range"),
 })
 export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>
 
@@ -782,26 +957,36 @@ export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>
  */
 export const ResearchSearchBodySchema = z.object({
   // Pagination
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(20),
+  page: z.number().int().min(1).default(1)
+    .describe("Page number for pagination (1-indexed)"),
+  limit: z.number().int().min(1).max(100).default(20)
+    .describe("Number of items per page (max: 100)"),
 
   // Sort
-  sort: z.enum(["humId", "datePublished", "dateModified", "relevance"]).optional(),
-  order: z.enum(["asc", "desc"]).default("asc"),
+  sort: z.enum(["humId", "datePublished", "dateModified", "relevance"]).optional()
+    .describe("Sort field. Defaults to 'relevance' when query is provided, 'humId' otherwise"),
+  order: z.enum(["asc", "desc"]).default("asc")
+    .describe("Sort order. Defaults to 'desc' when sort=relevance"),
 
   // Free-text search
-  query: z.string().optional(), // Searches title, summary
+  query: z.string().optional()
+    .describe("Full-text search query. Searches title, aims, methods, and targets"),
 
   // Date range filters
-  datePublished: RangeFilterSchema.optional(),
-  dateModified: RangeFilterSchema.optional(),
+  datePublished: RangeFilterSchema.optional()
+    .describe("Filter by datePublished range (ISO 8601 format)"),
+  dateModified: RangeFilterSchema.optional()
+    .describe("Filter by dateModified range (ISO 8601 format)"),
 
   // Dataset attribute filters (parent-child filter)
-  datasetFilters: DatasetFiltersSchema.optional(),
+  datasetFilters: DatasetFiltersSchema.optional()
+    .describe("Filter Research by attributes of linked Datasets. Returns Research that has at least one Dataset matching the filters."),
 
   // Options
-  includeFacets: z.boolean().default(false),
-  fields: z.array(z.string()).optional(), // Additional fields to return
+  includeFacets: z.boolean().default(false)
+    .describe("Include facet aggregation counts in response"),
+  fields: z.array(z.string()).optional()
+    .describe("Additional fields to include in response"),
 })
 export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>
 
@@ -810,25 +995,34 @@ export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>
  */
 export const DatasetSearchBodySchema = z.object({
   // Pagination
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(20),
+  page: z.number().int().min(1).default(1)
+    .describe("Page number for pagination (1-indexed)"),
+  limit: z.number().int().min(1).max(100).default(20)
+    .describe("Number of items per page (max: 100)"),
 
   // Sort
-  sort: z.enum(["datasetId", "releaseDate", "relevance"]).optional(),
-  order: z.enum(["asc", "desc"]).default("asc"),
+  sort: z.enum(["datasetId", "releaseDate", "relevance"]).optional()
+    .describe("Sort field. Defaults to 'relevance' when query is provided, 'datasetId' otherwise"),
+  order: z.enum(["asc", "desc"]).default("asc")
+    .describe("Sort order. Defaults to 'desc' when sort=relevance"),
 
-  // S2: Free-text search (unified query instead of separate metadataQuery/experimentQuery)
-  query: z.string().optional(), // Searches typeOfData, experiments
+  // Free-text search (unified query instead of separate metadataQuery/experimentQuery)
+  query: z.string().optional()
+    .describe("Full-text search query. Searches experiments (header, data, footers)"),
 
   // Parent Research filter
-  humId: z.string().optional(),
+  humId: z.string().optional()
+    .describe("Filter by parent Research ID (exact match)"),
 
   // Dataset filters
-  filters: DatasetFiltersSchema.optional(),
+  filters: DatasetFiltersSchema.optional()
+    .describe("Filter Datasets by various attributes"),
 
   // Options
-  includeFacets: z.boolean().default(false),
-  fields: z.array(z.string()).optional(), // Additional fields to return
+  includeFacets: z.boolean().default(false)
+    .describe("Include facet aggregation counts in response"),
+  fields: z.array(z.string()).optional()
+    .describe("Additional fields to include in response"),
 })
 export type DatasetSearchBody = z.infer<typeof DatasetSearchBodySchema>
 

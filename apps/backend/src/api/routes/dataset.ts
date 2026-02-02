@@ -6,8 +6,8 @@
  */
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
+import { canAccessResearchDoc } from "@/api/es-client/auth"
 import {
-  canAccessResearchDoc,
   deleteDataset,
   getDataset,
   getDatasetWithSeqNo,
@@ -16,7 +16,7 @@ import {
   listDatasetVersions,
   searchDatasets,
   updateDataset,
-} from "@/api/es-client"
+} from "@/api/es-client/operations"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
 import {
   ErrorSpec401,
@@ -54,7 +54,14 @@ const listDatasetsRoute = createRoute({
   path: "/",
   tags: ["Dataset"],
   summary: "List Datasets",
-  description: "Get a paginated list of datasets. Only datasets linked to published research are visible to public. For complex searches with filters, use POST /dataset/search instead.",
+  description: `Get a paginated list of Dataset resources.
+
+**Visibility by role:**
+- **public**: Only Datasets linked to published Research
+- **authenticated**: Published + Datasets linked to own Research (where user is in uids)
+- **admin**: All Datasets
+
+**Note:** For complex searches with filters, use POST /dataset/search instead.`,
   request: {
     query: DatasetListingQuerySchema,
   },
@@ -72,7 +79,14 @@ const getDatasetRoute = createRoute({
   path: "/{datasetId}",
   tags: ["Dataset"],
   summary: "Get Dataset Detail",
-  description: "Get detailed information about a specific dataset",
+  description: `Get detailed information about a specific Dataset.
+
+**Visibility:**
+- public: Only if parent Research is published
+- authenticated: Published + Datasets linked to own Research
+- admin: All Datasets
+
+Returns the latest version by default. Use GET /dataset/{datasetId}/versions/{version} for a specific version.`,
   request: {
     params: DatasetIdParamsSchema,
     query: LangVersionQuerySchema,
@@ -92,7 +106,17 @@ const updateDatasetRoute = createRoute({
   path: "/{datasetId}/update",
   tags: ["Dataset"],
   summary: "Update Dataset",
-  description: "Fully update a dataset. Requires owner or admin.",
+  description: `Update a Dataset (full replacement).
+
+**Authorization:** Owner (user in parent Research's uids) or admin
+
+**Precondition:** Parent Research must be in draft status
+
+**Optimistic Locking:** Include _seq_no and _primary_term from GET response to detect concurrent edits.
+
+**Versioning behavior:**
+- First update in a draft cycle creates a new Dataset version
+- Subsequent updates modify the same version until Research is published`,
   request: {
     params: DatasetIdParamsSchema,
     body: { content: { "application/json": { schema: UpdateDatasetRequestSchema } } },
@@ -115,7 +139,16 @@ const deleteDatasetRoute = createRoute({
   path: "/{datasetId}/delete",
   tags: ["Dataset"],
   summary: "Delete Dataset",
-  description: "Delete a dataset. Requires admin role.",
+  description: `Delete a Dataset (physical deletion).
+
+**Authorization:** Admin only
+
+**Precondition:** Parent Research must be in draft status
+
+**Behavior:**
+- Physically removes the Dataset from the database
+- Automatically removed from parent Research's dataset list
+- Use version query parameter to delete a specific version only`,
   request: {
     params: DatasetIdParamsSchema,
   },
@@ -133,7 +166,9 @@ const listVersionsRoute = createRoute({
   path: "/{datasetId}/versions",
   tags: ["Dataset Versions"],
   summary: "List Dataset Versions",
-  description: "List all versions of a dataset",
+  description: `List all versions of a Dataset.
+
+Dataset versions are tied to Research versions. Each time a Research is published, the current Dataset versions are finalized.`,
   request: {
     params: DatasetIdParamsSchema,
     query: LangQuerySchema,
@@ -153,7 +188,9 @@ const getVersionRoute = createRoute({
   path: "/{datasetId}/versions/{version}",
   tags: ["Dataset Versions"],
   summary: "Get Specific Version",
-  description: "Get a specific version of a dataset",
+  description: `Get a specific version of a Dataset.
+
+Version format: v1, v2, v3, etc.`,
   request: {
     params: DatasetVersionParamsSchema,
     query: LangQuerySchema,
@@ -172,8 +209,10 @@ const listLinkedResearchesRoute = createRoute({
   method: "get",
   path: "/{datasetId}/research",
   tags: ["Dataset"],
-  summary: "List Linked Researches",
-  description: "List all researches that link to this dataset",
+  summary: "Get Parent Research",
+  description: `Get the parent Research that this Dataset belongs to.
+
+A Dataset belongs to exactly one Research (1:N relationship). Returns an array with a single Research element.`,
   request: {
     params: DatasetIdParamsSchema,
     query: LangQuerySchema,
@@ -181,7 +220,7 @@ const listLinkedResearchesRoute = createRoute({
   responses: {
     200: {
       content: { "application/json": { schema: LinkedResearchesResponseSchema } },
-      description: "List of linked researches",
+      description: "Parent Research",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,

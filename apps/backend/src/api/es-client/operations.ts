@@ -1,6 +1,16 @@
-import { Client, HttpConnection } from "@elastic/elasticsearch"
+/**
+ * Elasticsearch operations for Research and Dataset CRUD
+ *
+ * This module provides all CRUD operations for Research and Dataset documents,
+ * including search functions with faceting support.
+ */
 import type { estypes } from "@elastic/elasticsearch"
 
+
+import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds } from "@/api/es-client/auth"
+import { esClient, ES_INDEX } from "@/api/es-client/client"
+import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS } from "@/api/es-client/filters"
+import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import {
   nestedTermsQuery,
   nestedRangeQuery,
@@ -8,6 +18,12 @@ import {
   doubleNestedTermsQuery,
   nestedBooleanTermQuery,
 } from "@/api/es-query-helpers"
+import {
+  EsDatasetDocSchema,
+  EsResearchDocSchema,
+  EsResearchVersionDocSchema,
+  EsResearchDetailSchema,
+} from "@/api/types"
 import type {
   DatasetSearchQuery,
   DatasetSearchResponse,
@@ -21,167 +37,8 @@ import type {
   ResearchSummary,
   DatasetVersionItem,
   AuthUser,
+  ResearchStatus,
 } from "@/api/types"
-import {
-  EsDatasetDocSchema,
-  EsResearchDocSchema,
-  EsResearchVersionDocSchema,
-  EsResearchDetailSchema,
-} from "@/api/types"
-
-const ES_INDEX = {
-  research: "research",
-  researchVersion: "research-version",
-  dataset: "dataset",
-}
-
-const ES_HOST = process.env.HUMANDBS_ES_HOST ?? "http://humandbs-elasticsearch-dev:9200"
-
-const createEsClient = () => {
-  const esClient = new Client({
-    node: ES_HOST,
-    Connection: HttpConnection,
-  })
-
-  return esClient
-}
-
-const esClient = createEsClient()
-
-// === Optimistic Lock Helper ===
-
-/**
- * Check if an error is an ES version conflict (409)
- */
-export const isConflictError = (error: unknown): boolean => {
-  if (error && typeof error === "object" && "meta" in error) {
-    const esError = error as { meta?: { statusCode?: number } }
-    return esError.meta?.statusCode === 409
-  }
-  return false
-}
-
-/**
- * Execute an ES update operation with optimistic locking
- * Returns null on conflict, throws on other errors
- */
-export const withOptimisticLock = async <T>(
-  operation: () => Promise<T>,
-): Promise<T | null> => {
-  try {
-    return await operation()
-  } catch (error: unknown) {
-    if (isConflictError(error)) {
-      return null
-    }
-    throw error
-  }
-}
-
-// === Authorization Filters ===
-
-/**
- * Build Elasticsearch filter based on user authorization level
- *
- * - public (authUser=null): Only `status=published`
- * - auth (authUser!=null, !isAdmin): `status=published` OR `uids` contains userId
- * - admin: No filter (can see all)
- */
-export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQueryContainer | null => {
-  if (authUser?.isAdmin) {
-    // Admin can see everything
-    return null
-  }
-
-  if (authUser) {
-    // Authenticated user: published OR own resources (userId in uids)
-    return {
-      bool: {
-        should: [
-          { term: { status: "published" } },
-          { term: { uids: authUser.userId } },
-        ],
-        minimum_should_match: 1,
-      },
-    }
-  }
-
-  // Public: only published
-  return { term: { status: "published" } }
-}
-
-/**
- * Check if user can access a specific Research based on status and uids
- */
-export const canAccessResearchDoc = (
-  authUser: AuthUser | null,
-  researchDoc: EsResearchDoc,
-): boolean => {
-  if (authUser?.isAdmin) return true
-  if (researchDoc.status === "published") return true
-  if (authUser && researchDoc.uids.includes(authUser.userId)) return true
-  return false
-}
-
-/**
- * Get humIds of published Research for Dataset filtering
- * Used when Dataset visibility depends on parent Research status
- */
-export const getPublishedHumIds = async (authUser: AuthUser | null): Promise<string[] | null> => {
-  if (authUser?.isAdmin) {
-    // Admin can see all datasets
-    return null
-  }
-
-  const statusFilter = buildStatusFilter(authUser)
-  if (!statusFilter) return null
-
-  interface HumIdAggs {
-    humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
-  }
-
-  const res = await esClient.search<unknown, HumIdAggs>({
-    index: ES_INDEX.research,
-    size: 0,
-    query: statusFilter,
-    aggs: {
-      humIds: { terms: { field: "humId", size: 10000 } },
-    },
-  })
-
-  const buckets = res.aggregations?.humIds?.buckets
-  if (!Array.isArray(buckets)) return []
-  return buckets.map(b => b.key)
-}
-
-// === utils ===
-
-const esTotal = (t: number | { value: number } | undefined) => {
-  return typeof t === "number" ? t : t?.value ?? 0
-}
-
-const uniq = <T>(arr: T[]): T[] => {
-  return Array.from(new Set(arr))
-}
-
-const mgetMap = async <T>(
-  index: string,
-  ids: string[],
-  parse: (doc: unknown) => T,
-): Promise<Map<string, T>> => {
-  if (ids.length === 0) return new Map()
-  const { docs } = await esClient.mget<T>({
-    index,
-    body: { ids: uniq(ids) },
-  })
-  const m = new Map<string, T>()
-  for (const doc of docs as { found?: boolean; _id?: string; _source?: unknown }[]) {
-    if (doc.found && doc._id && doc._source) {
-      m.set(doc._id, parse(doc._source))
-    }
-  }
-  return m
-}
 
 // === API Functions ===
 
@@ -393,37 +250,7 @@ export const listDatasetVersions = async (
 const splitComma = (s: string | undefined): string[] =>
   s ? s.split(",").map(v => v.trim()).filter(Boolean) : []
 
-// === Filter Definitions (Table-Driven) ===
-
-const NESTED_TERMS_FILTERS: { param: string; field: string }[] = [
-  { param: "assayType", field: "experiments.searchable.assayType" },
-  { param: "tissue", field: "experiments.searchable.tissues" },
-  { param: "population", field: "experiments.searchable.population" },
-  { param: "fileType", field: "experiments.searchable.fileTypes" },
-  { param: "healthStatus", field: "experiments.searchable.healthStatus" },
-  { param: "subjectCountType", field: "experiments.searchable.subjectCountType" },
-  { param: "sex", field: "experiments.searchable.sex" },
-  { param: "ageGroup", field: "experiments.searchable.ageGroup" },
-  { param: "libraryKits", field: "experiments.searchable.libraryKits" },
-  // platform is handled separately (vendor + model matching)
-  { param: "readType", field: "experiments.searchable.readType" },
-  { param: "referenceGenome", field: "experiments.searchable.referenceGenome" },
-  { param: "processedDataTypes", field: "experiments.searchable.processedDataTypes" },
-  { param: "cellLine", field: "experiments.searchable.cellLine" },
-]
-
-const NESTED_RANGE_FILTERS: { minParam: string; maxParam: string; field: string }[] = [
-  { minParam: "minSubjects", maxParam: "maxSubjects", field: "experiments.searchable.subjectCount" },
-  { minParam: "minReadLength", maxParam: "maxReadLength", field: "experiments.searchable.readLength" },
-  { minParam: "minSequencingDepth", maxParam: "maxSequencingDepth", field: "experiments.searchable.sequencingDepth" },
-  { minParam: "minTargetCoverage", maxParam: "maxTargetCoverage", field: "experiments.searchable.targetCoverage" },
-  { minParam: "minDataVolumeGb", maxParam: "maxDataVolumeGb", field: "experiments.searchable.dataVolumeGb" },
-  { minParam: "minVariantSnv", maxParam: "maxVariantSnv", field: "experiments.searchable.variantCounts.snv" },
-  { minParam: "minVariantIndel", maxParam: "maxVariantIndel", field: "experiments.searchable.variantCounts.indel" },
-  { minParam: "minVariantCnv", maxParam: "maxVariantCnv", field: "experiments.searchable.variantCounts.cnv" },
-  { minParam: "minVariantSv", maxParam: "maxVariantSv", field: "experiments.searchable.variantCounts.sv" },
-  { minParam: "minVariantTotal", maxParam: "maxVariantTotal", field: "experiments.searchable.variantCounts.total" },
-]
+// Note: NESTED_TERMS_FILTERS and NESTED_RANGE_FILTERS are imported from ./filters
 
 type QueryContainer = estypes.QueryDslQueryContainer
 type FilterParams = Record<string, unknown>
@@ -1268,65 +1095,7 @@ export const getPendingReviews = async (
   return { data, total }
 }
 
-// === Status Transition Types ===
-// === Research CRUD Functions ===
-
-type ResearchStatus = "draft" | "review" | "published" | "deleted"
-type StatusAction = "submit" | "approve" | "reject" | "unpublish"
-
-interface StatusTransition {
-  from: ResearchStatus
-  to: ResearchStatus
-  allowedBy: "owner" | "admin"
-}
-
-const STATUS_TRANSITIONS: Record<StatusAction, StatusTransition> = {
-  submit: { from: "draft", to: "review", allowedBy: "owner" },
-  approve: { from: "review", to: "published", allowedBy: "admin" },
-  reject: { from: "review", to: "draft", allowedBy: "admin" },
-  unpublish: { from: "published", to: "draft", allowedBy: "admin" },
-}
-
-// === Status Transition Functions ===
-
-/**
- * Validate status transition
- * Returns error message if invalid, null if valid
- */
-export const validateStatusTransition = (
-  currentStatus: ResearchStatus,
-  action: StatusAction,
-): string | null => {
-  const transition = STATUS_TRANSITIONS[action]
-  if (!transition) {
-    return `Unknown action: ${action}`
-  }
-  if (currentStatus !== transition.from) {
-    return `Cannot ${action} from status '${currentStatus}'. Expected '${transition.from}'.`
-  }
-  return null
-}
-
-/**
- * Check if user is allowed to perform status transition
- */
-export const canPerformTransition = (
-  authUser: AuthUser | null,
-  research: EsResearchDoc,
-  action: StatusAction,
-): boolean => {
-  if (!authUser) return false
-
-  const transition = STATUS_TRANSITIONS[action]
-  if (!transition) return false
-
-  if (transition.allowedBy === "admin") {
-    return authUser.isAdmin
-  }
-
-  // owner action: must be admin or in uids
-  return authUser.isAdmin || research.uids.includes(authUser.userId)
-}
+// Note: validateStatusTransition and canPerformTransition are exported from ./auth
 
 /**
  * Get Research document with sequence number for optimistic locking

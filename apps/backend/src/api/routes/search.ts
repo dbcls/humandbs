@@ -9,7 +9,8 @@
  */
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
-import { searchDatasets, searchResearches } from "@/api/es-client"
+import { ARRAY_FIELD_MAPPINGS, RANGE_FIELD_MAPPINGS } from "@/api/es-client/filters"
+import { searchDatasets, searchResearches } from "@/api/es-client/operations"
 import { optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec400, ErrorSpec500, validationErrorResponse, serverErrorResponse } from "@/api/routes/errors"
 import {
@@ -23,42 +24,6 @@ import {
 import type { DatasetSearchBody, DatasetSearchQuery, ResearchSearchBody, ResearchSearchQuery } from "@/api/types"
 
 // === Helper: Convert POST body to GET query format ===
-
-// Table-driven conversion for array fields (POST arrays -> GET comma-separated)
-const ARRAY_FIELD_MAPPINGS: { from: string; to: string }[] = [
-  { from: "criteria", to: "criteria" },
-  { from: "subjectCountType", to: "subjectCountType" },
-  { from: "healthStatus", to: "healthStatus" },
-  { from: "diseaseIcd10", to: "diseaseIcd10" },
-  { from: "tissue", to: "tissue" },
-  { from: "cellLine", to: "cellLine" },
-  { from: "population", to: "population" },
-  { from: "sex", to: "sex" },
-  { from: "ageGroup", to: "ageGroup" },
-  { from: "assayType", to: "assayType" },
-  { from: "libraryKits", to: "libraryKits" },
-  { from: "platform", to: "platform" },
-  { from: "readType", to: "readType" },
-  { from: "referenceGenome", to: "referenceGenome" },
-  { from: "fileType", to: "fileType" },
-  { from: "processedDataTypes", to: "processedDataTypes" },
-  { from: "policyId", to: "policyId" },
-]
-
-// Table-driven conversion for range fields
-const RANGE_FIELD_MAPPINGS: { from: string; minTo: string; maxTo: string }[] = [
-  { from: "releaseDate", minTo: "minReleaseDate", maxTo: "maxReleaseDate" },
-  { from: "subjectCount", minTo: "minSubjects", maxTo: "maxSubjects" },
-  { from: "readLength", minTo: "minReadLength", maxTo: "maxReadLength" },
-  { from: "sequencingDepth", minTo: "minSequencingDepth", maxTo: "maxSequencingDepth" },
-  { from: "targetCoverage", minTo: "minTargetCoverage", maxTo: "maxTargetCoverage" },
-  { from: "dataVolumeGb", minTo: "minDataVolumeGb", maxTo: "maxDataVolumeGb" },
-  { from: "variantSnv", minTo: "minVariantSnv", maxTo: "maxVariantSnv" },
-  { from: "variantIndel", minTo: "minVariantIndel", maxTo: "maxVariantIndel" },
-  { from: "variantCnv", minTo: "minVariantCnv", maxTo: "maxVariantCnv" },
-  { from: "variantSv", minTo: "minVariantSv", maxTo: "maxVariantSv" },
-  { from: "variantTotal", minTo: "minVariantTotal", maxTo: "maxVariantTotal" },
-]
 
 interface RangeValue { min?: string | number; max?: string | number }
 
@@ -157,7 +122,18 @@ const postResearchSearchRoute = createRoute({
   path: "/research/search",
   tags: ["Search"],
   summary: "Search Research (POST)",
-  description: "Search Research resources with filters and facets. Use POST body for complex filters.",
+  description: `Search Research resources with advanced filters and facets.
+
+**Full-text search targets:** title, summary.aims, summary.methods, summary.targets
+
+**Filter modes:**
+- Array filters use OR logic (e.g., assayType: ["WGS", "WES"] matches either)
+- Multiple filters use AND logic (all conditions must match)
+- datasetFilters: Filter Research by attributes of linked Datasets
+
+**Sort options:** humId, datePublished, dateModified, relevance
+
+Set includeFacets=true to get facet counts for building filter UIs.`,
   request: {
     body: { content: { "application/json": { schema: ResearchSearchBodySchema } } },
   },
@@ -176,7 +152,18 @@ const postDatasetSearchRoute = createRoute({
   path: "/dataset/search",
   tags: ["Search"],
   summary: "Search Dataset (POST)",
-  description: "Search Dataset resources with filters and facets. Use POST body for complex filters.",
+  description: `Search Dataset resources with advanced filters and facets.
+
+**Full-text search targets:** experiments.header, experiments.data, experiments.footers
+
+**Filter modes:**
+- Array filters use OR logic (e.g., assayType: ["WGS", "WES"] matches either)
+- Multiple filters use AND logic (all conditions must match)
+- Use humId to filter Datasets belonging to a specific Research
+
+**Sort options:** datasetId, releaseDate, relevance
+
+Set includeFacets=true to get facet counts for building filter UIs.`,
   request: {
     body: { content: { "application/json": { schema: DatasetSearchBodySchema } } },
   },
@@ -195,7 +182,13 @@ const getFacetsRoute = createRoute({
   path: "/facets",
   tags: ["Search"],
   summary: "Get All Facet Values",
-  description: "Get available facet values with counts for UI filter dropdowns.",
+  description: `Get all available facet values with document counts.
+
+Returns facet values grouped by field name. Use this to populate filter dropdowns in search UIs.
+
+**Available facets:** criteria, assayType, healthStatus, sex, ageGroup, tissue, population, platform, referenceGenome, fileType, diseaseIcd10, etc.
+
+Counts reflect published Datasets only.`,
   responses: {
     200: {
       content: { "application/json": { schema: AllFacetsResponseSchema } },
@@ -210,10 +203,14 @@ const getFacetFieldRoute = createRoute({
   path: "/facets/{fieldName}",
   tags: ["Search"],
   summary: "Get Facet Values for Field",
-  description: "Get available values for a specific facet field.",
+  description: `Get available values for a specific facet field.
+
+**Example fields:** criteria, assayType, healthStatus, tissue, platform
+
+Returns an array of {value, count} pairs sorted by count descending.`,
   request: {
     params: z.object({
-      fieldName: z.string(),
+      fieldName: z.string().describe("Facet field name (e.g., 'assayType', 'criteria')"),
     }),
   },
   responses: {

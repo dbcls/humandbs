@@ -5,7 +5,7 @@ import { HTTPException } from "hono/http-exception"
 import { logger } from "hono/logger"
 
 import { ERROR_MESSAGES } from "@/api/constants"
-import { isConflictError } from "@/api/es-client"
+import { isConflictError } from "@/api/es-client/client"
 import { adminRouter } from "@/api/routes/admin"
 import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
@@ -85,16 +85,46 @@ Only admins can approve/reject submissions and unpublish content.
     },
     servers: API_URL_PREFIX ? [{ url: API_URL_PREFIX }] : undefined,
     tags: [
-      { name: "Health", description: "Health check endpoints" },
-      { name: "Stats", description: "Statistics about published resources" },
-      { name: "Research", description: "Research resource CRUD operations" },
-      { name: "Research Versions", description: "Research versioning operations" },
-      { name: "Research Datasets", description: "Manage dataset links for research" },
-      { name: "Research Status", description: "Research publication workflow (draft → review → published)" },
-      { name: "Dataset", description: "Dataset resource CRUD operations" },
-      { name: "Dataset Versions", description: "Dataset versioning operations" },
-      { name: "Search", description: "Full-text and faceted search" },
-      { name: "Admin", description: "Administrative operations (requires admin role)" },
+      {
+        name: "Health",
+        description: "Health check endpoint for monitoring and load balancer probes.",
+      },
+      {
+        name: "Stats",
+        description: "Statistics about published resources. Returns counts and facet aggregations for Research and Dataset resources. Only includes published resources.",
+      },
+      {
+        name: "Research",
+        description: "CRUD operations for Research resources. A Research represents a study that contains one or more Datasets. Supports versioning and publication workflow (draft → review → published). Research deletion is logical (status=deleted) to preserve humId uniqueness and external references.",
+      },
+      {
+        name: "Research Versions",
+        description: "Version management for Research resources. Each Research can have multiple versions (v1, v2, ...). Creating a new version copies datasets from the previous version. Specific versions can be retrieved via /research/{humId}/versions/{version}.",
+      },
+      {
+        name: "Research Datasets",
+        description: "Manage datasets linked to a Research. Datasets can only be created, updated, or deleted when the parent Research is in draft status. Use POST /research/{humId}/dataset/new to create a new Dataset for a Research.",
+      },
+      {
+        name: "Research Status",
+        description: "Research publication workflow management. Transitions: draft → review (submit), review → published (approve), review → draft (reject), published → draft (unpublish). Only admins can approve, reject, or unpublish. Dataset versions are finalized when Research is approved.",
+      },
+      {
+        name: "Dataset",
+        description: "CRUD operations for Dataset resources. A Dataset belongs to exactly one Research (1:N relationship). Dataset visibility depends on parent Research status. Datasets cannot be created standalone - use POST /research/{humId}/dataset/new instead.",
+      },
+      {
+        name: "Dataset Versions",
+        description: "Version management for Dataset resources. Dataset versions are tied to Research versions. When a Dataset is first modified in a draft Research cycle, a new version is created. Subsequent modifications update the same version until Research is published.",
+      },
+      {
+        name: "Search",
+        description: "Full-text and faceted search for Research and Dataset resources. Supports complex filters via POST endpoints. GET /facets returns available facet values with counts. Search targets: Research (title, summary), Dataset (experiments).",
+      },
+      {
+        name: "Admin",
+        description: "Administrative operations requiring admin role. Includes admin status check. Admin users are determined by admin_uids.json configuration, not JWT roles.",
+      },
     ],
   })
 

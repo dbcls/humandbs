@@ -5,7 +5,7 @@
  */
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { searchDatasets, searchResearches } from "@/api/es-client"
+import { searchDatasets, searchResearches } from "@/api/es-client/operations"
 import { ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import { StatsResponseSchema } from "@/api/types"
 import type { DatasetSearchQuery, ResearchSearchQuery, StatsFacetCount } from "@/api/types"
