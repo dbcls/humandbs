@@ -1,7 +1,8 @@
 /**
  * Research Version Elasticsearch schema definition
  *
- * Corresponds to ResearchVersion type from crawler/types/unified.ts
+ * Single source of truth: Zod schemas from @/crawler/types
+ * ES mapping is generated using explicit field definitions.
  */
 import { f, generateMapping } from "./generate-mapping"
 
@@ -26,5 +27,8 @@ export const researchVersionSchema = {
 
 /**
  * Generated mapping for research-version index
+ *
+ * Note: While researchVersionSchema is defined using the f helper functions,
+ * the Zod schemas in @/crawler/types serve as the TypeScript type source.
  */
 export const researchVersionMapping = generateMapping(researchVersionSchema)

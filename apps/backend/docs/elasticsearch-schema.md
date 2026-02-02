@@ -12,16 +12,25 @@ HumanDBs Backend の Elasticsearch インデックス設計。
 
 ## マッピング生成の仕組み
 
-マッピングは TypeScript スキーマ定義から自動生成される。
+**Zod 単一ソース化**: TypeScript 型は `@/crawler/types` の Zod スキーマから推論される。
+ES マッピングは `f` ヘルパーで明示的に定義する。
 
 ```
-*-schema.ts (TypeScript) → generate-mapping.ts → ES mapping (JSON)
+crawler/types/*.ts (Zod スキーマ = 型の源泉)
+         ↓ 型推論
+TypeScript 型 (Dataset, Research, etc.)
+
+es/*-schema.ts (明示的 ES マッピング)
+         ↓ generate-mapping.ts
+ES mapping (JSON)
 ```
 
 ### ファイル構成
 
 | ファイル | 内容 |
 |---------|------|
+| `src/crawler/types/structured.ts` | Zod スキーマ（型の単一ソース） |
+| `src/es/types.ts` | crawler スキーマの re-export + ES 固有拡張 |
 | `src/es/generate-mapping.ts` | マッピング生成ユーティリティ |
 | `src/es/research-schema.ts` | research インデックスのスキーマ |
 | `src/es/research-version-schema.ts` | research-version インデックスのスキーマ |

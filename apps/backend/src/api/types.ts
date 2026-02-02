@@ -6,10 +6,33 @@
  * - Research workflow types (status, transitions)
  * - API request/response schemas (CRUD operations, search, pagination)
  *
+ * Dependency flow: crawler/types → es/types → api/types
+ *
  * For ES document types and zod schemas, see: @/es/types
  * For crawler types (structured data), see: @/crawler/types
  */
 import { z } from "zod"
+
+// Import Zod schemas from es/types (which re-exports from crawler/types)
+import {
+  TextValueSchema,
+  BilingualTextSchema,
+  BilingualTextValueSchema,
+  CriteriaCanonicalSchema,
+  PersonSchema,
+  ResearchProjectSchema,
+  GrantSchema,
+  PublicationSchema,
+  SummarySchema,
+  DatasetRefSchema,
+  EsDatasetSchema,
+  EsResearchSchema,
+  EsResearchVersionSchema,
+  ResearchStatusSchema as EsResearchStatusSchema,
+  // Crawler schemas (for API request validation)
+  CrawlerResearchSchema as ResearchSchema,
+  CrawlerResearchVersionSchema as ResearchVersionSchema,
+} from "@/es/types"
 
 // Re-export ES types for convenience
 export type {
@@ -33,105 +56,9 @@ const booleanFromString = z.preprocess(
   z.boolean().optional(),
 )
 
-// === Zod Schemas for crawler types ===
+// === API-specific schemas (using imported schemas from es/types) ===
 
-const TextValueSchema = z.object({
-  text: z.string(),
-  rawHtml: z.string(),
-})
-
-const UrlValueSchema = z.object({
-  text: z.string(),
-  url: z.string(),
-})
-
-const BilingualTextSchema = z.object({
-  ja: z.string().nullable(),
-  en: z.string().nullable(),
-})
-
-const BilingualTextValueSchema = z.object({
-  ja: TextValueSchema.nullable(),
-  en: TextValueSchema.nullable(),
-})
-
-const BilingualUrlValueSchema = z.object({
-  ja: UrlValueSchema.nullable(),
-  en: UrlValueSchema.nullable(),
-})
-
-const PeriodOfDataUseSchema = z.object({
-  startDate: z.string().nullable(),
-  endDate: z.string().nullable(),
-})
-
-const CriteriaCanonicalSchema = z.enum([
-  "Controlled-access (Type I)",
-  "Controlled-access (Type II)",
-  "Unrestricted-access",
-])
-
-// === Complex type schemas ===
-
-// Unified Person schema (used for both API requests and ES documents)
-const PersonSchema = z.object({
-  name: BilingualTextValueSchema,
-  email: z.string().nullable().optional(),
-  orcid: z.string().nullable().optional(),
-  organization: z.object({
-    name: BilingualTextValueSchema,
-    address: z.object({
-      country: z.string().nullable().optional(),
-    }).nullable().optional(),
-  }).nullable().optional(),
-  datasetIds: z.array(z.string()).optional(),
-  researchTitle: BilingualTextSchema.optional(),
-  periodOfDataUse: PeriodOfDataUseSchema.nullable().optional(),
-})
-
-// Alias for ES documents (same structure)
-const EsPersonSchema = PersonSchema
-
-// Unified ResearchProject schema
-const ResearchProjectSchema = z.object({
-  name: BilingualTextValueSchema,
-  url: BilingualUrlValueSchema.nullable().optional(),
-})
-const EsResearchProjectSchema = ResearchProjectSchema
-
-// Unified Grant schema
-const GrantSchema = z.object({
-  id: z.array(z.string()),
-  title: BilingualTextSchema,
-  agency: z.object({ name: BilingualTextSchema }),
-})
-const EsGrantSchema = GrantSchema
-
-// Unified Publication schema
-const PublicationSchema = z.object({
-  title: BilingualTextSchema,
-  doi: z.string().nullable().optional(),
-  datasetIds: z.array(z.string()).optional(),
-})
-const EsPublicationSchema = PublicationSchema
-
-// Unified Summary schema
-const SummarySchema = z.object({
-  aims: BilingualTextValueSchema,
-  methods: BilingualTextValueSchema,
-  targets: BilingualTextValueSchema,
-  url: z.object({
-    ja: z.array(UrlValueSchema),
-    en: z.array(UrlValueSchema),
-  }),
-  footers: z.object({
-    ja: z.array(TextValueSchema),
-    en: z.array(TextValueSchema),
-  }),
-})
-const EsSummarySchema = SummarySchema
-
-// Unified Experiment schema (base, without searchable)
+// Experiment schema for API requests (without searchable field)
 const ExperimentSchemaBase = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
@@ -140,9 +67,8 @@ const ExperimentSchemaBase = z.object({
     en: z.array(TextValueSchema),
   }),
 })
-const ExperimentSchema = ExperimentSchemaBase
 
-// Dataset schema matching crawler unified.ts (for API responses)
+// Dataset schema for API requests
 const DatasetSchema = z.object({
   datasetId: z.string(),
   version: z.string(),
@@ -155,70 +81,29 @@ const DatasetSchema = z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
   }),
-  experiments: z.array(ExperimentSchema),
+  experiments: z.array(ExperimentSchemaBase),
 })
 
-// === ES Doc schemas (BilingualText format - matches actual ES indices) ===
+// === Re-export ES schemas for convenience ===
 
-// Research status
-export const ResearchStatusSchema = z.enum(["draft", "review", "published", "deleted"])
+// Research status (re-export from es/types)
+export const ResearchStatusSchema = EsResearchStatusSchema
 export type EsResearchStatus = z.infer<typeof ResearchStatusSchema>
 
-// Dataset reference (for ResearchVersion.datasets)
-export const DatasetRefSchema = z.object({
-  datasetId: z.string(),
-  version: z.string(),
-})
+// Dataset reference (re-export from es/types)
+export { DatasetRefSchema }
 export type DatasetRef = z.infer<typeof DatasetRefSchema>
 
-// ES Experiment extends base with searchable field
-const EsExperimentSchema = ExperimentSchemaBase.extend({
-  searchable: z.unknown().optional(), // SearchableExperimentFields
-})
-
-// Dataset document
-export const EsDatasetDocSchema = z.object({
-  datasetId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  humId: z.string(),
-  humVersionId: z.string(),
-  releaseDate: z.string(),
-  criteria: CriteriaCanonicalSchema,
-  typeOfData: BilingualTextSchema,
-  experiments: z.array(EsExperimentSchema),
-})
+// Dataset document (alias to ES schema)
+export const EsDatasetDocSchema = EsDatasetSchema
 export type EsDatasetDoc = z.infer<typeof EsDatasetDocSchema>
 
-// ResearchVersion document
-export const EsResearchVersionDocSchema = z.object({
-  humId: z.string(),
-  humVersionId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  datasets: z.array(DatasetRefSchema),
-  releaseNote: BilingualTextValueSchema,
-})
+// ResearchVersion document (alias to ES schema)
+export const EsResearchVersionDocSchema = EsResearchVersionSchema
 export type EsResearchVersionDoc = z.infer<typeof EsResearchVersionDocSchema>
 
-// Research document
-export const EsResearchDocSchema = z.object({
-  humId: z.string(),
-  url: BilingualTextSchema,
-  title: BilingualTextSchema,
-  summary: EsSummarySchema,
-  dataProvider: z.array(EsPersonSchema),
-  researchProject: z.array(EsResearchProjectSchema),
-  grant: z.array(EsGrantSchema),
-  relatedPublication: z.array(EsPublicationSchema),
-  controlledAccessUser: z.array(EsPersonSchema),
-  versionIds: z.array(z.string()),
-  latestVersion: z.string(),
-  datePublished: z.string(),
-  dateModified: z.string(),
-  status: ResearchStatusSchema,
-  uids: z.array(z.string()),
-})
+// Research document (alias to ES schema)
+export const EsResearchDocSchema = EsResearchSchema
 export type EsResearchDoc = z.infer<typeof EsResearchDocSchema>
 
 // Research detail (Research + ResearchVersion info + Datasets)
@@ -269,30 +154,8 @@ export const DatasetVersionsResponseSchema = z.object({
 })
 export type DatasetVersionsResponse = z.infer<typeof DatasetVersionsResponseSchema>
 
-const ResearchSchema = z.object({
-  humId: z.string(),
-  url: BilingualTextSchema,
-  title: BilingualTextSchema,
-  summary: SummarySchema,
-  dataProvider: z.array(PersonSchema),
-  researchProject: z.array(ResearchProjectSchema),
-  grant: z.array(GrantSchema),
-  relatedPublication: z.array(PublicationSchema),
-  controlledAccessUser: z.array(PersonSchema),
-  versionIds: z.array(z.string()),
-  latestVersion: z.string(),
-  datePublished: z.string(),
-  dateModified: z.string(),
-})
-
-const ResearchVersionSchema = z.object({
-  humId: z.string(),
-  humVersionId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  datasets: z.array(DatasetRefSchema),
-  releaseNote: BilingualTextValueSchema,
-})
+// Note: ResearchSchema and ResearchVersionSchema are imported from @/es/types
+// via the import block at the top of this file
 
 // === Authentication & Authorization ===
 
@@ -533,7 +396,7 @@ export const CreateDatasetRequestSchema = z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
   }),
-  experiments: z.array(ExperimentSchema),
+  experiments: z.array(ExperimentSchemaBase),
 })
 export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
 
@@ -550,7 +413,7 @@ export const UpdateDatasetRequestSchema = z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
   }),
-  experiments: z.array(ExperimentSchema),
+  experiments: z.array(ExperimentSchemaBase),
 })
 export type UpdateDatasetRequest = z.infer<typeof UpdateDatasetRequestSchema>
 
@@ -1218,4 +1081,6 @@ export const StatsResponseSchema = z.object({
 export type StatsResponse = z.infer<typeof StatsResponseSchema>
 
 // Re-export schemas for route definitions
+// Note: ResearchSchema and ResearchVersionSchema are imported from @/es/types
+// DatasetSchema is defined locally for API requests (without searchable field)
 export { DatasetSchema, ResearchSchema, ResearchVersionSchema }

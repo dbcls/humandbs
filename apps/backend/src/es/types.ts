@@ -2,40 +2,116 @@
  * Elasticsearch document types and zod schemas
  *
  * This module provides:
- * 1. Zod schemas for ES document validation
- * 2. TypeScript types inferred from zod schemas
- * 3. Re-exports of crawler types for convenience
+ * 1. Re-exports of Zod schemas from @/crawler/types (single source of truth)
+ * 2. ES-specific schema extensions (status, uids, etc.)
+ * 3. TypeScript types inferred from Zod schemas
+ *
+ * Dependency flow: crawler/types → es/types → api/types
  */
 import { z } from "zod"
 
-// === Common Zod Schemas ===
+import {
+  // Common schemas (used locally)
+  TextValueSchema,
+  UrlValueSchema,
+  BilingualTextSchema,
+  BilingualTextValueSchema,
+  BilingualUrlValueSchema,
+  PeriodOfDataUseSchema,
+  CriteriaCanonicalSchema,
+  PolicyCanonicalSchema,
+  NormalizedPolicySchema,
+  // Searchable schemas
+  SubjectCountTypeSchema,
+  HealthStatusSchema,
+  ReadTypeSchema,
+  DiseaseInfoSchema as CrawlerDiseaseInfoSchema,
+  PlatformInfoSchema,
+  SexSchema,
+  AgeGroupSchema,
+  VariantCountsSchema,
+  SearchableExperimentFieldsSchema as CrawlerSearchableExperimentFieldsSchema,
+  // Structured schemas
+  ExperimentSchema as CrawlerExperimentSchema,
+  DatasetSchema as CrawlerDatasetSchema,
+  SummarySchema,
+  PersonSchema,
+  ResearchProjectSchema,
+  GrantSchema,
+  PublicationSchema,
+  ResearchSchema as CrawlerResearchSchema,
+  DatasetRefSchema,
+  ResearchVersionSchema as CrawlerResearchVersionSchema,
+  SearchableDatasetSchema,
+} from "@/crawler/types"
 
-export const BilingualTextSchema = z.object({
-  ja: z.string().nullable(),
-  en: z.string().nullable(),
-})
+// === Re-export Zod schemas from crawler/types (single source of truth) ===
 
-export const TextValueSchema = z.object({
-  text: z.string(),
-  rawHtml: z.string(),
-})
+export {
+  // Common schemas
+  TextValueSchema,
+  UrlValueSchema,
+  BilingualTextSchema,
+  BilingualTextValueSchema,
+  BilingualUrlValueSchema,
+  PeriodOfDataUseSchema,
+  CriteriaCanonicalSchema,
+  PolicyCanonicalSchema,
+  NormalizedPolicySchema,
+  // Searchable schemas
+  SubjectCountTypeSchema,
+  HealthStatusSchema,
+  ReadTypeSchema,
+  CrawlerDiseaseInfoSchema,
+  PlatformInfoSchema,
+  SexSchema,
+  AgeGroupSchema,
+  VariantCountsSchema,
+  CrawlerSearchableExperimentFieldsSchema,
+  // Structured schemas
+  CrawlerExperimentSchema,
+  CrawlerDatasetSchema,
+  SummarySchema,
+  PersonSchema,
+  ResearchProjectSchema,
+  GrantSchema,
+  PublicationSchema,
+  CrawlerResearchSchema,
+  DatasetRefSchema,
+  CrawlerResearchVersionSchema,
+  SearchableDatasetSchema,
+}
 
-export const UrlValueSchema = z.object({
-  text: z.string(),
-  url: z.string(),
-})
+// Re-export types for convenience
+export type {
+  LangType,
+  TextValue,
+  UrlValue,
+  BilingualText,
+  BilingualTextValue,
+  BilingualUrlValue,
+  CriteriaCanonical,
+  NormalizedPolicy,
+  Experiment,
+  Dataset,
+  Summary,
+  Person,
+  ResearchProject,
+  Grant,
+  Publication,
+  Research,
+  ResearchVersion,
+  DatasetRef,
+  SubjectCountType,
+  HealthStatus,
+  ReadType,
+  DiseaseInfo,
+  PlatformInfo,
+  SearchableExperimentFields,
+  SearchableDataset,
+} from "@/crawler/types"
 
-export const BilingualTextValueSchema = z.object({
-  ja: TextValueSchema.nullable(),
-  en: TextValueSchema.nullable(),
-})
-
-export const BilingualUrlValueSchema = z.object({
-  ja: UrlValueSchema.nullable(),
-  en: UrlValueSchema.nullable(),
-})
-
-// === SearchableExperimentFields Zod Schema ===
+// === ES-specific schemas (extensions for ES documents) ===
 
 /**
  * Disease info schema for ES documents
@@ -44,33 +120,23 @@ export const BilingualUrlValueSchema = z.object({
  */
 export const DiseaseInfoSchema = z.object({
   label: z.string(),
-  icd10: z.string(),
+  icd10: z.string(), // Required in ES (normalized from crawler's nullable version)
 })
+export type EsDiseaseInfo = z.infer<typeof DiseaseInfoSchema>
 
+/**
+ * Data volume with unit for ES documents
+ */
 export const DataVolumeSchema = z.object({
   value: z.number(),
   unit: z.enum(["KB", "MB", "GB", "TB"]),
 })
+export type DataVolume = z.infer<typeof DataVolumeSchema>
 
-export const NormalizedPolicySchema = z.object({
-  id: z.string(),
-  name: BilingualTextSchema,
-  url: z.string().nullable(),
-})
-
-export const PlatformInfoSchema = z.object({
-  vendor: z.string(),
-  model: z.string(),
-})
-
-export const VariantCountsSchema = z.object({
-  snv: z.number().nullable(),
-  indel: z.number().nullable(),
-  cnv: z.number().nullable(),
-  sv: z.number().nullable(),
-  total: z.number().nullable(),
-})
-
+/**
+ * SearchableExperimentFields schema for ES documents
+ * Extends crawler schema with ES-specific fields (platformVendor, platformModel, dataVolume)
+ */
 export const SearchableExperimentFieldsSchema = z.object({
   // Subject/sample info
   subjectCount: z.number().nullable(),
@@ -123,6 +189,7 @@ export const SearchableExperimentFieldsSchema = z.object({
   // Policies (rule-based, not LLM)
   policies: z.array(NormalizedPolicySchema),
 })
+export type EsSearchableExperimentFields = z.infer<typeof SearchableExperimentFieldsSchema>
 
 // === ES Experiment Schema ===
 
@@ -136,16 +203,9 @@ export const EsExperimentSchema = z.object({
   }),
   searchable: SearchableExperimentFieldsSchema.optional(),
 })
-
 export type EsExperiment = z.infer<typeof EsExperimentSchema>
 
 // === ES Dataset Schema ===
-
-export const CriteriaCanonicalSchema = z.enum([
-  "Controlled-access (Type I)",
-  "Controlled-access (Type II)",
-  "Unrestricted-access",
-])
 
 export const EsDatasetSchema = z.object({
   datasetId: z.string(),
@@ -159,7 +219,6 @@ export const EsDatasetSchema = z.object({
   experiments: z.array(EsExperimentSchema),
   originalMetadata: z.record(z.string(), z.unknown()).nullable().optional(),
 })
-
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 
 // === ES Person Schema (for Research) ===
@@ -181,16 +240,17 @@ export const EsPersonSchema = z.object({
     endDate: z.string().nullable(),
   }).nullable().optional(),
 })
-
 export type EsPerson = z.infer<typeof EsPersonSchema>
 
 // === ES Research Project Schema ===
 
 export const EsResearchProjectSchema = z.object({
   name: BilingualTextValueSchema,
-  url: BilingualUrlValueSchema.nullable().optional(),
+  url: z.object({
+    ja: UrlValueSchema.nullable(),
+    en: UrlValueSchema.nullable(),
+  }).nullable().optional(),
 })
-
 export type EsResearchProject = z.infer<typeof EsResearchProjectSchema>
 
 // === ES Grant Schema ===
@@ -202,7 +262,6 @@ export const EsGrantSchema = z.object({
     name: BilingualTextSchema,
   }),
 })
-
 export type EsGrant = z.infer<typeof EsGrantSchema>
 
 // === ES Publication Schema ===
@@ -212,7 +271,6 @@ export const EsPublicationSchema = z.object({
   doi: z.string().nullable().optional(),
   datasetIds: z.array(z.string()).optional(),
 })
-
 export type EsPublication = z.infer<typeof EsPublicationSchema>
 
 // === ES Summary Schema ===
@@ -230,13 +288,11 @@ export const EsSummarySchema = z.object({
     en: z.array(TextValueSchema),
   }),
 })
-
 export type EsSummary = z.infer<typeof EsSummarySchema>
 
 // === ES Research Schema ===
 
 export const ResearchStatusSchema = z.enum(["draft", "review", "published", "deleted"])
-
 export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
 
 export const EsResearchSchema = z.object({
@@ -253,20 +309,15 @@ export const EsResearchSchema = z.object({
   latestVersion: z.string(),
   datePublished: z.string(),
   dateModified: z.string(),
+  // ES-specific fields (not in crawler Research)
   status: ResearchStatusSchema,
   uids: z.array(z.string()),
 })
-
 export type EsResearch = z.infer<typeof EsResearchSchema>
 
 // === ES Research Version Schema ===
 
-export const DatasetRefSchema = z.object({
-  datasetId: z.string(),
-  version: z.string(),
-})
-
-export type DatasetRef = z.infer<typeof DatasetRefSchema>
+// Note: DatasetRefSchema and DatasetRef are already exported in the first export block
 
 export const EsResearchVersionSchema = z.object({
   humId: z.string(),
@@ -276,36 +327,4 @@ export const EsResearchVersionSchema = z.object({
   datasets: z.array(DatasetRefSchema),
   releaseNote: BilingualTextValueSchema,
 })
-
 export type EsResearchVersion = z.infer<typeof EsResearchVersionSchema>
-
-// === Re-export crawler types for convenience ===
-
-export type {
-  // Common types
-  LangType,
-  TextValue,
-  UrlValue,
-  BilingualText,
-  BilingualTextValue,
-  BilingualUrlValue,
-  CriteriaCanonical,
-  NormalizedPolicy,
-  // Structured types
-  Experiment,
-  Dataset,
-  Summary,
-  Person,
-  ResearchProject,
-  Grant,
-  Publication,
-  Research,
-  ResearchVersion,
-  // Searchable types
-  SubjectCountType,
-  HealthStatus,
-  ReadType,
-  DiseaseInfo,
-  SearchableExperimentFields,
-  SearchableDataset,
-} from "@/crawler/types"

@@ -1,7 +1,8 @@
 /**
  * Dataset Elasticsearch schema definition
  *
- * Corresponds to SearchableDataset type from crawler/types/extracted.ts
+ * Single source of truth: Zod schemas from @/crawler/types
+ * ES mapping is generated using explicit field definitions.
  */
 import { f, generateMapping } from "./generate-mapping"
 
@@ -112,5 +113,9 @@ export const datasetSchema = {
 
 /**
  * Generated mapping for dataset index
+ *
+ * Note: While datasetSchema is defined using the f helper functions,
+ * the Zod schemas in @/crawler/types serve as the TypeScript type source.
+ * This explicit mapping approach gives full control over ES field types.
  */
 export const datasetMapping = generateMapping(datasetSchema)

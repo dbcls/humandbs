@@ -1,7 +1,8 @@
 /**
  * Types module for crawler
  *
- * Re-exports all type definitions
+ * Re-exports all type definitions.
+ * Zod スキーマも必要に応じて re-export する。
  */
 
 import type { DatasetIdType } from "./common"
@@ -21,6 +22,19 @@ export type {
   NormalizedPolicy,
   DatasetOverrideFields,
   DatasetOverridesConfig,
+} from "./common"
+
+// Common Zod schemas
+export {
+  TextValueSchema,
+  UrlValueSchema,
+  BilingualTextSchema,
+  BilingualTextValueSchema,
+  BilingualUrlValueSchema,
+  PeriodOfDataUseSchema,
+  CriteriaCanonicalSchema,
+  PolicyCanonicalSchema,
+  NormalizedPolicySchema,
 } from "./common"
 
 /** Extracted IDs grouped by type */
@@ -87,6 +101,30 @@ export type {
   VariantCounts,
   SearchableExperimentFields,
   SearchableDataset,
+} from "./structured"
+
+// Structured Zod schemas
+export {
+  SubjectCountTypeSchema,
+  HealthStatusSchema,
+  ReadTypeSchema,
+  DiseaseInfoSchema,
+  PlatformInfoSchema,
+  SexSchema,
+  AgeGroupSchema,
+  VariantCountsSchema,
+  SearchableExperimentFieldsSchema,
+  ExperimentSchema,
+  DatasetSchema,
+  SummarySchema,
+  PersonSchema,
+  ResearchProjectSchema,
+  GrantSchema,
+  PublicationSchema,
+  ResearchSchema,
+  DatasetRefSchema,
+  ResearchVersionSchema,
+  SearchableDatasetSchema,
 } from "./structured"
 
 // API types (enriched with external API data)

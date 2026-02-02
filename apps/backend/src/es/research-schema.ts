@@ -1,7 +1,8 @@
 /**
  * Research Elasticsearch schema definition
  *
- * Corresponds to Research type from crawler/types/unified.ts
+ * Single source of truth: Zod schemas from @/crawler/types
+ * ES mapping is generated using explicit field definitions.
  */
 import { f, generateMapping } from "./generate-mapping"
 
@@ -130,5 +131,9 @@ export const researchSchema = {
 
 /**
  * Generated mapping for research index
+ *
+ * Note: While researchSchema is defined using the f helper functions,
+ * the Zod schemas in @/crawler/types serve as the TypeScript type source.
+ * ES-specific fields (status, uids) are added here for workflow support.
  */
 export const researchMapping = generateMapping(researchSchema)

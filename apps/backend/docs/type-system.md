@@ -141,27 +141,23 @@ Zod スキーマで定義。Crawler 型と似た構造だが ES 用の調整あ�
 
 ## 型の追加・変更手順
 
+**Zod 単一ソース化**: `crawler/types` の Zod スキーマが型の源泉。
+ES で使う型は Zod スキーマで定義し、TypeScript 型を推論する。
+
 新しいフィールドを追加する場合:
 
-### 1. Crawler 型を追加
+### 1. Crawler の Zod スキーマを追加
 
-`src/crawler/types/structured.ts` に型を追加:
-
-```typescript
-// SearchableExperimentFields に追加
-newField: string | null
-```
-
-### 2. ES Zod スキーマを追加
-
-`src/es/types.ts` に Zod スキーマを追加:
+`src/crawler/types/structured.ts` に Zod スキーマを追加:
 
 ```typescript
 // SearchableExperimentFieldsSchema に追加
 newField: z.string().nullable(),
 ```
 
-### 3. ES マッピングを追加
+これで `SearchableExperimentFields` 型にも自動的に追加される。
+
+### 2. ES マッピングを追加
 
 `src/es/dataset-schema.ts` に ES マッピングを追加:
 
@@ -170,7 +166,7 @@ newField: z.string().nullable(),
 newField: f.keyword(),
 ```
 
-### 4. API スキーマを追加（必要に応じて）
+### 3. API スキーマを追加（必要に応じて）
 
 フィルタリングに使う場合、`src/api/types.ts` にクエリパラメータを追加:
 
@@ -179,13 +175,19 @@ newField: f.keyword(),
 newField: z.array(z.string()).optional(),
 ```
 
-### 5. Frontend に共有（必要に応じて）
+### 4. Frontend に共有（必要に応じて）
 
 `types/shared-types.ts` で re-export:
 
 ```typescript
 export type { NewFieldType } from "./api/types"
 ```
+
+### 注意事項
+
+- **ES 固有の変更**: `es/types.ts` で ES 固有スキーマ（DiseaseInfoSchema など）を定義
+- **API 固有の変更**: `api/types.ts` で API リクエスト/レスポンス型を定義
+- **依存の方向**: `crawler/types → es/types → api/types` を維持
 
 ## Crawler 内部の型変換（参考）
 
