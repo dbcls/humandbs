@@ -84,6 +84,8 @@ export function ContentList({
     });
   }
 
+  console.log("contents", contents);
+
   return (
     <>
       <AddNewDialog />
@@ -92,30 +94,18 @@ export function ContentList({
         {contents.map((content) => {
           const isActive = content.id === selectedContentId;
 
-          const langs = [
-            ...new Set(content.translations.map((t) => t.lang)),
-          ].sort();
-
-          const showItems = langs.map((l) => {
-            const item =
-              content.translations.find(
-                (tr) => tr.status === "published" && tr.lang === l
-              ) ||
-              content.translations.find(
-                (tr) => tr.status === "draft" && tr.lang === l
-              );
-            return item as NonNullable<
-              ContentItemsListItem["translations"][number]
-            >;
-          });
-
           return (
             <ListItem
               onClick={() => onSelectContent(content.id)}
               key={content.id}
               isActive={isActive}
             >
-              <div className="text-sm font-medium">
+              <ContentListItem
+                item={content}
+                onClickDelete={handleClickDeleteContentItem}
+                isActive={isActive}
+              />
+              {/*<div className="text-sm font-medium">
                 <span>{content.id}</span>
                 <ul className="space-y-1">
                   {showItems.map((tr) => {
@@ -141,11 +131,61 @@ export function ContentList({
                   handleClickDeleteContentItem(content.id);
                 }}
                 isActive={isActive}
-              />
+              />*/}
             </ListItem>
           );
         })}
       </ul>
+    </>
+  );
+}
+
+function ContentListItem({
+  item,
+  onClickDelete,
+  isActive,
+}: {
+  item: ContentItemsListItem;
+  onClickDelete: (id: string) => void;
+  isActive: boolean;
+}) {
+  return (
+    <>
+      <div className="text-sm font-medium">
+        <p className="mb-2">{item.id}</p>
+        <ul className="space-y-2">
+          {item.translations.map((tr) => {
+            return (
+              <li key={tr.lang} className="flex items-start gap-1 text-xs">
+                <Tag tag={tr.lang} isActive={isActive} />
+
+                <ul className="flex flex-col items-start">
+                  {tr.statuses.published ? (
+                    <li className="flex items-start gap-2">
+                      <StatusTag status={"published"} isActive={isActive} />
+                      <span>{tr.statuses.published}</span>
+                    </li>
+                  ) : null}
+
+                  {tr.statuses.draft ? (
+                    <li className="flex items-start gap-2">
+                      <StatusTag status={"draft"} isActive={isActive} />
+                      <span>{tr.statuses.draft}</span>
+                    </li>
+                  ) : null}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <TrashButton
+        onClick={(e) => {
+          e.stopPropagation();
+          onClickDelete(item.id);
+        }}
+        isActive={isActive}
+      />
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
   contentItem,
   contentTranslation,
   DOCUMENT_VERSION_STATUS,
+  DocVersionStatus,
 } from "@/db/schema";
 import {
   contentTranslationInsertSchema,
@@ -26,7 +27,7 @@ export function getContentsListQueryOptions() {
   return queryOptions({
     queryKey: ["contents"],
     queryFn: $getContentItems,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes,
   });
 }
 
@@ -40,7 +41,10 @@ export function getContentQueryOptions(id: string) {
 
 export interface ContentItemsListItem {
   id: string;
-  translations: Pick<ContentTranslationSelect, "title" | "lang" | "status">[];
+  translations: {
+    lang: Locale;
+    statuses: Partial<Record<DocVersionStatus, string>>;
+  }[];
 }
 
 const $getContentItems = createServerFn({ method: "GET" })
@@ -65,7 +69,34 @@ const $getContentItems = createServerFn({ method: "GET" })
       },
     });
 
-    return contentItems;
+    return contentItems.map((item) => {
+      const translations = item.translations.reduce(
+        (acc, curr) => {
+          const existingLang = acc.find((l) => l.lang === curr.lang);
+
+          if (existingLang) {
+            existingLang.statuses[curr.status] = curr.title;
+            acc.sort((a, b) => a.lang.localeCompare(b.lang));
+          } else {
+            acc.push({
+              lang: curr.lang as Locale,
+              statuses: { [curr.status]: curr.title },
+            });
+          }
+
+          return acc;
+        },
+        [] as {
+          lang: Locale;
+          statuses: Partial<Record<DocVersionStatus, string>>;
+        }[]
+      );
+
+      return {
+        id: item.id,
+        translations,
+      };
+    });
   });
 
 export type ContentTranslationResponse = Omit<
