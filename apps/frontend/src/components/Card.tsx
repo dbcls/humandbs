@@ -16,9 +16,9 @@ const cardCaptionVariants = cva(
   {
     variants: {
       captionSize: {
-        lg: "text-lg",
-        sm: "text-sm",
-        default: "text-base",
+        lg: "text-lg mt-10",
+        sm: "text-sm mt-3",
+        default: "text-base mt-4",
       },
     },
     defaultVariants: {
