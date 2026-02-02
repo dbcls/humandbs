@@ -1,5 +1,7 @@
 import { i18n, Locale } from "@/config/i18n-config";
+
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+
 import { useFieldContext } from "./FormContext";
 
 export default function LocaleSwitchField() {

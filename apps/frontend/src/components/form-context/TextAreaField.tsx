@@ -1,6 +1,7 @@
 import { Label } from "../ui/label";
-import { useFieldContext } from "./FormContext";
 import { TextareaAutosize } from "../ui/textarea";
+
+import { useFieldContext } from "./FormContext";
 
 export default function TextAreaField({ label }: { label: string }) {
   const field = useFieldContext<string>();

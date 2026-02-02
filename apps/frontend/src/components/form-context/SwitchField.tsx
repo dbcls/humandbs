@@ -1,4 +1,5 @@
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+
 import { useFieldContext } from "./FormContext";
 
 export default function SwitchField<V extends string>({
@@ -13,7 +14,9 @@ export default function SwitchField<V extends string>({
       type="single"
       value={field.state.value}
       onValueChange={(value) => {
-        value && field.setValue(value as V);
+        if (value) {
+          field.setValue(value as V);
+        }
       }}
     >
       {options.map((opt) => (
