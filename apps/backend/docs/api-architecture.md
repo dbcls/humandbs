@@ -158,6 +158,7 @@ POST /research/new (admin)
 | unpublish | published | draft | admin | `dateModified` 更新 |
 
 **日付フィールドの意味**:
+
 - `datePublished`: v1 作成時（Research 作成時）に設定され、以後変更されない
 - `dateModified`: 状態変更のたびに更新される
 

@@ -8,7 +8,6 @@ import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import {
   canAccessResearchDoc,
-  createDataset,
   deleteDataset,
   getDataset,
   getDatasetWithSeqNo,
@@ -21,9 +20,8 @@ import {
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
 import {
-  CreateDatasetRequestSchema,
   DatasetIdParamsSchema,
-  DatasetSearchQuerySchema,
+  DatasetListingQuerySchema,
   DatasetSearchResponseSchema,
   DatasetVersionParamsSchema,
   DatasetVersionsResponseSchema,
@@ -34,7 +32,7 @@ import {
   LinkedResearchesResponseSchema,
   UpdateDatasetRequestSchema,
 } from "@/api/types"
-import type { DatasetIdParams, DatasetSearchQuery, DatasetVersionParams, LangVersionQuery } from "@/api/types"
+import type { DatasetIdParams, DatasetListingQuery, DatasetVersionParams, LangVersionQuery } from "@/api/types"
 import { addMergedSearchable } from "@/api/utils/merge-searchable"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
@@ -45,36 +43,15 @@ const listDatasetsRoute = createRoute({
   path: "/",
   tags: ["Dataset"],
   summary: "List Datasets",
-  description: "Get a paginated list of datasets with search and filtering. Only datasets linked to published research are visible to public. Supports keyword search and facet filtering.",
+  description: "Get a paginated list of datasets. Only datasets linked to published research are visible to public. For complex searches with filters, use POST /dataset/search instead.",
   request: {
-    query: DatasetSearchQuerySchema,
+    query: DatasetListingQuerySchema,
   },
   responses: {
     200: {
       content: { "application/json": { schema: DatasetSearchResponseSchema } },
       description: "List of datasets with optional facets",
     },
-    500: ErrorSpec500,
-  },
-})
-
-const createDatasetRoute = createRoute({
-  method: "post",
-  path: "/new",
-  tags: ["Dataset"],
-  summary: "Create Dataset",
-  description: "Create a new dataset. Requires authentication. Dataset visibility is determined by linked Research status.",
-  request: {
-    body: { content: { "application/json": { schema: CreateDatasetRequestSchema } } },
-  },
-  responses: {
-    201: {
-      content: { "application/json": { schema: DatasetWithMetadataSchema } },
-      description: "Dataset created successfully",
-    },
-    401: ErrorSpec401,
-    403: ErrorSpec403,
-    404: ErrorSpec404,
     500: ErrorSpec500,
   },
 })
@@ -209,58 +186,22 @@ datasetRouter.use("*", optionalAuth)
 // GET /dataset
 datasetRouter.openapi(listDatasetsRoute, async (c) => {
   try {
-    const query = c.req.query() as unknown as DatasetSearchQuery
+    const query = c.req.query() as unknown as DatasetListingQuery
     const authUser = c.get("authUser")
-    const datasetsData = await searchDatasets(query, authUser)
+    // Convert listing query to search query format
+    const datasetsData = await searchDatasets({
+      page: query.page,
+      limit: query.limit,
+      lang: query.lang,
+      sort: query.sort,
+      order: query.order,
+      humId: query.humId,
+      includeFacets: query.includeFacets,
+      includeRawHtml: query.includeRawHtml,
+    }, authUser)
     return c.json(maybeStripRawHtml(datasetsData, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching datasets:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
-  }
-})
-
-// POST /dataset/new (authenticated user - must be owner of parent Research)
-datasetRouter.openapi(createDatasetRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  try {
-    const body = await c.req.json()
-
-    // Check if user has access to parent Research
-    const research = await getResearchDoc(body.humId)
-    if (!research) {
-      return c.json({ error: `Research ${body.humId} not found` }, 404)
-    }
-
-    // Deleted research is not accessible
-    if (research.status === "deleted") {
-      return c.json({ error: `Research ${body.humId} not found` }, 404)
-    }
-
-    // Check permission (owner or admin can create)
-    if (!canAccessResearchDoc(authUser, research)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to create datasets for this research" }, 403)
-    }
-
-    const dataset = await createDataset({
-      humId: body.humId,
-      humVersionId: body.humVersionId,
-      releaseDate: body.releaseDate,
-      criteria: body.criteria,
-      typeOfData: body.typeOfData,
-      experiments: body.experiments,
-    })
-
-    return c.json({
-      ...dataset,
-      ownerId: authUser.userId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }, 201)
-  } catch (error) {
-    console.error("Error creating dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
   }
 })

@@ -3,8 +3,6 @@ import type { estypes } from "@elastic/elasticsearch"
 
 import {
   nestedTermsQuery,
-  nestedWildcardQuery,
-  nestedExistsQuery,
   nestedRangeQuery,
   doubleNestedWildcardQuery,
   doubleNestedTermsQuery,
@@ -407,7 +405,7 @@ const NESTED_TERMS_FILTERS: { param: string; field: string }[] = [
   { param: "sex", field: "experiments.searchable.sex" },
   { param: "ageGroup", field: "experiments.searchable.ageGroup" },
   { param: "libraryKits", field: "experiments.searchable.libraryKits" },
-  { param: "platformModel", field: "experiments.searchable.platformModel" },
+  { param: "platform", field: "experiments.searchable.platformModel" },
   { param: "readType", field: "experiments.searchable.readType" },
   { param: "referenceGenome", field: "experiments.searchable.referenceGenome" },
   { param: "processedDataTypes", field: "experiments.searchable.processedDataTypes" },
@@ -505,10 +503,7 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
 
   // === Nested boolean filters ===
 
-  // isTumor / hasTumor
-  if (params.hasTumor !== undefined) {
-    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.hasTumor))
-  }
+  // isTumor
   if ("isTumor" in params && params.isTumor !== undefined) {
     must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.isTumor))
   }
@@ -516,28 +511,6 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
   // hasPhenotypeData
   if ("hasPhenotypeData" in params && params.hasPhenotypeData !== undefined) {
     must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.hasPhenotypeData", params.hasPhenotypeData))
-  }
-
-  // === Nested wildcard filters ===
-
-  // platform (partial match on vendor)
-  if (params.platform) {
-    must.push(nestedWildcardQuery("experiments", "experiments.searchable.platformVendor", params.platform))
-  }
-
-  // === Nested exists filters ===
-
-  // hasCellLine (legacy, checks existence)
-  if (params.hasCellLine !== undefined && params.hasCellLine) {
-    must.push(nestedExistsQuery("experiments", "experiments.searchable.cellLine"))
-  }
-
-  // === Legacy filters ===
-
-  // hasHealthyControl (converts to healthStatus values)
-  if (params.hasHealthyControl !== undefined) {
-    const healthStatusValues = params.hasHealthyControl ? ["healthy", "mixed"] : ["affected"]
-    must.push(nestedTermsQuery("experiments", "experiments.searchable.healthStatus", healthStatusValues))
   }
 
   // === Double-nested filters ===
@@ -628,7 +601,7 @@ const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregatio
   assayType: nestedFacetAgg("experiments.searchable.assayType"),
   tissue: nestedFacetAgg("experiments.searchable.tissues"),
   population: nestedFacetAgg("experiments.searchable.population"),
-  platformVendor: nestedFacetAgg("experiments.searchable.platformVendor"),
+  platform: nestedFacetAgg("experiments.searchable.platformModel"),
   fileType: nestedFacetAgg("experiments.searchable.fileTypes"),
   healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", 10),
 
@@ -639,7 +612,6 @@ const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregatio
   sex: nestedFacetAgg("experiments.searchable.sex", 10),
   ageGroup: nestedFacetAgg("experiments.searchable.ageGroup", 10),
   libraryKits: nestedFacetAgg("experiments.searchable.libraryKits"),
-  platformModel: nestedFacetAgg("experiments.searchable.platformModel"),
   readType: nestedFacetAgg("experiments.searchable.readType", 10),
   referenceGenome: nestedFacetAgg("experiments.searchable.referenceGenome"),
   processedDataTypes: nestedFacetAgg("experiments.searchable.processedDataTypes"),
@@ -834,9 +806,6 @@ const hasDatasetFilters = (params: ResearchSearchQuery): boolean => {
     params.platform ||
     params.criteria ||
     params.fileType ||
-    params.hasHealthyControl !== undefined ||
-    params.hasTumor !== undefined ||
-    params.hasCellLine !== undefined ||
     params.minSubjects !== undefined ||
     // Extended filters
     ("healthStatus" in params && params.healthStatus) ||
@@ -844,7 +813,6 @@ const hasDatasetFilters = (params: ResearchSearchQuery): boolean => {
     ("sex" in params && params.sex) ||
     ("ageGroup" in params && params.ageGroup) ||
     ("libraryKits" in params && params.libraryKits) ||
-    ("platformModel" in params && params.platformModel) ||
     ("readType" in params && params.readType) ||
     ("referenceGenome" in params && params.referenceGenome) ||
     ("processedDataTypes" in params && params.processedDataTypes) ||

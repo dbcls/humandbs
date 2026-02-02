@@ -18,7 +18,6 @@ import {
   getResearchVersion,
   listResearchVersionsSorted,
   searchResearches,
-  unlinkDatasetFromResearch,
   updateResearch,
   updateResearchStatus,
   updateResearchUids,
@@ -35,9 +34,8 @@ import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
-  LinkParamsSchema,
+  ResearchListingQuerySchema,
   ResearchResponseSchema,
-  ResearchSearchQuerySchema,
   ResearchSearchResponseSchema,
   ResearchVersionsResponseSchema,
   StatusTransitionResponseSchema,
@@ -47,7 +45,7 @@ import {
   VersionParamsSchema,
   VersionResponseSchema,
 } from "@/api/types"
-import type { HumIdParams, LangVersionQuery, LinkParams, ResearchSearchQuery, UpdateUidsRequest, VersionParams } from "@/api/types"
+import type { HumIdParams, LangVersionQuery, ResearchListingQuery, UpdateUidsRequest, VersionParams } from "@/api/types"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
 // === Route Definitions ===
@@ -57,9 +55,9 @@ const listResearchRoute = createRoute({
   path: "/",
   tags: ["Research"],
   summary: "List Research",
-  description: "Get a paginated list of research with search and filtering. Public users see only published research. Supports keyword search, date range filters, and filtering by dataset attributes.",
+  description: "Get a paginated list of research. Public users see only published research. For complex searches with filters, use POST /research/search instead.",
   request: {
-    query: ResearchSearchQuerySchema,
+    query: ResearchListingQuerySchema,
   },
   responses: {
     200: {
@@ -295,25 +293,6 @@ const createDatasetForResearchRoute = createRoute({
   },
 })
 
-const unlinkDatasetRoute = createRoute({
-  method: "post",
-  path: "/{humId}/dataset/{datasetId}/delete",
-  tags: ["Research Datasets"],
-  summary: "Unlink Dataset",
-  description: "Remove a dataset link from this research. Requires owner or admin.",
-  request: {
-    params: LinkParamsSchema,
-  },
-  responses: {
-    204: { description: "Dataset unlinked successfully" },
-    401: ErrorSpec401,
-    403: ErrorSpec403,
-    404: ErrorSpec404,
-    409: ErrorSpec409,
-    500: ErrorSpec500,
-  },
-})
-
 const submitRoute = createRoute({
   method: "post",
   path: "/{humId}/submit",
@@ -445,9 +424,19 @@ researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ adminOnly: true })
 // GET /research
 researchRouter.openapi(listResearchRoute, async (c) => {
   try {
-    const query = c.req.query() as unknown as ResearchSearchQuery
+    const query = c.req.query() as unknown as ResearchListingQuery
     const authUser = c.get("authUser")
-    const researches = await searchResearches(query, authUser)
+    // Convert listing query to search query format
+    const researches = await searchResearches({
+      page: query.page,
+      limit: query.limit,
+      lang: query.lang,
+      sort: query.sort,
+      order: query.order,
+      status: query.status,
+      includeFacets: query.includeFacets,
+      includeRawHtml: query.includeRawHtml,
+    }, authUser)
     return c.json(maybeStripRawHtml(researches, query.includeRawHtml ?? false), 200)
   } catch (error) {
     console.error("Error fetching research list:", error)
@@ -726,47 +715,6 @@ researchRouter.openapi(createDatasetForResearchRoute, async (c) => {
     return c.json(dataset, 201)
   } catch (error) {
     console.error("Error creating dataset for research:", error)
-    return c.json({ error: "Internal Server Error", message: String(error) }, 500)
-  }
-})
-
-// POST /research/{humId}/dataset/{datasetId}/delete
-researchRouter.openapi(unlinkDatasetRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
-  }
-  try {
-    const { humId, datasetId } = c.req.param() as unknown as LinkParams
-
-    // Get research to check permissions
-    const research = await getResearchDoc(humId)
-    if (!research) {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    // Deleted research is not accessible
-    if (research.status === "deleted") {
-      return c.json({ error: `Research ${humId} not found` }, 404)
-    }
-
-    // Check permission (owner or admin can unlink)
-    if (!canAccessResearchDoc(authUser, research)) {
-      return c.json({ error: "Forbidden", message: "Not authorized to unlink datasets from this research" }, 403)
-    }
-
-    // Get the version from query param (optional - if not provided, unlinks all versions)
-    const query = c.req.query()
-    const version = query.version
-
-    const success = await unlinkDatasetFromResearch(humId, datasetId, version)
-    if (!success) {
-      return c.json({ error: "Conflict", message: "Resource was modified by another request" }, 409)
-    }
-
-    return c.body(null, 204)
-  } catch (error) {
-    console.error("Error unlinking dataset:", error)
     return c.json({ error: "Internal Server Error", message: String(error) }, 500)
   }
 })

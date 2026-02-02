@@ -622,6 +622,34 @@ export const ResearchSummarySchema = z.object({
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
 
+// === Research Listing Query (GET /research) ===
+
+/**
+ * Research listing query parameters (GET /research)
+ * For complex searches with filters, use POST /research/search instead
+ */
+export const ResearchListingQuerySchema = z.object({
+  // Pagination
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  lang: z.enum(langType).default("ja"),
+  sort: z.enum(["humId", "title", "releaseDate"]).default("humId"),
+  order: z.enum(["asc", "desc"]).default("asc"),
+
+  // Status filter (admin only for non-published)
+  status: z.enum(["draft", "review", "published", "deleted"]).optional(),
+
+  // Optional humId filter for specific research
+  humId: z.string().optional(),
+
+  // Include facet counts in response
+  includeFacets: booleanFromString,
+
+  // Include rawHtml fields in response (default: false)
+  includeRawHtml: z.coerce.boolean().default(false),
+})
+export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>
+
 // === Research Search Query & Response ===
 
 export const ResearchSearchQuerySchema = z.object({
@@ -648,19 +676,15 @@ export const ResearchSearchQuerySchema = z.object({
   platform: z.string().optional(),
   criteria: z.string().optional(),
   fileType: z.string().optional(),
-  hasHealthyControl: booleanFromString,
-  hasTumor: booleanFromString,
-  hasCellLine: booleanFromString,
   minSubjects: z.coerce.number().int().min(0).optional(),
   maxSubjects: z.coerce.number().int().min(0).optional(),
 
   // Extended filters
-  healthStatus: z.string().optional(),  // healthy/affected/mixed
+  healthStatus: z.string().optional(),  // healthy/affected/mixed (use this instead of hasHealthyControl)
   subjectCountType: z.string().optional(),  // individual/sample/mixed
   sex: z.string().optional(),  // male/female/mixed
   ageGroup: z.string().optional(),  // infant/child/adult/elderly/mixed
   libraryKits: z.string().optional(),
-  platformModel: z.string().optional(),
   readType: z.string().optional(),  // single-end/paired-end
   referenceGenome: z.string().optional(),
   processedDataTypes: z.string().optional(),
@@ -713,6 +737,31 @@ export const ResearchSearchResponseSchema = z.object({
 })
 export type ResearchSearchResponse = z.infer<typeof ResearchSearchResponseSchema>
 
+// === Dataset Listing Query (GET /dataset) ===
+
+/**
+ * Dataset listing query parameters (GET /dataset)
+ * For complex searches with filters, use POST /dataset/search instead
+ */
+export const DatasetListingQuerySchema = z.object({
+  // Pagination
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  lang: z.enum(langType).default("ja"),
+  sort: z.enum(["datasetId", "releaseDate"]).default("datasetId"),
+  order: z.enum(["asc", "desc"]).default("asc"),
+
+  // Parent Research ID filter
+  humId: z.string().optional(),
+
+  // Include facet counts in response
+  includeFacets: booleanFromString,
+
+  // Include rawHtml fields in response (default: false)
+  includeRawHtml: z.coerce.boolean().default(false),
+})
+export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>
+
 // === Dataset Search Query & Response ===
 
 export const DatasetSearchQuerySchema = z.object({
@@ -735,21 +784,17 @@ export const DatasetSearchQuerySchema = z.object({
   diseaseIcd10: z.string().optional(),  // ICD-10 code prefix match
   tissue: z.string().optional(),  // Comma-separated for OR
   population: z.string().optional(),  // Comma-separated for OR
-  platform: z.string().optional(),  // Partial match on vendor
+  platform: z.string().optional(),  // Comma-separated for OR (platform model)
   fileType: z.string().optional(),  // Comma-separated for OR
-  hasHealthyControl: booleanFromString,
-  hasTumor: booleanFromString,
-  hasCellLine: booleanFromString,
   minSubjects: z.coerce.number().int().min(0).optional(),
   maxSubjects: z.coerce.number().int().min(0).optional(),
 
   // Extended filters
-  healthStatus: z.string().optional(),  // healthy/affected/mixed
+  healthStatus: z.string().optional(),  // healthy/affected/mixed (use this instead of hasHealthyControl)
   subjectCountType: z.string().optional(),  // individual/sample/mixed
   sex: z.string().optional(),  // male/female/mixed
   ageGroup: z.string().optional(),  // infant/child/adult/elderly/mixed
   libraryKits: z.string().optional(),
-  platformModel: z.string().optional(),
   readType: z.string().optional(),  // single-end/paired-end
   referenceGenome: z.string().optional(),
   processedDataTypes: z.string().optional(),
@@ -831,8 +876,7 @@ export const DatasetFiltersSchema = z.object({
   ageGroup: z.array(z.enum(["infant", "child", "adult", "elderly", "mixed"])).optional(),
   assayType: z.array(z.string()).optional(),
   libraryKits: z.array(z.string()).optional(),
-  platform: z.array(z.string()).optional(), // Facet selection (vendor or model)
-  platformModel: z.array(z.string()).optional(),
+  platform: z.array(z.string()).optional(), // Platform (vendor or model)
   readType: z.array(z.enum(["single-end", "paired-end"])).optional(),
   referenceGenome: z.array(z.string()).optional(),
   fileType: z.array(z.string()).optional(),
@@ -1149,13 +1193,27 @@ export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
 // === Stats API ===
 
 /**
+ * Stats facet counts per Research/Dataset
+ */
+export const StatsFacetCountSchema = z.object({
+  research: z.number(),
+  dataset: z.number(),
+})
+export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>
+
+/**
  * Stats response (GET /stats)
  * Returns counts and facets for published resources
+ * Facets include both Research and Dataset counts per value
  */
 export const StatsResponseSchema = z.object({
-  researchCount: z.number(),
-  datasetCount: z.number(),
-  facets: z.record(z.string(), z.array(FacetValueWithCountSchema)),
+  research: z.object({
+    total: z.number(),
+  }),
+  dataset: z.object({
+    total: z.number(),
+  }),
+  facets: z.record(z.string(), z.record(z.string(), StatsFacetCountSchema)),
 })
 export type StatsResponse = z.infer<typeof StatsResponseSchema>
 

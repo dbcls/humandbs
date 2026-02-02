@@ -37,7 +37,7 @@ const ARRAY_FIELD_MAPPINGS: { from: string; to: string }[] = [
   { from: "ageGroup", to: "ageGroup" },
   { from: "assayType", to: "assayType" },
   { from: "libraryKits", to: "libraryKits" },
-  { from: "platformModel", to: "platformModel" },
+  { from: "platform", to: "platform" },
   { from: "readType", to: "readType" },
   { from: "referenceGenome", to: "referenceGenome" },
   { from: "fileType", to: "fileType" },
