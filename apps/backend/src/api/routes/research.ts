@@ -76,6 +76,7 @@ const listResearchRoute = createRoute({
       content: { "application/json": { schema: ResearchSearchResponseSchema } },
       description: "List of research with optional facets",
     },
+    403: ErrorSpec403,
     500: ErrorSpec500,
   },
 })
@@ -438,6 +439,20 @@ researchRouter.openapi(listResearchRoute, async (c) => {
   try {
     const query = c.req.query() as unknown as ResearchListingQuery
     const authUser = c.get("authUser")
+
+    // Validate status filter permissions per api-spec.md
+    if (query.status) {
+      // public: can only request "published"
+      if (!authUser && query.status !== "published") {
+        return forbiddenResponse(c, `Public users can only access published resources`)
+      }
+      // authenticated (non-admin): can request "draft", "review", "published" (own resources only)
+      // "deleted" is admin-only
+      if (authUser && !authUser.isAdmin && query.status === "deleted") {
+        return forbiddenResponse(c, `Only admin can access deleted resources`)
+      }
+    }
+
     // Convert listing query to search query format
     const researches = await searchResearches({
       page: query.page,
@@ -515,9 +530,14 @@ researchRouter.openapi(updateResearchRoute, async (c) => {
   try {
     // Research is preloaded by middleware with auth/ownership checks
     const research = c.get("research")!
-    const { humId, seqNo, primaryTerm } = research
+    const { humId } = research
 
     const body = await c.req.json()
+
+    // Use optimistic lock values from request body (per api-spec.md)
+    // If not provided, fall back to values from middleware for backwards compatibility
+    const seqNo = body._seq_no ?? research.seqNo
+    const primaryTerm = body._primary_term ?? research.primaryTerm
 
     const updated = await updateResearch(humId, {
       title: body.title,

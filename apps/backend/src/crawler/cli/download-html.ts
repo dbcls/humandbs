@@ -125,16 +125,22 @@ const main = async (): Promise<void> => {
   let totalErrors = 0
   let completedHumIds = 0
 
-  // Process humIds in batches
+  // Process humIds in batches (using Promise.allSettled to continue on partial failures)
   for (let i = 0; i < humIds.length; i += conc) {
     const batch = humIds.slice(i, i + conc)
-    const results = await Promise.all(
+    const settledResults = await Promise.allSettled(
       batch.map(humId => downloadAllVersionsForHumId(humId, langs, useCache)),
     )
 
-    for (const { downloaded, errors } of results) {
-      totalDownloaded += downloaded
-      totalErrors += errors
+    for (let j = 0; j < settledResults.length; j++) {
+      const result = settledResults[j]
+      if (result.status === "fulfilled") {
+        totalDownloaded += result.value.downloaded
+        totalErrors += result.value.errors
+      } else {
+        totalErrors++
+        logger.error("Batch download failed", { humId: batch[j], error: getErrorMessage(result.reason) })
+      }
     }
     completedHumIds += batch.length
 

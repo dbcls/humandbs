@@ -55,6 +55,7 @@ interface JgaRelationCache {
 
 const DDBJ_SEARCH_BASE_URL = "https://ddbj.nig.ac.jp/search/resources"
 const RELATION_CACHE_FILE_NAME = "jga-relation.json"
+const CACHE_SAVE_INTERVAL = 100 // Save cache every N new entries
 
 // Cache Directory
 
@@ -66,6 +67,7 @@ const getRelationCacheFilePath = (): string =>
 let studyToDatasetCache: Map<string, string[]> | null = null
 let datasetToStudyCache: Map<string, string[]> | null = null
 let cacheModified = false
+let newEntriesSinceLastSave = 0
 
 const loadRelationCache = (): void => {
   if (studyToDatasetCache !== null && datasetToStudyCache !== null) {
@@ -111,6 +113,18 @@ export const saveRelationCache = (): void => {
   const cachePath = getRelationCacheFilePath()
   writeJson(cachePath, data)
   cacheModified = false
+  newEntriesSinceLastSave = 0
+}
+
+/**
+ * Periodically save cache if enough new entries have been added
+ * Called after each cache update to check if save is needed
+ */
+const maybeSaveCache = (): void => {
+  newEntriesSinceLastSave++
+  if (newEntriesSinceLastSave >= CACHE_SAVE_INTERVAL) {
+    saveRelationCache()
+  }
 }
 
 // API Functions
@@ -189,6 +203,7 @@ export const getDatasetsFromStudy = async (studyId: string): Promise<string[]> =
   const datasets = await studyToDatasets(studyId)
   studyToDatasetCache!.set(studyId, datasets)
   cacheModified = true
+  maybeSaveCache()
   return datasets
 }
 
@@ -202,6 +217,7 @@ export const getStudiesFromDataset = async (datasetId: string): Promise<string[]
   const studies = await datasetToStudy(datasetId)
   datasetToStudyCache!.set(datasetId, studies)
   cacheModified = true
+  maybeSaveCache()
   return studies
 }
 

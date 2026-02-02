@@ -281,6 +281,7 @@ export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
  * Update research request (full replacement)
  * Note: humId, url, versionIds, latestVersion, datePublished, dateModified cannot be changed
  * url is auto-generated from humId
+ * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateResearchRequestSchema = z.object({
   title: BilingualTextSchema,
@@ -290,6 +291,8 @@ export const UpdateResearchRequestSchema = z.object({
   grant: z.array(GrantSchema),
   relatedPublication: z.array(PublicationSchema),
   controlledAccessUser: z.array(PersonSchema),
+  _seq_no: z.number().describe("Sequence number for optimistic locking"),
+  _primary_term: z.number().describe("Primary term for optimistic locking"),
 })
 export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>
 
@@ -403,6 +406,7 @@ export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
 /**
  * Update dataset request (full replacement)
  * Note: datasetId, version, versionReleaseDate cannot be changed
+ * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateDatasetRequestSchema = z.object({
   humId: z.string(),
@@ -414,6 +418,8 @@ export const UpdateDatasetRequestSchema = z.object({
     en: z.string().nullable(),
   }),
   experiments: z.array(ExperimentSchemaBase),
+  _seq_no: z.number().describe("Sequence number for optimistic locking"),
+  _primary_term: z.number().describe("Primary term for optimistic locking"),
 })
 export type UpdateDatasetRequest = z.infer<typeof UpdateDatasetRequestSchema>
 

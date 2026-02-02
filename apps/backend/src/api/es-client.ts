@@ -1443,27 +1443,27 @@ export const updateResearchUids = async (
 /**
  * Generate next humId
  * humId format: "hum" + 4 digits (hum0001, hum0002, ...)
+ *
+ * Uses Sort Query (descending) with size=1 for efficient index-based retrieval
  */
 export const generateNextHumId = async (): Promise<string> => {
-  interface MaxIdAggs {
-    max_id: { value: number | null }
-  }
-
-  const res = await esClient.search<unknown, MaxIdAggs>({
+  const res = await esClient.search<{ humId: string }>({
     index: ES_INDEX.research,
-    size: 0,
-    aggs: {
-      max_id: {
-        max: {
-          script: {
-            source: "Integer.parseInt(doc['humId'].value.substring(3))",
-          },
-        },
-      },
-    },
+    size: 1,
+    _source: ["humId"],
+    sort: [{ humId: { order: "desc" } }],
+    track_total_hits: false,
   })
 
-  const maxNum = res.aggregations?.max_id?.value ?? 0
+  const hit = res.hits.hits[0]
+  if (!hit?._source?.humId) {
+    // No existing documents, start from hum0001
+    return "hum0001"
+  }
+
+  // Extract number from humId (e.g., "hum0123" → 123)
+  const match = hit._source.humId.match(/^hum(\d+)$/)
+  const maxNum = match ? parseInt(match[1], 10) : 0
   return `hum${String(maxNum + 1).padStart(4, "0")}`
 }
 

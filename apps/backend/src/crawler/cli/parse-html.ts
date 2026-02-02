@@ -196,17 +196,23 @@ const main = async (): Promise<void> => {
   let totalNoRelease = 0
   let completedHumIds = 0
 
-  // Process humIds in batches
+  // Process humIds in batches (using Promise.allSettled to continue on partial failures)
   for (let i = 0; i < humIds.length; i += conc) {
     const batch = humIds.slice(i, i + conc)
-    const results = await Promise.all(
+    const settledResults = await Promise.allSettled(
       batch.map(humId => crawlAllVersionsForHumId(humId, langs, titleMaps)),
     )
 
-    for (const { parsed, errors, noRelease } of results) {
-      totalParsed += parsed
-      totalErrors += errors
-      totalNoRelease += noRelease
+    for (let j = 0; j < settledResults.length; j++) {
+      const result = settledResults[j]
+      if (result.status === "fulfilled") {
+        totalParsed += result.value.parsed
+        totalErrors += result.value.errors
+        totalNoRelease += result.value.noRelease
+      } else {
+        totalErrors++
+        logger.error("Batch parse failed", { humId: batch[j], error: getErrorMessage(result.reason) })
+      }
     }
     completedHumIds += batch.length
 

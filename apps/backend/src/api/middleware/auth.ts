@@ -15,6 +15,7 @@ import * as fs from "node:fs/promises"
 import * as path from "node:path"
 
 import { CACHE_TTL } from "../constants"
+import { forbiddenResponse, unauthorizedResponse } from "../routes/errors"
 import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
@@ -192,12 +193,12 @@ export const requireAuth: MiddlewareHandler = createMiddleware(async (c, next) =
   const token = extractBearerToken(authHeader)
 
   if (!token) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+    return unauthorizedResponse(c, "Authentication required")
   }
 
   const claims = await verifyToken(token)
   if (!claims) {
-    return c.json({ error: "Unauthorized", message: "Invalid or expired token" }, 401)
+    return unauthorizedResponse(c, "Invalid or expired token")
   }
 
   c.set("authUser", await buildAuthUser(claims))
@@ -212,7 +213,7 @@ export const requireAdmin: MiddlewareHandler = createMiddleware(async (c, next) 
   const authUser = c.get("authUser")
 
   if (!authUser?.isAdmin) {
-    return c.json({ error: "Forbidden", message: "Admin access required" }, 403)
+    return forbiddenResponse(c, "Admin access required")
   }
 
   await next()

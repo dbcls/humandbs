@@ -10,7 +10,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import { requireAuth } from "@/api/middleware/auth"
-import { ErrorSpec401, ErrorSpec500 } from "@/api/routes/errors"
+import { ErrorSpec401, ErrorSpec500, unauthorizedResponse } from "@/api/routes/errors"
 import { IsAdminResponseSchema } from "@/api/types"
 
 // === Route Definitions ===
@@ -42,7 +42,7 @@ adminRouter.use("*", requireAuth)
 adminRouter.openapi(isAdminRoute, async (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
-    return c.json({ error: "Unauthorized", message: "Authentication required" }, 401)
+    return unauthorizedResponse(c, "Authentication required")
   }
   return c.json({ isAdmin: authUser.isAdmin }, 200)
 })

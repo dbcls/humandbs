@@ -121,22 +121,27 @@ const main = async (): Promise<void> => {
     onValidationError: () => { validationErrors++ },
   }
 
-  // Process files in batches
+  // Process files in batches (using Promise.allSettled to continue on partial failures)
   for (let i = 0; i < files.length; i += conc) {
     const batch = files.slice(i, i + conc)
-    const results = await Promise.all(
+    const settledResults = await Promise.allSettled(
       batch.map(({ humVersionId, lang }) => normalizeOne(humVersionId, lang, optionsWithCallback)),
     )
 
-    for (let j = 0; j < results.length; j++) {
-      const result = results[j]
-      if (result.success) {
-        totalNormalized++
+    for (let j = 0; j < settledResults.length; j++) {
+      const result = settledResults[j]
+      if (result.status === "fulfilled") {
+        if (result.value.success) {
+          totalNormalized++
+        } else {
+          totalErrors++
+          if (result.value.error) {
+            logger.error("Normalize failed", { ...batch[j], error: result.value.error })
+          }
+        }
       } else {
         totalErrors++
-        if (result.error) {
-          logger.error("Normalize failed", { ...batch[j], error: result.error })
-        }
+        logger.error("Batch normalize failed", { ...batch[j], error: getErrorMessage(result.reason) })
       }
     }
     completedFiles += batch.length

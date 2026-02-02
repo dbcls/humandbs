@@ -10,6 +10,12 @@ import { createMiddleware } from "hono/factory"
 
 import { ERROR_MESSAGES } from "@/api/constants"
 import { canAccessResearchDoc, getResearchWithSeqNo } from "@/api/es-client"
+import {
+  forbiddenResponse,
+  notFoundResponse,
+  unauthorizedResponse,
+  validationErrorResponse,
+} from "@/api/routes/errors"
 import type { AuthUser, EsResearchDoc } from "@/api/types"
 
 // Extend Hono context with research data
@@ -53,36 +59,36 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 
     // humId is required for this middleware
     if (!humId) {
-      return c.json({ error: "Bad Request", message: "humId parameter is required" }, 400)
+      return validationErrorResponse(c, "humId parameter is required")
     }
 
     // Check authentication requirements
     if ((options.requireOwnership || options.adminOnly) && !authUser) {
-      return c.json({ error: "Unauthorized", message: ERROR_MESSAGES.UNAUTHORIZED }, 401)
+      return unauthorizedResponse(c, ERROR_MESSAGES.UNAUTHORIZED)
     }
 
     // Check admin requirement
     if (options.adminOnly && !authUser?.isAdmin) {
-      return c.json({ error: "Forbidden", message: ERROR_MESSAGES.FORBIDDEN_ADMIN }, 403)
+      return forbiddenResponse(c, ERROR_MESSAGES.FORBIDDEN_ADMIN)
     }
 
     // Load Research document
     const result = await getResearchWithSeqNo(humId)
     if (!result) {
-      return c.json({ error: ERROR_MESSAGES.NOT_FOUND("Research", humId) }, 404)
+      return notFoundResponse(c, ERROR_MESSAGES.NOT_FOUND("Research", humId))
     }
 
     const { doc, seqNo, primaryTerm } = result
 
     // Deleted research is not accessible
     if (doc.status === "deleted") {
-      return c.json({ error: ERROR_MESSAGES.NOT_FOUND("Research", humId) }, 404)
+      return notFoundResponse(c, ERROR_MESSAGES.NOT_FOUND("Research", humId))
     }
 
     // Check ownership permission
     if (options.requireOwnership && !authUser?.isAdmin) {
       if (!canAccessResearchDoc(authUser, doc)) {
-        return c.json({ error: "Forbidden", message: ERROR_MESSAGES.FORBIDDEN }, 403)
+        return forbiddenResponse(c, ERROR_MESSAGES.FORBIDDEN)
       }
     }
 

@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { ErrorSpec500 } from "@/api/routes/errors"
+import { ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import { HealthResponseSchema } from "@/types"
 
 const healthRoute = createRoute({
@@ -35,9 +35,6 @@ healthRouter.openapi(healthRoute, async (c) => {
     return c.json(validatedResponse, 200)
   } catch (error) {
     console.error("Response validation error:", error)
-    return c.json({
-      error: "Internal Server Error",
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : "Unknown error"}`,
-    }, 500)
+    return serverErrorResponse(c, error)
   }
 })

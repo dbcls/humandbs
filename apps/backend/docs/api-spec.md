@@ -233,7 +233,7 @@ GET /dataset/{datasetId}/versions/v1
 
 ```json
 {
-  "error": "NOT_FOUND",
+  "error": "Not Found",
   "message": "Research hum0001 not found"
 }
 ```
@@ -241,11 +241,11 @@ GET /dataset/{datasetId}/versions/v1
 | コード | HTTP Status | 説明 |
 |--------|-------------|------|
 | `VALIDATION_ERROR` | 400 | 入力値バリデーション失敗 |
-| `UNAUTHORIZED` | 401 | 認証なし/無効 |
-| `FORBIDDEN` | 403 | 権限なし |
-| `NOT_FOUND` | 404 | リソースが存在しない |
-| `CONFLICT` | 409 | 状態競合（無効な遷移、楽観的ロック失敗） |
-| `INTERNAL_ERROR` | 500 | サーバーエラー |
+| `Unauthorized` | 401 | 認証なし/無効 |
+| `Forbidden` | 403 | 権限なし |
+| `Not Found` | 404 | リソースが存在しない |
+| `Conflict` | 409 | 状態競合（無効な遷移、楽観的ロック失敗） |
+| `Internal Server Error` | 500 | サーバーエラー |
 
 ### 楽観的ロック（同時編集の競合検出）
 
