@@ -17,28 +17,9 @@ import { join, dirname } from "path"
 
 // === Types ===
 
-interface DataVolume {
-  value: number
-  unit: "KB" | "MB" | "GB" | "TB"
-}
-
-interface SearchableFields {
-  dataVolume?: DataVolume | null
-  dataVolumeGb?: number | null
-  [key: string]: unknown
-}
-
-interface ExperimentDoc {
-  searchable?: SearchableFields
-  refined?: SearchableFields // Legacy field name, will be renamed to 'searchable'
-  extracted?: SearchableFields // Legacy field name, will be renamed to 'searchable'
-  [key: string]: unknown
-}
-
 interface DatasetDoc {
   datasetId: string
   version: string
-  experiments?: ExperimentDoc[]
   [key: string]: unknown
 }
 
@@ -88,28 +69,6 @@ const idDataset = (datasetId: string, version: string): string =>
   `${datasetId}-${normVersion(version)}`
 
 /**
- * Convert DataVolume to GB
- */
-const dataVolumeToGb = (dv: DataVolume | null | undefined): number | null => {
-  if (!dv || dv.value == null) return null
-
-  const multipliers: Record<string, number> = {
-    KB: 1 / (1024 ** 2),
-    MB: 1 / 1024,
-    GB: 1,
-    TB: 1024,
-  }
-
-  const multiplier = multipliers[dv.unit]
-  if (!multiplier) {
-    console.warn(`Unknown data volume unit: ${dv.unit}`)
-    return null
-  }
-
-  return dv.value * multiplier
-}
-
-/**
  * Transform research document for ES indexing
  * - Add default status and uids if not present
  */
@@ -118,40 +77,6 @@ const transformResearch = (doc: ResearchDoc): ResearchDoc => ({
   status: doc.status ?? "published",
   uids: doc.uids ?? [],
 })
-
-/**
- * Transform dataset document for ES indexing
- * - Rename 'refined' or 'extracted' to 'searchable' (for legacy data)
- * - Convert legacy dataVolume to dataVolumeGb if dataVolumeGb is not already set
- */
-const transformDataset = (doc: DatasetDoc): DatasetDoc => {
-  if (!doc.experiments) return doc
-
-  return {
-    ...doc,
-    experiments: doc.experiments.map((exp) => {
-      // Support 'searchable', 'refined', and legacy 'extracted' field names
-      const searchableData = exp.searchable ?? exp.refined ?? exp.extracted
-      if (!searchableData) return exp
-
-      const { dataVolume, dataVolumeGb, ...restSearchable } = searchableData
-
-      // Remove legacy field names if present
-      const { extracted, refined, ...restExp } = exp
-
-      // Use dataVolumeGb if set, otherwise convert from legacy dataVolume
-      const finalDataVolumeGb = dataVolumeGb ?? dataVolumeToGb(dataVolume)
-
-      return {
-        ...restExp,
-        searchable: {
-          ...restSearchable,
-          dataVolumeGb: finalDataVolumeGb,
-        },
-      }
-    }),
-  }
-}
 
 /**
  * Find crawler-results directory by searching up from current file
@@ -286,7 +211,7 @@ const main = async () => {
   await bulkIndex("researchVersion", researchVersionDocs, (d) =>
     idResearchVersion(d.humId, d.version),
   )
-  await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version), transformDataset)
+  await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version))
 
   console.log("\nDone!")
 }

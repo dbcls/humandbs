@@ -38,8 +38,8 @@ import {
   ResearchResponseSchema,
   ResearchSearchResponseSchema,
   ResearchVersionsResponseSchema,
-  StatusTransitionResponseSchema,
   UpdateResearchRequestSchema,
+  WorkflowResponseSchema,
   UpdateUidsRequestSchema,
   UpdateUidsResponseSchema,
   VersionParamsSchema,
@@ -304,7 +304,7 @@ const submitRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: StatusTransitionResponseSchema } },
+      content: { "application/json": { schema: WorkflowResponseSchema } },
       description: "Status changed to review",
     },
     401: ErrorSpec401,
@@ -326,7 +326,7 @@ const approveRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: StatusTransitionResponseSchema } },
+      content: { "application/json": { schema: WorkflowResponseSchema } },
       description: "Status changed to published",
     },
     401: ErrorSpec401,
@@ -348,7 +348,7 @@ const rejectRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: StatusTransitionResponseSchema } },
+      content: { "application/json": { schema: WorkflowResponseSchema } },
       description: "Status changed to draft",
     },
     401: ErrorSpec401,
@@ -370,7 +370,7 @@ const unpublishRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: StatusTransitionResponseSchema } },
+      content: { "application/json": { schema: WorkflowResponseSchema } },
       description: "Status changed to draft",
     },
     401: ErrorSpec401,

@@ -1,107 +1,21 @@
-import { ApiErrorResponseSchema } from "@/api/types"
 import { ErrorResponseSchema } from "@/types"
 
-// Legacy error specs (for backward compatibility with existing routes)
-export const ErrorSpec401 = {
+/**
+ * Factory function to create OpenAPI error response spec
+ */
+const createErrorSpec = (description: string) => ({
   content: {
     "application/json": {
       schema: ErrorResponseSchema,
     },
   },
-  description: "Unauthorized",
-}
+  description,
+})
 
-export const ErrorSpec403 = {
-  content: {
-    "application/json": {
-      schema: ErrorResponseSchema,
-    },
-  },
-  description: "Forbidden",
-}
-
-export const ErrorSpec404 = {
-  content: {
-    "application/json": {
-      schema: ErrorResponseSchema,
-    },
-  },
-  description: "Not Found",
-}
-
-export const ErrorSpec500 = {
-  content: {
-    "application/json": {
-      schema: ErrorResponseSchema,
-    },
-  },
-  description: "Internal Server Error",
-}
-
-// New API error specs (using ApiErrorResponseSchema)
-export const ApiErrorSpec400 = {
-  content: {
-    "application/json": {
-      schema: ApiErrorResponseSchema,
-    },
-  },
-  description: "Bad Request",
-}
-
-export const ApiErrorSpec401 = {
-  content: {
-    "application/json": {
-      schema: ApiErrorResponseSchema,
-    },
-  },
-  description: "Unauthorized",
-}
-
-export const ApiErrorSpec403 = {
-  content: {
-    "application/json": {
-      schema: ApiErrorResponseSchema,
-    },
-  },
-  description: "Forbidden",
-}
-
-export const ApiErrorSpec404 = {
-  content: {
-    "application/json": {
-      schema: ApiErrorResponseSchema,
-    },
-  },
-  description: "Not Found",
-}
-
-export const ApiErrorSpec409 = {
-  content: {
-    "application/json": {
-      schema: ApiErrorResponseSchema,
-    },
-  },
-  description: "Conflict",
-}
-
-export const ApiErrorSpec500 = {
-  content: {
-    "application/json": {
-      schema: ApiErrorResponseSchema,
-    },
-  },
-  description: "Internal Server Error",
-}
-
-// Legacy error specs for 409
-export const ErrorSpec409 = {
-  content: {
-    "application/json": {
-      schema: ErrorResponseSchema,
-    },
-  },
-  description: "Conflict",
-}
-
-// Backward compatibility aliases
-export const ErrorSpec400 = ApiErrorSpec400
+// Error response specs for OpenAPI routes
+export const ErrorSpec400 = createErrorSpec("Bad Request")
+export const ErrorSpec401 = createErrorSpec("Unauthorized")
+export const ErrorSpec403 = createErrorSpec("Forbidden")
+export const ErrorSpec404 = createErrorSpec("Not Found")
+export const ErrorSpec409 = createErrorSpec("Conflict")
+export const ErrorSpec500 = createErrorSpec("Internal Server Error")

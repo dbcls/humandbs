@@ -41,7 +41,7 @@ import {
   hasCriteriaOverrideForHum,
 } from "@/crawler/config/mapping"
 import { isValidDatasetId } from "@/crawler/config/patterns"
-import { loadMolDataMappingTable, buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/processors/mapping-table"
+import { buildMolDataHeaderMapping, normalizeMolDataKey } from "@/crawler/processors/mapping-table"
 import type {
   LangType,
   TextValue,
@@ -63,17 +63,10 @@ import { logger } from "@/crawler/utils/logger"
 import {
   normalizeKey,
   splitValue,
-  isTextValue,
   normalizeText,
   normalizeFooterText,
   httpToHttps,
 } from "@/crawler/utils/text"
-
-// Re-export mapping table functions
-export { loadMolDataMappingTable, buildMolDataHeaderMapping, normalizeMolDataKey }
-
-// Re-export text utilities for backward compatibility
-export { normalizeKey, splitValue, isTextValue, normalizeText, normalizeFooterText }
 
 /**
  * Normalize URL (ensure absolute URL)

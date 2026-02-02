@@ -8,10 +8,11 @@
  */
 import { JSDOM } from "jsdom"
 
+import { compareHeaders } from "@/crawler/processors/normalize"
 import type { LangType, RawRelease } from "@/crawler/types"
 import { logger } from "@/crawler/utils/logger"
 
-import { cleanText, cleanInnerHtml, compareHeaders } from "./utils"
+import { cleanText, cleanInnerHtml } from "./utils"
 
 // Utility functions
 

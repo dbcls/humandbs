@@ -3,6 +3,7 @@
  *
  * Enriches unified data with external API metadata (JGA, DRA, DOI)
  */
+import type { DoiSearchResult } from "@/crawler/api/doi"
 import { DEFAULT_API_DELAY_MS } from "@/crawler/config/urls"
 import type {
   Dataset,
@@ -10,7 +11,6 @@ import type {
   EnrichedDataset,
   EnrichedResearch,
   EnrichedPublication,
-  DoiSearchResult,
 } from "@/crawler/types"
 
 // Types

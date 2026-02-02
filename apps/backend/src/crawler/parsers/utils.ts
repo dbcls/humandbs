@@ -9,10 +9,6 @@
  */
 import type { TextValue } from "@/crawler/types"
 
-// Re-export normalization functions for backward compatibility
-// These were moved to processors/normalize.ts as they are normalization concerns
-export { compareHeaders, normalizeCellValue } from "@/crawler/processors/normalize"
-
 /**
  * Clean whitespace from text
  */

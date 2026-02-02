@@ -1,10 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
 import {
-  normalizeKey,
-  splitValue,
-  isTextValue,
-  normalizeText,
   normalizeUrl,
   normalizeCriteria,
   normalizePolicies,
@@ -34,6 +30,12 @@ import type {
   NormalizedParseResult,
   DatasetIdType,
 } from "@/crawler/types"
+import {
+  normalizeKey,
+  splitValue,
+  isTextValue,
+  normalizeText,
+} from "@/crawler/utils/text"
 
 const BASE_URL = "https://humandbs.dbcls.jp"
 

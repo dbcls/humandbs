@@ -12,6 +12,7 @@
 import { JSDOM } from "jsdom"
 
 import { findSpecialControlledAccessRow, getHumIdsWithDataSummary } from "@/crawler/config/mapping"
+import { compareHeaders, normalizeCellValue } from "@/crawler/processors/normalize"
 import type {
   LangType,
   RawParseResult,
@@ -29,8 +30,6 @@ import {
   cleanText,
   cleanInnerHtml,
   toTextValue,
-  compareHeaders,
-  normalizeCellValue,
   parseBrSeparatedValues,
   parseDatasetIdsFromCell,
 } from "./utils"

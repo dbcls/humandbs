@@ -53,6 +53,7 @@ import type {
   Publication,
   SearchableExperimentFields,
 } from "@/crawler/types"
+import { logger } from "@/crawler/utils/logger"
 
 // Criteria Validation
 
@@ -217,17 +218,9 @@ export const invertMolTableToDataset = (
     const extractedIds = molData.extractedDatasetIds
 
     if (!extractedIds) {
-      // Fallback for backward compatibility: use legacy extraction
-      const legacyIds = extractDatasetIdsFromMolData(molData)
-      for (const [, ids] of Object.entries(legacyIds)) {
-        if (ids) {
-          for (const id of ids) {
-            const existing = result.get(id) ?? []
-            existing.push(molData)
-            result.set(id, existing)
-          }
-        }
-      }
+      logger.warn("molecularData missing extractedDatasetIds", {
+        molDataId: molData.id?.text ?? "unknown",
+      })
       continue
     }
 

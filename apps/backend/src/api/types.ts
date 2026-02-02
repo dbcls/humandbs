@@ -986,13 +986,6 @@ export const WorkflowResponseSchema = z.object({
 })
 export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>
 
-/**
- * Status transition response (legacy, kept for reference)
- * @deprecated Use WorkflowResponseSchema instead
- */
-export const StatusTransitionResponseSchema = WorkflowResponseSchema
-export type StatusTransitionResponse = z.infer<typeof StatusTransitionResponseSchema>
-
 // === Utility Types ===
 
 /**

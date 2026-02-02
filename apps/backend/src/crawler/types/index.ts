@@ -141,6 +141,3 @@ export type {
   NormalizeOneResult,
   CrawlHumIdResult,
 } from "./cli"
-
-// Re-export DoiSearchResult from api module
-export type { DoiSearchResult, DoiCacheEntry } from "@/crawler/api/doi"
