@@ -48,9 +48,9 @@ function Card({
         className={cn(
           "relative",
           {
-            "mt-4": !!caption && captionSize === "sm",
-            "mt-8": !!caption && captionSize === "default",
+            "mt-3": !!caption && captionSize === "sm",
             "mt-10": !!caption && captionSize === "lg",
+            "mt-4": !!caption && captionSize === "default",
           },
           containerClassName
         )}

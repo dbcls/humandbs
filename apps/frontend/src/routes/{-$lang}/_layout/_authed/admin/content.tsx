@@ -22,9 +22,9 @@ function RouteComponent() {
   return (
     <>
       <Card className="w-cms-list-panel flex h-full flex-col" caption="Content">
+        <p className="mb-5 text-sm">"Oprhan pages" list</p>
         <Suspense fallback={<Skeleton />}>
           <ContentList
-            onClickAdd={() => {}}
             selectedContentId={selectedContentId}
             onSelectContent={setSelectedContentId}
           />

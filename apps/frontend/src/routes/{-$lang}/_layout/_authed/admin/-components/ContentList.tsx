@@ -4,16 +4,14 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-
-import { Button } from "@/components/ui/button";
-import useConfirmationStore from "@/stores/confirmationStore";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import z from "zod";
-import { Input } from "@/components/Input";
 
+import { Input } from "@/components/Input";
 import { ListItem } from "@/components/ListItem";
 import { TrashButton } from "@/components/TrashButton";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -21,18 +19,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
-import { DOCUMENT_VERSION_STATUS, DocVersionStatus } from "@/db/schema";
-import { ContentItem, DocumentVersionStatus } from "@/db/types";
+import { localeSchema } from "@/config/i18n-config";
 import {
   $createContentItem,
   $deleteContentItem,
   $validateContentId,
-  ContentItemResponse,
   ContentItemsListItem,
-  ContentTranslationResponse,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
+import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { StatusTag, Tag } from "./StatusTag";
@@ -40,11 +35,9 @@ import { StatusTag, Tag } from "./StatusTag";
 export function ContentList({
   selectedContentId,
   onSelectContent,
-  onClickAdd,
 }: {
   selectedContentId: string | null;
   onSelectContent: (contentId: string | null) => void;
-  onClickAdd: () => void;
 }) {
   const queryClient = useQueryClient();
 
@@ -92,67 +85,68 @@ export function ContentList({
   }
 
   return (
-    <ul>
-      <li className="mb-5">
-        <AddNewDialog />
-      </li>
-      {contents.map((content) => {
-        const isActive = content.id === selectedContentId;
+    <>
+      <AddNewDialog />
 
-        const langs = [
-          ...new Set(content.translations.map((t) => t.lang)),
-        ].sort();
+      <ul>
+        {contents.map((content) => {
+          const isActive = content.id === selectedContentId;
 
-        const showItems = langs.map((l) => {
-          const item =
-            content.translations.find(
-              (tr) => tr.status === "published" && tr.lang === l
-            ) ||
-            content.translations.find(
-              (tr) => tr.status === "draft" && tr.lang === l
-            );
-          return item as NonNullable<
-            ContentItemsListItem["translations"][number]
-          >;
-        });
+          const langs = [
+            ...new Set(content.translations.map((t) => t.lang)),
+          ].sort();
 
-        return (
-          <ListItem
-            onClick={() => onSelectContent(content.id)}
-            key={content.id}
-            isActive={isActive}
-          >
-            <div className="text-sm font-medium">
-              <span>{content.id}</span>
-              <ul className="space-y-1">
-                {showItems.map((tr) => {
-                  return (
-                    <li
-                      key={tr.lang}
-                      className="flex items-center gap-1 text-xs"
-                    >
-                      <Tag tag={tr.lang} isActive={isActive} />
+          const showItems = langs.map((l) => {
+            const item =
+              content.translations.find(
+                (tr) => tr.status === "published" && tr.lang === l
+              ) ||
+              content.translations.find(
+                (tr) => tr.status === "draft" && tr.lang === l
+              );
+            return item as NonNullable<
+              ContentItemsListItem["translations"][number]
+            >;
+          });
 
-                      <StatusTag status={tr.status} isActive={isActive} />
-
-                      <span>{tr.title}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            <TrashButton
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClickDeleteContentItem(content.id);
-              }}
+          return (
+            <ListItem
+              onClick={() => onSelectContent(content.id)}
+              key={content.id}
               isActive={isActive}
-            />
-          </ListItem>
-        );
-      })}
-    </ul>
+            >
+              <div className="text-sm font-medium">
+                <span>{content.id}</span>
+                <ul className="space-y-1">
+                  {showItems.map((tr) => {
+                    return (
+                      <li
+                        key={tr.lang}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <Tag tag={tr.lang} isActive={isActive} />
+
+                        <StatusTag status={tr.status} isActive={isActive} />
+
+                        <span>{tr.title}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <TrashButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClickDeleteContentItem(content.id);
+                }}
+                isActive={isActive}
+              />
+            </ListItem>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -197,7 +191,7 @@ function AddNewDialog() {
       contentId: "",
     },
 
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
     },
   });
@@ -213,7 +207,7 @@ function AddNewDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <AddNewButton />
+        <AddNewButton className="mb-5" />
       </DialogTrigger>
       <DialogContent>
         <DialogTitle className="text-base">Add Content</DialogTitle>

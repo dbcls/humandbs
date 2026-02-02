@@ -1,19 +1,19 @@
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { LucideBell, Trash2Icon } from "lucide-react";
+import { useLocale, useTranslations } from "use-intl";
+
 import { Card } from "@/components/Card";
 import { ListItem } from "@/components/ListItem";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { TrashButton } from "@/components/TrashButton";
 import {
   $deleteNewsItem,
   getNewsItemsQueryOptions,
   NewsItemResponse,
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { LucideBell, Trash2Icon } from "lucide-react";
-import { useLocale, useTranslations } from "use-intl";
-import { Tag } from "./StatusTag";
+
 import { AddNewButton } from "./AddNewButton";
-import { TrashButton } from "@/components/TrashButton";
+import { Tag } from "./StatusTag";
 
 export function NewsItemsList({
   onClickAdd,
@@ -44,7 +44,7 @@ export function NewsItemsList({
         await $deleteNewsItem({ data: { id: item.id } });
         queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
       },
-      onCancel: () => {},
+
       cancelLabel: t("cancel"),
       actionLabel: (
         <>
@@ -61,10 +61,8 @@ export function NewsItemsList({
       className="w-cms-list-panel flex h-full flex-col"
       containerClassName="overflow-auto flex-1 max-h-full"
     >
+      <AddNewButton className="mb-5" onClick={onClickAdd} />
       <ul>
-        <li className="mb-5">
-          <AddNewButton onClick={onClickAdd} />
-        </li>
         {newsItems.map((item) => {
           const isActive = item.id === selectedNewsItem?.id;
           return (
