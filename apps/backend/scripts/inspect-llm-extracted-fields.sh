@@ -18,7 +18,7 @@ mkdir -p "$OUT_DIR"
 
 # --- LLM-extracted fields (experiment-level, from experiments[].searchable) ---
 
-extract_field() {
+extract_scalar() {
   local field="$1"
   local output_name="$2"
 
@@ -26,42 +26,69 @@ extract_field() {
   jq -r ".experiments[]?.searchable.$field // empty" "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/$output_name.txt"
 }
 
+extract_array() {
+  local field="$1"
+  local output_name="$2"
+
+  echo "  - $output_name"
+  jq -r ".experiments[]?.searchable.${field}[]? // empty" "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/$output_name.txt"
+}
+
 echo "Extracting LLM-extracted fields from experiments[].searchable..."
 
-# Subject/sample info
-extract_field "subjectCount" "subjectCount"
-extract_field "subjectCountType" "subjectCountType"
-extract_field "healthStatus" "healthStatus"
+# --- Subject/sample info ---
+extract_scalar "subjectCount" "subjectCount"
+extract_scalar "subjectCountType" "subjectCountType"
+extract_scalar "healthStatus" "healthStatus"
 
-# Diseases (array of {label, icd10})
+# --- Disease info (array of {label, icd10}) ---
 echo "  - diseases"
 jq -r '.experiments[]?.searchable.diseases[]? | if .icd10 then "\(.label) (\(.icd10))" else .label end' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/diseases.txt"
 
-# Biological sample info
-extract_field 'tissues[]?' "tissues"
-extract_field "isTumor" "isTumor"
-extract_field "cellLine" "cellLine"
-extract_field "population" "population"
+# --- Biological sample info ---
+extract_array "tissues" "tissues"
+extract_scalar "isTumor" "isTumor"
+extract_array "cellLine" "cellLine"
+extract_array "population" "population"
 
-# Experimental method
-extract_field "assayType" "assayType"
-extract_field 'libraryKits[]?' "libraryKits"
+# --- Demographics ---
+extract_scalar "sex" "sex"
+extract_scalar "ageGroup" "ageGroup"
 
-# Platform
-extract_field "platformVendor" "platformVendor"
-extract_field "platformModel" "platformModel"
-extract_field "readType" "readType"
-extract_field "readLength" "readLength"
+# --- Experimental method ---
+extract_array "assayType" "assayType"
+extract_array "libraryKits" "libraryKits"
 
-# Target region
-extract_field "targets" "targets"
+# --- Platform (array of {vendor, model}) ---
+echo "  - platforms (vendor)"
+jq -r '.experiments[]?.searchable.platforms[]?.vendor // empty' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/platforms_vendor.txt"
+echo "  - platforms (model)"
+jq -r '.experiments[]?.searchable.platforms[]?.model // empty' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/platforms_model.txt"
+echo "  - platforms (combined)"
+jq -r '.experiments[]?.searchable.platforms[]? | "\(.vendor) / \(.model)"' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/platforms_combined.txt"
 
-# Data info
-extract_field 'fileTypes[]?' "fileTypes"
-echo "  - dataVolume"
-jq -r '.experiments[]?.searchable.dataVolume? | select(. != null) | "\(.value) \(.unit)"' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/dataVolume.txt"
+extract_scalar "readType" "readType"
+extract_scalar "readLength" "readLength"
 
-# Policies (rule-based, not LLM-extracted, but included for completeness)
+# --- Sequencing quality ---
+extract_scalar "sequencingDepth" "sequencingDepth"
+extract_scalar "targetCoverage" "targetCoverage"
+extract_array "referenceGenome" "referenceGenome"
+
+# --- Variant data ---
+echo "  - variantCounts"
+jq -r '.experiments[]?.searchable.variantCounts? | select(. != null) | "snv=\(.snv // "null"), indel=\(.indel // "null"), cnv=\(.cnv // "null"), sv=\(.sv // "null"), total=\(.total // "null")"' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/variantCounts.txt"
+extract_scalar "hasPhenotypeData" "hasPhenotypeData"
+
+# --- Target region ---
+extract_scalar "targets" "targets"
+
+# --- Data info ---
+extract_array "fileTypes" "fileTypes"
+extract_array "processedDataTypes" "processedDataTypes"
+extract_scalar "dataVolumeGb" "dataVolumeGb"
+
+# --- Policies (rule-based, not LLM-extracted, but included for completeness) ---
 echo "  - policies"
 jq -r '.experiments[]?.searchable.policies[]? | "\(.id): \(.name.en // .name.ja)"' "$JSON_DIR"/*.json 2>/dev/null | sort | uniq > "$OUT_DIR/policies.txt"
 

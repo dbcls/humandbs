@@ -19,7 +19,7 @@
  *   bun run crawler:structure                    # Structure all humIds
  *   bun run crawler:structure --hum-id hum0001   # Structure specific humId only
  */
-import { readdirSync } from "fs"
+import { existsSync, readdirSync, rmSync } from "fs"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
@@ -55,6 +55,7 @@ import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import {
   getNormalizedDir,
+  getStructuredDatasetDir,
   readNormalizedJson,
   writeStructuredResearch,
   writeStructuredResearchVersion,
@@ -507,6 +508,21 @@ const processHumId = (humId: string): ProcessResult => {
 
 // Main function
 
+// Clear dataset directory (only for full processing)
+
+const clearDatasetDirectory = (): void => {
+  const dir = getStructuredDatasetDir()
+  if (!existsSync(dir)) return
+
+  const files = readdirSync(dir).filter(f => f.endsWith(".json"))
+  for (const file of files) {
+    rmSync(`${dir}/${file}`)
+  }
+  logger.info(`Cleared ${files.length} dataset files from ${dir}`)
+}
+
+// Main function
+
 const main = (): void => {
   const args = parseArgs()
   const humIds = discoverHumIds(args.humId)
@@ -514,6 +530,11 @@ const main = (): void => {
   if (humIds.length === 0) {
     logger.info("No normalized JSON files found. Run 'bun run crawler:normalize' first.")
     return
+  }
+
+  // Clear dataset directory for full processing to remove stale files
+  if (!args.humId) {
+    clearDatasetDirectory()
   }
 
   logger.info(`Starting structure: ${humIds.length} humId(s)`)

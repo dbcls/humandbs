@@ -66,6 +66,7 @@ export type FacetFieldName =
   | "population"
   | "processedDataTypes"
   | "referenceGenome"
+  | "targets"
   | "tissues"
 
 /** All facet field names */
@@ -79,6 +80,7 @@ export const FACET_FIELD_NAMES: FacetFieldName[] = [
   "population",
   "processedDataTypes",
   "referenceGenome",
+  "targets",
   "tissues",
 ]
 
@@ -106,6 +108,17 @@ export const extractValuesFromSearchable = (
     const filtered = values.filter(v => v && v.trim() !== "")
     if (filtered.length > 0) {
       result.set(name, filtered)
+    }
+  }
+
+  // String fields (single value)
+  const stringFields: { name: FacetFieldName; value: string | null }[] = [
+    { name: "targets", value: searchable.targets },
+  ]
+
+  for (const { name, value } of stringFields) {
+    if (value && value.trim() !== "") {
+      result.set(name, [value])
     }
   }
 

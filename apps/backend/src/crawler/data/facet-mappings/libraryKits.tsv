@@ -12,6 +12,8 @@
 10× Chromium Single Cell 3′ v3 Reagent Kit	10x Chromium Single Cell 3' v3
 10× Genomics, Chromium Next GEM Single Cell 3' v3.1	Chromium Next GEM Single Cell 3' v3.1
 10× Genomics, Chromium Next GEM Single Cell 5' v2	Chromium Next GEM Single Cell 5' v2
+10x Chromium Single Cell 3' v2	10x Chromium Single Cell 3' v2
+10x Chromium Single Cell 3' v3	10x Chromium Single Cell 3' v3
 10x Chromium Single Cell 3′ v3	10x Chromium Single Cell 3' v3
 10X Genomics Chromium	Chromium Platform
 10x Genomics Chromium Genome Sequencing Solution	Chromium Genome Library Kit
@@ -64,6 +66,7 @@ Agilent SureSelectXT RNA Target Enrichment for Illumina Multiplexed Sequencing	S
 Agilent V6 plus custom probes	SureSelect Human All Exon V6
 Amplicon	Amplicon-based Method
 Amplicon Sequencing	Amplicon-based Sequencing
+Amplicon-based Method	Amplicon-based Method
 AmpliSeq Custom DNA Panel for Illumina	AmpliSeq Custom Panel
 AmpliSeq Custom Panel	AmpliSeq Custom Panel
 AmpliSeq Library Plus for Illumina	AmpliSeq Library Plus for Illumina
@@ -172,6 +175,7 @@ Chromium Next GEM Single Cell V(D)J Reagent Kits v1.1	Chromium Next GEM Single C
 Chromium Next GEM Single Cell V(D)J Reagent Kits v1.1 (10x Genomics)	Chromium Next GEM Single Cell V(D)J v1.1
 Chromium Next GEM Single Cell V(D)J v1.1	Chromium Next GEM Single Cell V(D)J v1.1
 Chromium NextGEM Single Cell ATAC Reagent Kits v1.1	Chromium Next GEM Single Cell ATAC v1.1
+Chromium Platform	Chromium Platform
 Chromium Single Cell 3'	Chromium Single Cell 3'
 Chromium single cell 3' kit (10XGenomics)	Chromium Single Cell 3'
 Chromium single cell 3' kit version 3 (10x Genomics)	Chromium Single Cell 3' v3
@@ -408,6 +412,8 @@ KAPA Hyper Preparation kit	KAPA Hyper Prep Kit
 KAPA HyperChoice Probes	KAPA HyperChoice Probes
 KAPA HyperPlus Kit	KAPA HyperPlus Kit
 KAPA HyperPlus Library Preparation Kit (Roche)	KAPA HyperPlus Library Preparation Kit (Roche)
+KAPA HyperPlus Library Preparation Kit (Roche) - for ATAC-seq	KAPA HyperPlus Library Preparation Kit (Roche) - for ATAC-seq
+KAPA HyperPlus Library Preparation Kit (Roche) - for RNA-seq	KAPA HyperPlus Library Preparation Kit (Roche) - for RNA-seq
 KAPA HyperPlus Library Preparation Kit (Roche) – for ATAC‑seq	KAPA HyperPlus Library Preparation Kit (Roche) - for ATAC-seq
 KAPA HyperPlus Library Preparation Kit (Roche) – for RNA‑seq	KAPA HyperPlus Library Preparation Kit (Roche) - for RNA-seq
 KAPA Library Preparation Kit	KAPA Library Preparation Kit
@@ -591,6 +597,7 @@ SMARTer ICELL8 Reagent 3' DE Reagent Kit	SMARTer ICELL8 3' DE Reagent Kit
 SMARTer Kit	SMARTer Kit
 SMARTer smRNA-Seq Kit	SMARTer smRNA-Seq Kit for Illumina
 SMARTer smRNA-Seq Kit for Illumina	SMARTer smRNA-Seq Kit for Illumina
+SMARTer Stranded Total RNA-Seq Kit	SMARTer Stranded Total RNA-Seq Kit
 SMARTer Stranded Total RNA-Seq Kit v2 - Pico Input Mammalian	SMARTer Stranded Total RNA-Seq Kit v2 - Pico Input Mammalian
 SMARTer Stranded Total RNA‑Seq Kit (Takara Bio)	SMARTer Stranded Total RNA-Seq Kit
 SMARTer ThruPLEX DNA-seq Kit	SMARTer ThruPLEX DNA-seq Kit
@@ -863,6 +870,7 @@ Visium CytAssist Spatial Gene Expression for FFPE	Visium CytAssist Spatial Gene 
 Visium CytAssist Spatial Gene Expression for FFPE, Human Transcriptome	Visium CytAssist Spatial Gene Expression for FFPE
 Visium CytAssist Spatial Gene Expression for FFPE, human transcriptome probe kit	Visium CytAssist Spatial Gene Expression for FFPE
 Visium Gene Expression Kit	Visium Gene Expression Reagent Kit
+Visium Gene Expression Reagent Kit	Visium Gene Expression Reagent Kit
 Visium Human Transcriptome Probe Kit	Visium Human Transcriptome Probe Kit
 Visium Spatial for FFPE Gene Expression Kit	Visium Spatial Gene Expression for FFPE
 Visium Spatial Gene Expression	Visium Spatial Gene Expression
@@ -885,11 +893,3 @@ xGen Exome Research Panel	xGen Exome Research Panel
 xGen Gene Capture Pools	xGen Gene Capture Pools
 xGen Prism DNA Library Prep Kit	xGen Prism DNA Library Prep Kit
 ZYMO Research EZ DNA Methylation-Gold Kit	EZ DNA Methylation-Gold Kit
-10x Chromium Single Cell 3' v2	10x Chromium Single Cell 3' v2
-10x Chromium Single Cell 3' v3	10x Chromium Single Cell 3' v3
-Amplicon-based Method	Amplicon-based Method
-Chromium Platform	Chromium Platform
-KAPA HyperPlus Library Preparation Kit (Roche) - for ATAC-seq	KAPA HyperPlus Library Preparation Kit (Roche) - for ATAC-seq
-KAPA HyperPlus Library Preparation Kit (Roche) - for RNA-seq	KAPA HyperPlus Library Preparation Kit (Roche) - for RNA-seq
-SMARTer Stranded Total RNA-Seq Kit	SMARTer Stranded Total RNA-Seq Kit
-Visium Gene Expression Reagent Kit	Visium Gene Expression Reagent Kit

@@ -19,7 +19,7 @@ Step 6: llm-extract (このステップ)
     ↓ experiments[].searchable に追加
 Step 7: icd10-normalize (diseases[].icd10 を正規化)
     ↓
-Step 9: facet-normalize (assayType, tissues 等を正規化)
+Step 9: facet-normalize (assayType, tissues, targets 等を正規化、数値フィールド異常値を null 化)
 ```
 
 ### 入出力
@@ -50,16 +50,16 @@ Step 9: facet-normalize (assayType, tissues 等を正規化)
 | libraryKits | string[] | ライブラリキット名 | LLM |
 | platforms | PlatformInfo[] | プラットフォーム (vendor + model) | LLM |
 | readType | enum \| null | "single-end" / "paired-end" | LLM |
-| readLength | number \| null | リード長 (bp) | LLM |
-| sequencingDepth | number \| null | シーケンシング深度 (例: 30x → 30) | LLM |
-| targetCoverage | number \| null | ターゲットカバレッジ (%) | LLM |
+| readLength | number \| null | リード長 (bp)。0以下は null 化 | LLM |
+| sequencingDepth | number \| null | シーケンシング深度 (例: 30x → 30)。0以下は null 化 | LLM |
+| targetCoverage | number \| null | ターゲットカバレッジ (%)。0以下は null 化 | LLM |
 | referenceGenome | string[] | リファレンスゲノム | LLM |
 | variantCounts | VariantCounts \| null | バリアント数 (snv/indel/cnv/sv/total) | LLM |
 | hasPhenotypeData | boolean \| null | 表現型データの有無 | LLM |
-| targets | string \| null | ターゲット領域 | LLM |
+| targets | string \| null | ターゲット領域。空文字は null 化 | LLM + facet-normalize |
 | fileTypes | string[] | ファイル形式 (FASTQ, BAM など) | LLM |
 | processedDataTypes | string[] | 処理済みデータ形式 (vcf, cram など) | LLM |
-| dataVolumeGb | number \| null | データ容量 (GB) | LLM |
+| dataVolumeGb | number \| null | データ容量 (GB)。負値は null 化 | LLM |
 | policies | NormalizedPolicy[] | ポリシー情報 | **ルールベース** (LLM 不使用) |
 
 ### 補助型
@@ -101,7 +101,8 @@ experiments[].searchable に格納
       diseases[].icd10 を正規化
            ↓
     Step 9: facet-normalize
-      assayType, tissues 等を正規化
+      assayType, tissues, targets 等を正規化
+      数値フィールド異常値 (負値・ゼロ) を null 化
 ```
 
 ## プロンプト設計

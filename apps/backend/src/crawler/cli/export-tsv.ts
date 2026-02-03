@@ -707,7 +707,7 @@ export const exportDatasetLatestTsv = (options: ExportOptions): void => {
   }
 
   const datasets = readJsonFiles<SearchableDataset>(dir, filter)
-    .filter(d => d.version === latestVersionMap.get(d.humId))
+    .filter(d => d.humVersionId === latestVersionMap.get(d.humId))
     .sort(sortByHumIdVersionDataset)
 
   const rows = datasets.map(d => datasetToRow(d) as string[])
@@ -736,7 +736,7 @@ export const exportExperimentLatestTsv = (options: ExportOptions): void => {
   }
 
   const datasets = readJsonFiles<SearchableDataset>(dir, filter)
-    .filter(d => d.version === latestVersionMap.get(d.humId))
+    .filter(d => d.humVersionId === latestVersionMap.get(d.humId))
     .sort(sortByHumIdVersionDataset)
 
   const rows: string[][] = []

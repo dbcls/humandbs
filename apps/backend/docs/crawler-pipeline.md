@@ -27,22 +27,22 @@ Step 10-11: TSV エクスポート -> 手動編集 -> TSV インポート
 
 ```plaintext
 crawler-results/
-├── html/                     ← Step 1 出力
+├── html/                     <- Step 1 出力
 │   ├── detail-{humVersionId}-{lang}.html
 │   └── release-{humVersionId}-{lang}-release.html
 │
-├── detail-json/              ← Step 2 出力
+├── detail-json/              <- Step 2 出力
 │   └── {humVersionId}-{lang}.json (RawParseResult)
 │
-├── normalized-json/          ← Step 3 出力
+├── normalized-json/          <- Step 3 出力
 │   └── {humVersionId}-{lang}.json (NormalizedParseResult)
 │
-├── structured-json/          ← Step 4-11 出力 (in-place 更新)
+├── structured-json/          <- Step 4-11 出力 (in-place 更新)
 │   ├── research/{humId}.json
 │   ├── research-version/{humVersionId}.json
 │   └── dataset/{datasetId}-{version}.json
 │
-└── tsv/                      ← Step 10 出力
+└── tsv/                      <- Step 10 出力
     ├── research.tsv
     ├── dataset.tsv
     ├── experiment.tsv
@@ -129,7 +129,7 @@ bun run crawler:structure
 | 出力 | `crawler-results/structured-json/` |
 | 処理内容 | ja/en を統合したマルチリンガル構造に変換。Research/ResearchVersion/Dataset オブジェクトを生成。 |
 
-**注意**: ID 変更時は `rm -rf crawler-results/structured-json/dataset/*.json` で残骸を削除してから実行する。
+**注意**: `--hum-id` 指定なしの全体処理時は、`structured-json/dataset/` 内の既存ファイルを自動削除する（ID 変更時の残骸を防ぐため）。
 
 ### Step 5: enrich
 
@@ -240,7 +240,7 @@ bun run crawler:facet-normalize
 |------|------|
 | 入力 | TSV マッピング + `crawler-results/structured-json/dataset/` |
 | 出力 | 同じディレクトリに上書き (in-place) |
-| 処理内容 | `__PENDING__` 値は未処理で使用。マッピングされない値の警告表示。 |
+| 処理内容 | TSV マッピングに基づく正規化。`__PENDING__` 値は未処理で使用。数値フィールドの異常値 (負値・ゼロ) は null に変換。 |
 
 ### Step 10: export-tsv
 
@@ -285,7 +285,7 @@ bun run crawler:import-tsv
 | Step 5: enrich | 外部 API メタデータ付与 |
 | Step 6: llm-extract | searchable フィールド追加 |
 | Step 7: icd10-normalize | diseases[].icd10 正規化 |
-| Step 9: facet-normalize | assayType, tissues 等を正規化 |
+| Step 9: facet-normalize | assayType, tissues, targets 等を正規化。数値フィールド異常値を null 化 |
 | Step 11: import-tsv | TSV からの編集内容反映 |
 
 ## 部分実行
@@ -312,7 +312,6 @@ bun run crawler:export-tsv --hum-id hum0001
 bun run crawler:download-html && \
 bun run crawler:parse-html && \
 bun run crawler:normalize && \
-rm -rf crawler-results/structured-json/dataset/*.json && \
 bun run crawler:structure && \
 bun run crawler:enrich && \
 bun run crawler:llm-extract && \
@@ -323,12 +322,6 @@ bun run crawler:export-tsv
 ```
 
 ## トラブルシューティング
-
-### 古い Dataset JSON が残っている
-
-**症状**: ID が変更されたのに古い JSON が残り、ES にロードされる。
-
-**対処**: Step 4 の前に `rm -rf crawler-results/structured-json/dataset/*.json` を実行。
 
 ### LLM 抽出がスキップされる
 
@@ -350,3 +343,26 @@ bun run crawler:export-tsv
 
 1. 編集不可フィールド (humId, datasetId など)を編集していないか確認
 2. `import-tsv` 実行後に `es:load-docs` を実行
+
+## デバッグ用スクリプト
+
+`scripts/` ディレクトリにパイプライン各段階の出力を分析するヘルパースクリプトがある。
+
+| スクリプト | 対象ステップ | 出力先 |
+|-----------|------------|--------|
+| `inspect-parsed-json.sh` | Step 2 (parse-html) | `crawler-results/parsed-field-analysis/` |
+| `inspect-normalized-json.sh` | Step 3 (normalize) | `crawler-results/normalized-field-analysis/` |
+| `inspect-llm-extracted-fields.sh` | Step 6 (llm-extract) | `crawler-results/llm-extracted-field-analysis/` |
+
+各スクリプトは、対象 JSON ファイルからフィールド値を抽出し、一意の値をテキストファイルに出力する。パース結果や LLM 抽出結果の確認、表記揺れの発見に使用する。
+
+```bash
+# Step 2 のパース結果を分析
+./scripts/inspect-parsed-json.sh
+
+# Step 3 の正規化結果を分析
+./scripts/inspect-normalized-json.sh
+
+# Step 6 の LLM 抽出結果を分析
+./scripts/inspect-llm-extracted-fields.sh
+```

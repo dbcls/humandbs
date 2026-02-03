@@ -370,6 +370,62 @@ export const normalizeExperimentSearchable = (
     }
   }
 
+  // String fields (single value)
+  const stringFields: { name: FacetFieldName; key: keyof SearchableExperimentFields }[] = [
+    { name: "targets", key: "targets" },
+  ]
+
+  for (const { name, key } of stringFields) {
+    const mapping = mappings.get(name)
+    if (!mapping) continue
+
+    const value = searchable[key] as string | null
+    const normalized = normalizeStringField(value, mapping)
+
+    if (normalized.unmapped) {
+      unmappedValues.set(name, [normalized.unmapped])
+    }
+    if (normalized.pending) {
+      pendingValues.set(name, [normalized.pending])
+    }
+
+    // Check if changed
+    if (value !== normalized.normalized) {
+      (result as Record<string, unknown>)[key] = normalized.normalized
+      updated = true
+    }
+  }
+
+  // dataVolumeGb: convert negative values to null
+  if (searchable.dataVolumeGb !== null && searchable.dataVolumeGb < 0) {
+    result.dataVolumeGb = null
+    updated = true
+  }
+
+  // readLength: convert zero and negative values to null
+  if (searchable.readLength !== null && searchable.readLength <= 0) {
+    result.readLength = null
+    updated = true
+  }
+
+  // sequencingDepth: convert zero and negative values to null
+  if (searchable.sequencingDepth !== null && searchable.sequencingDepth <= 0) {
+    result.sequencingDepth = null
+    updated = true
+  }
+
+  // targetCoverage: convert zero and negative values to null
+  if (searchable.targetCoverage !== null && searchable.targetCoverage <= 0) {
+    result.targetCoverage = null
+    updated = true
+  }
+
+  // targets: convert empty string to null
+  if (result.targets === "") {
+    result.targets = null
+    updated = true
+  }
+
   return {
     updated,
     unmappedValues,
@@ -420,6 +476,45 @@ export const applyNormalizationResult = (
     const platforms = searchable.platforms ?? []
     const normalizedResult = normalizePlatforms(platforms, platformVendorMapping, platformModelMapping)
     normalized.platforms = normalizedResult.normalized
+  }
+
+  // String fields (single value)
+  const stringFields: { name: FacetFieldName; key: keyof SearchableExperimentFields }[] = [
+    { name: "targets", key: "targets" },
+  ]
+
+  for (const { name, key } of stringFields) {
+    const mapping = mappings.get(name)
+    if (!mapping) continue
+
+    const value = searchable[key] as string | null
+    const normalizedResult = normalizeStringField(value, mapping);
+    (normalized as Record<string, unknown>)[key] = normalizedResult.normalized
+  }
+
+  // dataVolumeGb: convert negative values to null
+  if (searchable.dataVolumeGb !== null && searchable.dataVolumeGb < 0) {
+    normalized.dataVolumeGb = null
+  }
+
+  // readLength: convert zero and negative values to null
+  if (searchable.readLength !== null && searchable.readLength <= 0) {
+    normalized.readLength = null
+  }
+
+  // sequencingDepth: convert zero and negative values to null
+  if (searchable.sequencingDepth !== null && searchable.sequencingDepth <= 0) {
+    normalized.sequencingDepth = null
+  }
+
+  // targetCoverage: convert zero and negative values to null
+  if (searchable.targetCoverage !== null && searchable.targetCoverage <= 0) {
+    normalized.targetCoverage = null
+  }
+
+  // targets: convert empty string to null
+  if (normalized.targets === "") {
+    normalized.targets = null
   }
 
   return normalized

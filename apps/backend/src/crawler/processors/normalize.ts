@@ -257,11 +257,12 @@ const normalizeOnePolicyText = (
   }
 
   // Check for custom policy pattern (e.g., "hum0184 policy")
-  const customMatch = /hum\d+\s*policy/i.exec(trimmed)
+  const customMatch = /(hum\d+)\s*policy/i.exec(trimmed)
   if (customMatch) {
+    const humId = customMatch[1].toLowerCase()
     return {
       id: "custom-policy",
-      name: { ja: trimmed, en: trimmed },
+      name: { ja: humId, en: humId },
       url: null,
     }
   }
