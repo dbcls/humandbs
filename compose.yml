@@ -30,6 +30,7 @@ services:
       backend:
         condition: service_started
     environment:
+      - NODE_ENV=${HUMANDBS_NODE_ENV}
       # Container network (fixed)
       - HUMANDBS_POSTGRES_HOST=cms-db
       - HUMANDBS_POSTGRES_PORT=5432
@@ -64,7 +65,11 @@ services:
       dockerfile: Dockerfile
     image: ${HUMANDBS_CONTAINER_PREFIX}-app
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-backend
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
     environment:
+      - NODE_ENV=${HUMANDBS_NODE_ENV}
       # Container network (fixed)
       - HUMANDBS_ES_HOST=elasticsearch
       - HUMANDBS_ES_PORT=9200
@@ -107,11 +112,22 @@ services:
         soft: -1
         hard: -1
     mem_limit: ${HUMANDBS_ES_MEM_LIMIT}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      interval: 5s
+      retries: 12
+      start_period: 10s
+      timeout: 10s
     init: true
 
   nginx:
     image: docker.io/library/nginx:1.27.0
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-nginx
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     ports:

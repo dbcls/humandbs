@@ -23,6 +23,10 @@ export default defineConfig([
         ...globals.browser,
         ...globals.serviceworker,
       },
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     plugins: {
       "react-hooks": pluginReactHooks,
