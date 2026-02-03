@@ -158,7 +158,7 @@ describe("splitValue", () => {
       // With surrounding whitespace
       [" a , b , c ", ["a", "b", "c"], "whitespace around values"],
     ] as const)("%s -> %j (%s)", (input, expected, _desc) => {
-      expect(splitValue(input)).toEqual(expected)
+      expect(splitValue(input)).toEqual([...expected])
     })
   })
 

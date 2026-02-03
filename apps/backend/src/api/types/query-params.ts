@@ -9,36 +9,27 @@
 import { z } from "zod"
 
 import { LANG_TYPES, booleanFromString } from "@/api/types/common"
-import {
-  FacetItemSchema as FacetItemSchemaFromFacets,
-  FacetsMapSchema as FacetsMapSchemaFromFacets,
-  type FacetItem as FacetItemFromFacets,
-  type FacetsMap as FacetsMapFromFacets,
-} from "@/api/types/facets"
 import { RESEARCH_STATUS } from "@/api/types/workflow"
-
-// === Facets (re-exported from facets.ts for backwards compatibility) ===
-
-export const FacetItemSchema = FacetItemSchemaFromFacets
-export type FacetItem = FacetItemFromFacets
-
-export const FacetsMapSchema = FacetsMapSchemaFromFacets
-export type FacetsMap = FacetsMapFromFacets
 
 // === Common Query Schemas ===
 
 // Lang version query
 export const LangVersionQuerySchema = z.object({
-  lang: z.enum(LANG_TYPES).default("ja"),
-  version: z.string().regex(/^v\d+$/).nullable().optional(),
-  includeRawHtml: z.coerce.boolean().default(false),
+  lang: z.enum(LANG_TYPES).default("ja")
+    .describe("Response language for bilingual fields ('ja' or 'en')"),
+  version: z.string().regex(/^v\d+$/).nullable().optional()
+    .describe("Specific version to retrieve (e.g., 'v1', 'v2'). Defaults to latest version."),
+  includeRawHtml: z.coerce.boolean().default(false)
+    .describe("Include rawHtml fields in response (default: false). Useful for rich text editing."),
 })
 export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>
 
 // Lang query
 export const LangQuerySchema = z.object({
-  lang: z.enum(LANG_TYPES).default("ja"),
-  includeRawHtml: z.coerce.boolean().default(false),
+  lang: z.enum(LANG_TYPES).default("ja")
+    .describe("Response language for bilingual fields ('ja' or 'en')"),
+  includeRawHtml: z.coerce.boolean().default(false)
+    .describe("Include rawHtml fields in response (default: false). Useful for rich text editing."),
 })
 export type LangQuery = z.infer<typeof LangQuerySchema>
 
@@ -377,20 +368,32 @@ export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 // === Research Summary (for list view) ===
 
 export const ResearchSummarySchema = z.object({
-  humId: z.string(),
-  lang: z.enum(LANG_TYPES),
-  title: z.string(),
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001')"),
+  lang: z.enum(LANG_TYPES)
+    .describe("Language of text fields in this response ('ja' or 'en')"),
+  title: z.string()
+    .describe("Research title in the requested language"),
   versions: z.array(z.object({
-    version: z.string(),
-    releaseDate: z.string(),
-  })),
-  methods: z.string(),
-  datasetIds: z.array(z.string()),
-  typeOfData: z.array(z.string()),
-  platforms: z.array(z.string()),
-  targets: z.string(),
-  dataProvider: z.array(z.string()),
-  criteria: z.string(),
+    version: z.string()
+      .describe("Version identifier (e.g., 'v1', 'v2')"),
+    releaseDate: z.string()
+      .describe("ISO 8601 date when this version was released"),
+  })).describe("Available versions of this Research"),
+  methods: z.string()
+    .describe("Summary of research methods (plain text)"),
+  datasetIds: z.array(z.string())
+    .describe("IDs of datasets belonging to this Research"),
+  typeOfData: z.array(z.string())
+    .describe("Types of data available (aggregated from datasets)"),
+  platforms: z.array(z.string())
+    .describe("Sequencing platforms used (aggregated from datasets)"),
+  targets: z.string()
+    .describe("Summary of research targets (plain text)"),
+  dataProvider: z.array(z.string())
+    .describe("Names of data providers"),
+  criteria: z.string()
+    .describe("Data access criteria summary (e.g., 'Controlled-access')"),
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
 

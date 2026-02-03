@@ -130,51 +130,76 @@ export type NormalizedDisease = z.infer<typeof NormalizedDiseaseSchema>
  */
 export const SearchableExperimentFieldsSchema = z.object({
   // Subject/sample info
-  subjectCount: z.number().nullable(),
-  subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable(),
-  healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable(),
+  subjectCount: z.number().nullable()
+    .describe("Number of subjects/samples in this experiment"),
+  subjectCountType: z.enum(["individual", "sample", "mixed"]).nullable()
+    .describe("Type of subject count: 'individual', 'sample', or 'mixed'"),
+  healthStatus: z.enum(["healthy", "affected", "mixed"]).nullable()
+    .describe("Health status of subjects: 'healthy', 'affected', or 'mixed'"),
 
   // Disease info (multiple diseases supported)
-  diseases: z.array(NormalizedDiseaseSchema),
+  diseases: z.array(NormalizedDiseaseSchema)
+    .describe("Diseases associated with the experiment"),
 
   // Biological sample info
-  tissues: z.array(z.string()),
-  isTumor: z.boolean().nullable(),
-  cellLine: z.array(z.string()),
-  population: z.array(z.string()),
+  tissues: z.array(z.string())
+    .describe("Tissue types used (e.g., 'Blood', 'Liver')"),
+  isTumor: z.boolean().nullable()
+    .describe("Whether samples include tumor tissue"),
+  cellLine: z.array(z.string())
+    .describe("Cell line names if applicable"),
+  population: z.array(z.string())
+    .describe("Population groups (e.g., 'Japanese', 'East Asian')"),
 
   // Demographics
-  sex: z.enum(["male", "female", "mixed"]).nullable(),
-  ageGroup: z.enum(["infant", "child", "adult", "elderly", "mixed"]).nullable(),
+  sex: z.enum(["male", "female", "mixed"]).nullable()
+    .describe("Biological sex: 'male', 'female', or 'mixed'"),
+  ageGroup: z.enum(["infant", "child", "adult", "elderly", "mixed"]).nullable()
+    .describe("Age group: 'infant', 'child', 'adult', 'elderly', or 'mixed'"),
 
   // Experimental method
-  assayType: z.array(z.string()),
-  libraryKits: z.array(z.string()),
+  assayType: z.array(z.string())
+    .describe("Assay types (e.g., 'WGS', 'WES', 'RNA-seq')"),
+  libraryKits: z.array(z.string())
+    .describe("Library preparation kits used"),
 
   // Platform (nested for vendor/model relationship)
-  platforms: z.array(PlatformInfoSchema),
-  readType: z.enum(["single-end", "paired-end"]).nullable(),
-  readLength: z.number().nullable(),
+  platforms: z.array(PlatformInfoSchema)
+    .describe("Sequencing platforms used"),
+  readType: z.enum(["single-end", "paired-end"]).nullable()
+    .describe("Read type: 'single-end' or 'paired-end'"),
+  readLength: z.number().nullable()
+    .describe("Read length in base pairs"),
 
   // Sequencing quality
-  sequencingDepth: z.number().nullable(),
-  targetCoverage: z.number().nullable(),
-  referenceGenome: z.array(z.string()),
+  sequencingDepth: z.number().nullable()
+    .describe("Average sequencing depth (coverage)"),
+  targetCoverage: z.number().nullable()
+    .describe("Target region coverage percentage"),
+  referenceGenome: z.array(z.string())
+    .describe("Reference genome versions (e.g., 'GRCh38', 'GRCh37')"),
 
   // Target region
-  targets: z.string().nullable(),
+  targets: z.string().nullable()
+    .describe("Target regions or gene panels"),
 
   // Variant data
-  variantCounts: VariantCountsSchema.nullable(),
-  hasPhenotypeData: z.boolean().nullable(),
+  variantCounts: VariantCountsSchema.nullable()
+    .describe("Variant counts by type (SNV, indel, CNV, SV)"),
+  hasPhenotypeData: z.boolean().nullable()
+    .describe("Whether phenotype data is available"),
 
   // Data info
-  fileTypes: z.array(z.string()),
-  processedDataTypes: z.array(z.string()),
-  dataVolumeGb: z.number().nullable(),
+  fileTypes: z.array(z.string())
+    .describe("Available file types (e.g., 'FASTQ', 'BAM', 'VCF')"),
+  processedDataTypes: z.array(z.string())
+    .describe("Types of processed data available"),
+  dataVolumeGb: z.number().nullable()
+    .describe("Total data volume in gigabytes"),
 
   // Policies (rule-based, not LLM)
-  policies: z.array(NormalizedPolicySchema),
+  policies: z.array(NormalizedPolicySchema)
+    .describe("Data access policies applicable to this experiment"),
 })
 export type EsSearchableExperimentFields = z.infer<typeof SearchableExperimentFieldsSchema>
 
@@ -194,16 +219,26 @@ export type EsExperiment = z.infer<typeof EsExperimentSchema>
 // === ES Dataset Schema ===
 
 export const EsDatasetSchema = z.object({
-  datasetId: z.string(),
-  version: z.string(),
-  humId: z.string(),
-  humVersionId: z.string(),
-  versionReleaseDate: z.string(),
-  releaseDate: z.string(),
-  criteria: CriteriaCanonicalSchema,
-  typeOfData: BilingualTextSchema,
-  experiments: z.array(EsExperimentSchema),
-  originalMetadata: z.record(z.string(), z.unknown()).nullable().optional(),
+  datasetId: z.string()
+    .describe("Unique dataset identifier (e.g., 'JGAD000001')"),
+  version: z.string()
+    .describe("Dataset version (e.g., 'v1', 'v2')"),
+  humId: z.string()
+    .describe("Parent Research identifier (e.g., 'hum0001')"),
+  humVersionId: z.string()
+    .describe("Parent Research version identifier (e.g., 'hum0001.v1')"),
+  versionReleaseDate: z.string()
+    .describe("ISO 8601 date when this dataset version was released"),
+  releaseDate: z.string()
+    .describe("ISO 8601 date when the dataset was first released"),
+  criteria: CriteriaCanonicalSchema
+    .describe("Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'"),
+  typeOfData: BilingualTextSchema
+    .describe("Bilingual description of the type of data in this dataset"),
+  experiments: z.array(EsExperimentSchema)
+    .describe("Array of experiment records containing sample/sequencing metadata"),
+  originalMetadata: z.record(z.string(), z.unknown()).nullable().optional()
+    .describe("Original metadata preserved from the data source (for debugging/audit)"),
 })
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 
@@ -282,22 +317,37 @@ export const ResearchStatusSchema = z.enum(["draft", "review", "published", "del
 export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
 
 export const EsResearchSchema = z.object({
-  humId: z.string(),
-  url: BilingualTextSchema,
-  title: BilingualTextSchema,
-  summary: EsSummarySchema,
-  dataProvider: z.array(EsPersonSchema),
-  researchProject: z.array(EsResearchProjectSchema),
-  grant: z.array(EsGrantSchema),
-  relatedPublication: z.array(EsPublicationSchema),
-  controlledAccessUser: z.array(EsPersonSchema),
-  versionIds: z.array(z.string()),
-  latestVersion: z.string(),
-  datePublished: z.string(),
-  dateModified: z.string(),
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001'). Unique across all Research resources."),
+  url: BilingualTextSchema
+    .describe("URLs to the Research detail page (Japanese and English)"),
+  title: BilingualTextSchema
+    .describe("Research title in Japanese and English"),
+  summary: EsSummarySchema
+    .describe("Research summary including aims, methods, and targets"),
+  dataProvider: z.array(EsPersonSchema)
+    .describe("Data providers (researchers providing the data)"),
+  researchProject: z.array(EsResearchProjectSchema)
+    .describe("Related research projects"),
+  grant: z.array(EsGrantSchema)
+    .describe("Funding grants"),
+  relatedPublication: z.array(EsPublicationSchema)
+    .describe("Related publications (papers, preprints)"),
+  controlledAccessUser: z.array(EsPersonSchema)
+    .describe("Users with controlled access to the data"),
+  versionIds: z.array(z.string())
+    .describe("List of version identifiers (e.g., ['hum0001.v1', 'hum0001.v2'])"),
+  latestVersion: z.string()
+    .describe("Latest version number (e.g., 'v2')"),
+  datePublished: z.string()
+    .describe("ISO 8601 timestamp when the Research was first published"),
+  dateModified: z.string()
+    .describe("ISO 8601 timestamp when the Research was last modified"),
   // ES-specific fields (not in crawler Research)
-  status: ResearchStatusSchema,
-  uids: z.array(z.string()),
+  status: ResearchStatusSchema
+    .describe("Publication status: 'draft', 'review', 'published', or 'deleted'"),
+  uids: z.array(z.string())
+    .describe("Keycloak user IDs (sub) who can edit this Research"),
 })
 export type EsResearch = z.infer<typeof EsResearchSchema>
 
@@ -306,11 +356,17 @@ export type EsResearch = z.infer<typeof EsResearchSchema>
 // Note: DatasetRefSchema and DatasetRef are already exported in the first export block
 
 export const EsResearchVersionSchema = z.object({
-  humId: z.string(),
-  humVersionId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  datasets: z.array(DatasetRefSchema),
-  releaseNote: BilingualTextValueSchema,
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001')"),
+  humVersionId: z.string()
+    .describe("Research version identifier (e.g., 'hum0001.v1')"),
+  version: z.string()
+    .describe("Version number (e.g., 'v1', 'v2')"),
+  versionReleaseDate: z.string()
+    .describe("ISO 8601 date when this version was released"),
+  datasets: z.array(DatasetRefSchema)
+    .describe("References to datasets linked to this Research version"),
+  releaseNote: BilingualTextValueSchema
+    .describe("Bilingual release note describing changes in this version"),
 })
 export type EsResearchVersion = z.infer<typeof EsResearchVersionSchema>

@@ -125,7 +125,9 @@ describe("processors/mapping-table.ts", () => {
       }
       // Verify each entry in enMap matches expected
       for (const [key, value] of mapping.enMap) {
-        expect(value).toBe(expectedEnMap.get(key))
+        const expected = expectedEnMap.get(key)
+        expect(expected).toBeDefined()
+        expect(value).toBe(expected!)
       }
     })
 

@@ -17,10 +17,9 @@ import {
   EsResearchVersionDocSchema,
   DatasetVersionItemSchema,
 } from "@/api/types/es-docs"
-import { FacetsMapSchema, ResearchSummarySchema } from "@/api/types/query-params"
+import { FacetsMapSchema } from "@/api/types/facets"
+import { ResearchSummarySchema } from "@/api/types/query-params"
 import {
-  BaseResponseMetaSchema,
-  PaginationSchema,
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
@@ -57,18 +56,28 @@ export const ExperimentSchemaBase = z.object({
 
 // Dataset schema for API requests
 export const DatasetSchema = z.object({
-  datasetId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  humId: z.string(),
-  humVersionId: z.string(),
-  releaseDate: z.string(),
-  criteria: CriteriaCanonicalSchema,
+  datasetId: z.string()
+    .describe("Unique dataset identifier (e.g., 'JGAD000001')"),
+  version: z.string()
+    .describe("Dataset version (e.g., 'v1', 'v2')"),
+  versionReleaseDate: z.string()
+    .describe("ISO 8601 date when this version was released"),
+  humId: z.string()
+    .describe("Parent Research identifier (e.g., 'hum0001')"),
+  humVersionId: z.string()
+    .describe("Parent Research version identifier (e.g., 'hum0001.v1')"),
+  releaseDate: z.string()
+    .describe("ISO 8601 date when the dataset was first released"),
+  criteria: CriteriaCanonicalSchema
+    .describe("Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'"),
   typeOfData: z.object({
-    ja: z.string().nullable(),
-    en: z.string().nullable(),
-  }),
-  experiments: z.array(ExperimentSchemaBase),
+    ja: z.string().nullable()
+      .describe("Data type description in Japanese"),
+    en: z.string().nullable()
+      .describe("Data type description in English"),
+  }).describe("Bilingual description of the type of data in this dataset"),
+  experiments: z.array(ExperimentSchemaBase)
+    .describe("Array of experiment records containing sample/sequencing metadata"),
 })
 
 // === Error Responses ===
@@ -87,49 +96,26 @@ export const ERROR_CODES = [
 export type ErrorCode = (typeof ERROR_CODES)[number]
 
 /**
- * Legacy error response (for backwards compatibility during transition)
- */
-export const ErrorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string().nullable().optional(),
-})
-export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
-
-/**
  * RFC 7807 Problem Details for HTTP APIs
  * @see https://tools.ietf.org/html/rfc7807
  */
 export const ProblemDetailsSchema = z.object({
-  /** URI reference identifying the problem type */
-  type: z.url(),
-  /** Short, human-readable summary of the problem type */
-  title: z.string(),
-  /** HTTP status code */
-  status: z.number().int().min(400).max(599),
-  /** Human-readable explanation specific to this occurrence */
-  detail: z.string().optional(),
-  /** URI reference for the specific occurrence (usually the request path) */
-  instance: z.string().optional(),
-  /** ISO 8601 timestamp of when the error occurred */
-  timestamp: z.string(),
-  /** Request ID for correlation */
-  requestId: z.string().optional(),
+  type: z.url()
+    .describe("URI reference identifying the problem type (e.g., 'https://api.humandbs.dbcls.jp/errors/not-found')"),
+  title: z.string()
+    .describe("Short, human-readable summary of the problem type (e.g., 'Not Found', 'Validation Error')"),
+  status: z.number().int().min(400).max(599)
+    .describe("HTTP status code for this error (e.g., 400, 401, 404, 500)"),
+  detail: z.string().optional()
+    .describe("Human-readable explanation specific to this occurrence of the problem"),
+  instance: z.string().optional()
+    .describe("URI reference for the specific occurrence, usually the request path"),
+  timestamp: z.string()
+    .describe("ISO 8601 timestamp of when the error occurred"),
+  requestId: z.string().optional()
+    .describe("Unique request identifier for tracing and debugging"),
 })
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
-
-/**
- * Extended error response with details (legacy format)
- */
-export const ApiErrorResponseSchema = z.object({
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-    details: z.unknown().optional(),
-    requestId: z.string().optional(),
-    timestamp: z.string(),
-  }),
-})
-export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>
 
 // === Response Meta Schema ===
 
@@ -258,8 +244,10 @@ export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
  * Update UIDs response
  */
 export const UpdateUidsResponseSchema = z.object({
-  humId: z.string(),
-  uids: z.array(z.string()),
+  humId: z.string()
+    .describe("Research identifier"),
+  uids: z.array(z.string())
+    .describe("Updated list of Keycloak user IDs (sub) who can edit this Research"),
 })
 export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>
 
@@ -270,7 +258,8 @@ export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>
  * Note: datasets are automatically copied from the previous version
  */
 export const CreateVersionRequestSchema = z.object({
-  releaseNote: BilingualTextValueSchema.optional(),
+  releaseNote: BilingualTextValueSchema.optional()
+    .describe("Bilingual release note describing changes in this version"),
 })
 export type CreateVersionRequest = z.infer<typeof CreateVersionRequestSchema>
 
@@ -377,11 +366,16 @@ export type DatasetListResponse = z.infer<typeof DatasetListResponseSchema>
  * All fields are optional - defaults will be used
  */
 export const CreateDatasetForResearchRequestSchema = z.object({
-  datasetId: z.string().optional(), // Auto-generated as DRAFT-{humId}-{uuid} if not provided
-  releaseDate: z.string().optional(),
-  criteria: CriteriaCanonicalSchema.optional(),
-  typeOfData: BilingualTextSchema.optional(),
-  experiments: z.array(ExperimentSchemaBase).optional(),
+  datasetId: z.string().optional()
+    .describe("Dataset ID. Auto-generated (DRAFT-{humId}-{uuid}) if not provided."),
+  releaseDate: z.string().optional()
+    .describe("ISO 8601 date for dataset release. Defaults to current date."),
+  criteria: CriteriaCanonicalSchema.optional()
+    .describe("Data access criteria. Defaults to 'Controlled-access (Type I)'."),
+  typeOfData: BilingualTextSchema.optional()
+    .describe("Bilingual description of the data type"),
+  experiments: z.array(ExperimentSchemaBase).optional()
+    .describe("Array of experiment records. Defaults to empty array."),
 })
 export type CreateDatasetForResearchRequest = z.infer<typeof CreateDatasetForResearchRequestSchema>
 
@@ -411,11 +405,16 @@ export type LinkedResearchesResponse = z.infer<typeof LinkedResearchesResponseSc
  * Returns current state for optimistic locking
  */
 export const WorkflowResponseSchema = z.object({
-  humId: z.string(),
-  status: z.enum(RESEARCH_STATUS),
-  dateModified: z.string(),
-  _seq_no: z.number(),
-  _primary_term: z.number(),
+  humId: z.string()
+    .describe("Research identifier"),
+  status: z.enum(RESEARCH_STATUS)
+    .describe("Current status after the workflow action: 'draft', 'review', 'published', or 'deleted'"),
+  dateModified: z.string()
+    .describe("ISO 8601 timestamp when the Research was last modified"),
+  _seq_no: z.number()
+    .describe("Elasticsearch sequence number for subsequent updates"),
+  _primary_term: z.number()
+    .describe("Elasticsearch primary term for subsequent updates"),
 })
 export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>
 
@@ -518,8 +517,10 @@ export type FacetsResponse = z.infer<typeof FacetsResponseSchema>
  * Facet value with count
  */
 export const FacetValueWithCountSchema = z.object({
-  value: z.string(),
-  count: z.number(),
+  value: z.string()
+    .describe("The facet value (e.g., 'WGS', 'Controlled-access (Type I)')"),
+  count: z.number()
+    .describe("Number of resources matching this facet value"),
 })
 export type FacetValueWithCount = z.infer<typeof FacetValueWithCountSchema>
 
@@ -527,8 +528,10 @@ export type FacetValueWithCount = z.infer<typeof FacetValueWithCountSchema>
  * Single facet field response (with counts)
  */
 export const FacetFieldResponseSchema = z.object({
-  fieldName: z.string(),
-  values: z.array(FacetValueWithCountSchema),
+  fieldName: z.string()
+    .describe("The facet field name (e.g., 'assayType', 'criteria', 'platform')"),
+  values: z.array(FacetValueWithCountSchema)
+    .describe("Available values for this facet with their counts"),
 })
 export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>
 
@@ -536,48 +539,52 @@ export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>
  * All facets response (GET /facets) - with counts
  */
 export const AllFacetsResponseSchema = z.record(z.string(), z.array(FacetValueWithCountSchema))
+  .describe("Map of facet field names to their available values with counts")
 export type AllFacetsResponse = z.infer<typeof AllFacetsResponseSchema>
 
 // === Path Parameters ===
 
 export const HumIdParamsSchema = z.object({
-  humId: z.string(),
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001'). Unique across all Research resources."),
 })
 export type HumIdParams = z.infer<typeof HumIdParamsSchema>
 
 export const DatasetIdParamsSchema = z.object({
-  datasetId: z.string(),
+  datasetId: z.string()
+    .describe("Dataset identifier (e.g., 'JGAD000001'). Unique across all Dataset resources."),
 })
 export type DatasetIdParams = z.infer<typeof DatasetIdParamsSchema>
 
 export const VersionParamsSchema = z.object({
-  humId: z.string(),
-  version: z.string().regex(/^v\d+$/),
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001')"),
+  version: z.string().regex(/^v\d+$/)
+    .describe("Version number in format v1, v2, v3, etc. (e.g., 'v1', 'v2')"),
 })
 export type VersionParams = z.infer<typeof VersionParamsSchema>
 
 export const DatasetVersionParamsSchema = z.object({
-  datasetId: z.string(),
-  version: z.string().regex(/^v\d+$/),
+  datasetId: z.string()
+    .describe("Dataset identifier (e.g., 'JGAD000001')"),
+  version: z.string().regex(/^v\d+$/)
+    .describe("Version number in format v1, v2, v3, etc. (e.g., 'v1', 'v2')"),
 })
 export type DatasetVersionParams = z.infer<typeof DatasetVersionParamsSchema>
-
-export const LinkParamsSchema = z.object({
-  humId: z.string(),
-  datasetId: z.string(),
-})
-export type LinkParams = z.infer<typeof LinkParamsSchema>
 
 // === Simple Response Schemas ===
 
 export const HealthResponseSchema = z.object({
-  status: z.string(),
-  timestamp: z.string(),
+  status: z.string()
+    .describe("Health status indicator ('ok' when healthy)"),
+  timestamp: z.string()
+    .describe("ISO 8601 timestamp of the health check"),
 })
 export type HealthResponse = z.infer<typeof HealthResponseSchema>
 
 export const IsAdminResponseSchema = z.object({
-  isAdmin: z.boolean(),
+  isAdmin: z.boolean()
+    .describe("Whether the authenticated user has admin privileges"),
 })
 export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
 
@@ -587,8 +594,10 @@ export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
  * Stats facet counts per Research/Dataset
  */
 export const StatsFacetCountSchema = z.object({
-  research: z.number(),
-  dataset: z.number(),
+  research: z.number()
+    .describe("Number of Research resources with this facet value"),
+  dataset: z.number()
+    .describe("Number of Dataset resources with this facet value"),
 })
 export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>
 
@@ -599,12 +608,15 @@ export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>
  */
 export const StatsResponseSchema = z.object({
   research: z.object({
-    total: z.number(),
-  }),
+    total: z.number()
+      .describe("Total number of published Research resources"),
+  }).describe("Research resource statistics"),
   dataset: z.object({
-    total: z.number(),
-  }),
-  facets: z.record(z.string(), z.record(z.string(), StatsFacetCountSchema)),
+    total: z.number()
+      .describe("Total number of published Dataset resources"),
+  }).describe("Dataset resource statistics"),
+  facets: z.record(z.string(), z.record(z.string(), StatsFacetCountSchema))
+    .describe("Facet aggregations with Research/Dataset counts per value. Outer key is field name (e.g., 'criteria'), inner key is facet value."),
 })
 export type StatsResponse = z.infer<typeof StatsResponseSchema>
 
@@ -643,19 +655,6 @@ export const createUnifiedSearchResponseSchema = <T extends z.ZodType>(itemSchem
     data: z.array(itemSchema),
     meta: ResponseMetaWithPaginationSchema,
     facets: FacetsMapSchema.optional(),
-  })
-
-// Re-export base meta schemas
-export { BaseResponseMetaSchema, PaginationSchema, ResponseMetaReadOnlySchema, ResponseMetaWithLockSchema, ResponseMetaWithPaginationSchema }
-
-// === Utility Types ===
-
-/**
- * API success response wrapper (legacy - use createUnified*ResponseSchema instead)
- */
-export const SuccessResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
-  z.object({
-    data: dataSchema,
   })
 
 // Re-export schemas for route definitions (ResearchSchema, ResearchVersionSchema only - DatasetSchema defined above)

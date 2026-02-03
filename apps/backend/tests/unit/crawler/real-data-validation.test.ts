@@ -33,7 +33,7 @@ describe("real data validation", () => {
 
       for (const file of files) {
         try {
-          const data = await Bun.file(file).json()
+          const data: unknown = await Bun.file(file).json()
           const result = CrawlerResearchSchema.safeParse(data)
           if (!result.success) {
             errors.push({
@@ -80,7 +80,7 @@ describe("real data validation", () => {
 
       for (const file of files) {
         try {
-          const data = await Bun.file(file).json()
+          const data: unknown = await Bun.file(file).json()
           const result = CrawlerDatasetSchema.safeParse(data)
           if (!result.success) {
             errors.push({
@@ -107,18 +107,18 @@ describe("real data validation", () => {
 
   describe("fixture data", () => {
     it("should validate hum0001.json fixture", async () => {
-      const data = await Bun.file("tests/fixtures/crawler/json/hum0001.json").json()
+      const data: unknown = await Bun.file("tests/fixtures/crawler/json/hum0001.json").json()
       const result = CrawlerResearchSchema.safeParse(data)
 
       if (!result.success) {
-        console.log("Validation error:", result.error.format())
+        console.log("Validation error:", JSON.stringify(result.error.issues, null, 2))
       }
 
       expect(result.success).toBe(true)
     })
 
     it("should reject edge-case.json with null values", async () => {
-      const data = await Bun.file("tests/fixtures/crawler/json/edge-case.json").json()
+      const data: unknown = await Bun.file("tests/fixtures/crawler/json/edge-case.json").json()
       const result = CrawlerResearchSchema.safeParse(data)
 
       // Edge case JSON has many null values that may not conform to schema
@@ -130,7 +130,7 @@ describe("real data validation", () => {
     })
 
     it("should reject invalid.json", async () => {
-      const data = await Bun.file("tests/fixtures/crawler/json/invalid.json").json()
+      const data: unknown = await Bun.file("tests/fixtures/crawler/json/invalid.json").json()
       const result = CrawlerResearchSchema.safeParse(data)
 
       // Invalid JSON should fail validation
@@ -149,7 +149,7 @@ describe("schema consistency", () => {
     }
 
     for (const file of files) {
-      const data = await Bun.file(file).json()
+      const data = await Bun.file(file).json() as Record<string, unknown>
 
       // Check required top-level fields (ResearchSchema structure)
       expect(data.humId).toBeDefined()
@@ -175,7 +175,7 @@ describe("schema consistency", () => {
     }
 
     for (const file of files) {
-      const data = await Bun.file(file).json()
+      const data = await Bun.file(file).json() as Record<string, unknown>
 
       // Check required top-level fields
       expect(data.datasetId).toBeDefined()

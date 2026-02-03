@@ -18,14 +18,12 @@ export type { LangType } from "@/api/types"
 // Facets
 export {
   FacetValueSchema,
-  FacetItemSchema,
   FacetsMapSchema,
   DATASET_FACET_NAMES,
   RESEARCH_FACET_NAMES,
 } from "@/api/types"
 export type {
   FacetValue,
-  FacetItem,
   FacetsMap,
   DatasetFacetName,
   ResearchFacetName,
@@ -83,17 +81,28 @@ export type {
 } from "@/api/types"
 
 // ES document types (API response format)
+// Note: Exported with both Es-prefixed names (internal) and clean names (external API)
 export {
   EsDatasetDocSchema,
   EsResearchDocSchema,
   EsResearchVersionDocSchema,
   EsResearchDetailSchema,
+  // Clean aliases without Es prefix
+  EsDatasetDocSchema as DatasetDocSchema,
+  EsResearchDocSchema as ResearchDocSchema,
+  EsResearchVersionDocSchema as ResearchVersionDocSchema,
+  EsResearchDetailSchema as ResearchDetailSchema,
 } from "@/api/types"
 export type {
   EsDatasetDoc,
   EsResearchDoc,
   EsResearchVersionDoc,
   EsResearchDetail,
+  // Clean aliases without Es prefix
+  EsDatasetDoc as DatasetDoc,
+  EsResearchDoc as ResearchDoc,
+  EsResearchVersionDoc as ResearchVersionDoc,
+  EsResearchDetail as ResearchDetail,
 } from "@/api/types"
 
 // Path parameters
@@ -102,14 +111,12 @@ export {
   DatasetIdParamsSchema,
   VersionParamsSchema,
   DatasetVersionParamsSchema,
-  LinkParamsSchema,
 } from "@/api/types"
 export type {
   HumIdParams,
   DatasetIdParams,
   VersionParams,
   DatasetVersionParams,
-  LinkParams,
 } from "@/api/types"
 
 // Stats
@@ -125,13 +132,9 @@ export type {
 // Error responses
 export {
   ProblemDetailsSchema,
-  ApiErrorResponseSchema,
-  ErrorResponseSchema,
 } from "@/api/types"
 export type {
   ProblemDetails,
-  ApiErrorResponse,
-  ErrorResponse,
 } from "@/api/types"
 
 // All facets response

@@ -17,12 +17,18 @@ import { z } from "zod"
  * Pagination metadata for list responses
  */
 export const PaginationSchema = z.object({
-  page: z.number().int().positive(),
-  limit: z.number().int().positive(),
-  total: z.number().int().nonnegative(),
-  totalPages: z.number().int().nonnegative(),
-  hasNext: z.boolean(),
-  hasPrev: z.boolean(),
+  page: z.number().int().positive()
+    .describe("Current page number (1-indexed)"),
+  limit: z.number().int().positive()
+    .describe("Number of items per page"),
+  total: z.number().int().nonnegative()
+    .describe("Total number of items matching the query"),
+  totalPages: z.number().int().nonnegative()
+    .describe("Total number of pages available"),
+  hasNext: z.boolean()
+    .describe("Whether there is a next page"),
+  hasPrev: z.boolean()
+    .describe("Whether there is a previous page"),
 })
 export type Pagination = z.infer<typeof PaginationSchema>
 
@@ -48,8 +54,10 @@ export function createPagination(total: number, page: number, limit: number): Pa
  * Contains requestId and timestamp for traceability
  */
 export const BaseResponseMetaSchema = z.object({
-  requestId: z.string(),
-  timestamp: z.string(),
+  requestId: z.string()
+    .describe("Unique request identifier for tracing and debugging"),
+  timestamp: z.string()
+    .describe("ISO 8601 timestamp when the response was generated"),
 })
 export type BaseResponseMeta = z.infer<typeof BaseResponseMetaSchema>
 
@@ -67,8 +75,10 @@ export type ResponseMetaReadOnly = z.infer<typeof ResponseMetaReadOnlySchema>
  * Contains optimistic locking fields for concurrent edit detection
  */
 export const ResponseMetaWithLockSchema = BaseResponseMetaSchema.extend({
-  _seq_no: z.number().int().nonnegative(),
-  _primary_term: z.number().int().positive(),
+  _seq_no: z.number().int().nonnegative()
+    .describe("Elasticsearch sequence number for optimistic concurrency control. Include in update requests to prevent overwriting concurrent changes."),
+  _primary_term: z.number().int().positive()
+    .describe("Elasticsearch primary term for optimistic concurrency control. Include in update requests along with _seq_no."),
 })
 export type ResponseMetaWithLock = z.infer<typeof ResponseMetaWithLockSchema>
 
@@ -80,76 +90,6 @@ export const ResponseMetaWithPaginationSchema = BaseResponseMetaSchema.extend({
   pagination: PaginationSchema,
 })
 export type ResponseMetaWithPagination = z.infer<typeof ResponseMetaWithPaginationSchema>
-
-// === Generic Response Wrappers ===
-
-/**
- * Create schema for single read-only resource response
- *
- * Response format:
- * {
- *   data: T,
- *   meta: { requestId, timestamp }
- * }
- */
-export const createSingleReadOnlyResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
-  z.object({
-    data: dataSchema,
-    meta: ResponseMetaReadOnlySchema,
-  })
-
-/**
- * Create schema for single editable resource response
- *
- * Response format:
- * {
- *   data: T,
- *   meta: { requestId, timestamp, _seq_no, _primary_term }
- * }
- */
-export const createSingleResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
-  z.object({
-    data: dataSchema,
-    meta: ResponseMetaWithLockSchema,
-  })
-
-/**
- * Create schema for list response
- *
- * Response format:
- * {
- *   data: T[],
- *   meta: { requestId, timestamp, pagination: {...} }
- * }
- */
-export const createListResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
-  z.object({
-    data: z.array(itemSchema),
-    meta: ResponseMetaWithPaginationSchema,
-  })
-
-/**
- * Create schema for search response with optional facets
- *
- * Response format:
- * {
- *   data: T[],
- *   meta: { requestId, timestamp, pagination: {...} },
- *   facets?: { [fieldName]: { value, count }[] }
- * }
- */
-export const createSearchResponseSchema = <T extends z.ZodType, F extends z.ZodType>(
-  itemSchema: T,
-  facetsSchema?: F,
-) =>
-  z.object({
-    data: z.array(itemSchema),
-    meta: ResponseMetaWithPaginationSchema,
-    facets: facetsSchema ? facetsSchema.optional() : z.record(z.string(), z.array(z.object({
-      value: z.string(),
-      count: z.number(),
-    }))).optional(),
-  })
 
 // === Response Type Aliases ===
 

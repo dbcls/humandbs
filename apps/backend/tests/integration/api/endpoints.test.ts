@@ -16,7 +16,7 @@ import type {
   FacetsMap,
   FacetFieldResponse,
   SingleReadOnlyResponse,
-  SearchResponse,
+  UnifiedSearchResponse,
 } from "@/api/types"
 
 import { getTestApp } from "../../unit/api/helpers"
@@ -144,7 +144,7 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json() as SearchResponse<unknown>
+      const json = await res.json() as UnifiedSearchResponse<unknown>
 
       // Unified response format: { data, meta: { pagination, ... }, facets? }
       expect(json).toHaveProperty("data")
@@ -200,7 +200,7 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json() as SearchResponse<unknown>
+      const json = await res.json() as UnifiedSearchResponse<unknown>
 
       // Unified response format
       expect(json).toHaveProperty("data")
@@ -244,7 +244,7 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json() as SearchResponse<unknown>
+      const json = await res.json() as UnifiedSearchResponse<unknown>
 
       // Unified response format
       expect(json).toHaveProperty("data")
@@ -262,7 +262,7 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json() as SearchResponse<unknown>
+      const json = await res.json() as UnifiedSearchResponse<unknown>
       expect(json).toHaveProperty("facets")
     })
   })
@@ -278,7 +278,7 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json() as SearchResponse<unknown>
+      const json = await res.json() as UnifiedSearchResponse<unknown>
 
       // Unified response format
       expect(json).toHaveProperty("data")

@@ -63,7 +63,7 @@ describe("expandJgadRange", () => {
       ["DRA000001", ["DRA000001"], "DRA ID passthrough"],
       ["JGAS000001", ["JGAS000001"], "JGAS ID passthrough"],
     ] as const)("%s -> %j (%s)", (input, expected, _desc) => {
-      expect(expandJgadRange(input)).toEqual(expected)
+      expect(expandJgadRange(input)).toEqual([...expected])
     })
   })
 
@@ -93,7 +93,7 @@ describe("expandJgadRange", () => {
       // Extra hyphen
       ["JGAD000001--JGAD000002", ["JGAD000001--JGAD000002"], "double hyphen"],
     ] as const)("%s -> %j (%s)", (input, expected, _desc) => {
-      expect(expandJgadRange(input)).toEqual(expected)
+      expect(expandJgadRange(input)).toEqual([...expected])
     })
   })
 
@@ -141,7 +141,7 @@ describe("fixDatasetId", () => {
       ["JGAD000001 ", ["JGAD000001"], "trailing space"],
       [" JGAD000001", ["JGAD000001"], "leading space"],
     ] as const)("%s -> %j (%s)", (input, expected, _desc) => {
-      expect(fixDatasetId(input)).toEqual(expected)
+      expect(fixDatasetId(input)).toEqual([...expected])
     })
   })
 
@@ -166,7 +166,7 @@ describe("fixDatasetId", () => {
       [",,,", [], "only commas"],
       ["、、、", [], "only Japanese commas"],
     ] as const)("%s -> %j (%s)", (input, expected, _desc) => {
-      expect(fixDatasetId(input)).toEqual(expected)
+      expect(fixDatasetId(input)).toEqual([...expected])
     })
   })
 
@@ -265,7 +265,7 @@ describe("fixDate", () => {
       // Note: The current implementation does NOT validate date ranges
       // It just reformats YYYY/M/D -> YYYY-MM-DD
       // These tests document the actual behavior
-    ] as const)("%s -> %s (%s)", (input, expected, _desc) => {
+    ] as const)("%s -> %s (%s)", (input, _expected, _desc) => {
       // Actual behavior: the regex matches even invalid dates
       // This is a potential bug - the function should validate
       const result = fixDate(input)

@@ -26,6 +26,42 @@ import type {
   ResearchStatus,
 } from "@/api/types"
 
+// === Elasticsearch Error Helpers ===
+
+interface EsErrorMeta {
+  meta?: { statusCode?: number; body?: { error?: { type?: string; reason?: string } } }
+}
+
+/**
+ * Type guard for Elasticsearch client errors
+ */
+const isEsError = (error: unknown): error is EsErrorMeta => {
+  return error !== null && typeof error === "object" && "meta" in error
+}
+
+/**
+ * Check if error is a version conflict (HTTP 409)
+ */
+const isVersionConflict = (error: unknown): boolean => {
+  return isEsError(error) && error.meta?.statusCode === 409
+}
+
+/**
+ * Create an Error with ES operation context
+ */
+const createEsError = (error: unknown, operation: string, humId: string): Error => {
+  if (isEsError(error)) {
+    const statusCode = error.meta?.statusCode
+    const errorType = error.meta?.body?.error?.type
+    const reason = error.meta?.body?.error?.reason
+    return new Error(
+      `ES ${operation} failed for ${humId}: status=${statusCode}, type=${errorType}, reason=${reason}`,
+      { cause: error },
+    )
+  }
+  return new Error(`${operation} failed for ${humId}: ${String(error)}`, { cause: error })
+}
+
 // === Research Document Retrieval ===
 
 export const getResearchDoc = async (
@@ -341,14 +377,8 @@ export const updateResearch = async (
 
     return await getResearchDoc(humId)
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return null // Conflict
-      }
-    }
-    throw error
+    if (isVersionConflict(error)) return null
+    throw createEsError(error,"updateResearch", humId)
   }
 }
 
@@ -390,14 +420,8 @@ export const updateResearchStatus = async (
       dateModified: now,
     }
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return null // Conflict
-      }
-    }
-    throw error
+    if (isVersionConflict(error)) return null
+    throw createEsError(error,"updateResearchStatus", humId)
   }
 }
 
@@ -431,14 +455,8 @@ export const updateResearchUids = async (
 
     return uids
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return null // Conflict
-      }
-    }
-    throw error
+    if (isVersionConflict(error)) return null
+    throw createEsError(error,"updateResearchUids", humId)
   }
 }
 
@@ -477,14 +495,8 @@ export const deleteResearch = async (
 
     return true
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return false // Conflict
-      }
-    }
-    throw error
+    if (isVersionConflict(error)) return false
+    throw createEsError(error,"deleteResearch", humId)
   }
 }
 

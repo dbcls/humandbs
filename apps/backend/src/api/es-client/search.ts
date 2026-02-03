@@ -286,6 +286,31 @@ interface CompositeBucket {
   dataset_count?: { doc_count: number }
 }
 
+// Type guard for Record<string, unknown>
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
+// Type guard for TermsBucket array
+const isTermsBucketArray = (value: unknown): value is TermsBucket[] => {
+  if (!Array.isArray(value)) return false
+  return value.every(item =>
+    isRecord(item) &&
+    ("key" in item) &&
+    typeof item.doc_count === "number",
+  )
+}
+
+// Type guard for CompositeBucket array
+const isCompositeBucketArray = (value: unknown): value is CompositeBucket[] => {
+  if (!Array.isArray(value)) return false
+  return value.every(item =>
+    isRecord(item) &&
+    isRecord(item.key) &&
+    typeof item.doc_count === "number",
+  )
+}
+
 const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => {
   if (!aggs) return {}
   const facets: FacetsMap = {}
@@ -317,21 +342,20 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
 
   // Find vendorModel composite aggregation for platform
   const findPlatformBuckets = (obj: unknown): CompositeBucket[] | null => {
-    if (!obj || typeof obj !== "object") return null
-    const o = obj as Record<string, unknown>
+    if (!isRecord(obj)) return null
 
     // Check for vendorModel composite aggregation
-    if ("vendorModel" in o && o.vendorModel && typeof o.vendorModel === "object") {
-      const vendorModel = o.vendorModel as Record<string, unknown>
-      if ("buckets" in vendorModel && Array.isArray(vendorModel.buckets)) {
-        return vendorModel.buckets as CompositeBucket[]
+    if ("vendorModel" in obj && isRecord(obj.vendorModel)) {
+      const vendorModel = obj.vendorModel
+      if ("buckets" in vendorModel && isCompositeBucketArray(vendorModel.buckets)) {
+        return vendorModel.buckets
       }
     }
 
     // Search nested objects
-    for (const [key, val] of Object.entries(o)) {
+    for (const [key, val] of Object.entries(obj)) {
       if (key === "doc_count") continue
-      if (typeof val === "object" && val !== null) {
+      if (isRecord(val)) {
         const found = findPlatformBuckets(val)
         if (found) return found
       }
@@ -341,21 +365,20 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
 
   // Recursively find buckets in nested aggregations
   const findBuckets = (obj: unknown): TermsBucket[] | null => {
-    if (!obj || typeof obj !== "object") return null
-    const o = obj as Record<string, unknown>
+    if (!isRecord(obj)) return null
 
     // Skip vendorModel (handled separately for platform)
-    if ("vendorModel" in o) return null
+    if ("vendorModel" in obj) return null
 
     // Direct buckets
-    if ("buckets" in o && Array.isArray(o.buckets)) {
-      return o.buckets as TermsBucket[]
+    if ("buckets" in obj && isTermsBucketArray(obj.buckets)) {
+      return obj.buckets
     }
 
     // Search nested objects (skip doc_count)
-    for (const [key, val] of Object.entries(o)) {
+    for (const [key, val] of Object.entries(obj)) {
       if (key === "doc_count") continue
-      if (typeof val === "object" && val !== null) {
+      if (isRecord(val)) {
         const found = findBuckets(val)
         if (found) return found
       }

@@ -13,8 +13,8 @@ export const PAGINATION = {
 // === Cache TTL (in milliseconds) ===
 
 export const CACHE_TTL = {
-  /** JWKS cache - 1 hour */
-  JWKS: 3600 * 1000,
+  /** JWKS cache - 5 minutes (short TTL with retry on verification failure) */
+  JWKS: 5 * 60 * 1000,
   /** Admin UIDs cache - 1 minute (shorter for faster updates) */
   ADMIN_UIDS: 60 * 1000,
 } as const

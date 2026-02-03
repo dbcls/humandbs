@@ -17,11 +17,6 @@ export {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
-  // Schema factories
-  createSingleReadOnlyResponseSchema,
-  createSingleResponseSchema,
-  createListResponseSchema,
-  createSearchResponseSchema,
 } from "@/api/types/response"
 export type {
   Pagination,
@@ -65,14 +60,12 @@ export {
   RESEARCH_FACET_NAMES,
   isValidFacetName,
   FacetValueSchema,
-  FacetItemSchema,
   FacetsMapSchema,
 } from "@/api/types/facets"
 export type {
   DatasetFacetName,
   ResearchFacetName,
   FacetValue,
-  FacetItem,
   FacetsMap,
   TypedFacetsMap,
 } from "@/api/types/facets"
@@ -154,9 +147,7 @@ export {
   ExperimentSchemaBase,
   DatasetSchema,
   // Error schemas
-  ApiErrorResponseSchema,
   ERROR_CODES,
-  ErrorResponseSchema,
   ProblemDetailsSchema,
   // Response meta
   ResponseMetaSchema,
@@ -201,15 +192,12 @@ export {
   DatasetIdParamsSchema,
   VersionParamsSchema,
   DatasetVersionParamsSchema,
-  LinkParamsSchema,
   // Simple responses
   HealthResponseSchema,
   IsAdminResponseSchema,
   // Stats API
   StatsFacetCountSchema,
   StatsResponseSchema,
-  // Utility
-  SuccessResponseSchema,
   // Re-exported schemas
   ResearchSchema,
   ResearchVersionSchema,
@@ -220,9 +208,7 @@ export {
   createUnifiedSearchResponseSchema,
 } from "@/api/types/request-response"
 export type {
-  ApiErrorResponse,
   ErrorCode,
-  ErrorResponse,
   ProblemDetails,
   ResponseMeta,
   CreateResearchRequest,
@@ -258,7 +244,6 @@ export type {
   DatasetIdParams,
   VersionParams,
   DatasetVersionParams,
-  LinkParams,
   HealthResponse,
   IsAdminResponse,
   StatsFacetCount,

@@ -29,6 +29,7 @@ const ADMIN_UID_FILE = process.env.HUMANDBS_BACKEND_ADMIN_UID_FILE
 interface TtlCache<T> {
   get: () => T | null
   set: (value: T) => void
+  clear: () => void
 }
 
 const createTtlCache = <T>(ttl: number): TtlCache<T> => {
@@ -43,6 +44,10 @@ const createTtlCache = <T>(ttl: number): TtlCache<T> => {
     set: (value: T) => {
       cache = value
       expiry = Date.now() + ttl
+    },
+    clear: () => {
+      cache = null
+      expiry = 0
     },
   }
 }
@@ -125,14 +130,20 @@ async function buildAuthUser(claims: JwtClaims): Promise<AuthUser> {
 
 /**
  * Verify JWT token and return claims
+ * On signature verification failure, clears JWKS cache and retries once
+ * (handles key rotation scenarios)
  */
 async function verifyToken(token: string): Promise<JwtClaims | null> {
-  try {
-    const jwks = getJwks()
-    const { payload } = await jose.jwtVerify(token, jwks, {
+  const verify = async (jwks: jose.JWTVerifyGetKey): Promise<jose.JWTVerifyResult<jose.JWTPayload>> => {
+    return jose.jwtVerify(token, jwks, {
       issuer: AUTH_ISSUER_URL,
       audience: AUTH_CLIENT_ID,
     })
+  }
+
+  try {
+    const jwks = getJwks()
+    const { payload } = await verify(jwks)
 
     const parseResult = JwtClaimsSchema.safeParse(payload)
     if (!parseResult.success) {
@@ -142,6 +153,30 @@ async function verifyToken(token: string): Promise<JwtClaims | null> {
 
     return parseResult.data
   } catch (error) {
+    // Handle signature verification errors with cache refresh retry
+    if (error instanceof jose.errors.JWTInvalid || error instanceof jose.errors.JWSSignatureVerificationFailed) {
+      logger.warn("JWT signature verification failed, clearing JWKS cache and retrying")
+      jwksCache.clear()
+
+      try {
+        const freshJwks = getJwks()
+        const { payload } = await verify(freshJwks)
+
+        const parseResult = JwtClaimsSchema.safeParse(payload)
+        if (!parseResult.success) {
+          logger.error("JWT claims validation failed after retry", { error: parseResult.error.message })
+          return null
+        }
+
+        logger.info("JWT verification succeeded after JWKS cache refresh")
+        return parseResult.data
+      } catch (retryError) {
+        logger.error("JWT verification failed after JWKS cache refresh", { error: String(retryError) })
+        return null
+      }
+    }
+
+    // Handle other JWT errors
     if (error instanceof jose.errors.JWTExpired) {
       logger.warn("JWT token expired")
     } else if (error instanceof jose.errors.JWTClaimValidationFailed) {

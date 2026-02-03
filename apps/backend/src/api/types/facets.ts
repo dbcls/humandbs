@@ -43,21 +43,18 @@ export type ResearchFacetName = DatasetFacetName
  * Facet value with count (Zod schema)
  */
 export const FacetValueSchema = z.object({
-  value: z.string(),
-  count: z.number(),
+  value: z.string()
+    .describe("The facet value (e.g., 'WGS', 'Controlled-access (Type I)')"),
+  count: z.number()
+    .describe("Number of resources matching this facet value"),
 })
 export type FacetValue = z.infer<typeof FacetValueSchema>
-
-/**
- * Facet item (alias for FacetValue, for backwards compatibility)
- */
-export const FacetItemSchema = FacetValueSchema
-export type FacetItem = z.infer<typeof FacetItemSchema>
 
 /**
  * Facets map (record of facet name to array of facet values)
  */
 export const FacetsMapSchema = z.record(z.string(), z.array(FacetValueSchema))
+  .describe("Map of facet field names to their available values with counts. Facet names include: criteria, assayType, healthStatus, tissues, platform, etc.")
 export type FacetsMap = z.infer<typeof FacetsMapSchema>
 
 /**
