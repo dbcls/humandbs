@@ -153,11 +153,6 @@ services:
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-nginx
     environment:
       - TZ=${HUMANDBS_TZ}
-    depends_on:
-      frontend:
-        condition: service_started
-      backend:
-        condition: service_started
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
