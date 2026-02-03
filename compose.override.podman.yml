@@ -7,5 +7,3 @@ services:
     userns_mode: "keep-id"
   elasticsearch:
     userns_mode: "keep-id:uid=1000,gid=1000"
-  nginx:
-    userns_mode: "keep-id"
