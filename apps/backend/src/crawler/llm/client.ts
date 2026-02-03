@@ -28,29 +28,31 @@ interface OllamaResponse {
 
 /** Ollama client configuration */
 export interface OllamaConfig {
-  baseUrl?: string
+  baseUrl: string
   model?: string
   timeout?: number
   numCtx?: number
 }
 
-const DEFAULT_BASE_URL = "http://localhost:1143"
+/** Default config values (excluding baseUrl which must be provided explicitly) */
+export interface OllamaDefaultConfig {
+  model: string
+  timeout: number
+  numCtx: number
+}
+
 const DEFAULT_MODEL = "llama3.3:70b"
 const DEFAULT_NUM_CTX = 4096
 const DEFAULT_TIMEOUT = 300000
 
 /**
- * Get Ollama configuration from environment variables
+ * Get Ollama default configuration
+ * Note: All Ollama settings should be provided via CLI arguments
  */
-export const getOllamaConfig = (): Required<OllamaConfig> => ({
-  baseUrl: process.env.OLLAMA_BASE_URL || DEFAULT_BASE_URL,
-  model: process.env.OLLAMA_MODEL || DEFAULT_MODEL,
-  timeout: process.env.OLLAMA_TIMEOUT
-    ? parseInt(process.env.OLLAMA_TIMEOUT, 10)
-    : DEFAULT_TIMEOUT,
-  numCtx: process.env.OLLAMA_NUM_CTX
-    ? parseInt(process.env.OLLAMA_NUM_CTX, 10)
-    : DEFAULT_NUM_CTX,
+export const getOllamaDefaultConfig = (): OllamaDefaultConfig => ({
+  model: DEFAULT_MODEL,
+  timeout: DEFAULT_TIMEOUT,
+  numCtx: DEFAULT_NUM_CTX,
 })
 
 /**
@@ -62,10 +64,10 @@ export const getOllamaConfig = (): Required<OllamaConfig> => ({
  */
 export const chat = async (
   messages: OllamaMessage[],
-  config?: OllamaConfig,
+  config: OllamaConfig,
   format: "json" | Record<string, unknown> = "json",
 ): Promise<string> => {
-  const effectiveConfig = { ...getOllamaConfig(), ...config }
+  const effectiveConfig = { ...getOllamaDefaultConfig(), ...config }
 
   const request: OllamaRequest = {
     model: effectiveConfig.model,

@@ -280,8 +280,8 @@ const convertUnifiedToLlmInput = (
  */
 export const extractFieldsFromExperiment = async (
   experiment: Experiment,
-  originalMetadata: Record<string, unknown> | null = null,
-  config?: OllamaConfig,
+  originalMetadata: Record<string, unknown> | null,
+  config: OllamaConfig,
 ): Promise<SearchableExperimentFields> => {
   const input = convertUnifiedToLlmInput(experiment, originalMetadata)
   const userContent = JSON.stringify(input, null, 2)

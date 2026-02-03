@@ -12,7 +12,7 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { getOllamaConfig, type OllamaConfig } from "@/crawler/llm/client"
+import { getOllamaDefaultConfig, type OllamaConfig } from "@/crawler/llm/client"
 import {
   createEmptySearchableFields,
   extractFieldsFromExperiment,
@@ -260,6 +260,8 @@ interface ExtractArgs {
   file?: string
   humId?: string[]
   datasetId?: string[]
+  host?: string
+  port?: number
   model?: string
   timeout?: number
   concurrency?: number
@@ -276,6 +278,8 @@ const parseArgs = (): ExtractArgs => {
       .option("file", { alias: "f", type: "string", description: "Process single file (by datasetId)" })
       .option("hum-id", { alias: "i", type: "array", string: true, description: "Process datasets for specified humIds" })
       .option("dataset-id", { alias: "d", type: "array", string: true, description: "Process specific datasetIds" })
+      .option("host", { alias: "h", type: "string", description: "Ollama host (default: localhost)" })
+      .option("port", { alias: "p", type: "number", description: "Ollama port (default: 11434)" })
       .option("model", { alias: "m", type: "string", description: "Ollama model name (e.g. llama3.3:70b)" })
       .option("timeout", { alias: "t", type: "number", description: "Request timeout in milliseconds (default: 300000)" })
       .option("concurrency", { alias: "c", type: "number", default: 16, description: "Concurrent LLM calls" })
@@ -291,8 +295,13 @@ const parseArgs = (): ExtractArgs => {
 const main = async (): Promise<void> => {
   const args = parseArgs()
 
+  const host = args.host ?? "localhost"
+  const port = args.port ?? 11434
+  const baseUrl = `http://${host}:${port}`
+
   const ollamaConfig: OllamaConfig = {
-    ...getOllamaConfig(),
+    baseUrl,
+    ...getOllamaDefaultConfig(),
     ...(args.model ? { model: args.model } : {}),
     ...(args.timeout ? { timeout: args.timeout } : {}),
   }
