@@ -3,6 +3,7 @@ services:
     image: docker.io/postgres:17
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-cms-db
     environment:
+      - TZ=${HUMANDBS_TZ}
       - POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
       - POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
       - POSTGRES_DB=${HUMANDBS_POSTGRES_DB}
@@ -16,6 +17,11 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
     init: true
 
   frontend:
@@ -30,6 +36,7 @@ services:
       backend:
         condition: service_started
     environment:
+      - TZ=${HUMANDBS_TZ}
       - NODE_ENV=${HUMANDBS_NODE_ENV}
       # Container network (fixed)
       - HUMANDBS_POSTGRES_HOST=cms-db
@@ -57,6 +64,11 @@ services:
     networks:
       - humandbs-network
     command: ${HUMANDBS_FRONTEND_COMMAND}
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
     init: true
 
   backend:
@@ -69,6 +81,7 @@ services:
       elasticsearch:
         condition: service_healthy
     environment:
+      - TZ=${HUMANDBS_TZ}
       - NODE_ENV=${HUMANDBS_NODE_ENV}
       # Container network (fixed)
       - HUMANDBS_ES_HOST=elasticsearch
@@ -90,18 +103,26 @@ services:
     networks:
       - humandbs-network
     command: ${HUMANDBS_BACKEND_COMMAND}
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
     init: true
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.6
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-elasticsearch
     environment:
+      - TZ=${HUMANDBS_TZ}
       - discovery.type=single-node
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
-      - ELASTIC_PASSWORD=${HUMANDBS_ES_PASSWORD:?HUMANDBS_ES_PASSWORD is required}
+      - ES_JAVA_OPTS=${HUMANDBS_ES_JAVA_OPTS}
+      - path.repo=/usr/share/elasticsearch/backup
     volumes:
       - es-data:/usr/share/elasticsearch/data
+      - ${HUMANDBS_ES_BACKUP_PATH}:/usr/share/elasticsearch/backup
     networks:
       - humandbs-network
     ulimits:
@@ -113,16 +134,23 @@ services:
         hard: -1
     mem_limit: ${HUMANDBS_ES_MEM_LIMIT}
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsSL 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      test: [ "CMD-SHELL", "curl -fsSL 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'" ]
       interval: 5s
       retries: 12
       start_period: 10s
       timeout: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
     init: true
 
   nginx:
     image: docker.io/library/nginx:1.27.0
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-nginx
+    environment:
+      - TZ=${HUMANDBS_TZ}
     depends_on:
       frontend:
         condition: service_started
@@ -134,6 +162,11 @@ services:
       - ${HUMANDBS_NGINX_BIND_HOST}:${HUMANDBS_NGINX_PORT}:80
     networks:
       - humandbs-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
     init: true
 
 volumes:

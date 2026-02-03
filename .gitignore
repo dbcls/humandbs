@@ -184,3 +184,6 @@ mise.toml
 .prettierignore
 .tmp
 .claude
+
+# Elasticsearch backup
+humandbs-es-backup
