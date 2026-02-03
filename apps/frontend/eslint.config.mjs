@@ -7,7 +7,7 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 
-const FRONT_FILES = ["apps/frontend/**/*.{js,mjs,cjs,ts,tsx}"];
+const FRONT_FILES = ["src/**/*.{js,mjs,cjs,ts,tsx}"];
 const file_scope = (cfg) =>
   Array.isArray(cfg)
     ? cfg.map((c) => ({ ...c, files: FRONT_FILES }))

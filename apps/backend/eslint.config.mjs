@@ -7,7 +7,8 @@ export default defineConfig([
   ...baseConfig,
   {
     files: [
-      "apps/backend/**/*.{js,mjs,cjs,ts,tsx}",
+      "src/**/*.{js,mjs,cjs,ts,tsx}",
+      "tests/**/*.{js,mjs,cjs,ts,tsx}",
     ],
     languageOptions: {
       globals: {
