@@ -1,4 +1,3 @@
- Peripheral Blood.	peripheral blood
 ....	__DELETE__
 3D culture cells	3D culture cells
 absorptive epithelial cells	absorptive epithelial cells
@@ -18,8 +17,8 @@ B cell line	B cell line
 B cells	B cells
 B-cell	B cells
 blastocyst	blastocyst
-blood	peripheral blood
 Blood	peripheral blood
+blood	peripheral blood
 blood cells	peripheral blood
 blood plasma	plasma
 blood sample	peripheral blood
@@ -33,8 +32,8 @@ bone marrow fluid	bone marrow
 bone marrow mononuclear cells	bone marrow mononuclear cells
 bone marrow plasma cells	bone marrow plasma cells
 bone marrow stromal cells	bone marrow stromal cells
-brain	brain
 Brain	brain
+brain	brain
 brain tissue	brain
 brain tumor	brain tumor
 brain tumor tissue	brain tumor
@@ -56,19 +55,19 @@ CAR-T cells	CAR-T cells
 cardiac muscle cells	cardiomyocytes
 cardiomyocytes	cardiomyocytes
 CD14 positive cells	CD14+ cells
-CD14-positive cells	CD14-positive cells
 CD14+ cells	CD14+ cells
+CD14-positive cells	CD14-positive cells
 CD34 positive cells	CD34+ cells
 CD34+ cells	CD34+ cells
 CD4 positive cells	CD4+ cells
 CD4 positive T cell	CD4 positive T cell
 CD4 positive T cells	CD4+ T cells
 CD4 positive T lymphocytes	CD4+ T cells
-CD4-positive T cells	CD4-positive T cells
-CD4-positive T lymphocytes	CD4-positive T lymphocytes
 CD4+ cells	CD4+ cells
 CD4+ T cells	CD4+ T cells
 CD4+T cells	CD4+ T cells
+CD4-positive T cells	CD4-positive T cells
+CD4-positive T lymphocytes	CD4-positive T lymphocytes
 CD8 positive cells	CD8+ cells
 CD8 positive T cells	CD8+ T cells
 CD8+ cells	CD8+ cells
@@ -125,8 +124,8 @@ decidual tissue	decidual tissue
 dermal fibroblast	dermal fibroblast
 desmoid tumor	desmoid tumor
 desmoid tumor tissue	desmoid tumor
-dna	__DELETE__
 DNA	__DELETE__
+dna	__DELETE__
 duodenum organoid	duodenum organoid
 duodenum organoids	duodenum organoids
 early placenta tissue	early placenta tissue
@@ -190,8 +189,8 @@ HBL	__DELETE__
 HCC	hepatocellular carcinoma
 healthy	__DELETE__
 healthy skin	healthy skin
-heart	heart
 Heart	heart
+heart	heart
 heart muscle cells	cardiomyocytes
 heart muscle sample	heart
 heart tissue	heart tissue
@@ -248,8 +247,8 @@ leukemia cells	leukemia cells
 leukemia stem cell	leukemia stem cells
 leukemia stem cells	leukemia stem cells
 leukocytes	leukocytes
-liver	liver
 Liver	liver
+liver	liver
 liver cancer cell line	liver cancer cell line
 liver cells	liver
 liver cirrhosis	liver cirrhosis
@@ -365,8 +364,8 @@ PDX tumor	PDX tumor
 PDX tumor tissue	PDX tumor
 per subject: ...	__DELETE__
 peripheral	peripheral
-peripheral blood	peripheral blood
 Peripheral blood	peripheral blood
+peripheral blood	peripheral blood
 peripheral blood (normal leukocytes)	peripheral blood (normal leukocytes)
 peripheral blood CD4+ T cells	CD4+ T cells
 peripheral blood cells	peripheral blood
@@ -379,7 +378,6 @@ peripheral blood mononuclear cell	PBMC
 peripheral blood mononuclear cells	PBMC
 peripheral blood mononuclear cells (PBMC)	PBMC
 peripheral blood plasma	plasma
-Peripheral Blood.	peripheral blood
 Peripheral Blood.	peripheral blood
 placenta	placenta
 placental membrane	placental membrane
@@ -419,8 +417,8 @@ sebum of scalp	scalp sebum
 serum	serum
 serum sample	serum
 sigmoid colon	sigmoid colon
-skeletal muscle	skeletal muscle
 Skeletal muscle	skeletal muscle
+skeletal muscle	skeletal muscle
 skin	skin
 skin fibroblast	skin fibroblasts
 skin fibroblasts	skin fibroblasts
@@ -488,8 +486,8 @@ umbilical cord blood	cord blood
 umbilical cord blood mononuclear cells	umbilical cord blood mononuclear cells
 umbilical cord tissue	umbilical cord
 uninfected cells	uninfected cells
-urine	urine
 Urine	urine
+urine	urine
 uterine endometrium	endometrium
 uterine tissue	uterine tissue
 WGS	__DELETE__

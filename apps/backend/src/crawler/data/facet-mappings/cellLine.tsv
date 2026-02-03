@@ -1,4 +1,3 @@
-__DELETE__	__DELETE__
 .	__DELETE__
 ...	__DELETE__
 0	__DELETE__
@@ -17,10 +16,6 @@ B lymphocyte	__DELETE__
 blood	__DELETE__
 blood cell	__DELETE__
 bTS5	__DELETE__
-buffy coat	__DELETE__
-buffy coat	__DELETE__
-buffy coat	__DELETE__
-buffy coat	__DELETE__
 buffy coat	__DELETE__
 C	__DELETE__
 C34	__DELETE__
@@ -64,6 +59,7 @@ HeLa	HeLa
 hepatoblastoma cell lines	__DELETE__
 HepG2	HepG2
 HepG22215	HepG2
+hESC	hESC
 HG001	GIAB cell line
 HG002	GIAB cell line
 HG002-01-01	GIAB cell line
@@ -85,9 +81,9 @@ infant KMT2A gene rearrangement positive acute lymphoblastic leukemia cell line	
 iPS	iPSC
 iPS cell clone	iPSC
 iPS cell-derived cardiomyocytes	__DELETE__
-iPSC-derived cardiomyocytes	__DELETE__
 iPS cells	iPSC
 iPSC	iPSC
+iPSC-derived cardiomyocytes	__DELETE__
 Japanese B cell line	Japanese B cell line
 Japanese B cell line (PSC cell line)	Japanese B cell line
 Japanese-derived B cell line	Japanese B cell line
@@ -137,7 +133,6 @@ Takara Bio D10118	D10118
 Takara/Lonza cell lines	__DELETE__
 test	__DELETE__
 TF-hESC	hESC
-hESC	hESC
 TGS-01	Glioma stem cell line
 TGS-04	Glioma stem cell line
 tissue	__DELETE__
@@ -151,6 +146,7 @@ TSC	stem cell
 whole blood	__DELETE__
 WS(ICD10: Q253): 6 cases	__DELETE__
 xenograft	__DELETE__
+__DELETE__	__DELETE__
 ヒトiPS細胞株	iPSC
 ヒト末梢血CD4+T細胞(Lonza Catalog #: 2W-200)	__DELETE__
 外周	__DELETE__
