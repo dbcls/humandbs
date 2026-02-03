@@ -26,8 +26,8 @@ Dataset 自体は status フィールドを持たない。親 Research の statu
 
 | 親 Research の status | Dataset の可視性 | Dataset の操作 |
 |----------------------|-----------------|---------------|
-| draft | 非公開（owner/admin のみ） | 作成・更新・削除 可能 |
-| review | 非公開（owner/admin のみ） | 作成・更新・削除 不可 |
+| draft | 非公開（authenticated/admin のみ） | 作成・更新・削除 可能 |
+| review | 非公開（authenticated/admin のみ） | 作成・更新・削除 不可 |
 | published | 公開 | 作成・更新・削除 不可 |
 | deleted | 非公開（アクセス不可） | N/A |
 
@@ -134,7 +134,7 @@ POST /research/new (admin)
          |  draft   |<-----------------+
          +----+-----+                  |
               | POST /submit           | POST /reject
-              | (owner/admin)          | (admin)
+              | (authenticated/admin)  | (admin)
               v                        |
          +----------+                  |
          |  review  |------------------+
@@ -152,7 +152,7 @@ POST /research/new (admin)
 | Action | From | To | 実行者 | 追加処理 |
 |--------|------|-----|--------|---------|
 | create | - | draft | admin | humId 自動採番（または指定）、`datePublished`/`dateModified` 設定 |
-| submit | draft | review | owner/admin | `dateModified` 更新 |
+| submit | draft | review | authenticated/admin | `dateModified` 更新 |
 | approve | review | published | admin | `dateModified` 更新 |
 | reject | review | draft | admin | `dateModified` 更新 |
 | unpublish | published | draft | admin | `dateModified` 更新 |

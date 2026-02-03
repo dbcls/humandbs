@@ -30,15 +30,15 @@ HumanDBs Backend は REST API を提供し、Research (研究)と Dataset (デ�
 |--------|------|------|------|
 | GET | `/research` | 一覧取得 | public/authenticated/admin |
 | POST | `/research/new` | 新規作成 | admin |
-| GET | `/research/{humId}` | 詳細取得 | public/owner/admin |
-| PUT | `/research/{humId}/update` | 更新 | owner/admin |
+| GET | `/research/{humId}` | 詳細取得 | public/authenticated/admin |
+| PUT | `/research/{humId}/update` | 更新 | authenticated/admin |
 | POST | `/research/{humId}/delete` | 削除 (論理削除) | admin |
-| GET | `/research/{humId}/versions` | バージョン一覧 | public/owner/admin |
-| GET | `/research/{humId}/versions/{version}` | 特定バージョン | public/owner/admin |
-| POST | `/research/{humId}/versions/new` | 新バージョン作成 | owner/admin |
-| GET | `/research/{humId}/dataset` | 紐付け Dataset 一覧 | public/owner/admin |
-| POST | `/research/{humId}/dataset/new` | Dataset 新規作成 | owner/admin |
-| POST | `/research/{humId}/submit` | draft -> review | owner/admin |
+| GET | `/research/{humId}/versions` | バージョン一覧 | public/authenticated/admin |
+| GET | `/research/{humId}/versions/{version}` | 特定バージョン | public/authenticated/admin |
+| POST | `/research/{humId}/versions/new` | 新バージョン作成 | authenticated/admin |
+| GET | `/research/{humId}/dataset` | 紐付け Dataset 一覧 | public/authenticated/admin |
+| POST | `/research/{humId}/dataset/new` | Dataset 新規作成 | authenticated/admin |
+| POST | `/research/{humId}/submit` | draft -> review | authenticated/admin |
 | POST | `/research/{humId}/approve` | review -> published | admin |
 | POST | `/research/{humId}/reject` | review -> draft | admin |
 | POST | `/research/{humId}/unpublish` | published -> draft | admin |
@@ -49,12 +49,12 @@ HumanDBs Backend は REST API を提供し、Research (研究)と Dataset (デ�
 | Method | Path | 説明 | 認可 |
 |--------|------|------|------|
 | GET | `/dataset` | 一覧取得 | public/authenticated/admin |
-| GET | `/dataset/{datasetId}` | 詳細取得 | public/owner/admin |
-| PUT | `/dataset/{datasetId}/update` | 更新 | owner/admin |
+| GET | `/dataset/{datasetId}` | 詳細取得 | public/authenticated/admin |
+| PUT | `/dataset/{datasetId}/update` | 更新 | authenticated/admin |
 | POST | `/dataset/{datasetId}/delete` | 削除 (物理削除) | admin |
-| GET | `/dataset/{datasetId}/versions` | バージョン一覧 | public/owner/admin |
-| GET | `/dataset/{datasetId}/versions/{version}` | 特定バージョン | public/owner/admin |
-| GET | `/dataset/{datasetId}/research` | 親 Research 取得 | public/owner/admin |
+| GET | `/dataset/{datasetId}/versions` | バージョン一覧 | public/authenticated/admin |
+| GET | `/dataset/{datasetId}/versions/{version}` | 特定バージョン | public/authenticated/admin |
+| GET | `/dataset/{datasetId}/research` | 親 Research 取得 | public/authenticated/admin |
 
 ※ Dataset の新規作成は `POST /research/{humId}/dataset/new` で行う
 
@@ -126,10 +126,10 @@ HumanDBs Backend は REST API を提供し、Research (研究)と Dataset (デ�
 
 ### ユースケース 3: レビュー提出と承認
 
-**操作**: owner が draft を提出し、admin が承認する
+**操作**: 認証ユーザー（リソースの所有者）が draft を提出し、admin が承認する
 
 ```plaintext
-[owner]
+[authenticated]
 1. POST /research/{humId}/submit
    -> status が draft -> review に変更
 
@@ -494,7 +494,7 @@ Research の詳細を取得。
 **認可**:
 
 - public: `status=published` のみ
-- auth: 自分が `uids` に含まれるリソースも取得可能
+- authenticated: 自分が `uids` に含まれるリソースも取得可能
 - admin: 全て
 
 **クエリパラメータ**:
@@ -534,7 +534,7 @@ Research の詳細を取得。
 
 Research を更新。
 
-**認可**: owner または admin
+**認可**: authenticated または admin
 
 **リクエストボディ**:
 
@@ -624,7 +624,7 @@ Research のバージョン一覧を取得。
 
 新バージョンを作成。
 
-**認可**: owner または admin
+**認可**: authenticated または admin
 
 **リクエストボディ**:
 
@@ -647,7 +647,7 @@ Research に紐づく Dataset の一覧を取得。
 **認可**:
 
 - public: Research が `status=published` の場合のみ
-- owner: 自分が owner の Research
+- authenticated: 自分が `uids` に含まれる Research
 - admin: 全て
 
 **クエリパラメータ**:
@@ -681,7 +681,7 @@ Research に紐づく Dataset の一覧を取得。
 
 ### PUT /research/{humId}/uids
 
-Research の uids (owner リスト)を更新。
+Research の uids (認可ユーザーリスト)を更新。
 
 **認可**: admin のみ
 
@@ -717,7 +717,7 @@ interface UpdateUidsRequest {
 
 レビューに提出 (draft -> review)。
 
-**認可**: owner/admin
+**認可**: authenticated/admin
 
 #### POST /research/{humId}/approve
 
@@ -752,7 +752,7 @@ Dataset 一覧を取得。
 **認可**:
 
 - public: 紐づく Research が `status=published` のもののみ
-- authenticated: 自分が owner の Research に紐づく Dataset も含む
+- authenticated: 自分が `uids` に含まれる Research に紐づく Dataset も含む
 - admin: 全て
 
 **クエリパラメータ**:
@@ -771,7 +771,7 @@ Dataset 一覧を取得。
 
 新規 Dataset を作成し、指定した Research に紐付ける。
 
-**認可**: owner (親 Research の owner)または admin
+**認可**: authenticated (親 Research の `uids` に含まれる)または admin
 
 **前提条件**: Research が draft 状態であること
 
@@ -802,7 +802,7 @@ Dataset の詳細を取得。
 **認可**:
 
 - public: 紐づく Research が `status=published` のもののみ
-- auth: 自分が owner の Research に紐づく Dataset も取得可能
+- authenticated: 自分が `uids` に含まれる Research に紐づく Dataset も取得可能
 - admin: 全て
 
 **クエリパラメータ**:
@@ -817,7 +817,7 @@ Dataset の詳細を取得。
 
 Dataset を更新。
 
-**認可**: owner (親 Research の owner)または admin
+**認可**: authenticated (親 Research の `uids` に含まれる)または admin
 
 **前提条件**: 親 Research が draft 状態であること (published の Dataset は直接更新不可)
 

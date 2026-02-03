@@ -87,8 +87,8 @@ Authorization: Bearer <access_token>
 
 ## Roles
 
-- **public**: Unauthenticated users can read published resources
-- **researcher**: Can create and manage their own resources
+- **public**: Unauthenticated users can read published resources only
+- **authenticated**: Authenticated users can also access their own draft/review resources (where their UID is in the resource's uids field)
 - **admin**: Full access to all resources and administrative functions
 
 ## Resource Naming
@@ -103,7 +103,7 @@ Research resources follow a publication workflow:
 Only admins can approve/reject submissions and unpublish content.
       `.trim(),
     },
-    servers: URL_PREFIX ? [{ url: URL_PREFIX }] : undefined,
+    servers: [{ url: "/" }],
     tags: [
       {
         name: "Health",
