@@ -105,7 +105,6 @@ web_modules/
 # dotenv environment variable files
 
 .env
-.env.staging
 .env.bak
 .env.development.local
 .env.test.local
@@ -184,11 +183,3 @@ dist
 apps/backend/crawler-results*
 apps/backend/src/crawler/data/icd10/icd10-master.txt
 apps/backend/src/crawler/data/icd10/icd10-labels.json
-es-data
-ollama-data
-
-# === memos etc. ===
-memos
-
-# === postgres data folder ===
-pgdata

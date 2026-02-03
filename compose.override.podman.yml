@@ -1,0 +1,13 @@
+services:
+  cms-db:
+    userns_mode: "keep-id:uid=999,gid=999"
+  cms-db-migrator:
+    userns_mode: "keep-id"
+  frontend:
+    userns_mode: "keep-id"
+  backend:
+    userns_mode: "keep-id"
+  elasticsearch:
+    userns_mode: "keep-id:uid=1000,gid=1000"
+  nginx:
+    userns_mode: "keep-id"

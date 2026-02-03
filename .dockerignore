@@ -1,13 +1,24 @@
 # Ignore everything
 **
 
+# Allow essentials
 !.prettierignore
 !apps
 !bun.lock
+!docs
+!eslint.config.mjs
 !package.json
 !packages
 !README.md
 !tsconfig.json
 
+# Re-exclude unnecessary files
+*.log
 apps/**/node_modules
 packages/**/node_modules
+apps/backend/crawler-results*
+apps/backend/jga-shinsei/dumps
+apps/backend/jga-shinsei/json-data
+apps/backend/joomla/dumps
+apps/backend/src/crawler/data/icd10/icd10-labels.json
+apps/backend/src/crawler/data/icd10/icd10-master.txt
