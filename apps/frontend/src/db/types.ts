@@ -13,8 +13,6 @@ export const insertDocumentSchema = createInsertSchema(schema.document);
 
 export const userSelectSchema = createSelectSchema(schema.user);
 
-export const userRoleSchema = userSelectSchema.pick({ role: true });
-
 export const statusSchema = createSelectSchema(schema.documentVersionStatus);
 
 export type DocumentVersionStatus = z.infer<typeof statusSchema>;

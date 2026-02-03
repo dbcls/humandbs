@@ -13,21 +13,22 @@ export const USER_ROLES = {
   USER: "user",
 } as const;
 
-type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 type PermissionCheck<Key extends keyof Permissions> =
   | boolean
   | ((user: SessionUser | null, data: Permissions[Key]["dataType"]) => boolean);
 
-type RolesWithPermissions = {
-  [R in UserRole]: Partial<{
-    [Key in keyof Permissions]: Partial<{
-      [Action in Permissions[Key]["action"]]: PermissionCheck<Key>;
-    }>;
-  }>;
-};
+type RolesWithPermissions = Record<
+  UserRole,
+  Partial<{
+    [Key in keyof Permissions]: Partial<
+      Record<Permissions[Key]["action"], PermissionCheck<Key>>
+    >;
+  }>
+>;
 
-export type Permissions = {
+export interface Permissions {
   users: {
     dataType: SessionUser;
     action: "view" | "delete" | "changeRole";
@@ -60,7 +61,7 @@ export type Permissions = {
     dataType: Alert;
     action: "list" | "update" | "create" | "delete";
   };
-};
+}
 
 const ROLES = {
   admin: {
@@ -163,7 +164,7 @@ const ROLES = {
   user: {},
 } as const satisfies RolesWithPermissions;
 
-export const roles = Object.keys(ROLES) as Array<keyof RolesWithPermissions>;
+export const roles = Object.keys(ROLES) as (keyof RolesWithPermissions)[];
 
 export function hasPermission<Resource extends keyof Permissions>(
   user: SessionUser | null,
