@@ -4,8 +4,8 @@ let _config: oidc.Configuration | null = null;
 
 export async function getConfig() {
   if (_config) return _config;
-  const server = new URL(process.env.OIDC_ISSUER_URL!);
-  const clientId = process.env.OIDC_CLIENT_ID!;
+  const server = new URL(process.env.HUMANDBS_AUTH_ISSUER_URL!);
+  const clientId = process.env.HUMANDBS_AUTH_CLIENT_ID!;
   // v6 discovery works with public clients too; no secret needed
   _config = await oidc.discovery(server, clientId);
   return _config;

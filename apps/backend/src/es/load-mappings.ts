@@ -10,7 +10,9 @@ import type { EsMapping } from "./generate-mapping"
 import { researchMapping } from "./research-schema"
 import { researchVersionMapping } from "./research-version-schema"
 
-const ES_NODE = process.env.ES_HOST ?? "http://humandbs-elasticsearch-dev:9200"
+const ES_HOST = process.env.HUMANDBS_ES_HOST ?? "elasticsearch"
+const ES_PORT = process.env.HUMANDBS_ES_PORT ?? "9200"
+const ES_NODE = `http://${ES_HOST}:${ES_PORT}`
 
 const INDICES: Record<string, EsMapping> = {
   research: researchMapping,

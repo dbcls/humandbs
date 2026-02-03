@@ -3,22 +3,79 @@
 This is the development repository for HumanDBs. The application description will be added later.
 Currently, this document focuses on development-related information.
 
-## Development Environment
+## Network Architecture
 
-As defined in [./package.json](./package.json), there are two workspaces: `apps/frontend` and `apps/backend`.
-
-Using Docker, you can enter the development environment with the following commands:
-
-```bash
-docker network create humandbs-dev-network
-docker compose -f compose.dev.yml up -d --build
-docker compose -f compose.dev.yml exec backend bash
-docker compose -f compose.dev.yml exec frontend bash
+```
+[Internet]
+    |
+    v
++-------------------------------------------------------+
+|  nginx (port 80)                                      |
+|  ${HUMANDBS_NGINX_BIND_HOST}:${HUMANDBS_NGINX_PORT}   |
++-------------------------------------------------------+
+    |
+    +--- /api/* ------> backend:8080
+    |                       |
+    |                       +---> elasticsearch:9200
+    |                       |
+    |                       +---> Auth (OIDC IdP)
+    |
+    +--- /* ----------> frontend:3000
+                            |
+                            +---> backend:8080 (API calls)
+                            |
+                            +---> cms-db:5432 (PostgreSQL)
+                            |
+                            +---> Auth (OIDC IdP)
 ```
 
-Since the host's root directory is mounted directly into the container (refer to [docker-compose.dev.yml](./docker-compose.dev.yml)), any changes made on the host side are immediately reflected inside the container.
+- **External access**: Only nginx is exposed
+- **Internal communication**: All services communicate via Docker network using service names
 
-### Bun (npm) package
+## Development Environment
+
+### Prerequisites
+
+- Docker / Docker Compose
+- (Optional) Podman / podman-compose
+
+### Quick Start
+
+```bash
+# Create network (first time only)
+docker network create humandbs-network
+
+# Setup environment
+cp env.dev .env
+
+# Start containers
+docker compose up -d --build
+
+# Enter backend container
+docker compose exec backend bash
+
+# Enter frontend container
+docker compose exec frontend bash
+```
+
+### With Podman
+
+```bash
+cp env.dev .env
+podman-compose -f compose.yml -f compose.override.podman.yml up -d
+```
+
+### Environment Files
+
+| File | Description |
+|------|-------------|
+| `env.dev` | Development (localhost, no password required) |
+| `env.staging` | Staging (password required) |
+| `env.production` | Production (password required) |
+
+Copy one of these to `.env` before running `docker compose`.
+
+## Bun (npm) package
 
 `Bun` is used as the runtime.
 
@@ -52,36 +109,7 @@ bun install --frozen-lockfile
 
 This ensures `node_modules` is updated properly on the host as well.
 
-### ESLint
+## ESLint
 
 Shared ESLint configuration is defined in `./packages/eslint-config`.
 Each workspace (e.g., `apps/backend`) can create its own `eslint.config.js`, importing the shared configuration as needed.
-
-### Environment variables
-
-1. `cd` into `apps/frontend`
-
-2. Copy `.env.example` to new `.env` file:
-
-```bash
-cp .env.example .env
-```
-
-3. Fill in your own GitHub credentials (and any other secrets).
-4. Run `docker compose -f compose.dev.yml up -d --build`
-   That would build and run docker containers.
-5. Enter the container's sh:
-
-```bash
-docker exec -it <container_id> sh
-```
-
-6. In the container's sh, run `bun run front:dev` from the root.
-
-> For running the `docker compose` , entering the `frontent`'s container's `sh` and `cd`-ing into `apps/frontend` folder, use shourtcut command
-
-```bash
-bun run front:sh
-```
-
-Then run the frontend with `bun run dev`

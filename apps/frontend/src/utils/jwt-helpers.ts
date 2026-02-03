@@ -49,7 +49,7 @@ export interface EnsureFreshSessionResult {
 }
 
 const JWKS = jose.createRemoteJWKSet(
-  new URL(`${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/certs`)
+  new URL(`${process.env.HUMANDBS_AUTH_ISSUER_URL}/protocol/openid-connect/certs`)
 );
 
 function computeAbsoluteExpiry(expiresIn?: number): string | undefined {
@@ -144,12 +144,12 @@ export async function refreshAccessToken(
 export async function verifyAccessToken(token: string, clockToleranceSec = 60) {
   try {
     const { payload } = await jose.jwtVerify(token, JWKS, {
-      issuer: process.env.OIDC_ISSUER_URL!,
+      issuer: process.env.HUMANDBS_AUTH_ISSUER_URL!,
       audience: "account",
       clockTolerance: clockToleranceSec,
     });
 
-    if (payload.azp && payload.azp !== process.env.OIDC_CLIENT_ID) {
+    if (payload.azp && payload.azp !== process.env.HUMANDBS_AUTH_CLIENT_ID) {
       throw new Error("Unexpected azp");
     }
     return payload as AccessTokenClaims;

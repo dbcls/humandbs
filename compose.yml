@@ -1,19 +1,17 @@
 services:
   cms-db:
     image: docker.io/postgres:17
-    container_name: ${CONTAINER_PREFIX}-cms-db
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-cms-db
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=${HUMANDBS_POSTGRES_DB}
     volumes:
       - cms-pgdata:/var/lib/postgresql/data
-    ports:
-      - ${DB_BIND_HOST}:5432:5432
     networks:
       - humandbs-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${HUMANDBS_POSTGRES_USER} -d ${HUMANDBS_POSTGRES_DB}" ]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -24,72 +22,84 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${CONTAINER_PREFIX}-app
-    container_name: ${CONTAINER_PREFIX}-cms-db-migrator
+    image: ${HUMANDBS_CONTAINER_PREFIX}-app
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-cms-db-migrator
     depends_on:
       cms-db:
         condition: service_healthy
     environment:
-      - POSTGRES_HOST=cms-db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      # Container network (fixed)
+      - HUMANDBS_POSTGRES_HOST=cms-db
+      - HUMANDBS_POSTGRES_PORT=5432
+      # Credentials (from .env)
+      - HUMANDBS_POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
+      - HUMANDBS_POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
+      - HUMANDBS_POSTGRES_DB=${HUMANDBS_POSTGRES_DB}
     volumes:
-      - ${PWD}:/app
+      - .:/app
     working_dir: /app
     networks:
       - humandbs-network
-    entrypoint: ["sleep", "infinity"]
+    entrypoint: [ "sleep", "infinity" ]
     init: true
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${CONTAINER_PREFIX}-app
-    container_name: ${CONTAINER_PREFIX}-frontend
+    image: ${HUMANDBS_CONTAINER_PREFIX}-app
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-frontend
     depends_on:
       - cms-db
       - backend
     environment:
-      - HUMANDBS_FRONTEND_HOST=0.0.0.0
-      - HUMANDBS_FRONTEND_PORT=3000
-      - POSTGRES_HOST=cms-db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      # Container network (fixed)
+      - HUMANDBS_POSTGRES_HOST=cms-db
+      - HUMANDBS_POSTGRES_PORT=5432
       - HUMANDBS_BACKEND_HOST=backend
       - HUMANDBS_BACKEND_PORT=8080
-      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-      - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
+      # Server binding (fixed)
+      - HUMANDBS_FRONTEND_HOST=0.0.0.0
+      - HUMANDBS_FRONTEND_PORT=3000
+      # Credentials (from .env)
+      - HUMANDBS_POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
+      - HUMANDBS_POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
+      - HUMANDBS_POSTGRES_DB=${HUMANDBS_POSTGRES_DB}
+      # External access (from .env)
+      - HUMANDBS_AUTH_ISSUER_URL=${HUMANDBS_AUTH_ISSUER_URL}
+      - HUMANDBS_AUTH_CLIENT_ID=${HUMANDBS_AUTH_CLIENT_ID}
+      - HUMANDBS_AUTH_REDIRECT_URI=${HUMANDBS_AUTH_REDIRECT_URI}
     volumes:
-      - ${PWD}:/app
+      - .:/app
       - node_modules:/app/node_modules
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
     working_dir: /app
-    ports:
-      - ${FRONTEND_BIND_HOST}:3000:3000
     networks:
       - humandbs-network
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
     init: true
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${CONTAINER_PREFIX}-app
-    container_name: ${CONTAINER_PREFIX}-backend
+    image: ${HUMANDBS_CONTAINER_PREFIX}-app
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-backend
     environment:
+      # Container network (fixed)
+      - HUMANDBS_ES_HOST=elasticsearch
+      - HUMANDBS_ES_PORT=9200
+      # Server binding (fixed)
       - HUMANDBS_BACKEND_HOST=0.0.0.0
       - HUMANDBS_BACKEND_PORT=8080
+      - HUMANDBS_BACKEND_URL_PREFIX=/api
+      # External access (from .env)
+      - HUMANDBS_AUTH_ISSUER_URL=${HUMANDBS_AUTH_ISSUER_URL}
+      - HUMANDBS_AUTH_CLIENT_ID=${HUMANDBS_AUTH_CLIENT_ID}
     volumes:
-      - ${PWD}:/app
+      - .:/app
       - node_modules:/app/node_modules
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
@@ -97,17 +107,17 @@ services:
     working_dir: /app
     networks:
       - humandbs-network
-    command: ["sleep", "infinity"]
+    command: [ "sleep", "infinity" ]
     init: true
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.6
-    container_name: ${CONTAINER_PREFIX}-elasticsearch
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTIC_PASSWORD=${HUMANDBS_ES_PASSWORD:?HUMANDBS_ES_PASSWORD is required}
     volumes:
       - es-data:/usr/share/elasticsearch/data
     networks:
@@ -119,16 +129,16 @@ services:
       memlock:
         soft: -1
         hard: -1
-    mem_limit: ${ES_MEM_LIMIT}
+    mem_limit: ${HUMANDBS_ES_MEM_LIMIT}
     init: true
 
   nginx:
     image: docker.io/library/nginx:1.27.0
-    container_name: ${CONTAINER_PREFIX}-nginx
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-nginx
     volumes:
-      - ${PWD}/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     ports:
-      - ${FRONTEND_BIND_HOST}:${NGINX_PORT}:80
+      - ${HUMANDBS_NGINX_BIND_HOST}:${HUMANDBS_NGINX_PORT}:80
     networks:
       - humandbs-network
     init: true
@@ -143,5 +153,4 @@ volumes:
 
 networks:
   humandbs-network:
-    name: ${NETWORK_NAME}
-    external: true
+    name: ${HUMANDBS_NETWORK_NAME}

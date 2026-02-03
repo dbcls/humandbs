@@ -16,7 +16,7 @@ import { searchRouter } from "@/api/routes/search"
 import { statsRouter } from "@/api/routes/stats"
 
 // Environment variables
-const API_URL_PREFIX = process.env.HUMANDBS_API_URL_PREFIX || ""
+const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX || ""
 
 export const createApp = () => {
   const app = new OpenAPIHono()
@@ -58,14 +58,14 @@ export const createApp = () => {
   api.route("/", searchRouter)
 
   // Mount API routes with optional prefix
-  if (API_URL_PREFIX) {
-    app.route(API_URL_PREFIX, api)
+  if (URL_PREFIX) {
+    app.route(URL_PREFIX, api)
   } else {
     app.route("/", api)
   }
 
   // OpenAPI docs path (adjusted for prefix)
-  const docsPath = API_URL_PREFIX ? `${API_URL_PREFIX}/docs` : "/docs"
+  const docsPath = URL_PREFIX ? `${URL_PREFIX}/docs` : "/docs"
   const openApiJsonPath = `${docsPath}/openapi.json`
 
   // OpenAPI docs
@@ -103,7 +103,7 @@ Research resources follow a publication workflow:
 Only admins can approve/reject submissions and unpublish content.
       `.trim(),
     },
-    servers: API_URL_PREFIX ? [{ url: API_URL_PREFIX }] : undefined,
+    servers: URL_PREFIX ? [{ url: URL_PREFIX }] : undefined,
     tags: [
       {
         name: "Health",

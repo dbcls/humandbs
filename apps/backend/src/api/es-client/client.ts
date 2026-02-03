@@ -19,11 +19,13 @@ export const ES_INDEX = {
 
 // === Client Configuration ===
 
-const ES_HOST = process.env.HUMANDBS_ES_HOST ?? "http://humandbs-elasticsearch-dev:9200"
+const ES_HOST = process.env.HUMANDBS_ES_HOST ?? "elasticsearch"
+const ES_PORT = process.env.HUMANDBS_ES_PORT ?? "9200"
+const ES_NODE = `http://${ES_HOST}:${ES_PORT}`
 
 const createEsClient = () => {
   return new Client({
-    node: ES_HOST,
+    node: ES_NODE,
     Connection: HttpConnection,
   })
 }

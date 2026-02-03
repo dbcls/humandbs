@@ -21,8 +21,8 @@ import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
 // Environment variables
-const OIDC_ISSUER_URL = process.env.OIDC_ISSUER_URL || "https://idp-staging.ddbj.nig.ac.jp/realms/master"
-const OIDC_CLIENT_ID = process.env.OIDC_CLIENT_ID || "humandbs-dev"
+const AUTH_ISSUER_URL = process.env.HUMANDBS_AUTH_ISSUER_URL || "https://idp-staging.ddbj.nig.ac.jp/realms/master"
+const AUTH_CLIENT_ID = process.env.HUMANDBS_AUTH_CLIENT_ID || "humandbs-dev"
 const ADMIN_UID_FILE = process.env.ADMIN_UID_FILE || path.join(process.cwd(), "admin_uids.json")
 
 // === TTL Cache Factory ===
@@ -59,7 +59,7 @@ async function getJwks(): Promise<jose.JWTVerifyGetKey> {
   const cached = jwksCache.get()
   if (cached) return cached
 
-  const jwksUrl = `${OIDC_ISSUER_URL}/protocol/openid-connect/certs`
+  const jwksUrl = `${AUTH_ISSUER_URL}/protocol/openid-connect/certs`
   const jwks = jose.createRemoteJWKSet(new URL(jwksUrl))
   jwksCache.set(jwks)
 
@@ -123,8 +123,8 @@ async function verifyToken(token: string): Promise<JwtClaims | null> {
   try {
     const jwks = await getJwks()
     const { payload } = await jose.jwtVerify(token, jwks, {
-      issuer: OIDC_ISSUER_URL,
-      audience: OIDC_CLIENT_ID,
+      issuer: AUTH_ISSUER_URL,
+      audience: AUTH_CLIENT_ID,
     })
 
     const parseResult = JwtClaimsSchema.safeParse(payload)

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/auth/callback")({
         // redirect_uri sent during the token exchange matches what was sent in
         // the authorization request.
         const internalUrl = new URL(request.url);
-        const url = new URL(process.env.OIDC_REDIRECT_URI!);
+        const url = new URL(process.env.HUMANDBS_AUTH_REDIRECT_URI!);
         url.search = internalUrl.search;
 
         const cookies = parse(request.headers.get("cookie") ?? "");
