@@ -34,7 +34,6 @@ import {
   parseDatasetIdsFromCell,
 } from "./utils"
 
-
 /**
  * Check if a line should be ignored (notes, empty, etc.)
  */
@@ -208,9 +207,7 @@ const splitToSection = (
       if (isPublicationTable) {
         container.removeChild(firstTable)
 
-        if (!sectionElements.publications) {
-          sectionElements.publications = doc.createElement("div")
-        }
+        sectionElements.publications ??= doc.createElement("div")
         sectionElements.publications.appendChild(firstTable)
       }
     }
@@ -219,7 +216,7 @@ const splitToSection = (
   // Case for molecularData header is missing but table exists in summary
   if (sectionElements.summary && !sectionElements.molecularData) {
     let foundMolecularTable = false
-    const summaryElem = sectionElements.summary!
+    const summaryElem = sectionElements.summary
     const tables = Array.from(summaryElem.querySelectorAll("table"))
     if (tables.length >= 2) {
       foundMolecularTable = true
@@ -505,8 +502,8 @@ const parseMolecularDataSection = (
       } else {
         if (keyText in data && data[keyText] !== null) {
           data[keyText] = {
-            text: data[keyText]!.text + "\n" + valueTexts.join(" "),
-            rawHtml: data[keyText]!.rawHtml + "\n" + valueHtmls.join("\n"),
+            text: data[keyText].text + "\n" + valueTexts.join(" "),
+            rawHtml: data[keyText].rawHtml + "\n" + valueHtmls.join("\n"),
           }
         } else {
           data[keyText] = {

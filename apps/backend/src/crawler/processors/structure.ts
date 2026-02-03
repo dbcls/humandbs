@@ -163,16 +163,14 @@ export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): 
   const addIds = (text: string) => {
     const found = extractIdsByType(text)
     for (const [type, ids] of Object.entries(found) as [DatasetIdType, string[]][]) {
-      if (!idSets[type]) {
-        idSets[type] = new Set()
-      }
+      idSets[type] ??= new Set()
       for (const id of ids) {
         // Skip invalid IDs
         if (invalidIdValues.includes(id)) continue
         // Apply special case transformations
         const normalizedIds = applyGlobalIdCorrection(id)
         for (const normalizedId of normalizedIds) {
-          idSets[type]!.add(normalizedId)
+          idSets[type].add(normalizedId)
         }
       }
     }
@@ -464,7 +462,7 @@ export const structureGrants = (
   grants: NormalizedParseResult["dataProvider"]["grants"],
 ): SingleLangGrant[] => {
   return grants
-    .filter(g => g.grantName || g.projectTitle || g.grantId)
+    .filter(g => g.grantName != null || g.projectTitle != null || g.grantId != null)
     .map(g => ({
       id: g.grantId ?? [],
       title: g.projectTitle ?? "",
@@ -649,18 +647,15 @@ export const mergeExperiments = (
 
     const unifiedData: Record<string, BilingualTextValue | null> = {}
     for (const key of allKeys) {
-      const jaValue = pair.ja?.data[key] ?? null
-      const enValue = pair.en?.data[key] ?? null
+      const jaValue: TextValue | null = pair.ja?.data[key] ?? null
+      const enValue: TextValue | null = pair.en?.data[key] ?? null
 
-      const jaTextValue = Array.isArray(jaValue) ? jaValue[0] ?? null : jaValue
-      const enTextValue = Array.isArray(enValue) ? enValue[0] ?? null : enValue
-
-      unifiedData[key] = toBilingualTextValue(jaTextValue, enTextValue)
+      unifiedData[key] = toBilingualTextValue(jaValue, enValue)
     }
 
     // Extract policies from experiment data (rule-based)
-    const jaPolicies = pair.ja?.data["Policies"] ?? null
-    const enPolicies = pair.en?.data["Policies"] ?? null
+    const jaPolicies = pair.ja?.data.Policies ?? null
+    const enPolicies = pair.en?.data.Policies ?? null
 
     return {
       header: toBilingualTextValue(pair.ja?.header ?? null, pair.en?.header ?? null),
@@ -715,8 +710,8 @@ export const mergeDataset = (
     releaseDate,
     criteria: validatedCriteria,
     typeOfData: {
-      ja: jaDataset?.typeOfData || null,
-      en: enDataset?.typeOfData || null,
+      ja: jaDataset?.typeOfData ?? null,
+      en: enDataset?.typeOfData ?? null,
     },
     experiments,
   }

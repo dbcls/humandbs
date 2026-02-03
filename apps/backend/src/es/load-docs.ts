@@ -55,7 +55,7 @@ const INDEX = {
  */
 const normVersion = (v: string | number): string => {
   if (typeof v === "number") return `v${v}`
-  const s = String(v).trim()
+  const s = v.trim()
   if (/^v\d+/.test(s)) return s
   if (/^\d+/.test(s)) return `v${s}`
   throw new Error(`Invalid version format: ${v}`)
@@ -136,7 +136,7 @@ const main = async () => {
   const researchVersionDir = getSourceDir("research-version")
   const datasetDir = getSourceDir("dataset")
 
-  console.log(`\nSource directories:`)
+  console.log("\nSource directories:")
   console.log(`  Research: ${researchDir}`)
   console.log(`  Research Version: ${researchVersionDir}`)
   console.log(`  Dataset: ${datasetDir}`)
@@ -145,7 +145,7 @@ const main = async () => {
   const researchVersionDocs = readJsonFilesFromDir<ResearchVersionDoc>(researchVersionDir)
   const datasetDocs = readJsonFilesFromDir<DatasetDoc>(datasetDir)
 
-  console.log(`\nLoaded documents:`)
+  console.log("\nLoaded documents:")
   console.log(`  Research: ${researchDocs.length}`)
   console.log(`  Research Version: ${researchVersionDocs.length}`)
   console.log(`  Dataset: ${datasetDocs.length}`)
@@ -184,7 +184,7 @@ const main = async () => {
 
     const transformedDocs = transform ? docs.map(transform) : docs
     const ops = transformedDocs.flatMap((doc) => [
-      { index: { _index: INDEX[index], _id: genId(doc as T) } },
+      { index: { _index: INDEX[index], _id: genId(doc) } },
       doc,
     ])
 

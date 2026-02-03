@@ -50,7 +50,7 @@ const readDataset = (filename: string): EnrichedDataset | null => {
   const filePath = join(getStructuredDatasetDir(), filename)
   if (!existsSync(filePath)) return null
   try {
-    return JSON.parse(readFileSync(filePath, "utf8"))
+    return JSON.parse(readFileSync(filePath, "utf8")) as EnrichedDataset
   } catch (error) {
     logger.error("Failed to read dataset", { filename, error: getErrorMessage(error) })
     return null
@@ -89,7 +89,7 @@ const withDatasetLock = async <T>(filename: string, fn: () => Promise<T>): Promi
 
 /** Parse version number from version string (e.g., "v3" -> 3) */
 const parseVersionNumber = (version: string): number => {
-  const match = version.match(/^v(\d+)$/)
+  const match = /^v(\d+)$/.exec(version)
   return match ? parseInt(match[1], 10) : 0
 }
 
@@ -102,7 +102,7 @@ const listDatasetFiles = (): string[] => {
 
 /** Parse datasetId and version from filename (e.g., "JGAD000001-v1.json" -> { datasetId: "JGAD000001", version: "v1" }) */
 const parseFilename = (filename: string): { datasetId: string; version: string } | null => {
-  const match = filename.match(/^(.+)-(v\d+)\.json$/)
+  const match = /^(.+)-(v\d+)\.json$/.exec(filename)
   if (!match) return null
   return { datasetId: match[1], version: match[2] }
 }

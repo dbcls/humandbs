@@ -149,7 +149,7 @@ const researchToRow = (r: Research): unknown[] => {
   ]
 }
 
-export const exportResearchTsv = async (options: ExportOptions): Promise<void> => {
+export const exportResearchTsv = (options: ExportOptions): void => {
   logger.info("Exporting research.tsv...")
 
   const dir = getStructuredDir("research")
@@ -201,7 +201,7 @@ const researchSummaryToRow = (r: Research): unknown[] => {
   ]
 }
 
-export const exportResearchSummaryTsv = async (options: ExportOptions): Promise<void> => {
+export const exportResearchSummaryTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-summary.tsv...")
 
   const dir = getStructuredDir("research")
@@ -253,7 +253,7 @@ const dataProviderToRows = (r: Research): unknown[][] => {
   ])
 }
 
-export const exportDataProviderTsv = async (options: ExportOptions): Promise<void> => {
+export const exportDataProviderTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-data-provider.tsv...")
 
   const dir = getStructuredDir("research")
@@ -304,7 +304,7 @@ const grantToRows = (r: Research): unknown[][] => {
   ])
 }
 
-export const exportGrantTsv = async (options: ExportOptions): Promise<void> => {
+export const exportGrantTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-grant.tsv...")
 
   const dir = getStructuredDir("research")
@@ -353,7 +353,7 @@ const publicationToRows = (r: Research): unknown[][] => {
   ])
 }
 
-export const exportPublicationTsv = async (options: ExportOptions): Promise<void> => {
+export const exportPublicationTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-publication.tsv...")
 
   const dir = getStructuredDir("research")
@@ -402,7 +402,7 @@ const projectToRows = (r: Research): unknown[][] => {
   ])
 }
 
-export const exportProjectTsv = async (options: ExportOptions): Promise<void> => {
+export const exportProjectTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-project.tsv...")
 
   const dir = getStructuredDir("research")
@@ -463,7 +463,7 @@ const cauToRows = (r: Research): unknown[][] => {
   ])
 }
 
-export const exportCauTsv = async (options: ExportOptions): Promise<void> => {
+export const exportCauTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-cau.tsv...")
 
   const dir = getStructuredDir("research")
@@ -510,7 +510,7 @@ const researchVersionToRow = (rv: ResearchVersion): unknown[] => {
   ]
 }
 
-export const exportResearchVersionTsv = async (options: ExportOptions): Promise<void> => {
+export const exportResearchVersionTsv = (options: ExportOptions): void => {
   logger.info("Exporting research-version.tsv...")
 
   const dir = getStructuredDir("research-version")
@@ -564,7 +564,7 @@ const datasetToRow = (d: SearchableDataset): unknown[] => {
   ]
 }
 
-export const exportDatasetTsv = async (options: ExportOptions): Promise<void> => {
+export const exportDatasetTsv = (options: ExportOptions): void => {
   logger.info("Exporting dataset.tsv...")
 
   const dir = getStructuredDir("dataset")
@@ -663,7 +663,7 @@ const experimentToRow = (
   ]
 }
 
-export const exportExperimentTsv = async (options: ExportOptions): Promise<void> => {
+export const exportExperimentTsv = (options: ExportOptions): void => {
   logger.info("Exporting experiment.tsv...")
 
   const dir = getStructuredDir("dataset")
@@ -689,7 +689,7 @@ export const exportExperimentTsv = async (options: ExportOptions): Promise<void>
 
 // Export Dataset Latest TSV
 
-export const exportDatasetLatestTsv = async (options: ExportOptions): Promise<void> => {
+export const exportDatasetLatestTsv = (options: ExportOptions): void => {
   logger.info("Exporting dataset-latest.tsv...")
 
   // Read researches to get latestVersion for each humId
@@ -718,7 +718,7 @@ export const exportDatasetLatestTsv = async (options: ExportOptions): Promise<vo
 
 // Export Experiment Latest TSV
 
-export const exportExperimentLatestTsv = async (options: ExportOptions): Promise<void> => {
+export const exportExperimentLatestTsv = (options: ExportOptions): void => {
   logger.info("Exporting experiment-latest.tsv...")
 
   // Read researches to get latestVersion for each humId
@@ -753,28 +753,28 @@ export const exportExperimentLatestTsv = async (options: ExportOptions): Promise
 
 // Export All
 
-export const exportAllTsv = async (options: ExportOptions): Promise<void> => {
+export const exportAllTsv = (options: ExportOptions): void => {
   logger.info("Starting TSV export", { options })
 
   // Research
-  await exportResearchTsv(options)
-  await exportResearchSummaryTsv(options)
-  await exportDataProviderTsv(options)
-  await exportGrantTsv(options)
-  await exportPublicationTsv(options)
-  await exportProjectTsv(options)
-  await exportCauTsv(options)
+  exportResearchTsv(options)
+  exportResearchSummaryTsv(options)
+  exportDataProviderTsv(options)
+  exportGrantTsv(options)
+  exportPublicationTsv(options)
+  exportProjectTsv(options)
+  exportCauTsv(options)
 
   // Research Version
-  await exportResearchVersionTsv(options)
+  exportResearchVersionTsv(options)
 
   // Dataset and Experiment (all versions)
-  await exportDatasetTsv(options)
-  await exportExperimentTsv(options)
+  exportDatasetTsv(options)
+  exportExperimentTsv(options)
 
   // Dataset and Experiment (latest version only)
-  await exportDatasetLatestTsv(options)
-  await exportExperimentLatestTsv(options)
+  exportDatasetLatestTsv(options)
+  exportExperimentLatestTsv(options)
 
   const outputDir = getTsvDir(options.output)
   logger.info("Completed", { outputDir })
@@ -808,14 +808,14 @@ const parseArgs = (): CliArgs => {
   return args
 }
 
-const main = async (): Promise<void> => {
+const main = (): void => {
   const args = parseArgs()
-  await exportAllTsv({
+  exportAllTsv({
     humId: args.humId,
     output: args.output,
   })
 }
 
 if (import.meta.main) {
-  await main()
+  main()
 }

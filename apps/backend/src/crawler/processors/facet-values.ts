@@ -159,7 +159,7 @@ export class ValueCounter {
 
   /** Get counts for a field */
   getFieldCounts(fieldName: FacetFieldName): Map<string, number> {
-    return this.counts.get(fieldName) ?? new Map()
+    return this.counts.get(fieldName) ?? new Map<string, number>()
   }
 
   /** Get all field names */

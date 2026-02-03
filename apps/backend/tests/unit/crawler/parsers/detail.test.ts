@@ -132,7 +132,7 @@ describe("parsers/detail.ts", () => {
       expect(result.molecularData).toHaveLength(1)
       expect(result.molecularData[0].id.text).toBe("JGAD000001")
       expect(result.molecularData[0].data["Sample Size"]?.text).toBe("100")
-      expect(result.molecularData[0].data["Platform"]?.text).toBe("Illumina NovaSeq")
+      expect(result.molecularData[0].data.Platform?.text).toBe("Illumina NovaSeq")
     })
 
     it("should parse data provider section", () => {

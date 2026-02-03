@@ -22,7 +22,6 @@ import {
   serverErrorResponse,
   unauthorizedResponse,
 } from "@/api/routes/errors"
-import type { UpdateUidsRequest } from "@/api/types"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
 import {
@@ -48,12 +47,12 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       if (query.status) {
         // public: can only request "published"
         if (!authUser && query.status !== "published") {
-          return forbiddenResponse(c, `Public users can only access published resources`)
+          return forbiddenResponse(c, "Public users can only access published resources")
         }
         // authenticated (non-admin): can request "draft", "review", "published" (own resources only)
         // "deleted" is admin-only
         if (authUser && !authUser.isAdmin && query.status === "deleted") {
-          return forbiddenResponse(c, `Only admin can access deleted resources`)
+          return forbiddenResponse(c, "Only admin can access deleted resources")
         }
       }
 
@@ -86,7 +85,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       return forbiddenResponse(c, "Admin access required")
     }
     try {
-      const body = await c.req.json()
+      const body = c.req.valid("json")
 
       const result = await createResearch({
         humId: body.humId,
@@ -135,10 +134,10 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   router.openapi(updateResearchRoute, async (c) => {
     try {
       // Research is preloaded by middleware with auth/ownership checks
-      const research = c.get("research")!
+      const research = c.get("research")
       const { humId } = research
 
-      const body = await c.req.json()
+      const body = c.req.valid("json")
 
       // Use optimistic lock values from request body (per api-spec.md)
       // If not provided, fall back to values from middleware for backwards compatibility
@@ -177,7 +176,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   router.openapi(deleteResearchRoute, async (c) => {
     try {
       // Research is preloaded by middleware with admin check
-      const research = c.get("research")!
+      const research = c.get("research")
       const { humId, seqNo, primaryTerm } = research
 
       const deleted = await deleteResearch(humId, seqNo, primaryTerm)
@@ -198,10 +197,10 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   router.openapi(updateUidsRoute, async (c) => {
     try {
       // Research is preloaded by middleware with admin check
-      const research = c.get("research")!
+      const research = c.get("research")
       const { humId } = research
 
-      const body = await c.req.json() as UpdateUidsRequest
+      const body = c.req.valid("json")
 
       // Use optimistic lock values from request body
       const updatedUids = await updateResearchUids(humId, body.uids, body._seq_no, body._primary_term)

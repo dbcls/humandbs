@@ -78,7 +78,7 @@ export const getResearchDetail = async (
   // datasets is now { datasetId, version }[]
   const dsRefs = researchVersionDoc.datasets
   const dsIds = dsRefs.map(ref => `${ref.datasetId}-${ref.version}`)
-  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, EsDatasetDocSchema.parse)
+  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetDocSchema.parse(doc))
   const datasets = dsIds.map(id => dsMap.get(id)).filter((x): x is EsDatasetDoc => !!x)
 
   const { versionIds: _versionIds, ...researchDocRest } = researchDoc
@@ -111,13 +111,13 @@ export const generateNextHumId = async (): Promise<string> => {
   })
 
   const hit = res.hits.hits[0]
-  if (!hit?._source?.humId) {
+  if (hit?._source?.humId == null) {
     // No existing documents, start from hum0001
     return "hum0001"
   }
 
   // Extract number from humId (e.g., "hum0123" → 123)
-  const match = hit._source.humId.match(/^hum(\d+)$/)
+  const match = /^hum(\d+)$/.exec(hit._source.humId)
   const maxNum = match ? parseInt(match[1], 10) : 0
   return `hum${String(maxNum + 1).padStart(4, "0")}`
 }
@@ -334,7 +334,7 @@ export const updateResearch = async (
       refresh: "wait_for",
     })
 
-    return getResearchDoc(humId)
+    return await getResearchDoc(humId)
   } catch (error: unknown) {
     // Check for version conflict
     if (error && typeof error === "object" && "meta" in error) {

@@ -209,7 +209,7 @@ export const parseSearchableFields = (jsonStr: string): SearchableExperimentFiel
   const empty = createEmptySearchableFields()
 
   try {
-    const parsed = JSON.parse(jsonStr)
+    const parsed: unknown = JSON.parse(jsonStr)
     const llmFields = SearchableExperimentFieldsSchema.parse(parsed)
     // Add empty policies array (will be populated by rule-based extraction)
     return {

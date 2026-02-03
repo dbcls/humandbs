@@ -55,9 +55,7 @@ interface CrawlHotfixMappingConfig {
 let crawlHotfixCache: CrawlHotfixMappingConfig | null = null
 
 const getCrawlHotfixMapping = (): CrawlHotfixMappingConfig => {
-  if (!crawlHotfixCache) {
-    crawlHotfixCache = loadConfig<CrawlHotfixMappingConfig>("crawl-hotfix-mapping.json")
-  }
+  crawlHotfixCache ??= loadConfig<CrawlHotfixMappingConfig>("crawl-hotfix-mapping.json")
   return crawlHotfixCache
 }
 
@@ -127,9 +125,7 @@ interface DatasetIdMappingConfig {
 let datasetIdMappingCache: DatasetIdMappingConfig | null = null
 
 const getDatasetIdMapping = (): DatasetIdMappingConfig => {
-  if (!datasetIdMappingCache) {
-    datasetIdMappingCache = loadConfig<DatasetIdMappingConfig>("dataset-id-mapping.json")
-  }
+  datasetIdMappingCache ??= loadConfig<DatasetIdMappingConfig>("dataset-id-mapping.json")
   return datasetIdMappingCache
 }
 
@@ -213,9 +209,7 @@ interface NormalizeMappingConfig {
 let normalizeMappingCache: NormalizeMappingConfig | null = null
 
 const getNormalizeMapping = (): NormalizeMappingConfig => {
-  if (!normalizeMappingCache) {
-    normalizeMappingCache = loadConfig<NormalizeMappingConfig>("normalize-mapping.json")
-  }
+  normalizeMappingCache ??= loadConfig<NormalizeMappingConfig>("normalize-mapping.json")
   return normalizeMappingCache
 }
 
@@ -300,9 +294,7 @@ interface MolDataFieldMappingConfig {
 let molDataFieldMappingCache: MolDataFieldMappingConfig | null = null
 
 const getMolDataFieldMapping = (): MolDataFieldMappingConfig => {
-  if (!molDataFieldMappingCache) {
-    molDataFieldMappingCache = loadConfig<MolDataFieldMappingConfig>("moldata-field-mapping.json")
-  }
+  molDataFieldMappingCache ??= loadConfig<MolDataFieldMappingConfig>("moldata-field-mapping.json")
   return molDataFieldMappingCache
 }
 
@@ -323,9 +315,7 @@ export const getMolDataIdFields = (): string[] => {
 let datasetOverridesCache: DatasetOverridesConfig | null = null
 
 const getDatasetOverrides = (): DatasetOverridesConfig => {
-  if (!datasetOverridesCache) {
-    datasetOverridesCache = loadConfig<DatasetOverridesConfig>("dataset-overrides.json")
-  }
+  datasetOverridesCache ??= loadConfig<DatasetOverridesConfig>("dataset-overrides.json")
   return datasetOverridesCache
 }
 

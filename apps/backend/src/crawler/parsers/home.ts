@@ -33,7 +33,7 @@ export const parseHomeHtml = (html: string): string[] => {
     const anchor = row.querySelector("th a[href]")
     if (!anchor) continue
     const url = normalizeUrl(anchor.getAttribute("href")!)
-    const m = url.match(/\/(hum\d+)-v\d+/)
+    const m = /\/(hum\d+)-v\d+/.exec(url)
     if (!m) continue
     ids.add(m[1])
   }
@@ -58,7 +58,7 @@ export const parseHomeTitles = (html: string): Record<string, string> => {
     const anchor = row.querySelector("th a[href]")
     if (!anchor) continue
     const url = normalizeUrl(anchor.getAttribute("href")!)
-    const m = url.match(/\/(hum\d+)-v\d+/)
+    const m = /\/(hum\d+)-v\d+/.exec(url)
     if (!m) continue
     const humId = m[1]
 

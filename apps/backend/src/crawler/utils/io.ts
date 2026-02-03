@@ -157,7 +157,7 @@ export const listParsedFiles = (opts: {
   return readdirSync(dir)
     .filter(f => f.endsWith(".json"))
     .map(f => {
-      const m = f.match(/^(hum\d+-v\d+)-(ja|en)\.json$/)
+      const m = /^(hum\d+-v\d+)-(ja|en)\.json$/.exec(f)
       if (!m) return null
       return { humVersionId: m[1], lang: m[2] as LangType }
     })
@@ -207,7 +207,7 @@ export const listNormalizedFiles = (opts: {
   return readdirSync(dir)
     .filter(f => f.endsWith(".json"))
     .map(f => {
-      const m = f.match(/^(hum\d+-v\d+)-(ja|en)\.json$/)
+      const m = /^(hum\d+-v\d+)-(ja|en)\.json$/.exec(f)
       if (!m) return null
       return { humVersionId: m[1], lang: m[2] as LangType }
     })
@@ -330,7 +330,7 @@ export const listStructuredDatasetFiles = (_opts?: { humId?: string }): { datase
     .filter(f => f.endsWith(".json"))
     .map(f => {
       // Match datasetId-version.json pattern (e.g., JGAD000001-v1.json)
-      const m = f.match(/^(.+)-(v\d+)\.json$/)
+      const m = /^(.+)-(v\d+)\.json$/.exec(f)
       if (!m) return null
       return { datasetId: m[1], version: m[2] }
     })

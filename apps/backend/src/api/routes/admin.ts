@@ -39,7 +39,7 @@ export const adminRouter = new OpenAPIHono()
 adminRouter.use("*", requireAuth)
 
 // GET /admin/is-admin - requires auth but not admin
-adminRouter.openapi(isAdminRoute, async (c) => {
+adminRouter.openapi(isAdminRoute, (c) => {
   const authUser = c.get("authUser")
   if (!authUser) {
     return unauthorizedResponse(c, "Authentication required")

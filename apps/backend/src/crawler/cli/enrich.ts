@@ -219,7 +219,7 @@ const enrichResearch = async (
         const title = pub.title.en ?? pub.title.ja ?? ""
         const result = doiResults.get(title)
 
-        if (result && result.doi) {
+        if (result?.doi) {
           return {
             ...pub,
             doi: result.doi,

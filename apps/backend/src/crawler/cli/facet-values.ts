@@ -29,7 +29,7 @@ import {
   type TsvMappingEntry,
   type FacetFieldName,
 } from "@/crawler/processors/facet-values"
-import type { SearchableDataset, Experiment } from "@/crawler/types"
+import type { SearchableDataset } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getResultsDir, readJson, ensureDir } from "@/crawler/utils/io"
 import { logger } from "@/crawler/utils/logger"
@@ -58,14 +58,14 @@ const getDefaultOutputDir = (): string => {
 
 /** Parse datasetId and version from filename */
 const parseFilename = (filename: string): { datasetId: string; version: string } | null => {
-  const match = filename.match(/^(.+)-(v\d+)\.json$/)
+  const match = /^(.+)-(v\d+)\.json$/.exec(filename)
   if (!match) return null
   return { datasetId: match[1], version: match[2] }
 }
 
 /** Parse version number from version string (e.g., "v3" -> 3) */
 const parseVersionNumber = (version: string): number => {
-  const match = version.match(/^v(\d+)$/)
+  const match = /^v(\d+)$/.exec(version)
   return match ? parseInt(match[1], 10) : 0
 }
 
@@ -118,7 +118,7 @@ const writeTsvMapping = (outputDir: string, fieldName: FacetFieldName, entries: 
 
 // Main
 
-const main = async (args: Args): Promise<void> => {
+const main = (args: Args): void => {
   const { latestOnly, output } = args
 
   // Get dataset files
@@ -153,7 +153,7 @@ const main = async (args: Args): Promise<void> => {
     }
 
     for (const experiment of dataset.experiments) {
-      const exp = experiment as Experiment
+      const exp = experiment
       if (exp.searchable) {
         counter.addFromSearchable(exp.searchable)
         experimentsProcessed++
@@ -234,4 +234,4 @@ const args: Args = {
   quiet: argv.quiet,
 }
 
-await main(args)
+main(args)

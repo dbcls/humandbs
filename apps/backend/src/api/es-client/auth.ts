@@ -12,7 +12,6 @@ import { esClient, ES_INDEX } from "@/api/es-client/client"
 import type { AuthUser, EsResearchDoc, StatusAction } from "@/api/types"
 import { StatusTransitions } from "@/api/types"
 
-
 // === Authorization Filters ===
 
 /**
@@ -84,7 +83,7 @@ export const getPublishedHumIds = async (authUser: AuthUser | null): Promise<str
     },
   })
 
-  const buckets = res.aggregations?.humIds?.buckets
+  const buckets = res.aggregations?.humIds.buckets
   if (!Array.isArray(buckets)) return []
   return buckets.map(b => b.key)
 }
@@ -99,7 +98,7 @@ export const validateStatusTransition = (
   currentStatus: string,
   action: StatusAction,
 ): string | null => {
-  const transition = StatusTransitions[action]
+  const transition = StatusTransitions[action] as { from: string; to: string } | undefined
   if (!transition) {
     return `Invalid action: ${action}`
   }

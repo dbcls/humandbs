@@ -33,7 +33,7 @@ describe("escapeForTsv", () => {
   })
 
   it("should JSON-stringify objects", () => {
-    expect(escapeForTsv({ key: "value" })).toBe('{"key":"value"}')
+    expect(escapeForTsv({ key: "value" })).toBe("{\"key\":\"value\"}")
   })
 
   it("should convert numbers to string", () => {
@@ -103,7 +103,7 @@ describe("parseTsv", () => {
 
 describe("parseJsonField", () => {
   it("should parse valid JSON", () => {
-    expect(parseJsonField<string[]>('["a","b"]', [])).toEqual(["a", "b"])
+    expect(parseJsonField<string[]>("[\"a\",\"b\"]", [])).toEqual(["a", "b"])
   })
 
   it("should return default for empty string", () => {
@@ -117,7 +117,7 @@ describe("parseJsonField", () => {
 
 describe("parseJsonFieldOrNull", () => {
   it("should parse valid JSON", () => {
-    expect(parseJsonFieldOrNull<Record<string, string>>('{"key":"val"}')).toEqual({ key: "val" })
+    expect(parseJsonFieldOrNull<Record<string, string>>("{\"key\":\"val\"}")).toEqual({ key: "val" })
   })
 
   it("should return null for empty string", () => {

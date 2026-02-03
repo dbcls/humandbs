@@ -75,7 +75,7 @@ export const findAllHumIdsFromHtml = (): string[] => {
   const pattern = /^detail-(hum\d+)-v\d+-(ja|en)\.html$/
 
   for (const file of files) {
-    const match = file.match(pattern)
+    const match = pattern.exec(file)
     if (match) {
       humIds.add(match[1])
     }
@@ -105,7 +105,7 @@ export const crawlOne = (
   const parsed = parseDetailPage(detailHtml, humVersionId, lang)
 
   // Extract humId from humVersionId and set title
-  const humId = humVersionId.match(/^(hum\d+)-v\d+/)?.[1] ?? humVersionId
+  const humId = (/^(hum\d+)-v\d+/.exec(humVersionId))?.[1] ?? humVersionId
   parsed.title = titleMap[humId] ?? ""
 
   // Release page (may not exist)
@@ -125,11 +125,11 @@ export const crawlOne = (
 /**
  * Parse all versions for a humId
  */
-const crawlAllVersionsForHumId = async (
+const crawlAllVersionsForHumId = (
   humId: string,
   langs: LangType[],
   titleMaps: Record<LangType, Record<string, string>>,
-): Promise<CrawlHumIdResult> => {
+): CrawlHumIdResult => {
   const latestVersion = findLatestVersionFromHtml(humId)
   if (latestVersion === 0) {
     return { parsed: 0, errors: 0, noRelease: 0 }
@@ -196,15 +196,19 @@ const main = async (): Promise<void> => {
   let totalNoRelease = 0
   let completedHumIds = 0
 
-  // Process humIds in batches (using Promise.allSettled to continue on partial failures)
+  // Process humIds in batches
   for (let i = 0; i < humIds.length; i += conc) {
     const batch = humIds.slice(i, i + conc)
-    const settledResults = await Promise.allSettled(
-      batch.map(humId => crawlAllVersionsForHumId(humId, langs, titleMaps)),
-    )
+    const results = batch.map(humId => {
+      try {
+        return { status: "fulfilled" as const, value: crawlAllVersionsForHumId(humId, langs, titleMaps) }
+      } catch (error) {
+        return { status: "rejected" as const, reason: error }
+      }
+    })
 
-    for (let j = 0; j < settledResults.length; j++) {
-      const result = settledResults[j]
+    for (let j = 0; j < results.length; j++) {
+      const result = results[j]
       if (result.status === "fulfilled") {
         totalParsed += result.value.parsed
         totalErrors += result.value.errors

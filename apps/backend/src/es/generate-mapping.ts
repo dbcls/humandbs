@@ -146,7 +146,7 @@ function fieldDefToProperty(def: FieldDef): MappingProperty {
         properties: generateProperties(def.schema!),
       }
     default:
-      throw new Error(`Unknown field type: ${(def as FieldDef).type}`)
+      throw new Error(`Unknown field type: ${(def).type}`)
   }
 }
 

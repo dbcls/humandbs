@@ -11,7 +11,11 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 }
 
-let currentLevel: LogLevel = "info"
+function getDefaultLogLevel(): LogLevel {
+  return process.env.NODE_ENV === "development" ? "debug" : "info"
+}
+
+let currentLevel: LogLevel = getDefaultLogLevel()
 
 /**
  * Set the log level

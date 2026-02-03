@@ -34,7 +34,7 @@ export const REQUEST_ID_HEADER = "X-Request-ID"
  */
 export const requestIdMiddleware: MiddlewareHandler = createMiddleware(async (c, next) => {
   // Use existing header or generate new ID
-  const requestId = c.req.header(REQUEST_ID_HEADER) || randomUUID()
+  const requestId = c.req.header(REQUEST_ID_HEADER) ?? randomUUID()
 
   // Store in context for use by handlers and other middleware
   c.set("requestId", requestId)
@@ -50,5 +50,5 @@ export const requestIdMiddleware: MiddlewareHandler = createMiddleware(async (c,
  * Returns "unknown" if not available (should not happen if middleware is properly configured).
  */
 export function getRequestId(c: { get: (key: "requestId") => string | undefined }): string {
-  return c.get("requestId") || "unknown"
+  return c.get("requestId") ?? "unknown"
 }

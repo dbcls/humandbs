@@ -95,11 +95,11 @@ export const normalizeMolDataKey = (
   if (lang === "ja") {
     const normJaKey = m.jaMap.get(rawKey)
     if (normJaKey) {
-      return m.normJaToEnMap.get(normJaKey) || null
+      return m.normJaToEnMap.get(normJaKey) ?? null
     }
     return null
   } else {
-    return m.enMap.get(rawKey) || null
+    return m.enMap.get(rawKey) ?? null
   }
 }
 

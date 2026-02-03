@@ -72,7 +72,7 @@ export const extractIcd10FromLabel = (label: string): {
   cleanLabel: string
   extractedIcd10: string | null
 } => {
-  const match = label.match(ICD10_PATTERN)
+  const match = ICD10_PATTERN.exec(label)
   if (match) {
     return {
       cleanLabel: match[1].trim(),
@@ -110,7 +110,7 @@ export const selectIcd10 = (
  * @returns True if the label contains multiple ICD10 codes
  */
 export const hasMultipleIcd10Codes = (label: string): boolean => {
-  const match = label.match(ICD10_PATTERN)
+  const match = ICD10_PATTERN.exec(label)
   if (!match) return false
 
   const icd10Part = match[2]
@@ -321,7 +321,7 @@ export const normalizeDiseases = (diseases: DiseaseInfo[]): {
   const updated = deduplicated.length !== diseases.length ||
     deduplicated.some((d, i) => {
       const orig = diseases[i]
-      return !orig || d.label !== orig.label || d.icd10 !== orig.icd10
+      return d.label !== orig?.label || d.icd10 !== orig.icd10
     })
 
   return {

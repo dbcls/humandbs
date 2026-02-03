@@ -47,7 +47,7 @@ export const getResearchVersion = async (
     track_total_hits: false,
   })
   const hit = hits.hits[0]
-  return hit && hit._source ? EsResearchVersionDocSchema.parse(hit._source) : null
+  return hit?._source != null ? EsResearchVersionDocSchema.parse(hit._source) : null
 }
 
 /**
@@ -86,9 +86,9 @@ export const listResearchVersions = async (
     return null // Return null to hide existence from unauthorized users
   }
 
-  const rvIds = researchDoc.versionIds ?? []
+  const rvIds = researchDoc.versionIds
   if (rvIds.length === 0) return []
-  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, EsResearchVersionDocSchema.parse)
+  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, (doc: unknown) => EsResearchVersionDocSchema.parse(doc))
 
   return rvIds
     .map((id: string) => rvMap.get(id))

@@ -124,7 +124,7 @@ export const extractDoiFromUrl = (url: string): string => {
  */
 const parseYear = (dateStr: string | null | undefined): number | null => {
   if (!dateStr) return null
-  const match = dateStr.match(/^(\d{4})/)
+  const match = /^(\d{4})/.exec(dateStr)
   return match ? parseInt(match[1], 10) : null
 }
 
@@ -155,7 +155,7 @@ const searchCrossref = async (title: string, fromYear?: number): Promise<Crossre
       if (res.status === 429) {
         logger.warn("Crossref rate limit hit, retrying", { title: title.slice(0, 50) })
         await new Promise(r => setTimeout(r, RATE_LIMIT_DELAY_MS))
-        return searchCrossref(title, fromYear)
+        return await searchCrossref(title, fromYear)
       }
       logger.warn("Crossref API error", { status: res.status, title: title.slice(0, 50) })
       return []
@@ -251,12 +251,10 @@ export const batchSearchDois = async (
     cacheEntry = readJson<DoiCacheEntry>(cachePath)
   }
 
-  if (!cacheEntry) {
-    cacheEntry = {
-      humId,
-      searchedAt: new Date().toISOString(),
-      results: {},
-    }
+  cacheEntry ??= {
+    humId,
+    searchedAt: new Date().toISOString(),
+    results: {},
   }
 
   for (let i = 0; i < publications.length; i++) {

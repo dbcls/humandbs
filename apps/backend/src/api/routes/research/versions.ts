@@ -74,10 +74,10 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
   router.openapi(createVersionRoute, async (c) => {
     try {
       // Research is preloaded by middleware with auth/ownership checks
-      const research = c.get("research")!
+      const research = c.get("research")
       const { humId, seqNo, primaryTerm } = research
 
-      const body = await c.req.json()
+      const body = c.req.valid("json")
 
       const newVersion = await createResearchVersion(
         humId,

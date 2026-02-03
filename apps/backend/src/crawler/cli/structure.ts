@@ -92,7 +92,7 @@ const discoverHumIds = (targetHumId?: string): string[] => {
   const humIds = new Set<string>()
 
   for (const file of files) {
-    const match = file.match(/^(hum\d+)-v\d+-(ja|en)\.json$/)
+    const match = /^(hum\d+)-v\d+-(ja|en)\.json$/.exec(file)
     if (match) {
       humIds.add(match[1])
     }
@@ -122,8 +122,8 @@ const loadNormalizedFilesForHumId = (humId: string): Map<string, Map<LangType, N
   const result = new Map<string, Map<LangType, NormalizedFileInfo>>()
 
   for (const file of files) {
-    const match = file.match(/^(hum\d+)-(v(\d+))-(ja|en)\.json$/)
-    if (!match || match[1] !== humId) continue
+    const match = /^(hum\d+)-(v(\d+))-(ja|en)\.json$/.exec(file)
+    if (match?.[1] !== humId) continue
 
     const humVersionId = `${match[1]}-${match[2]}`
     const version = parseInt(match[3], 10)
@@ -293,7 +293,7 @@ interface ProcessResult {
   errors: string[]
 }
 
-const processHumId = async (humId: string): Promise<ProcessResult> => {
+const processHumId = (humId: string): ProcessResult => {
   const result: ProcessResult = {
     researchCreated: false,
     versionsCreated: 0,
@@ -314,8 +314,8 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
 
     // Sort versions
     const sortedVersions = Array.from(filesMap.keys()).sort((a, b) => {
-      const vA = parseInt(a.match(/-v(\d+)$/)?.[1] ?? "0", 10)
-      const vB = parseInt(b.match(/-v(\d+)$/)?.[1] ?? "0", 10)
+      const vA = parseInt((/-v(\d+)$/.exec(a))?.[1] ?? "0", 10)
+      const vB = parseInt((/-v(\d+)$/.exec(b))?.[1] ?? "0", 10)
       return vA - vB
     })
 
@@ -385,7 +385,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
       }
 
       // Get version number
-      const versionNum = humVersionId.match(/-v(\d+)$/)?.[1] ?? "1"
+      const versionNum = (/-v(\d+)$/.exec(humVersionId))?.[1] ?? "1"
       const version = `v${versionNum}`
 
       // Build dataset-to-molData mapping for this version
@@ -507,7 +507,7 @@ const processHumId = async (humId: string): Promise<ProcessResult> => {
 
 // Main function
 
-const main = async (): Promise<void> => {
+const main = (): void => {
   const args = parseArgs()
   const humIds = discoverHumIds(args.humId)
 
@@ -526,7 +526,7 @@ const main = async (): Promise<void> => {
 
   for (let i = 0; i < humIds.length; i++) {
     const humId = humIds[i]
-    const result = await processHumId(humId)
+    const result = processHumId(humId)
 
     if (result.researchCreated) totalResearch++
     totalVersions += result.versionsCreated
@@ -551,5 +551,5 @@ const main = async (): Promise<void> => {
 }
 
 if (import.meta.main) {
-  await main()
+  main()
 }

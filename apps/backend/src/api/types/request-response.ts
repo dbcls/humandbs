@@ -92,7 +92,7 @@ export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
  */
 export const ProblemDetailsSchema = z.object({
   /** URI reference identifying the problem type */
-  type: z.string().url(),
+  type: z.url(),
   /** Short, human-readable summary of the problem type */
   title: z.string(),
   /** HTTP status code */
@@ -604,7 +604,7 @@ export type StatsResponse = z.infer<typeof StatsResponseSchema>
 /**
  * API success response wrapper
  */
-export const SuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const SuccessResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
   z.object({
     data: dataSchema,
   })

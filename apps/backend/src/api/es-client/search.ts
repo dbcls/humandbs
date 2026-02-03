@@ -128,7 +128,7 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
   // Platform values are in format "Vendor Model" (e.g., "Illumina NovaSeq 6000")
   // We match against both platformVendor and platformModel fields
   if ("platform" in params && params.platform) {
-    const platformValues = splitComma(params.platform as string)
+    const platformValues = splitComma(params.platform)
     if (platformValues.length > 0) {
       const platformShould = platformValues.map(platform => {
         const parts = platform.split(" ")
@@ -520,7 +520,7 @@ const getHumIdsByDatasetFilters = async (
     },
   })
 
-  const buckets = res.aggregations?.humIds?.buckets
+  const buckets = res.aggregations?.humIds.buckets
   if (!Array.isArray(buckets)) return []
   return buckets.map(b => b.key)
 }
@@ -676,12 +676,12 @@ export const searchResearches = async (
 
   // Fetch version and dataset details
   const rvIds = base.flatMap(doc => doc.versionIds)
-  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, EsResearchVersionDocSchema.parse)
+  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, (doc: unknown) => EsResearchVersionDocSchema.parse(doc))
 
   // datasets is now { datasetId, version }[], convert to ES IDs
   const dsRefs = Array.from(rvMap.values()).flatMap(rv => rv.datasets)
   const dsIds = uniq(dsRefs.map(ref => `${ref.datasetId}-${ref.version}`))
-  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, EsDatasetDocSchema.parse)
+  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetDocSchema.parse(doc))
 
   // Helper to extract text from BilingualTextValue
   const extractText = (value: { ja: { text: string } | null; en: { text: string } | null } | null | undefined): string => {
@@ -707,7 +707,7 @@ export const searchResearches = async (
     const typeOfData = uniq(datasets.map(ds => extractStr(ds.typeOfData)).filter(x => !!x))
     const platforms = uniq(
       datasets
-        .flatMap(ds => ds.experiments.map(e => extractText(e.data["Platform"])))
+        .flatMap(ds => ds.experiments.map(e => extractText(e.data.Platform)))
         .filter(p => !!p),
     )
     const targets = extractText(d.summary?.targets)

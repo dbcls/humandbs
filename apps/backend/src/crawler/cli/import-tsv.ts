@@ -92,7 +92,7 @@ const parseBilingualTextValue = (
 const parseDisease = (str: string): DiseaseInfo | null => {
   if (!str) return null
   // Format: "label(icd10)" or just "label"
-  const match = str.match(/^(.+?)\(([^)]+)\)$/)
+  const match = /^(.+?)\(([^)]+)\)$/.exec(str)
   if (match) {
     return { label: match[1], icd10: match[2] }
   }
@@ -240,9 +240,9 @@ export const importDataProviderTsv = (): void => {
       orcid: row.orcid || null,
       organization: (row.organization_name_ja || row.organization_name_en || row.organization_country)
         ? {
-            name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
-            address: row.organization_country ? { country: row.organization_country } : null,
-          }
+          name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
+          address: row.organization_country ? { country: row.organization_country } : null,
+        }
         : null,
     }))
 
@@ -413,9 +413,9 @@ export const importResearchProjectTsv = (): void => {
       name: parseBilingualTextValue(row.name_ja ?? "", row.name_en ?? ""),
       url: (row.project_url_ja || row.project_url_en)
         ? {
-            ja: row.project_url_ja ? { url: row.project_url_ja, text: "", rawHtml: "" } : null,
-            en: row.project_url_en ? { url: row.project_url_en, text: "", rawHtml: "" } : null,
-          }
+          ja: row.project_url_ja ? { url: row.project_url_ja, text: "", rawHtml: "" } : null,
+          en: row.project_url_en ? { url: row.project_url_en, text: "", rawHtml: "" } : null,
+        }
         : null,
     }))
 
@@ -476,18 +476,18 @@ export const importCauTsv = (): void => {
       name: parseBilingualTextValue(row.name_ja ?? "", row.name_en ?? ""),
       organization: (row.organization_name_ja || row.organization_name_en || row.organization_country)
         ? {
-            name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
-            address: row.organization_country ? { country: row.organization_country } : null,
-          }
+          name: parseBilingualTextValue(row.organization_name_ja ?? "", row.organization_name_en ?? ""),
+          address: row.organization_country ? { country: row.organization_country } : null,
+        }
         : null,
       researchTitle: parseBilingualText(row.researchTitle_ja ?? "", row.researchTitle_en ?? ""),
       // Preserve existing datasetIds (not editable via TSV)
       datasetIds: existingDatasetIds.get(parseInt(row.index ?? String(i))) ?? [],
       periodOfDataUse: (row.periodOfDataUse_start || row.periodOfDataUse_end)
         ? {
-            startDate: row.periodOfDataUse_start || null,
-            endDate: row.periodOfDataUse_end || null,
-          }
+          startDate: row.periodOfDataUse_start || null,
+          endDate: row.periodOfDataUse_end || null,
+        }
         : null,
     }))
 

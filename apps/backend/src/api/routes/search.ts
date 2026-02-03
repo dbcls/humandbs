@@ -14,7 +14,7 @@ import { searchDatasets, searchResearches } from "@/api/es-client/search"
 import { logger } from "@/api/logger"
 import { optionalAuth } from "@/api/middleware/auth"
 import { getRequestId } from "@/api/middleware/request-id"
-import { ErrorSpec400, ErrorSpec500, validationErrorResponse, serverErrorResponse } from "@/api/routes/errors"
+import { ErrorSpec400, ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import {
   AllFacetsResponseSchema,
   DatasetSearchBodySchema,
@@ -51,10 +51,10 @@ const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Pa
   for (const { from, minTo, maxTo } of RANGE_FIELD_MAPPINGS) {
     const range = f[from] as RangeValue | undefined
     if (range?.min !== undefined) {
-      query[minTo] = typeof range.min === "string" ? range.min : Number(range.min)
+      query[minTo] = range.min
     }
     if (range?.max !== undefined) {
-      query[maxTo] = typeof range.max === "string" ? range.max : Number(range.max)
+      query[maxTo] = range.max
     }
   }
 
@@ -233,12 +233,7 @@ searchRouter.use("*", optionalAuth)
 // POST /research/search
 searchRouter.openapi(postResearchSearchRoute, async (c) => {
   try {
-    const rawBody = await c.req.json()
-    const parseResult = ResearchSearchBodySchema.safeParse(rawBody)
-    if (!parseResult.success) {
-      return validationErrorResponse(c, parseResult.error.message)
-    }
-    const body = parseResult.data
+    const body = c.req.valid("json")
     const authUser = c.get("authUser")
 
     // Convert POST body to GET query format for existing searchResearches function
@@ -260,12 +255,7 @@ searchRouter.openapi(postResearchSearchRoute, async (c) => {
 // POST /dataset/search
 searchRouter.openapi(postDatasetSearchRoute, async (c) => {
   try {
-    const rawBody = await c.req.json()
-    const parseResult = DatasetSearchBodySchema.safeParse(rawBody)
-    if (!parseResult.success) {
-      return validationErrorResponse(c, parseResult.error.message)
-    }
-    const body = parseResult.data
+    const body = c.req.valid("json")
     const authUser = c.get("authUser")
 
     // Convert POST body to GET query format for existing searchDatasets function

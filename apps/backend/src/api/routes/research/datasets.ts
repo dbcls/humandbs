@@ -36,8 +36,8 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
     try {
       const { humId } = c.req.valid("param")
       const query = c.req.valid("query")
-      const page = Number(query.page) || 1
-      const limit = Number(query.limit) || PAGINATION.DEFAULT_LIMIT
+      const page = query.page ?? 1
+      const limit = query.limit ?? PAGINATION.DEFAULT_LIMIT
       const authUser = c.get("authUser")
 
       const detail = await getResearchDetail(humId, {}, authUser)
@@ -75,7 +75,7 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
     }
     try {
       const { humId } = c.req.valid("param")
-      const body = await c.req.json()
+      const body = c.req.valid("json")
 
       // Get research to check permissions and status
       const research = await getResearchDoc(humId)

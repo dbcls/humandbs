@@ -42,7 +42,7 @@ const main = () => {
   for (const file of files) {
     const filePath = join(RESEARCH_VERSION_DIR, file)
     const content = readFileSync(filePath, "utf8")
-    const research: ResearchVersion = JSON.parse(content)
+    const research = JSON.parse(content) as ResearchVersion
 
     for (const dataset of research.datasets) {
       const key = `${dataset.datasetId}-${dataset.version}`

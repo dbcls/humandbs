@@ -27,7 +27,11 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 }
 
-const currentLogLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || "info"
+function getDefaultLogLevel(): LogLevel {
+  return process.env.NODE_ENV === "development" ? "debug" : "info"
+}
+
+const currentLogLevel: LogLevel = getDefaultLogLevel()
 
 function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= LOG_LEVELS[currentLogLevel]
@@ -78,10 +82,10 @@ function log(level: LogLevel, message: string, context?: LogContext): void {
  * logger.error("Database error", { requestId, error: err.message })
  */
 export const logger = {
-  debug: (message: string, context?: LogContext) => log("debug", message, context),
-  info: (message: string, context?: LogContext) => log("info", message, context),
-  warn: (message: string, context?: LogContext) => log("warn", message, context),
-  error: (message: string, context?: LogContext) => log("error", message, context),
+  debug: (message: string, context?: LogContext) => { log("debug", message, context) },
+  info: (message: string, context?: LogContext) => { log("info", message, context) },
+  warn: (message: string, context?: LogContext) => { log("warn", message, context) },
+  error: (message: string, context?: LogContext) => { log("error", message, context) },
 }
 
 /**
@@ -94,13 +98,9 @@ export const logger = {
  */
 export function createChildLogger(baseContext: LogContext) {
   return {
-    debug: (message: string, context?: LogContext) =>
-      log("debug", message, { ...baseContext, ...context }),
-    info: (message: string, context?: LogContext) =>
-      log("info", message, { ...baseContext, ...context }),
-    warn: (message: string, context?: LogContext) =>
-      log("warn", message, { ...baseContext, ...context }),
-    error: (message: string, context?: LogContext) =>
-      log("error", message, { ...baseContext, ...context }),
+    debug: (message: string, context?: LogContext) => { log("debug", message, { ...baseContext, ...context }) },
+    info: (message: string, context?: LogContext) => { log("info", message, { ...baseContext, ...context }) },
+    warn: (message: string, context?: LogContext) => { log("warn", message, { ...baseContext, ...context }) },
+    error: (message: string, context?: LogContext) => { log("error", message, { ...baseContext, ...context }) },
   }
 }

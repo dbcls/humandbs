@@ -26,7 +26,7 @@ const healthRoute = createRoute({
 
 export const healthRouter = new OpenAPIHono()
 
-healthRouter.openapi(healthRoute, async (c) => {
+healthRouter.openapi(healthRoute, (c) => {
   try {
     const response = {
       status: "ok",

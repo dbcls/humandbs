@@ -66,7 +66,7 @@ export const getDataset = async (
       track_total_hits: false,
     })
     const hit = hits.hits[0]
-    dataset = hit && hit._source ? EsDatasetDocSchema.parse(hit._source) : null
+    dataset = hit?._source != null ? EsDatasetDocSchema.parse(hit._source) : null
   }
 
   if (!dataset) return null
@@ -131,9 +131,9 @@ export const listDatasetVersions = async (
 
   return rows.map(d => ({
     version: d.version,
-    typeOfData: d.typeOfData ?? null,
-    criteria: d.criteria ?? null,
-    releaseDate: d.releaseDate ?? null,
+    typeOfData: d.typeOfData,
+    criteria: d.criteria,
+    releaseDate: d.releaseDate,
   }))
 }
 
@@ -171,7 +171,7 @@ const getNextDatasetVersion = async (datasetId: string): Promise<string> => {
     },
   })
 
-  const maxNum = res.aggregations?.max_version?.value ?? 0
+  const maxNum = res.aggregations?.max_version.value ?? 0
   return `v${maxNum + 1}`
 }
 

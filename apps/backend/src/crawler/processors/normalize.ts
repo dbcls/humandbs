@@ -257,7 +257,7 @@ const normalizeOnePolicyText = (
   }
 
   // Check for custom policy pattern (e.g., "hum0184 policy")
-  const customMatch = trimmed.match(/hum\d+\s*policy/i)
+  const customMatch = /hum\d+\s*policy/i.exec(trimmed)
   if (customMatch) {
     return {
       id: "custom-policy",
@@ -401,7 +401,7 @@ export const fixDatasetId = (
  * e.g., "JGAD000106-JGAD000108" → ["JGAD000106", "JGAD000107", "JGAD000108"]
  */
 export const expandJgadRange = (id: string): string[] => {
-  const match = id.match(/^(JGAD)(\d+)-JGAD(\d+)$/)
+  const match = /^(JGAD)(\d+)-JGAD(\d+)$/.exec(id)
   if (!match) {
     return [id]
   }
@@ -442,7 +442,7 @@ export const fixReleaseDate = (
   const dates = raw
     .split(/\s+/)
     .map(v => {
-      const m = v.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+      const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(v)
       if (!m) return null
 
       const [, y, mo, d] = m
@@ -461,7 +461,7 @@ export const fixReleaseDate = (
  */
 export const fixDate = (value: string): string => {
   const raw = value.trim()
-  const m = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+  const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(raw)
   if (!m) return raw
 
   const [, y, mo, d] = m
@@ -488,7 +488,7 @@ const fixDateInReleases = (
  * Fix humVersionId format: "hum0014-v1-freq-v1" → "hum0014-v1"
  */
 export const fixHumVersionId = (humVersionId: string): string => {
-  const match = humVersionId.match(/^(hum\d+)-(v\d+)/)
+  const match = /^(hum\d+)-(v\d+)/.exec(humVersionId)
   if (match) {
     return `${match[1]}-${match[2]}`
   }
@@ -557,7 +557,7 @@ export const parsePeriodOfDataUse = (
   if (raw === "") return null
 
   // Try YYYY-MM-DD-YYYY-MM-DD format first
-  const mHyphen = raw.match(/^(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/)
+  const mHyphen = /^(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/.exec(raw)
   if (mHyphen) {
     return {
       startDate: mHyphen[1],
@@ -566,7 +566,7 @@ export const parsePeriodOfDataUse = (
   }
 
   // Try YYYY/M/D-YYYY/M/D format
-  const mSlash = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})-(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+  const mSlash = /^(\d{4})\/(\d{1,2})\/(\d{1,2})-(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(raw)
   if (mSlash) {
     const [, y1, m1, d1, y2, m2, d2] = mSlash
     return {
@@ -947,16 +947,14 @@ export const extractAndExpandDatasetIdsFromMolData = async (
   const addIds = (text: string) => {
     const found = extractIdsByTypeFn(text)
     for (const [type, ids] of Object.entries(found) as [DatasetIdType, string[]][]) {
-      if (!idsByType[type]) {
-        idsByType[type] = new Set()
-      }
+      idsByType[type] ??= new Set()
       for (const id of ids) {
         if (invalidIdValues.includes(id)) continue
         // Apply hum-specific correction first, then global correction
         const humCorrectedId = humIdCorrection[id] ?? id
         const normalizedIds = applyGlobalIdCorrection(humCorrectedId)
         for (const normalizedId of normalizedIds) {
-          idsByType[type]!.add(normalizedId)
+          idsByType[type].add(normalizedId)
         }
       }
     }

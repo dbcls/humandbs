@@ -82,7 +82,7 @@ export const chat = async (
   logger.debug("Ollama chat request", { model: effectiveConfig.model, messageCount: messages.length })
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), effectiveConfig.timeout)
+  const timeoutId = setTimeout(() => { controller.abort() }, effectiveConfig.timeout)
 
   try {
     const response = await fetch(`${effectiveConfig.baseUrl}/api/chat`, {

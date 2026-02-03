@@ -73,14 +73,14 @@ const getDefaultMappingDir = (): string => {
 
 /** Parse datasetId and version from filename */
 const parseFilename = (filename: string): { datasetId: string; version: string } | null => {
-  const match = filename.match(/^(.+)-(v\d+)\.json$/)
+  const match = /^(.+)-(v\d+)\.json$/.exec(filename)
   if (!match) return null
   return { datasetId: match[1], version: match[2] }
 }
 
 /** Parse version number from version string (e.g., "v3" -> 3) */
 const parseVersionNumber = (version: string): number => {
-  const match = version.match(/^v(\d+)$/)
+  const match = /^v(\d+)$/.exec(version)
   return match ? parseInt(match[1], 10) : 0
 }
 
@@ -148,7 +148,7 @@ const loadMappings = (mappingDir: string): { mappings: Map<FacetFieldName, Facet
 
 // Main
 
-const main = async (args: Args): Promise<NormalizeResult> => {
+const main = (args: Args): NormalizeResult => {
   const { humId, latestOnly, dryRun, mappingDir } = args
 
   // Load mappings
@@ -227,7 +227,7 @@ const main = async (args: Args): Promise<NormalizeResult> => {
     const updatedExperiments: Experiment[] = []
 
     for (const experiment of dataset.experiments) {
-      const exp = experiment as Experiment
+      const exp = experiment
 
       if (!exp.searchable) {
         updatedExperiments.push(exp)
@@ -344,7 +344,7 @@ const args: Args = {
   quiet: argv.quiet,
 }
 
-const result = await main(args)
+const result = main(args)
 
 logger.info("Completed", {
   datasetsProcessed: result.datasetsProcessed,

@@ -110,14 +110,14 @@ describe("parsers/home.ts", () => {
     it("should extract expected titles from fixture", () => {
       const mapping = parseHomeTitles(homeHtml)
 
-      expect(mapping["hum0001"]).toBe("Test Research Title 1")
-      expect(mapping["hum0003"]).toBe("Test Research Title 3")
+      expect(mapping.hum0001).toBe("Test Research Title 1")
+      expect(mapping.hum0003).toBe("Test Research Title 3")
     })
 
     it("should use last occurrence for duplicate humIds (later version wins)", () => {
       const mapping = parseHomeTitles(homeHtml)
       // hum0002 appears twice (v1 and v2), last one should be used
-      expect(mapping["hum0002"]).toBe("Test Research Title 2 (Updated)")
+      expect(mapping.hum0002).toBe("Test Research Title 2 (Updated)")
     })
 
     it("should return empty object for empty HTML", () => {

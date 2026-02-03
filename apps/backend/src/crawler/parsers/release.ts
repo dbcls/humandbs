@@ -89,7 +89,7 @@ export const findReleaseDetails = (
   humVersionId: string,
   lang: LangType,
 ): void => {
-  const versions = releases.map(r => r.humVersionId as string)
+  const versions = releases.map(r => r.humVersionId!)
   const allElements = Array.from(container.children)
 
   let index = 0
@@ -210,9 +210,9 @@ export const parseReleasePage = (
 
   // (3) Convert to final format
   return releases.map(r => ({
-    humVersionId: fromDotToHyphen(r.humVersionId as string),
-    releaseDate: r.releaseDate as string,
-    content: r.content as string,
+    humVersionId: fromDotToHyphen(r.humVersionId!),
+    releaseDate: r.releaseDate!,
+    content: r.content!,
     ...(r.releaseNote ? { releaseNote: r.releaseNote } : {}),
   }))
 }

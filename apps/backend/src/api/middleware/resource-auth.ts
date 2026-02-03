@@ -55,7 +55,7 @@ interface ResourceAuthOptions {
  */
 export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): MiddlewareHandler => {
   return createMiddleware(async (c, next) => {
-    const authUser = c.get("authUser") as AuthUser | null
+    const authUser = c.get("authUser")
     const humId = c.req.param("humId")
 
     // humId is required for this middleware

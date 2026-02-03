@@ -91,7 +91,7 @@ describe("parsers/release.ts", () => {
         </table>
       `
       const dom = new JSDOM(html)
-      const table = dom.window.document.querySelector("table") as HTMLTableElement
+      const table = dom.window.document.querySelector("table")!
 
       const result = parseReleaseTable(table, "ja", "hum0001-v2")
 
@@ -132,7 +132,7 @@ describe("parsers/release.ts", () => {
         </table>
       `
       const dom = new JSDOM(html)
-      const table = dom.window.document.querySelector("table") as HTMLTableElement
+      const table = dom.window.document.querySelector("table")!
 
       const result = parseReleaseTable(table, "ja", "hum0001-v2")
 
@@ -153,7 +153,7 @@ describe("parsers/release.ts", () => {
         </table>
       `
       const dom = new JSDOM(html)
-      const table = dom.window.document.querySelector("table") as HTMLTableElement
+      const table = dom.window.document.querySelector("table")!
 
       const result = parseReleaseTable(table, "ja", "hum0001-v1")
 
@@ -311,7 +311,7 @@ describe("parsers/release.ts", () => {
     })
 
     it("should return empty array when no container found", () => {
-      const html = `<html><body><div>No article body</div></body></html>`
+      const html = "<html><body><div>No article body</div></body></html>"
 
       const result = parseReleasePage(html, "hum0001-v1", "ja")
 

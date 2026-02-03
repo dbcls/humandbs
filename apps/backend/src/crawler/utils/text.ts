@@ -34,7 +34,7 @@ export const normalizeUnicode = (s: string): string => {
  */
 export const normalizeDate = (s: string): string | null => {
   const raw = s.trim()
-  const m = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+  const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(raw)
   if (!m) return null
 
   const [, y, mo, d] = m

@@ -20,8 +20,8 @@ import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
 // Environment variables
-const AUTH_ISSUER_URL = process.env.HUMANDBS_AUTH_ISSUER_URL || "https://idp-staging.ddbj.nig.ac.jp/realms/master"
-const AUTH_CLIENT_ID = process.env.HUMANDBS_AUTH_CLIENT_ID || "humandbs-dev"
+const AUTH_ISSUER_URL = process.env.HUMANDBS_AUTH_ISSUER_URL ?? "https://idp-staging.ddbj.nig.ac.jp/realms/master"
+const AUTH_CLIENT_ID = process.env.HUMANDBS_AUTH_CLIENT_ID ?? "humandbs-dev"
 const ADMIN_UID_FILE = process.env.HUMANDBS_BACKEND_ADMIN_UID_FILE
 
 // === TTL Cache Factory ===
@@ -54,7 +54,7 @@ const adminUidsCache = createTtlCache<string[]>(CACHE_TTL.ADMIN_UIDS)
 /**
  * Get JWKS from Keycloak (with caching)
  */
-async function getJwks(): Promise<jose.JWTVerifyGetKey> {
+function getJwks(): jose.JWTVerifyGetKey {
   const cached = jwksCache.get()
   if (cached) return cached
 
@@ -83,7 +83,7 @@ async function getAdminUids(): Promise<string[]> {
 
   try {
     const content = await fs.readFile(ADMIN_UID_FILE, "utf-8")
-    const parsed = JSON.parse(content)
+    const parsed: unknown = JSON.parse(content)
     if (Array.isArray(parsed)) {
       uids = parsed.filter((uid): uid is string => typeof uid === "string")
     } else {
@@ -128,7 +128,7 @@ async function buildAuthUser(claims: JwtClaims): Promise<AuthUser> {
  */
 async function verifyToken(token: string): Promise<JwtClaims | null> {
   try {
-    const jwks = await getJwks()
+    const jwks = getJwks()
     const { payload } = await jose.jwtVerify(token, jwks, {
       issuer: AUTH_ISSUER_URL,
       audience: AUTH_CLIENT_ID,
@@ -158,7 +158,7 @@ async function verifyToken(token: string): Promise<JwtClaims | null> {
  */
 function extractBearerToken(authHeader: string | undefined): string | null {
   if (!authHeader) return null
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
+  const match = /^Bearer\s+(.+)$/i.exec(authHeader)
   return match ? match[1] : null
 }
 

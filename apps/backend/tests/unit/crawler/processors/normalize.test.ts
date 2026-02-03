@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { describe, expect, it } from "bun:test"
 
 import {
@@ -891,9 +892,9 @@ describe("processors/normalize.ts", () => {
       expect(registry.validDatasetIds).toContain("JGAD000001")
       expect(registry.validDatasetIds).toContain("JGAD000002")
       expect(registry.validDatasetIds).toContain("JGAD000003")
-      expect(registry.datasetIdToMolDataIndices["JGAD000001"]).toEqual([0])
-      expect(registry.datasetIdToMolDataIndices["JGAD000002"]).toEqual([0, 1])
-      expect(registry.datasetIdToMolDataIndices["JGAD000003"]).toEqual([1])
+      expect(registry.datasetIdToMolDataIndices.JGAD000001).toEqual([0])
+      expect(registry.datasetIdToMolDataIndices.JGAD000002).toEqual([0, 1])
+      expect(registry.datasetIdToMolDataIndices.JGAD000003).toEqual([1])
     })
 
     it("should skip molecular data without extracted IDs", () => {

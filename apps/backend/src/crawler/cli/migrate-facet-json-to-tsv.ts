@@ -42,11 +42,11 @@ const getTsvDir = (): string => {
 const convertJsonToTsvEntries = (mapping: FacetMapping): TsvMappingEntry[] => {
   return mapping.values.map(entry => ({
     value: entry.value,
-    normalizedTo: entry.normalizedTo === null ? MAPPING_DELETE : entry.normalizedTo,
+    normalizedTo: entry.normalizedTo ?? MAPPING_DELETE,
   }))
 }
 
-const main = async (): Promise<void> => {
+const main = (): void => {
   const jsonDir = getJsonDir()
   const tsvDir = getTsvDir()
 
@@ -82,7 +82,7 @@ const main = async (): Promise<void> => {
 
     try {
       const jsonContent = readFileSync(jsonPath, "utf-8")
-      const mapping: FacetMapping = JSON.parse(jsonContent)
+      const mapping = JSON.parse(jsonContent) as FacetMapping
 
       const entries = convertJsonToTsvEntries(mapping)
       const tsvContent = generateTsv(entries)
@@ -111,4 +111,4 @@ const main = async (): Promise<void> => {
   }
 }
 
-await main()
+main()

@@ -41,7 +41,7 @@ const toArray = (value: unknown): string[] => {
     return []
   }
   if (Array.isArray(value)) {
-    return value
+    return value.filter((v): v is string => typeof v === "string")
   }
   if (typeof value === "string") {
     return value.trim() === "" ? [] : [value]

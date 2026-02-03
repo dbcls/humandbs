@@ -14,7 +14,7 @@ export const stripRawHtml = <T>(obj: T): T => {
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => stripRawHtml(item)) as T
+    return obj.map((item: unknown) => stripRawHtml(item)) as T
   }
 
   if (typeof obj === "object") {

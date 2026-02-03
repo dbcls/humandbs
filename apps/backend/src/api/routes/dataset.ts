@@ -323,7 +323,7 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
       return forbiddenResponse(c, "Cannot update dataset: parent Research is not in draft status")
     }
 
-    const body = await c.req.json()
+    const body = c.req.valid("json")
 
     // Use optimistic lock values from request body (per api-spec.md)
     // If not provided, fall back to current values for backwards compatibility

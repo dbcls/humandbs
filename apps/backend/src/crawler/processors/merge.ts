@@ -93,9 +93,22 @@ export const isSimilarHeader = (jaHeader: string, enHeader: string): boolean => 
 
   // Check for common keywords (assay types, etc.)
   const keywords = [
-    "exome", "wgs", "wes", "rna-seq", "rnaseq", "chip-seq", "chipseq",
-    "microarray", "gwas", "snp", "methylation", "atac-seq", "atacseq",
-    "whole genome", "whole exome", "targeted",
+    "exome",
+    "wgs",
+    "wes",
+    "rna-seq",
+    "rnaseq",
+    "chip-seq",
+    "chipseq",
+    "microarray",
+    "gwas",
+    "snp",
+    "methylation",
+    "atac-seq",
+    "atacseq",
+    "whole genome",
+    "whole exome",
+    "targeted",
   ]
 
   const jaLower = ja.toLowerCase()

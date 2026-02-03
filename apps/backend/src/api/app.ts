@@ -16,7 +16,7 @@ import { searchRouter } from "@/api/routes/search"
 import { statsRouter } from "@/api/routes/stats"
 
 // Environment variables
-const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX || ""
+const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
 
 export const createApp = () => {
   const app = new OpenAPIHono()
@@ -174,13 +174,13 @@ Only admins can approve/reject submissions and unpublish content.
       logger.warn("HTTP exception", { requestId, status: err.status, message: err.message })
       const code = err.status === 401 ? "UNAUTHORIZED"
         : err.status === 403 ? "FORBIDDEN"
-        : err.status === 404 ? "NOT_FOUND"
-        : err.status === 409 ? "CONFLICT"
-        : "INTERNAL_ERROR"
+          : err.status === 404 ? "NOT_FOUND"
+            : err.status === 409 ? "CONFLICT"
+              : "INTERNAL_ERROR"
       const problemDetails = createProblemDetails(
         err.status as 400 | 401 | 403 | 404 | 409 | 500,
         code,
-        err.cause ? String(err.cause) : err.message,
+        err.cause ? (typeof err.cause === "string" ? err.cause : JSON.stringify(err.cause)) : err.message,
         requestId,
         instance,
       )

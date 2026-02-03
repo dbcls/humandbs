@@ -9,7 +9,15 @@ export const escapeForTsv = (value: unknown): string => {
     return ""
   }
 
-  const str = typeof value === "object" ? JSON.stringify(value) : String(value)
+  let str: string
+  if (typeof value === "object") {
+    str = JSON.stringify(value)
+  } else if (typeof value === "string") {
+    str = value
+  } else {
+    // number, boolean, bigint, symbol, function - all safely stringifiable
+    str = String(value as string | number | boolean | bigint | symbol)
+  }
 
   return str
     .replace(/\t/g, "\\t")
