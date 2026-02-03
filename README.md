@@ -69,6 +69,9 @@ packages/
 # 環境ファイルをコピー
 cp env.dev .env
 
+# bind mount 用ディレクトリを作成
+mkdir -p humandbs-es-backup
+
 # コンテナを起動
 docker compose up -d --build
 
@@ -84,6 +87,7 @@ docker compose exec frontend bash
 ```bash
 cp env.dev .env
 cp compose.override.podman.yml compose.override.yml
+mkdir -p humandbs-es-backup
 podman-compose up -d
 ```
 
