@@ -12,6 +12,7 @@
  *   -i, --hum-id       Process only the specified humId
  *   --latest-only      Process only the latest version of each dataset (default: true)
  *   --dry-run          Preview changes without writing
+ *   --check            Validate normalized data and exit with error if invalid
  *   -v, --verbose      Show debug logs
  */
 import { existsSync, readdirSync, writeFileSync, readFileSync } from "fs"
@@ -19,7 +20,11 @@ import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
-import { normalizeDiseases } from "@/crawler/processors/icd10-normalize"
+import {
+  normalizeDiseases,
+  validateNormalizedDiseases,
+  type NormalizedDiseaseValidationError,
+} from "@/crawler/processors/icd10-normalize"
 import type { SearchableDataset, Experiment } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getResultsDir, readJson } from "@/crawler/utils/io"
@@ -31,6 +36,7 @@ interface Args {
   humId?: string
   latestOnly: boolean
   dryRun: boolean
+  check: boolean
   verbose?: boolean
   quiet?: boolean
 }
@@ -40,6 +46,7 @@ interface NormalizeResult {
   datasetsUpdated: number
   experimentsUpdated: number
   warningCount: number
+  validationErrors: NormalizedDiseaseValidationError[]
 }
 
 // Paths
@@ -95,7 +102,7 @@ const filterLatestVersions = (files: string[]): string[] => {
 // Main
 
 const main = async (args: Args): Promise<NormalizeResult> => {
-  const { humId, latestOnly, dryRun } = args
+  const { humId, latestOnly, dryRun, check } = args
 
   // Get dataset files
   let files = listDatasetFiles()
@@ -106,6 +113,7 @@ const main = async (args: Args): Promise<NormalizeResult> => {
       datasetsUpdated: 0,
       experimentsUpdated: 0,
       warningCount: 0,
+      validationErrors: [],
     }
   }
 
@@ -127,6 +135,7 @@ const main = async (args: Args): Promise<NormalizeResult> => {
     datasetCount: files.length,
     latestOnly,
     dryRun,
+    check,
   })
 
   // Track results
@@ -134,6 +143,7 @@ const main = async (args: Args): Promise<NormalizeResult> => {
   let datasetsUpdated = 0
   let experimentsUpdated = 0
   let totalWarnings = 0
+  const allValidationErrors: NormalizedDiseaseValidationError[] = []
 
   // Process each dataset
   for (const filename of files) {
@@ -184,6 +194,18 @@ const main = async (args: Args): Promise<NormalizeResult> => {
       } else {
         updatedExperiments.push(exp)
       }
+
+      // Validate normalized diseases if check mode is enabled
+      if (check) {
+        const validationErrors = validateNormalizedDiseases(normalized)
+        for (const error of validationErrors) {
+          allValidationErrors.push(error)
+          logger.error(`Validation error (${error.type}): "${error.disease.label}" (icd10: ${error.disease.icd10})`, {
+            filename,
+            expectedLabel: error.expectedLabel,
+          })
+        }
+      }
     }
 
     datasetsProcessed++
@@ -210,6 +232,7 @@ const main = async (args: Args): Promise<NormalizeResult> => {
     datasetsUpdated,
     experimentsUpdated,
     warningCount: totalWarnings,
+    validationErrors: allValidationErrors,
   }
 }
 
@@ -231,6 +254,11 @@ const argv = await withCommonOptions(
       type: "boolean",
       description: "Preview changes without writing",
       default: false,
+    })
+    .option("check", {
+      type: "boolean",
+      description: "Validate normalized data (icd10 not null, label = master label). Exit with error if invalid.",
+      default: false,
     }),
 )
   .help()
@@ -242,6 +270,7 @@ const args: Args = {
   humId: argv["hum-id"],
   latestOnly: argv["latest-only"],
   dryRun: argv["dry-run"],
+  check: argv.check,
   verbose: argv.verbose,
   quiet: argv.quiet,
 }
@@ -253,8 +282,17 @@ logger.info("Completed", {
   datasetsUpdated: result.datasetsUpdated,
   experimentsUpdated: result.experimentsUpdated,
   warningCount: result.warningCount,
+  validationErrorCount: result.validationErrors.length,
 })
 
 if (result.warningCount > 0) {
   logger.warn(`Found ${result.warningCount} warnings. Consider adding manual split definitions for multiple ICD10 codes.`)
+}
+
+// Exit with error if check mode and validation errors found
+if (args.check && result.validationErrors.length > 0) {
+  logger.error(`Validation failed: ${result.validationErrors.length} errors found. All normalized diseases must have:`)
+  logger.error("  - icd10: valid code in icd10-labels.json (no dots or dashes)")
+  logger.error("  - label: exactly matching the master label from icd10-labels.json")
+  process.exit(1)
 }

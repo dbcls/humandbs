@@ -1,92 +1,131 @@
-16S rRNA Sequencing	
-3' single-nucleus RNA-seq	snRNA-seq
+      ...	__DELETE__
+,	__DELETE__
+...	__DELETE__
+...	__DELETE__
+...	__DELETE__
+....	__DELETE__
+16S rRNA Sequencing	16S rRNA Sequencing
+3' single-nucleus RNA-seq	scRNA-seq
 5' and 3' single-cell RNA-seq	scRNA-seq
 5' single-cell RNA-seq	scRNA-seq
-5' single-nucleus RNA-seq	snRNA-seq
-Amplicon-seq	
+5' single-nucleus RNA-seq	scRNA-seq
+Amplicon sequencing	Amplicon-seq
+Amplicon-seq	Amplicon-seq
+Array CGH	Array CGH
 array-CGH	Array CGH
-Array CGH	
-ATAC-seq	
+ATAC-...	__DELETE__
+ATAC-seq	ATAC-seq
+ATAC‑seq	ATAC-seq
 BCR repertoire analysis	BCR-seq
-BCR-seq	
-BD Ab-seq	
-Bisulfite sequencing	
+BCR-seq	BCR-seq
+BD Ab-seq	CITE-seq
+Bismark methylation extractor	__DELETE__
+Bisulfite sequencing	Methyl-seq
 bulk RNA-seq	RNA-seq
-CAGE-seq	
-Capture Methyl-seq	
+CAGE-seq	CAGE-seq
+Capture Methyl-seq	Methyl-seq
+cDNA	__DELETE__
 cDNA microarray	Microarray
-ChIP-seq	
-CITE-seq	
-COBRA assay	
-CUT&RUN-seq	
-CUT&TAG-seq	
-CyTOF	
-Digital multiplexed gene expression analysis	
-Direct Digital Count	
-Direct sequencing	
+ChIP-seq	ChIP-seq
+Chorome	__DELETE__
+CITE-seq	CITE-seq
+COBRA assay	Targeted DNA sequencing
+CUT&RUN-seq	CUT&RUN-seq
+CUT&TAG-seq	CUT&TAG-seq
+CyTOF	CyTOF
+CyTOF@ Mass cytometry	CyTOF
+data	__DELETE__
+Deletion Request Email Template	__DELETE__
+description	__DELETE__
+Digital multiplexed gene expression analysis	nCounter (NanoString)
+Direct Digital Count	nCounter (NanoString)
+Direct sequencing	Sanger sequencing
+DNA	__DELETE__
 DNA Amplicon-seq	Amplicon-seq
+DNA methylation	Methyl-seq
+DNA methylation array	Methylation Array
+DNA methylation sequencing	Methyl-seq
 DNA sequencing	__DELETE__
-DREAM-seq	
-EM-seq	
-eQTL	
-eQTL/pQTL	
+DNA-Seq	__DELETE__
+DREAM-seq	RNA-seq
+EM-seq	Methyl-seq
+En	__DELETE__
+eQTL	eQTL
+eQTL/pQTL	eQTL||pQTL
+eQTL/pQTL summary statistics	eQTL||pQTL
+eQTL/sQTL summary statistics	eQTL||sQTL
+exome	WES
 Exome	WES
 exome sequence	WES
 exome sequencing	WES
+Exome sequencing	WES
+experiment	__DELETE__
 expression array	Microarray
+externalMetadata	__DELETE__
 genome	__DELETE__
 genome sequencing	WGS
-genomewide association	GWAS
 genome wide association study	GWAS
 genome wide association study (GWAS)	GWAS
-genome-wide association study (GWAS)	GWAS
 Genome wide association study (GWAS)	GWAS
 Genome Wide Association Study (GWAS)	GWAS
+genome wide association study of case control sample	GWAS
 genome wide association study of case-control dataset	GWAS
 genome wide association study of case-controls	GWAS
-genome wide association study of case control sample	GWAS
 genome wide association study of disease	GWAS
 genome wide association study of dna	GWAS
-genome-wide association study of dna	GWAS
-genome-wide association study of DNA	GWAS
 genome wide CNVs	__DELETE__
 genome wide SNPs	__DELETE__
+Genome wide SNPs	__DELETE__
 genome wide SNVs	__DELETE__
 genome wide SNVs/CNVs	__DELETE__
-genome wide variants	__DELETE__
-Genome wide variants	__DELETE__
+genome wide variants	GWAS
+Genome wide variants	GWAS
+genome-wide association study (GWAS)	GWAS
+genome-wide association study of dna	GWAS
+genome-wide association study of DNA	GWAS
+genomewide association	GWAS
 genomic	__DELETE__
-genomic variant analysis	__DELETE__
+genomic variant analysis	GWAS
 genotyping	Genotyping Array
 Genotyping	Genotyping Array
 genotyping array	Genotyping Array
 Genotyping array	Genotyping Array
-Genotyping Array	
+Genotyping Array	Genotyping Array
 genotyping by array	Genotyping Array
-GWAS	
+GWAS	GWAS
 gwgs	WGS
-Hi-C	
+Hi-C	Hi-C
 Histological image	Histological Imaging
-Histological Imaging	
+Histological Imaging	Histological Imaging
 histological staining	Histological Imaging
+Human	__DELETE__
 HumanOmniExpress、HumanExome、OmniExpressExome BeadChip	Genotyping Array
-IHC	
+IHC	Histological Imaging
 Illumina HumanExome	Genotyping Array
 Illumina HumanExome BeadChip	Genotyping Array
 Illumina HumanOmniExpress	Genotyping Array
 Illumina HumanOmniExpress BeadChip	Genotyping Array
+Illumina sequencing	__DELETE__
+Illumina short‑read sequencing	__DELETE__
 Imputation	__DELETE__
-Iso-seq	
+Invader assay	Targeted DNA sequencing
+Iso-seq	Long-read RNA-seq
+Long-read RNA-seq	Long-read RNA-seq
+J	__DELETE__
+ja	__DELETE__
+JGA	__DELETE__
+label	__DELETE__
 large-scale case-control association study	GWAS
 lipidomics	Lipidomics
-Lipidomics	
+Lipidomics	Lipidomics
 Long-read WGS	WGS
+M	__DELETE__
+MAS-seq	scRNA-seq
 Mass cytometry	CyTOF
-MAS-seq	
-mass spectrometry	Mass Spectrometry
-Mass Spectrometry	
+mass spectrometry	__DELETE__
+Mass Spectrometry	__DELETE__
 metabolome	Metabolomics
-Metabolomics	
+Metabolomics	Metabolomics
 metabolomics (NMR)	Metabolomics
 metagenome	Metagenomics
 Metagenome	Metagenomics
@@ -94,25 +133,32 @@ Metagenome (16S rRNA)	16S rRNA Sequencing
 metagenome sequencing	Metagenomics
 metagenome shotgun sequencing	Metagenomics
 metagenomics	Metagenomics
-Metagenomics	
+Metagenomics	Metagenomics
+method	__DELETE__
+Methyl-seq	Methyl-seq
 Methylation analysis	__DELETE__
 methylation array	Methylation Array
 Methylation array	Methylation Array
-Methylation Array	
-Methyl-seq	
+Methylation Array	Methylation Array
+Methylation profiling by high-throughput sequencing	Methyl-seq
+Micro-C	Micro-C
 microarray	Microarray
-Microarray	
-Micro-C	
-miRNA-seq	
-Multiplex Fluorescence Immunostaining	
-NET-CAGE-seq	
+Microarray	Microarray
+miRNA-seq	miRNA-seq
+Multiplex Fluorescence Immunostaining	Histological Imaging
+NET-CAGE-seq	CAGE-seq
+nCounter (NanoString)	nCounter (NanoString)
 next-generation sequencing	__DELETE__
 next-generation sequencing (NGS)	__DELETE__
 NGS	__DELETE__
+NGS(WGS)	WGS
+Oxford Nanopore sequencing	__DELETE__
+PacBio long‑read sequencing	__DELETE__
 pathological imaging	Pathological Imaging
-Pathological Imaging	
+Pathological Imaging	Pathological Imaging
+pathology image	Pathological Imaging
 pathology imaging	Pathological Imaging
-PBAT-seq	
+PBAT-seq	Methyl-seq
 PCR amplicon Seq	Amplicon-seq
 PCR amplicon sequencing	Amplicon-seq
 pheno	__DELETE__
@@ -121,56 +167,86 @@ Phenotype	__DELETE__
 phenotype array	__DELETE__
 phenotype data	__DELETE__
 phenotyping	__DELETE__
+pQTL	pQTL
 protein expression	Proteomics
 Protein expression	Proteomics
+Protein expression (2932 proteins)	Proteomics
 proteomics	Proteomics
-Proteomics	
-qRT-PCR	
+Proteomics	Proteomics
+qRT-PCR	qRT-PCR
+raw	__DELETE__
 Region Capture Micro-C	Micro-C
+RNA	__DELETE__
 RNA access	RNA-seq
-RNA Amplicon-seq	
-RNA-seq	
+RNA Amplicon-seq	Amplicon-seq
 RNA sequencing	RNA-seq
-RRBS	
-Sanger sequencing	
-scATAC-RNA-seq	
-scATAC-seq	
-scBCR-seq	
-scDNA-seq	
-scRNA-seq	
-scRNA-TCR-seq	
+RNA-...	__DELETE__
+RNA-seq	RNA-seq
+RNA-Seq	RNA-seq
+RNA‑seq	RNA-seq
+RRBS	Methyl-seq
+rs16944(IL1B)	__DELETE__
+S3	__DELETE__
+sample	__DELETE__
+Sanger sequencing	Sanger sequencing
+scATAC-RNA-seq	ATAC-seq||scRNA-seq
+scATAC-seq	ATAC-seq
+scBCR-seq	BCR-seq
+scCNV	scCNV
+scDNA-seq	scCNV
+scRNA-seq	scRNA-seq
+scRNA-seq with/without CITE-seq	scRNA-seq
+scRNA-TCR-seq	scRNA-seq||TCR-seq
 scRNA-TCR-seq with/without CITE-seq	scRNA-TCR-seq
-scTCR-seq	
-scVDJ-seq	
+scRNA‑seq	scRNA-seq
+scTCR-seq	TCR-seq
+scVDJ-seq	VDJ-seq
 semibulk RNA-seq	RNA-seq
-single-cell CNV	
 single cell RNA-seq	scRNA-seq
-single-cell spatial transcriptome	Spatial Transcriptomics
-single-nucleus ATAC-seq	snATAC-seq
-small RNA-seq	
-snATAC-seq	
+single-cell	__DELETE__
+single-cell ATAC sequencing	ATAC-seq
+single-cell CNV	scCNV
+single-cell RNA sequencing	scRNA-seq
+single-cell spatial transcriptome	Spatial transcriptomics
+single-end	__DELETE__
+single-nucleus ATAC-seq	ATAC-seq
+small RNA-seq	miRNA-seq
+snATAC-seq	ATAC-seq
 SNP array	Genotyping Array
 SNP-chip	Genotyping Array
-snRNA-seq	
-Spatial Transcriptomics	
-TaqMan assay	
-Target bisulfite sequencing	
-Target Capture	
-Target RNA-seq	
+snRNA-seq	scRNA-seq
+sQTL	sQTL
+Spatial transcriptomics	Spatial transcriptomics
+string	__DELETE__
+t-nanoEM	Methyl-seq
+TaqMan assay	qRT-PCR
+Target bisulfite sequencing	Methyl-seq
+Target Capture	Targeted DNA sequencing
+target coverage	__DELETE__
+Target RNA-seq	RNA-seq
+Targeted DNA sequencing	Targeted DNA sequencing
+Targeted sequencing	Targeted DNA sequencing
+TCR-seq	TCR-seq
 TCR/BCR repertoire	TCR/BCR Repertoire
-TCR/BCR Repertoire	
-TCR-seq	
+TCR/BCR Repertoire	TCR-seq||BCR-seq
 TGS	__DELETE__
-t-nanoEM	
-VDJ-seq	
-Visium Spatial Gene Expression	Spatial Transcriptomics
-WES	
-WGBS	
-WGS	
+The         	__DELETE__
+Thermal	__DELETE__
+title	__DELETE__
+VDJ-seq	VDJ-seq
+Visium Spatial Gene Expression	Spatial transcriptomics
+Visium Spatial Gene Expression, Xenium In Situ Gene Expression and custom: 302 genes (Human Lung panel: Human Lung panel: 202 genes, custom: 100 genes)	Spatial transcriptomics
+WES	WES
+WGBS	WGBS
+WGC	__DELETE__
+WGS	WGS
 whole exome sequencing	WES
 Whole Exome Sequencing	WES
+Whole Exome Sequencing (WES)	WES
+whole genome	WGS
 whole genome sequencing	WGS
 Whole Genome Sequencing	WGS
-Xenium In Situ Gene Expression	Spatial Transcriptomics
+Whole‑genome bisulfite sequencing (WGBS)	WGBS
+Xenium In Situ Gene Expression	Spatial transcriptomics
 ゲノムワイド関連解析	GWAS
 全ゲノム変異(Whole-genome genotyping)	Genotyping Array

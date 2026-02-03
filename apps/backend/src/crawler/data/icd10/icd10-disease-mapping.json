@@ -4114,5 +4114,425 @@
   "胆管がん|C240": {
     "label": "Malignant neoplasm: Extrahepatic bile duct",
     "icd10": "C240"
+  },
+  "Adult T-cell leukemia/lymphoma|": {
+    "label": "Adult T-cell lymphoma/leukaemia",
+    "icd10": "C915"
+  },
+  "autism spectrum disorder|": {
+    "label": "Autism spectrum disorder",
+    "icd10": "F840"
+  },
+  "Brain tumor, malignant|": {
+    "label": "Malignant neoplasm of brain, unspecified",
+    "icd10": "C719"
+  },
+  "colon adenocarcinoma|": {
+    "label": "Malignant neoplasm: Colon, unspecified",
+    "icd10": "C189"
+  },
+  "congenital absence of third molar|": {
+    "label": "Anodontia",
+    "icd10": "K000"
+  },
+  "third molar congenital absence|": {
+    "label": "Anodontia",
+    "icd10": "K000"
+  },
+  "Cystic Fibrosis|": {
+    "label": "Cystic fibrosis, unspecified",
+    "icd10": "E849"
+  },
+  "desmoid tumor|": {
+    "label": "Fibromatosis (aggressive)",
+    "icd10": "D481"
+  },
+  "emphysema|": {
+    "label": "Emphysema, unspecified",
+    "icd10": "J439"
+  },
+  "endometrial carcinoma|": {
+    "label": "Malignant neoplasm of endometrium",
+    "icd10": "C541"
+  },
+  "endometrioid adenocarcinoma|": {
+    "label": "Malignant neoplasm of endometrium",
+    "icd10": "C541"
+  },
+  "eosinophilic sinusitis|": {
+    "label": "Chronic sinusitis, unspecified",
+    "icd10": "J329"
+  },
+  "esophageal cancer (if considered a separate disease)|": {
+    "label": "Malignant neoplasm: Oesophagus, unspecified",
+    "icd10": "C159"
+  },
+  "Furuta papillary carcinoma|": {
+    "label": "Malignant neoplasm: Thyroid gland",
+    "icd10": "C73"
+  },
+  "gallbladder and bile duct cancer|": {
+    "label": "Malignant neoplasm of gallbladder",
+    "icd10": "C23"
+  },
+  "gastrointestinal cancer|": {
+    "label": "Malignant neoplasm of digestive organs, unspecified",
+    "icd10": "C269"
+  },
+  "HBV carrier|": {
+    "label": "Chronic viral hepatitis B without delta-agent",
+    "icd10": "B181"
+  },
+  "hepatitis B virus infection|": {
+    "label": "Chronic viral hepatitis B without delta-agent",
+    "icd10": "B181"
+  },
+  "Hepatitis C|": {
+    "label": "Chronic viral hepatitis C",
+    "icd10": "B182"
+  },
+  "hypersensitivity syndrome (drug rash)|": {
+    "label": "Drug reaction with eosinophilia and systemic symptoms",
+    "icd10": "T887"
+  },
+  "hypertension|": {
+    "label": "Essential (primary) hypertension",
+    "icd10": "I10"
+  },
+  "idiopathic pulmonary fibrosis|": {
+    "label": "Idiopathic pulmonary fibrosis",
+    "icd10": "J841"
+  },
+  "intellectual disability|": {
+    "label": "Unspecified intellectual disabilities",
+    "icd10": "F79"
+  },
+  "Interstitial pneumonitis and pulmonary fibrosis|": {
+    "label": "Interstitial pulmonary disease, unspecified",
+    "icd10": "J849"
+  },
+  "intraductal papillary mucinous neoplasm|": {
+    "label": "Benign neoplasm: Pancreas",
+    "icd10": "D136"
+  },
+  "kidney renal cell carcinoma|": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "lung small cell carcinoma|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "lung squamous cell carcinoma|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "Lymphoma|": {
+    "label": "Non-Hodgkin lymphoma, unspecified",
+    "icd10": "C859"
+  },
+  "non-alcoholic fatty liver disease|": {
+    "label": "Fatty (change of) liver, not elsewhere classified",
+    "icd10": "K760"
+  },
+  "non‑triple‑negative breast cancer|": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "occlusive arterial sclerosis|": {
+    "label": "Atherosclerosis of arteries of extremities",
+    "icd10": "I702"
+  },
+  "pancreatic ductal adenocarcinoma|": {
+    "label": "Malignant neoplasm: Pancreatic duct",
+    "icd10": "C253"
+  },
+  "primary central nervous system lymphoma|": {
+    "label": "Malignant neoplasm of brain, unspecified",
+    "icd10": "C719"
+  },
+  "serous adenocarcinoma|": {
+    "label": "Malignant neoplasm of ovary",
+    "icd10": "C56"
+  },
+  "skin cancer|": {
+    "label": "Malignant neoplasm of skin, unspecified",
+    "icd10": "C449"
+  },
+  "splenic epidermoid cyst|": {
+    "label": "Other diseases of spleen",
+    "icd10": "D738"
+  },
+  "Stevens-Johnson syndrome|": {
+    "label": "Stevens-Johnson syndrome",
+    "icd10": "L511"
+  },
+  "temporomandibular joint disorder|": {
+    "label": "Temporomandibular joint disorders",
+    "icd10": "K076"
+  },
+  "thyroid cancer|": {
+    "label": "Malignant neoplasm: Thyroid gland",
+    "icd10": "C73"
+  },
+  "thyroid carcinoma|": {
+    "label": "Malignant neoplasm: Thyroid gland",
+    "icd10": "C73"
+  },
+  "triple‑negative breast cancer|": {
+    "label": "Malignant neoplasm: Breast, unspecified",
+    "icd10": "C509"
+  },
+  "type 2 diabetes nephropathy|": {
+    "label": "Type 2 diabetes mellitus: With renal complications",
+    "icd10": "E112"
+  },
+  "糖尿病|": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "肺がん|": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "Acute myeloblastic leukemia|C92.0": {
+    "label": "Acute myeloblastic leukaemia [AML]",
+    "icd10": "C920"
+  },
+  "Alcohol dependence|F10.20": {
+    "label": "Alcohol dependence syndrome",
+    "icd10": "F102"
+  },
+  "atrial fibrillation|I48.0": {
+    "label": "Atrial fibrillation",
+    "icd10": "I480"
+  },
+  "Behçet's syndrome|M35.2": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "Behcet syndrome|M35.2": {
+    "label": "Behçet disease",
+    "icd10": "M352"
+  },
+  "Coronary Artery Disease|I25.10": {
+    "label": "Atherosclerotic heart disease",
+    "icd10": "I251"
+  },
+  "Epilepsy|G40.9": {
+    "label": "Epilepsy, unspecified",
+    "icd10": "G409"
+  },
+  "esophagogastric junction cancer|C15.8": {
+    "label": "Malignant neoplasm: Overlapping lesion of oesophagus",
+    "icd10": "C158"
+  },
+  "glioblastoma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "hematological malignancy|C81-96": {
+    "label": "Malignant neoplasm of lymphoid, haematopoietic and related tissue, unspecified",
+    "icd10": "C969"
+  },
+  "hereditary cancer syndrome|C00-C97": {
+    "label": "Malignant neoplasm, unspecified",
+    "icd10": "C80"
+  },
+  "high grade glioma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "intraductal papillary mucinous neoplasm of pancreas|D13.6": {
+    "label": "Benign neoplasm: Pancreas",
+    "icd10": "D136"
+  },
+  "Kidney failure|N18.5": {
+    "label": "Chronic kidney disease, stage 5",
+    "icd10": "N185"
+  },
+  "Lupus Nephritis|M32.0": {
+    "label": "Drug-induced systemic lupus erythematosus",
+    "icd10": "M321"
+  },
+  "malignant glioma|C71.9": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "MGUS|D47.2": {
+    "label": "Monoclonal gammopathy",
+    "icd10": "D472"
+  },
+  "Mild cognitive impairment|F06.7": {
+    "label": "Mild cognitive disorder",
+    "icd10": "F067"
+  },
+  "Mild depression|F32.9": {
+    "label": "Depressive episode, unspecified",
+    "icd10": "F329"
+  },
+  "Multiple myeloma|C90.0": {
+    "label": "Multiple myeloma",
+    "icd10": "C900"
+  },
+  "Obesity|E66.9": {
+    "label": "Obesity, unspecified",
+    "icd10": "E669"
+  },
+  "pancreatic ductal adenocarcinoma|C25.3": {
+    "label": "Malignant neoplasm: Pancreatic duct",
+    "icd10": "C253"
+  },
+  "pancreatic duct cancer|C25.3": {
+    "label": "Malignant neoplasm: Pancreatic duct",
+    "icd10": "C253"
+  },
+  "pemphigus-like pemphigoid|L12.0": {
+    "label": "Bullous pemphigoid",
+    "icd10": "L120"
+  },
+  "posterior hypopharynx cancer|C13.2": {
+    "label": "Malignant neoplasm: Posterior wall of hypopharynx",
+    "icd10": "C132"
+  },
+  "Psoriasis|L40.0": {
+    "label": "Psoriasis vulgaris",
+    "icd10": "L400"
+  },
+  "Sjögren syndrome|M35.0": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "SjS|M35.0": {
+    "label": "Sicca syndrome [Sjögren]",
+    "icd10": "M350"
+  },
+  "SLE (systemic lupus erythematosus)|M32.9": {
+    "label": "Systemic lupus erythematosus, unspecified",
+    "icd10": "M329"
+  },
+  "supraglottic cancer|C32.1": {
+    "label": "Malignant neoplasm: Supraglottis",
+    "icd10": "C321"
+  },
+  "Tobacco use|F17.200": {
+    "label": "Tobacco use",
+    "icd10": "F172"
+  },
+  "mucus-producing solid-dominant adenocarcinoma of lung|": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "pulmonary adenocarcinoma harboring EML4-ALK variant 3|": {
+    "label": "Malignant neoplasm: Upper lobe, bronchus or lung",
+    "icd10": "C341"
+  },
+  "renal cell carcinoma|": {
+    "label": "Malignant neoplasm of kidney, except renal pelvis",
+    "icd10": "C64"
+  },
+  "cerebral glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "thalamic glioma|C71": {
+    "label": "Malignant neoplasm: Brain, unspecified",
+    "icd10": "C719"
+  },
+  "Asthma|J45": {
+    "label": "Asthma, unspecified",
+    "icd10": "J459"
+  },
+  "Type 2 Diabetes|E11": {
+    "label": "Type 2 diabetes mellitus: Without complications",
+    "icd10": "E119"
+  },
+  "type 1 diabetes|E10": {
+    "label": "Type 1 diabetes mellitus: Without complications",
+    "icd10": "E109"
+  },
+  "Unspecified intellectual disabilities|F79": {
+    "label": "Unspecified mental retardation: With the statement of no, or minimal, impairment of behaviour",
+    "icd10": "F790"
+  },
+  "synovial giant cell tumor|D21": {
+    "label": "Benign neoplasm: Connective and other soft tissue, unspecified",
+    "icd10": "D219"
+  },
+  "Neoplastic disease|C16": {
+    "label": "Malignant neoplasm: Stomach, unspecified",
+    "icd10": "C169"
+  },
+  "liver cirrhosis|K74": {
+    "label": "Other and unspecified cirrhosis of liver",
+    "icd10": "K746"
+  },
+  "liver cancer|C34": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "Lung Cancer|C34": {
+    "label": "Malignant neoplasm: Bronchus or lung, unspecified",
+    "icd10": "C349"
+  },
+  "Malignant neoplasm, unspecified|C80": {
+    "label": "Malignant neoplasm, primary site unspecified",
+    "icd10": "C809"
+  },
+  "Myelodysplastic syndrome|D46": {
+    "label": "Myelodysplastic syndrome, unspecified",
+    "icd10": "D469"
+  },
+  "oropharyngeal cancer|C10": {
+    "label": "Malignant neoplasm: Oropharynx, unspecified",
+    "icd10": "C109"
+  },
+  "urothelial carcinoma|C67": {
+    "label": "Malignant neoplasm: Bladder, unspecified",
+    "icd10": "C679"
+  },
+  "uterine prolapse|N81": {
+    "label": "Female genital prolapse, unspecified",
+    "icd10": "N819"
+  },
+  "Rheumatoid arthritis|M05": {
+    "label": "Seropositive rheumatoid arthritis, unspecified",
+    "icd10": "M059"
+  },
+  "Rheumatoid arthritis|M0690": {
+    "label": "Seropositive rheumatoid arthritis, unspecified",
+    "icd10": "M059"
+  },
+  "Alzheimer disease|F00": {
+    "label": "Alzheimer disease, unspecified",
+    "icd10": "G309"
+  },
+  "diabetes mellitus|E14": {
+    "label": "Unspecified diabetes mellitus: Without complications",
+    "icd10": "E149"
+  },
+  "osteoporosis|M8199": {
+    "label": "Osteoporosis, unspecified",
+    "icd10": "M819"
+  },
+  "cervical cancer|C34": {
+    "label": "Malignant neoplasm: Cervix uteri, unspecified",
+    "icd10": "C539"
+  },
+  "Chronic viral hepatitis B without delta-agent|B181": {
+    "label": "Chronic viral hepatitis B without delta-agent: immune-tolerant phase",
+    "icd10": "B1810"
+  },
+  "hepatitis B virus positive liver cancer|B181": {
+    "label": "Malignant neoplasm: Liver cell carcinoma",
+    "icd10": "C220"
+  },
+  "systemic sclerosis with renal crisis|M34": {
+    "label": "Progressive systemic sclerosis",
+    "icd10": "M340"
+  },
+  "hypertensive disorders of pregnancy|149": {
+    "label": "Pre-eclampsia, unspecified",
+    "icd10": "O149"
   }
 }

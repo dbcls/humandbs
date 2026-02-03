@@ -1,16 +1,39 @@
+      ​  ?  “  ...  	__DELETE__
+       ....	__DELETE__
+   ...	__DELETE__
+​  ?  "  ...  	__DELETE__
+​  ?  “  ...  	__DELETE__
+  </</   </ … … 	__DELETE__
+,	__DELETE__
+.	__DELETE__
+. . . ...	__DELETE__
+...	__DELETE__
+...	__DELETE__
+....	__DELETE__
+....	__DELETE__
+.......	__DELETE__
+</</   </ … … 	__DELETE__
+</</   </ … … 	__DELETE__
 1000 Genomes Phase 3	__DELETE__
 1000 Genomes Phase 3 panel	__DELETE__
 1000 genomes Phase I v3	__DELETE__
 1KGP p3v5 ALL	__DELETE__
 2KJPN	__DELETE__
+c	__DELETE__
+C34	__DELETE__
+cDNA	__DELETE__
+Cell	__DELETE__
 dbSNP build 129	__DELETE__
-GRCh36	
-GRCh37	
+expt1	__DELETE__
+fastq	__DELETE__
+FASTQ	__DELETE__
+GRCh36	GRCh36
+GRCh37	GRCh37
 GRCh37.p13	GRCh37
 GRCh37/hg19	GRCh37
 GRCh37/hg19(hs37d5)	GRCh37
 GRCh37d5	GRCh37
-GRCh38	
+GRCh38	GRCh38
 GRCh38-2020-A	GRCh38
 GRCh38-2020-A (GENCODE v32/Ensembl 98)	GRCh38
 GRCh38-3.0.0	GRCh38
@@ -22,10 +45,18 @@ hg18	GRCh36
 hg19	GRCh37
 hg38	GRCh38
 hs37d5	GRCh37
+Human GENCODE Gene Set(release 19)	Human GENCODE Gene Set(release 19)
 human genome	__DELETE__
-mm10	
+JAG	__DELETE__
+Japanese	__DELETE__
+mm10	mm10
 NCBI Build 36.3	GRCh36
+population	__DELETE__
 refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0	GRCh38
-T2T-CHM13v2.0	
+RNA-seq	__DELETE__
+RNA-Seq	__DELETE__
+t	__DELETE__
+T2T-CHM13v2.0	T2T-CHM13v2.0
 TOPMed reference panel (Version R2 on GRC38)	__DELETE__
+Tumor tissue	__DELETE__
 UCSC hg19	GRCh37

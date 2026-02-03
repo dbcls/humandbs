@@ -1,147 +1,182 @@
-ab1	AB1
-AB1	
-adat	ADAT
-ADAT	
-amf	AMF
-AMF	
-bai	BAI
-BAI	
+__DELETE__	__DELETE__
+__DELETE__	__DELETE__
+,	__DELETE__
+..	__DELETE__
+...	__DELETE__
+.... etc	__DELETE__
 .bam	BAM
-bam	BAM
-BAM	
-barcodes.tsv	__DELETE__
-barcodes.tsv.gz	__DELETE__
-BCF	
 .bed	BED
-bed	BED
-BED	
-bedpe	BEDPE
-BEDPE	
-bigwig	BigWig
-BigWig	
 .bim	BIM
-BIM	
-bin	BIN
-BIN	
-bw	BigWig
-CEL	
-CHP	
-cloupe	Cloupe
-Cloupe	
-contig_fasta	__DELETE__
 .csv	CSV
-csv	CSV
-CSV	
-csv.gz	CSV.GZ
-CSV.GZ	
 .fam	FAM
-FAM	
-fast5	FAST5
-FAST5	
-fasta	FASTA
-FASTA	
 .fastq	FASTQ
-fastq	FASTQ
-FASTQ	
-fastq.gz	FASTQ.GZ
-FASTQ.GZ	
-features.tsv	__DELETE__
-features.tsv.gz	__DELETE__
 .gen	GEN
-GEN	
-genotype	__DELETE__
-GTF	
-gvcf	GVCF
-GVCF	
 .gwas	GWAS
-gwas	GWAS
-GWAS	
-h5	HDF5
 .hard	HARD
-HARD	
-HDF5	
+.tsv	TSV
+.txt	TXT
+.txt.gz	TXT.GZ
+.vcf	VCF
+.zip	ZIP
+ab1	AB1
+AB1	AB1
+adat	ADAT
+ADAT	ADAT
+amf	AMF
+AMF	AMF
+bai	BAI
+BAI	BAI
+bam	BAM
+BAM	BAM
+barcodes.tsv	TSV
+barcodes.tsv.gz	TSV.GZ
+BCF	BCF
+bcl	BCL
+BCL	BCL
+bed	BED
+BED	BED
+bedpe	BEDPE
+BEDPE	BEDPE
+bigwig	BigWig
+BigWig	BigWig
+BIM	BIM
+bin	BIN
+BIN	BIN
+bw	BigWig
+c	__DELETE__
+CEL	CEL
+CHP	CHP
+cloupe	Cloupe
+Cloupe	Cloupe
+contig_fasta	FASTA
+cram	CRAM
+CRAM	CRAM
+csv	CSV
+CSV	CSV
+csv.gz	CSV.GZ
+CSV.GZ	CSV.GZ
+DataSet	DATASET
+document	DOCUMENT
+DOCUMENT	DOCUMENT
+exome	EXOME
+FAM	FAM
+fast5	FAST5
+FAST5	FAST5
+fasta	FASTA
+FASTA	FASTA
+fastq	FASTQ
+FASTQ	FASTQ
+fastq.gz	FASTQ.GZ
+FASTQ.GZ	FASTQ.GZ
+features.tsv	TSV
+features.tsv.gz	TSV.GZ
+GEN	GEN
+genotype	GENOTYPE
+GTF	GTF
+gvcf	GVCF
+GVCF	GVCF
+gwas	GWAS
+GWAS	GWAS
+gz	__DELETE__
+h5	HDF5
+H5	HDF5
+HARD	HARD
+HDF5	HDF5
 html	HTML
-HTML	
+HTML	HTML
+http://example.org/file/12345	__DELETE__
+http://www.cytobank.org/assays/1000	__DELETE__
+http://www.ebi.org/arrays/MCF-7	__DELETE__
+http://www.example.org/file/2	__DELETE__
 idat	IDAT
-IDAT	
+IDAT	IDAT
 jpg	JPG
-JPG	
+JPG	JPG
 json	JSON
-JSON	
+JSON	JSON
+K562	__DELETE__
+list	__DELETE__
 map	MAP
-MAP	
-matrix	__DELETE__
-matrix.mtx	__DELETE__
-matrix.mtx.gz	__DELETE__
+MAP	MAP
+matrix	MATRIX
+MATRIX	MATRIX
+matrix.mtx	MTX
+matrix.mtx.gz	MTX.GZ
 mtx	MTX
-MTX	
+MTX	MTX
 mtx.gz	MTX.GZ
-MTX.GZ	
+MTX.GZ	MTX.GZ
+null	__DELETE__
+OME-TIFF	OME-TIFF
 ome.tif	OME-TIFF
-OME-TIFF	
-parquet	Parquet
-Parquet	
+parquet	PARQUET
+Parquet	PARQUET
+PBMC	__DELETE__
 ped	PED
-PED	
+PED	PED
+peripheral blood	__DELETE__
 phenotype	__DELETE__
 phenotype data	__DELETE__
 plink	PLINK
-PLINK	
+PLINK	PLINK
 png	PNG
-PNG	
+PNG	PNG
 pptx	PPTX
-PPTX	
+PPTX	PPTX
 qptiff	QPTIFF
-QPTIFF	
+QPTIFF	QPTIFF
 raw array data	__DELETE__
 raw_count	__DELETE__
 rds	RDS
-RDS	
+RDS	RDS
+RNA	__DELETE__
+RNAseq	__DELETE__
+some	__DELETE__
 svs	SVS
-SVS	
+SVS	SVS
+t	__DELETE__
 tab	TAB
-TAB	
-tabix	Tabix
-Tabix	
+TAB	TAB
+tabix	TABIX
+Tabix	TABIX
+TABIX	TABIX
 tbi	TBI
-TBI	
+TBI	TBI
 tdf	TDF
-TDF	
-text	__DELETE__
+TDF	TDF
+text	TXT
 tif	TIFF
+TIF	TIFF
 tiff	TIFF
-TIFF	
-.tsv	TSV
+TIFF	TIFF
 tsv	TSV
-TSV	
+TSV	TSV
 tsv.gz	TSV.GZ
-TSV.GZ	
-.txt	TXT
+TSV.GZ	TSV.GZ
+TSV.GZ.TBI	TSV.GZ.TBI
 txt	TXT
-TXT	
-.txt.gz	TXT.GZ
+TXT	TXT
 txt.gz	TXT.GZ
-TXT.GZ	
-.vcf	VCF
+TXT.GZ	TXT.GZ
+V	__DELETE__
 vcf	VCF
-VCF	
+VCF	VCF
 vcf.gz	VCF.GZ
-VCF.GZ	
+VCF.GZ	VCF.GZ
 wiff	WIFF
-WIFF	
+WIFF	WIFF
 wiff.scan	WIFF.SCAN
-WIFF.SCAN	
+WIFF.SCAN	WIFF.SCAN
 wig	WIG
-WIG	
+WIG	WIG
 xenium	__DELETE__
 xls	XLS
-XLS	
+XLS	XLS
 xlsx	XLSX
-XLSX	
-xlx	XLX
-XLX	
-zarr	Zarr
-Zarr	
-.zip	ZIP
+XLSX	XLSX
+xlx	XLS
+XLX	XLS
+zarr	ZARR
+Zarr	ZARR
 zip	ZIP
-ZIP	
+ZIP	ZIP

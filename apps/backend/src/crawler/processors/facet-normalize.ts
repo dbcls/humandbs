@@ -107,36 +107,60 @@ export class PendingValuesTracker {
   }
 }
 
+// Constants
+
+/** Separator for multiple normalized values in TSV */
+export const MULTI_VALUE_SEPARATOR = "||"
+
 // Normalization Logic
+
+/**
+ * Split a normalizedTo value that may contain multiple targets
+ *
+ * @example
+ * splitNormalizedTo("eQTL||pQTL") // ["eQTL", "pQTL"]
+ * splitNormalizedTo("WGS") // ["WGS"]
+ * splitNormalizedTo("") // [""]
+ */
+export const splitNormalizedTo = (normalizedTo: string): string[] => {
+  if (!normalizedTo.includes(MULTI_VALUE_SEPARATOR)) {
+    return [normalizedTo]
+  }
+  return normalizedTo.split(MULTI_VALUE_SEPARATOR).map(v => v.trim()).filter(v => v !== "")
+}
 
 /**
  * Normalize a single value using mapping
  *
  * Returns:
  * - shouldDelete: true if normalizedTo is null (value should be removed)
- * - normalized: the normalized value (or original if unmapped/pending)
+ * - normalized: array of normalized values (supports 1-to-many mapping via || separator)
  * - wasUnmapped: true if value was not found in mapping
  * - wasPending: true if value matched a __PENDING__ entry (used as-is)
  */
 export const normalizeValue = (
   value: string,
   mapping: FacetMapping,
-): { normalized: string; wasUnmapped: boolean; shouldDelete: boolean; wasPending: boolean } => {
+): { normalized: string[]; wasUnmapped: boolean; shouldDelete: boolean; wasPending: boolean } => {
   const entry = mapping.values.find(e => e.value === value)
   if (!entry) {
     // Value not in mapping - return as-is but mark as unmapped
-    return { normalized: value, wasUnmapped: true, shouldDelete: false, wasPending: false }
+    return { normalized: [value], wasUnmapped: true, shouldDelete: false, wasPending: false }
   }
   // If normalizedTo is null, mark for deletion (__DELETE__ was converted to null)
   if (entry.normalizedTo === null) {
-    return { normalized: value, wasUnmapped: false, shouldDelete: true, wasPending: false }
+    return { normalized: [value], wasUnmapped: false, shouldDelete: true, wasPending: false }
   }
   // If normalizedTo is __PENDING__, use original value as-is but mark as pending
   if (entry.normalizedTo === MAPPING_PENDING) {
-    return { normalized: value, wasUnmapped: false, shouldDelete: false, wasPending: true }
+    return { normalized: [value], wasUnmapped: false, shouldDelete: false, wasPending: true }
   }
   // If normalizedTo is empty, the value itself is the canonical form
-  const normalized = entry.normalizedTo || value
+  if (entry.normalizedTo === "") {
+    return { normalized: [value], wasUnmapped: false, shouldDelete: false, wasPending: false }
+  }
+  // Split normalizedTo in case it contains multiple targets (e.g., "eQTL||pQTL")
+  const normalized = splitNormalizedTo(entry.normalizedTo)
   return { normalized, wasUnmapped: false, shouldDelete: false, wasPending: false }
 }
 
@@ -156,7 +180,10 @@ export const normalizeArrayValues = (
       deleted.push(value)
       continue
     }
-    normalizedSet.add(result.normalized)
+    // Add all normalized values (supports 1-to-many mapping)
+    for (const normalizedValue of result.normalized) {
+      normalizedSet.add(normalizedValue)
+    }
     if (result.wasUnmapped) {
       unmapped.push(value)
     }
@@ -186,8 +213,9 @@ export const normalizeStringField = (
   if (result.shouldDelete) {
     return { normalized: null, unmapped: null, deleted: true, pending: null }
   }
+  // For string fields, use the first normalized value (multi-value not supported for single fields)
   return {
-    normalized: result.normalized,
+    normalized: result.normalized[0],
     unmapped: result.wasUnmapped ? value : null,
     deleted: false,
     pending: result.wasPending ? value : null,
@@ -231,8 +259,9 @@ export const normalizePlatforms = (
       pendingModels.push(platform.model)
     }
 
-    const normalizedVendor = vendorResult.normalized
-    const normalizedModel = modelResult.normalized
+    // For platforms, use the first normalized value (multi-value not supported for vendor/model)
+    const normalizedVendor = vendorResult.normalized[0]
+    const normalizedModel = modelResult.normalized[0]
     const key = `${normalizedVendor}|${normalizedModel}`
 
     // Deduplicate by vendor+model combination

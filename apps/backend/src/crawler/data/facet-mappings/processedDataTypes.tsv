@@ -1,126 +1,173 @@
+,	__DELETE__
+.... .......... ......... ....... ...-....... ...	__DELETE__
+]	__DELETE__
 aligned	__DELETE__
 aligned reads	__DELETE__
+aligned_reads	aligned_reads
 bai	BAI
-BAI	
+BAI	BAI
 bam	BAM
-BAM	
+BAM	BAM
 bam [ref: hg19]	BAM
 bam [ref: hg19/hg38]	BAM
 bam [ref: hg38]	BAM
 barcodes.tsv	__DELETE__
 bed	BED
-BED	
+BED	BED
 bedpe	BEDPE
-BEDPE	
+BEDPE	BEDPE
 bigwig	BigWig
-BigWig	
+BigWig	BigWig
+blood	__DELETE__
 bpm	BPM
-BPM	
+BPM	BPM
 bw	BigWig
 called	__DELETE__
+cell_type	__DELETE__
+cfa..	__DELETE__
 cloupe	Cloupe
-Cloupe	
+Cloupe	Cloupe
+CNV	CNV
 contig_fasta	__DELETE__
 count data	__DELETE__
 csv	CSV
-CSV	
+CSV	CSV
 csv.gz	CSV.GZ
-CSV.GZ	
+CSV.GZ	CSV.GZ
 data_dictionary	__DELETE__
+disease	__DELETE__
 DNA	__DELETE__
+DNA methylation data	DNA methylation data
 document	__DELETE__
+DOCUMENT	DOCUMENT
+exome sequencing	__DELETE__
+experiment description	__DELETE__
 expression data	__DELETE__
 expression matrix data	__DELETE__
 fast5	FAST5
-FAST5	
+FAST5	FAST5
 fasta	FASTA
-FASTA	
+FASTA	FASTA
 fastq	FASTQ
-FASTQ	
+FASTQ	FASTQ
 features.tsv	__DELETE__
 fpkm	__DELETE__
+GATK	__DELETE__
 gDNA	__DELETE__
 gene expression	__DELETE__
+geneName	__DELETE__
 genomic variant data	__DELETE__
 genotype	__DELETE__
 genotype call	__DELETE__
 genotype data	__DELETE__
 genotypes	__DELETE__
+gff	GFF
+GFF	GFF
+GJA2	__DELETE__
+gtf	GTF
+GTF	GTF
 gvcf	GVCF
-GVCF	
+GVCF	GVCF
 gwas	__DELETE__
+GWAS	GWAS
 gwas summary statistics	__DELETE__
 h5	HDF5
-HDF5	
+H5	H5
+hdf5	H5
+HDF5	HDF5
 html	HTML
-HTML	
+HTML	HTML
 idat	IDAT
-IDAT	
+IDAT	IDAT
+Illumina	__DELETE__
 image	__DELETE__
 imputation	__DELETE__
 imputation(1000 genomes Phase 3 v5 )	__DELETE__
 imputed genotypes	__DELETE__
 intensity data	__DELETE__
 json	JSON
-JSON	
+JSON	JSON
+list	__DELETE__
+map	MAP
+MAP	MAP
 matrix	__DELETE__
+MATRIX	MATRIX
 matrix.mtx	__DELETE__
 metabolomics data	__DELETE__
 microarray	__DELETE__
 microarray data	__DELETE__
 mtx	MTX
-MTX	
+MTX	MTX
+Nanopore	__DELETE__
+organism	__DELETE__
 other	__DELETE__
 parquet	Parquet
-Parquet	
+Parquet	Parquet
+PBMC	__DELETE__
+ped	PED
+PED	PED
 phenotype	__DELETE__
+Phenotype data	Phenotype data
 phenotypes	__DELETE__
-plink.assoc	PLINK Assoc
-PLINK Assoc	
+PLINK Assoc	PLINK Assoc
 plink binary	PLINK Binary
-PLINK Binary	
+PLINK Binary	PLINK Binary
+plink.assoc	PLINK Assoc
 png	PNG
-PNG	
+PNG	PNG
 qc	__DELETE__
 qpcr	__DELETE__
 qptiff	QPTIFF
-QPTIFF	
+QPTIFF	QPTIFF
 raw	__DELETE__
 rds	RDS
-RDS	
+RDS	RDS
 RNA-seq	__DELETE__
+RNA-Seq	__DELETE__
 sequencing	__DELETE__
+skin	__DELETE__
+SNV Number	__DELETE__
 tab	TAB
-TAB	
+TAB	TAB
 tabix	Tabix
-Tabix	
+Tabix	Tabix
+TABIX	TABIX
 tbi	TBI
-TBI	
+TBI	TBI
 tdf	TDF
-TDF	
+TDF	TDF
 tif	TIFF
 tiff	TIFF
-TIFF	
+TIFF	TIFF
+tissue_type	__DELETE__
 tpm list	__DELETE__
 tsv	TSV
-TSV	
+TSV	TSV
 tsv.gz	TSV.GZ
-TSV.GZ	
+TSV.GZ	TSV.GZ
+tsv.gz.tbi	TABIX
+TSV.GZ.TBI	TABIX
 txt	TXT
-TXT	
+TXT	TXT
 txt.gz	TXT.GZ
-TXT.GZ	
+TXT.GZ	TXT.GZ
 variant	__DELETE__
+variant calls	variant calls
 variant-called	__DELETE__
 variants	__DELETE__
 vcf	VCF
-VCF	
+VCF	VCF
+vcf_aggregate	VCF
+vcf.gz	VCF
+WGS	__DELETE__
 wig	WIG
-WIG	
+WIG	WIG
 xenium	__DELETE__
+xls	XLS
+XLS	XLS
 xlsx	XLSX
-XLSX	
+XLSX	XLSX
 zarr	Zarr
-Zarr	
+Zarr	Zarr
 zip	ZIP
-ZIP	
+ZIP	ZIP

@@ -155,6 +155,11 @@ export const normalizeDiseaseWithIcd10 = (disease: DiseaseInfo): {
     return { result: [], warnings }
   }
 
+  // Skip empty or whitespace-only labels
+  if (!disease.label.trim()) {
+    return { result: [], warnings }
+  }
+
   // 1. Check for manual split definition first (try both original and normalized label)
   const normalizedLabel = normalizeLabelForMatching(disease.label)
   const manualSplit = diseaseSplitMap[disease.label] ?? diseaseSplitMap[normalizedLabel]
@@ -340,4 +345,71 @@ export const getManualSplitDefinitions = (): DiseaseSplitRecord => {
  */
 export const getExcludedDiseases = (): string[] => {
   return [...diseaseExcludeSet]
+}
+
+/**
+ * Validation error for normalized disease data
+ */
+export interface NormalizedDiseaseValidationError {
+  type: "invalid_icd10" | "icd10_not_in_master" | "label_mismatch"
+  disease: NormalizedDisease
+  expectedLabel?: string
+}
+
+/**
+ * Validate that a normalized disease meets strict requirements:
+ * - icd10 is in the master (icd10-labels.json)
+ * - label matches the master label exactly
+ *
+ * Note: icd10 being non-null is guaranteed by NormalizedDisease type
+ *
+ * @param disease - Normalized disease to validate
+ * @returns Array of validation errors (empty if valid)
+ */
+export const validateNormalizedDisease = (disease: NormalizedDisease): NormalizedDiseaseValidationError[] => {
+  const errors: NormalizedDiseaseValidationError[] = []
+
+  // Check for invalid ICD10 format (contains . or -)
+  if (/[-.]/.test(disease.icd10)) {
+    errors.push({
+      type: "invalid_icd10",
+      disease,
+    })
+    return errors
+  }
+
+  // Check if icd10 is in master
+  const masterLabel = getIcd10Label(disease.icd10)
+  if (!masterLabel) {
+    errors.push({
+      type: "icd10_not_in_master",
+      disease,
+    })
+    return errors
+  }
+
+  // Check if label matches master label exactly
+  if (disease.label !== masterLabel) {
+    errors.push({
+      type: "label_mismatch",
+      disease,
+      expectedLabel: masterLabel,
+    })
+  }
+
+  return errors
+}
+
+/**
+ * Validate an array of normalized diseases
+ *
+ * @param diseases - Array of normalized diseases to validate
+ * @returns Array of all validation errors
+ */
+export const validateNormalizedDiseases = (diseases: NormalizedDisease[]): NormalizedDiseaseValidationError[] => {
+  const allErrors: NormalizedDiseaseValidationError[] = []
+  for (const disease of diseases) {
+    allErrors.push(...validateNormalizedDisease(disease))
+  }
+  return allErrors
 }
