@@ -387,14 +387,14 @@ export const fixDatasetId = (
     .replace(/\s{2,}/g, " ")
     .trim()
 
-  // Check special cases from config
+  // Check special cases from config (use Object.hasOwn to avoid prototype pollution)
   const specialCases = getGlobalIdCorrection()
-  if (trimmed in specialCases) {
+  if (Object.hasOwn(specialCases, trimmed)) {
     return specialCases[trimmed]
   }
 
-  // Split by space
-  return trimmed.split(" ")
+  // Split by space and filter out empty strings
+  return trimmed.split(" ").filter(s => s !== "")
 }
 
 /**

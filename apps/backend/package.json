@@ -27,6 +27,7 @@
     "test:crawler": "bun test tests/unit/crawler",
     "test:es": "bun test tests/unit/es",
     "test:api": "bun test tests/unit/api",
+    "test:integration": "bun test --test-root ./tests/integration",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix"

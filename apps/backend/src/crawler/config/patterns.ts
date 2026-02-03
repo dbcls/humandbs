@@ -81,12 +81,16 @@ export const extractIdsByType = (text: string): Partial<Record<DatasetIdType, st
 }
 
 /**
- * Check if a string is a valid dataset ID (matches one of the known ID patterns)
+ * Check if a string is a valid dataset ID (exact match with one of the known ID patterns)
  */
 export const isValidDatasetId = (id: string): boolean => {
+  const trimmed = id.trim()
+  if (!trimmed) return false
+
   for (const regex of Object.values(ID_PATTERNS)) {
-    regex.lastIndex = 0
-    if (regex.test(id)) {
+    // Create anchored regex for exact match
+    const exactRegex = new RegExp(`^${regex.source}$`)
+    if (exactRegex.test(trimmed)) {
       return true
     }
   }

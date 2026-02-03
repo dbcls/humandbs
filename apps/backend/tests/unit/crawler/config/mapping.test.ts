@@ -1,3 +1,16 @@
+/**
+ * Tests for configuration mapping functions
+ *
+ * Covers:
+ * - Skip pages configuration
+ * - Release URL generation
+ * - Global ID correction
+ * - Publication dataset ID validation and cleaning
+ * - Molecular data field configuration
+ * - Criteria and policy mapping
+ * - Grant configuration
+ */
+
 import { describe, expect, it } from "bun:test"
 
 import {
@@ -15,6 +28,10 @@ import {
   getUnusedPublicationTitles,
   getInvalidDoiValues,
   getInvalidGrantIdValues,
+  getPolicyBaseUrl,
+  getPolicyCanonical,
+  getPolicyNormalizeMap,
+  getNoSplitIds,
 } from "@/crawler/config/mapping"
 
 describe("config/mapping.ts", () => {
@@ -47,6 +64,14 @@ describe("config/mapping.ts", () => {
       // Assuming hum0001-v1 is not in skip list
       expect(shouldSkipPage("hum0001-v1", "ja")).toBe(false)
       expect(shouldSkipPage("hum0001-v1", "en")).toBe(false)
+    })
+
+    it("should return true for pages in skip list", () => {
+      const skipPages = getSkipPages()
+      if (skipPages.length > 0) {
+        const first = skipPages[0]
+        expect(shouldSkipPage(first.humVersionId, first.lang)).toBe(true)
+      }
     })
   })
 
@@ -191,6 +216,13 @@ describe("config/mapping.ts", () => {
       const fields = getMolDataIdFields()
       expect(fields.length).toBeGreaterThan(0)
     })
+
+    it("should have non-empty field names", () => {
+      const fields = getMolDataIdFields()
+      for (const field of fields) {
+        expect(field.length).toBeGreaterThan(0)
+      }
+    })
   })
 
   // ===========================================================================
@@ -216,6 +248,60 @@ describe("config/mapping.ts", () => {
       const map = getCriteriaCanonicalMap()
       // Check that at least some criteria mappings exist
       expect(Object.keys(map).length).toBeGreaterThan(0)
+    })
+
+    it("should have valid canonical values", () => {
+      const map = getCriteriaCanonicalMap()
+      const validValues = [
+        "Controlled-access (Type I)",
+        "Controlled-access (Type II)",
+        "Unrestricted-access",
+      ]
+      for (const value of Object.values(map)) {
+        expect(validValues).toContain(value)
+      }
+    })
+  })
+
+  // ===========================================================================
+  // Policy Mapping
+  // ===========================================================================
+  describe("getPolicyBaseUrl", () => {
+    it("should return a valid URL string", () => {
+      const url = getPolicyBaseUrl()
+      expect(typeof url).toBe("string")
+      expect(url).toMatch(/^https?:\/\//)
+    })
+  })
+
+  describe("getPolicyCanonical", () => {
+    it("should return an object", () => {
+      const canonical = getPolicyCanonical()
+      expect(typeof canonical).toBe("object")
+    })
+
+    it("should have entries with ja, en, and path fields", () => {
+      const canonical = getPolicyCanonical()
+      for (const entry of Object.values(canonical)) {
+        expect(entry.ja).toBeDefined()
+        expect(entry.en).toBeDefined()
+        expect(entry.path).toBeDefined()
+      }
+    })
+  })
+
+  describe("getPolicyNormalizeMap", () => {
+    it("should return an object", () => {
+      const map = getPolicyNormalizeMap()
+      expect(typeof map).toBe("object")
+    })
+
+    it("should have string keys and values", () => {
+      const map = getPolicyNormalizeMap()
+      for (const [key, value] of Object.entries(map)) {
+        expect(typeof key).toBe("string")
+        expect(typeof value).toBe("string")
+      }
     })
   })
 
@@ -261,6 +347,23 @@ describe("config/mapping.ts", () => {
       const values = getInvalidGrantIdValues()
       expect(values).toContain("None")
       expect(values).toContain("なし")
+    })
+  })
+
+  // ===========================================================================
+  // No-Split IDs
+  // ===========================================================================
+  describe("getNoSplitIds", () => {
+    it("should return an array", () => {
+      const ids = getNoSplitIds()
+      expect(Array.isArray(ids)).toBe(true)
+    })
+
+    it("should have non-empty entries if array is not empty", () => {
+      const ids = getNoSplitIds()
+      for (const id of ids) {
+        expect(id.length).toBeGreaterThan(0)
+      }
     })
   })
 })

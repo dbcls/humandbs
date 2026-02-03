@@ -1,0 +1,5 @@
+[test]
+# Default test directory for 'bun test'
+# Excludes integration tests (which require ES)
+# Run integration tests with: bun test tests/integration/
+root = "./tests/unit"

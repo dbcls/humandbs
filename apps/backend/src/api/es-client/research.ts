@@ -64,11 +64,13 @@ export const getResearchDetail = async (
   { version }: { version?: string },
   authUser: AuthUser | null = null,
 ): Promise<EsResearchDetail | null> => {
-  const [researchDoc, researchVersionDoc] = await Promise.all([
-    getResearchDoc(humId),
+  const [researchWithSeqNo, researchVersionDoc] = await Promise.all([
+    getResearchWithSeqNo(humId),
     getResearchVersion(humId, { version }),
   ])
-  if (!researchDoc || !researchVersionDoc) return null
+  if (!researchWithSeqNo || !researchVersionDoc) return null
+
+  const { doc: researchDoc, seqNo, primaryTerm } = researchWithSeqNo
 
   // Authorization check: verify user can access this Research
   if (!canAccessResearchDoc(authUser, researchDoc)) {
@@ -90,6 +92,9 @@ export const getResearchDetail = async (
     versionReleaseDate: researchVersionDoc.versionReleaseDate,
     releaseNote: researchVersionDoc.releaseNote,
     datasets,
+    // Include optimistic locking fields
+    _seq_no: seqNo,
+    _primary_term: primaryTerm,
   })
 }
 

@@ -297,6 +297,40 @@ cp crawler-results/html/hum0001.html tests/fixtures/crawler/
 | レスポンス | 正しい形式、ステータスコード |
 | エラー処理 | 異常系の適切なハンドリング |
 
+## 手動テスト
+
+API エンドポイントの動作確認は [api-manual-testing.md](./api-manual-testing.md) を参照。
+
+## API テスト
+
+API テストはユニットテストとインテグレーションテストに分かれている。
+
+### ユニットテスト（ES 不要）
+
+ES 接続なしで実行できるテスト。ルート設定の確認、バリデーション、認証チェックなど。
+
+```bash
+# ホスト側で実行（デフォルト）
+bun test
+
+# API ユニットテストのみ
+bun run test:api
+```
+
+### インテグレーションテスト（ES 必要）
+
+実際の ES を使ったテスト。Docker コンテナ内で実行する。
+
+```bash
+# コンテナ内で実行
+docker compose exec backend bun run test:integration
+```
+
+注意:
+- インテグレーションテストは `/api` プレフィックス付きで実行される
+- `bun test`（デフォルト）ではインテグレーションテストは除外される
+- インテグレーションテストは `tests/integration/` に配置する
+
 ## 目標メトリクス
 
 | 項目 | 目標 |

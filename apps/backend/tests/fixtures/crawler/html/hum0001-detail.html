@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<!-- jsn_epic_pro 6.2.3 -->
+<html lang="" dir="ltr">
+<head>
+	<base href="https://humandbs.dbcls.jp/hum0001-v1" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<meta name="keywords" content="human, controlled access, dbgap, ヒト, 制限公開, データベース" />
+	<meta name="description" content="ライフサイエンス統合データベースセンター(DBCLS)が公開する制限公開データベースです。" />
+	<meta name="generator" content="Joomla! - Open Source Content Management" />
+	<title>HUM0001.v1 - NBDCヒトデータベース</title>
+	<link href="/templates/jsn_epic_pro/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+	<link href="https://humandbs.dbcls.jp/component/search/?Itemid=262&amp;format=opensearch" rel="search" title="NBDCヒトデータベース" type="application/opensearchdescription+xml" />
+	<link href="/cache/jsn_epic_pro/2c5e27c9d22224380ee6c80077edbeb9.css?ce91541fb8d6c461a018f761a5ae7ae0" rel="stylesheet" type="text/css" />
+	<link href="/cache/jsn_epic_pro/086e3cbe40ff0a87e35e712181975142.css?ce91541fb8d6c461a018f761a5ae7ae0" rel="stylesheet" type="text/css" media="print" />
+	<link href="//fonts.googleapis.com/css?family=Nobile:regular,bold" rel="stylesheet" type="text/css" />
+	<link href="/cache/jsn_epic_pro/f43e4dcbe36c3befdc432ca529067d63.css?ce91541fb8d6c461a018f761a5ae7ae0" rel="stylesheet" type="text/css" />
+	<style type="text/css">
+#jsn-page,
+	#jsn-menu.jsn-menu-sticky,
+	#jsn-pos-topbar {
+		width: 95%;
+		min-width: 95%;
+	}
+	div.jsn-modulecontainer ul.menu-mainmenu ul,
+	div.jsn-modulecontainer ul.menu-mainmenu ul li {
+		width: 200px;
+	}
+	div.jsn-modulecontainer ul.menu-mainmenu ul ul {
+		margin-left: 199px;
+	}
+	#jsn-pos-toolbar div.jsn-modulecontainer ul.menu-mainmenu ul ul {
+		margin-right: 199px;
+		margin-left : auto
+	}
+	div.jsn-modulecontainer ul.menu-sidemenu ul,
+	div.jsn-modulecontainer ul.menu-sidemenu ul li {
+		width: 200px;
+	}
+	div.jsn-modulecontainer ul.menu-sidemenu li ul {
+		right: -200px;
+	}
+	body.jsn-direction-rtl div.jsn-modulecontainer ul.menu-sidemenu li ul {
+		left: -200px;
+		right: auto;
+	}
+	div.jsn-modulecontainer ul.menu-sidemenu ul ul {
+		margin-left: 199px;
+	}
+	</style>
+	<script type="application/json" class="joomla-script-options new">{"csrf.token":"38c325df1c906a0288cb06c849115790","system.paths":{"root":"","base":""}}</script>
+	<script src="https://humandbs.dbcls.jp/cache/jsn_epic_pro/74871daece57bf5d7f479af72233fa08.js?ce91541fb8d6c461a018f761a5ae7ae0" type="text/javascript"></script>
+	<script src="https://humandbs.dbcls.jp/cache/jsn_epic_pro/8a920c3320aa95f7b1ae12e318783a41.js?ce91541fb8d6c461a018f761a5ae7ae0" type="text/javascript"></script>
+	<script src="https://humandbs.dbcls.jp/cache/jsn_epic_pro/fe742cb77e436df6206f4852895b9973.js?ce91541fb8d6c461a018f761a5ae7ae0" type="text/javascript"></script>
+	<script src="https://humandbs.dbcls.jp/cache/jsn_epic_pro/6079189864b255a2ff51a1d9839cf495.js?ce91541fb8d6c461a018f761a5ae7ae0" type="text/javascript"></script>
+	<script src="https://humandbs.dbcls.jp/cache/jsn_epic_pro/1d49d00f523f2195281e47adaf357057.js?ce91541fb8d6c461a018f761a5ae7ae0" type="text/javascript"></script>
+	<script src="/media/system/js/modal.js?ce91541fb8d6c461a018f761a5ae7ae0" type="text/javascript"></script>
+	<script type="text/javascript">
+jQuery(window).on('load',  function() {
+				new JCaption('img.caption');
+			});jQuery(document).ready(function(){WfMediabox.init({"base":"\/","theme":"standard","width":"","height":"","lightbox":0,"shadowbox":0,"icons":1,"overlay":1,"overlay_opacity":0.8,"overlay_color":"#000000","transition_speed":500,"close":2,"scrolling":"fixed","labels":{"close":"Close","next":"Next","previous":"Previous","cancel":"Cancel","numbers":"{{numbers}}","numbers_count":"{{current}} of {{total}}","download":"Download"},"swipe":true});});JSNTemplate.initTemplate({
+					templatePrefix			: "jsn_epic_pro_",
+					templatePath			: "/templates/jsn_epic_pro",
+					enableRTL				: 0,
+					enableGotopLink			: 1,
+					enableMobile			: 0,
+					enableMobileMenuSticky	: 1,
+					enableDesktopMenuSticky	: 0,
+					responsiveLayout		: [],
+					mobileMenuEffect		: "default"
+				});
+			
+		jQuery(function($) {
+			SqueezeBox.initialize({});
+			initSqueezeBox();
+			$(document).on('subform-row-add', initSqueezeBox);
+
+			function initSqueezeBox(event, container)
+			{
+				SqueezeBox.assign($(container || document).find('a.modal').get(), {
+					parse: 'rel'
+				});
+			}
+		});
+
+		window.jModalClose = function () {
+			SqueezeBox.close();
+		};
+
+		// Add extra modal close functionality for tinyMCE-based editors
+		document.onreadystatechange = function () {
+			if (document.readyState == 'interactive' && typeof tinyMCE != 'undefined' && tinyMCE)
+			{
+				if (typeof window.jModalClose_no_tinyMCE === 'undefined')
+				{
+					window.jModalClose_no_tinyMCE = typeof(jModalClose) == 'function'  ?  jModalClose  :  false;
+
+					jModalClose = function () {
+						if (window.jModalClose_no_tinyMCE) window.jModalClose_no_tinyMCE.apply(this, arguments);
+						tinyMCE.activeEditor.windowManager.close();
+					};
+				}
+
+				if (typeof window.SqueezeBoxClose_no_tinyMCE === 'undefined')
+				{
+					if (typeof(SqueezeBox) == 'undefined')  SqueezeBox = {};
+					window.SqueezeBoxClose_no_tinyMCE = typeof(SqueezeBox.close) == 'function'  ?  SqueezeBox.close  :  false;
+
+					SqueezeBox.close = function () {
+						if (window.SqueezeBoxClose_no_tinyMCE)  window.SqueezeBoxClose_no_tinyMCE.apply(this, arguments);
+						tinyMCE.activeEditor.windowManager.close();
+					};
+				}
+			}
+		};
+		
+	</script>
+
+	<!-- html5.js and respond.min.js for IE less than 9 -->
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+		<script src="/plugins/system/jsntplframework/assets/3rd-party/respond/respond.min.js"></script>
+	<![endif]-->
+	</head>
+<body id="jsn-master" class="jsn-textstyle-business jsn-color-blue jsn-direction-ltr jsn-desktop jsn-joomla-30  jsn-com-content jsn-view-article jsn-itemid-262">
+	<a name="top" id="top"></a>
+		<div id="jsn-page" class="container">
+		<div id="jsn-page-inner">
+					<div id="jsn-header">
+				<div id="jsn-logo" class="pull-left">
+									<div id="jsn-pos-logo">
+						<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">
+<div  >
+	<p><a href="/ja/"><img src="/files/images/HumanDB.svg" alt="HumanDB logo" style="height:30px; width:auto; margin:8px;" /></a>&nbsp;<a href="/"><img src="/files/images/logo.png" alt="logo" width="337" height="49" /></a></p></div><div class="clearbreak"></div></div></div></div>
+					</div>
+
+								</div>
+				<div id="jsn-headerright" class="pull-right">
+									<div id="jsn-pos-top" class="pull-left">
+						<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent"><div class="mod-languages">
+
+	<ul class="lang-block" dir="ltr">
+									<li>
+			<a href="/en/hum0001-v1">
+							English						</a>
+			</li>
+				</ul>
+
+</div>
+<div class="clearbreak"></div></div></div></div><div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">	<div class="search">
+		<form action="/hum0001-v1" method="post" class="form-inline">
+			<label for="mod-search-searchword" class="element-invisible">検索...</label> <input name="searchword" id="mod-search-searchword" maxlength="200"  class="inputbox search-query" type="text" size="20" value="サイト内検索"  onblur="if (this.value=='') this.value='サイト内検索';" onfocus="if (this.value=='サイト内検索') this.value='';" /> <button class="button btn btn-primary" onclick="this.form.searchword.focus();">検索</button>			<input type="hidden" name="task" value="search" />
+			<input type="hidden" name="option" value="com_search" />
+			<input type="hidden" name="Itemid" value="262" />
+		</form>
+	</div>
+
+<div class="clearbreak"></div></div></div></div>
+						<div class="clearbreak"></div>
+					</div>
+								</div>
+				<div class="clearbreak"></div>
+			</div>
+			<div id="jsn-body">
+							<div id="jsn-menu">
+									<div id="jsn-pos-mainmenu" >
+						<div class="_menu jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent"><span id="jsn-menu-toggle-parent" class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span>
+<ul class="menu-mainmenu menu-iconmenu">
+	<li class="jsn-menu-mobile-control"><span class="close-menu"><i class="fa fa-times"></i></span></li> 
+	<li  class="first"><a class="clearfix" href="/" >
+		<span>
+		<span class="jsn-menutitle">ホーム</span>	</span>
+</a></li><li  class="parent"><a class="clearfix" href="/guidelines" >
+		<span>
+		<span class="jsn-menutitle">ガイドライン</span>	</span>
+</a><span class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span><ul><li  class="first"><a class="clearfix" href="/guidelines/data-sharing-guidelines" >
+		<span>
+		<span class="jsn-menutitle">NBDCヒトデータ共有ガイドライン</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/guidelines/security-guidelines-for-users" >
+		<span>
+		<span class="jsn-menutitle">NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/guidelines/security-guidelines-for-submitters" >
+		<span>
+		<span class="jsn-menutitle">NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）</span>	</span>
+</a></li><li  class="last"><a class="clearfix" href="/guidelines/security-guidelines-for-dbcenters" >
+		<span>
+		<span class="jsn-menutitle">NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）</span>	</span>
+</a></li></ul></li><li  class=""><a class="clearfix" href="/data-submission" >
+		<span>
+		<span class="jsn-menutitle">データの提供</span>	</span>
+</a></li><li  class="parent"><a class="clearfix" href="/data-use" >
+		<span>
+		<span class="jsn-menutitle">データの利用</span>	</span>
+</a><span class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span><ul><li  class="first last"><a class="clearfix" href="/data-use/all-researches" >
+		<span>
+		<span class="jsn-menutitle">研究データ一覧</span>	</span>
+</a></li></ul></li><li  class=""><a class="clearfix" href="/data-processing" >
+		<span>
+		<span class="jsn-menutitle">加工データ</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/off-premise-server" >
+		<span>
+		<span class="jsn-menutitle">機関外サーバ</span>	</span>
+</a></li><li  class="parent"><a class="clearfix" href="/dac" >
+		<span>
+		<span class="jsn-menutitle">ヒトデータ審査委員会</span>	</span>
+</a><span class="jsn-menu-toggle"><i class="fa fa-navicon"></i></span><ul><li  class="first last"><a class="clearfix" href="/dac/committee-1" >
+		<span>
+		<span class="jsn-menutitle">第一回ヒトデータ審査委員会</span>	</span>
+</a></li></ul></li><li  class=""><a class="clearfix" href="/publications" >
+		<span>
+		<span class="jsn-menutitle">成果発表</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/violation" >
+		<span>
+		<span class="jsn-menutitle">ガイドライン違反</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/privacy-policy" >
+		<span>
+		<span class="jsn-menutitle">プライバシーポリシー</span>	</span>
+</a></li><li  class=""><a class="clearfix" href="/faq" >
+		<span>
+		<span class="jsn-menutitle">FAQ</span>	</span>
+</a></li><li  class="last"><a class="clearfix" href="/contact-us" >
+		<span>
+		<span class="jsn-menutitle">お問い合わせ</span>	</span>
+</a></li></ul><div class="clearbreak"></div></div></div></div>
+											</div>
+													<span id="jsn-desktopswitch">
+						<a href="#" onclick="javascript: JSNUtils.setTemplateAttribute('jsn_epic_pro_','mobile','no'); return false;"></a>
+					</span>
+					<span id="jsn-mobileswitch">
+						<a href="#" onclick="javascript: JSNUtils.setTemplateAttribute('jsn_epic_pro_','mobile','yes'); return false;"></a>
+					</span>
+					            <div class="clearbreak"></div>
+				</div>
+			
+				<div id="jsn-content" class="">
+					<div id="jsn-content_inner"><div id="jsn-content_inner1"><div id="jsn-content_inner2"><div id="jsn-content_inner3"><div id="jsn-content_inner4"><div id="jsn-content_inner5"><div id="jsn-content_inner6"><div id="jsn-content_inner7" class="row-fluid">
+								<div id="jsn-maincontent" class="span12 order1  row-fluid">
+						<div id="jsn-maincontent_inner"><div id="jsn-maincontent_inner1"><div id="jsn-maincontent_inner2"><div id="jsn-maincontent_inner3"><div id="jsn-maincontent_inner4">
+										<div id="jsn-centercol" class="span12 order1 "><div id="jsn-centercol_inner">
+											<div id="jsn-pos-user-top" class="jsn-modulescontainer jsn-horizontallayout jsn-modulescontainer1 row-fluid">
+										<div class=" jsn-modulecontainer span12"><div class="jsn-modulecontainer_inner"><div><div><div class="jsn-modulecontent">
+<div  >
+	<p class="text-alert">現在、多数のデータ提供申請をいただいており、確認作業に通常よりも時間を要しております。 <br />お待たせして大変申し訳ございませんが、何卒ご理解いただけますようお願い申し上げます。 <br />申請いただく際は、お時間に余裕を持ってお手続きいただけますと幸いです。</p></div><div class="clearbreak"></div></div></div></div></div></div>
+									</div>
+											<div id="jsn-mainbody-content" class=" jsn-hasmainbody">
+													<div id="jsn-mainbody">
+											<div id="system-message-container">
+	</div>
+
+											<div class="item-page" itemscope itemtype="https://schema.org/Article">
+	<meta itemprop="inLanguage" content="ja-JP" />
+	
+		
+	
+	
+<div class="jsn-article-toolbar"><div class="clearfix"></div>
+</div>
+
+	
+				
+								<div class="articleBody" itemprop="articleBody">
+		<p><span style="font-family: helvetica; font-size: 15pt;"><strong>NBDC Research ID: hum0001.v1</strong></span></p>
+<p>&nbsp;</p>
+<h1><span style="text-decoration: underline; font-family: helvetica; font-size: 15pt;"><strong>研究内容の概要</strong></span></h1>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>目的： </strong>脊髄小脳失調症31型（SCA31）罹患患者の DNA における疾患固有の繰返し配列を同定する。</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;">&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;また、本データはゲノムインフォマティクス分野の研究者 の研究題材として有用と考え、共有する。</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>方法： </strong>Illumina 社 HiSeq 2000 を利用して長さ100塩基のDNA断片を解読</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>対象： </strong>SCA31罹患患者1名</span></p>
+<p>&nbsp;</p>
+<table class="table-style style-greystripes" style="width: 673px; height: 70px;">
+<thead>
+<tr><th align="center"><span style="font-family: helvetica; font-size: 11pt;">データID</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">内容</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">制限</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">公開日</span></th></tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#JGAD000002"><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">JGAS000002</span></a></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">NGS (WGS)</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">制限公開（Type I）</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">2013/12/01</span></td>
+</tr>
+</tbody>
+</table>
+<p><span style="font-family: helvetica; font-size: 10pt;">※リリース情報は<a href="/hum0001-v1-release" target="_blank" rel="noopener noreferrer">こちら</a>。</span></p>
+<p><span style="font-family: helvetica; font-size: 10pt;"> ※制限公開データの利用にあたっては、利用申請が必要です。申請方法は<a href="/data-use" target="_blank" rel="noopener noreferrer">こちら</a>。</span></p>
+<p>&nbsp;</p>
+<h1><span style="text-decoration: underline; font-family: helvetica; font-size: 15pt;"><strong>分子データ</strong></span></h1>
+<p><a name="JGAD000002"><span style="font-family: helvetica; font-size: 11pt;"><strong> JGAS000002</strong></span></a></p>
+<table class="table-style style-greystripes" style="width: 822px; height: 498px;">
+<thead>
+<tr>
+<td style="padding: 0px; margin: 0px;"></td>
+<td style="padding: 0px; margin: 0px;"></td>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">対象</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">SCA31患者：1症例</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">規模</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">WGS</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">対象領域（Target Captureの場合）</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">-</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">Platform</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">Illumina [HiSeq 2000]</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">ライブラリソース</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">末梢血から抽出したDNA</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">検体情報（購入の場合）</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">-</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">ライブラリ作製方法（キット名）</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">TrueSeq DNA Sample Prep Kit v2, Set A</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">断片化の方法</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">超音波断片化（Covaris E220）</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">ライブラリ構築方法</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">Paired-end</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">リード長（除：バーコード、アダプター、プライマー、リンカー）</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">100 bp</span></td>
+</tr>
+<tr>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"><strong>Japanese Genotype-phenotype Archive Dataset ID</strong></span></td>
+<td><a href="https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000002" target="_blank" rel="noopener noreferrer"><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">JGAD000002</span></a></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">総データ量</span></strong></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">149 GB（1,627,990,590 reads）</span></td>
+</tr>
+<tr>
+<td><strong><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">コメント（利用にあたっての制限事項）</span></strong></td>
+<td><a href="/nbdc-policy" target="_blank" rel="noopener noreferrer"><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">NBDC policy</span></a></td>
+</tr>
+</tbody>
+</table>
+<p>&nbsp;</p>
+<h1><span style="text-decoration: underline; font-family: helvetica; font-size: 15pt;"><strong>提供者情報</strong></span></h1>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>研究代表者： </strong>森下 真一</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>所 属 機 関： </strong>東京大学大学院 新領域創成科学研究科 情報生命科学専攻</span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>プロジェクト/研究グループ名： </strong></span></p>
+<p><span style="font-family: helvetica; font-size: 11pt;"><strong>科研費/助成金（Research Project Number）： </strong></span></p>
+<table class="table-style style-greystripes" style="width: 922px; height: 70px;">
+<thead>
+<tr><th align="center"><span style="font-family: helvetica; font-size: 11pt;">科研費・助成金名</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">タイトル</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">研究課題番号</span></th></tr>
+</thead>
+<tbody>
+<tr>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">科学研究費助成事業 新学術領域研究</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">脳疾患パーソナルゲノム多様性を分析する情報学の創成</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">22129008</span></td>
+</tr>
+</tbody>
+</table>
+<p>&nbsp;</p>
+<h1><span style="text-decoration: underline; font-family: helvetica; font-size: 15pt;"><strong>関連論文</strong></span></h1>
+<table class="table-style style-greystripes" style="width: 1018px; height: 66px;">
+<thead>
+<tr><th align="center"><span style="font-family: helvetica; font-size: 11pt;"></span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">タイトル</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">DOI</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">データID</span></th></tr>
+</thead>
+<tbody>
+<tr>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">1</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">Rapid detection of expanded short tandem repeats in personal genomics using hybrid sequencing</span></td>
+<td><a href="http://bioinformatics.oxfordjournals.org/content/early/2013/11/08/bioinformatics.btt647.full.pdf+html" target="_blank" rel="noopener noreferrer"><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">doi: 10.1093/bioinformatics/btt647</span></a></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">JGAD000002</span></td>
+</tr>
+<tr>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;">2</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"> &nbsp;</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"> &nbsp;</span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"> &nbsp;</span></td>
+</tr>
+</tbody>
+</table>
+<p>&nbsp;</p>
+<h1><span style="text-decoration: underline; font-family: helvetica; font-size: 15pt;"><strong>制限公開データの利用者一覧</strong></span></h1>
+<table class="table-style style-greystripes" style="width: 922px; height: 70px;">
+<thead>
+<tr><th align="center"><span style="font-family: helvetica; font-size: 11pt;">研究代表者</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">所属機関</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">利用データID</span></th><th align="center"><span style="font-family: helvetica; font-size: 11pt;">利用期間</span></th></tr>
+</thead>
+<tbody>
+<tr>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"></span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"></span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"></span></td>
+<td><span style="font-family: helvetica; font-size: 10pt; line-height: normal;"></span></td>
+</tr>
+</tbody>
+</table> 	</div>
+								</div>
+										</div>
+												</div>
+				        				</div></div> <!-- end centercol -->
+	        					</div></div></div></div></div></div> <!-- end jsn-maincontent -->
+				                </div></div></div></div></div></div></div></div>
+	            </div>
+						</div>
+							<div id="jsn-footer">
+					<div id="jsn-footermodules" class="jsn-modulescontainer jsn-modulescontainer2 row-fluid">
+										<div id="jsn-pos-footer" class="span6">
+							<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">
+<div  >
+	<ul class="menu-divmenu">
+<li class="first"><a href="https://dbcls.rois.ac.jp/policy.html"><span>サイトポリシー</span></a></li>
+<li><a href="/privacy-policy"><span>プライバシーポリシー</span></a></li>
+<li><a href="/sitemap"><span>サイトマップ</span></a></li>
+<li><a href="/ja/contact-us"><span>お問い合わせ</span></a></li>
+<li class="last"><a href="/supported-browsers"><span>対応ブラウザ</span></a></li>
+</ul></div><div class="clearbreak"></div></div></div></div>
+						</div>
+										<div id="jsn-pos-bottom" class="span6">
+							<div class=" jsn-modulecontainer"><div class="jsn-modulecontainer_inner"><div class="jsn-modulecontent">
+<div  >
+	<p><a href="https://dbcls.rois.ac.jp/"><img src="/files/images/logo_dbcls.svg" alt="dbcls logo" width="130" height="48" style="margin-left: 5px; margin-right: 5px;" /></a></p></div><div class="clearbreak"></div></div></div></div>
+						</div>
+										<div class="clearbreak"></div>
+					</div>
+				</div>
+					</div>
+	</div>
+			<a id="jsn-gotoplink" href="https://humandbs.dbcls.jp/hum0001-v1#top">
+			<span>Go to top</span>
+		</a>
+	
+</body>
+</html>

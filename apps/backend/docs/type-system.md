@@ -189,6 +189,8 @@ Zod スキーマで定義。Crawler 型と似た構造だが ES 用の調整あ�
 | `DatasetSearchResponse` | request-response.ts | 検索結果レスポンス |
 | `EsResearchDoc` | es-docs.ts | Research ドキュメント (ES alias) |
 | `EsDatasetDoc` | es-docs.ts | Dataset ドキュメント (ES alias) |
+| `EsResearchDetailDoc` | es-docs.ts | Research + ResearchVersion + Datasets の統合ドキュメント |
+| `MergedSearchable` | es-docs.ts | Dataset 内の全 experiments.searchable をマージしたスキーマ |
 
 ## 型の追加・変更手順
 

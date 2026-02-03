@@ -48,6 +48,7 @@ export const EsResearchDocSchema = EsResearchSchema
 export type EsResearchDoc = z.infer<typeof EsResearchDocSchema>
 
 // Research detail (Research + ResearchVersion info + Datasets)
+// Includes _seq_no and _primary_term for optimistic locking
 export const EsResearchDetailSchema = EsResearchDocSchema
   .omit({ versionIds: true })
   .extend({
@@ -56,6 +57,9 @@ export const EsResearchDetailSchema = EsResearchDocSchema
     versionReleaseDate: z.string(),
     releaseNote: BilingualTextValueSchema,
     datasets: z.array(EsDatasetDocSchema),
+    // Optimistic locking fields (optional for backwards compatibility)
+    _seq_no: z.number().nullable().optional(),
+    _primary_term: z.number().nullable().optional(),
   })
 export type EsResearchDetail = z.infer<typeof EsResearchDetailSchema>
 

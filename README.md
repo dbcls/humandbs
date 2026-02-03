@@ -115,6 +115,8 @@ Keycloak のユーザー名とパスワードから UID を取得するスクリ
 
 **注意**: `admin_uids.json` は機密情報を含むため Git にコミットしないこと。
 
+認証・Keycloak の詳細は [docs/keycloak.md](docs/keycloak.md) を参照。
+
 ### Podman での起動
 
 ```bash
@@ -237,6 +239,11 @@ docker compose down -v
 rm -f bun.lock
 docker run --rm -v "$(pwd):/app" -w /app oven/bun:1.3.5 bun install
 ```
+
+## ドキュメント
+
+- [Keycloak 認証設定](docs/keycloak.md) - OIDC 認証、Keycloak クライアント設定、管理者設定
+- [Elasticsearch バックアップ](docs/elasticsearch-backup.md) - Snapshot API によるバックアップ・リストア手順
 
 ## ライセンス
 

@@ -1,3 +1,13 @@
+/**
+ * Tests for molecular data header mapping table
+ *
+ * Covers:
+ * - loadMolDataMappingTable: TSV file loading
+ * - buildMolDataHeaderMapping: mapping construction and caching
+ * - normalizeMolDataKey: key normalization
+ * - clearMappingCache: cache clearing
+ */
+
 import { describe, expect, it, beforeEach } from "bun:test"
 
 import {
@@ -42,6 +52,16 @@ describe("processors/mapping-table.ts", () => {
         expect(row.en_norm.length).toBeGreaterThan(0)
       }
     })
+
+    it("should return consistent data structure on multiple loads", () => {
+      const table1 = loadMolDataMappingTable()
+      const table2 = loadMolDataMappingTable()
+      expect(table1.length).toBe(table2.length)
+      // Check first row content is same
+      if (table1.length > 0) {
+        expect(table1[0]).toEqual(table2[0])
+      }
+    })
   })
 
   // ===========================================================================
@@ -74,6 +94,48 @@ describe("processors/mapping-table.ts", () => {
       const mapping2 = buildMolDataHeaderMapping()
       expect(mapping1).not.toBe(mapping2) // Different reference
     })
+
+    it("maps should have consistent sizes", () => {
+      const mapping = buildMolDataHeaderMapping()
+      const table = loadMolDataMappingTable()
+      // Map size may be smaller than table length due to duplicate keys
+      // (later entries overwrite earlier ones)
+      expect(mapping.jaMap.size).toBeLessThanOrEqual(table.length)
+      expect(mapping.enMap.size).toBeLessThanOrEqual(table.length)
+      // But should have at least some entries
+      expect(mapping.jaMap.size).toBeGreaterThan(0)
+      expect(mapping.enMap.size).toBeGreaterThan(0)
+    })
+
+    it("jaMap should map to ja_norm values", () => {
+      const mapping = buildMolDataHeaderMapping()
+      const table = loadMolDataMappingTable()
+      for (const row of table) {
+        expect(mapping.jaMap.get(row.ja_raw)).toBe(row.ja_norm)
+      }
+    })
+
+    it("enMap values should be from table (last wins for duplicates)", () => {
+      const mapping = buildMolDataHeaderMapping()
+      const table = loadMolDataMappingTable()
+      // Build expected map with last-wins semantics
+      const expectedEnMap = new Map<string, string>()
+      for (const row of table) {
+        expectedEnMap.set(row.en_raw, row.en_norm)
+      }
+      // Verify each entry in enMap matches expected
+      for (const [key, value] of mapping.enMap) {
+        expect(value).toBe(expectedEnMap.get(key))
+      }
+    })
+
+    it("normJaToEnMap should map ja_norm to en_norm", () => {
+      const mapping = buildMolDataHeaderMapping()
+      const table = loadMolDataMappingTable()
+      for (const row of table) {
+        expect(mapping.normJaToEnMap.get(row.ja_norm)).toBe(row.en_norm)
+      }
+    })
   })
 
   // ===========================================================================
@@ -82,7 +144,6 @@ describe("processors/mapping-table.ts", () => {
   describe("normalizeMolDataKey", () => {
     it("should normalize Japanese raw key to English normalized key", () => {
       const mapping = buildMolDataHeaderMapping()
-      // Find a key to test with
       const table = loadMolDataMappingTable()
       if (table.length > 0) {
         const firstRow = table[0]
@@ -120,6 +181,56 @@ describe("processors/mapping-table.ts", () => {
         expect(result).toBe(firstRow.en_norm)
       }
     })
+
+    it("should handle all table entries for Japanese", () => {
+      const mapping = buildMolDataHeaderMapping()
+      const table = loadMolDataMappingTable()
+      for (const row of table) {
+        const result = normalizeMolDataKey(row.ja_raw, "ja", mapping)
+        expect(result).toBe(row.en_norm)
+      }
+    })
+
+    it("should handle all table entries for English (last wins for duplicates)", () => {
+      const mapping = buildMolDataHeaderMapping()
+      const table = loadMolDataMappingTable()
+      // Build expected map with last-wins semantics
+      const expectedEnMap = new Map<string, string>()
+      for (const row of table) {
+        expectedEnMap.set(row.en_raw, row.en_norm)
+      }
+      // Verify normalizeMolDataKey returns expected values
+      for (const [key, expected] of expectedEnMap) {
+        const result = normalizeMolDataKey(key, "en", mapping)
+        expect(result).toBe(expected)
+      }
+    })
+
+    describe("error cases", () => {
+      it("should return null for empty string (ja)", () => {
+        expect(normalizeMolDataKey("", "ja")).toBeNull()
+      })
+
+      it("should return null for empty string (en)", () => {
+        expect(normalizeMolDataKey("", "en")).toBeNull()
+      })
+
+      it("should return null for whitespace only (ja)", () => {
+        expect(normalizeMolDataKey("   ", "ja")).toBeNull()
+      })
+
+      it("should return null for whitespace only (en)", () => {
+        expect(normalizeMolDataKey("   ", "en")).toBeNull()
+      })
+
+      it("should return null for random unicode (ja)", () => {
+        expect(normalizeMolDataKey("🎉🎊🎁", "ja")).toBeNull()
+      })
+
+      it("should return null for random unicode (en)", () => {
+        expect(normalizeMolDataKey("🎉🎊🎁", "en")).toBeNull()
+      })
+    })
   })
 
   // ===========================================================================
@@ -137,6 +248,23 @@ describe("processors/mapping-table.ts", () => {
       const mapping2 = buildMolDataHeaderMapping()
 
       expect(mapping1).not.toBe(mapping2)
+    })
+
+    it("should be safe to call multiple times", () => {
+      clearMappingCache()
+      clearMappingCache()
+      clearMappingCache()
+      // Should not throw
+      const mapping = buildMolDataHeaderMapping()
+      expect(mapping).toBeDefined()
+    })
+
+    it("should be safe to call before any build", () => {
+      // clearMappingCache is already called in beforeEach
+      // This test verifies it doesn't break subsequent operations
+      const mapping = buildMolDataHeaderMapping()
+      expect(mapping).toBeDefined()
+      expect(mapping.jaMap.size).toBeGreaterThan(0)
     })
   })
 })

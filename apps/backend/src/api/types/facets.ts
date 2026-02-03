@@ -23,6 +23,7 @@ export const DATASET_FACET_NAMES = [
   "referenceGenome",
   "fileTypes",
   "processedDataTypes",
+  "disease",
   "diseaseIcd10",
   "cellLine",
   "policyId",

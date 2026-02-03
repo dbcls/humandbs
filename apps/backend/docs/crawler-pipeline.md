@@ -141,7 +141,7 @@ bun run crawler:enrich
 # オプション
 --hum-id {id}     # 特定の humId のみ処理
 --force           # 既存エンリッチを上書き
---no-cache        # API キャッシュ無効化
+--no-cache        # API キャッシュを無効化（キャッシュはデフォルト有効）
 --skip-datasets   # データセットエンリッチをスキップ
 --skip-research   # 研究 (DOI) エンリッチをスキップ
 --delay-ms {n}    # API 呼び出し間隔 (デフォルト 100ms)
@@ -162,8 +162,8 @@ bun run crawler:llm-extract
 
 # オプション
 --file {id}       # 特定ファイルのみ処理
---hum-id {id}     # 特定の humId のみ処理
---dataset-id {id} # 特定の datasetId のみ処理
+--hum-id {id}     # 特定の humId のみ処理（複数指定可: --hum-id hum0001 --hum-id hum0002）
+--dataset-id {id} # 特定の datasetId のみ処理（複数指定可: --dataset-id JGAD000001 --dataset-id JGAD000002）
 --host {host}     # Ollama ホスト (デフォルト: localhost)
 --port {port}     # Ollama ポート (デフォルト: 11434)
 --model {name}    # Ollama モデル名 (例: llama3.3:70b)

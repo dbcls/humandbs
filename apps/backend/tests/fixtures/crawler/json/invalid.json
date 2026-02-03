@@ -1,0 +1,13 @@
+{
+  "humId": 12345,
+  "currentVersion": "not an object",
+  "versions": "not an array",
+  "extraField": true,
+  "nested": {
+    "deeply": {
+      "wrong": {
+        "type": [1, 2, "mixed", null, {"object": "in array"}]
+      }
+    }
+  }
+}

@@ -10,7 +10,29 @@ HumanDBs のデータを手動で編集・校正するためのガイド。
 
 ## やること
 
-### 1. Experiment の編集（メイン作業）
+### 1. 翻訳・校正作業
+
+| Tab | 作業内容 |
+|-----|---------|
+| Research | タイトルの日英翻訳・校正 |
+| ResearchSummary | 研究概要の日英翻訳・校正 |
+| ResearchVersion | リリースノートの日英翻訳・校正 |
+
+### 2. Dataset の確認
+
+データタイプ（typeOfData）、公開条件（criteria）、公開日（releaseDate）を確認・修正。
+
+### 3. 情報の補完・分離
+
+| Tab | 作業内容 |
+|-----|---------|
+| ResearchDataProvider | 提供者情報の補完、複数人が1行に詰め込まれている場合の分離 |
+| ResearchGrant | 助成金情報の補完 |
+| ResearchPublication | 論文タイトル・DOI の補完 |
+| ResearchProject | プロジェクト名・URL の補完 |
+| ResearchCAU | 制限公開利用者情報の補完 |
+
+### 4. Experiment の編集
 
 LLM が抽出した `searchable_*` フィールドを確認・修正する。
 値は英語に統一する（日本語のみの情報は英訳する）。
@@ -28,28 +50,6 @@ LLM が抽出した `searchable_*` フィールドを確認・修正する。
 - LLM が抽出できなかった情報を追加
 - 誤って抽出された情報を削除・修正
 - 日本語のみの情報を英語に翻訳
-
-### 2. 翻訳・校正作業
-
-| Tab | 作業内容 |
-|-----|---------|
-| Research | タイトルの日英翻訳・校正 |
-| ResearchSummary | 研究概要の日英翻訳・校正 |
-| ResearchVersion | リリースノートの日英翻訳・校正 |
-
-### 3. 情報の補完・分離
-
-| Tab | 作業内容 |
-|-----|---------|
-| ResearchDataProvider | 提供者情報の補完、複数人が1行に詰め込まれている場合の分離 |
-| ResearchGrant | 助成金情報の補完 |
-| ResearchPublication | 論文タイトル・DOI の補完 |
-| ResearchProject | プロジェクト名・URL の補完 |
-| ResearchCAU | 制限公開利用者情報の補完 |
-
-### 4. Dataset の確認
-
-データタイプ（typeOfData）、公開条件（criteria）、公開日（releaseDate）を確認・修正。
 
 ## 編集のルール
 
@@ -129,7 +129,7 @@ MolTable のヘッダーは Accession ID（例: `JGAS000123`）などが入っ�
 
 `index` フィールドを編集することで行の追加・分離ができる:
 
-```
+```plaintext
 # 元（1行に2人）
 humId    index  name_ja
 hum0001  0      山田太郎、鈴木花子

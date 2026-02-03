@@ -6,6 +6,15 @@ HumanDBs Backend は REST API を提供し、Research (研究)と Dataset (デ�
 
 設計方針の詳細は [api-architecture.md](./api-architecture.md) を参照。
 
+## OpenAPI ドキュメント
+
+インタラクティブな API ドキュメント (Swagger UI) は `/api/docs` で確認できる。
+
+| 環境 | URL |
+|------|-----|
+| Staging | <https://humandbs-staging.ddbj.nig.ac.jp/api/docs> |
+| Production | <https://humandbs.dbcls.jp/api/docs> |
+
 ### 主要な設計ポイント
 
 - **Research-Dataset 関係**: 1:N の関係。Dataset は親 Research の status に依存
@@ -410,6 +419,25 @@ Research の詳細を取得。
 | `lang` | `"ja"` \| `"en"` | `"ja"` | 言語 |
 
 **備考**: 特定バージョンを取得する場合は `GET /research/{humId}/versions/{version}` を使用する。
+
+**レスポンス例**:
+
+```json
+{
+  "humId": "hum0001",
+  "status": "published",
+  "version": "v1",
+  "title": { "ja": "研究タイトル", "en": "Research Title" },
+  "summary": { ... },
+  "datePublished": "2024-01-15",
+  "dateModified": "2024-01-15",
+  "datasets": [ ... ],
+  "_seq_no": 42,
+  "_primary_term": 1
+}
+```
+
+**備考**: `_seq_no` と `_primary_term` は楽観的ロックに使用する。更新時にこれらの値をリクエストボディに含める。
 
 ### PUT /research/{humId}/update
 
@@ -954,6 +982,7 @@ interface DatasetFilters {
 ```
 
 **備考**:
+
 - published な Research/Dataset のみをカウント対象とする
 - `facets` は主要なファセットフィールドの値ごとに、Research 件数と Dataset 件数を返す
 
@@ -989,4 +1018,3 @@ interface DatasetFilters {
   "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
-

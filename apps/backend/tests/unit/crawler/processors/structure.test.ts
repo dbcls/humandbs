@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import fc from "fast-check"
 
 import {
   validateAndCorrectCriteria,
@@ -80,6 +81,30 @@ describe("processors/structure.ts", () => {
       expect(result.warnings).toHaveLength(1)
       expect(result.warnings[0]).toContain("Expected Unrestricted-access")
     })
+
+    // バグ発見テスト: 境界値・異常系
+    describe("boundary values and error cases", () => {
+      it("should handle empty datasetId", () => {
+        const result = validateAndCorrectCriteria("hum0001", "", null)
+        expect(result.criteria).toBe("Unrestricted-access") // 空はJGA以外として扱われる
+      })
+
+      it("should handle Type II criteria", () => {
+        const result = validateAndCorrectCriteria("hum0001", "JGAD000001", "Controlled-access (Type II)")
+        expect(result.criteria).toBe("Controlled-access (Type II)")
+        expect(result.warnings).toHaveLength(0)
+      })
+
+      it("should handle JGAS prefix (not JGAD)", () => {
+        const result = validateAndCorrectCriteria("hum0001", "JGAS000001", "Controlled-access (Type I)")
+        expect(result.warnings).toHaveLength(0) // JGAS も JGA の一種
+      })
+
+      it("should handle special characters in humId", () => {
+        const result = validateAndCorrectCriteria("hum-0001", "JGAD000001", "Controlled-access (Type I)")
+        expect(result.criteria).toBe("Controlled-access (Type I)")
+      })
+    })
   })
 
   // ===========================================================================
@@ -157,6 +182,55 @@ describe("processors/structure.ts", () => {
 
       expect(result).toEqual(["JGAD000001"])
     })
+
+    // バグ発見テスト: 境界値・PBT
+    describe("boundary values and properties", () => {
+      it("should handle empty input array", () => {
+        const expansionMap = new Map<string, Set<string>>()
+        expansionMap.set("JGAS000001", new Set(["JGAD000001"]))
+
+        const result = expandDatasetIds([], expansionMap)
+        expect(result).toEqual([])
+      })
+
+      it("should handle empty expansion map", () => {
+        const result = expandDatasetIds(["JGAS000001", "JGAD000002"], new Map())
+        expect(result).toEqual(["JGAD000002", "JGAS000001"]) // ソートされる
+      })
+
+      it("should handle large expansion set", () => {
+        const expansionMap = new Map<string, Set<string>>()
+        const largeSet = new Set<string>()
+        for (let i = 1; i <= 100; i++) {
+          largeSet.add(`JGAD${i.toString().padStart(6, "0")}`)
+        }
+        expansionMap.set("JGAS000001", largeSet)
+
+        const result = expandDatasetIds(["JGAS000001"], expansionMap)
+        expect(result).toHaveLength(100)
+        // Should be sorted
+        expect(result[0]).toBe("JGAD000001")
+        expect(result[99]).toBe("JGAD000100")
+      })
+
+      it("(PBT) should always return sorted unique array", () => {
+        fc.assert(
+          fc.property(
+            fc.array(fc.string(), { minLength: 0, maxLength: 10 }),
+            (ids) => {
+              const result = expandDatasetIds(ids, new Map())
+              // Result should be sorted
+              const sorted = [...result].sort()
+              expect(result).toEqual(sorted)
+              // Result should have no duplicates
+              const unique = [...new Set(result)]
+              expect(result).toEqual(unique)
+            },
+          ),
+          { numRuns: 50 },
+        )
+      })
+    })
   })
 
   // ===========================================================================
@@ -171,6 +245,33 @@ describe("processors/structure.ts", () => {
     it("should handle null values", () => {
       const result = toBilingualText(null, "English")
       expect(result).toEqual({ ja: null, en: "English" })
+    })
+
+    // バグ発見テスト
+    describe("boundary values", () => {
+      it("should handle both null values", () => {
+        const result = toBilingualText(null, null)
+        expect(result).toEqual({ ja: null, en: null })
+      })
+
+      it("should handle empty strings", () => {
+        const result = toBilingualText("", "")
+        expect(result).toEqual({ ja: "", en: "" })
+      })
+
+      it("should handle special characters", () => {
+        const result = toBilingualText("<script>alert('xss')</script>", "a\tb\nc")
+        expect(result.ja).toBe("<script>alert('xss')</script>")
+        expect(result.en).toBe("a\tb\nc")
+      })
+
+      it("should handle very long strings", () => {
+        const longJa = "あ".repeat(10000)
+        const longEn = "a".repeat(10000)
+        const result = toBilingualText(longJa, longEn)
+        expect(result.ja?.length).toBe(10000)
+        expect(result.en?.length).toBe(10000)
+      })
     })
   })
 
@@ -238,6 +339,62 @@ describe("processors/structure.ts", () => {
       expect(result).toHaveLength(1)
       expect(result[0].header.ja?.text).toBe("JA only")
       expect(result[0].header.en).toBeNull()
+    })
+
+    // バグ発見テスト
+    describe("boundary values and error cases", () => {
+      it("should handle only en experiments (ja is empty)", () => {
+        const jaExps: SingleLangExperiment[] = []
+        const enExps: SingleLangExperiment[] = [
+          { header: createTextValue("EN only"), data: {}, footers: [] },
+        ]
+
+        const result = mergeExperiments(jaExps, enExps)
+
+        expect(result).toHaveLength(1)
+        expect(result[0].header.ja).toBeNull()
+        expect(result[0].header.en?.text).toBe("EN only")
+      })
+
+      it("should handle experiments with empty data objects", () => {
+        const jaExps: SingleLangExperiment[] = [
+          { header: createTextValue("JGAD000001"), data: {}, footers: [] },
+        ]
+        const enExps: SingleLangExperiment[] = [
+          { header: createTextValue("JGAD000001"), data: {}, footers: [] },
+        ]
+
+        const result = mergeExperiments(jaExps, enExps)
+        expect(result).toHaveLength(1)
+        expect(Object.keys(result[0].data)).toHaveLength(0)
+      })
+
+      it("should handle many experiments", () => {
+        const jaExps: SingleLangExperiment[] = []
+        const enExps: SingleLangExperiment[] = []
+        for (let i = 1; i <= 50; i++) {
+          const id = `JGAD${i.toString().padStart(6, "0")}`
+          jaExps.push({ header: createTextValue(id), data: {}, footers: [] })
+          enExps.push({ header: createTextValue(id), data: {}, footers: [] })
+        }
+
+        const result = mergeExperiments(jaExps, enExps)
+        expect(result).toHaveLength(50)
+      })
+
+      it("should handle different number of ja and en experiments", () => {
+        const jaExps: SingleLangExperiment[] = [
+          { header: createTextValue("A"), data: {}, footers: [] },
+          { header: createTextValue("B"), data: {}, footers: [] },
+          { header: createTextValue("C"), data: {}, footers: [] },
+        ]
+        const enExps: SingleLangExperiment[] = [
+          { header: createTextValue("A"), data: {}, footers: [] },
+        ]
+
+        const result = mergeExperiments(jaExps, enExps)
+        expect(result.length).toBeGreaterThanOrEqual(1)
+      })
     })
   })
 

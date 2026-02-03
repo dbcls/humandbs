@@ -118,7 +118,7 @@ ES mapping (JSON)
   // Research Project (nested)
   researchProject: [{
     name: { ja: { text+kw, rawHtml }, en: { text+kw, rawHtml } },
-    url: { ja: { text, url }, en: { text, url } },
+    url: { ja: { text: keyword, url: keyword }, en: { text: keyword, url: keyword } },
   }],
 
   // Grant (nested)
@@ -226,10 +226,15 @@ ES mapping (JSON)
       assayType: keyword[],
       libraryKits: keyword[],
 
-      // プラットフォーム
-      // Crawler では PlatformInfo[] だが、ES では "{vendor} {model}" 形式の keyword[] に変換
-      // ファセット検索は composite aggregation で vendor/model を抽出
-      platforms: keyword[],
+      // プラットフォーム (nested)
+      // vendor/model の対応関係を保持するため nested 型で保存
+      // API ファセットでは nested aggregation で抽出し "{vendor}||{model}" 形式で公開
+      platforms: nested[{
+        vendor: keyword,
+        model: keyword,
+      }],
+      platformVendor: keyword[],         // 検索用フラット化フィールド
+      platformModel: keyword[],          // 検索用フラット化フィールド
       readType: keyword,                 // "single-end" | "paired-end"
       readLength: integer,
 
@@ -374,3 +379,9 @@ bun run es:load-docs
 - **object**: 単純なネストで十分な場合
 
 `nested` は独立したドキュメントとして格納されるため、クエリ時にオーバーヘッドがある。必要な場合のみ使用する。
+
+## 配列フィールドについて
+
+ES マッピングでは配列を明示的に区別しない。`keyword` フィールドに配列を格納すると、ES が自動的に配列として処理する。
+
+このドキュメントでは `keyword[]` と表記して配列であることを示しているが、実際の ES マッピング定義 (`f.keyword()`) と Zod スキーマ (`z.array(z.string())`) は別々に管理されている。配列かどうかは `src/crawler/types/structured.ts` の Zod スキーマを参照すること。
