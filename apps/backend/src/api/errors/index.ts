@@ -88,8 +88,24 @@ export class NotFoundError extends AppError {
  * 409 Conflict - Optimistic lock failure, duplicate resource
  */
 export class ConflictError extends AppError {
-  constructor(message = "Resource was modified by another request") {
+  readonly resourceType?: string
+  readonly resourceId?: string
+
+  constructor(message = "Resource was modified by another request", resourceType?: string, resourceId?: string) {
     super(message, 409, "CONFLICT")
+    this.resourceType = resourceType
+    this.resourceId = resourceId
+  }
+
+  /**
+   * Create a ConflictError for a duplicate resource
+   */
+  static forDuplicate(resourceType: string, resourceId: string): ConflictError {
+    return new ConflictError(
+      `${resourceType} with ID '${resourceId}' already exists`,
+      resourceType,
+      resourceId,
+    )
   }
 }
 

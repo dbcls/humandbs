@@ -297,8 +297,26 @@ Dataset が「初回更新」かどうかは、ResearchVersion.datasets の参�
 | `/errors/unauthorized` | 401 | Unauthorized | 認証が必要 |
 | `/errors/forbidden` | 403 | Forbidden | 権限不足 |
 | `/errors/not-found` | 404 | Not Found | リソースが見つからない |
-| `/errors/conflict` | 409 | Conflict | 状態遷移エラー、楽観的ロック失敗 |
+| `/errors/conflict` | 409 | Conflict | 状態遷移エラー、楽観的ロック失敗、重複リソース作成 |
 | `/errors/internal-error` | 500 | Internal Server Error | サーバー内部エラー |
+
+### 重複リソース作成の防止
+
+Research や Dataset の作成時、既に同じ ID のリソースが存在する場合は `409 Conflict` を返す。
+
+**対象操作**:
+
+- `POST /research/new`: 同じ humId を指定した場合
+- `POST /research/{humId}/dataset/new`: 同じ datasetId-version が存在する場合
+- `POST /research/{humId}/versions/new`: 同じ humVersionId が存在する場合
+
+**実装**:
+
+Elasticsearch の `op_type: "create"` を使用し、ドキュメント存在時にアトミックにエラーを返す。これにより Race condition を含めた重複を完全に防止する。
+
+**humId 自動生成時の動作**:
+
+humId を指定せずに Research を作成する場合、自動採番される。同時リクエストで同じ ID が生成された場合は、最大 3 回まで新しい ID で自動リトライする。
 
 ### requestId によるログ追跡
 

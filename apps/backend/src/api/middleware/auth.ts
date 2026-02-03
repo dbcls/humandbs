@@ -134,7 +134,7 @@ async function buildAuthUser(claims: JwtClaims): Promise<AuthUser> {
  * (handles key rotation scenarios)
  */
 async function verifyToken(token: string): Promise<JwtClaims | null> {
-  const verify = async (jwks: jose.JWTVerifyGetKey): Promise<jose.JWTVerifyResult<jose.JWTPayload>> => {
+  const verify = async (jwks: jose.JWTVerifyGetKey): Promise<jose.JWTVerifyResult> => {
     return jose.jwtVerify(token, jwks, {
       issuer: AUTH_ISSUER_URL,
       audience: AUTH_CLIENT_ID,

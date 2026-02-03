@@ -7,8 +7,9 @@
  * - Dataset updates (updateDataset, replaceDatasetId)
  * - Dataset deletion (deleteDataset)
  */
+import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { esClient, ES_INDEX } from "@/api/es-client/client"
+import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
 import { getResearchDoc } from "@/api/es-client/research"
 import {
   getResearchVersion,
@@ -220,14 +221,19 @@ export const createDataset = async (params: {
   const esId = `${datasetId}-${version}`
 
   // Index the dataset document
+  // Use op_type: "create" to prevent overwriting existing documents
   try {
     await esClient.index({
       index: ES_INDEX.dataset,
       id: esId,
       body: datasetDoc,
+      op_type: "create",
       refresh: "wait_for",
     })
   } catch (error) {
+    if (isDocumentExistsError(error)) {
+      throw ConflictError.forDuplicate("Dataset", esId)
+    }
     throw new Error(`Failed to create Dataset: ${error}`)
   }
 
@@ -342,14 +348,19 @@ export const replaceDatasetId = async (
   }
 
   // Index the new document
+  // Use op_type: "create" to prevent overwriting existing documents
   try {
     await esClient.index({
       index: ES_INDEX.dataset,
       id: newEsId,
       body: newDoc,
+      op_type: "create",
       refresh: "wait_for",
     })
   } catch (error) {
+    if (isDocumentExistsError(error)) {
+      throw ConflictError.forDuplicate("Dataset", newEsId)
+    }
     throw new Error(`Failed to create new Dataset with ID ${newDatasetId}: ${error}`)
   }
 

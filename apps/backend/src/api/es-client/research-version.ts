@@ -6,8 +6,9 @@
  * - ResearchVersion creation (createResearchVersion)
  * - Dataset linking (linkDatasetToResearch, unlinkDatasetFromResearch)
  */
+import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { esClient, ES_INDEX } from "@/api/es-client/client"
+import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
 import { mgetMap } from "@/api/es-client/utils"
 import {
   EsResearchDocSchema,
@@ -161,14 +162,19 @@ export const createResearchVersion = async (
   }
 
   // Index the version document first
+  // Use op_type: "create" to prevent overwriting existing documents
   try {
     await esClient.index({
       index: ES_INDEX.researchVersion,
       id: newHumVersionId,
       body: versionDoc,
+      op_type: "create",
       refresh: "wait_for",
     })
   } catch (error) {
+    if (isDocumentExistsError(error)) {
+      throw ConflictError.forDuplicate("ResearchVersion", newHumVersionId)
+    }
     throw new Error(`Failed to create ResearchVersion: ${error}`)
   }
 

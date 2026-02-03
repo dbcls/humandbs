@@ -343,7 +343,7 @@ GET /dataset/{datasetId}/versions/v1
 | `.../unauthorized` | 401 | 認証なし/無効 |
 | `.../forbidden` | 403 | 権限なし |
 | `.../not-found` | 404 | リソースが存在しない |
-| `.../conflict` | 409 | 状態競合 (無効な遷移、楽観的ロック失敗) |
+| `.../conflict` | 409 | 状態競合 (無効な遷移、楽観的ロック失敗、重複リソース作成) |
 | `.../internal-error` | 500 | サーバーエラー |
 
 **リクエスト追跡**:
@@ -463,6 +463,8 @@ interface CreateResearchRequest {
 - 作成時は `status=draft` で作成される
 - 全フィールドが optional。省略時はデフォルト値 (null や空配列)が設定される
 - `uids` が空の場合、admin 以外は編集できない
+- 指定した `humId` が既に存在する場合は `409 Conflict` を返す
+- `humId` を省略した場合は自動採番される。同時リクエストで競合した場合は自動リトライ
 
 **レスポンス例**:
 
@@ -791,6 +793,7 @@ interface CreateDatasetRequest {
 - `datasetId` を省略すると、`DRAFT-{humId}-{uuid}` 形式で自動採番
 - 作成された Dataset は draft Research の dataset list に自動追加される
 - Dataset の version は、親 Research が publish されるまで確定しない
+- 指定した `datasetId` と自動生成された `version` の組み合わせが既に存在する場合は `409 Conflict` を返す
 
 ### GET /dataset/{datasetId}
 

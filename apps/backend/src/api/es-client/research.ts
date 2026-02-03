@@ -7,8 +7,9 @@
  * - Research updates (updateResearch, updateResearchStatus, updateResearchUids)
  * - Research deletion (deleteResearch)
  */
+import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { esClient, ES_INDEX } from "@/api/es-client/client"
+import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
 import { getResearchVersion } from "@/api/es-client/research-version"
 import { mgetMap } from "@/api/es-client/utils"
 import {
@@ -214,11 +215,6 @@ export const createResearch = async (params: {
 }): Promise<{ research: EsResearchDoc; version: EsResearchVersionDoc }> => {
   const now = new Date().toISOString().split("T")[0]
 
-  // Generate humId if not provided
-  const humId = params.humId ?? await generateNextHumId()
-  const version = "v1"
-  const humVersionId = `${humId}.${version}`
-
   // Default summary structure
   const defaultSummary = {
     aims: { ja: null, en: null },
@@ -228,68 +224,104 @@ export const createResearch = async (params: {
     footers: { ja: [], en: [] },
   }
 
-  // Create Research document with defaults for optional fields
-  const researchDoc: EsResearchDoc = {
-    humId,
-    url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
-    title: params.title ?? { ja: null, en: null },
-    summary: params.summary ?? defaultSummary,
-    dataProvider: params.dataProvider ?? [],
-    researchProject: params.researchProject ?? [],
-    grant: params.grant ?? [],
-    relatedPublication: params.relatedPublication ?? [],
-    controlledAccessUser: [],
-    versionIds: [humVersionId],
-    latestVersion: version,
-    datePublished: now,
-    dateModified: now,
-    status: "draft",
-    uids: params.uids ?? [],
+  // Retry logic for auto-generated humId (race condition prevention)
+  const MAX_RETRIES = 3
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    // Generate humId if not provided
+    const humId = params.humId ?? await generateNextHumId()
+    const version = "v1"
+    const humVersionId = `${humId}.${version}`
+
+    // Create Research document with defaults for optional fields
+    const researchDoc: EsResearchDoc = {
+      humId,
+      url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
+      title: params.title ?? { ja: null, en: null },
+      summary: params.summary ?? defaultSummary,
+      dataProvider: params.dataProvider ?? [],
+      researchProject: params.researchProject ?? [],
+      grant: params.grant ?? [],
+      relatedPublication: params.relatedPublication ?? [],
+      controlledAccessUser: [],
+      versionIds: [humVersionId],
+      latestVersion: version,
+      datePublished: now,
+      dateModified: now,
+      status: "draft",
+      uids: params.uids ?? [],
+    }
+
+    // Create ResearchVersion document (v1)
+    const versionDoc: EsResearchVersionDoc = {
+      humId,
+      humVersionId,
+      version,
+      versionReleaseDate: now,
+      datasets: [],
+      releaseNote: params.initialReleaseNote ?? { ja: null, en: null },
+    }
+
+    // Index documents (version first, then research)
+    // Use op_type: "create" to prevent overwriting existing documents
+    try {
+      await esClient.index({
+        index: ES_INDEX.researchVersion,
+        id: humVersionId,
+        body: versionDoc,
+        op_type: "create",
+        refresh: "wait_for",
+      })
+    } catch (error) {
+      if (isDocumentExistsError(error)) {
+        if (params.humId) {
+          // Explicit humId provided - don't retry, throw conflict error
+          throw ConflictError.forDuplicate("ResearchVersion", humVersionId)
+        }
+        // Auto-generated humId - retry with new ID
+        lastError = error as Error
+        continue
+      }
+      throw new Error(`Failed to create ResearchVersion: ${error}`)
+    }
+
+    try {
+      await esClient.index({
+        index: ES_INDEX.research,
+        id: humId,
+        body: researchDoc,
+        op_type: "create",
+        refresh: "wait_for",
+      })
+    } catch (error) {
+      // Best effort rollback: delete the version document
+      await esClient.delete({
+        index: ES_INDEX.researchVersion,
+        id: humVersionId,
+      }, { ignore: [404] })
+
+      if (isDocumentExistsError(error)) {
+        if (params.humId) {
+          // Explicit humId provided - don't retry, throw conflict error
+          throw ConflictError.forDuplicate("Research", humId)
+        }
+        // Auto-generated humId - retry with new ID
+        lastError = error as Error
+        continue
+      }
+      throw new Error(`Failed to create Research: ${error}`)
+    }
+
+    // Success - return the created documents
+    return {
+      research: EsResearchDocSchema.parse(researchDoc),
+      version: EsResearchVersionDocSchema.parse(versionDoc),
+    }
   }
 
-  // Create ResearchVersion document (v1)
-  const versionDoc: EsResearchVersionDoc = {
-    humId,
-    humVersionId,
-    version,
-    versionReleaseDate: now,
-    datasets: [],
-    releaseNote: params.initialReleaseNote ?? { ja: null, en: null },
-  }
-
-  // Index documents (version first, then research)
-  // On failure, we attempt to clean up
-  try {
-    await esClient.index({
-      index: ES_INDEX.researchVersion,
-      id: humVersionId,
-      body: versionDoc,
-      refresh: "wait_for",
-    })
-  } catch (error) {
-    throw new Error(`Failed to create ResearchVersion: ${error}`)
-  }
-
-  try {
-    await esClient.index({
-      index: ES_INDEX.research,
-      id: humId,
-      body: researchDoc,
-      refresh: "wait_for",
-    })
-  } catch (error) {
-    // Best effort rollback: delete the version document
-    await esClient.delete({
-      index: ES_INDEX.researchVersion,
-      id: humVersionId,
-    }, { ignore: [404] })
-    throw new Error(`Failed to create Research: ${error}`)
-  }
-
-  return {
-    research: EsResearchDocSchema.parse(researchDoc),
-    version: EsResearchVersionDocSchema.parse(versionDoc),
-  }
+  // All retries exhausted
+  throw lastError ?? new Error("Failed to create Research after retries")
 }
 
 // === Research Updates ===
