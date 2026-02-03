@@ -70,7 +70,7 @@ describe("unescapeTsv", () => {
       fc.assert(
         fc.property(fc.string(), (str) => {
           const escaped = escapeForTsv(str)
-          const unescaped = unescapeTsv(escaped as string)
+          const unescaped = unescapeTsv(escaped)
           expect(unescaped).toBe(str)
         }),
         { numRuns: 100 },

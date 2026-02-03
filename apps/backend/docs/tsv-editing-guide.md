@@ -109,6 +109,7 @@ Experiment Tab で編集する主要なフィールド:
 | fileTypes | ファイル形式 | `["FASTQ", "BAM", "VCF"]` |
 | processedDataTypes | 処理済みデータ | `["VCF", "expression matrix"]` |
 | dataVolumeGb | データ容量 (GB) | `500` |
+| variantCounts | バリアント数 | `{"snv": 5000000, "indel": 100000, "cnv": null, "sv": null, "total": null}` |
 
 ## 注意事項
 

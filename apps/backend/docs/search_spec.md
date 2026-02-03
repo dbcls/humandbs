@@ -24,8 +24,8 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | criteria | アクセス種別 |
 | subjectCountType | 被験者数の種別 (individual/sample/mixed) |
 | healthStatus | 健康状態 (healthy/affected/mixed) |
-| diseases.label | 疾患名 |
-| diseases.icd10 | ICD-10 コード |
+| disease | 疾患名（部分一致検索） |
+| diseaseIcd10 | ICD-10 コード（前方一致） |
 | tissues | 組織・サンプル種別 |
 | cellLine | 細胞株名 |
 | population | 母集団・民族 |
@@ -137,7 +137,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | criteria | アクセス種別 |
 | subjectCountType | 被験者数の種別 |
 | healthStatus | 健康状態 |
-| diseases.label | 疾患名 |
+| disease | 疾患名 |
 | tissues | 組織・サンプル種別 |
 | cellLine | 細胞株名 |
 | population | 母集団・民族 |

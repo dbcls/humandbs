@@ -8,9 +8,17 @@
  * Or with ES running locally on port 9200:
  *   HUMANDBS_ES_HOST=localhost bun test tests/integration/api/
  */
-import { describe, expect, it, beforeAll, afterAll } from "bun:test"
+import { describe, expect, it, beforeAll } from "bun:test"
 
 import { esClient } from "@/api/es-client"
+import type {
+  StatsResponse,
+  FacetsMap,
+  FacetFieldResponse,
+  SingleReadOnlyResponse,
+  SearchResponse,
+} from "@/api/types"
+
 import { getTestApp } from "../../unit/api/helpers"
 
 // Check ES connectivity before running tests
@@ -25,7 +33,7 @@ beforeAll(async () => {
     esConnected = health.status === "green" || health.status === "yellow"
     console.log(`ES connection: ${esConnected ? "OK" : "FAILED"}`)
     console.log(`URL prefix: "${URL_PREFIX}"`)
-  } catch (e) {
+  } catch {
     console.log("ES connection: FAILED - some tests may fail")
     esConnected = false
   }
@@ -48,53 +56,71 @@ const url = (path: string) => `${URL_PREFIX}${path}`
 describe("API Integration Tests", () => {
   // === Stats ===
   describe("GET /stats", () => {
-    itWithEs("should return stats with research and dataset counts", async () => {
+    itWithEs("should return stats with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/stats"))
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as SingleReadOnlyResponse<StatsResponse>
 
-      expect(json).toHaveProperty("research")
-      expect(json).toHaveProperty("dataset")
-      expect(json).toHaveProperty("facets")
+      // Unified response format: { data, meta }
+      expect(json).toHaveProperty("data")
+      expect(json).toHaveProperty("meta")
+      expect(json.meta).toHaveProperty("requestId")
+      expect(json.meta).toHaveProperty("timestamp")
 
-      expect(json.research).toHaveProperty("total")
-      expect(typeof json.research.total).toBe("number")
+      // Stats data structure
+      expect(json.data).toHaveProperty("research")
+      expect(json.data).toHaveProperty("dataset")
+      expect(json.data).toHaveProperty("facets")
 
-      expect(json.dataset).toHaveProperty("total")
-      expect(typeof json.dataset.total).toBe("number")
+      expect(json.data.research).toHaveProperty("total")
+      expect(typeof json.data.research.total).toBe("number")
+
+      expect(json.data.dataset).toHaveProperty("total")
+      expect(typeof json.data.dataset.total).toBe("number")
     })
   })
 
   // === Facets ===
   describe("GET /facets", () => {
-    itWithEs("should return all facet values", async () => {
+    itWithEs("should return all facet values with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/facets"))
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
-      expect(typeof json).toBe("object")
+      const json = await res.json() as SingleReadOnlyResponse<FacetsMap>
 
-      const keys = Object.keys(json)
+      // Unified response format
+      expect(json).toHaveProperty("data")
+      expect(json).toHaveProperty("meta")
+      expect(json.meta).toHaveProperty("requestId")
+      expect(json.meta).toHaveProperty("timestamp")
+
+      expect(typeof json.data).toBe("object")
+      const keys = Object.keys(json.data)
       expect(keys.length).toBeGreaterThan(0)
     })
   })
 
   describe("GET /facets/{fieldName}", () => {
-    itWithEs("should return assayType facet values", async () => {
+    itWithEs("should return assayType facet values with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/facets/assayType"))
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
-      expect(json).toHaveProperty("fieldName", "assayType")
-      expect(json).toHaveProperty("values")
-      expect(Array.isArray(json.values)).toBe(true)
+      const json = await res.json() as SingleReadOnlyResponse<FacetFieldResponse>
+
+      // Unified response format
+      expect(json).toHaveProperty("data")
+      expect(json).toHaveProperty("meta")
+
+      expect(json.data).toHaveProperty("fieldName", "assayType")
+      expect(json.data).toHaveProperty("values")
+      expect(Array.isArray(json.data.values)).toBe(true)
     })
 
     itWithEs("should return empty values for unknown field", async () => {
@@ -103,29 +129,36 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
-      expect(json).toHaveProperty("fieldName", "unknownField")
-      expect(json.values).toEqual([])
+      const json = await res.json() as SingleReadOnlyResponse<FacetFieldResponse>
+
+      expect(json.data).toHaveProperty("fieldName", "unknownField")
+      expect(json.data.values).toEqual([])
     })
   })
 
   // === Research ===
   describe("GET /research", () => {
-    itWithEs("should return research list with pagination", async () => {
+    itWithEs("should return research list with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/research?page=1&limit=5"))
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as SearchResponse<unknown>
+
+      // Unified response format: { data, meta: { pagination, ... }, facets? }
       expect(json).toHaveProperty("data")
-      expect(json).toHaveProperty("pagination")
+      expect(json).toHaveProperty("meta")
       expect(Array.isArray(json.data)).toBe(true)
 
-      expect(json.pagination).toHaveProperty("page", 1)
-      expect(json.pagination).toHaveProperty("limit", 5)
-      expect(json.pagination).toHaveProperty("total")
-      expect(json.pagination).toHaveProperty("totalPages")
+      // Meta contains pagination and request info
+      expect(json.meta).toHaveProperty("requestId")
+      expect(json.meta).toHaveProperty("timestamp")
+      expect(json.meta).toHaveProperty("pagination")
+      expect(json.meta.pagination).toHaveProperty("page", 1)
+      expect(json.meta.pagination).toHaveProperty("limit", 5)
+      expect(json.meta.pagination).toHaveProperty("total")
+      expect(json.meta.pagination).toHaveProperty("totalPages")
     })
 
     itWithEs("should reject page=0", async () => {
@@ -161,16 +194,22 @@ describe("API Integration Tests", () => {
 
   // === Dataset ===
   describe("GET /dataset", () => {
-    itWithEs("should return dataset list with pagination", async () => {
+    itWithEs("should return dataset list with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/dataset?page=1&limit=5"))
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as SearchResponse<unknown>
+
+      // Unified response format
       expect(json).toHaveProperty("data")
-      expect(json).toHaveProperty("pagination")
+      expect(json).toHaveProperty("meta")
       expect(Array.isArray(json.data)).toBe(true)
+
+      expect(json.meta).toHaveProperty("requestId")
+      expect(json.meta).toHaveProperty("timestamp")
+      expect(json.meta).toHaveProperty("pagination")
     })
 
     itWithEs("should reject invalid pagination", async () => {
@@ -195,7 +234,7 @@ describe("API Integration Tests", () => {
 
   // === Search ===
   describe("POST /research/search", () => {
-    itWithEs("should search research with pagination", async () => {
+    itWithEs("should search research with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/research/search"), {
         method: "POST",
@@ -205,9 +244,12 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as SearchResponse<unknown>
+
+      // Unified response format
       expect(json).toHaveProperty("data")
-      expect(json).toHaveProperty("pagination")
+      expect(json).toHaveProperty("meta")
+      expect(json.meta).toHaveProperty("pagination")
     })
 
     itWithEs("should search research with facets", async () => {
@@ -220,13 +262,13 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as SearchResponse<unknown>
       expect(json).toHaveProperty("facets")
     })
   })
 
   describe("POST /dataset/search", () => {
-    itWithEs("should search datasets with pagination", async () => {
+    itWithEs("should search datasets with unified response format", async () => {
       const app = getTestApp()
       const res = await app.request(url("/dataset/search"), {
         method: "POST",
@@ -236,9 +278,12 @@ describe("API Integration Tests", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as SearchResponse<unknown>
+
+      // Unified response format
       expect(json).toHaveProperty("data")
-      expect(json).toHaveProperty("pagination")
+      expect(json).toHaveProperty("meta")
+      expect(json.meta).toHaveProperty("pagination")
     })
 
     itWithEs("should search datasets with filters", async () => {

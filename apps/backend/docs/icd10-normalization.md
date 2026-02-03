@@ -74,17 +74,30 @@ LLM モデルを変更した場合など、新しい疾患パターンが出現�
 
 | 警告 | 対応 |
 |------|------|
-| `Unmapped Japanese disease: "..."` | `icd10-disease-mapping.json` に追加 |
-| `Unmapped disease without ICD10: "..."` | `icd10-disease-mapping.json` に追加 |
-| `Disease with range/invalid ICD10: "..."` | `icd10-disease-mapping.json` に追加 |
+| `Disease without ICD10: "..."` | `icd10-disease-mapping.json` に追加 |
+| `Disease with invalid ICD10: "..." (icd10: ...)` | `icd10-disease-mapping.json` に追加 |
+| `ICD10 code not in master: "..." for "..."` | ICD10 コードを確認、必要なら `icd10-disease-mapping.json` に追加 |
 | `Multiple ICD10 codes without split definition: "..."` | `disease-split-rules.json` に追加 |
+
+### CLI オプション
+
+```bash
+bun run crawler:icd10-normalize
+
+# オプション
+--hum-id {id}   # 特定の humId のみ処理
+--latest-only   # 最新バージョンのみ処理 (デフォルト: true)
+--dry-run       # 変更を適用せず警告のみ表示
+--check         # 正規化データを検証（無効な場合はエラー終了）
+```
 
 ### 手順
 
-1. `bun run crawler:icd10-normalize -- --dry-run` を実行して警告を確認
+1. `bun run crawler:icd10-normalize --dry-run` を実行して警告を確認
 2. 適切なファイルにマッピングを追加
 3. 再度 `--dry-run` で確認
 4. `bun run crawler:icd10-normalize` で実行
+5. `--check` で検証（CI 用）
 
 ### icd10-disease-mapping.json の編集
 

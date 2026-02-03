@@ -269,6 +269,9 @@ ES mapping (JSON)
       }],
     },
   }],
+
+  // 外部メタデータ（JGA/DRA API から取得、索引化しない）
+  originalMetadata: disabled,
 }
 ```
 

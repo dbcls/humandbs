@@ -13,6 +13,7 @@
 import { describe, expect, it } from "bun:test"
 import fc from "fast-check"
 
+import type { TextValue } from "@/crawler/types"
 import {
   httpToHttps,
   isTextValue,
@@ -21,7 +22,6 @@ import {
   normalizeText,
   splitValue,
 } from "@/crawler/utils/text"
-import type { TextValue } from "@/crawler/types"
 
 // ===========================================================================
 // normalizeKey
@@ -474,7 +474,7 @@ describe("normalizeFooterText", () => {
       ["※12 text", "text", "ja", "double digit marker"],
       ["123) text", "text", "ja", "triple digit parenthesis"],
     ] as const)("%s -> %s (%s, %s)", (input, expected, lang, _desc) => {
-      expect(normalizeFooterText(input, lang as "ja" | "en")).toBe(expected)
+      expect(normalizeFooterText(input, lang)).toBe(expected)
     })
   })
 })

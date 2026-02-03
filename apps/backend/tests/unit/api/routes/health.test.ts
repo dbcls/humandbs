@@ -5,6 +5,8 @@
  */
 import { describe, expect, it } from "bun:test"
 
+import type { HealthResponse } from "@/api/types"
+
 import { getTestApp } from "../helpers"
 
 describe("api/routes/health", () => {
@@ -15,7 +17,7 @@ describe("api/routes/health", () => {
 
       expect(res.status).toBe(200)
 
-      const json = await res.json()
+      const json = await res.json() as HealthResponse
       expect(json.status).toBe("ok")
       expect(json.timestamp).toBeDefined()
     })
@@ -24,7 +26,7 @@ describe("api/routes/health", () => {
       const app = getTestApp()
       const res = await app.request("/health")
 
-      const json = await res.json()
+      const json = await res.json() as HealthResponse
       const timestamp = new Date(json.timestamp)
 
       expect(timestamp.toISOString()).toBe(json.timestamp)

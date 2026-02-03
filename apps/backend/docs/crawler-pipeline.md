@@ -63,7 +63,6 @@ bun run crawler:download-html
 --lang {ja|en}    # 言語指定
 --force           # キャッシュを無視して再ダウンロード
 --concurrency {n} # 並列ダウンロード数
---verbose         # デバッグログを表示
 ```
 
 | 項目 | 内容 |

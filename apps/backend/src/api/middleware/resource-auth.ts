@@ -12,10 +12,10 @@ import { ERROR_MESSAGES } from "@/api/constants"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { getResearchWithSeqNo } from "@/api/es-client/research"
 import {
-  forbiddenResponse,
-  notFoundResponse,
-  unauthorizedResponse,
-  validationErrorResponse,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
 } from "@/api/routes/errors"
 import type { AuthUser, EsResearchDoc } from "@/api/types"
 
@@ -60,36 +60,36 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 
     // humId is required for this middleware
     if (!humId) {
-      return validationErrorResponse(c, "humId parameter is required")
+      throw new ValidationError("humId parameter is required")
     }
 
     // Check authentication requirements
     if ((options.requireOwnership || options.adminOnly) && !authUser) {
-      return unauthorizedResponse(c, ERROR_MESSAGES.UNAUTHORIZED)
+      throw new UnauthorizedError(ERROR_MESSAGES.UNAUTHORIZED)
     }
 
     // Check admin requirement
     if (options.adminOnly && !authUser?.isAdmin) {
-      return forbiddenResponse(c, ERROR_MESSAGES.FORBIDDEN_ADMIN)
+      throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN_ADMIN)
     }
 
     // Load Research document
     const result = await getResearchWithSeqNo(humId)
     if (!result) {
-      return notFoundResponse(c, ERROR_MESSAGES.NOT_FOUND("Research", humId))
+      throw new NotFoundError(ERROR_MESSAGES.NOT_FOUND("Research", humId))
     }
 
     const { doc, seqNo, primaryTerm } = result
 
     // Deleted research is not accessible
     if (doc.status === "deleted") {
-      return notFoundResponse(c, ERROR_MESSAGES.NOT_FOUND("Research", humId))
+      throw new NotFoundError(ERROR_MESSAGES.NOT_FOUND("Research", humId))
     }
 
     // Check ownership permission
     if (options.requireOwnership && !authUser?.isAdmin) {
       if (!canAccessResearchDoc(authUser, doc)) {
-        return forbiddenResponse(c, ERROR_MESSAGES.FORBIDDEN)
+        throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN)
       }
     }
 

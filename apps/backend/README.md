@@ -11,10 +11,15 @@ HumanDBs ポータルサイトから研究データベース情報をクロー�
 
 ## ドキュメント
 
+### はじめに
+
+- [Getting Started](docs/getting-started.md) - 開発環境のセットアップ手順
+
 ### クローラー
 
 - [クローラーパイプライン](docs/crawler-pipeline.md) - 11 ステップの詳細、CLI オプション
 - [LLM フィールド抽出](docs/llm-extract-design.md) - searchable フィールドの抽出設計
+- [ICD10 疾患正規化](docs/icd10-normalization.md) - ICD-10 コードの抽出・分離
 - [TSV 編集ガイド](docs/tsv-editing-guide.md) - メタデータの手動編集方法
 
 ### API

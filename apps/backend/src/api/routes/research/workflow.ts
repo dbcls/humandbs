@@ -8,12 +8,8 @@ import type { Context } from "hono"
 
 import { validateStatusTransition } from "@/api/es-client/auth"
 import { updateResearchStatus } from "@/api/es-client/research"
-import { logger } from "@/api/logger"
-import { getRequestId } from "@/api/middleware/request-id"
-import {
-  conflictResponse,
-  serverErrorResponse,
-} from "@/api/routes/errors"
+import { singleResponse } from "@/api/helpers/response"
+import { ConflictError } from "@/api/routes/errors"
 import type { EsResearchDoc, ResearchStatus, StatusAction } from "@/api/types"
 
 import {
@@ -34,38 +30,31 @@ type ResearchWithSeqNo = EsResearchDoc & { seqNo: number; primaryTerm: number }
 function createStatusTransitionHandler(
   action: StatusAction,
   targetStatus: ResearchStatus,
-  logMessage: string,
 ) {
   return async (c: Context) => {
-    try {
-      // Research is preloaded by middleware
-      const research = c.get("research") as ResearchWithSeqNo
-      const { humId, seqNo, primaryTerm, status } = research
+    // Research is preloaded by middleware
+    const research = c.get("research") as ResearchWithSeqNo
+    const { humId, seqNo, primaryTerm, status } = research
 
-      // Validate transition
-      const validationError = validateStatusTransition(status, action)
-      if (validationError) {
-        return conflictResponse(c, validationError)
-      }
-
-      // Update status
-      const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm)
-      if (!updated) {
-        return conflictResponse(c)
-      }
-
-      return c.json({
-        humId,
-        status: targetStatus,
-        dateModified: updated.dateModified,
-        _seq_no: updated.seqNo,
-        _primary_term: updated.primaryTerm,
-      }, 200)
-    } catch (error) {
-      const requestId = getRequestId(c)
-      logger.error(logMessage, { requestId, error: String(error) })
-      return serverErrorResponse(c, error)
+    // Validate transition
+    const validationError = validateStatusTransition(status, action)
+    if (validationError) {
+      throw new ConflictError(validationError)
     }
+
+    // Update status
+    const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm)
+    if (!updated) {
+      throw new ConflictError()
+    }
+
+    const responseData = {
+      humId,
+      status: targetStatus,
+      dateModified: updated.dateModified,
+    }
+
+    return singleResponse(c, responseData, updated.seqNo, updated.primaryTerm)
   }
 }
 
@@ -77,27 +66,27 @@ export function registerWorkflowHandlers(router: OpenAPIHono): void {
   // Middleware: loadResearchAndAuthorize({ requireOwnership: true })
   router.openapi(
     submitRoute as RouteConfig,
-    createStatusTransitionHandler("submit", "review", "Error submitting research"),
+    createStatusTransitionHandler("submit", "review"),
   )
 
   // POST /research/{humId}/approve
   // Middleware: loadResearchAndAuthorize({ adminOnly: true })
   router.openapi(
     approveRoute as RouteConfig,
-    createStatusTransitionHandler("approve", "published", "Error approving research"),
+    createStatusTransitionHandler("approve", "published"),
   )
 
   // POST /research/{humId}/reject
   // Middleware: loadResearchAndAuthorize({ adminOnly: true })
   router.openapi(
     rejectRoute as RouteConfig,
-    createStatusTransitionHandler("reject", "draft", "Error rejecting research"),
+    createStatusTransitionHandler("reject", "draft"),
   )
 
   // POST /research/{humId}/unpublish
   // Middleware: loadResearchAndAuthorize({ adminOnly: true })
   router.openapi(
     unpublishRoute as RouteConfig,
-    createStatusTransitionHandler("unpublish", "draft", "Error unpublishing research"),
+    createStatusTransitionHandler("unpublish", "draft"),
   )
 }

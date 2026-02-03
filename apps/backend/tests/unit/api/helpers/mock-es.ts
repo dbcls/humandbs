@@ -81,7 +81,7 @@ export interface MockSearchResult<T> {
     hasNext: boolean
     hasPrev: boolean
   }
-  facets?: Record<string, Array<{ value: string; count: number }>>
+  facets?: Record<string, { value: string; count: number }[]>
 }
 
 export const createMockSearchResult = <T>(

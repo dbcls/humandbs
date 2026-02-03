@@ -5,8 +5,8 @@
  * Uses sample files from crawler-results directory.
  */
 
-import { describe, expect, it } from "bun:test"
 import { Glob } from "bun"
+import { describe, expect, it } from "bun:test"
 
 import { CrawlerResearchSchema, CrawlerDatasetSchema } from "@/es/types"
 

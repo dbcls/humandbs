@@ -19,7 +19,10 @@ Step 6: llm-extract (このステップ)
     ↓ experiments[].searchable に追加
 Step 7: icd10-normalize (diseases[].icd10 を正規化)
     ↓
-Step 9: facet-normalize (assayType, tissues, targets 等を正規化、数値フィールド異常値を null 化)
+Step 9: facet-normalize (以下のフィールドを正規化、数値フィールド異常値を null 化)
+        - assayType, cellLine, fileTypes, libraryKits
+        - platformVendor, platformModel, population
+        - processedDataTypes, referenceGenome, targets, tissues
 ```
 
 ### 入出力
@@ -101,7 +104,10 @@ experiments[].searchable に格納
       diseases[].icd10 を正規化
            ↓
     Step 9: facet-normalize
-      assayType, tissues, targets 等を正規化
+      以下のフィールドを正規化:
+        assayType, cellLine, fileTypes, libraryKits,
+        platformVendor, platformModel, population,
+        processedDataTypes, referenceGenome, targets, tissues
       数値フィールド異常値 (負値・ゼロ) を null 化
 ```
 

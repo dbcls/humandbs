@@ -174,6 +174,91 @@ HumanDBs Backend は REST API を提供し、Research (研究)と Dataset (デ�
 
 ## 共通仕様
 
+### レスポンス形式
+
+全ての API レスポンスは統一された形式で返される。
+
+#### 単一リソース（編集可能）
+
+GET で単一リソースを取得する場合や、POST/PUT で作成・更新する場合:
+
+```json
+{
+  "data": {
+    "humId": "hum0001",
+    "title": { "ja": "研究タイトル", "en": "Research Title" }
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "_seq_no": 42,
+    "_primary_term": 1
+  }
+}
+```
+
+- `data`: リソースデータ
+- `meta.requestId`: リクエスト追跡用 ID (X-Request-ID ヘッダーと同じ)
+- `meta.timestamp`: レスポンス生成時刻 (ISO 8601)
+- `meta._seq_no`, `meta._primary_term`: 楽観的ロック用フィールド
+
+#### 単一リソース（読み取り専用）
+
+履歴バージョンや集計データなど、編集できないリソースの場合:
+
+```json
+{
+  "data": { ... },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+楽観的ロック用フィールドは含まれない。
+
+#### リスト
+
+```json
+{
+  "data": [ ... ],
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 150,
+      "totalPages": 8,
+      "hasNext": true,
+      "hasPrev": false
+    }
+  }
+}
+```
+
+#### 検索結果
+
+```json
+{
+  "data": [ ... ],
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "pagination": { ... }
+  },
+  "facets": {
+    "assayType": [
+      { "value": "WGS", "count": 120 },
+      { "value": "WES", "count": 80 }
+    ]
+  }
+}
+```
+
+`includeFacets=true` を指定した場合、`facets` フィールドが含まれる。
+
 ### 言語パラメータ
 
 | パラメータ | 型 | デフォルト | 説明 |
@@ -222,21 +307,7 @@ GET /dataset/{datasetId}/versions/v1
 
 **備考**: `limit` に 101 以上を指定した場合は `400 Bad Request` を返す。
 
-**レスポンス形式:**
-
-```json
-{
-  "data": [...],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 150,
-    "totalPages": 8,
-    "hasNext": true,
-    "hasPrev": false
-  }
-}
-```
+ページネーション情報は `meta.pagination` に含まれる。詳細は「レスポンス形式」セクションを参照。
 
 ### エラーレスポンス
 
@@ -298,14 +369,20 @@ GET /dataset/{datasetId}/versions/v1
 
 **技術詳細**:
 
-GET でリソースを取得した際のレスポンスに以下のフィールドが含まれる:
+GET でリソースを取得した際のレスポンスの `meta` に楽観的ロック用フィールドが含まれる:
 
 ```json
 {
-  "humId": "hum0001",
-  "title": "...",
-  "_seq_no": 42,
-  "_primary_term": 1
+  "data": {
+    "humId": "hum0001",
+    "title": { "ja": "研究タイトル", "en": "Research Title" }
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "_seq_no": 42,
+    "_primary_term": 1
+  }
 }
 ```
 
@@ -319,7 +396,7 @@ GET でリソースを取得した際のレスポンスに以下のフィール�
 }
 ```
 
-フロントエンドは取得時の `_seq_no` と `_primary_term` を保持し、更新時に送信する必要がある。
+フロントエンドは取得時の `meta._seq_no` と `meta._primary_term` を保持し、更新時にリクエストボディに含めて送信する必要がある。
 
 ## Research API 詳細
 
@@ -391,14 +468,20 @@ interface CreateResearchRequest {
 
 ```json
 {
-  "humId": "hum0001",
-  "status": "draft",
-  "version": "v1",
-  "title": { "ja": null, "en": null },
-  "datePublished": "2024-01-15",
-  "dateModified": "2024-01-15",
-  "_seq_no": 0,
-  "_primary_term": 1
+  "data": {
+    "humId": "hum0001",
+    "status": "draft",
+    "version": "v1",
+    "title": { "ja": null, "en": null },
+    "datePublished": "2024-01-15",
+    "dateModified": "2024-01-15"
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "_seq_no": 0,
+    "_primary_term": 1
+  }
 }
 ```
 
@@ -424,20 +507,26 @@ Research の詳細を取得。
 
 ```json
 {
-  "humId": "hum0001",
-  "status": "published",
-  "version": "v1",
-  "title": { "ja": "研究タイトル", "en": "Research Title" },
-  "summary": { ... },
-  "datePublished": "2024-01-15",
-  "dateModified": "2024-01-15",
-  "datasets": [ ... ],
-  "_seq_no": 42,
-  "_primary_term": 1
+  "data": {
+    "humId": "hum0001",
+    "status": "published",
+    "version": "v1",
+    "title": { "ja": "研究タイトル", "en": "Research Title" },
+    "summary": { ... },
+    "datePublished": "2024-01-15",
+    "dateModified": "2024-01-15",
+    "datasets": [ ... ]
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "_seq_no": 42,
+    "_primary_term": 1
+  }
 }
 ```
 
-**備考**: `_seq_no` と `_primary_term` は楽観的ロックに使用する。更新時にこれらの値をリクエストボディに含める。
+**備考**: `meta._seq_no` と `meta._primary_term` は楽観的ロックに使用する。更新時にこれらの値をリクエストボディに含める。
 
 ### PUT /research/{humId}/update
 
@@ -468,12 +557,18 @@ interface UpdateResearchRequest {
 
 ```json
 {
-  "humId": "hum0001",
-  "status": "draft",
-  "title": { "ja": "更新後のタイトル", "en": "Updated Title" },
-  "dateModified": "2024-01-16",
-  "_seq_no": 1,
-  "_primary_term": 1
+  "data": {
+    "humId": "hum0001",
+    "status": "draft",
+    "title": { "ja": "更新後のタイトル", "en": "Updated Title" },
+    "dateModified": "2024-01-16"
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-16T10:30:00Z",
+    "_seq_no": 1,
+    "_primary_term": 1
+  }
 }
 ```
 
@@ -507,7 +602,19 @@ Research のバージョン一覧を取得。
         { "datasetId": "JGAD000001", "version": "v2" }
       ]
     }
-  ]
+  ],
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "pagination": {
+      "page": 1,
+      "limit": 100,
+      "total": 2,
+      "totalPages": 1,
+      "hasNext": false,
+      "hasPrev": false
+    }
+  }
 }
 ```
 
@@ -562,7 +669,11 @@ Research に紐づく Dataset の一覧を取得。
       "typeOfData": "Whole genome sequencing"
     }
   ],
-  "pagination": { ... }
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "pagination": { ... }
+  }
 }
 ```
 
@@ -586,11 +697,17 @@ interface UpdateUidsRequest {
 
 ```json
 {
-  "humId": "hum0001",
-  "status": "review",
-  "dateModified": "2024-01-16",
-  "_seq_no": 2,
-  "_primary_term": 1
+  "data": {
+    "humId": "hum0001",
+    "status": "review",
+    "dateModified": "2024-01-16"
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-16T10:30:00Z",
+    "_seq_no": 2,
+    "_primary_term": 1
+  }
 }
 ```
 
@@ -828,21 +945,27 @@ interface DatasetSearchBody {
 
 ```json
 {
-  "criteria": [
-    { "value": "Controlled-access (Type I)", "count": 200 },
-    { "value": "Controlled-access (Type II)", "count": 150 },
-    { "value": "Unrestricted-access", "count": 100 }
-  ],
-  "assayType": [
-    { "value": "WGS", "count": 120 },
-    { "value": "WES", "count": 80 },
-    { "value": "RNA-seq", "count": 60 }
-  ],
-  "healthStatus": [
-    { "value": "healthy", "count": 200 },
-    { "value": "affected", "count": 180 },
-    { "value": "mixed", "count": 50 }
-  ]
+  "data": {
+    "criteria": [
+      { "value": "Controlled-access (Type I)", "count": 200 },
+      { "value": "Controlled-access (Type II)", "count": 150 },
+      { "value": "Unrestricted-access", "count": 100 }
+    ],
+    "assayType": [
+      { "value": "WGS", "count": 120 },
+      { "value": "WES", "count": 80 },
+      { "value": "RNA-seq", "count": 60 }
+    ],
+    "healthStatus": [
+      { "value": "healthy", "count": 200 },
+      { "value": "affected", "count": 180 },
+      { "value": "mixed", "count": 50 }
+    ]
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
 }
 ```
 
@@ -854,12 +977,18 @@ interface DatasetSearchBody {
 
 ```json
 {
-  "fieldName": "assayType",
-  "values": [
-    { "value": "WGS", "count": 120 },
-    { "value": "WES", "count": 80 },
-    { "value": "RNA-seq", "count": 60 }
-  ]
+  "data": {
+    "fieldName": "assayType",
+    "values": [
+      { "value": "WGS", "count": 120 },
+      { "value": "WES", "count": 80 },
+      { "value": "RNA-seq", "count": 60 }
+    ]
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
 }
 ```
 
@@ -955,28 +1084,34 @@ interface DatasetFilters {
 
 ```json
 {
-  "research": {
-    "total": 135
-  },
-  "dataset": {
-    "total": 500
-  },
-  "facets": {
-    "criteria": {
-      "Controlled-access (Type I)": { "research": 50, "dataset": 200 },
-      "Controlled-access (Type II)": { "research": 40, "dataset": 150 },
-      "Unrestricted-access": { "research": 45, "dataset": 150 }
+  "data": {
+    "research": {
+      "total": 135
     },
-    "assayType": {
-      "WGS": { "research": 30, "dataset": 100 },
-      "WES": { "research": 25, "dataset": 80 },
-      "RNA-seq": { "research": 20, "dataset": 70 }
+    "dataset": {
+      "total": 500
     },
-    "healthStatus": {
-      "healthy": { "research": 60, "dataset": 200 },
-      "affected": { "research": 55, "dataset": 250 },
-      "mixed": { "research": 20, "dataset": 50 }
+    "facets": {
+      "criteria": {
+        "Controlled-access (Type I)": { "research": 50, "dataset": 200 },
+        "Controlled-access (Type II)": { "research": 40, "dataset": 150 },
+        "Unrestricted-access": { "research": 45, "dataset": 150 }
+      },
+      "assayType": {
+        "WGS": { "research": 30, "dataset": 100 },
+        "WES": { "research": 25, "dataset": 80 },
+        "RNA-seq": { "research": 20, "dataset": 70 }
+      },
+      "healthStatus": {
+        "healthy": { "research": 60, "dataset": 200 },
+        "affected": { "research": 55, "dataset": 250 },
+        "mixed": { "research": 20, "dataset": 50 }
+      }
     }
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z"
   }
 }
 ```
@@ -998,7 +1133,13 @@ interface DatasetFilters {
 
 ```json
 {
-  "isAdmin": true
+  "data": {
+    "isAdmin": true
+  },
+  "meta": {
+    "requestId": "req-abc123",
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
 }
 ```
 

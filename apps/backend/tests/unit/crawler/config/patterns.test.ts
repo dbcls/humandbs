@@ -188,7 +188,7 @@ describe("isValidDatasetId", () => {
     it("random strings without valid prefixes should fail", () => {
       fc.assert(
         fc.property(
-          fc.string().filter((s) => !s.match(/^(JGAD|JGAS|DRA|ERA|SRP|SRR|SRX|SRS|E-GEAD-|PRJDB|MTBKS|hum\d)/)),
+          fc.string().filter((s) => !(/^(JGAD|JGAS|DRA|ERA|SRP|SRR|SRX|SRS|E-GEAD-|PRJDB|MTBKS|hum\d)/.exec(s))),
           (input) => {
             expect(isValidDatasetId(input)).toBe(false)
           },

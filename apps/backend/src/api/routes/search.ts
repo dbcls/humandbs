@@ -11,19 +11,24 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
 
 import { ARRAY_FIELD_MAPPINGS, RANGE_FIELD_MAPPINGS } from "@/api/es-client/filters"
 import { searchDatasets, searchResearches } from "@/api/es-client/search"
-import { logger } from "@/api/logger"
-import { optionalAuth } from "@/api/middleware/auth"
-import { getRequestId } from "@/api/middleware/request-id"
-import { ErrorSpec400, ErrorSpec500, serverErrorResponse } from "@/api/routes/errors"
 import {
-  AllFacetsResponseSchema,
+  searchResponse,
+  singleReadOnlyResponse,
+} from "@/api/helpers/response"
+import { optionalAuth } from "@/api/middleware/auth"
+import { ErrorSpec400, ErrorSpec500 } from "@/api/routes/errors"
+import {
+  createUnifiedSearchResponseSchema,
+  createUnifiedSingleReadOnlyResponseSchema,
   DatasetSearchBodySchema,
-  DatasetSearchResponseSchema,
+  EsDatasetDocSchema,
   FacetFieldResponseSchema,
+  FacetsMapSchema,
   ResearchSearchBodySchema,
-  ResearchSearchResponseSchema,
+  ResearchSummarySchema,
 } from "@/api/types"
 import type { DatasetSearchBody, DatasetSearchQuery, ResearchSearchBody, ResearchSearchQuery } from "@/api/types"
+import { createPagination } from "@/api/types/response"
 
 // === Helper: Convert POST body to GET query format ===
 
@@ -117,6 +122,20 @@ const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearchQuery 
   } as DatasetSearchQuery
 }
 
+// === Unified Response Schemas ===
+
+// Research search response
+const ResearchSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(ResearchSummarySchema)
+
+// Dataset search response
+const DatasetSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(EsDatasetDocSchema)
+
+// All facets response (read-only)
+const AllFacetsUnifiedResponseSchema = createUnifiedSingleReadOnlyResponseSchema(FacetsMapSchema)
+
+// Single facet field response (read-only)
+const FacetFieldUnifiedResponseSchema = createUnifiedSingleReadOnlyResponseSchema(FacetFieldResponseSchema)
+
 // === Route Definitions ===
 
 const postResearchSearchRoute = createRoute({
@@ -141,7 +160,7 @@ Set includeFacets=true to get facet counts for building filter UIs.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchSearchResponseSchema } },
+      content: { "application/json": { schema: ResearchSearchUnifiedResponseSchema } },
       description: "Research search results with optional facets",
     },
     400: ErrorSpec400,
@@ -171,7 +190,7 @@ Set includeFacets=true to get facet counts for building filter UIs.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetSearchResponseSchema } },
+      content: { "application/json": { schema: DatasetSearchUnifiedResponseSchema } },
       description: "Dataset search results with optional facets",
     },
     400: ErrorSpec400,
@@ -193,7 +212,7 @@ Returns facet values grouped by field name. Use this to populate filter dropdown
 Counts reflect published Datasets only.`,
   responses: {
     200: {
-      content: { "application/json": { schema: AllFacetsResponseSchema } },
+      content: { "application/json": { schema: AllFacetsUnifiedResponseSchema } },
       description: "All facet values with counts grouped by field",
     },
     500: ErrorSpec500,
@@ -217,7 +236,7 @@ Returns an array of {value, count} pairs sorted by count descending.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: FacetFieldResponseSchema } },
+      content: { "application/json": { schema: FacetFieldUnifiedResponseSchema } },
       description: "Facet values for the specified field",
     },
     500: ErrorSpec500,
@@ -232,95 +251,67 @@ searchRouter.use("*", optionalAuth)
 
 // POST /research/search
 searchRouter.openapi(postResearchSearchRoute, async (c) => {
-  try {
-    const body = c.req.valid("json")
-    const authUser = c.get("authUser")
+  const body = c.req.valid("json")
+  const authUser = c.get("authUser")
 
-    // Convert POST body to GET query format for existing searchResearches function
-    const query = convertResearchBodyToQuery(body)
-    const result = await searchResearches(query, authUser)
+  // Convert POST body to GET query format for existing searchResearches function
+  const query = convertResearchBodyToQuery(body)
+  const result = await searchResearches(query, authUser)
 
-    return c.json({
-      data: result.data,
-      pagination: result.pagination,
-      facets: result.facets,
-    }, 200)
-  } catch (error) {
-    const requestId = getRequestId(c)
-    logger.error("Error in POST research search", { requestId, error: String(error) })
-    return serverErrorResponse(c, error)
-  }
+  const pagination = createPagination(result.pagination.total, result.pagination.page, result.pagination.limit)
+
+  return searchResponse(c, result.data, pagination, result.facets)
 })
 
 // POST /dataset/search
 searchRouter.openapi(postDatasetSearchRoute, async (c) => {
-  try {
-    const body = c.req.valid("json")
-    const authUser = c.get("authUser")
+  const body = c.req.valid("json")
+  const authUser = c.get("authUser")
 
-    // Convert POST body to GET query format for existing searchDatasets function
-    const query = convertDatasetBodyToQuery(body)
-    const result = await searchDatasets(query, authUser)
+  // Convert POST body to GET query format for existing searchDatasets function
+  const query = convertDatasetBodyToQuery(body)
+  const result = await searchDatasets(query, authUser)
 
-    return c.json({
-      data: result.data,
-      pagination: result.pagination,
-      facets: result.facets,
-    }, 200)
-  } catch (error) {
-    const requestId = getRequestId(c)
-    logger.error("Error in POST dataset search", { requestId, error: String(error) })
-    return serverErrorResponse(c, error)
-  }
+  const pagination = createPagination(result.pagination.total, result.pagination.page, result.pagination.limit)
+
+  return searchResponse(c, result.data, pagination, result.facets)
 })
 
 // GET /facets
 searchRouter.openapi(getFacetsRoute, async (c) => {
-  try {
-    const authUser = c.get("authUser")
+  const authUser = c.get("authUser")
 
-    // Fetch facets from Dataset index with includeFacets=true
-    const result = await searchDatasets({
-      page: 1,
-      limit: 1,
-      lang: "en",
-      sort: "datasetId",
-      order: "asc",
-      includeFacets: true,
-    } as DatasetSearchQuery, authUser)
+  // Fetch facets from Dataset index with includeFacets=true
+  const result = await searchDatasets({
+    page: 1,
+    limit: 1,
+    lang: "en",
+    sort: "datasetId",
+    order: "asc",
+    includeFacets: true,
+  } as DatasetSearchQuery, authUser)
 
-    // Return facets with counts (S4)
-    return c.json(result.facets ?? {}, 200)
-  } catch (error) {
-    const requestId = getRequestId(c)
-    logger.error("Error fetching facets", { requestId, error: String(error) })
-    return serverErrorResponse(c, error)
-  }
+  // Return facets with counts (read-only response)
+  return singleReadOnlyResponse(c, result.facets ?? {})
 })
 
 // GET /facets/{fieldName}
 searchRouter.openapi(getFacetFieldRoute, async (c) => {
-  try {
-    const { fieldName } = c.req.param()
-    const authUser = c.get("authUser")
+  const { fieldName } = c.req.param()
+  const authUser = c.get("authUser")
 
-    // Fetch facets from Dataset index
-    const result = await searchDatasets({
-      page: 1,
-      limit: 1,
-      lang: "en",
-      sort: "datasetId",
-      order: "asc",
-      includeFacets: true,
-    } as DatasetSearchQuery, authUser)
+  // Fetch facets from Dataset index
+  const result = await searchDatasets({
+    page: 1,
+    limit: 1,
+    lang: "en",
+    sort: "datasetId",
+    order: "asc",
+    includeFacets: true,
+  } as DatasetSearchQuery, authUser)
 
-    // Return facet values with counts (S5)
-    const fieldFacet = result.facets?.[fieldName] ?? []
+  // Return facet values with counts (read-only response)
+  const fieldFacet = result.facets?.[fieldName] ?? []
 
-    return c.json({ fieldName, values: fieldFacet }, 200)
-  } catch (error) {
-    const requestId = getRequestId(c)
-    logger.error("Error fetching facet field", { requestId, error: String(error) })
-    return serverErrorResponse(c, error)
-  }
+  return singleReadOnlyResponse(c, { fieldName, values: fieldFacet })
 })

@@ -6,6 +6,35 @@
  * Dependency flow: crawler/types → es/types → api/types
  */
 
+// === Unified Response Types ===
+export {
+  // Pagination
+  PaginationSchema,
+  createPagination,
+  // Base meta
+  BaseResponseMetaSchema,
+  // Meta variants
+  ResponseMetaReadOnlySchema,
+  ResponseMetaWithLockSchema,
+  ResponseMetaWithPaginationSchema,
+  // Schema factories
+  createSingleReadOnlyResponseSchema,
+  createSingleResponseSchema,
+  createListResponseSchema,
+  createSearchResponseSchema,
+} from "@/api/types/response"
+export type {
+  Pagination,
+  BaseResponseMeta,
+  ResponseMetaReadOnly,
+  ResponseMetaWithLock,
+  ResponseMetaWithPagination,
+  SingleReadOnlyResponse,
+  SingleResponse,
+  ListResponse,
+  SearchResponse as UnifiedSearchResponse,
+} from "@/api/types/response"
+
 // === Common ===
 export { LANG_TYPES, booleanFromString } from "@/api/types/common"
 export type { LangType } from "@/api/types/common"
@@ -184,6 +213,11 @@ export {
   // Re-exported schemas
   ResearchSchema,
   ResearchVersionSchema,
+  // Unified response schema factories
+  createUnifiedSingleResponseSchema,
+  createUnifiedSingleReadOnlyResponseSchema,
+  createUnifiedListResponseSchema,
+  createUnifiedSearchResponseSchema,
 } from "@/api/types/request-response"
 export type {
   ApiErrorResponse,

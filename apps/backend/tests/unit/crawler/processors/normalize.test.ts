@@ -270,7 +270,7 @@ describe("fixDate", () => {
       // This is a potential bug - the function should validate
       const result = fixDate(input)
       // Document actual behavior: it converts even invalid dates
-      if (input.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+      if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.exec(input)) {
         // It will convert anything matching the pattern
         expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       } else {

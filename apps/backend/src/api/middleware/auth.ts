@@ -15,7 +15,7 @@ import * as fs from "node:fs/promises"
 
 import { CACHE_TTL } from "../constants"
 import { logger } from "../logger"
-import { forbiddenResponse, unauthorizedResponse } from "../routes/errors"
+import { ForbiddenError, UnauthorizedError } from "../routes/errors"
 import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
@@ -194,19 +194,19 @@ export const optionalAuth: MiddlewareHandler = createMiddleware(async (c, next) 
 
 /**
  * Required authentication middleware
- * Returns 401 if not authenticated.
+ * Throws UnauthorizedError if not authenticated.
  */
 export const requireAuth: MiddlewareHandler = createMiddleware(async (c, next) => {
   const authHeader = c.req.header("Authorization")
   const token = extractBearerToken(authHeader)
 
   if (!token) {
-    return unauthorizedResponse(c, "Authentication required")
+    throw new UnauthorizedError("Authentication required")
   }
 
   const claims = await verifyToken(token)
   if (!claims) {
-    return unauthorizedResponse(c, "Invalid or expired token")
+    throw new UnauthorizedError("Invalid or expired token")
   }
 
   c.set("authUser", await buildAuthUser(claims))
@@ -216,12 +216,13 @@ export const requireAuth: MiddlewareHandler = createMiddleware(async (c, next) =
 /**
  * Admin-only middleware
  * Must be used after requireAuth.
+ * Throws ForbiddenError if not admin.
  */
 export const requireAdmin: MiddlewareHandler = createMiddleware(async (c, next) => {
   const authUser = c.get("authUser")
 
   if (!authUser?.isAdmin) {
-    return forbiddenResponse(c, "Admin access required")
+    throw new ForbiddenError("Admin access required")
   }
 
   await next()

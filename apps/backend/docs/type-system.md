@@ -55,6 +55,51 @@ API 型が Frontend にどう共有されるか。
 | `ResearchSearchResponse` | `ResearchSearchResponse` | 検索結果一覧 |
 | `DatasetSearchResponse` | `DatasetSearchResponse` | 検索結果一覧 |
 | `FacetsMap` | `FacetsMap` | ファセットフィルター |
+| `SingleResponse` | `SingleResponse` | 単一リソース（編集可能）レスポンス |
+| `SingleReadOnlyResponse` | `SingleReadOnlyResponse` | 単一リソース（読み取り専用）レスポンス |
+| `ListResponse` | `ListResponse` | リストレスポンス |
+| `SearchResponse` | `SearchResponse` | 検索レスポンス |
+| `Pagination` | `Pagination` | ページネーション情報 |
+
+**統一レスポンス形式**:
+
+全ての API レスポンスは統一された形式で返される:
+
+```typescript
+// 単一リソース（編集可能）
+interface SingleResponse<T> {
+  data: T
+  meta: {
+    requestId: string
+    timestamp: string
+    _seq_no: number      // 楽観的ロック用
+    _primary_term: number
+  }
+}
+
+// 単一リソース（読み取り専用）
+interface SingleReadOnlyResponse<T> {
+  data: T
+  meta: {
+    requestId: string
+    timestamp: string
+  }
+}
+
+// リスト/検索
+interface ListResponse<T> {
+  data: T[]
+  meta: {
+    requestId: string
+    timestamp: string
+    pagination: Pagination
+  }
+}
+
+interface SearchResponse<T> extends ListResponse<T> {
+  facets?: FacetsMap  // includeFacets=true の場合
+}
+```
 
 ## 命名規則
 
@@ -64,13 +109,14 @@ API 型が Frontend にどう共有されるか。
 
 | カテゴリ | Zod スキーマ名 | TypeScript 型名 | 例 |
 |---------|---------------|-----------------|-----|
-| 汎用 | `*Schema` | `*` | `PersonSchema` → `Person` |
-| レスポンス | `*ResponseSchema` | `*Response` | `HealthResponseSchema` → `HealthResponse` |
-| パスパラメータ | `*ParamsSchema` | `*Params` | `HumIdParamsSchema` → `HumIdParams` |
-| クエリパラメータ | `*QuerySchema` | `*Query` | `LangQuerySchema` → `LangQuery` |
-| リクエストボディ | `*RequestSchema` | `*Request` | `CreateResearchRequestSchema` → `CreateResearchRequest` |
-| POST 検索ボディ | `*BodySchema` | `*Body` | `ResearchSearchBodySchema` → `ResearchSearchBody` |
-| フィルタ | `*FiltersSchema` | `*Filters` | `DatasetFiltersSchema` → `DatasetFilters` |
+| 汎用 | `*Schema` | `*` | `PersonSchema` -> `Person` |
+| レスポンス | `*ResponseSchema` | `*Response` | `HealthResponseSchema` -> `HealthResponse` |
+| レスポンスメタ | `ResponseMeta*Schema` | `ResponseMeta*` | `ResponseMetaWithLockSchema` -> `ResponseMetaWithLock` |
+| パスパラメータ | `*ParamsSchema` | `*Params` | `HumIdParamsSchema` -> `HumIdParams` |
+| クエリパラメータ | `*QuerySchema` | `*Query` | `LangQuerySchema` -> `LangQuery` |
+| リクエストボディ | `*RequestSchema` | `*Request` | `CreateResearchRequestSchema` -> `CreateResearchRequest` |
+| POST 検索ボディ | `*BodySchema` | `*Body` | `ResearchSearchBodySchema` -> `ResearchSearchBody` |
+| フィルタ | `*FiltersSchema` | `*Filters` | `DatasetFiltersSchema` -> `DatasetFilters` |
 
 ### ファイル配置規則
 
@@ -83,6 +129,7 @@ API 型が Frontend にどう共有されるか。
 | `es-docs.ts` | ES ドキュメントスキーマ（es/types からの alias） |
 | `query-params.ts` | クエリパラメータスキーマ |
 | `filters.ts` | 検索フィルタスキーマ |
+| `response.ts` | 統一レスポンス型 (meta, pagination, wrapper factories) |
 | `request-response.ts` | リクエスト/レスポンススキーマ |
 | `index.ts` | バレルファイル（全エクスポート） |
 
@@ -173,6 +220,15 @@ Zod スキーマで定義。Crawler 型と似た構造だが ES 用の調整あ�
 - `DiseaseInfo` -> `NormalizedDiseaseSchema`: `icd10` が `string | null` -> `string` (icd10-normalize で保証)
 - `Research` -> `EsResearchSchema`: `status`, `uids` フィールド追加 (API 層で使用)
 - `SearchableExperimentFields`: ES では `platforms` は nested 型 (`{vendor, model}` の配列) で保存し、vendor/model の対応関係を維持。API ファセットでは nested aggregation で抽出し `"Vendor||Model"` 形式で公開
+
+**注意: SearchableExperimentFieldsSchema の二重定義**:
+
+ES 層 (`es/types.ts`) では Crawler 層とは別に `SearchableExperimentFieldsSchema` を再定義している。主な違い:
+
+- Crawler 版 (`crawler/types/structured.ts`): `diseases` の `icd10` は nullable
+- ES 版 (`es/types.ts`): `diseases` に `NormalizedDiseaseSchema` を使用 (`icd10` は required)
+
+Crawler 版は `CrawlerSearchableExperimentFieldsSchema` として alias で re-export されている。import 時は用途に応じて適切な方を選択すること
 
 ### api/types/ (API リクエスト・レスポンス)
 

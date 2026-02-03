@@ -18,6 +18,13 @@ import {
   DatasetVersionItemSchema,
 } from "@/api/types/es-docs"
 import { FacetsMapSchema, ResearchSummarySchema } from "@/api/types/query-params"
+import {
+  BaseResponseMetaSchema,
+  PaginationSchema,
+  ResponseMetaReadOnlySchema,
+  ResponseMetaWithLockSchema,
+  ResponseMetaWithPaginationSchema,
+} from "@/api/types/response"
 import { RESEARCH_STATUS } from "@/api/types/workflow"
 import {
   BilingualTextSchema,
@@ -33,6 +40,8 @@ import {
   CrawlerResearchSchema as ResearchSchema,
   CrawlerResearchVersionSchema as ResearchVersionSchema,
 } from "@/es/types"
+
+// === Unified Response Schemas ===
 
 // === Experiment Schema ===
 
@@ -599,10 +608,50 @@ export const StatsResponseSchema = z.object({
 })
 export type StatsResponse = z.infer<typeof StatsResponseSchema>
 
+/**
+ * Create unified single response schema (with optimistic locking)
+ */
+export const createUnifiedSingleResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+  z.object({
+    data: dataSchema,
+    meta: ResponseMetaWithLockSchema,
+  })
+
+/**
+ * Create unified single read-only response schema
+ */
+export const createUnifiedSingleReadOnlyResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+  z.object({
+    data: dataSchema,
+    meta: ResponseMetaReadOnlySchema,
+  })
+
+/**
+ * Create unified list response schema
+ */
+export const createUnifiedListResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
+  z.object({
+    data: z.array(itemSchema),
+    meta: ResponseMetaWithPaginationSchema,
+  })
+
+/**
+ * Create unified search response schema with facets
+ */
+export const createUnifiedSearchResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
+  z.object({
+    data: z.array(itemSchema),
+    meta: ResponseMetaWithPaginationSchema,
+    facets: FacetsMapSchema.optional(),
+  })
+
+// Re-export base meta schemas
+export { BaseResponseMetaSchema, PaginationSchema, ResponseMetaReadOnlySchema, ResponseMetaWithLockSchema, ResponseMetaWithPaginationSchema }
+
 // === Utility Types ===
 
 /**
- * API success response wrapper
+ * API success response wrapper (legacy - use createUnified*ResponseSchema instead)
  */
 export const SuccessResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
   z.object({

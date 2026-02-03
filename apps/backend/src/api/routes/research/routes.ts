@@ -2,6 +2,7 @@
  * Research Route Definitions
  *
  * OpenAPI route specifications for Research API endpoints.
+ * Uses unified response schemas with data + meta structure.
  */
 import { createRoute, z } from "@hono/zod-openapi"
 
@@ -17,22 +18,67 @@ import {
   CreateVersionRequestSchema,
   EsDatasetDocSchema,
   EsResearchDetailSchema,
+  EsResearchVersionDocSchema,
   ExperimentSchemaBase,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
-  LinkedDatasetsResponseSchema,
   ResearchListingQuerySchema,
   ResearchResponseSchema,
-  ResearchSearchResponseSchema,
-  ResearchVersionsResponseSchema,
+  ResearchSummarySchema,
   UpdateResearchRequestSchema,
-  WorkflowResponseSchema,
   UpdateUidsRequestSchema,
-  UpdateUidsResponseSchema,
   VersionParamsSchema,
   VersionResponseSchema,
+  createUnifiedListResponseSchema,
+  createUnifiedSearchResponseSchema,
+  createUnifiedSingleReadOnlyResponseSchema,
+  createUnifiedSingleResponseSchema,
 } from "@/api/types"
+import { RESEARCH_STATUS } from "@/api/types/workflow"
+
+// === Unified Response Schemas ===
+
+// Research detail with optimistic locking
+const ResearchDetailResponseSchema = createUnifiedSingleResponseSchema(
+  EsResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
+)
+
+// Research response with optimistic locking (for create/update)
+const ResearchWithLockResponseSchema = createUnifiedSingleResponseSchema(ResearchResponseSchema)
+
+// Research search/list response
+const ResearchSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(ResearchSummarySchema)
+
+// Research versions list response
+const ResearchVersionsListResponseSchema = createUnifiedListResponseSchema(EsResearchVersionDocSchema)
+
+// Version detail (read-only - historical versions)
+const VersionDetailResponseSchema = createUnifiedSingleReadOnlyResponseSchema(VersionResponseSchema)
+
+// Version create response (with lock)
+const VersionCreateResponseSchema = createUnifiedSingleResponseSchema(VersionResponseSchema)
+
+// Linked datasets list response
+const LinkedDatasetsListResponseSchema = createUnifiedListResponseSchema(EsDatasetDocSchema)
+
+// Dataset create response (with lock)
+const DatasetCreateResponseSchema = createUnifiedSingleResponseSchema(EsDatasetDocSchema)
+
+// Workflow response (with lock)
+const WorkflowDataSchema = z.object({
+  humId: z.string(),
+  status: z.enum(RESEARCH_STATUS),
+  dateModified: z.string(),
+})
+const WorkflowUnifiedResponseSchema = createUnifiedSingleResponseSchema(WorkflowDataSchema)
+
+// UIDs response (with lock)
+const UidsDataSchema = z.object({
+  humId: z.string(),
+  uids: z.array(z.string()),
+})
+const UidsUnifiedResponseSchema = createUnifiedSingleResponseSchema(UidsDataSchema)
 
 // === CRUD Routes ===
 
@@ -54,7 +100,7 @@ export const listResearchRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchSearchResponseSchema } },
+      content: { "application/json": { schema: ResearchSearchUnifiedResponseSchema } },
       description: "List of research with optional facets",
     },
     403: ErrorSpec403,
@@ -81,7 +127,7 @@ export const createResearchRoute = createRoute({
   },
   responses: {
     201: {
-      content: { "application/json": { schema: ResearchResponseSchema } },
+      content: { "application/json": { schema: ResearchWithLockResponseSchema } },
       description: "Research created successfully",
     },
     401: ErrorSpec401,
@@ -109,7 +155,7 @@ Returns the latest version by default. Use GET /research/{humId}/versions/{versi
   },
   responses: {
     200: {
-      content: { "application/json": { schema: EsResearchDetailSchema } },
+      content: { "application/json": { schema: ResearchDetailResponseSchema } },
       description: "Research detail",
     },
     404: ErrorSpec404,
@@ -135,7 +181,7 @@ export const updateResearchRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchResponseSchema } },
+      content: { "application/json": { schema: ResearchWithLockResponseSchema } },
       description: "Research updated successfully",
     },
     401: ErrorSpec401,
@@ -192,7 +238,7 @@ Returns version history including:
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchVersionsResponseSchema } },
+      content: { "application/json": { schema: ResearchVersionsListResponseSchema } },
       description: "List of versions",
     },
     404: ErrorSpec404,
@@ -214,7 +260,7 @@ Version format: v1, v2, v3, etc.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: VersionResponseSchema } },
+      content: { "application/json": { schema: VersionDetailResponseSchema } },
       description: "Version detail",
     },
     404: ErrorSpec404,
@@ -242,7 +288,7 @@ export const createVersionRoute = createRoute({
   },
   responses: {
     201: {
-      content: { "application/json": { schema: VersionResponseSchema } },
+      content: { "application/json": { schema: VersionCreateResponseSchema } },
       description: "Version created successfully",
     },
     401: ErrorSpec401,
@@ -272,9 +318,7 @@ export const listLinkedDatasetsRoute = createRoute({
   },
   responses: {
     200: {
-      content: {
-        "application/json": { schema: LinkedDatasetsResponseSchema },
-      },
+      content: { "application/json": { schema: LinkedDatasetsListResponseSchema } },
       description: "List of linked datasets",
     },
     404: ErrorSpec404,
@@ -322,7 +366,7 @@ export const createDatasetForResearchRoute = createRoute({
   },
   responses: {
     201: {
-      content: { "application/json": { schema: EsDatasetDocSchema } },
+      content: { "application/json": { schema: DatasetCreateResponseSchema } },
       description: "Dataset created and linked successfully",
     },
     401: ErrorSpec401,
@@ -352,7 +396,7 @@ Returns 409 Conflict if Research is not in draft status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowResponseSchema } },
+      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
       description: "Status changed to review",
     },
     401: ErrorSpec401,
@@ -384,7 +428,7 @@ Returns 409 Conflict if Research is not in review status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowResponseSchema } },
+      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
       description: "Status changed to published",
     },
     401: ErrorSpec401,
@@ -414,7 +458,7 @@ Returns 409 Conflict if Research is not in review status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowResponseSchema } },
+      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
       description: "Status changed to draft",
     },
     401: ErrorSpec401,
@@ -444,7 +488,7 @@ Returns 409 Conflict if Research is not in published status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowResponseSchema } },
+      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
       description: "Status changed to draft",
     },
     401: ErrorSpec401,
@@ -478,7 +522,7 @@ export const updateUidsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: UpdateUidsResponseSchema } },
+      content: { "application/json": { schema: UidsUnifiedResponseSchema } },
       description: "UIDs updated successfully",
     },
     401: ErrorSpec401,
