@@ -27,22 +27,31 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | diseases.label | 疾患名 |
 | diseases.icd10 | ICD-10 コード |
 | tissues | 組織・サンプル種別 |
-| isTumor | 腫瘍組織か |
 | cellLine | 細胞株名 |
 | population | 母集団・民族 |
 | sex | 性別 (male/female/mixed) |
 | ageGroup | 年齢層 (infant/child/adult/elderly/mixed) |
 | assayType | 実験手法 |
 | libraryKits | ライブラリキット |
-| platform | プラットフォーム ("{vendor} {model}" 形式) |
+| platform | プラットフォーム (`{vendor} \|\| {model}` 形式) |
 | readType | リードタイプ (single-end/paired-end) |
 | referenceGenome | 参照ゲノム |
 | fileTypes | ファイル形式 |
 | processedDataTypes | 加工済みデータ形式 |
-| hasPhenotypeData | 表現型データの有無 |
-| policies.id | ポリシー ID |
+| policyId | ポリシー ID |
 
-### 2.2 Range フィルター (数値範囲)
+### 2.2 Boolean フィルター
+
+真偽値による絞り込み検索ができる。
+
+#### Dataset
+
+| フィールド | 意味 |
+|-----------|------|
+| isTumor | 腫瘍組織か |
+| hasPhenotypeData | 表現型データの有無 |
+
+### 2.3 Range フィルター (数値範囲)
 
 数値フィールドに対する範囲指定ができる。
 
@@ -50,8 +59,8 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 
 | フィールド | 意味 |
 |-----------|------|
-| firstReleaseDate | 初回リリース日 |
-| lastReleaseDate | 最終リリース日 |
+| datePublished | 初回リリース日 |
+| dateModified | 最終リリース日 |
 
 #### Dataset
 
@@ -69,7 +78,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | variantCounts.sv | SV 数 |
 | variantCounts.total | 変異総数 |
 
-### 2.3 フリーテキスト検索
+### 2.4 フリーテキスト検索
 
 自然文による全文検索ができる。
 
@@ -89,7 +98,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | typeOfData | データ種別 |
 | targets | ターゲット領域 |
 
-### 2.4 複合検索例
+### 2.5 複合検索例
 
 ```plaintext
 例1: 日本人のがんの WGS で GRCh38 マッピング済み
@@ -130,20 +139,18 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | healthStatus | 健康状態 |
 | diseases.label | 疾患名 |
 | tissues | 組織・サンプル種別 |
-| isTumor | 腫瘍組織か |
 | cellLine | 細胞株名 |
 | population | 母集団・民族 |
 | sex | 性別 |
 | ageGroup | 年齢層 |
 | assayType | 実験手法 |
 | libraryKits | ライブラリキット |
-| platform | プラットフォーム ("{vendor} {model}" 形式) |
+| platform | プラットフォーム (`{vendor} \|\| {model}` 形式) |
 | readType | リードタイプ |
 | referenceGenome | 参照ゲノム |
 | fileTypes | ファイル形式 |
 | processedDataTypes | 加工済みデータ形式 |
-| hasPhenotypeData | 表現型データの有無 |
-| policies.id | ポリシー ID |
+| policyId | ポリシー ID |
 
 ### 3.3 数値分布 (ヒストグラム)
 
@@ -186,6 +193,32 @@ Range フィルター可能な数値フィールドはヒストグラム表示�
 | readLength | integer | 単位 "bp" は省略 (150, 250 など) |
 | variantCounts | integer | そのまま |
 
+#### platform フィールドの形式
+
+プラットフォーム情報は vendor (製造元) と model (機種名) の2要素で構成される。
+
+**内部保存形式 (ES)**:
+
+- `platforms`: nested 型
+  - `vendor`: keyword (例: `"Illumina"`, `"Thermo Fisher Scientific"`)
+  - `model`: keyword (例: `"NovaSeq 6000"`, `"Ion PGM"`)
+- vendor/model の対応関係を維持するため nested 型で保存
+
+**API 形式**:
+
+- ファセット一覧: `"{vendor}||{model}"` 形式で返す
+  - 例: `"Illumina||NovaSeq 6000"`, `"Thermo Fisher Scientific||Ion PGM"`
+  - ES の nested aggregation で `platforms` から抽出
+- 検索クエリ: 同じ `"{vendor}||{model}"` 形式で指定
+  - 例: `platform=Illumina||NovaSeq 6000`
+- API 内部で `||` で分割して vendor/model に分解し、ES nested query で問い合わせる
+
+**セパレータに `||` を採用した理由**:
+
+- vendor 名に空白を含むケースがある (例: "Thermo Fisher Scientific")
+- 単一スペースでの分割は不可能
+- `||` は vendor/model 名に含まれない安全なセパレータ
+
 ### 4.2 Research フィールド
 
 | フィールド | 型 | 意味 | 検索方法 |
@@ -194,8 +227,8 @@ Range フィルター可能な数値フィールドはヒストグラム表示�
 | summary.aims.text | BilingualText | 研究目的 | match |
 | summary.methods.text | BilingualText | 研究手法 | match |
 | summary.targets.text | BilingualText | 研究対象 | match |
-| firstReleaseDate | date | 初回リリース日 | range |
-| lastReleaseDate | date | 最終リリース日 | range |
+| datePublished | date | 初回リリース日 | range |
+| dateModified | date | 最終リリース日 | range |
 
 ### 4.3 Dataset フィールド
 
@@ -223,7 +256,7 @@ Range フィルター可能な数値フィールドはヒストグラム表示�
 | ageGroup | keyword | 年齢層 (infant/child/adult/elderly/mixed) | term |
 | assayType | keyword | 実験手法 | term |
 | libraryKits | keyword[] | ライブラリキット | terms |
-| platform | keyword[] | プラットフォーム ("{vendor} {model}" 形式) | terms |
+| platform | keyword[] | プラットフォーム (`{vendor} \|\| {model}` 形式) | terms |
 | readType | keyword | single-end/paired-end | term |
 | readLength | integer | リード長 | range |
 | sequencingDepth | float | シーケンス深度 | range |

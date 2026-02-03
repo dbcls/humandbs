@@ -125,17 +125,8 @@ export const NormalizedDiseaseSchema = z.object({
 export type NormalizedDisease = z.infer<typeof NormalizedDiseaseSchema>
 
 /**
- * Data volume with unit for ES documents
- */
-export const DataVolumeSchema = z.object({
-  value: z.number(),
-  unit: z.enum(["KB", "MB", "GB", "TB"]),
-})
-export type DataVolume = z.infer<typeof DataVolumeSchema>
-
-/**
  * SearchableExperimentFields schema for ES documents
- * Extends crawler schema with ES-specific fields (platformVendor, platformModel, dataVolume)
+ * Platform facet aggregation is done via nested aggregation in API
  */
 export const SearchableExperimentFieldsSchema = z.object({
   // Subject/sample info
@@ -160,11 +151,8 @@ export const SearchableExperimentFieldsSchema = z.object({
   assayType: z.array(z.string()),
   libraryKits: z.array(z.string()),
 
-  // Platform
+  // Platform (nested for vendor/model relationship)
   platforms: z.array(PlatformInfoSchema),
-  // Flattened for ES facet aggregation
-  platformVendor: z.string().nullable().optional(),
-  platformModel: z.string().nullable().optional(),
   readType: z.enum(["single-end", "paired-end"]).nullable(),
   readLength: z.number().nullable(),
 
@@ -183,8 +171,7 @@ export const SearchableExperimentFieldsSchema = z.object({
   // Data info
   fileTypes: z.array(z.string()),
   processedDataTypes: z.array(z.string()),
-  dataVolume: DataVolumeSchema.nullable(),
-  dataVolumeGb: z.number().nullable(), // Converted from dataVolume for easy range filtering
+  dataVolumeGb: z.number().nullable(),
 
   // Policies (rule-based, not LLM)
   policies: z.array(NormalizedPolicySchema),
@@ -194,7 +181,6 @@ export type EsSearchableExperimentFields = z.infer<typeof SearchableExperimentFi
 // === ES Experiment Schema ===
 
 export const EsExperimentSchema = z.object({
-  experimentKey: z.string().optional(),
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
   footers: z.object({

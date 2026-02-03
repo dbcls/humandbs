@@ -1,0 +1,135 @@
+{
+  "humId": "hum0001",
+  "url": {
+    "ja": "https://humandbs.dbcls.jp/hum0001-v1",
+    "en": "https://humandbs.dbcls.jp/en/hum0001-v1"
+  },
+  "title": {
+    "ja": "SCA31罹患患者のゲノム解析データ",
+    "en": "Sequence Data of a SCA31 Patient"
+  },
+  "summary": {
+    "aims": {
+      "ja": {
+        "text": "脊髄小脳失調症31型 (SCA31) 罹患患者の DNA における疾患固有の繰返し配列を同定する。また、本データはゲノムインフォマティクス分野の研究者 の研究題材として有用と考え、共有する。",
+        "rawHtml": "<span><strong>目的： </strong>脊髄小脳失調症31型（SCA31）罹患患者の DNA における疾患固有の繰返し配列を同定する。</span>\n<span>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;また、本データはゲノムインフォマティクス分野の研究者 の研究題材として有用と考え、共有する。</span>"
+      },
+      "en": {
+        "text": "To identify the short tandem repeats (STRs) with a 10-base repeat unit in spinocerebellar ataxia type 31 (SCA31). Genome informaticians are able to use this data for their research.",
+        "rawHtml": "<span><strong>Aims: </strong> To identify the short tandem repeats (STRs) with a 10-base repeat unit in spinocerebellar ataxia type 31 (SCA31).</span>\n<span> Genome informaticians are able to use this data for their research.</span>"
+      }
+    },
+    "methods": {
+      "ja": {
+        "text": "Illumina 社 HiSeq 2000 を利用して長さ100塩基のDNA断片を解読",
+        "rawHtml": "<span><strong>方法： </strong>Illumina 社 HiSeq 2000 を利用して長さ100塩基のDNA断片を解読</span>"
+      },
+      "en": {
+        "text": "One hundred basepair paired-end reads sequenced from one DNA sample using an Illumina HiSeq 2000 platform.",
+        "rawHtml": "<span><strong>Methods: </strong> One hundred basepair paired-end reads sequenced from one DNA sample using an Illumina HiSeq 2000 platform. </span>"
+      }
+    },
+    "targets": {
+      "ja": {
+        "text": "SCA31罹患患者1名",
+        "rawHtml": "<span><strong>対象： </strong>SCA31罹患患者1名</span>"
+      },
+      "en": {
+        "text": "One SCA31patient",
+        "rawHtml": "<span><strong>Participants/Materials: </strong>One SCA31patient</span>"
+      }
+    },
+    "url": {
+      "ja": [],
+      "en": []
+    },
+    "footers": {
+      "ja": [
+        {
+          "text": "リリース情報はこちら。",
+          "rawHtml": "<span>※リリース情報は<a href=\"/hum0001-v1-release\">こちら</a>。</span>"
+        },
+        {
+          "text": "制限公開データの利用にあたっては、利用申請が必要です。申請方法はこちら。",
+          "rawHtml": "<span> ※制限公開データの利用にあたっては、利用申請が必要です。申請方法は<a href=\"/data-use\">こちら</a>。</span>"
+        }
+      ],
+      "en": [
+        {
+          "text": "Release Note",
+          "rawHtml": "<span>*<a href=\"/en/hum0001-v1-release\">Release Note</a><br></span>"
+        },
+        {
+          "text": "Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. Learn more",
+          "rawHtml": "<span>*Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. <a href=\"/en/data-use\">Learn more</a></span>"
+        }
+      ]
+    }
+  },
+  "dataProvider": [
+    {
+      "name": {
+        "ja": {
+          "text": "森下 真一",
+          "rawHtml": "<span><strong>研究代表者： </strong>森下 真一</span>"
+        },
+        "en": {
+          "text": "Shinichi Morishita",
+          "rawHtml": "<span><strong>Principal Investigator: </strong>Shinichi Morishita</span>"
+        }
+      },
+      "email": null,
+      "orcid": null,
+      "organization": {
+        "name": {
+          "ja": {
+            "text": "東京大学大学院 新領域創成科学研究科 情報生命科学専攻",
+            "rawHtml": "<span><strong>所 属 機 関： </strong>東京大学大学院 新領域創成科学研究科 情報生命科学専攻</span>"
+          },
+          "en": {
+            "text": "Dept. of Computational Biology, Graduate School of Frontier Science, The Univ. of Tokyo",
+            "rawHtml": "<span><strong>Affiliation: </strong>Dept. of Computational Biology, Graduate School of Frontier Science, The Univ. of Tokyo</span>"
+          }
+        },
+        "address": null
+      }
+    }
+  ],
+  "researchProject": [],
+  "grant": [
+    {
+      "id": [
+        "22129008"
+      ],
+      "title": {
+        "ja": "脳疾患パーソナルゲノム多様性を分析する情報学の創成",
+        "en": "Exploring informatics for brain diseases based on personal genomics"
+      },
+      "agency": {
+        "name": {
+          "ja": "科学研究費助成事業 新学術領域研究",
+          "en": "KAKENHI Grant-in-Aid for Scientific Research on Innovative Areas"
+        }
+      }
+    }
+  ],
+  "relatedPublication": [
+    {
+      "title": {
+        "ja": "Rapid detection of expanded short tandem repeats in personal genomics using hybrid sequencing",
+        "en": "Rapid detection of expanded short tandem repeats in personal genomics using hybrid sequencing"
+      },
+      "doi": "https://bioinformatics.oxfordjournals.org/content/early/2013/11/08/bioinformatics.btt647.full.pdf+html",
+      "datasetIds": [
+        "JGAD000002"
+      ]
+    }
+  ],
+  "controlledAccessUser": [],
+  "versionIds": [
+    "hum0001-v1"
+  ],
+  "latestVersion": "hum0001-v1",
+  "datePublished": "2013-12-01",
+  "dateModified": "2013-12-01"
+}

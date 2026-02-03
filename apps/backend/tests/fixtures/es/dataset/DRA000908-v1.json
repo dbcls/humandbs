@@ -1,0 +1,162 @@
+{
+  "datasetId": "DRA000908",
+  "version": "v1",
+  "versionReleaseDate": "2013-07-01",
+  "humId": "hum0003",
+  "humVersionId": "hum0003-v1",
+  "releaseDate": "2014-05-14",
+  "criteria": "Unrestricted-access",
+  "typeOfData": {
+    "ja": "NGS (HLAアレルの塩基配列決定)",
+    "en": null
+  },
+  "experiments": [
+    {
+      "header": {
+        "ja": {
+          "text": "DRA000908",
+          "rawHtml": "<a name=\"DRA000908\"><span><strong>DRA000908</strong></span></a>"
+        },
+        "en": null
+      },
+      "data": {
+        "Materials and Participants": {
+          "ja": {
+            "text": "セルライン33名分",
+            "rawHtml": "<span>セルライン33名分</span>"
+          },
+          "en": null
+        },
+        "Experimental Method": {
+          "ja": {
+            "text": "Target Capture",
+            "rawHtml": "<span>Target Capture</span>"
+          },
+          "en": null
+        },
+        "Targets": {
+          "ja": {
+            "text": "HLA領域 (HLA-A, -C, -B, -DRB1, -DQB1, -DPB1)",
+            "rawHtml": "<p><span>HLA領域</span></p>\n<p><span>(HLA-A, -C, -B, -DRB1, -DQB1, -DPB1)</span></p>"
+          },
+          "en": null
+        },
+        "Platform": {
+          "ja": {
+            "text": "Illumina [MiSeq]",
+            "rawHtml": "<span>Illumina [MiSeq]</span>"
+          },
+          "en": null
+        },
+        "Sample Description": {
+          "ja": null,
+          "en": null
+        },
+        "Cell Lines": {
+          "ja": {
+            "text": "http://www.hpacultures.org.uk/products/celllines/hlatyped/search.jsp",
+            "rawHtml": "<span><a href=\"http://www.hpacultures.org.uk/products/celllines/hlatyped/search.jsp\">http://www.hpacultures.org.uk/products/celllines/hlatyped/search.jsp</a></span>"
+          },
+          "en": null
+        },
+        "Library Construction": {
+          "ja": {
+            "text": "Nextera",
+            "rawHtml": "<span>Nextera</span>"
+          },
+          "en": null
+        },
+        "Fragmentation": {
+          "ja": {
+            "text": "Nextera (Tagmentation)",
+            "rawHtml": "<span>Nextera (Tagmentation)</span>"
+          },
+          "en": null
+        },
+        "Read Type": {
+          "ja": {
+            "text": "Paired-end",
+            "rawHtml": "<span>Paired-end</span>"
+          },
+          "en": null
+        },
+        "Read Length": {
+          "ja": {
+            "text": "250 bp x 2",
+            "rawHtml": "<span>250 bp x 2</span>"
+          },
+          "en": null
+        },
+        "Sequence Read Archive Accession": {
+          "ja": {
+            "text": "DRA000908",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/sra-submission/DRA000908\"><span>DRA000908</span></a>"
+          },
+          "en": null
+        },
+        "Total Data Volume": {
+          "ja": {
+            "text": "1.28 GB",
+            "rawHtml": "<span>1.28 GB</span>"
+          },
+          "en": null
+        },
+        "Policies": {
+          "ja": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          },
+          "en": null
+        }
+      },
+      "footers": {
+        "ja": [],
+        "en": []
+      },
+      "searchable": {
+        "subjectCount": null,
+        "subjectCountType": null,
+        "healthStatus": null,
+        "diseases": [],
+        "tissues": [],
+        "isTumor": null,
+        "cellLine": [],
+        "population": [],
+        "sex": null,
+        "ageGroup": null,
+        "assayType": [],
+        "libraryKits": [],
+        "platforms": [],
+        "readType": null,
+        "readLength": null,
+        "sequencingDepth": null,
+        "targetCoverage": null,
+        "referenceGenome": [],
+        "variantCounts": null,
+        "hasPhenotypeData": null,
+        "targets": null,
+        "fileTypes": [],
+        "processedDataTypes": [],
+        "dataVolumeGb": null,
+        "policies": [
+          {
+            "id": "nbdc-policy",
+            "name": {
+              "ja": "NBDC policy",
+              "en": "NBDC policy"
+            },
+            "url": "https://humandbs.dbcls.jp/nbdc-policy"
+          }
+        ]
+      }
+    }
+  ],
+  "originalMetadata": {
+    "accession": "DRA000908",
+    "center_name": "NIG",
+    "alias": "DRA000908",
+    "lab_name": "Division of Human Genetics, National Institute of Genetics",
+    "submission_date": "2013-01-10T17:52:16.303+09:00",
+    "TITLE": "Phase-defined complete sequencing of the HLA genes by next-generation sequencing"
+  }
+}

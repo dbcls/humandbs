@@ -260,7 +260,7 @@ bun run crawler:export-tsv
 | 出力 | `crawler-results/tsv/` |
 | 処理内容 | structured-json を手動編集用 TSV 形式に変換。 |
 
-詳細は [TSV ファイル編集ガイド](./tsv-docs.md) を参照。
+詳細は [TSV ファイル編集ガイド](./tsv-editing-guide.md) を参照。
 
 ### Step 11: import-tsv
 

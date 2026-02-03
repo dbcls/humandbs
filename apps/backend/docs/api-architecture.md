@@ -311,23 +311,11 @@ Dataset が「初回更新」かどうかは、ResearchVersion.datasets の参�
 
 ## 型定義の構成
 
-```plaintext
-apps/backend/
-+-- src/
-|   +-- crawler/types/
-|   |   +-- structured.ts     # Crawler 最終出力型（Research, Dataset, ResearchVersion）
-|   |
-|   +-- es/
-|   |   +-- types.ts          # ES ドキュメント型（EsResearchDoc, EsDatasetDoc など）
-|   |
-|   +-- api/
-|       +-- types.ts          # API 型定義（リクエスト/レスポンススキーマ、クエリパラメータ）
-|
-+-- types/
-    +-- shared-types.ts       # Frontend 用に api/types から必要な型を re-export
-```
+型システムの詳細は [type-system.md](type-system.md) を参照。
 
-- **crawler/types/structured.ts**: Crawler パイプラインの最終出力型。ES に投入される前のデータ構造
-- **es/types.ts**: Elasticsearch ドキュメントの Zod スキーマと TypeScript 型
-- **api/types.ts**: API エンドポイントで使用するリクエスト/レスポンスの Zod スキーマ
-- **types/shared-types.ts**: Frontend で使用する型を api/types から import して re-export
+**概要**:
+
+- `crawler/types/` - Crawler パイプラインの型（parse → normalized → structured）
+- `es/types.ts` - ES ドキュメントの Zod スキーマ
+- `api/types/` - API リクエスト/レスポンスの Zod スキーマ（ディレクトリに分割）
+- `types/shared-types.ts` - Frontend 用 re-export

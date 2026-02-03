@@ -26,9 +26,9 @@ export interface NestedTermsFilter {
  */
 export const NESTED_TERMS_FILTERS: NestedTermsFilter[] = [
   { param: "assayType", field: "experiments.searchable.assayType" },
-  { param: "tissue", field: "experiments.searchable.tissues" },
+  { param: "tissues", field: "experiments.searchable.tissues" },
   { param: "population", field: "experiments.searchable.population" },
-  { param: "fileType", field: "experiments.searchable.fileTypes" },
+  { param: "fileTypes", field: "experiments.searchable.fileTypes" },
   { param: "healthStatus", field: "experiments.searchable.healthStatus" },
   { param: "subjectCountType", field: "experiments.searchable.subjectCountType" },
   { param: "sex", field: "experiments.searchable.sex" },
@@ -89,7 +89,7 @@ export const ARRAY_FIELD_MAPPINGS: ArrayFieldMapping[] = [
   { from: "subjectCountType", to: "subjectCountType" },
   { from: "healthStatus", to: "healthStatus" },
   { from: "diseaseIcd10", to: "diseaseIcd10" },
-  { from: "tissue", to: "tissue" },
+  { from: "tissues", to: "tissues" },
   { from: "cellLine", to: "cellLine" },
   { from: "population", to: "population" },
   { from: "sex", to: "sex" },
@@ -99,7 +99,7 @@ export const ARRAY_FIELD_MAPPINGS: ArrayFieldMapping[] = [
   { from: "platform", to: "platform" },
   { from: "readType", to: "readType" },
   { from: "referenceGenome", to: "referenceGenome" },
-  { from: "fileType", to: "fileType" },
+  { from: "fileTypes", to: "fileTypes" },
   { from: "processedDataTypes", to: "processedDataTypes" },
   { from: "policyId", to: "policyId" },
 ]
@@ -141,11 +141,11 @@ export const RANGE_FIELD_MAPPINGS: RangeFieldMapping[] = [
 export const DATASET_STRING_FILTER_PARAMS = [
   "assayType",
   "disease",
-  "tissue",
+  "tissues",
   "population",
   "platform",
   "criteria",
-  "fileType",
+  "fileTypes",
   "healthStatus",
   "subjectCountType",
   "sex",

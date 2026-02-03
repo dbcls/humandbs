@@ -35,11 +35,16 @@ export {
   DATASET_FACET_NAMES,
   RESEARCH_FACET_NAMES,
   isValidFacetName,
+  FacetValueSchema,
+  FacetItemSchema,
+  FacetsMapSchema,
 } from "@/api/types/facets"
 export type {
   DatasetFacetName,
   ResearchFacetName,
   FacetValue,
+  FacetItem,
+  FacetsMap,
   TypedFacetsMap,
 } from "@/api/types/facets"
 
@@ -78,8 +83,6 @@ export type {
 export {
   LangVersionQuerySchema,
   LangQuerySchema,
-  FacetItemSchema,
-  FacetsMapSchema,
   ResearchListingQuerySchema,
   ResearchSearchQuerySchema,
   DatasetListingQuerySchema,
@@ -92,8 +95,6 @@ export {
 export type {
   LangVersionQuery,
   LangQuery,
-  FacetItem,
-  FacetsMap,
   ResearchListingQuery,
   ResearchSearchQuery,
   DatasetListingQuery,

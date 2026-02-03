@@ -223,11 +223,21 @@ newField: f.keyword(),
 - newField: Description of what to extract. null if not stated.
 ```
 
-### 4. 抽出ロジックを追加 (必要に応じて)
+### 4. LLM 出力スキーマを追加
 
 `src/crawler/llm/extract.ts`:
 
-デフォルトでは LLM 出力がそのまま使用される。特別な変換が必要な場合のみ追加。
+`LlmOutputBaseSchema` と `SearchableExperimentFieldsSchema` の両方にフィールドを追加:
+
+```typescript
+// LlmOutputBaseSchema に追加 (JSON Schema 生成用)
+newField: z.string().nullable(),
+
+// SearchableExperimentFieldsSchema に追加 (バリデーション用)
+newField: z.string().nullable().catch(null),
+```
+
+また、`createEmptySearchableFields()` と `isEmptySearchableFields()` にもフィールドを追加。
 
 ### 5. 正規化ルールを追加 (必要に応じて)
 
@@ -269,8 +279,8 @@ bun run crawler:llm-extract --dry-run
 | `--timeout, -t` | `300000` | リクエストタイムアウト (ms) |
 | `--concurrency, -c` | `16` | 並列呼び出し数 |
 | `--file, -f` | - | 特定ファイルのみ処理 |
-| `--hum-id, -i` | - | 特定の humId のみ処理 |
-| `--dataset-id, -d` | - | 特定の datasetId のみ処理 |
+| `--hum-id, -i` | - | 特定の humId のみ処理（複数指定可） |
+| `--dataset-id, -d` | - | 特定の datasetId のみ処理（複数指定可） |
 | `--dry-run` | `false` | LLM 呼び出しなし |
 | `--force` | `false` | 既存フィールドを上書き |
 | `--latest-only` | `true` | 最新バージョンのみ処理 |
@@ -290,4 +300,4 @@ bun run crawler:llm-extract --dry-run
 ### policies が抽出されない
 
 - policies はルールベースで抽出されるため LLM 不使用
-- `src/crawler/processors/policies.ts` を確認
+- `src/crawler/processors/structure.ts` の `createSearchableWithPolicies` 関数を確認

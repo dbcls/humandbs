@@ -15,18 +15,53 @@
 export { LANG_TYPES } from "@/api/types"
 export type { LangType } from "@/api/types"
 
+// Facets
+export {
+  FacetValueSchema,
+  FacetItemSchema,
+  FacetsMapSchema,
+  DATASET_FACET_NAMES,
+  RESEARCH_FACET_NAMES,
+} from "@/api/types"
+export type {
+  FacetValue,
+  FacetItem,
+  FacetsMap,
+  DatasetFacetName,
+  ResearchFacetName,
+  TypedFacetsMap,
+} from "@/api/types"
+
 // Query parameters
 export {
   LangQuerySchema,
   LangVersionQuerySchema,
   ResearchSearchQuerySchema,
   DatasetSearchQuerySchema,
+  ResearchListingQuerySchema,
+  DatasetListingQuerySchema,
 } from "@/api/types"
 export type {
   LangQuery,
   LangVersionQuery,
   ResearchSearchQuery,
   DatasetSearchQuery,
+  ResearchListingQuery,
+  DatasetListingQuery,
+} from "@/api/types"
+
+// Filters (POST search)
+export {
+  RangeFilterSchema,
+  DatasetFiltersSchema,
+  ResearchSearchBodySchema,
+  DatasetSearchBodySchema,
+} from "@/api/types"
+export type {
+  RangeFilter,
+  DatasetFilters,
+  ResearchSearchBody,
+  DatasetSearchBody,
 } from "@/api/types"
 
 // Response types
@@ -37,8 +72,6 @@ export {
   DatasetVersionItemSchema,
   ResearchSearchResponseSchema,
   DatasetSearchResponseSchema,
-  FacetItemSchema,
-  FacetsMapSchema,
 } from "@/api/types"
 export type {
   ResearchSummary,
@@ -47,8 +80,6 @@ export type {
   DatasetVersionItem,
   ResearchSearchResponse,
   DatasetSearchResponse,
-  FacetItem,
-  FacetsMap,
 } from "@/api/types"
 
 // ES document types (API response format)
@@ -66,17 +97,59 @@ export type {
 } from "@/api/types"
 
 // Path parameters
-export { HumIdParamsSchema, DatasetIdParamsSchema } from "@/api/types"
-export type { HumIdParams, DatasetIdParams } from "@/api/types"
+export {
+  HumIdParamsSchema,
+  DatasetIdParamsSchema,
+  VersionParamsSchema,
+  DatasetVersionParamsSchema,
+  LinkParamsSchema,
+} from "@/api/types"
+export type {
+  HumIdParams,
+  DatasetIdParams,
+  VersionParams,
+  DatasetVersionParams,
+  LinkParams,
+} from "@/api/types"
+
+// Stats
+export {
+  StatsResponseSchema,
+  StatsFacetCountSchema,
+} from "@/api/types"
+export type {
+  StatsResponse,
+  StatsFacetCount,
+} from "@/api/types"
+
+// Error responses
+export {
+  ProblemDetailsSchema,
+  ApiErrorResponseSchema,
+  ErrorResponseSchema,
+} from "@/api/types"
+export type {
+  ProblemDetails,
+  ApiErrorResponse,
+  ErrorResponse,
+} from "@/api/types"
+
+// All facets response
+export {
+  AllFacetsResponseSchema,
+  FacetFieldResponseSchema,
+} from "@/api/types"
+export type {
+  AllFacetsResponse,
+  FacetFieldResponse,
+} from "@/api/types"
 
 // Simple response types
 export {
   HealthResponseSchema,
   IsAdminResponseSchema,
-  ErrorResponseSchema,
 } from "@/api/types"
 export type {
   HealthResponse,
   IsAdminResponse,
-  ErrorResponse,
 } from "@/api/types"

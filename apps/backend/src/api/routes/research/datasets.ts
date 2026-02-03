@@ -5,7 +5,6 @@
  */
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
-import { PAGINATION } from "@/api/constants"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { createDataset } from "@/api/es-client/dataset"
 import {
@@ -35,31 +34,12 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
   router.openapi(listLinkedDatasetsRoute, async (c) => {
     try {
       const { humId } = c.req.valid("param")
-      const query = c.req.valid("query")
-      const page = query.page ?? 1
-      const limit = query.limit ?? PAGINATION.DEFAULT_LIMIT
       const authUser = c.get("authUser")
 
       const detail = await getResearchDetail(humId, {}, authUser)
       if (!detail) return notFoundResponse(c, `Research with humId ${humId} not found`)
 
-      const datasets = detail.datasets ?? []
-      const total = datasets.length
-      const totalPages = total === 0 ? 0 : Math.ceil(total / limit)
-      const start = (page - 1) * limit
-      const paginatedData = datasets.slice(start, start + limit)
-
-      return c.json({
-        data: paginatedData,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1,
-        },
-      }, 200)
+      return c.json({ data: detail.datasets ?? [] }, 200)
     } catch (error) {
       const requestId = getRequestId(c)
       logger.error("Error fetching linked datasets", { requestId, error: String(error) })

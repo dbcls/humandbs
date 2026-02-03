@@ -190,8 +190,6 @@ ES mapping (JSON)
 
   // Experiments (nested)
   experiments: [{
-    experimentKey: keyword,
-
     // Header (実験タイトル)
     header: { ja: { text+kw, rawHtml }, en: { text+kw, rawHtml } },
 

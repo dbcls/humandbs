@@ -53,7 +53,7 @@ const INDEX = {
 /**
  * Normalize version string to v{number} format
  */
-const normVersion = (v: string | number): string => {
+export const normVersion = (v: string | number): string => {
   if (typeof v === "number") return `v${v}`
   const s = v.trim()
   if (/^v\d+/.test(s)) return s
@@ -64,21 +64,30 @@ const normVersion = (v: string | number): string => {
 /**
  * Document ID generators (without lang suffix)
  */
-const idResearch = (humId: string): string => humId
-const idResearchVersion = (humId: string, version: string): string =>
+export const idResearch = (humId: string): string => humId
+export const idResearchVersion = (humId: string, version: string): string =>
   `${humId}-${normVersion(version)}`
-const idDataset = (datasetId: string, version: string): string =>
+export const idDataset = (datasetId: string, version: string): string =>
   `${datasetId}-${normVersion(version)}`
 
 /**
  * Transform research document for ES indexing
  * - Add default status and uids if not present
  */
-const transformResearch = (doc: ResearchDoc): ResearchDoc => ({
+export const transformResearch = (doc: ResearchDoc): ResearchDoc => ({
   ...doc,
   status: doc.status ?? "published",
   uids: doc.uids ?? [],
 })
+
+/**
+ * Transform dataset document for ES indexing
+ * - No transformation needed; platforms are stored as-is
+ * - Facet aggregation is handled via nested aggregation in API
+ */
+export const transformDataset = (doc: DatasetDoc): DatasetDoc => {
+  return doc
+}
 
 /**
  * Find crawler-results directory by searching up from current file
@@ -174,6 +183,8 @@ const main = async () => {
     }
   }
 
+  const BATCH_SIZE = 100
+
   const bulkIndex = async <T>(
     index: keyof typeof INDEX,
     docs: T[],
@@ -183,26 +194,42 @@ const main = async () => {
     if (docs.length === 0) return
 
     const transformedDocs = transform ? docs.map(transform) : docs
-    const ops = transformedDocs.flatMap((doc) => [
-      { index: { _index: INDEX[index], _id: genId(doc) } },
-      doc,
-    ])
 
-    const res = await client.bulk({ refresh: true, body: ops })
-    if (res.errors) {
-      const errors = res.items
-        .map((it, i) => ({ it, i }))
-        .filter(({ it }) => Object.values(it)[0].error)
-        .map(({ it, i }) => ({
-          status: Object.values(it)[0].status,
-          error: Object.values(it)[0].error,
-          op: ops[i * 2],
-          doc: ops[i * 2 + 1],
-        }))
-      console.error(`\nBulk errors for ${INDEX[index]}:`, errors.slice(0, 5))
-      if (errors.length > 5) {
-        console.error(`  ... and ${errors.length - 5} more errors`)
+    // Split into batches to avoid payload size limits
+    let totalIndexed = 0
+    let totalErrors = 0
+
+    for (let i = 0; i < transformedDocs.length; i += BATCH_SIZE) {
+      const batch = transformedDocs.slice(i, i + BATCH_SIZE)
+      const ops = batch.flatMap((doc) => [
+        { index: { _index: INDEX[index], _id: genId(doc) } },
+        doc,
+      ])
+
+      const res = await client.bulk({ refresh: false, body: ops })
+      if (res.errors) {
+        const errors = res.items
+          .map((it, idx) => ({ it, idx }))
+          .filter(({ it }) => Object.values(it)[0].error)
+          .map(({ it, idx }) => ({
+            status: Object.values(it)[0].status,
+            error: Object.values(it)[0].error,
+            op: ops[idx * 2],
+            doc: ops[idx * 2 + 1],
+          }))
+        totalErrors += errors.length
+        if (totalErrors <= 5) {
+          console.error(`\nBulk errors for ${INDEX[index]}:`, errors.slice(0, 5 - totalErrors + errors.length))
+        }
       }
+      totalIndexed += batch.length - (res.errors ? res.items.filter((it) => Object.values(it)[0].error).length : 0)
+    }
+
+    // Refresh after all batches
+    await client.indices.refresh({ index: INDEX[index] })
+
+    if (totalErrors > 0) {
+      console.log(`\nIndexed ${totalIndexed}/${docs.length} documents -> ${INDEX[index]} (${totalErrors} errors)`)
     } else {
       console.log(`\nIndexed ${docs.length} documents -> ${INDEX[index]}`)
     }
@@ -213,7 +240,7 @@ const main = async () => {
   await bulkIndex("researchVersion", researchVersionDocs, (d) =>
     idResearchVersion(d.humId, d.version),
   )
-  await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version))
+  await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version), transformDataset)
 
   console.log("\nDone!")
 }

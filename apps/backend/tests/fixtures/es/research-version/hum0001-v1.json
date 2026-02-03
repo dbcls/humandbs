@@ -1,0 +1,22 @@
+{
+  "humId": "hum0001",
+  "humVersionId": "hum0001-v1",
+  "version": "v1",
+  "versionReleaseDate": "2013-12-01",
+  "datasets": [
+    {
+      "datasetId": "JGAD000002",
+      "version": "v1"
+    }
+  ],
+  "releaseNote": {
+    "ja": {
+      "text": "このバージョンでは、脊髄小脳失調症31型 (SCA31) 罹患患者の DNA における疾患固有の繰返し配列を同定するため、Illumina 社 HiSeq 2000 を利用して平均長さ100塩基のDNA断片を解読した。",
+      "rawHtml": "<span>このバージョンでは、脊髄小脳失調症31型（SCA31）罹患患者の DNA における疾患固有の繰返し配列を同定するため、Illumina 社 HiSeq 2000 を利用して平均長さ100塩基のDNA断片を解読した。</span>\n&nbsp;\n&nbsp;"
+    },
+    "en": {
+      "text": "To identify the short tandem repeats in a spinocerebellar ataxia type 31 (SCA31) patient, DNA sample extracted from peripheral blood were used as a library for NGS (Illumina HiSeq 2000, 100 bp, paired-end).",
+      "rawHtml": "<span> To identify the short tandem repeats in a spinocerebellar ataxia type 31 (SCA31) patient, DNA sample extracted from peripheral blood were used as a library for NGS (Illumina HiSeq 2000, 100 bp, paired-end). </span>\n&nbsp;\n&nbsp;"
+    }
+  }
+}

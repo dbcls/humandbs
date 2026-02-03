@@ -15,7 +15,7 @@ HumanDBs ポータルサイトから研究データベース情報をクロー�
 
 - [クローラーパイプライン](docs/crawler-pipeline.md) - 11 ステップの詳細、CLI オプション
 - [LLM フィールド抽出](docs/llm-extract-design.md) - searchable フィールドの抽出設計
-- [TSV 編集ガイド](docs/tsv-docs.md) - メタデータの手動編集方法
+- [TSV 編集ガイド](docs/tsv-editing-guide.md) - メタデータの手動編集方法
 
 ### API
 
@@ -27,6 +27,10 @@ HumanDBs ポータルサイトから研究データベース情報をクロー�
 
 - [型システム](docs/type-system.md) - Crawler -> ES -> API のデータフロー
 - [Elasticsearch スキーマ](docs/elasticsearch-schema.md) - インデックス設計、クエリ例
+
+### テスト
+
+- [テストガイド](tests/testing.md) - テスト方針、構成、実行方法
 
 ## サブプロジェクト
 

@@ -3,12 +3,12 @@
 HumanDBs Backend のデータは以下の流れで変換される:
 
 ```plaintext
-Crawler (TypeScript 型) → ES (JSON ドキュメント) → API (Zod スキーマ) → Frontend (shared-types)
+Crawler (TypeScript 型) -> ES (JSON ドキュメント) -> API (Zod スキーマ) -> Frontend (shared-types)
 ```
 
 ## システム間のデータフロー
 
-### 1. Crawler → Elasticsearch
+### 1. Crawler -> Elasticsearch
 
 Crawler が生成した JSON ファイルが ES にどう入るか。
 
@@ -24,19 +24,19 @@ Crawler が生成した JSON ファイルが ES にどう入るか。
 |------------------------|------------------|------|
 | `Research` | `EsResearchSchema` | status, uids フィールド追加 |
 | `Dataset` | `EsDatasetSchema` | |
-| `Experiment` | `EsExperimentSchema` | experimentKey 追加 |
-| `SearchableExperimentFields` | `SearchableExperimentFieldsSchema` | Zod で検証 |
-| `DiseaseInfo` | `DiseaseInfoSchema` | icd10 は必須 (icd10-normalize で保証) |
+| `Experiment` | `EsExperimentSchema` | |
+| `SearchableExperimentFields` | `SearchableExperimentFieldsSchema` | platforms は nested 型で保存 |
+| `DiseaseInfo` | `NormalizedDiseaseSchema` | icd10 は必須 (icd10-normalize で保証) |
 
-### 2. Elasticsearch → API
+### 2. Elasticsearch -> API
 
 ES ドキュメントが API でどう返されるか。
 
-| ES 型 (es/types.ts) | API 型 (api/types.ts) | 備考 |
-|--------------------|----------------------|------|
-| `EsResearchSchema` | `EsResearchDoc` | Zod スキーマで検証 |
-| `EsDatasetSchema` | `EsDatasetDoc` | searchable は z.unknown() |
-| `EsResearchVersionSchema` | `EsResearchVersionDoc` | |
+| ES 型 (es/types.ts) | API 型 (api/types/) | 備考 |
+|--------------------|---------------------|------|
+| `EsResearchSchema` | `EsResearchDoc` | es-docs.ts で alias |
+| `EsDatasetSchema` | `EsDatasetDoc` | es-docs.ts で alias |
+| `EsResearchVersionSchema` | `EsResearchVersionDoc` | es-docs.ts で alias |
 
 **変換処理**:
 
@@ -44,17 +44,54 @@ ES ドキュメントが API でどう返されるか。
 2. Zod スキーマでバリデーション
 3. 必要に応じて `stripRawHtml()` で rawHtml 除去
 
-### 3. API → Frontend
+### 3. API -> Frontend
 
 API 型が Frontend にどう共有されるか。
 
-| api/types.ts | shared-types.ts | 用途 |
-|-------------|-----------------|------|
+| api/types/ | shared-types.ts | 用途 |
+|------------|-----------------|------|
 | `EsDatasetDoc` | `EsDatasetDoc` | Dataset 詳細表示 |
 | `EsResearchDoc` | `EsResearchDoc` | Research 詳細表示 |
 | `ResearchSearchResponse` | `ResearchSearchResponse` | 検索結果一覧 |
 | `DatasetSearchResponse` | `DatasetSearchResponse` | 検索結果一覧 |
 | `FacetsMap` | `FacetsMap` | ファセットフィルター |
+
+## 命名規則
+
+### Zod スキーマと TypeScript 型
+
+全ての API 型は Zod スキーマで定義し、TypeScript 型は `z.infer<>` で導出する。
+
+| カテゴリ | Zod スキーマ名 | TypeScript 型名 | 例 |
+|---------|---------------|-----------------|-----|
+| 汎用 | `*Schema` | `*` | `PersonSchema` → `Person` |
+| レスポンス | `*ResponseSchema` | `*Response` | `HealthResponseSchema` → `HealthResponse` |
+| パスパラメータ | `*ParamsSchema` | `*Params` | `HumIdParamsSchema` → `HumIdParams` |
+| クエリパラメータ | `*QuerySchema` | `*Query` | `LangQuerySchema` → `LangQuery` |
+| リクエストボディ | `*RequestSchema` | `*Request` | `CreateResearchRequestSchema` → `CreateResearchRequest` |
+| POST 検索ボディ | `*BodySchema` | `*Body` | `ResearchSearchBodySchema` → `ResearchSearchBody` |
+| フィルタ | `*FiltersSchema` | `*Filters` | `DatasetFiltersSchema` → `DatasetFilters` |
+
+### ファイル配置規則
+
+| ファイル | 内容 |
+|---------|------|
+| `common.ts` | 言語タイプ、共通ユーティリティ |
+| `auth.ts` | 認証関連スキーマ |
+| `workflow.ts` | ワークフロー状態 |
+| `facets.ts` | ファセット名、ファセット値スキーマ |
+| `es-docs.ts` | ES ドキュメントスキーマ（es/types からの alias） |
+| `query-params.ts` | クエリパラメータスキーマ |
+| `filters.ts` | 検索フィルタスキーマ |
+| `request-response.ts` | リクエスト/レスポンススキーマ |
+| `index.ts` | バレルファイル（全エクスポート） |
+
+### 注意事項
+
+- **interface 禁止**: 全ての API 型は Zod スキーマで定義する。`interface` での定義は避け、`z.infer<>` で導出する
+- **utility type**: `TypedFacetsMap` のような utility type は Zod スキーマ化不要
+- **後方互換性**: 型の移動時は元のファイルから re-export を維持
+- **エクスポート**: `types/shared-types.ts` から frontend に必要な型を re-export
 
 ## 主要な型定義
 
@@ -129,32 +166,37 @@ Zod スキーマで定義。Crawler 型と似た構造だが ES 用の調整あ�
 | `EsDatasetSchema` | Dataset ES ドキュメントの Zod スキーマ |
 | `EsExperimentSchema` | Experiment の Zod スキーマ |
 | `SearchableExperimentFieldsSchema` | searchable フィールドの Zod スキーマ |
-| `DiseaseInfoSchema` | 疾患情報 (icd10 は必須) |
+| `NormalizedDiseaseSchema` | 疾患情報 (icd10 は必須) |
 
 **Crawler 型との違い**:
 
-- `DiseaseInfo.icd10`: `string | null` → `string` (icd10-normalize で保証)
-- `Research`: `status`, `uids` フィールド追加 (API 層で使用)
-- `platforms`: Crawler では `PlatformInfo[]` だが、ES では `keyword[]` として `"{vendor} {model}"` 形式で格納
-- `experimentKey`: ES で experiments に追加される一意識別子
+- `DiseaseInfo` -> `NormalizedDiseaseSchema`: `icd10` が `string | null` -> `string` (icd10-normalize で保証)
+- `Research` -> `EsResearchSchema`: `status`, `uids` フィールド追加 (API 層で使用)
+- `SearchableExperimentFields`: ES では `platforms` は nested 型 (`{vendor, model}` の配列) で保存し、vendor/model の対応関係を維持。API ファセットでは nested aggregation で抽出し `"Vendor||Model"` 形式で公開
 
-### api/types.ts (API レスポンス)
+### api/types/ (API リクエスト・レスポンス)
 
-| 型 | 責務 |
-|---|-----|
-| `ResearchSearchQuery` | 検索クエリパラメータ (GET) |
-| `DatasetSearchQuery` | 検索クエリパラメータ (GET) |
-| `ResearchFiltersSchema` | 構造化フィルタ (POST) |
-| `DatasetFiltersSchema` | 構造化フィルタ (POST) |
-| `ResearchSearchResponse` | 検索結果レスポンス |
-| `DatasetSearchResponse` | 検索結果レスポンス |
-| `EsResearchDoc` | Research ドキュメント (API 用) |
-| `EsDatasetDoc` | Dataset ドキュメント (API 用) |
+`api/types/` ディレクトリに分割して定義。`api/types/index.ts` がバレルファイル。
+
+| 型 | 定義ファイル | 責務 |
+|---|-------------|-----|
+| `ResearchSearchQuery` | query-params.ts | 検索クエリパラメータ (GET) |
+| `DatasetSearchQuery` | query-params.ts | 検索クエリパラメータ (GET) |
+| `ResearchSearchBody` | filters.ts | 検索リクエストボディ (POST) |
+| `DatasetSearchBody` | filters.ts | 検索リクエストボディ (POST) |
+| `DatasetFilters` | filters.ts | Dataset フィルタ条件 |
+| `ResearchSearchResponse` | request-response.ts | 検索結果レスポンス |
+| `DatasetSearchResponse` | request-response.ts | 検索結果レスポンス |
+| `EsResearchDoc` | es-docs.ts | Research ドキュメント (ES alias) |
+| `EsDatasetDoc` | es-docs.ts | Dataset ドキュメント (ES alias) |
 
 ## 型の追加・変更手順
 
-**Zod 単一ソース化**: `crawler/types` の Zod スキーマが型の源泉。
-ES で使う型は Zod スキーマで定義し、TypeScript 型を推論する。
+**層ごとのスキーマ定義**: 基本スキーマは `crawler/types` で定義し、層ごとに必要な拡張・変換を行う。
+
+- **Crawler**: 基本スキーマ（`DiseaseInfoSchema` の `icd10` は nullable）
+- **ES**: 正規化・拡張スキーマ（`NormalizedDiseaseSchema` の `icd10` は required、`platforms` は nested 型）
+- **API**: ES スキーマを再利用しつつ、リクエスト/レスポンス固有の型を定義
 
 新しいフィールドを追加する場合:
 
@@ -171,16 +213,20 @@ newField: z.string().nullable(),
 
 ### 2. ES マッピングを追加
 
-`src/es/dataset-schema.ts` に ES マッピングを追加:
+対象インデックスのマッピングファイルに追加:
+
+- `src/es/dataset-schema.ts` - Dataset インデックス
+- `src/es/research-schema.ts` - Research インデックス
+- `src/es/research-version-schema.ts` - ResearchVersion インデックス
 
 ```typescript
-// searchable オブジェクト内に追加
+// 例: dataset-schema.ts の searchable オブジェクト内に追加
 newField: f.keyword(),
 ```
 
 ### 3. API スキーマを追加 (必要に応じて)
 
-フィルタリングに使う場合、`src/api/types.ts` にクエリパラメータを追加:
+フィルタリングに使う場合、`src/api/types/filters.ts` にクエリパラメータを追加:
 
 ```typescript
 // DatasetFiltersSchema に追加
@@ -197,16 +243,13 @@ export type { NewFieldType } from "./api/types"
 
 ### 注意事項
 
-- **ES 固有の変更**: `es/types.ts` で ES 固有スキーマ (DiseaseInfoSchema など)を定義
-- **API 固有の変更**: `api/types.ts` で API リクエスト/レスポンス型を定義
-- **依存の方向**: `crawler/types → es/types → api/types` を維持
+- **ES 固有の変更**: `es/types.ts` で ES 固有スキーマ (`NormalizedDiseaseSchema` など) を定義
+- **API 固有の変更**: `api/types/` ディレクトリ内で API リクエスト/レスポンス型を定義
+- **依存の方向**: `crawler/types -> es/types -> api/types/` を維持
 
 ## Crawler 内部の型変換 (参考)
 
-<details>
-<summary>詳細を見る</summary>
-
-HTML → RawParseResult → NormalizedParseResult → SingleLang* → Research/Dataset
+HTML -> RawParseResult -> NormalizedParseResult -> SingleLang* -> Research/Dataset
 
 | ファイル | 型 | パイプライン段階 |
 |---------|---|----------------|
@@ -219,26 +262,24 @@ HTML → RawParseResult → NormalizedParseResult → SingleLang* → Research/D
 
 ```plaintext
 Step 1: download-html
-  → HTML ファイル
+  -> HTML ファイル
 
 Step 2: parse-html
-  → RawParseResult (parse.ts)
+  -> RawParseResult (parse.ts)
     - セクションごとにパース
     - 言語ごとに別ファイル
 
 Step 3: normalize
-  → NormalizedParseResult (normalized.ts)
+  -> NormalizedParseResult (normalized.ts)
     - テキスト正規化
     - 日付フォーマット統一
     - Dataset ID 処理
 
 Step 4: structure
-  → Research, Dataset (structured.ts)
+  -> Research, Dataset (structured.ts)
     - ja/en をマージ
     - BilingualText 形式に統合
 
-Step 5-11: enrich → llm-extract → icd10-normalize → facet-values → facet-normalize → export-tsv → import-tsv
-  → Dataset.experiments[].searchable に追加
+Step 5-11: enrich -> llm-extract -> icd10-normalize -> facet-values -> facet-normalize -> export-tsv -> import-tsv
+  -> Dataset.experiments[].searchable に追加
 ```
-
-</details>

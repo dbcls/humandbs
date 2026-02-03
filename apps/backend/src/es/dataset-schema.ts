@@ -26,8 +26,6 @@ export const datasetSchema = {
 
   // Experiments (nested for independent querying)
   experiments: f.nested({
-    experimentKey: f.keyword(),
-
     // Header with bilingual text+rawHtml
     header: f.bilingualTextValueKw(),
 
@@ -73,8 +71,12 @@ export const datasetSchema = {
       assayType: f.keyword(),
       libraryKits: f.keyword(),
 
-      // Platform
-      platforms: f.keyword(),
+      // Platform (nested for vendor/model relationship)
+      // Facet aggregation is done via nested aggregation in API
+      platforms: f.nested({
+        vendor: f.keyword(),
+        model: f.keyword(),
+      }),
       readType: f.keyword(),
       readLength: f.integer(),
 
@@ -109,6 +111,9 @@ export const datasetSchema = {
       }),
     }),
   }),
+
+  // Original metadata from external sources (stored but not indexed)
+  originalMetadata: f.disabled(),
 }
 
 /**

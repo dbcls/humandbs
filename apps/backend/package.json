@@ -23,10 +23,10 @@
     "crawler:import-tsv": "bun run src/crawler/cli/import-tsv.ts",
     "es:load-mappings": "bun run src/es/load-mappings.ts",
     "es:load-docs": "bun run src/es/load-docs.ts",
-    "test": "bun test tests/unit",
-    "test:watch": "bun test tests/unit --watch",
-    "test:integration": "bun test tests/integration",
-    "test:all": "bun test",
+    "test": "bun test",
+    "test:crawler": "bun test tests/unit/crawler",
+    "test:es": "bun test tests/unit/es",
+    "test:api": "bun test tests/unit/api",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix"
@@ -38,6 +38,7 @@
     "@types/jsdom": "^21.1.7",
     "@types/yargs": "^17.0.33",
     "eslint": "^9.19.0",
+    "fast-check": "^4.1.1",
     "globals": "^16.4.0"
   },
   "peerDependencies": {

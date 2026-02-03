@@ -38,7 +38,7 @@ export const DatasetFiltersSchema = z.object({
     .describe("Disease label partial match (free-text search)"),
   diseaseIcd10: z.array(z.string()).optional()
     .describe("ICD-10 disease codes (prefix match, e.g., 'C34' matches 'C34.1')"),
-  tissue: z.array(z.string()).optional()
+  tissues: z.array(z.string()).optional()
     .describe("Tissue types (facet selection)"),
   isTumor: z.boolean().optional()
     .describe("Filter by tumor sample status"),
@@ -60,7 +60,7 @@ export const DatasetFiltersSchema = z.object({
     .describe("Read type: single-end or paired-end"),
   referenceGenome: z.array(z.string()).optional()
     .describe("Reference genomes (e.g., GRCh38, GRCh37)"),
-  fileType: z.array(z.string()).optional()
+  fileTypes: z.array(z.string()).optional()
     .describe("File types (e.g., FASTQ, BAM, VCF)"),
   processedDataTypes: z.array(z.string()).optional()
     .describe("Processed data types available"),

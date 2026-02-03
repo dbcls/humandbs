@@ -178,19 +178,19 @@ export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
  * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateResearchRequestSchema = z.object({
-  title: BilingualTextSchema
+  title: BilingualTextSchema.optional()
     .describe("Research title in Japanese and English"),
-  summary: SummarySchema
+  summary: SummarySchema.optional()
     .describe("Research summary including aims, methods, and targets"),
-  dataProvider: z.array(PersonSchema)
+  dataProvider: z.array(PersonSchema).optional()
     .describe("Data providers (researchers providing the data)"),
-  researchProject: z.array(ResearchProjectSchema)
+  researchProject: z.array(ResearchProjectSchema).optional()
     .describe("Related research projects"),
-  grant: z.array(GrantSchema)
+  grant: z.array(GrantSchema).optional()
     .describe("Funding grants"),
-  relatedPublication: z.array(PublicationSchema)
+  relatedPublication: z.array(PublicationSchema).optional()
     .describe("Related publications (papers, preprints)"),
-  controlledAccessUser: z.array(PersonSchema)
+  controlledAccessUser: z.array(PersonSchema).optional()
     .describe("Users with controlled access to the data"),
   _seq_no: z.number()
     .describe("Sequence number for optimistic locking. Obtained from GET response."),

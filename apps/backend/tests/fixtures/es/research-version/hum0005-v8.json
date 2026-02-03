@@ -1,0 +1,70 @@
+{
+  "humId": "hum0005",
+  "humVersionId": "hum0005-v8",
+  "version": "v8",
+  "versionReleaseDate": "2023-10-02",
+  "datasets": [
+    {
+      "datasetId": "DRA001273",
+      "version": "v8"
+    },
+    {
+      "datasetId": "JGAD000032",
+      "version": "v7"
+    },
+    {
+      "datasetId": "JGAD000093",
+      "version": "v6"
+    },
+    {
+      "datasetId": "JGAD000134",
+      "version": "v5"
+    },
+    {
+      "datasetId": "JGAD000244",
+      "version": "v4"
+    },
+    {
+      "datasetId": "JGAD000274",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000275",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000286",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000434",
+      "version": "v2"
+    },
+    {
+      "datasetId": "JGAD000607",
+      "version": "v1"
+    },
+    {
+      "datasetId": "DRA003791",
+      "version": "v7"
+    },
+    {
+      "datasetId": "JGAD000285",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000490",
+      "version": "v1"
+    }
+  ],
+  "releaseNote": {
+    "ja": {
+      "text": "このバージョンでは、非症候群性難聴1410症例の69遺伝子領域 (354 kb) および1559症例の63遺伝子領域 (295 kb) のシーケンスデータが追加された (fastqファイル) 。追加データについては、Ion AmpliSeq Custom PanelおよびIon AmpliSeq Library Kit ver 2.0を用いてターゲット領域にしぼり、Thermo Fisher Scientific [Ion PGM/Ion Proton]にて配列を読んでいる (Single-end: 200 bp) 。",
+      "rawHtml": "<span> このバージョンでは、非症候群性難聴1410症例の69遺伝子領域（354 kb）および1559症例の63遺伝子領域（295 kb）のシーケンスデータが追加された（fastqファイル）。追加データについては、Ion AmpliSeq Custom PanelおよびIon AmpliSeq Library Kit ver 2.0を用いてターゲット領域にしぼり、Thermo Fisher Scientific [Ion PGM/Ion Proton]にて配列を読んでいる（Single-end: 200 bp）。</span>\n&nbsp;"
+    },
+    "en": {
+      "text": "1) DNAs extracted from peripheral blood cells of 1410 Japanese non-syndromic hearing loss patients were used and 69 gene regions (354 kb) were targeted to this study. The regions were narrowed down by using of the Ion AmpliSeq Custom kit or Ion AmpliSeq Library Kit ver 2.0 and read the sequences by Thermo Fisher Scientific [Ion PGM/Ion Proton] (Single-end: 200 bp). 2) DNAs extracted from peripheral blood cells of 1559 Japanese non-syndromic hearing loss patients were used and 63 gene regions (295 kb) were targeted to this study. The regions were narrowed down by using of the Ion AmpliSeq Custom kit or Ion AmpliSeq Library Kit ver 2.0 and read the sequences by Thermo Fisher Scientific [Ion PGM/Ion Proton] (Single-end: 200 bp).",
+      "rawHtml": "<span> 1) DNAs extracted from peripheral blood cells of 1410 Japanese non-syndromic hearing loss patients were used and 69 gene regions (354 kb) were targeted to this study. The regions were narrowed down by using of the Ion AmpliSeq Custom kit or Ion AmpliSeq Library Kit ver 2.0 and read the sequences by Thermo Fisher Scientific [Ion PGM/Ion Proton] (Single-end: 200 bp).</span>\n<span> 2) DNAs extracted from peripheral blood cells of 1559 Japanese non-syndromic hearing loss patients were used and 63 gene regions (295 kb) were targeted to this study. The regions were narrowed down by using of the Ion AmpliSeq Custom kit or Ion AmpliSeq Library Kit ver 2.0 and read the sequences by Thermo Fisher Scientific [Ion PGM/Ion Proton] (Single-end: 200 bp).</span>\n&nbsp;"
+    }
+  }
+}

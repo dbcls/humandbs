@@ -125,17 +125,17 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
   must.push(...buildNestedRangeFilters(p))
 
   // === Platform filter (vendor + model matching) ===
-  // Platform values are in format "Vendor Model" (e.g., "Illumina NovaSeq 6000")
-  // We match against both platformVendor and platformModel fields
+  // Platform values are in format "Vendor||Model" (e.g., "Illumina||NovaSeq 6000")
+  // We split by "||" and match against both platformVendor and platformModel fields
   if ("platform" in params && params.platform) {
     const platformValues = splitComma(params.platform)
     if (platformValues.length > 0) {
       const platformShould = platformValues.map(platform => {
-        const parts = platform.split(" ")
-        // If we have "Vendor Model" format, match both fields
-        if (parts.length >= 2) {
+        const parts = platform.split("||").map(s => s.trim())
+        // If we have "Vendor||Model" format, match both fields
+        if (parts.length >= 2 && parts[0] && parts[1]) {
           const vendor = parts[0]
-          const model = parts.slice(1).join(" ")
+          const model = parts[1]
           return {
             nested: {
               path: "experiments",
@@ -239,10 +239,10 @@ const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregatio
 
   // Basic nested facets
   assayType: nestedFacetAgg("experiments.searchable.assayType"),
-  tissue: nestedFacetAgg("experiments.searchable.tissues"),
+  tissues: nestedFacetAgg("experiments.searchable.tissues"),
   population: nestedFacetAgg("experiments.searchable.population"),
   platform: platformFacetAgg(),
-  fileType: nestedFacetAgg("experiments.searchable.fileTypes"),
+  fileTypes: nestedFacetAgg("experiments.searchable.fileTypes"),
   healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", 10),
 
   // Extended facets
@@ -298,19 +298,22 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
     }))
 
   // Extract platform composite buckets (vendor + model)
+  // Format: "{vendor}||{model}" (e.g., "Illumina||NovaSeq 6000")
   const extractPlatformBuckets = (buckets: CompositeBucket[]) =>
     buckets
       .map(b => {
         const vendor = b.key.vendor ?? ""
         const model = b.key.model ?? ""
-        // Combine vendor and model, filter out empty combinations
-        const value = [vendor, model].filter(Boolean).join(" ").trim()
+        // Combine vendor and model with "||" separator (no spaces)
+        // Only include if both vendor and model are present
+        if (!vendor || !model) return null
+        const value = `${vendor}||${model}`
         return {
           value,
           count: b.dataset_count?.doc_count ?? b.doc_count,
         }
       })
-      .filter(item => item.value !== "") // Skip empty platform values
+      .filter((item): item is { value: string; count: number } => item !== null)
 
   // Find vendorModel composite aggregation for platform
   const findPlatformBuckets = (obj: unknown): CompositeBucket[] | null => {
@@ -418,6 +421,7 @@ export const searchDatasets = async (
           "typeOfData.en^2",
           "experiments.header.ja.text",
           "experiments.header.en.text",
+          "experiments.searchable.targets",
         ],
         type: "best_fields",
         fuzziness: "AUTO",
@@ -426,15 +430,9 @@ export const searchDatasets = async (
   }
 
   // Sort configuration
-  // Note: subjectCount sorting would require aggregating across nested experiments,
-  // which is not directly sortable. Fallback to datasetId for subjectCount sort.
   let sortSpec: estypes.Sort
   if (sort === "relevance" && q) {
     sortSpec = [{ _score: { order: "desc" } }, { datasetId: { order: "asc" } }]
-  } else if (sort === "subjectCount") {
-    // Cannot sort by aggregated subject count from nested experiments directly
-    // Fallback to datasetId
-    sortSpec = [{ datasetId: { order } }]
   } else if (sort === "releaseDate") {
     sortSpec = [{ releaseDate: { order, missing: "_last" } }, { datasetId: { order: "asc" } }]
   } else {

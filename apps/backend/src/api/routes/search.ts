@@ -156,7 +156,7 @@ const postDatasetSearchRoute = createRoute({
   summary: "Search Dataset (POST)",
   description: `Search Dataset resources with advanced filters and facets.
 
-**Full-text search targets:** experiments.header, experiments.data, experiments.footers
+**Full-text search targets:** typeOfData, experiments.header, experiments.searchable.targets
 
 **Filter modes:**
 - Array filters use OR logic (e.g., assayType: ["WGS", "WES"] matches either)
@@ -188,7 +188,7 @@ const getFacetsRoute = createRoute({
 
 Returns facet values grouped by field name. Use this to populate filter dropdowns in search UIs.
 
-**Available facets:** criteria, assayType, healthStatus, sex, ageGroup, tissue, population, platform, referenceGenome, fileType, diseaseIcd10, etc.
+**Available facets:** criteria, assayType, healthStatus, sex, ageGroup, tissues, population, platform, referenceGenome, fileTypes, diseaseIcd10, etc.
 
 Counts reflect published Datasets only.`,
   responses: {
@@ -207,7 +207,7 @@ const getFacetFieldRoute = createRoute({
   summary: "Get Facet Values for Field",
   description: `Get available values for a specific facet field.
 
-**Example fields:** criteria, assayType, healthStatus, tissue, platform
+**Example fields:** criteria, assayType, healthStatus, tissues, platform
 
 Returns an array of {value, count} pairs sorted by count descending.`,
   request: {

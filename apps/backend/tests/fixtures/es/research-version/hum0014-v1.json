@@ -1,0 +1,22 @@
+{
+  "humId": "hum0014",
+  "humVersionId": "hum0014-v1",
+  "version": "v1",
+  "versionReleaseDate": "2014-09-30",
+  "datasets": [
+    {
+      "datasetId": "hum0014.v1.freq.v1",
+      "version": "v1"
+    }
+  ],
+  "releaseNote": {
+    "ja": {
+      "text": "日本人心筋梗塞患者1666人、および日本人対照健常者3198人の約45万6千SNVsの頻度情報。 遺伝子型決定には、Illumina [Human610-Quad BeadChipおよびHumanHap550v3 Genotyping BeadChip]を使用している。",
+      "rawHtml": "<span>日本人心筋梗塞患者1666人、および日本人対照健常者3198人の約45万6千SNVsの頻度情報。</span>\n<span>遺伝子型決定には、Illumina [Human610-Quad BeadChipおよびHumanHap550v3 Genotyping BeadChip]を使用している。</span>\n&nbsp;\n&nbsp;"
+    },
+    "en": {
+      "text": "A Genome-Wide Association Study (GWAS) for MI was performed using 456,000 SNPs (Illumina Human610-Quad BeadChip and HumanHap550v3 Genotyping BeadChip). Allele frequencies of 1666 MI patients and 3198 controls were compared.",
+      "rawHtml": "<span> A Genome-Wide Association Study (GWAS) for MI was performed using 456,000 SNPs (Illumina Human610-Quad BeadChip and HumanHap550v3 Genotyping BeadChip). Allele frequencies of 1666 MI patients and 3198 controls were compared.</span>\n&nbsp;"
+    }
+  }
+}

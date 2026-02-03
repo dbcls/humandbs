@@ -23,6 +23,7 @@ export type FieldType =
   | "object"
   | "flattened"
   | "noindex"
+  | "disabled"
 
 export interface FieldDef {
   type: FieldType
@@ -44,6 +45,8 @@ export const f = {
   boolean: (): FieldDef => ({ type: "boolean" }),
   flattened: (): FieldDef => ({ type: "flattened" }),
   noindex: (): FieldDef => ({ type: "noindex" }),
+  /** Object stored but not indexed (enabled: false). For arbitrary metadata. */
+  disabled: (): FieldDef => ({ type: "disabled" }),
   nested: <T extends Record<string, FieldDef>>(schema: T): FieldDef => ({
     type: "nested",
     schema,
@@ -135,6 +138,8 @@ function fieldDefToProperty(def: FieldDef): MappingProperty {
       return { type: "flattened" }
     case "noindex":
       return { type: "text", index: false }
+    case "disabled":
+      return { type: "object", enabled: false }
     case "nested":
       return {
         type: "nested",

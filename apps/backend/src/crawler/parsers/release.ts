@@ -14,6 +14,20 @@ import { logger } from "@/crawler/utils/logger"
 
 import { cleanText, cleanInnerHtml } from "./utils"
 
+// hum0086 specific: HTML contains accumulated dates in single cell
+// The release table shows multiple version dates stacked in each row,
+// making it impossible to parse correctly with generic logic.
+// Correct dates from original page:
+//   hum0086-v1: 2017-09-25, hum0086-v2: 2017-12-26, hum0086-v3: 2018-06-26
+const HUM0086_RELEASE_DATES: Record<string, string> = {
+  "hum0086-v1": "2017-09-25",
+  "hum0086.v1": "2017-09-25",
+  "hum0086-v2": "2017-12-26",
+  "hum0086.v2": "2017-12-26",
+  "hum0086-v3": "2018-06-26",
+  "hum0086.v3": "2018-06-26",
+}
+
 // Utility functions
 
 /**
@@ -68,9 +82,19 @@ export const parseReleaseTable = (
     const cells = Array.from(row.querySelectorAll("td"))
     if (cells.length < 3) continue
 
+    // HTML may contain multiple lines (e.g., hum0086 accumulated release dates)
+    // Take only the first line for humVersionId
+    const rawHumVersionId = cleanText(cells[0].textContent)
+    const normalizedVersionId = rawHumVersionId.split("\n")[0].trim()
+
+    // hum0086 specific: use hardcoded dates instead of parsing multi-line cell
+    const rawReleaseDate = cleanText(cells[1].textContent)
+    const releaseDate = HUM0086_RELEASE_DATES[normalizedVersionId]
+      ?? rawReleaseDate.split("\n")[0].trim()
+
     releases.push({
-      humVersionId: cleanText(cells[0].textContent),
-      releaseDate: cleanText(cells[1].textContent),
+      humVersionId: normalizedVersionId,
+      releaseDate,
       content: cleanText(cells[2].textContent),
     })
   }

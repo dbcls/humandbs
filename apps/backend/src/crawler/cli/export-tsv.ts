@@ -122,29 +122,33 @@ const readJsonFiles = <T>(dir: string, filter?: (filename: string) => boolean): 
 // Export Research TSV
 
 const RESEARCH_HEADERS = [
+  // Identifiers (not editable)
   "humId",
-  "title_ja",
-  "title_en",
   "url_ja",
   "url_en",
   "versionIds",
   "latestVersion",
   "firstReleaseDate",
   "lastReleaseDate",
+  // Editable fields
+  "title_ja",
+  "title_en",
   "comment",
 ]
 
 const researchToRow = (r: Research): unknown[] => {
   return [
+    // Identifiers (not editable)
     r.humId,
-    bilingualTextToJa(r.title),
-    bilingualTextToEn(r.title),
     r.url.ja ?? "",
     r.url.en ?? "",
     JSON.stringify(r.versionIds),
     r.latestVersion,
     r.datePublished,
     r.dateModified,
+    // Editable fields
+    bilingualTextToJa(r.title),
+    bilingualTextToEn(r.title),
     "", // comment
   ]
 }
@@ -222,9 +226,11 @@ export const exportResearchSummaryTsv = (options: ExportOptions): void => {
 // Export Data Provider TSV
 
 const DATA_PROVIDER_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "url_ja",
   "url_en",
+  // Editable fields
   "index",
   "name_ja",
   "name_en",
@@ -238,9 +244,11 @@ const DATA_PROVIDER_HEADERS = [
 
 const dataProviderToRows = (r: Research): unknown[][] => {
   return r.dataProvider.map((dp: Person, i) => [
+    // Identifiers (not editable)
     r.humId,
     r.url.ja ?? "",
     r.url.en ?? "",
+    // Editable fields
     i,
     bilingualTextValueToJa(dp.name),
     bilingualTextValueToEn(dp.name),
@@ -277,9 +285,11 @@ export const exportDataProviderTsv = (options: ExportOptions): void => {
 // Export Grant TSV
 
 const GRANT_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "url_ja",
   "url_en",
+  // Editable fields
   "index",
   "grantId",
   "title_ja",
@@ -291,9 +301,11 @@ const GRANT_HEADERS = [
 
 const grantToRows = (r: Research): unknown[][] => {
   return r.grant.map((g: Grant, i) => [
+    // Identifiers (not editable)
     r.humId,
     r.url.ja ?? "",
     r.url.en ?? "",
+    // Editable fields
     i,
     JSON.stringify(g.id),
     bilingualTextToJa(g.title),
@@ -328,27 +340,31 @@ export const exportGrantTsv = (options: ExportOptions): void => {
 // Export Publication TSV
 
 const PUBLICATION_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "url_ja",
   "url_en",
+  "datasetIds",
+  // Editable fields
   "index",
   "title_ja",
   "title_en",
   "doi",
-  "datasetIds",
   "comment",
 ]
 
 const publicationToRows = (r: Research): unknown[][] => {
   return r.relatedPublication.map((p: Publication, i) => [
+    // Identifiers (not editable)
     r.humId,
     r.url.ja ?? "",
     r.url.en ?? "",
+    JSON.stringify(p.datasetIds ?? []),
+    // Editable fields
     i,
     bilingualTextToJa(p.title),
     bilingualTextToEn(p.title),
     p.doi ?? "",
-    JSON.stringify(p.datasetIds ?? []),
     "", // comment
   ])
 }
@@ -377,9 +393,11 @@ export const exportPublicationTsv = (options: ExportOptions): void => {
 // Export Research Project TSV
 
 const PROJECT_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "url_ja",
   "url_en",
+  // Editable fields
   "index",
   "name_ja",
   "name_en",
@@ -390,9 +408,11 @@ const PROJECT_HEADERS = [
 
 const projectToRows = (r: Research): unknown[][] => {
   return r.researchProject.map((rp: ResearchProject, i) => [
+    // Identifiers (not editable)
     r.humId,
     r.url.ja ?? "",
     r.url.en ?? "",
+    // Editable fields
     i,
     bilingualTextValueToJa(rp.name),
     bilingualTextValueToEn(rp.name),
@@ -426,9 +446,12 @@ export const exportProjectTsv = (options: ExportOptions): void => {
 // Export Controlled Access User TSV
 
 const CAU_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "url_ja",
   "url_en",
+  "datasetIds",
+  // Editable fields
   "index",
   "name_ja",
   "name_en",
@@ -437,7 +460,6 @@ const CAU_HEADERS = [
   "organization_country",
   "researchTitle_ja",
   "researchTitle_en",
-  "datasetIds",
   "periodOfDataUse_start",
   "periodOfDataUse_end",
   "comment",
@@ -445,9 +467,12 @@ const CAU_HEADERS = [
 
 const cauToRows = (r: Research): unknown[][] => {
   return r.controlledAccessUser.map((u: Person, i) => [
+    // Identifiers (not editable)
     r.humId,
     r.url.ja ?? "",
     r.url.en ?? "",
+    JSON.stringify(u.datasetIds ?? []),
+    // Editable fields
     i,
     bilingualTextValueToJa(u.name),
     bilingualTextValueToEn(u.name),
@@ -456,7 +481,6 @@ const cauToRows = (r: Research): unknown[][] => {
     u.organization?.address?.country ?? "",
     bilingualTextToJa(u.researchTitle ?? null),
     bilingualTextToEn(u.researchTitle ?? null),
-    JSON.stringify(u.datasetIds ?? []),
     u.periodOfDataUse?.startDate ?? "",
     u.periodOfDataUse?.endDate ?? "",
     "", // comment
@@ -487,25 +511,29 @@ export const exportCauTsv = (options: ExportOptions): void => {
 // Export Research Version TSV
 
 const RESEARCH_VERSION_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "humVersionId",
   "version",
   "versionReleaseDate",
+  "datasetIds",
+  // Editable fields
   "releaseNote_ja",
   "releaseNote_en",
-  "datasetIds",
   "comment",
 ]
 
 const researchVersionToRow = (rv: ResearchVersion): unknown[] => {
   return [
+    // Identifiers (not editable)
     rv.humId,
     rv.humVersionId,
     rv.version,
     rv.versionReleaseDate,
+    JSON.stringify(rv.datasets),
+    // Editable fields
     bilingualTextValueToJa(rv.releaseNote),
     bilingualTextValueToEn(rv.releaseNote),
-    JSON.stringify(rv.datasets),
     "", // comment
   ]
 }
@@ -537,11 +565,13 @@ export const exportResearchVersionTsv = (options: ExportOptions): void => {
 // Export Dataset TSV
 
 const DATASET_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "humVersionId",
   "version",
   "datasetId",
   "versionReleaseDate",
+  // Editable fields
   "typeOfData_ja",
   "typeOfData_en",
   "criteria",
@@ -551,11 +581,13 @@ const DATASET_HEADERS = [
 
 const datasetToRow = (d: SearchableDataset): unknown[] => {
   return [
+    // Identifiers (not editable)
     d.humId,
     d.humVersionId,
     d.version,
     d.datasetId,
     d.versionReleaseDate,
+    // Editable fields
     d.typeOfData.ja ?? "",
     d.typeOfData.en ?? "",
     d.criteria ?? "",
@@ -583,16 +615,21 @@ export const exportDatasetTsv = (options: ExportOptions): void => {
 }
 
 // Export Experiment TSV
+// Note: header_ja/header_en are derived from molecularData table headers in the original HTML.
+// When editing, these should be rewritten as appropriate Experiment-level headers,
+// not just copied from the original molTable headers.
 
 const EXPERIMENT_HEADERS = [
+  // Identifiers (not editable)
   "humId",
   "humVersionId",
   "version",
   "datasetId",
+  // Editable fields (experimentIndex and beyond)
   "experimentIndex",
   "header_ja",
   "header_en",
-  // Searchable fields
+  // Searchable fields (editable)
   "searchable_subjectCount",
   "searchable_subjectCountType",
   "searchable_healthStatus",
@@ -627,14 +664,16 @@ const experimentToRow = (
 ): unknown[] => {
   const s = exp.searchable
   return [
+    // Identifiers (not editable)
     d.humId,
     d.humVersionId,
     d.version,
     d.datasetId,
+    // Editable fields (experimentIndex and beyond)
     expIndex,
     bilingualTextValueToJa(exp.header),
     bilingualTextValueToEn(exp.header),
-    // Searchable
+    // Searchable (editable)
     s?.subjectCount ?? "",
     s?.subjectCountType ?? "",
     s?.healthStatus ?? "",

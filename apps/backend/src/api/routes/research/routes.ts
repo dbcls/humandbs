@@ -21,6 +21,7 @@ import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
+  LinkedDatasetsResponseSchema,
   ResearchListingQuerySchema,
   ResearchResponseSchema,
   ResearchSearchResponseSchema,
@@ -267,30 +268,14 @@ export const listLinkedDatasetsRoute = createRoute({
 - admin: All Research`,
   request: {
     params: HumIdParamsSchema,
-    query: z.object({
-      lang: z.enum(["ja", "en"]).default("ja").describe("Response language for bilingual fields"),
-      page: z.coerce.number().int().min(1).default(1).describe("Page number (1-indexed)"),
-      limit: z.coerce.number().int().min(1).max(100).default(20).describe("Items per page (max: 100)"),
-    }),
+    query: LangQuerySchema,
   },
   responses: {
     200: {
       content: {
-        "application/json": {
-          schema: z.object({
-            data: z.array(EsDatasetDocSchema),
-            pagination: z.object({
-              page: z.number(),
-              limit: z.number(),
-              total: z.number(),
-              totalPages: z.number(),
-              hasNext: z.boolean(),
-              hasPrev: z.boolean(),
-            }),
-          }),
-        },
+        "application/json": { schema: LinkedDatasetsResponseSchema },
       },
-      description: "List of linked datasets with pagination",
+      description: "List of linked datasets",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,

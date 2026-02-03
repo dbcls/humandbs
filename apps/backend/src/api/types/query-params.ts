@@ -5,12 +5,25 @@
  * - Common query schemas (lang, version)
  * - Research listing/search query schemas
  * - Dataset listing/search query schemas
- * - Facet types
  */
 import { z } from "zod"
 
 import { LANG_TYPES, booleanFromString } from "@/api/types/common"
+import {
+  FacetItemSchema as FacetItemSchemaFromFacets,
+  FacetsMapSchema as FacetsMapSchemaFromFacets,
+  type FacetItem as FacetItemFromFacets,
+  type FacetsMap as FacetsMapFromFacets,
+} from "@/api/types/facets"
 import { RESEARCH_STATUS } from "@/api/types/workflow"
+
+// === Facets (re-exported from facets.ts for backwards compatibility) ===
+
+export const FacetItemSchema = FacetItemSchemaFromFacets
+export type FacetItem = FacetItemFromFacets
+
+export const FacetsMapSchema = FacetsMapSchemaFromFacets
+export type FacetsMap = FacetsMapFromFacets
 
 // === Common Query Schemas ===
 
@@ -28,17 +41,6 @@ export const LangQuerySchema = z.object({
   includeRawHtml: z.coerce.boolean().default(false),
 })
 export type LangQuery = z.infer<typeof LangQuerySchema>
-
-// === Facets ===
-
-export const FacetItemSchema = z.object({
-  value: z.string(),
-  count: z.number(),
-})
-export type FacetItem = z.infer<typeof FacetItemSchema>
-
-export const FacetsMapSchema = z.record(z.string(), z.array(FacetItemSchema))
-export type FacetsMap = z.infer<typeof FacetsMapSchema>
 
 // === Research Listing Query (GET /research) ===
 
@@ -123,7 +125,7 @@ export const ResearchSearchQuerySchema = z.object({
     .describe("Filter by disease label (partial match)"),
   diseaseIcd10: z.string().optional()
     .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
-  tissue: z.string().optional()
+  tissues: z.string().optional()
     .describe("Filter by tissue type (comma-separated for OR)"),
   population: z.string().optional()
     .describe("Filter by population (comma-separated for OR)"),
@@ -131,7 +133,7 @@ export const ResearchSearchQuerySchema = z.object({
     .describe("Filter by sequencing platform (comma-separated for OR)"),
   criteria: z.string().optional()
     .describe("Filter by data access criteria: Controlled-access (Type I/II), Unrestricted-access"),
-  fileType: z.string().optional()
+  fileTypes: z.string().optional()
     .describe("Filter by file type (comma-separated for OR)"),
   minSubjects: z.coerce.number().int().min(0).optional()
     .describe("Minimum subject count"),
@@ -259,14 +261,14 @@ export const DatasetSearchQuerySchema = z.object({
     .describe("Number of items per page (max: 100)"),
   lang: z.enum(LANG_TYPES).default("ja")
     .describe("Response language for bilingual fields"),
-  sort: z.enum(["datasetId", "releaseDate", "subjectCount", "relevance"]).default("datasetId")
+  sort: z.enum(["datasetId", "releaseDate", "relevance"]).default("datasetId")
     .describe("Sort field. Use 'relevance' for full-text search ranking"),
   order: z.enum(["asc", "desc"]).default("asc")
     .describe("Sort order (default: desc when sort=relevance)"),
 
   // Full-text search
   q: z.string().optional()
-    .describe("Full-text search query. Searches experiments (header, data, footers)"),
+    .describe("Full-text search query. Searches typeOfData, experiments.header, and experiments.searchable.targets"),
 
   // Dataset filters
   humId: z.string().optional()
@@ -281,13 +283,13 @@ export const DatasetSearchQuerySchema = z.object({
     .describe("Filter by disease label (partial match)"),
   diseaseIcd10: z.string().optional()
     .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
-  tissue: z.string().optional()
+  tissues: z.string().optional()
     .describe("Filter by tissue type (comma-separated for OR)"),
   population: z.string().optional()
     .describe("Filter by population (comma-separated for OR)"),
   platform: z.string().optional()
     .describe("Filter by sequencing platform model (comma-separated for OR)"),
-  fileType: z.string().optional()
+  fileTypes: z.string().optional()
     .describe("Filter by file type (comma-separated for OR)"),
   minSubjects: z.coerce.number().int().min(0).optional()
     .describe("Minimum subject count"),
@@ -414,7 +416,7 @@ export const SearchQuerySchema = z.object({
   // Filter Research by Dataset attributes
   assayType: z.string().optional(),
   disease: z.string().optional(),
-  tissue: z.string().optional(),
+  tissues: z.string().optional(),
   platform: z.string().optional(),
   hasHealthyControl: z.coerce.boolean().optional(),
 
