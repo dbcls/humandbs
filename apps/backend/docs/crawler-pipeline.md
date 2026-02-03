@@ -6,26 +6,26 @@ HumanDBs ポータルサイトから研究データベース情報をクロー�
 
 11 ステップのパイプラインで、HTML ダウンロードから TSV インポートまでを処理する:
 
-```
+```plaintext
                           [抽出フェーズ]
-Step 1-2: HTML ダウンロード → HTML パース
+Step 1-2: HTML ダウンロード -> HTML パース
                                ↓
                           [正規化フェーズ]
 Step 3:   テキスト正規化・日付フォーマット統一
                                ↓
                           [構造化フェーズ]
-Step 4-5: ja/en 統合 → 外部 API メタデータ付与
+Step 4-5: ja/en 統合 -> 外部 API メタデータ付与
                                ↓
                           [自動抽出フェーズ]
-Step 6-9: LLM 抽出 → ICD10 分離 → ファセットマッピング
+Step 6-9: LLM 抽出 -> ICD10 分離 -> ファセットマッピング
                                ↓
                           [手動編集サイクル]
-Step 10-11: TSV エクスポート → 手動編集 → TSV インポート
+Step 10-11: TSV エクスポート -> 手動編集 -> TSV インポート
 ```
 
 ## データフロー図
 
-```
+```plaintext
 crawler-results/
 ├── html/                     ← Step 1 出力
 │   ├── detail-{humVersionId}-{lang}.html
@@ -37,7 +37,7 @@ crawler-results/
 ├── normalized-json/          ← Step 3 出力
 │   └── {humVersionId}-{lang}.json (NormalizedParseResult)
 │
-├── structured-json/          ← Step 4-11 出力（in-place 更新）
+├── structured-json/          ← Step 4-11 出力 (in-place 更新)
 │   ├── research/{humId}.json
 │   ├── research-version/{humVersionId}.json
 │   └── dataset/{datasetId}-{version}.json
@@ -71,7 +71,7 @@ bun run crawler:download-html
 | 入力 | HumanDBs ポータル URL |
 | 出力 | `crawler-results/html/` |
 | 処理内容 | 全 humId または指定 humId の HTML ファイルをダウンロード。v1, v2, v3... を試行して存在確認。 |
-| キャッシュ | 既存ファイルがあればスキップ（`--force` で無効化） |
+| キャッシュ | 既存ファイルがあればスキップ (`--force` で無効化) |
 
 ### Step 2: parse-html
 
@@ -94,7 +94,7 @@ bun run crawler:parse-html
 
 ### Step 3: normalize
 
-パース結果を正規化する（テキスト正規化、日付フォーマット、Dataset ID 処理など）。
+パース結果を正規化する (テキスト正規化、日付フォーマット、Dataset ID 処理など)。
 
 ```bash
 bun run crawler:normalize
@@ -109,7 +109,7 @@ bun run crawler:normalize
 |------|------|
 | 入力 | `crawler-results/detail-json/` |
 | 出力 | `crawler-results/normalized-json/` |
-| 処理内容 | テキスト正規化（空白、全角文字、引用符）、日付フォーマット変換（YYYY/M/D → YYYY-MM-DD）、データセット ID 処理、基準の正規化 |
+| 処理内容 | テキスト正規化 (空白、全角文字、引用符)、日付フォーマット変換 (YYYY/M/D → YYYY-MM-DD)、データセット ID 処理、基準の正規化 |
 
 ### Step 4: structure
 
@@ -143,14 +143,14 @@ bun run crawler:enrich
 --force           # 既存エンリッチを上書き
 --no-cache        # API キャッシュ無効化
 --skip-datasets   # データセットエンリッチをスキップ
---skip-research   # 研究（DOI）エンリッチをスキップ
---delay-ms {n}    # API 呼び出し間隔（デフォルト 100ms）
+--skip-research   # 研究 (DOI) エンリッチをスキップ
+--delay-ms {n}    # API 呼び出し間隔 (デフォルト 100ms)
 ```
 
 | 項目 | 内容 |
 |------|------|
 | 入力 | `crawler-results/structured-json/` |
-| 出力 | 同じディレクトリに上書き（in-place） |
+| 出力 | 同じディレクトリに上書き (in-place) |
 | 処理内容 | Dataset: JGAD/DRA API から原始メタデータ、DDBJ Search API からリリース日付。Research: Crossref API で論文の DOI 検索。 |
 
 ### Step 6: llm-extract
@@ -164,18 +164,21 @@ bun run crawler:llm-extract
 --file {id}       # 特定ファイルのみ処理
 --hum-id {id}     # 特定の humId のみ処理
 --dataset-id {id} # 特定の datasetId のみ処理
---model {name}    # Ollama モデル名
---concurrency {n} # LLM 並列呼び出し数（デフォルト 16）
+--host {host}     # Ollama ホスト (デフォルト: localhost)
+--port {port}     # Ollama ポート (デフォルト: 11434)
+--model {name}    # Ollama モデル名 (例: llama3.3:70b)
+--timeout {ms}    # リクエストタイムアウト (デフォルト: 300000)
+--concurrency {n} # LLM 並列呼び出し数 (デフォルト 16)
 --dry-run         # LLM 呼び出しなし
 --force           # 既存フィールドを強制上書き
---latest-only     # 各データセット最新バージョンのみ処理（デフォルト）
+--latest-only     # 各データセット最新バージョンのみ処理 (デフォルト)
 ```
 
 | 項目 | 内容 |
 |------|------|
 | 入力 | `crawler-results/structured-json/dataset/` |
-| 出力 | 同じディレクトリに上書き（in-place） |
-| 処理内容 | 実験メタデータから検索可能フィールドを抽出。Idempotent（既に抽出済みの場合スキップ）。 |
+| 出力 | 同じディレクトリに上書き (in-place) |
+| 処理内容 | 実験メタデータから検索可能フィールドを抽出。Idempotent (既に抽出済みの場合スキップ)。 |
 
 詳細は [LLM フィールド抽出](./llm-extract-design.md) を参照。
 
@@ -188,15 +191,18 @@ bun run crawler:icd10-normalize
 
 # オプション
 --hum-id {id}   # 特定の humId のみ処理
---latest-only   # 最新バージョンのみ処理（デフォルト）
+--latest-only   # 最新バージョンのみ処理 (デフォルト)
 --dry-run       # 変更を適用せず試行
+--check         # 正規化データを検証 (無効な場合はエラー終了)
 ```
 
 | 項目 | 内容 |
 |------|------|
 | 入力 | `crawler-results/structured-json/dataset/` |
-| 出力 | 同じディレクトリに上書き（in-place） |
+| 出力 | 同じディレクトリに上書き (in-place) |
 | 処理内容 | 疾患ラベルから ICD-10 コードを抽出。手動分割定義を適用。 |
+
+詳細は [ICD10 疾患正規化](./icd10-normalization.md) を参照。
 
 ### Step 8: facet-values
 
@@ -206,7 +212,7 @@ bun run crawler:icd10-normalize
 bun run crawler:facet-values
 
 # オプション
---latest-only  # 最新バージョンのみ処理（デフォルト）
+--latest-only  # 最新バージョンのみ処理 (デフォルト)
 --output {dir} # 出力ディレクトリ指定
 ```
 
@@ -225,7 +231,7 @@ bun run crawler:facet-normalize
 
 # オプション
 --hum-id {id}      # 特定の humId のみ処理
---latest-only      # 最新バージョンのみ処理（デフォルト）
+--latest-only      # 最新バージョンのみ処理 (デフォルト)
 --dry-run          # 変更を適用せず試行
 --mapping-dir {d}  # マッピングファイルディレクトリ指定
 ```
@@ -233,7 +239,7 @@ bun run crawler:facet-normalize
 | 項目 | 内容 |
 |------|------|
 | 入力 | TSV マッピング + `crawler-results/structured-json/dataset/` |
-| 出力 | 同じディレクトリに上書き（in-place） |
+| 出力 | 同じディレクトリに上書き (in-place) |
 | 処理内容 | `__PENDING__` 値は未処理で使用。マッピングされない値の警告表示。 |
 
 ### Step 10: export-tsv
@@ -267,7 +273,7 @@ bun run crawler:import-tsv
 | 項目 | 内容 |
 |------|------|
 | 入力 | `crawler-results/tsv/` |
-| 出力 | `crawler-results/structured-json/`（上書き） |
+| 出力 | `crawler-results/structured-json/` (上書き) |
 | 処理内容 | TSV の手動編集内容を structured-json に反映。編集可能フィールドのみ更新。rawHtml/policies などは保持。 |
 
 ## In-place 更新のステップ
@@ -341,5 +347,6 @@ bun run crawler:export-tsv
 **症状**: TSV を編集したのに JSON に反映されない。
 
 **対処**:
-1. 編集不可フィールド（humId, datasetId など）を編集していないか確認
+
+1. 編集不可フィールド (humId, datasetId など)を編集していないか確認
 2. `import-tsv` 実行後に `es:load-docs` を実行

@@ -6,7 +6,7 @@ HumanDBs の REST API アーキテクチャ設計ドキュメント。認証・�
 
 ## リソース関係
 
-```
+```plaintext
 Research 1:N ResearchVersion
 Research 1:N Dataset
 ResearchVersion N:M Dataset (datasets で参照)
@@ -41,7 +41,7 @@ Dataset 自体は status フィールドを持たない。親 Research の statu
 
 ### 認証フロー
 
-```
+```plaintext
 Frontend -> Keycloak (OIDC) -> JWT 発行
          |
          v
@@ -126,7 +126,7 @@ Research のライフサイクル状態遷移を管理する。
 
 ### 状態遷移図
 
-```
+```plaintext
 POST /research/new (admin)
          |
          v
@@ -311,7 +311,7 @@ Dataset が「初回更新」かどうかは、ResearchVersion.datasets の参�
 
 ## 型定義の構成
 
-```
+```plaintext
 apps/backend/
 +-- src/
 |   +-- crawler/types/

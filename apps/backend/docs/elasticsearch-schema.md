@@ -15,7 +15,7 @@ HumanDBs Backend の Elasticsearch インデックス設計。
 **Zod 単一ソース化**: TypeScript 型は `@/crawler/types` の Zod スキーマから推論される。
 ES マッピングは `f` ヘルパーで明示的に定義する。
 
-```
+```plaintext
 crawler/types/*.ts (Zod スキーマ = 型の源泉)
          ↓ 型推論
 TypeScript 型 (Dataset, Research, etc.)
@@ -29,7 +29,7 @@ ES mapping (JSON)
 
 | ファイル | 内容 |
 |---------|------|
-| `src/crawler/types/structured.ts` | Zod スキーマ（型の単一ソース） |
+| `src/crawler/types/structured.ts` | Zod スキーマ (型の単一ソース) |
 | `src/es/types.ts` | crawler スキーマの re-export + ES 固有拡張 |
 | `src/es/generate-mapping.ts` | マッピング生成ユーティリティ |
 | `src/es/research-schema.ts` | research インデックスのスキーマ |
@@ -51,7 +51,7 @@ ES mapping (JSON)
 | `f.float()` | `float` | 浮動小数点 |
 | `f.boolean()` | `boolean` | 真偽値 |
 | `f.flattened()` | `flattened` | 動的キーのオブジェクト |
-| `f.noindex()` | `text` (index: false) | 格納のみ（検索不可） |
+| `f.noindex()` | `text` (index: false) | 格納のみ (検索不可) |
 | `f.nested()` | `nested` | 独立クエリ可能な配列 |
 | `f.object()` | `object` | ネストされたオブジェクト |
 
@@ -77,7 +77,7 @@ ES mapping (JSON)
   // URL
   url: { ja: keyword, en: keyword },
 
-  // タイトル（全文検索 + 完全一致）
+  // タイトル (全文検索 + 完全一致)
   title: { ja: text+kw, en: text+kw },
 
   // バージョン情報
@@ -192,16 +192,16 @@ ES mapping (JSON)
   experiments: [{
     experimentKey: keyword,
 
-    // Header（実験タイトル）
+    // Header (実験タイトル)
     header: { ja: { text+kw, rawHtml }, en: { text+kw, rawHtml } },
 
-    // Data（動的キーバリュー）
+    // Data (動的キーバリュー)
     data: flattened,
 
     // Footers
     footers: { ja: { text, rawHtml }, en: { text, rawHtml } },
 
-    // Searchable fields（LLM 抽出 + ルールベース）
+    // Searchable fields (LLM 抽出 + ルールベース)
     searchable: {
       // 被験者情報
       subjectCount: integer,
@@ -229,7 +229,9 @@ ES mapping (JSON)
       libraryKits: keyword[],
 
       // プラットフォーム
-      platforms: keyword[],              // "{vendor} {model}" 形式
+      // Crawler では PlatformInfo[] だが、ES では "{vendor} {model}" 形式の keyword[] に変換
+      // ファセット検索は composite aggregation で vendor/model を抽出
+      platforms: keyword[],
       readType: keyword,                 // "single-end" | "paired-end"
       readLength: integer,
 
@@ -269,7 +271,7 @@ ES mapping (JSON)
 
 ## クエリ例
 
-### 研究タイトル検索（全文検索）
+### 研究タイトル検索 (全文検索)
 
 ```json
 {
@@ -282,7 +284,7 @@ ES mapping (JSON)
 }
 ```
 
-### 疾患名ファセット（アグリゲーション）
+### 疾患名ファセット (アグリゲーション)
 
 ```json
 {
@@ -370,7 +372,7 @@ bun run es:load-docs
 
 ## Nested vs Object
 
-- **nested**: 配列要素間で独立したクエリが必要な場合（例: diseases の label と icd10 の関係を保持）
+- **nested**: 配列要素間で独立したクエリが必要な場合 (例: diseases の label と icd10 の関係を保持)
 - **object**: 単純なネストで十分な場合
 
 `nested` は独立したドキュメントとして格納されるため、クエリ時にオーバーヘッドがある。必要な場合のみ使用する。

@@ -1,6 +1,6 @@
 # LLM フィールド抽出
 
-クローラーパイプラインの Step 6 で、Ollama LLM を使って実験テーブルから検索可能フィールド（`searchable`）を抽出する。
+クローラーパイプラインの Step 6 で、Ollama LLM を使って実験テーブルから検索可能フィールド (`searchable`)を抽出する。
 
 ## 概要
 
@@ -10,7 +10,7 @@ HumanDBs ポータルサイトの実験データから、ファセット検索�
 
 ### パイプライン内の位置
 
-```
+```plaintext
 Step 4: structure
     ↓
 Step 5: enrich (外部 API メタデータ付与)
@@ -28,7 +28,7 @@ Step 9: facet-normalize (assayType, tissues 等を正規化)
 |------|------|
 | 入力 | `crawler-results/structured-json/dataset/*.json` |
 | 出力 | 同ファイルの `experiments[].searchable` フィールド |
-| モデル | Ollama (デフォルト: 環境変数 `OLLAMA_MODEL`) |
+| モデル | Ollama (CLI オプション `--model` で指定、デフォルト: `llama3.3:70b`) |
 
 ## 抽出フィールド一覧
 
@@ -40,7 +40,7 @@ Step 9: facet-normalize (assayType, tissues 等を正規化)
 | subjectCountType | enum \| null | "individual" / "sample" / "mixed" | LLM |
 | healthStatus | enum \| null | "healthy" / "affected" / "mixed" | LLM |
 | diseases | DiseaseInfo[] | 疾患情報。label(英語) + icd10(明記時のみ) | LLM + icd10-normalize |
-| tissues | string[] | 組織・検体種別（英語） | LLM + facet-normalize |
+| tissues | string[] | 組織・検体種別 (英語) | LLM + facet-normalize |
 | isTumor | boolean \| null | 腫瘍組織かどうか | LLM |
 | cellLine | string[] | 細胞株名 | LLM |
 | population | string[] | 集団・民族 | LLM |
@@ -48,26 +48,26 @@ Step 9: facet-normalize (assayType, tissues 等を正規化)
 | ageGroup | enum \| null | "infant" / "child" / "adult" / "elderly" / "mixed" | LLM |
 | assayType | string[] | 実験手法 | LLM + facet-normalize |
 | libraryKits | string[] | ライブラリキット名 | LLM |
-| platforms | PlatformInfo[] | プラットフォーム（vendor + model） | LLM |
+| platforms | PlatformInfo[] | プラットフォーム (vendor + model) | LLM |
 | readType | enum \| null | "single-end" / "paired-end" | LLM |
-| readLength | number \| null | リード長（bp） | LLM |
-| sequencingDepth | number \| null | シーケンシング深度（例: 30x → 30） | LLM |
-| targetCoverage | number \| null | ターゲットカバレッジ（%） | LLM |
+| readLength | number \| null | リード長 (bp) | LLM |
+| sequencingDepth | number \| null | シーケンシング深度 (例: 30x → 30) | LLM |
+| targetCoverage | number \| null | ターゲットカバレッジ (%) | LLM |
 | referenceGenome | string[] | リファレンスゲノム | LLM |
-| variantCounts | VariantCounts \| null | バリアント数（snv/indel/cnv/sv/total） | LLM |
+| variantCounts | VariantCounts \| null | バリアント数 (snv/indel/cnv/sv/total) | LLM |
 | hasPhenotypeData | boolean \| null | 表現型データの有無 | LLM |
 | targets | string \| null | ターゲット領域 | LLM |
-| fileTypes | string[] | ファイル形式（FASTQ, BAM など） | LLM |
-| processedDataTypes | string[] | 処理済みデータ形式（vcf, cram など） | LLM |
-| dataVolumeGb | number \| null | データ容量（GB） | LLM |
-| policies | NormalizedPolicy[] | ポリシー情報 | **ルールベース**（LLM 不使用） |
+| fileTypes | string[] | ファイル形式 (FASTQ, BAM など) | LLM |
+| processedDataTypes | string[] | 処理済みデータ形式 (vcf, cram など) | LLM |
+| dataVolumeGb | number \| null | データ容量 (GB) | LLM |
+| policies | NormalizedPolicy[] | ポリシー情報 | **ルールベース** (LLM 不使用) |
 
 ### 補助型
 
 ```typescript
 interface DiseaseInfo {
-  label: string      // 疾患名（英語）
-  icd10: string | null  // ICD-10 コード（明記時のみ）
+  label: string      // 疾患名 (英語)
+  icd10: string | null  // ICD-10 コード (明記時のみ)
 }
 
 interface PlatformInfo {
@@ -86,7 +86,7 @@ interface VariantCounts {
 
 ## 抽出フロー
 
-```
+```plaintext
 experiments[].data (実験テーブル)
   + experiments[].header
   + externalMetadata (JGA/DRA API)
@@ -168,14 +168,14 @@ experiments[].searchable に格納
 
 ## 正規化の方針
 
-### LLM がやること（翻訳）
+### LLM がやること (翻訳)
 
 - 日本語のフィールド値を英語に翻訳
 - 例: "末梢血" → "peripheral blood", "腫瘍組織" → "tumor tissue"
 
-### LLM がやらないこと（正規化）
+### LLM がやらないこと (正規化)
 
-- 同義語の統一は後段ステップ（facet-normalize）で行う
+- 同義語の統一は後段ステップ (facet-normalize)で行う
 - 例: "RNA-Seq" / "RNAseq" / "mRNA-Seq" の統一は TSV マッピングで
 
 ### 理由
@@ -222,13 +222,13 @@ newField: f.keyword(),
 - newField: Description of what to extract. null if not stated.
 ```
 
-### 4. 抽出ロジックを追加（必要に応じて）
+### 4. 抽出ロジックを追加 (必要に応じて)
 
 `src/crawler/llm/extract.ts`:
 
 デフォルトでは LLM 出力がそのまま使用される。特別な変換が必要な場合のみ追加。
 
-### 5. 正規化ルールを追加（必要に応じて）
+### 5. 正規化ルールを追加 (必要に応じて)
 
 ファセット検索用に値を統一する場合:
 
@@ -239,21 +239,40 @@ newField: f.keyword(),
 ## 実行コマンド
 
 ```bash
-# 全データセット処理
-bun run crawler:llm-extract
+# 全データセット処理 (Ollama 接続先を指定)
+bun run crawler:llm-extract --host localhost --port 11434
+
+# モデルを指定
+bun run crawler:llm-extract --host localhost --port 11434 --model llama3.3:70b
 
 # 特定の humId のみ
-bun run crawler:llm-extract --hum-id hum0001
+bun run crawler:llm-extract --host localhost --port 11434 --hum-id hum0001
 
 # 特定のファイルのみ
-bun run crawler:llm-extract --file JGAD000001-v1.json
+bun run crawler:llm-extract --host localhost --port 11434 --file JGAD000001-v1.json
 
-# 強制再抽出（既存フィールド上書き）
-bun run crawler:llm-extract --force
+# 強制再抽出 (既存フィールド上書き)
+bun run crawler:llm-extract --host localhost --port 11434 --force
 
-# ドライラン（LLM 呼び出しなし）
+# ドライラン (LLM 呼び出しなし)
 bun run crawler:llm-extract --dry-run
 ```
+
+### CLI オプション
+
+| オプション | デフォルト | 説明 |
+|-----------|----------|------|
+| `--host, -h` | `localhost` | Ollama ホスト |
+| `--port, -p` | `11434` | Ollama ポート |
+| `--model, -m` | `llama3.3:70b` | モデル名 |
+| `--timeout, -t` | `300000` | リクエストタイムアウト (ms) |
+| `--concurrency, -c` | `16` | 並列呼び出し数 |
+| `--file, -f` | - | 特定ファイルのみ処理 |
+| `--hum-id, -i` | - | 特定の humId のみ処理 |
+| `--dataset-id, -d` | - | 特定の datasetId のみ処理 |
+| `--dry-run` | `false` | LLM 呼び出しなし |
+| `--force` | `false` | 既存フィールドを上書き |
+| `--latest-only` | `true` | 最新バージョンのみ処理 |
 
 ## トラブルシューティング
 

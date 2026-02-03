@@ -236,19 +236,29 @@ export const generateFieldMapping = (
  * Parse TSV content into mapping entries
  * Format: value<TAB>normalizedTo (no header)
  */
+/** Escape newlines and backslashes for TSV storage */
+const escapeForTsv = (s: string): string =>
+  s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/\r/g, "\\r")
+
+/** Unescape newlines and backslashes from TSV storage */
+const unescapeFromTsv = (s: string): string =>
+  s.replace(/\\r/g, "\r").replace(/\\n/g, "\n").replace(/\\\\/g, "\\")
+
 export const parseTsv = (content: string): TsvMappingEntry[] => {
   const entries: TsvMappingEntry[] = []
   const lines = content.split("\n")
 
   for (const line of lines) {
-    const trimmed = line.trim()
-    if (trimmed === "") continue
+    // Remove only trailing CR/LF, preserve leading whitespace in values
+    const trimmedEnd = line.replace(/\r?\n?$/, "")
+    if (trimmedEnd === "" || trimmedEnd.trim() === "") continue
 
-    const parts = trimmed.split("\t")
+    const parts = trimmedEnd.split("\t")
     if (parts.length < 1) continue
 
-    const value = parts[0]
-    const normalizedTo = parts.length >= 2 ? parts[1] : ""
+    // Unescape values that may contain escaped newlines
+    const value = unescapeFromTsv(parts[0])
+    const normalizedTo = parts.length >= 2 ? unescapeFromTsv(parts[1]) : ""
 
     entries.push({ value, normalizedTo })
   }
@@ -259,9 +269,12 @@ export const parseTsv = (content: string): TsvMappingEntry[] => {
 /**
  * Generate TSV content from mapping entries
  * Format: value<TAB>normalizedTo (no header)
+ * Newlines in values are escaped as \n
  */
 export const generateTsv = (entries: TsvMappingEntry[]): string => {
-  const lines = entries.map(entry => `${entry.value}\t${entry.normalizedTo}`)
+  const lines = entries.map(entry =>
+    `${escapeForTsv(entry.value)}\t${escapeForTsv(entry.normalizedTo)}`,
+  )
   return lines.join("\n") + "\n"
 }
 

@@ -59,13 +59,13 @@ docker stop humandbs-joomla-db && docker rm humandbs-joomla-db
 **出力フォーマット:**
 
 ```typescript
-interface PagesOutput {
+interface MiscPagesOutput {
   generatedAt: string           // 生成日時
   totalCount: number            // 総ページ数
-  pages: PageContent[]          // ページ配列
+  pages: MiscPageContent[]      // ページ配列
 }
 
-interface PageContent {
+interface MiscPageContent {
   path: string                  // パス (home, faq, violation など)
   lang: "ja" | "en"             // 言語
   originalUrl: string           // 元の URL
@@ -86,7 +86,7 @@ interface PageContent {
 
 | ファイル | 環境 |
 |----------|------|
-| `dumps/mysqldump_humandbs.dbcls.jp.sql` | 本番 (デフォルト） )
+| `dumps/mysqldump_humandbs.dbcls.jp.sql` | 本番 (デフォルト)
 | `dumps/mysqldump_gr-sharingdbs.dbcls.jp.sql` | staging |
 
 staging を使う場合は環境変数を設定:

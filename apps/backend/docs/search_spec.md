@@ -13,7 +13,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 
 ## 2. 検索機能
 
-### 2.1 ファセット検索（絞り込み）
+### 2.1 ファセット検索 (絞り込み)
 
 カテゴリ値による絞り込み検索ができる。
 
@@ -22,28 +22,27 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | フィールド | 意味 |
 |-----------|------|
 | criteria | アクセス種別 |
-| subjectCountType | 被験者数の種別（individual/sample/mixed） |
-| healthStatus | 健康状態（healthy/affected/mixed） |
+| subjectCountType | 被験者数の種別 (individual/sample/mixed) |
+| healthStatus | 健康状態 (healthy/affected/mixed) |
 | diseases.label | 疾患名 |
 | diseases.icd10 | ICD-10 コード |
 | tissues | 組織・サンプル種別 |
 | isTumor | 腫瘍組織か |
 | cellLine | 細胞株名 |
 | population | 母集団・民族 |
-| sex | 性別（male/female/mixed） |
-| ageGroup | 年齢層（infant/child/adult/elderly/mixed） |
+| sex | 性別 (male/female/mixed) |
+| ageGroup | 年齢層 (infant/child/adult/elderly/mixed) |
 | assayType | 実験手法 |
 | libraryKits | ライブラリキット |
-| platformVendor | 機器メーカー |
-| platformModel | 機器モデル |
-| readType | リードタイプ（single-end/paired-end） |
+| platform | プラットフォーム ("{vendor} {model}" 形式) |
+| readType | リードタイプ (single-end/paired-end) |
 | referenceGenome | 参照ゲノム |
 | fileTypes | ファイル形式 |
 | processedDataTypes | 加工済みデータ形式 |
 | hasPhenotypeData | 表現型データの有無 |
 | policies.id | ポリシー ID |
 
-### 2.2 Range フィルター（数値範囲）
+### 2.2 Range フィルター (数値範囲)
 
 数値フィールドに対する範囲指定ができる。
 
@@ -62,8 +61,8 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | subjectCount | 被験者数 |
 | readLength | リード長 |
 | sequencingDepth | シーケンス深度 |
-| targetCoverage | ターゲットカバー率（%） |
-| dataVolumeGb | データ容量（GB） |
+| targetCoverage | ターゲットカバー率 (%) |
+| dataVolumeGb | データ容量 (GB) |
 | variantCounts.snv | SNV 数 |
 | variantCounts.indel | InDel 数 |
 | variantCounts.cnv | CNV 数 |
@@ -92,7 +91,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 
 ### 2.4 複合検索例
 
-```
+```plaintext
 例1: 日本人のがんの WGS で GRCh38 マッピング済み
 -> diseases: *cancer* AND population: Japanese AND assayType: WGS AND referenceGenome: *GRCh38*
 
@@ -111,7 +110,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 
 ## 3. 統計情報表示
 
-### 3.1 サマリー統計（総数など）
+### 3.1 サマリー統計 (総数など)
 
 | 統計 | 内容 |
 |------|------|
@@ -120,7 +119,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | 総被験者数 | subjectCount の合計 |
 | 総データ容量 | dataVolumeGb の合計 |
 
-### 3.2 分布グラフ（カテゴリ別）
+### 3.2 分布グラフ (カテゴリ別)
 
 ファセット検索可能なフィールドはグラフ化できる。
 
@@ -138,8 +137,7 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | ageGroup | 年齢層 |
 | assayType | 実験手法 |
 | libraryKits | ライブラリキット |
-| platformVendor | 機器メーカー |
-| platformModel | 機器モデル |
+| platform | プラットフォーム ("{vendor} {model}" 形式) |
 | readType | リードタイプ |
 | referenceGenome | 参照ゲノム |
 | fileTypes | ファイル形式 |
@@ -147,13 +145,13 @@ HumanDBs は、生命科学分野の研究データベース情報を検索・�
 | hasPhenotypeData | 表現型データの有無 |
 | policies.id | ポリシー ID |
 
-### 3.3 数値分布（ヒストグラム）
+### 3.3 数値分布 (ヒストグラム)
 
 Range フィルター可能な数値フィールドはヒストグラム表示できる。
 
 | フィールド | 意味 |
 |-----------|------|
-| releaseDate | リリース日（年別推移） |
+| releaseDate | リリース日 (年別推移) |
 | subjectCount | 被験者数 |
 | readLength | リード長 |
 | sequencingDepth | シーケンス深度 |
@@ -173,8 +171,8 @@ Range フィルター可能な数値フィールドはヒストグラム表示�
 
 | フィールド | レベル | 例 | 用途 |
 |-----------|--------|-----|------|
-| typeOfData | Dataset | `"NGS(RNA-seq)"`, `"40疾患のGWAS"` | フリーテキスト検索（自由形式） |
-| assayType | Experiment | `"RNA-seq"`, `"WGS"`, `"GWAS"` | ファセット検索（構造化された値） |
+| typeOfData | Dataset | `"NGS(RNA-seq)"`, `"40疾患のGWAS"` | フリーテキスト検索 (自由形式) |
+| assayType | Experiment | `"RNA-seq"`, `"WGS"`, `"GWAS"` | ファセット検索 (構造化された値) |
 
 両方維持する。用途が異なるため。
 
@@ -182,10 +180,10 @@ Range フィルター可能な数値フィールドはヒストグラム表示�
 
 | フィールド | 単位 | 備考 |
 |-----------|------|------|
-| dataVolumeGb | GB (float) | 人間に読みやすく、検索も直感的（0.5 = 500MB） |
-| sequencingDepth | 数値のみ | 単位 "x" は省略（30, 168 など） |
-| targetCoverage | パーセント | 単位 "%" は省略（90, 95 など） |
-| readLength | integer | 単位 "bp" は省略（150, 250 など） |
+| dataVolumeGb | GB (float) | 人間に読みやすく、検索も直感的 (0.5 = 500MB) |
+| sequencingDepth | 数値のみ | 単位 "x" は省略 (30, 168 など) |
+| targetCoverage | パーセント | 単位 "%" は省略 (90, 95 など) |
+| readLength | integer | 単位 "bp" は省略 (150, 250 など) |
 | variantCounts | integer | そのまま |
 
 ### 4.2 Research フィールド
@@ -216,17 +214,16 @@ Range フィルター可能な数値フィールドはヒストグラム表示�
 | subjectCount | integer | 被験者数 | range |
 | subjectCountType | keyword | individual/sample/mixed | term |
 | healthStatus | keyword | healthy/affected/mixed | term |
-| diseases | nested[] | 疾患（label + ICD-10） | nested term |
+| diseases | nested[] | 疾患 (label + ICD-10) | nested term |
 | tissues | keyword[] | 組織・サンプル種別 | terms |
 | isTumor | boolean | 腫瘍組織か | term |
 | cellLine | keyword | 細胞株名 | term |
 | population | keyword | 母集団・民族 | term |
-| sex | keyword | 性別（male/female/mixed） | term |
-| ageGroup | keyword | 年齢層（infant/child/adult/elderly/mixed） | term |
+| sex | keyword | 性別 (male/female/mixed) | term |
+| ageGroup | keyword | 年齢層 (infant/child/adult/elderly/mixed) | term |
 | assayType | keyword | 実験手法 | term |
 | libraryKits | keyword[] | ライブラリキット | terms |
-| platformVendor | keyword | 機器メーカー | term |
-| platformModel | keyword | 機器モデル | term |
+| platform | keyword[] | プラットフォーム ("{vendor} {model}" 形式) | terms |
 | readType | keyword | single-end/paired-end | term |
 | readLength | integer | リード長 | range |
 | sequencingDepth | float | シーケンス深度 | range |

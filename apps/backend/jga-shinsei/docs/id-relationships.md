@@ -22,7 +22,7 @@
 
 JGA へのデータ登録時に割り当てられる内部 ID。
 
-```
+```plaintext
 [登録]          [内部処理]        [公開]
    |                |                |
    v                v                v
@@ -55,7 +55,7 @@ JSUB000XXX  --->  審査中  --->  JGA000XXX
 
 ### データの流れ
 
-```
+```plaintext
 [データ提供者]                              [データ利用者]
      |                                           |
      v                                           v
@@ -74,7 +74,7 @@ JSUB000XXX  --->  審査中  --->  JGA000XXX
 
 #### 1. JGA ID の階層構造 (relation table)
 
-```
+```plaintext
 JGA (Submission)
  |
  +-- JGAS (Study)
@@ -92,7 +92,7 @@ JGA (Submission)
 
 #### 2. JSUB <-> JGA IDs (alias)
 
-```
+```plaintext
 JSUB  <------>  JGA, JGAS, JGAD, ...
         alias
 ```
@@ -101,7 +101,7 @@ JSUB  <------>  JGA, JGAS, JGAD, ...
 
 #### 3. JSUB/JGA <-> hum_id (metadata XML)
 
-```
+```plaintext
 JSUB/JGA  ------>  metadata.xml  ------>  hum_id
            1:1      nbdc_number
 ```
@@ -110,7 +110,7 @@ JSUB/JGA  ------>  metadata.xml  ------>  hum_id
 
 #### 4. J-DS <-> submission (submission_permission)
 
-```
+```plaintext
 J-DS  <------>  submission
   submission_permission
 ```
@@ -120,7 +120,7 @@ J-DS  <------>  submission
 
 #### 5. J-DU -> JGAD (use_permission)
 
-```
+```plaintext
 J-DU  ------>  JGAD
   use_permission.dataset_id
 ```
@@ -140,7 +140,7 @@ J-DU  ------>  JGAD
 
 #### J-DS から JGA IDs への経路
 
-```
+```plaintext
 J-DS --[appl_id]--> submission_permission --[submission_id]--> submission
                                                                     |
                                                               [submission_id]

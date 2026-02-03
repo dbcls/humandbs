@@ -83,7 +83,7 @@ TSV ファイルは `crawler-results/tsv/` にある。
 - 順序の変更: index 番号を変更して並び順を調整
 
 **例: Data Provider の分離**
-```
+```plaintext
 # 元の TSV（index=0 に 2 人が詰め込まれている）
 humId    index  name_ja
 hum0001  0      山田太郎、鈴木花子
@@ -100,7 +100,7 @@ hum0001  1      鈴木花子
 
 HumanDBs ポータルサイトの各研究ページ（例: hum0001）は以下の構造を持つ:
 
-```
+```plaintext
 研究ページ (hum0001)
 ├── Summary（概要）
 │   ├── 目的・方法・対象
@@ -131,7 +131,7 @@ HumanDBs ポータルサイトの各研究ページ（例: hum0001）は以下�
 
 Molecular Data テーブル群から datasetId を抽出し、datasetId ごとにグループ化して Dataset を生成する。
 
-```
+```plaintext
 Molecular Data テーブル群
     ↓ (datasetId を抽出)
 datasetId ごとにグループ化
@@ -141,7 +141,7 @@ datasetId ごとにグループ化
 
 **具体例:**
 
-```
+```plaintext
 Molecular Data:
   - テーブル A: JGAS000001 (→ JGAD000001, JGAD000002)
   - テーブル B: JGAS000001 (→ JGAD000001, JGAD000002)
@@ -157,7 +157,7 @@ Molecular Data:
 
 各 **Experiment** は、1つの Molecular Data テーブルに対応する:
 
-```
+```plaintext
 Molecular Data テーブル
 ├── header: テーブルのタイトル（例: JGAS000001）
 ├── data: キーバリューのペア

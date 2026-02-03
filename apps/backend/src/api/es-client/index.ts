@@ -37,9 +37,6 @@ export { esTotal, uniq, mgetMap } from "@/api/es-client/utils"
 // Query helpers
 export {
   nestedTermsQuery,
-  nestedTermQuery,
-  nestedWildcardQuery,
-  nestedExistsQuery,
   nestedRangeQuery,
   doubleNestedWildcardQuery,
   doubleNestedTermsQuery,

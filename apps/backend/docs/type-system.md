@@ -2,7 +2,7 @@
 
 HumanDBs Backend のデータは以下の流れで変換される:
 
-```
+```plaintext
 Crawler (TypeScript 型) → ES (JSON ドキュメント) → API (Zod スキーマ) → Frontend (shared-types)
 ```
 
@@ -26,7 +26,7 @@ Crawler が生成した JSON ファイルが ES にどう入るか。
 | `Dataset` | `EsDatasetSchema` | |
 | `Experiment` | `EsExperimentSchema` | experimentKey 追加 |
 | `SearchableExperimentFields` | `SearchableExperimentFieldsSchema` | Zod で検証 |
-| `DiseaseInfo` | `DiseaseInfoSchema` | icd10 は必須（icd10-normalize で保証） |
+| `DiseaseInfo` | `DiseaseInfoSchema` | icd10 は必須 (icd10-normalize で保証) |
 
 ### 2. Elasticsearch → API
 
@@ -62,10 +62,10 @@ API 型が Frontend にどう共有されるか。
 
 | 型 | 責務 |
 |---|-----|
-| `Research` | 研究メタデータ（バイリンガル） |
+| `Research` | 研究メタデータ (バイリンガル) |
 | `ResearchVersion` | バージョン履歴 |
 | `Dataset` | データセット詳細 |
-| `Experiment` | 実験データ（header, data, footers, searchable） |
+| `Experiment` | 実験データ (header, data, footers, searchable) |
 | `SearchableExperimentFields` | LLM 抽出 + ルールベースのフィールド |
 | `BilingualText` | `{ ja: string \| null, en: string \| null }` |
 | `BilingualTextValue` | `{ ja: TextValue, en: TextValue }` (text + rawHtml) |
@@ -101,9 +101,19 @@ interface SearchableExperimentFields {
   readType: "single-end" | "paired-end" | null
   readLength: number | null
 
+  // シーケンシング品質
+  sequencingDepth: number | null
+  targetCoverage: number | null
+  referenceGenome: string[]
+
+  // バリアント
+  variantCounts: VariantCounts | null  // { snv, indel, cnv, sv, total }
+  hasPhenotypeData: boolean | null
+
   // その他
   targets: string | null
   fileTypes: string[]
+  processedDataTypes: string[]
   dataVolumeGb: number | null
   policies: NormalizedPolicy[]
 }
@@ -119,25 +129,27 @@ Zod スキーマで定義。Crawler 型と似た構造だが ES 用の調整あ�
 | `EsDatasetSchema` | Dataset ES ドキュメントの Zod スキーマ |
 | `EsExperimentSchema` | Experiment の Zod スキーマ |
 | `SearchableExperimentFieldsSchema` | searchable フィールドの Zod スキーマ |
-| `DiseaseInfoSchema` | 疾患情報（icd10 は必須） |
+| `DiseaseInfoSchema` | 疾患情報 (icd10 は必須) |
 
 **Crawler 型との違い**:
 
-- `DiseaseInfo.icd10`: `string | null` → `string`（icd10-normalize で保証）
-- `Research`: `status`, `uids` フィールド追加（API 層で使用）
+- `DiseaseInfo.icd10`: `string | null` → `string` (icd10-normalize で保証)
+- `Research`: `status`, `uids` フィールド追加 (API 層で使用)
+- `platforms`: Crawler では `PlatformInfo[]` だが、ES では `keyword[]` として `"{vendor} {model}"` 形式で格納
+- `experimentKey`: ES で experiments に追加される一意識別子
 
 ### api/types.ts (API レスポンス)
 
 | 型 | 責務 |
 |---|-----|
-| `ResearchSearchQuery` | 検索クエリパラメータ（GET） |
-| `DatasetSearchQuery` | 検索クエリパラメータ（GET） |
-| `ResearchFiltersSchema` | 構造化フィルタ（POST） |
-| `DatasetFiltersSchema` | 構造化フィルタ（POST） |
+| `ResearchSearchQuery` | 検索クエリパラメータ (GET) |
+| `DatasetSearchQuery` | 検索クエリパラメータ (GET) |
+| `ResearchFiltersSchema` | 構造化フィルタ (POST) |
+| `DatasetFiltersSchema` | 構造化フィルタ (POST) |
 | `ResearchSearchResponse` | 検索結果レスポンス |
 | `DatasetSearchResponse` | 検索結果レスポンス |
-| `EsResearchDoc` | Research ドキュメント（API 用） |
-| `EsDatasetDoc` | Dataset ドキュメント（API 用） |
+| `EsResearchDoc` | Research ドキュメント (API 用) |
+| `EsDatasetDoc` | Dataset ドキュメント (API 用) |
 
 ## 型の追加・変更手順
 
@@ -166,7 +178,7 @@ newField: z.string().nullable(),
 newField: f.keyword(),
 ```
 
-### 3. API スキーマを追加（必要に応じて）
+### 3. API スキーマを追加 (必要に応じて)
 
 フィルタリングに使う場合、`src/api/types.ts` にクエリパラメータを追加:
 
@@ -175,7 +187,7 @@ newField: f.keyword(),
 newField: z.array(z.string()).optional(),
 ```
 
-### 4. Frontend に共有（必要に応じて）
+### 4. Frontend に共有 (必要に応じて)
 
 `types/shared-types.ts` で re-export:
 
@@ -185,11 +197,11 @@ export type { NewFieldType } from "./api/types"
 
 ### 注意事項
 
-- **ES 固有の変更**: `es/types.ts` で ES 固有スキーマ（DiseaseInfoSchema など）を定義
+- **ES 固有の変更**: `es/types.ts` で ES 固有スキーマ (DiseaseInfoSchema など)を定義
 - **API 固有の変更**: `api/types.ts` で API リクエスト/レスポンス型を定義
 - **依存の方向**: `crawler/types → es/types → api/types` を維持
 
-## Crawler 内部の型変換（参考）
+## Crawler 内部の型変換 (参考)
 
 <details>
 <summary>詳細を見る</summary>
@@ -205,7 +217,7 @@ HTML → RawParseResult → NormalizedParseResult → SingleLang* → Research/D
 
 ### パイプライン段階と型の変化
 
-```
+```plaintext
 Step 1: download-html
   → HTML ファイル
 

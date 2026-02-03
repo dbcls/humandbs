@@ -2,7 +2,7 @@
 
 ## 概要
 
-HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（データセット）リソースの検索・取得・管理を行う。
+HumanDBs Backend は REST API を提供し、Research (研究)と Dataset (データセット)リソースの検索・取得・管理を行う。
 
 設計方針の詳細は [api-architecture.md](./api-architecture.md) を参照。
 
@@ -23,7 +23,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 | POST | `/research/new` | 新規作成 | admin |
 | GET | `/research/{humId}` | 詳細取得 | public/owner/admin |
 | PUT | `/research/{humId}/update` | 更新 | owner/admin |
-| POST | `/research/{humId}/delete` | 削除（論理削除） | admin |
+| POST | `/research/{humId}/delete` | 削除 (論理削除) | admin |
 | GET | `/research/{humId}/versions` | バージョン一覧 | public/owner/admin |
 | GET | `/research/{humId}/versions/{version}` | 特定バージョン | public/owner/admin |
 | POST | `/research/{humId}/versions/new` | 新バージョン作成 | owner/admin |
@@ -42,7 +42,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 | GET | `/dataset` | 一覧取得 | public/authenticated/admin |
 | GET | `/dataset/{datasetId}` | 詳細取得 | public/owner/admin |
 | PUT | `/dataset/{datasetId}/update` | 更新 | owner/admin |
-| POST | `/dataset/{datasetId}/delete` | 削除（物理削除） | admin |
+| POST | `/dataset/{datasetId}/delete` | 削除 (物理削除) | admin |
 | GET | `/dataset/{datasetId}/versions` | バージョン一覧 | public/owner/admin |
 | GET | `/dataset/{datasetId}/versions/{version}` | 特定バージョン | public/owner/admin |
 | GET | `/dataset/{datasetId}/research` | 親 Research 取得 | public/owner/admin |
@@ -53,8 +53,8 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 | Method | Path | 説明 | 認可 |
 |--------|------|------|------|
-| POST | `/research/search` | Research 検索（詳細フィルタ） | public/authenticated/admin |
-| POST | `/dataset/search` | Dataset 検索（詳細フィルタ） | public/authenticated/admin |
+| POST | `/research/search` | Research 検索 (詳細フィルタ) | public/authenticated/admin |
+| POST | `/dataset/search` | Dataset 検索 (詳細フィルタ) | public/authenticated/admin |
 | GET | `/facets` | 全ファセット値一覧 | public |
 | GET | `/facets/{fieldName}` | 特定フィールドのファセット値 | public |
 
@@ -62,7 +62,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 | Method | Path | 説明 | 認可 |
 |--------|------|------|------|
-| GET | `/stats` | 統計情報（カウント、ファセット集計） | public |
+| GET | `/stats` | 統計情報 (カウント、ファセット集計) | public |
 
 ### Admin API (1 エンドポイント)
 
@@ -70,7 +70,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 |--------|------|------|------|
 | GET | `/admin/is-admin` | admin 判定 | authenticated |
 
-※ レビュー待ち一覧は `GET /research?status=review` で取得可能（admin のみ）
+※ レビュー待ち一覧は `GET /research?status=review` で取得可能 (admin のみ)
 
 ### Health API (1 エンドポイント)
 
@@ -86,10 +86,10 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 **操作**: admin が新しい Research を作成する
 
-```
+```plaintext
 1. POST /research/new
    -> humId を指定する場合はリクエストボディに含める
-   -> 指定しない場合は自動採番（hum0001, hum0002, ...）
+   -> 指定しない場合は自動採番 (hum0001, hum0002, ...)
    -> status=draft で作成される
    -> レスポンスから humId を取得
 ```
@@ -100,7 +100,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 **前提**: Research 作成画面では、Research の情報と複数の Dataset を同時に編集できる
 
-```
+```plaintext
 1. PUT /research/{humId}/update
    -> Research のメタデータを更新
 
@@ -119,7 +119,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 **操作**: owner が draft を提出し、admin が承認する
 
-```
+```plaintext
 [owner]
 1. POST /research/{humId}/submit
    -> status が draft -> review に変更
@@ -139,15 +139,15 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
     -> status が review -> draft に戻る
 ```
 
-### ユースケース 4: 公開済み Research の更新（新バージョン作成）
+### ユースケース 4: 公開済み Research の更新 (新バージョン作成)
 
 **操作**: published な Research に Dataset を追加したい
 
-```
+```plaintext
 1. POST /research/{humId}/versions/new
    -> 新しい version を draft として作成
 
-2. （ユースケース 2 と同様に編集・保存）
+2.  (ユースケース 2 と同様に編集・保存)
 
 3. POST /research/{humId}/submit -> approve
    -> 新 version が公開される
@@ -157,9 +157,9 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 **操作**: admin が Research を削除する
 
-```
+```plaintext
 1. POST /research/{humId}/delete
-   -> status が deleted に変更（論理削除）
+   -> status が deleted に変更 (論理削除)
    -> 紐づく Dataset は自動的に物理削除される
 ```
 
@@ -175,7 +175,7 @@ HumanDBs Backend は REST API を提供し、Research（研究）と Dataset（�
 
 **例**:
 
-```
+```plaintext
 GET /research/hum0001           → title: "日本語タイトル"  (デフォルト: ja)
 GET /research/hum0001?lang=ja   → title: "日本語タイトル"
 GET /research/hum0001?lang=en   → title: "English Title"
@@ -195,7 +195,7 @@ GET /research/hum0001?lang=en   → title: "English Title"
 
 バージョンはパスパラメータで指定する:
 
-```
+```plaintext
 GET /research/{humId}/versions/v1
 GET /dataset/{datasetId}/versions/v1
 ```
@@ -208,8 +208,8 @@ GET /dataset/{datasetId}/versions/v1
 
 | パラメータ | 型 | デフォルト | 説明 |
 |-----------|-----|-----------|------|
-| `page` | integer | `1` | ページ番号（1始まり） |
-| `limit` | integer | `20` | 1ページあたりの件数（最大100） |
+| `page` | integer | `1` | ページ番号 (1始まり) |
+| `limit` | integer | `20` | 1ページあたりの件数 (最大100) |
 
 **備考**: `limit` に 101 以上を指定した場合は `400 Bad Request` を返す。
 
@@ -252,8 +252,8 @@ GET /dataset/{datasetId}/versions/v1
 | `status` | number | HTTP ステータスコード |
 | `detail` | string | エラーの詳細メッセージ |
 | `instance` | string | エラーが発生したリクエストパス |
-| `timestamp` | string | エラー発生時刻（ISO 8601） |
-| `requestId` | string | リクエスト追跡用 ID（X-Request-ID ヘッダーと同じ） |
+| `timestamp` | string | エラー発生時刻 (ISO 8601) |
+| `requestId` | string | リクエスト追跡用 ID (X-Request-ID ヘッダーと同じ) |
 
 **エラー種別**:
 
@@ -263,16 +263,16 @@ GET /dataset/{datasetId}/versions/v1
 | `.../unauthorized` | 401 | 認証なし/無効 |
 | `.../forbidden` | 403 | 権限なし |
 | `.../not-found` | 404 | リソースが存在しない |
-| `.../conflict` | 409 | 状態競合（無効な遷移、楽観的ロック失敗） |
+| `.../conflict` | 409 | 状態競合 (無効な遷移、楽観的ロック失敗) |
 | `.../internal-error` | 500 | サーバーエラー |
 
 **リクエスト追跡**:
 
 全リクエストに `X-Request-ID` ヘッダーが付与される。クライアントがリクエスト時に `X-Request-ID` を指定した場合はその値を使用し、指定がない場合はサーバーで UUID を生成する。エラー発生時は `requestId` フィールドにこの値が含まれるため、ログとの突き合わせに使用できる。
 
-### 楽観的ロック（同時編集の競合検出）
+### 楽観的ロック (同時編集の競合検出)
 
-更新系 API（`PUT /research/{humId}/update` など）では、楽観的ロックにより同時編集の競合を検出する。
+更新系 API (`PUT /research/{humId}/update` など)では、楽観的ロックにより同時編集の競合を検出する。
 
 **動作**:
 
@@ -285,7 +285,7 @@ GET /dataset/{datasetId}/versions/v1
 `409 Conflict` が返ってきた場合、以下のいずれかの対応が必要:
 
 1. **再取得して通知**: 最新データを取得し直し、「他のユーザーが更新しました。変更内容を確認してください」とユーザーに通知する
-2. **自動リトライ**: 最新データを取得し、ユーザーの変更を再適用して再送信する（マージロジックが必要）
+2. **自動リトライ**: 最新データを取得し、ユーザーの変更を再適用して再送信する (マージロジックが必要)
 
 **技術詳細**:
 
@@ -333,7 +333,7 @@ Research 一覧を取得。
 | `limit` | integer | `20` | 1ページあたりの件数 |
 | `sort` | string | `"humId"` | ソート項目 (`humId`, `title`, `releaseDate`) |
 | `order` | `"asc"` \| `"desc"` | `"asc"` | ソート順 |
-| `status` | string | - | status でフィルタ（下記参照） |
+| `status` | string | - | status でフィルタ (下記参照) |
 | `includeFacets` | boolean | `false` | ファセット集計を含めるか |
 
 **備考**:
@@ -345,7 +345,7 @@ Research 一覧を取得。
 | ユーザー種別 | 指定可能な status | 範囲外を指定した場合 |
 |-------------|------------------|---------------------|
 | public | `published` のみ | 403 Forbidden |
-| authenticated | `draft`, `review`, `published`（自分の） | 403 Forbidden |
+| authenticated | `draft`, `review`, `published` (自分の) | 403 Forbidden |
 | admin | `draft`, `review`, `published`, `deleted` | - |
 
 レビュー待ち一覧は admin が `?status=review` で取得する。
@@ -360,14 +360,14 @@ Research 一覧を取得。
 
 ```typescript
 interface CreateResearchRequest {
-  humId?: string                      // 省略時は自動採番（hum0001, hum0002, ...）
+  humId?: string                      // 省略時は自動採番 (hum0001, hum0002, ...)
   title?: BilingualText               // 省略時は { ja: null, en: null }
   summary?: BilingualResearchSummary  // 省略時は各フィールドが null/[]
   dataProvider?: BilingualPerson[]    // 省略時は []
   researchProject?: BilingualResearchProject[]
   grant?: BilingualGrant[]
   relatedPublication?: BilingualPublication[]
-  uids?: string[]                     // 省略時は []（admin のみ編集可能）
+  uids?: string[]                     // 省略時は [] (admin のみ編集可能)
   initialReleaseNote?: BilingualText
 }
 ```
@@ -375,7 +375,7 @@ interface CreateResearchRequest {
 **備考**:
 
 - 作成時は `status=draft` で作成される
-- 全フィールドが optional。省略時はデフォルト値（null や空配列）が設定される
+- 全フィールドが optional。省略時はデフォルト値 (null や空配列)が設定される
 - `uids` が空の場合、admin 以外は編集できない
 
 **レスポンス例**:
@@ -427,14 +427,14 @@ interface UpdateResearchRequest {
   researchProject?: BilingualResearchProject[]
   grant?: BilingualGrant[]
   relatedPublication?: BilingualPublication[]
-  controlledAccessUser?: BilingualPerson[]
+  controlledAccessUser?: BilingualPerson[]  // データ利用者情報 (制限公開データの利用者)
 }
 ```
 
 **備考**:
 
-- Research の `url` フィールド（HumanDBs ポータルへのリンク）は humId から自動生成されるため、更新対象外
-- 楽観的ロック（`_seq_no`, `_primary_term`）で競合を検出
+- Research の `url` フィールド (HumanDBs ポータルへのリンク)は humId から自動生成されるため、更新対象外
+- 楽観的ロック (`_seq_no`, `_primary_term`)で競合を検出
 
 **レスポンス例**:
 
@@ -451,7 +451,7 @@ interface UpdateResearchRequest {
 
 ### POST /research/{humId}/delete
 
-Research を削除（論理削除: `status="deleted"`）。
+Research を削除 (論理削除: `status="deleted"`)。
 
 **認可**: admin のみ
 
@@ -540,7 +540,7 @@ Research に紐づく Dataset の一覧を取得。
 
 ### PUT /research/{humId}/uids
 
-Research の uids（owner リスト）を更新。
+Research の uids (owner リスト)を更新。
 
 **認可**: admin のみ
 
@@ -568,13 +568,13 @@ interface UpdateUidsRequest {
 
 #### POST /research/{humId}/submit
 
-レビューに提出（draft -> review）。
+レビューに提出 (draft -> review)。
 
 **認可**: owner/admin
 
 #### POST /research/{humId}/approve
 
-承認して公開（review -> published）。
+承認して公開 (review -> published)。
 
 **認可**: admin
 
@@ -582,13 +582,13 @@ interface UpdateUidsRequest {
 
 #### POST /research/{humId}/reject
 
-却下（review -> draft）。
+却下 (review -> draft)。
 
 **認可**: admin
 
 #### POST /research/{humId}/unpublish
 
-非公開に戻す（published -> draft）。
+非公開に戻す (published -> draft)。
 
 **認可**: admin
 
@@ -624,7 +624,7 @@ Dataset 一覧を取得。
 
 新規 Dataset を作成し、指定した Research に紐付ける。
 
-**認可**: owner（親 Research の owner）または admin
+**認可**: owner (親 Research の owner)または admin
 
 **前提条件**: Research が draft 状態であること
 
@@ -642,7 +642,7 @@ interface CreateDatasetRequest {
 
 **備考**:
 
-- `datasetId` を指定すると、その ID で Dataset を作成（クロール結果インポート時など）
+- `datasetId` を指定すると、その ID で Dataset を作成 (クロール結果インポート時など)
 - `datasetId` を省略すると、`DRAFT-{humId}-{uuid}` 形式で自動採番
 - 作成された Dataset は draft Research の dataset list に自動追加される
 - Dataset の version は、親 Research が publish されるまで確定しない
@@ -669,9 +669,9 @@ Dataset の詳細を取得。
 
 Dataset を更新。
 
-**認可**: owner（親 Research の owner）または admin
+**認可**: owner (親 Research の owner)または admin
 
-**前提条件**: 親 Research が draft 状態であること（published の Dataset は直接更新不可）
+**前提条件**: 親 Research が draft 状態であること (published の Dataset は直接更新不可)
 
 **リクエストボディ**:
 
@@ -692,11 +692,11 @@ interface UpdateDatasetRequest {
 
 ### POST /dataset/{datasetId}/delete
 
-Dataset を削除（物理削除）。
+Dataset を削除 (物理削除)。
 
 **認可**: admin のみ
 
-**前提条件**: 親 Research が draft 状態であること（published の Dataset は直接削除不可）
+**前提条件**: 親 Research が draft 状態であること (published の Dataset は直接削除不可)
 
 **備考**:
 
@@ -721,13 +721,13 @@ Dataset の親 Research を取得。
 }
 ```
 
-**備考**: Dataset.humId が指す 1つの Research を返す（1:N 関係）。
+**備考**: Dataset.humId が指す 1つの Research を返す (1:N 関係)。
 
 ## Search API 詳細
 
 ### POST /research/search
 
-Research を検索（詳細フィルタ対応）。
+Research を検索 (詳細フィルタ対応)。
 
 **全文検索対象**: `title`, `summary.aims.text`, `summary.methods.text`, `summary.targets.text`
 
@@ -741,7 +741,7 @@ interface ResearchSearchBody {
 
   // Sort
   sort?: "humId" | "datePublished" | "dateModified" | "relevance"
-  order?: "asc" | "desc"         // default: "asc"（relevance 時は "desc"）
+  order?: "asc" | "desc"         // default: "asc" (relevance 時は "desc")
 
   // Full-text search
   query?: string                 // title, summary を検索
@@ -750,7 +750,7 @@ interface ResearchSearchBody {
   datePublished?: { min?: string; max?: string }
   dateModified?: { min?: string; max?: string }
 
-  // Dataset attribute filters（紐づく Dataset の条件で絞り込む）
+  // Dataset attribute filters (紐づく Dataset の条件で絞り込む)
   datasetFilters?: DatasetFilters
 
   // Options
@@ -762,7 +762,7 @@ interface ResearchSearchBody {
 
 ### POST /dataset/search
 
-Dataset を検索（詳細フィルタ対応）。
+Dataset を検索 (詳細フィルタ対応)。
 
 **全文検索対象**: `experiments.header.text`, `experiments.data.*`, `experiments.footers.text`
 
@@ -776,7 +776,7 @@ interface DatasetSearchBody {
 
   // Sort
   sort?: "datasetId" | "releaseDate" | "relevance"
-  order?: "asc" | "desc"         // default: "asc"（relevance 時は "desc"）
+  order?: "asc" | "desc"         // default: "asc" (relevance 時は "desc")
 
   // Full-text search
   query?: string                 // experiments 全体を検索
@@ -794,7 +794,7 @@ interface DatasetSearchBody {
 
 ### GET /facets
 
-全ファセット値リストを取得（件数付き）。
+全ファセット値リストを取得 (件数付き)。
 
 **レスポンス**:
 
@@ -820,7 +820,7 @@ interface DatasetSearchBody {
 
 ### GET /facets/{fieldName}
 
-特定フィールドのファセット値を取得（件数付き）。
+特定フィールドのファセット値を取得 (件数付き)。
 
 **レスポンス**:
 
@@ -841,8 +841,8 @@ interface DatasetSearchBody {
 
 ```typescript
 interface DatasetFilters {
-  // === ファセットフィルタ（カテゴリ値） ===
-  // 配列で指定: OR 条件（いずれかに一致すればヒット）
+  // === ファセットフィルタ (カテゴリ値) ===
+  // 配列で指定: OR 条件 (いずれかに一致すればヒット)
 
   // 基本属性
   criteria?: string[]               // "Controlled-access (Type I)" | "Controlled-access (Type II)" | "Unrestricted-access"
@@ -854,8 +854,8 @@ interface DatasetFilters {
   ageGroup?: ("infant" | "child" | "adult" | "elderly" | "mixed")[]
 
   // 疾患
-  disease?: string                  // ラベルの部分一致（フリーテキスト検索）
-  diseaseIcd10?: string[]           // ICD10 コード（ファセット選択）
+  disease?: string                  // ラベルの部分一致 (フリーテキスト検索)
+  diseaseIcd10?: string[]           // ICD10 コード (ファセット選択)
 
   // 生体サンプル
   tissue?: string[]                 // ファセット選択
@@ -868,7 +868,7 @@ interface DatasetFilters {
   libraryKits?: string[]            // ファセット選択
 
   // プラットフォーム
-  platform?: string[]               // "Illumina NovaSeq 6000" 形式（ファセット選択）
+  platform?: string[]               // "Illumina NovaSeq 6000" 形式 (ファセット選択)
   readType?: ("single-end" | "paired-end")[]
 
   // シーケンス品質
@@ -882,7 +882,7 @@ interface DatasetFilters {
   // ポリシー
   policyId?: string[]               // ファセット選択
 
-  // === Range フィルタ（数値/日付範囲） ===
+  // === Range フィルタ (数値/日付範囲) ===
   releaseDate?: { min?: string; max?: string }   // "YYYY-MM-DD" 形式
   subjectCount?: { min?: number; max?: number }
   readLength?: { min?: number; max?: number }
@@ -903,14 +903,14 @@ interface DatasetFilters {
 
 | フィルタ種別 | 動作 | 例 |
 |-------------|------|-----|
-| 配列フィルタ | OR（いずれかに一致） | `assayType=["WGS","WES"]` → WGS または WES |
-| 複数フィルタ間 | AND（全条件を満たす） | `assayType=["WGS"]` + `healthStatus=["affected"]` → 両方を満たす |
+| 配列フィルタ | OR (いずれかに一致) | `assayType=["WGS","WES"]` → WGS または WES |
+| 複数フィルタ間 | AND (全条件を満たす) | `assayType=["WGS"]` + `healthStatus=["affected"]` → 両方を満たす |
 | 部分一致 | 文字列の一部を含む | `disease="cancer"` → "lung cancer" にヒット |
 | Range | min/max の範囲内 | `subjectCount={min:100}` → 100 以上 |
 
 **検索フロー**:
 
-1. フロントエンドは `GET /facets` でファセット値（件数付き）を取得
+1. フロントエンドは `GET /facets` でファセット値 (件数付き)を取得
 2. ユーザーがファセット値を選択
 3. `POST /research/search` or `POST /dataset/search` で検索
 4. `includeFacets=true` でフィルタ後のファセット件数も取得
@@ -919,7 +919,7 @@ interface DatasetFilters {
 
 ### GET /stats
 
-統計情報を取得（ダッシュボード用）。published なリソースのみを対象とする。
+統計情報を取得 (ダッシュボード用)。published なリソースのみを対象とする。
 
 **認可**: public
 
@@ -963,7 +963,7 @@ interface DatasetFilters {
 
 現在のユーザーが admin かどうかを確認。
 
-**認可**: authenticated（認証必須だが admin 不要）
+**認可**: authenticated (認証必須だが admin 不要)
 
 **レスポンス**:
 
@@ -990,6 +990,3 @@ interface DatasetFilters {
 }
 ```
 
-## 実装計画
-
-詳細は [api-impl-plan.md](./api-impl-plan.md) を参照。

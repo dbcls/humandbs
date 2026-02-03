@@ -18,43 +18,6 @@ export const nestedTermsQuery = (
   },
 })
 
-/** nested + term query (single value) */
-export const nestedTermQuery = (
-  path: string,
-  field: string,
-  value: string | boolean,
-): estypes.QueryDslQueryContainer => ({
-  nested: {
-    path,
-    query: { term: { [field]: value } },
-  },
-})
-
-/** nested + wildcard query (partial match) */
-export const nestedWildcardQuery = (
-  path: string,
-  field: string,
-  value: string,
-): estypes.QueryDslQueryContainer => ({
-  nested: {
-    path,
-    query: {
-      wildcard: { [field]: { value: `*${value}*`, case_insensitive: true } },
-    },
-  },
-})
-
-/** nested + exists query */
-export const nestedExistsQuery = (
-  path: string,
-  field: string,
-): estypes.QueryDslQueryContainer => ({
-  nested: {
-    path,
-    query: { exists: { field } },
-  },
-})
-
 /** nested + range query */
 export const nestedRangeQuery = (
   path: string,

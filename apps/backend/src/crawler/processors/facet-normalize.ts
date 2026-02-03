@@ -164,6 +164,11 @@ export const normalizeValue = (
   return { normalized, wasUnmapped: false, shouldDelete: false, wasPending: false }
 }
 
+/** Check if a value is empty or whitespace-only */
+const isEmptyOrWhitespace = (value: string): boolean => {
+  return value.trim() === ""
+}
+
 /** Normalize an array of values, removing duplicates and deleted values */
 export const normalizeArrayValues = (
   values: string[],
@@ -175,6 +180,10 @@ export const normalizeArrayValues = (
   const pending: string[] = []
 
   for (const value of values) {
+    // Skip empty or whitespace-only values
+    if (isEmptyOrWhitespace(value)) {
+      continue
+    }
     const result = normalizeValue(value, mapping)
     if (result.shouldDelete) {
       deleted.push(value)

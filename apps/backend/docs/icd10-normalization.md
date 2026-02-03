@@ -11,12 +11,14 @@ LLM が抽出した疾患情報を以下の形式に正規化する:
 
 ## ファイル構成
 
+マッピングデータは `src/crawler/data/icd10/` に格納:
+
 | ファイル | Git 管理 | 説明 |
 |----------|----------|------|
 | `icd10-disease-mapping.json` | ✓ | 疾患の正規化マッピング（メイン）|
 | `disease-split-rules.json` | ✓ | 複数疾患の分割ルール |
 | `disease-exclude.json` | ✓ | 出力から除外する非疾患ラベル |
-| `icd10-labels.json` | ✗ | ICD10 コード→英語ラベルのマスター（自動生成）|
+| `icd10-labels.json` | ✗ | ICD10 コード -> 英語ラベルのマスター（自動生成）|
 | `icd10-master.txt` | ✗ | WHO ICD10 マスターファイル（生成元）|
 
 ## 正規化ロジック
@@ -165,7 +167,7 @@ ICD10 コードが分からない場合:
 
 セミコロン区切りで、8番目がコード（ドットなし）、9番目が英語ラベル:
 
-```
+```plaintext
 4;T;X;01;A00;A00.0;A00.0;A000;Cholera due to Vibrio cholerae 01, biovar cholerae;...
 ```
 

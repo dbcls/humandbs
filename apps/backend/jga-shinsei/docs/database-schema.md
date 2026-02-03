@@ -8,7 +8,7 @@
 
 ### accession と metadata
 
-```
+```plaintext
 accession (1) -----> (1) metadata
               accession_id
 ```
@@ -18,7 +18,7 @@ accession (1) -----> (1) metadata
 
 ### JGA ID の階層 (relation)
 
-```
+```plaintext
 submission (1) ----> (*) entry ----> (*) relation
              submission_id     entry_id
 
@@ -30,7 +30,7 @@ relation.parent --> accession (親 ID)
 
 ### J-DS との紐付け (submission_permission)
 
-```
+```plaintext
 nbdc_application --> submission_permission --> submission
     |                       |
     v                       v
@@ -42,7 +42,7 @@ ds_du_id (J-DS)       submission_id (FK)
 
 ### J-DU との紐付け (use_permission)
 
-```
+```plaintext
 nbdc_application --> use_permission --> accession (JGAD)
     |                   |
     v                   v
@@ -54,7 +54,7 @@ ds_du_id (J-DU)    dataset_id (FK)
 
 ## 申請関連テーブル構造
 
-```
+```plaintext
 nbdc_application_master (申請マスター)
 ├── ds_du_id (J-DS/J-DU ID)
 ├── data_type (1=J-DS, 2=J-DU)
