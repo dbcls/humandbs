@@ -187,3 +187,6 @@ mise.toml
 
 # Elasticsearch backup
 humandbs-es-backup
+
+# Docker Compose override (local)
+compose.override.yml
