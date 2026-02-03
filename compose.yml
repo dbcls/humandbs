@@ -18,31 +18,6 @@ services:
       timeout: 10s
     init: true
 
-  cms-db-migrator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ${HUMANDBS_CONTAINER_PREFIX}-app
-    container_name: ${HUMANDBS_CONTAINER_PREFIX}-cms-db-migrator
-    depends_on:
-      cms-db:
-        condition: service_healthy
-    environment:
-      # Container network (fixed)
-      - HUMANDBS_POSTGRES_HOST=cms-db
-      - HUMANDBS_POSTGRES_PORT=5432
-      # Credentials (from .env)
-      - HUMANDBS_POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
-      - HUMANDBS_POSTGRES_PASSWORD=${HUMANDBS_POSTGRES_PASSWORD:?HUMANDBS_POSTGRES_PASSWORD is required}
-      - HUMANDBS_POSTGRES_DB=${HUMANDBS_POSTGRES_DB}
-    volumes:
-      - .:/app
-    working_dir: /app
-    networks:
-      - humandbs-network
-    entrypoint: [ "sleep", "infinity" ]
-    init: true
-
   frontend:
     build:
       context: .
@@ -50,8 +25,10 @@ services:
     image: ${HUMANDBS_CONTAINER_PREFIX}-app
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-frontend
     depends_on:
-      - cms-db
-      - backend
+      cms-db:
+        condition: service_healthy
+      backend:
+        condition: service_started
     environment:
       # Container network (fixed)
       - HUMANDBS_POSTGRES_HOST=cms-db
@@ -75,10 +52,10 @@ services:
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
-    working_dir: /app
+    working_dir: /app/apps/frontend
     networks:
       - humandbs-network
-    command: [ "sleep", "infinity" ]
+    command: ${HUMANDBS_FRONTEND_COMMAND}
     init: true
 
   backend:
@@ -104,10 +81,10 @@ services:
       - frontend_node_modules:/app/apps/frontend/node_modules
       - backend_node_modules:/app/apps/backend/node_modules
       - eslint_config_node_modules:/app/packages/eslint-config/node_modules
-    working_dir: /app
+    working_dir: /app/apps/backend
     networks:
       - humandbs-network
-    command: [ "sleep", "infinity" ]
+    command: ${HUMANDBS_BACKEND_COMMAND}
     init: true
 
   elasticsearch:

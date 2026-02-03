@@ -1,13 +1,17 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    // Node.js 環境のため DOM ライブラリは不要
-    "lib": ["ESNext"],
-    // パスエイリアス設定
+    "lib": [
+      "ESNext"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/types": ["types/shared-types.ts"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@/types": [
+        "types/shared-types.ts"
+      ]
     }
   }
 }
