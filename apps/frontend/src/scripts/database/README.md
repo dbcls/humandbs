@@ -94,11 +94,11 @@ bun clear-db.ts
 ### Required Environment Variables
 
 ```bash
-POSTGRES_USER=your_db_user
-POSTGRES_PASSWORD=your_db_password
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=your_database_name
+HUMANDBS_POSTGRES_USER=your_db_user
+HUMANDBS_POSTGRES_PASSWORD=your_db_password
+HUMANDBS_POSTGRES_HOST=localhost
+HUMANDBS_POSTGRES_PORT=5432
+HUMANDBS_POSTGRES_DB=your_database_name
 NODE_ENV=development
 ```
 
@@ -216,10 +216,10 @@ updated_at: 2024-01-01
 
 ```bash
 # Check environment variables
-env | grep POSTGRES
+env | grep HUMANDBS_POSTGRES
 
 # Test database connection
-psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
+psql -h $HUMANDBS_POSTGRES_HOST -U $HUMANDBS_POSTGRES_USER -d $HUMANDBS_POSTGRES_DB
 ```
 
 **Permission Errors:**

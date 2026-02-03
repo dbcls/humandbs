@@ -38,24 +38,24 @@ type DocumentLocaleMap = Map<
 /** Builds a Postgres connection string from environment variables. */
 function buildDatabaseUrl() {
   const {
-    POSTGRES_USER,
-    POSTGRES_PASSWORD,
-    POSTGRES_HOST,
-    POSTGRES_PORT,
-    POSTGRES_DB,
+    HUMANDBS_POSTGRES_USER,
+    HUMANDBS_POSTGRES_PASSWORD,
+    HUMANDBS_POSTGRES_HOST,
+    HUMANDBS_POSTGRES_PORT,
+    HUMANDBS_POSTGRES_DB,
   } = process.env;
 
   if (
-    !POSTGRES_USER ||
-    !POSTGRES_PASSWORD ||
-    !POSTGRES_HOST ||
-    !POSTGRES_PORT ||
-    !POSTGRES_DB
+    !HUMANDBS_POSTGRES_USER ||
+    !HUMANDBS_POSTGRES_PASSWORD ||
+    !HUMANDBS_POSTGRES_HOST ||
+    !HUMANDBS_POSTGRES_PORT ||
+    !HUMANDBS_POSTGRES_DB
   ) {
     throw new Error("Missing required Postgres environment variables.");
   }
 
-  return `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
+  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
 }
 
 /** Extracts image references from markdown. */
