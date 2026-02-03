@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",
+    "start": "bun run src/api/run-server.ts",
     "crawler:download-html": "bun run src/crawler/cli/download-html.ts",
     "crawler:parse-html": "bun run src/crawler/cli/parse-html.ts",
     "crawler:normalize": "bun run src/crawler/cli/normalize.ts",
