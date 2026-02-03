@@ -93,6 +93,8 @@ services:
       # External access (from .env)
       - HUMANDBS_AUTH_ISSUER_URL=${HUMANDBS_AUTH_ISSUER_URL}
       - HUMANDBS_AUTH_CLIENT_ID=${HUMANDBS_AUTH_CLIENT_ID}
+      # Admin UID file
+      - HUMANDBS_BACKEND_ADMIN_UID_FILE=${HUMANDBS_BACKEND_ADMIN_UID_FILE:-}
     volumes:
       - .:/app
       - node_modules:/app/node_modules

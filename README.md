@@ -82,6 +82,39 @@ docker compose exec backend bash
 docker compose exec frontend bash
 ```
 
+### 管理者設定
+
+管理者権限を持つユーザーを設定するには、テンプレートをコピーして編集する:
+
+```bash
+cp admin_uids.template.json admin_uids.json
+```
+
+`admin_uids.json` に管理者の UID（Keycloak の sub）を設定:
+
+```json
+[
+  "actual-admin-user-id-1",
+  "actual-admin-user-id-2"
+]
+```
+
+#### UID 取得スクリプト
+
+Keycloak のユーザー名とパスワードから UID を取得するスクリプトを用意している:
+
+```bash
+# UID を取得して表示
+./scripts/fetch_keycloak_uid.sh
+
+# UID を取得して admin_uids.json に追記
+./scripts/fetch_keycloak_uid.sh --append
+```
+
+このスクリプトは `.env` から Keycloak の設定を読み込み、対話的にユーザー名とパスワードを入力して UID を取得する。`curl` と `jq` が必要。
+
+**注意**: `admin_uids.json` は機密情報を含むため Git にコミットしないこと。
+
 ### Podman での起動
 
 ```bash
@@ -123,6 +156,7 @@ podman-compose up -d
 | `HUMANDBS_AUTH_REDIRECT_URI` | OIDC リダイレクト URI |
 | `HUMANDBS_FRONTEND_COMMAND` | フロントエンドコンテナの起動コマンド |
 | `HUMANDBS_BACKEND_COMMAND` | バックエンドコンテナの起動コマンド |
+| `HUMANDBS_BACKEND_ADMIN_UID_FILE` | 管理者UID一覧ファイルのパス（絶対パス、オプション） |
 
 ### Docker ボリューム
 

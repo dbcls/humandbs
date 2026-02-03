@@ -12,7 +12,6 @@ import type { MiddlewareHandler } from "hono"
 import { createMiddleware } from "hono/factory"
 import * as jose from "jose"
 import * as fs from "node:fs/promises"
-import * as path from "node:path"
 
 import { CACHE_TTL } from "../constants"
 import { logger } from "../logger"
@@ -23,7 +22,7 @@ import { JwtClaimsSchema } from "../types"
 // Environment variables
 const AUTH_ISSUER_URL = process.env.HUMANDBS_AUTH_ISSUER_URL || "https://idp-staging.ddbj.nig.ac.jp/realms/master"
 const AUTH_CLIENT_ID = process.env.HUMANDBS_AUTH_CLIENT_ID || "humandbs-dev"
-const ADMIN_UID_FILE = process.env.ADMIN_UID_FILE || path.join(process.cwd(), "admin_uids.json")
+const ADMIN_UID_FILE = process.env.HUMANDBS_BACKEND_ADMIN_UID_FILE
 
 // === TTL Cache Factory ===
 
@@ -74,6 +73,14 @@ async function getAdminUids(): Promise<string[]> {
   if (cached) return cached
 
   let uids: string[] = []
+
+  // 環境変数が未設定の場合は空リストを返す（管理者なし）
+  if (!ADMIN_UID_FILE) {
+    logger.info("HUMANDBS_BACKEND_ADMIN_UID_FILE is not set, no admin users configured")
+    adminUidsCache.set(uids)
+    return uids
+  }
+
   try {
     const content = await fs.readFile(ADMIN_UID_FILE, "utf-8")
     const parsed = JSON.parse(content)
@@ -84,8 +91,8 @@ async function getAdminUids(): Promise<string[]> {
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      // File doesn't exist, use empty list (no admins)
-      logger.warn("Admin UID file not found", { path: ADMIN_UID_FILE })
+      // ファイルが存在しない場合は空リスト（エラーではない）
+      logger.info("Admin UID file not found, no admin users configured", { path: ADMIN_UID_FILE })
     } else {
       logger.error("Error loading admin UIDs", { error: String(error) })
     }

@@ -190,3 +190,6 @@ humandbs-es-backup
 
 # Docker Compose override (local)
 compose.override.yml
+
+# Admin UID file (sensitive)
+admin_uids.json
