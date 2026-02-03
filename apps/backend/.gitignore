@@ -1,0 +1,12 @@
+# Crawler
+crawler-results*
+src/crawler/data/icd10/icd10-master.txt
+src/crawler/data/icd10/icd10-labels.json
+
+# joomla
+joomla/dumps/
+
+# jga-shinsei
+jga-shinsei/dumps/
+jga-shinsei/json-data/
+jga-shinsei/.env

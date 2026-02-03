@@ -179,7 +179,8 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 
-# === our custom rules ===
-apps/backend/crawler-results*
-apps/backend/src/crawler/data/icd10/icd10-master.txt
-apps/backend/src/crawler/data/icd10/icd10-labels.json
+# Local config files
+mise.toml
+.prettierignore
+.tmp
+.claude
