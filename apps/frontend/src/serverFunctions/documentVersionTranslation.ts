@@ -12,7 +12,9 @@ import {
   DocumentVersionTranslation,
   documentVersionTranslation,
 } from "@/db/schema";
+import { selectDocVersionTranslationSelectSchema } from "@/db/types";
 import { transformMarkdoc } from "@/markdoc/config";
+import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 /** Get document version translation */
 export const $getDocumentVersionTranslation = createServerFn({
@@ -235,3 +237,26 @@ export function getDocumentPublishedVersionsListQueryOptions({
     staleTime: 1000 * 60 * 60 * 24,
   });
 }
+
+
+const selectDocVersionTranslationSchema = z.object({
+  contentId: z.string(),
+  versionNumber: z.number(),
+  lang: localeSchema
+})
+
+// reset document vertson translation draft to currently published. if none available, throw an Error
+const $resetDocVersionTranslationDraft = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(selectDocVersionTranslationSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersionTranslations", "update");
+
+
+    const publishedTranslation = await db.query.documentVersionTranslation.findFirst({
+      where:(table, {eq,and}) => and(eq(table.))
+    })
+
+  });

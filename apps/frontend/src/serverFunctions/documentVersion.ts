@@ -4,7 +4,7 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Locale } from "use-intl";
 import { z } from "zod";
 
-import { i18n } from "@/config/i18n-config";
+import { i18n, localeSchema } from "@/config/i18n-config";
 import { USER_ROLES } from "@/config/permissions";
 import { db } from "@/db/database";
 import {
@@ -17,6 +17,8 @@ import {
   documentVersionSchema,
   DocumentVersionStatus,
   InsertDocumentVersionTranslationParams,
+  insertDocumentVersionTranslationSchema,
+  statusSchema,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { unionOfLiterals } from "@/lib/utils";
@@ -577,4 +579,389 @@ export const $deleteDocumentVersionDraft = createServerFn({ method: "POST" })
           eq(documentVersion.status, "draft")
         )
       );
+  });
+
+// ============================================================================
+// Document Version Translation Functions
+// ============================================================================
+
+const selectDocVersionTranslationSchema = z.object({
+  contentId: z.string(),
+  versionNumber: z.number(),
+  locale: localeSchema,
+});
+
+export type SelectDocVersionTranslationParams = z.infer<
+  typeof selectDocVersionTranslationSchema
+>;
+
+/** Helper to find documentVersionId from contentId, versionNumber, status */
+async function findDocumentVersionId(params: {
+  contentId: string;
+  versionNumber: number;
+  status: DocumentVersionStatus;
+}) {
+  const docVersion = await db.query.documentVersion.findFirst({
+    where: (table) =>
+      and(
+        eq(table.contentId, params.contentId),
+        eq(table.versionNumber, params.versionNumber),
+        eq(table.status, params.status)
+      ),
+    columns: { id: true },
+  });
+  return docVersion?.id ?? null;
+}
+
+/**
+ * Get document version translation
+ */
+export const $getDocVersionTranslation = createServerFn({
+  method: "GET",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(
+    selectDocVersionTranslationSchema.extend({
+      status: statusSchema.optional(),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "view");
+
+    const { contentId, versionNumber, locale, status } = data;
+    const targetStatus = status ?? DOCUMENT_VERSION_STATUS.DRAFT;
+
+    const documentVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: targetStatus,
+    });
+
+    if (!documentVersionId) {
+      return null;
+    }
+
+    const translation = await db.query.documentVersionTranslation.findFirst({
+      where: (table) =>
+        and(
+          eq(table.documentVersionId, documentVersionId),
+          eq(table.locale, locale)
+        ),
+    });
+
+    return translation ?? null;
+  });
+
+export const getDocVersionTranslationQueryOptions = (
+  data: SelectDocVersionTranslationParams & { status?: DocumentVersionStatus }
+) =>
+  queryOptions({
+    queryKey: [
+      "documents",
+      data.contentId,
+      "versions",
+      data.versionNumber,
+      "translations",
+      data.locale,
+      data.status ?? DOCUMENT_VERSION_STATUS.DRAFT,
+    ],
+    queryFn: () => $getDocVersionTranslation({ data }),
+    staleTime: 5 * 1000 * 60,
+  });
+
+const upsertDocVersionTranslationSchema =
+  selectDocVersionTranslationSchema.extend({
+    translation: insertDocumentVersionTranslationSchema.pick({
+      title: true,
+      content: true,
+    }),
+  });
+
+export type UpsertDocVersionTranslationParams = z.infer<
+  typeof upsertDocVersionTranslationSchema
+>;
+
+/**
+ * Save/Create draft translation for a document version
+ */
+export const $saveDocVersionTranslationDraft = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(upsertDocVersionTranslationSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    const { contentId, versionNumber, locale, translation } = data;
+
+    const documentVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
+    });
+
+    if (!documentVersionId) {
+      throw new Error(
+        `Draft document version not found for contentId: ${contentId}, versionNumber: ${versionNumber}`
+      );
+    }
+
+    const [result] = await db
+      .insert(documentVersionTranslation)
+      .values({
+        documentVersionId,
+        locale,
+        title: translation.title,
+        content: translation.content,
+        translatedBy: context.user.id,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          documentVersionTranslation.documentVersionId,
+          documentVersionTranslation.locale,
+        ],
+        set: buildConflictUpdateColumns(documentVersionTranslation, [
+          "title",
+          "content",
+          "updatedAt",
+          "translatedBy",
+        ]),
+      })
+      .returning();
+
+    return result;
+  });
+
+/**
+ * Publish draft translation (copy draft translation to published version)
+ */
+export const $publishDocVersionTranslation = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(selectDocVersionTranslationSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "publish");
+
+    const { contentId, versionNumber, locale } = data;
+
+    // Get draft document version ID
+    const draftDocVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
+    });
+
+    if (!draftDocVersionId) {
+      throw new Error("Draft document version not found");
+    }
+
+    // Get the draft translation
+    const draftTranslation =
+      await db.query.documentVersionTranslation.findFirst({
+        where: (table) =>
+          and(
+            eq(table.documentVersionId, draftDocVersionId),
+            eq(table.locale, locale)
+          ),
+      });
+
+    if (!draftTranslation) {
+      throw new Error("Draft translation not found");
+    }
+
+    // Get or create published document version ID
+    let publishedDocVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+    });
+
+    if (!publishedDocVersionId) {
+      // Create published version if it doesn't exist
+      const [newPublishedVersion] = await db
+        .insert(documentVersion)
+        .values({
+          contentId,
+          versionNumber,
+          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+          authorId: context.user!.id,
+          publishedAt: new Date(),
+        })
+        .returning();
+
+      publishedDocVersionId = newPublishedVersion.id;
+    }
+
+    // Upsert the published translation
+    const [result] = await db
+      .insert(documentVersionTranslation)
+      .values({
+        documentVersionId: publishedDocVersionId,
+        locale,
+        title: draftTranslation.title,
+        content: draftTranslation.content,
+        translatedBy: context.user!.id,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          documentVersionTranslation.documentVersionId,
+          documentVersionTranslation.locale,
+        ],
+        set: buildConflictUpdateColumns(documentVersionTranslation, [
+          "title",
+          "content",
+          "updatedAt",
+          "translatedBy",
+        ]),
+      })
+      .returning();
+
+    return result;
+  });
+
+/**
+ * Unpublish translation (delete published translation)
+ */
+export const $unpublishDocVersionTranslation = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(selectDocVersionTranslationSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    const { contentId, versionNumber, locale } = data;
+
+    const publishedDocVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+    });
+
+    if (!publishedDocVersionId) {
+      throw new Error("Published document version not found");
+    }
+
+    const [result] = await db
+      .delete(documentVersionTranslation)
+      .where(
+        and(
+          eq(
+            documentVersionTranslation.documentVersionId,
+            publishedDocVersionId
+          ),
+          eq(documentVersionTranslation.locale, locale)
+        )
+      )
+      .returning();
+
+    return result;
+  });
+
+/**
+ * Reset draft translation to currently published translation
+ */
+export const $resetDocVersionTranslationDraft = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(selectDocVersionTranslationSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    const { contentId, versionNumber, locale } = data;
+
+    // Get published document version ID
+    const publishedDocVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+    });
+
+    if (!publishedDocVersionId) {
+      throw new Error("No published document version found");
+    }
+
+    // Get published translation
+    const publishedTranslation =
+      await db.query.documentVersionTranslation.findFirst({
+        where: (table) =>
+          and(
+            eq(table.documentVersionId, publishedDocVersionId),
+            eq(table.locale, locale)
+          ),
+      });
+
+    if (!publishedTranslation) {
+      throw new Error("No published translation found");
+    }
+
+    // Get draft document version ID
+    const draftDocVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
+    });
+
+    if (!draftDocVersionId) {
+      throw new Error("No draft document version found");
+    }
+
+    // Update draft translation with published content
+    const [result] = await db
+      .update(documentVersionTranslation)
+      .set({
+        title: publishedTranslation.title,
+        content: publishedTranslation.content,
+        updatedAt: new Date(),
+        translatedBy: context.user!.id,
+      })
+      .where(
+        and(
+          eq(documentVersionTranslation.documentVersionId, draftDocVersionId),
+          eq(documentVersionTranslation.locale, locale)
+        )
+      )
+      .returning();
+
+    return result;
+  });
+
+/**
+ * Delete draft translation
+ */
+export const $deleteDocVersionTranslationDraft = createServerFn({
+  method: "POST",
+})
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(selectDocVersionTranslationSchema)
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    const { contentId, versionNumber, locale } = data;
+
+    const draftDocVersionId = await findDocumentVersionId({
+      contentId,
+      versionNumber,
+      status: DOCUMENT_VERSION_STATUS.DRAFT,
+    });
+
+    if (!draftDocVersionId) {
+      throw new Error("Draft document version not found");
+    }
+
+    const [result] = await db
+      .delete(documentVersionTranslation)
+      .where(
+        and(
+          eq(documentVersionTranslation.documentVersionId, draftDocVersionId),
+          eq(documentVersionTranslation.locale, locale)
+        )
+      )
+      .returning();
+
+    return result;
   });

@@ -1,13 +1,12 @@
 import { relations } from "drizzle-orm";
 import {
+  foreignKey,
   integer,
   pgEnum,
   pgTable,
   primaryKey,
   text,
   timestamp,
-  uniqueIndex,
-  uuid,
 } from "drizzle-orm/pg-core";
 
 import { user } from "./auth-schema";
@@ -29,23 +28,20 @@ export const documentVersionStatus = pgEnum("document_version_status", [
 export const documentVersion = pgTable(
   "document_version",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    contentId: text("content_id")
+      .notNull()
+      .references(() => document.contentId, { onDelete: "cascade" }),
     versionNumber: integer("version_number").notNull(),
     authorId: text("author_id")
       .notNull()
       .references(() => user.id),
-    contentId: text("content_id")
-      .notNull()
-      .references(() => document.contentId, { onDelete: "cascade" }),
-    status: documentVersionStatus("status").notNull().default("draft"),
-    lastDraftSavedAt: timestamp("last_draft_saved_at"),
     publishedAt: timestamp("published_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     // Each version number can have at most one draft and one published version
-    uniqueIndex().on(table.contentId, table.versionNumber, table.status),
+    primaryKey({ columns: [table.contentId, table.versionNumber] }),
   ]
 );
 
@@ -54,17 +50,33 @@ export type DocumentVersion = typeof documentVersion.$inferSelect;
 export const documentVersionTranslation = pgTable(
   "document_version_translation",
   {
-    title: text("name"),
-    documentVersionId: uuid("document_version_id")
-      .notNull()
-      .references(() => documentVersion.id, { onDelete: "cascade" }),
+    contentId: text("content_id").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    status: documentVersionStatus("status").notNull().default("draft"),
     locale: text("locale").notNull(),
+    title: text("name"),
     content: text("content"),
     translatedBy: text("translated_by").references(() => user.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.documentVersionId, table.locale] })]
+  (table) => [
+    primaryKey({
+      columns: [
+        table.contentId,
+        table.versionNumber,
+        table.locale,
+        table.status,
+      ],
+    }),
+    foreignKey({
+      columns: [table.contentId, table.versionNumber],
+      foreignColumns: [
+        documentVersion.contentId,
+        documentVersion.versionNumber,
+      ],
+    }).onDelete("cascade"),
+  ]
 );
 
 export type DocumentVersionTranslation =
@@ -85,8 +97,11 @@ export const documentVersionTranslationsRelations = relations(
   documentVersionTranslation,
   ({ one }) => ({
     version: one(documentVersion, {
-      fields: [documentVersionTranslation.documentVersionId],
-      references: [documentVersion.id],
+      fields: [
+        documentVersionTranslation.contentId,
+        documentVersionTranslation.versionNumber,
+      ],
+      references: [documentVersion.contentId, documentVersion.versionNumber],
     }),
     translator: one(user, {
       fields: [documentVersionTranslation.translatedBy],

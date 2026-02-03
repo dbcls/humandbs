@@ -1,3 +1,13 @@
+import { useStore } from "@tanstack/react-form";
+import {
+  useMutation,
+  useMutationState,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { Dot, Loader2, Pencil, Save } from "lucide-react";
+import { Suspense, useRef, useState } from "react";
+
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -17,30 +27,21 @@ import {
   UpsertContentItemData,
 } from "@/serverFunctions/contentItem";
 import { waitUntilNoMutations } from "@/utils/mutations";
-import { useStore } from "@tanstack/react-form";
-import {
-  useMutation,
-  useMutationState,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { Dot, Loader2, Pencil, Save } from "lucide-react";
-import { Suspense, useRef, useState } from "react";
 
 type ContentItem = NonNullable<ContentItemResponse>;
 
-type FormMeta = {
+interface FormMeta {
   submitAction: "saveDraft" | "publish" | "resetDraft" | null;
-};
+}
 
 const defaultMeta: FormMeta = {
   submitAction: null,
 };
 
-type FormData = {
+interface FormData {
   lang: Locale;
   translation: ContentItem["translations"];
-};
+}
 
 // use custom hook to suport resetting to not default values
 function useContentItemDetailsForm({

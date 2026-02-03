@@ -1,10 +1,12 @@
-import { localeSchema } from "@/config/i18n-config";
 import {
   createInsertSchema,
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
 import { z } from "zod";
+
+import { localeSchema } from "@/config/i18n-config";
+
 import * as schema from "./schema";
 
 export const insertDocumentSchema = createInsertSchema(schema.document);
@@ -16,6 +18,10 @@ export const userRoleSchema = userSelectSchema.pick({ role: true });
 export const statusSchema = createSelectSchema(schema.documentVersionStatus);
 
 export type DocumentVersionStatus = z.infer<typeof statusSchema>;
+
+export const selectDocVersionTranslationSelectSchema = createSelectSchema(
+  schema.documentVersionTranslation
+);
 
 export const documentVersionTranslationWithTranslatorSchema =
   createSelectSchema(schema.documentVersionTranslation).extend({
