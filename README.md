@@ -45,11 +45,16 @@
 
 ```plaintext
 apps/
-├── backend/       # REST API + クローラー → [README](apps/backend/README.md)
-└── frontend/      # React フロントエンド → [README](apps/frontend/README.md)
+├── backend/       # REST API + クローラー
+└── frontend/      # React フロントエンド
 packages/
 └── eslint-config/ # 共有 ESLint 設定
 ```
+
+| ディレクトリ | 説明 | README |
+|--------------|------|--------|
+| `apps/backend/` | REST API + クローラー | [README](apps/backend/README.md) |
+| `apps/frontend/` | React フロントエンド | [README](apps/frontend/README.md) |
 
 ## 開発環境のセットアップ
 
