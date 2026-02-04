@@ -13,7 +13,7 @@ import {
   $cloneDocumentVersion,
   $createDocumentVersion,
   $deleteDocumentVersion,
-  type DocumentVersionListItemResponse,
+  type DocVersionListItemResponse,
   getDocumentVersionsListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -26,7 +26,7 @@ export function DocumentVersionsList({
   onSelect,
 }: {
   contentId: string;
-  onSelect: (documentVersionItem: DocumentVersionListItemResponse) => void;
+  onSelect: (documentVersionItem: DocVersionListItemResponse) => void;
 }) {
   const documentVersionsListQO = getDocumentVersionsListQueryOptions({
     contentId,
@@ -35,7 +35,7 @@ export function DocumentVersionsList({
   const { data: versions } = useSuspenseQuery(documentVersionsListQO);
 
   const [selectedVersion, setSelectedVersion] = useState<
-    DocumentVersionListItemResponse | undefined
+    DocVersionListItemResponse | undefined
   >(versions[0]);
 
   const queryClient = useQueryClient();
@@ -134,13 +134,13 @@ export function DocumentVersionsList({
     },
   });
 
-  const canCloneVersion = (version: DocumentVersionListItemResponse) => {
+  const canCloneVersion = (version: DocVersionListItemResponse) => {
     return !(
       version.statuses.includes("draft") && version.statuses.length === 1
     );
   };
 
-  function handleSelectVersion(version: DocumentVersionListItemResponse) {
+  function handleSelectVersion(version: DocVersionListItemResponse) {
     setSelectedVersion(version);
     onSelect(version);
   }

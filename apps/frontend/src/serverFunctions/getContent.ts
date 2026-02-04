@@ -20,6 +20,9 @@ type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
 
 const contentPath = "./public/content";
 
+/**
+ * @deprecated - Use CMS instead of files
+ */
 async function getFileContent({
   contentId,
   lang,

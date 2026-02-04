@@ -3,14 +3,9 @@ import { Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
 
 import { DocumentsList } from "./-components/DocumentsList";
-import {
-  DocumentVersion,
-  DocumentVersionContent,
-} from "./-components/DocumentVersion";
-import { DocumentVersionsList } from "./-components/DocumentVersionsList";
+import { DocumentVersion } from "./-components/DocumentVersion2";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/documents"
@@ -21,16 +16,6 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const [selectedContentId, setSelectedContentId] = useState<string>();
 
-  const [selectedVersion, setSelectedVersion] =
-    useState<DocumentVersionListItemResponse | null>(null);
-
-  function handleSelectDoc(contentId: string) {
-    if (selectedContentId !== contentId) {
-      setSelectedVersion(null);
-    }
-    setSelectedContentId(contentId);
-  }
-
   return (
     <>
       <Card
@@ -40,7 +25,7 @@ function RouteComponent() {
       >
         <Suspense fallback={<Skeleton />}>
           <DocumentsList
-            onSelectDoc={handleSelectDoc}
+            onSelectDoc={setSelectedContentId}
             selectedContentId={selectedContentId}
           />
         </Suspense>

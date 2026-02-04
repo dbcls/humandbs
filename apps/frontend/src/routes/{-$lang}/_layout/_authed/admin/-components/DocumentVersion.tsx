@@ -25,19 +25,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, Locale } from "@/config/i18n-config";
 import {
   DOCUMENT_VERSION_STATUS,
-  DocumentVersionTranslation,
+
 } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import {
-  $deleteDocumentVersionDraft,
-  $publishDocumentVersionDraft,
-  $saveDocumentVersion,
-  DocumentVersionContentResponse,
-  type DocumentVersionListItemResponse,
-  getDocumentVersionDraftQueryOptions,
-  getDocumentVersionPublishedQueryOptions,
-  getDocumentVersionsListQueryOptions,
+  DocVersionResponse,
+  type DocVersionListItemResponse,
 } from "@/serverFunctions/documentVersion";
+
+
 
 import { StatusTag } from "./StatusTag";
 
@@ -54,7 +50,7 @@ type Status = "draft" | "published";
 interface FormData {
   translations: Record<
     Status,
-    Record<Locale, Pick<DocumentVersionTranslation, "title" | "content">>
+    Record<Locale, Pick<DocVersionResponse, "title" | "content">>
   >;
   status: Status;
   locale: Locale;
@@ -68,7 +64,7 @@ export function DocumentVersion({
   contentId: string;
 }) {
   const [selectedDocVersion, setSelectedDocVersion] =
-    useState<DocumentVersionListItemResponse | null>(null);
+    useState<DocVersionListItemResponse | null>(null);
 
   const documentVersionsListQO = getDocumentVersionsListQueryOptions({
     contentId,
@@ -328,11 +324,11 @@ const DocumentVersionContentForm = withForm({
   props: {
     deleteDraft: (
       _value: Pick<
-        DocumentVersionListItemResponse,
+        DocVersionListItemResponse,
         "contentId" | "versionNumber"
       >
     ) => {},
-    selectedDocVersion: {} as DocumentVersionListItemResponse | null,
+    selectedDocVersion: {} as DocVersionListItemResponse | null,
     documentVersionDraft: {} as DocumentVersionContentResponse,
     documentVersionPublished: {} as DocumentVersionContentResponse,
   },
@@ -514,7 +510,7 @@ const DocumentVersionContentForm = withForm({
 function useResetDocumentVerDraft(contentId: string, versionNumber: number) {
   const queryClient = useQueryClient();
 
-  
+
   return useMutation({
     mutationKey: [
       "document",
@@ -524,7 +520,7 @@ function useResetDocumentVerDraft(contentId: string, versionNumber: number) {
       "draft",
       "reset",
     ],
-    mutationFn: ({ lang }: { lang: Locale }) => 
+    mutationFn: ({ lang }: { lang: Locale }) =>
   });
 }
 
@@ -533,7 +529,7 @@ function DocumentVersionSelector({
   onSelect,
 }: {
   contentId: string;
-  onSelect: (version: DocumentVersionListItemResponse) => void;
+  onSelect: (version: DocVersionListItemResponse) => void;
 }) {
   const versionListQO = getDocumentVersionsListQueryOptions({ contentId });
 

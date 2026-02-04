@@ -4,43 +4,40 @@ import { useTranslations } from "use-intl";
 import { Card } from "@/components/Card";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import { Button } from "@/components/ui/button";
+import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
-  getDocumentLatestPublishedVersionTranslationQueryOptions,
-  getDocumentPublishedVersionsListQueryOptions,
-} from "@/serverFunctions/documentVersionTranslation";
+  $getLatestPublishedDocumentVersion,
+  $getPublishedDocumentVersionList,
+} from "@/serverFunctions/documentVersion";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-submission/"
 )({
   component: RouteComponent,
   loader: async ({ context }) => {
-    const { content, title } = await context.queryClient.ensureQueryData(
-      getDocumentLatestPublishedVersionTranslationQueryOptions({
-        contentId: "data-submission",
-        locale: context.lang,
-      })
-    );
+    const data = await $getLatestPublishedDocumentVersion({
+      data: { contentId: "data-submission", locale: context.lang },
+    });
 
-    const versions = await context.queryClient.ensureQueryData(
-      getDocumentPublishedVersionsListQueryOptions({
-        contentId: "data-submission",
-        locale: context.lang,
-      })
-    );
+    const versions = await $getPublishedDocumentVersionList({
+      data: { contentId: "data-submission", locale: context.lang },
+    });
 
-    return { content, title, versions };
+    const { content } = transformMarkdoc({ rawContent: data.content ?? "" });
+
+    return { content: JSON.stringify(content), versions };
   },
 });
 
 function RouteComponent() {
-  const { content, title, versions } = Route.useLoaderData();
+  const { content, versions } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const t = useTranslations("Navbar");
   const tCommon = useTranslations("common");
 
   return (
-    <Card caption={title} captionSize={"lg"}>
+    <Card caption={content?.title} captionSize={"lg"}>
       <RenderMarkdoc className="mx-auto" content={content} />
       <PreviousVersionsList
         documentName={t("data-submission")}

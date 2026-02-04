@@ -5,8 +5,9 @@ import { useTranslations } from "use-intl";
 import InfographicsImg from "@/assets/Infographics.png";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
+import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
+import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
@@ -15,24 +16,30 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/")({
   component: Index,
 
   loader: async ({ context }) => {
-    const { content } = await context.queryClient.ensureQueryData(
-      getDocumentLatestPublishedVersionTranslationQueryOptions({
-        locale: context.lang,
-        contentId: "home",
-      })
-    );
+    const data = await $getLatestPublishedDocumentVersion({
+      data: { contentId: "home", locale: context.lang },
+    });
 
     const newsTitles = await context.queryClient.ensureQueryData(
       getNewsTitlesQueryOptions({ locale: context.lang })
     );
 
-    return { content, newsTitles };
+    const { content } = transformMarkdoc({ rawContent: data?.content ?? "" });
+
+    return { content: JSON.stringify(content), title: data.title, newsTitles };
   },
 
-  errorComponent: ({ error }) => <div>{error.message}</div>,
+  errorComponent: ({ error }) => (
+    <section>
+      <h2>Oops! Some error has occurred!</h2>
+      <h3>{error.name}</h3>
+      <code>{error.message}</code>
+    </section>
+  ),
 });
 
 function Index() {
+  const { title } = Route.useLoaderData();
   const navigate = Route.useNavigate();
 
   const t = useTranslations("Front");
@@ -43,6 +50,9 @@ function Index() {
       <section className="flex h-fit items-start justify-between gap-8">
         <div className="flex flex-1 flex-col items-center">
           <ErrorBoundary fallbackRender={(e) => <div>{e.error.message}</div>}>
+            <h1 className="text-secondary mt-10 mb-5 text-lg font-medium">
+              {title}
+            </h1>
             <HomeContent />
           </ErrorBoundary>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -78,26 +88,15 @@ function Index() {
 }
 
 function HomeContent() {
-  const { content } = Route.useLoaderData();
+  const { content, title } = Route.useLoaderData();
 
-  return <RenderMarkdoc content={content} />;
+  return (
+    <>
+      <h1></h1>
+      <RenderMarkdoc content={content} />
+    </>
+  );
 }
-
-interface InfographicsItem {
-  id: string;
-  title: string;
-  amount: number;
-  parent: string | null;
-}
-
-const info: InfographicsItem[] = [
-  {
-    id: "1",
-    title: "NGS",
-    amount: 100,
-    parent: null,
-  },
-];
 
 function Infographics() {
   return (

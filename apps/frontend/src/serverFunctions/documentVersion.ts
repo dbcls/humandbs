@@ -3,6 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { Locale } from "use-intl";
 import { z } from "zod";
 
+import { ContentId, contentIdSchema } from "@/config/content-config";
+import { localeSchema } from "@/config/i18n-config";
 import { db } from "@/db/database";
 import { DocVersionStatus } from "@/db/schema";
 import {
@@ -21,7 +23,9 @@ const documentVersionRepo = createDocumentVersionRepository(db);
 
 // === For CMS ===
 
-export interface DocumentVersionListItemResponse {
+// === LIST VERSIONS
+
+export interface DocVersionListItemResponse {
   versionNumber: number;
   contentId: string;
   translations: {
@@ -49,11 +53,9 @@ export const $getDocumentVersionList = createServerFn({
     return groupDocumentVersions(versions);
   });
 
-export const getDocumentVersionListQueryOptions = (
-  data: {
-    contentId: string | null;
-  } | null
-) =>
+export const getDocumentVersionListQueryOptions = (data: {
+  contentId: string | null;
+}) =>
   queryOptions({
     queryKey: ["documents", data?.contentId, "versions"],
     queryFn: () => {
@@ -67,8 +69,8 @@ export const getDocumentVersionListQueryOptions = (
 
 export function groupDocumentVersions(
   rawVersions: DocVersionListItemResponseRaw[]
-): DocumentVersionListItemResponse[] {
-  const groupedVersions: DocumentVersionListItemResponse[] = [];
+): DocVersionListItemResponse[] {
+  const groupedVersions: DocVersionListItemResponse[] = [];
 
   for (const version of rawVersions) {
     const existingVersion = groupedVersions.find(
@@ -110,9 +112,9 @@ export function groupDocumentVersions(
   return groupedVersions;
 }
 
-// ===
+// === GET VERSION
 
-interface DocVersionResponse {
+export interface DocVersionResponse {
   contentId: string;
   versionNumber: number;
   translations: Partial<
@@ -146,14 +148,21 @@ export const $getDocumentVersion = createServerFn({
     return groupDocVersion(version);
   });
 
-export const getDocVersionQueryOptions = (
-  contentId: string,
-  versionNumber: number
-) =>
+export const getDocumentVersionQueryOptions = (data: {
+  contentId: ContentId;
+  versionNumber: number | undefined;
+}) =>
   queryOptions({
-    queryKey: ["documents", contentId, "versions", versionNumber],
-    queryFn: () => $getDocumentVersion({ data: { contentId, versionNumber } }),
+    queryKey: ["documents", data.contentId, "versions", data.versionNumber],
+    queryFn: () => {
+      const { contentId, versionNumber } = data;
+      if (!versionNumber) {
+        throw new Error("Version number is required");
+      }
+      return $getDocumentVersion({ data: { contentId, versionNumber } });
+    },
     staleTime: 5 * 1000 * 60,
+    enabled: typeof data.versionNumber === "number",
   });
 
 /**
@@ -190,21 +199,153 @@ export function groupDocVersion(
   return result;
 }
 
+// === SAVE DRAFT
+
+const saveDocVersionDraftRequestSchema = z.object({
+  contentId: z.string(),
+  versionNumber: z.number(),
+  locale: localeSchema,
+  title: z.string().optional(),
+  content: z.string().optional(),
+});
+
+export const $saveDocumentVersionDraft = createServerFn({ method: "POST" })
+  .inputValidator(saveDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    const { contentId, versionNumber, locale, ...rest } = data;
+
+    await documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest);
+  });
+
+// === PUBLISH DRAFT
+
+const publishDocVersionDraftRequestSchema = z.object({
+  contentId: contentIdSchema,
+  versionNumber: z.number(),
+  locale: localeSchema,
+});
+
+export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
+  .inputValidator(publishDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "publish");
+
+    await documentVersionRepo.publish(
+      data.contentId,
+      data.versionNumber,
+      data.locale
+    );
+  });
+
+// === UNPUBLISH DRAFT
+
+export const $unpublishDocumentVersion = createServerFn({ method: "POST" })
+  .inputValidator(publishDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "delete");
+
+    await documentVersionRepo.unpublish(
+      data.contentId,
+      data.versionNumber,
+      data.locale
+    );
+  });
+
+// === RESET DRAFT
+
+export const $resetDocumentVersionDraft = createServerFn({ method: "POST" })
+  .inputValidator(publishDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    await documentVersionRepo.resetDraft(
+      data.contentId,
+      data.versionNumber,
+      data.locale
+    );
+  });
+
+// === DELETE VERSION
+
+export const $deleteDocumentVersion = createServerFn({
+  method: "POST",
+})
+  .inputValidator(docVersionRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "delete");
+
+    const { contentId, versionNumber } = data;
+
+    await documentVersionRepo.delete(contentId, versionNumber);
+  });
+
 // === Public ===
+
+// === GET LATEST DOCUMENT VERSION
 
 const docPublishedVersionsRequestSchema = documentVersionSelectSchema.pick({
   contentId: true,
   locale: true,
 });
 
-const $getDocumentPublishedVersionList = createServerFn({
+export const $getLatestPublishedDocumentVersion = createServerFn({
   method: "GET",
 })
   .inputValidator(docPublishedVersionsRequestSchema)
   .handler(async ({ data }) => {
     const { contentId, locale } = data;
+    console.log("loading server fn");
+    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(
+      contentId,
+      locale
+    );
 
-    const versions = await documentVersionRepo.getPublishedVersionListForLocale(
+    if (!docVersion) {
+      throw new Error("Page not found");
+    }
+    return docVersion;
+  });
+
+// === GET PUBLISHED DOCUMENT VERSION FOR VN AND LOCALE
+
+const getDocumentVersionRequestSchema = publishDocVersionDraftRequestSchema;
+
+export const $getPublishedDocumentVersion = createServerFn({
+  method: "GET",
+})
+  .inputValidator(getDocumentVersionRequestSchema)
+  .handler(async ({ data }) => {
+    const { contentId, versionNumber, locale } = data;
+    const docVersion =
+      await documentVersionRepo.getPublishedForVersionNumberAndLocale(
+        contentId,
+        versionNumber,
+        locale
+      );
+
+    return docVersion;
+  });
+
+// === GET PUBLISHED VERSIONS LIST
+
+const getPublishedDocVersionListRequestSchema =
+  docPublishedVersionsRequestSchema;
+
+export const $getPublishedDocumentVersionList = createServerFn({
+  method: "GET",
+})
+  .inputValidator(getPublishedDocVersionListRequestSchema)
+  .handler(async ({ data }) => {
+    const { contentId, locale } = data;
+
+    const versions = await documentVersionRepo.getPublishedListForLocale(
       contentId,
       locale
     );
@@ -213,11 +354,11 @@ const $getDocumentPublishedVersionList = createServerFn({
   });
 
 export const getDocumentPublishedVersionsListQueryOptions = (
-  data: z.infer<typeof docPublishedVersionsRequestSchema>
+  data: z.infer<typeof getPublishedDocVersionListRequestSchema>
 ) =>
   queryOptions({
     queryKey: ["documents", data.contentId, "versions"],
-    queryFn: () => $getDocumentPublishedVersionList({ data }),
+    queryFn: () => $getPublishedDocumentVersionList({ data }),
     staleTime: 5 * 1000 * 60,
   });
 
