@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ContentId } from "@/config/content-config";
 import { db } from "@/db/database";
 import { document } from "@/db/schema";
-import { insertDocumentSchema } from "@/db/types";
+import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 /** List all documents */
@@ -55,7 +55,7 @@ export const $validateDocumentContentId = createServerFn({ method: "POST" })
  */
 export const $deleteDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .inputValidator(z.object({ contentId: z.string() }))
+  .inputValidator(documentSelectSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "delete");
 

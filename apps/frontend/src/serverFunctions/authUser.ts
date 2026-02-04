@@ -1,18 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 
-import { USER_ROLES } from "@/config/permissions";
-import { type UserRole } from "@/db/schema";
+import { USER_ROLES, UserRole } from "@/config/permissions";
 import {
   ensureFreshSession,
   getClearSessionCookieOptions,
   getSessionCookieOptions,
   SESSION_COOKIE_NAME,
+  SessionUser,
   stringifySession,
   type SessionMeta,
 } from "@/utils/jwt-helpers";
-
-import { type SessionUser } from "./user";
 
 interface AuthUserResponse {
   user: SessionUser | null;
@@ -69,10 +67,10 @@ export const $getAuthUser = createServerFn({ method: "GET" }).handler<
 
     const user: SessionUser = {
       id: claims.sub,
-      name: claims.name,
-      email: claims.email,
-      username: claims.preferred_username,
-      role,
+      name: claims.name ?? "",
+      email: claims.email ?? "",
+      username: claims.preferred_username ?? "",
+      role: role,
     };
 
     const sessionMeta: SessionMeta = {

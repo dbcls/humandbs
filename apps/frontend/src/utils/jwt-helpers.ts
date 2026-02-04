@@ -3,6 +3,8 @@ import { serialize } from "cookie";
 import * as jose from "jose";
 import * as oidc from "openid-client";
 
+import { UserRole } from "@/config/permissions";
+import { User } from "@/db/types";
 import { getConfig } from "@/lib/oidc";
 
 export const SESSION_COOKIE_NAME = "session_tokens";
@@ -25,6 +27,10 @@ export type SessionMeta = Pick<
   Session,
   "expires_at" | "refresh_expires_at" | "expires_in" | "refresh_expires_in"
 >;
+
+export type SessionUser = Pick<User, "id" | "email" | "name" | "username"> & {
+  role: UserRole;
+};
 
 export interface AccessTokenClaims {
   sub: string;

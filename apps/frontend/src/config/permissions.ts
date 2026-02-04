@@ -1,11 +1,6 @@
-import {
-  Asset,
-  Document,
-  DocumentVersion,
-  DocumentVersionTranslation,
-} from "@/db/schema";
+import { Asset, Document, DocumentVersion } from "@/db/schema";
 import { Alert, ContentItem, NewsItem } from "@/db/types";
-import { SessionUser } from "@/serverFunctions/user";
+import { SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {
   ADMIN: "admin",
@@ -43,11 +38,7 @@ export interface Permissions {
   };
   documentVersions: {
     dataType: DocumentVersion;
-    action: "view" | "publish" | "update" | "create" | "delete";
-  };
-  documentVersionTranslations: {
-    dataType: DocumentVersionTranslation;
-    action: "view" | "update" | "create" | "delete";
+    action: "view" | "publish" | "update" | "create" | "delete" | "list";
   };
   assets: {
     dataType: Asset;
@@ -82,13 +73,9 @@ const ROLES = {
       publish: true,
       update: true,
       delete: true,
+      list: true,
     },
-    documentVersionTranslations: {
-      view: true,
-      update: true,
-      create: true,
-      delete: true,
-    },
+
     contents: {
       list: true,
       view: true,
@@ -128,12 +115,7 @@ const ROLES = {
       publish: true,
       update: true,
       delete: false,
-    },
-    documentVersionTranslations: {
-      view: true,
-      update: true,
-      create: true,
-      delete: true,
+      list: true,
     },
     contents: {
       list: true,

@@ -17,7 +17,8 @@
     "seed:documents": "bun ./src/scripts/database/seed-documents.ts",
     "db:reset": "bun ./src/scripts/database/reset-db.ts",
     "db:clear": "bun ./src/scripts/database/clear-db.ts",
-    "db:fresh": "bun run db:reset && bun run db:push && bun run seed:documents"
+    "db:fresh": "bun run db:reset && bun run db:push && bun run seed:documents",
+    "test": "bun run db:push && bun test"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.6.1",

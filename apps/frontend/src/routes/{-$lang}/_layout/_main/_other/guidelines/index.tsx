@@ -4,10 +4,8 @@ import { useTranslations } from "use-intl";
 import { Card } from "@/components/Card";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import {
-  getDocumentLatestPublishedVersionTranslationQueryOptions,
-  getDocumentPublishedVersionsListQueryOptions,
-} from "@/serverFunctions/documentVersionTranslation";
+import { getDocumentPublishedVersionsListQueryOptions } from "@/serverFunctions/documentVersion";
+import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/guidelines/"

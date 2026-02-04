@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { parse, serialize } from "cookie";
+import * as jose from "jose";
 import * as oidc from "openid-client";
 
+import { db } from "@/db/database";
+import { user } from "@/db/schema";
 import { getConfig } from "@/lib/oidc";
 import {
+  AccessTokenClaims,
   buildSessionFromTokenResponse,
   createSessionCookie,
 } from "@/utils/jwt-helpers";
@@ -51,6 +55,27 @@ export const Route = createFileRoute("/auth/callback")({
         if (!session) {
           return new Response("Missing access token", { status: 400 });
         }
+
+        // Decode token to get user claims and upsert user to local DB
+        const claims = jose.decodeJwt(
+          session.access_token
+        ) as AccessTokenClaims;
+
+        await db
+          .insert(user)
+          .values({
+            id: claims.sub,
+            email: claims.email ?? null,
+            name: claims.name ?? claims.preferred_username ?? null,
+          })
+          .onConflictDoUpdate({
+            target: user.id,
+            set: {
+              email: claims.email ?? null,
+              name: claims.name ?? claims.preferred_username ?? null,
+              updatedAt: new Date(),
+            },
+          });
 
         setCookies.push(createSessionCookie(session));
 

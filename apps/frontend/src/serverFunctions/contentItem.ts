@@ -1,6 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { User } from "better-auth";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -18,6 +17,7 @@ import {
   ContentTranslationSelect,
   DocumentVersionStatus,
   statusSchema,
+  User,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { transformMarkdoc } from "@/markdoc/config";

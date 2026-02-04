@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
-import { getVisiblePages } from "../src/components/Pagination";
 import z from "zod";
+
+import { getVisiblePages } from "../src/components/Pagination";
 
 describe("Pagination component", () => {
   it("should correclty generate general-form", () => {
