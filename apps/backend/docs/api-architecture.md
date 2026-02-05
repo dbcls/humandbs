@@ -37,7 +37,7 @@ Dataset 自体は status フィールドを持たない。親 Research の statu
 
 ### OIDC 設定
 
-認証は Keycloak (OIDC) を使用し、public client として構成する。環境変数 `OIDC_ISSUER_URL` と `OIDC_CLIENT_ID` は compose file で環境ごとに設定される。
+認証は Keycloak (OIDC) を使用し、public client として構成する。環境変数 `HUMANDBS_AUTH_ISSUER_URL` と `HUMANDBS_AUTH_CLIENT_ID` は compose file で環境ごとに設定される。
 
 ### 認証フロー
 

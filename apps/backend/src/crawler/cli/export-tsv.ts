@@ -243,6 +243,22 @@ const DATA_PROVIDER_HEADERS = [
 ]
 
 const dataProviderToRows = (r: Research): unknown[][] => {
+  if (r.dataProvider.length === 0) {
+    return [[
+      r.humId,
+      r.url.ja ?? "",
+      r.url.en ?? "",
+      0,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "", // comment
+    ]]
+  }
   return r.dataProvider.map((dp: Person, i) => [
     // Identifiers (not editable)
     r.humId,
@@ -300,6 +316,20 @@ const GRANT_HEADERS = [
 ]
 
 const grantToRows = (r: Research): unknown[][] => {
+  if (r.grant.length === 0) {
+    return [[
+      r.humId,
+      r.url.ja ?? "",
+      r.url.en ?? "",
+      0,
+      "[]",
+      "",
+      "",
+      "",
+      "",
+      "", // comment
+    ]]
+  }
   return r.grant.map((g: Grant, i) => [
     // Identifiers (not editable)
     r.humId,
@@ -354,6 +384,19 @@ const PUBLICATION_HEADERS = [
 ]
 
 const publicationToRows = (r: Research): unknown[][] => {
+  if (r.relatedPublication.length === 0) {
+    return [[
+      r.humId,
+      r.url.ja ?? "",
+      r.url.en ?? "",
+      "[]",
+      0,
+      "",
+      "",
+      "",
+      "", // comment
+    ]]
+  }
   return r.relatedPublication.map((p: Publication, i) => [
     // Identifiers (not editable)
     r.humId,
@@ -407,6 +450,20 @@ const PROJECT_HEADERS = [
 ]
 
 const projectToRows = (r: Research): unknown[][] => {
+  // 空配列でも humId のエントリは出力する
+  if (r.researchProject.length === 0) {
+    return [[
+      r.humId,
+      r.url.ja ?? "",
+      r.url.en ?? "",
+      0,
+      "",
+      "",
+      "",
+      "",
+      "", // comment
+    ]]
+  }
   return r.researchProject.map((rp: ResearchProject, i) => [
     // Identifiers (not editable)
     r.humId,
@@ -466,6 +523,25 @@ const CAU_HEADERS = [
 ]
 
 const cauToRows = (r: Research): unknown[][] => {
+  if (r.controlledAccessUser.length === 0) {
+    return [[
+      r.humId,
+      r.url.ja ?? "",
+      r.url.en ?? "",
+      "[]",
+      0,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "", // comment
+    ]]
+  }
   return r.controlledAccessUser.map((u: Person, i) => [
     // Identifiers (not editable)
     r.humId,
