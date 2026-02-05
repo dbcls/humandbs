@@ -489,13 +489,19 @@ function DocumentVersionSelectorItem({
   );
 }
 
-function useSaveDraft(contentId: string, versionNumber: number) {
-  const docVersionQO = getDocumentVersionQueryOptions({
-    contentId,
-    versionNumber,
-  });
-  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
+function useDocVersionQueryOptions(contentId: string, versionNumber: number) {
+  return useMemo(
+    () => ({
+      version: getDocumentVersionQueryOptions({ contentId, versionNumber }),
+      list: getDocumentVersionListQueryOptions({ contentId }),
+    }),
+    [contentId, versionNumber]
+  );
+}
 
+function useSaveDraft(contentId: string, versionNumber: number) {
+  const { version: docVersionQO, list: docVersionsListQO } =
+    useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -523,7 +529,6 @@ function useSaveDraft(contentId: string, versionNumber: number) {
       await queryClient.cancelQueries(docVersionQO);
 
       const prevVersion = queryClient.getQueryData(docVersionQO.queryKey);
-      const prevList = queryClient.getQueryData(docVersionsListQO.queryKey);
 
       queryClient.setQueryData(docVersionQO.queryKey, (old) => {
         if (!old) {
@@ -553,15 +558,12 @@ function useSaveDraft(contentId: string, versionNumber: number) {
         };
       });
 
-      return { prevVersion, prevList };
+      return { prevVersion };
     },
 
     onError: (_, __, context) => {
       if (context?.prevVersion) {
         queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
-      }
-      if (context?.prevList) {
-        queryClient.setQueryData(docVersionsListQO.queryKey, context.prevList);
       }
     },
     onSettled: () => {
@@ -572,12 +574,8 @@ function useSaveDraft(contentId: string, versionNumber: number) {
 }
 
 function usePublishDraft(contentId: string, versionNumber: number) {
-  const docVersionQO = getDocumentVersionQueryOptions({
-    contentId,
-    versionNumber,
-  });
-  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
-
+  const { version: docVersionQO, list: docVersionsListQO } =
+    useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -641,12 +639,8 @@ function usePublishDraft(contentId: string, versionNumber: number) {
 }
 
 function useResetDraft(contentId: string, versionNumber: number) {
-  const docVersionQO = getDocumentVersionQueryOptions({
-    contentId,
-    versionNumber,
-  });
-  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
-
+  const { version: docVersionQO, list: docVersionsListQO } =
+    useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -663,10 +657,8 @@ function useResetDraft(contentId: string, versionNumber: number) {
       }),
     onMutate: async ({ locale }) => {
       await queryClient.cancelQueries(docVersionQO);
-      await queryClient.cancelQueries(docVersionsListQO);
 
       const prevVersion = queryClient.getQueryData(docVersionQO.queryKey);
-      const prevList = queryClient.getQueryData(docVersionsListQO.queryKey);
 
       queryClient.setQueryData(docVersionQO.queryKey, (old) => {
         if (!old) {
@@ -688,15 +680,12 @@ function useResetDraft(contentId: string, versionNumber: number) {
         };
       });
 
-      return { prevVersion, prevList };
+      return { prevVersion };
     },
 
     onError: (_, __, context) => {
       if (context?.prevVersion) {
         queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
-      }
-      if (context?.prevList) {
-        queryClient.setQueryData(docVersionsListQO.queryKey, context.prevList);
       }
     },
     onSettled: () => {
