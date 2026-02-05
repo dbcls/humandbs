@@ -13,12 +13,11 @@ export function ListItem({
 }: ListItemProps) {
   return (
     <div
+      data-active={isActive}
       className={cn(
-        "flex cursor-pointer items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm transition-colors",
-        {
-          "bg-secondary-light text-white [&_svg>path]:stroke-white": isActive,
-          "hover:bg-hover": !isActive,
-        },
+        "group flex cursor-pointer items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm transition-colors",
+        "data-[active=true]:bg-secondary-light data-[active=true]:text-white",
+        "data-[active=false]:hover:bg-hover",
         className
       )}
       {...rest}

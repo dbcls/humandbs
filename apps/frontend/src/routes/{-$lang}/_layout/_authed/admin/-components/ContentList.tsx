@@ -103,7 +103,6 @@ export function ContentList({
               <ContentListItem
                 item={content}
                 onClickDelete={handleClickDeleteContentItem}
-                isActive={isActive}
               />
               {/*<div className="text-sm font-medium">
                 <span>{content.id}</span>
@@ -143,11 +142,9 @@ export function ContentList({
 function ContentListItem({
   item,
   onClickDelete,
-  isActive,
 }: {
   item: ContentItemsListItem;
   onClickDelete: (id: string) => void;
-  isActive: boolean;
 }) {
   return (
     <>
@@ -157,19 +154,19 @@ function ContentListItem({
           {item.translations.map((tr) => {
             return (
               <li key={tr.lang} className="flex items-start gap-1 text-xs">
-                <Tag tag={tr.lang} isActive={isActive} />
+                <Tag tag={tr.lang} />
 
                 <ul className="flex flex-col items-start">
                   {tr.statuses.published ? (
                     <li className="flex items-start gap-2">
-                      <StatusTag status={"published"} isActive={isActive} />
+                      <StatusTag status={"published"} />
                       <span>{tr.statuses.published}</span>
                     </li>
                   ) : null}
 
                   {tr.statuses.draft ? (
                     <li className="flex items-start gap-2">
-                      <StatusTag status={"draft"} isActive={isActive} />
+                      <StatusTag status={"draft"} />
                       <span>{tr.statuses.draft}</span>
                     </li>
                   ) : null}
@@ -184,7 +181,6 @@ function ContentListItem({
           e.stopPropagation();
           onClickDelete(item.id);
         }}
-        isActive={isActive}
       />
     </>
   );

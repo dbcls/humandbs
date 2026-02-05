@@ -19,7 +19,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ContentId } from "@/config/content-config";
-import { cn } from "@/lib/utils";
 import {
   $createDocument,
   $deleteDocument,
@@ -207,11 +206,7 @@ export function DocumentsList({
                   handleClickDeleteDoc(doc.contentId);
                 }}
               >
-                <Trash2Icon
-                  className={cn("text-danger size-5 transition-colors", {
-                    "text-white": isActive,
-                  })}
-                />
+                <Trash2Icon className="text-danger size-5 transition-colors group-data-[active=true]:text-white" />
               </Button>
             </ListItem>
           );

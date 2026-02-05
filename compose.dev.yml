@@ -75,6 +75,8 @@ services:
       - OIDC_ISSUER_URL=https://idp-staging.ddbj.nig.ac.jp/realms/master
       - OIDC_CLIENT_ID=humandbs-dev
       - OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI}
+      - AUTH_DEV_BYPASS=true
+      - AUTH_DEV_ROLE=admin # "admin" or "editor"
     working_dir: /app
     command: ["sleep", "infinity"]
     networks:

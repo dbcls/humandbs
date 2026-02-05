@@ -38,7 +38,7 @@ export function PreviousVersionsList({
             >
               <span>{version.title}</span>
             </Link>
-            <span>{version.createdAt.toLocaleDateString(lang)}</span>
+            <span>{new Date(version.createdAt).toLocaleDateString(lang)}</span>
           </li>
         ))}
       </ul>

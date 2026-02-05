@@ -17,9 +17,44 @@ interface AuthUserResponse {
   session: SessionMeta | null;
 }
 
+// Dev bypass: return mock user without hitting Keycloak or backend
+// Set AUTH_DEV_ROLE to "admin" or "editor" (defaults to "admin")
+function getDevBypassResponse(): AuthUserResponse | null {
+  if (process.env.AUTH_DEV_BYPASS !== "true") {
+    return null;
+  }
+
+  const roleEnv = process.env.AUTH_DEV_ROLE?.toLowerCase();
+  const role: UserRole =
+    roleEnv === "editor" ? USER_ROLES.EDITOR : USER_ROLES.ADMIN;
+
+  const mockUser: SessionUser = {
+    id: "dev-user-id",
+    name: `Dev User (${role})`,
+    email: "dev@localhost",
+    username: "devuser",
+    role,
+  };
+
+  const mockSession: SessionMeta = {
+    expires_at: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
+    refresh_expires_at: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days
+    expires_in: 86400,
+    refresh_expires_in: 86400 * 7,
+  };
+
+  return { user: mockUser, session: mockSession };
+}
+
 export const $getAuthUser = createServerFn({ method: "GET" }).handler<
   Promise<AuthUserResponse>
 >(async () => {
+  // Check for dev bypass first
+  const bypassResponse = getDevBypassResponse();
+  if (bypassResponse) {
+    return bypassResponse;
+  }
+
   try {
     const { session, claims, refreshed, shouldClear } =
       await ensureFreshSession();

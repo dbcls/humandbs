@@ -10,6 +10,18 @@ export const Route = createFileRoute("/auth/login")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const requestUrl = new URL(request.url);
+        const redirectParam = requestUrl.searchParams.get("redirect");
+        const redirect_to = sanitizeRedirectPath(redirectParam) ?? "/";
+
+        // Dev bypass: skip Keycloak entirely and redirect to target
+        if (process.env.AUTH_DEV_BYPASS === "true") {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: redirect_to },
+          });
+        }
+
         const redirect_uri = process.env.OIDC_REDIRECT_URI!;
         const cfg = await getConfig();
         const code_verifier = oidc.randomPKCECodeVerifier();
@@ -17,10 +29,6 @@ export const Route = createFileRoute("/auth/login")({
           await oidc.calculatePKCECodeChallenge(code_verifier);
         // (Optional) still use state alongside PKCE
         const state = oidc.randomState();
-
-        const requestUrl = new URL(request.url);
-        const redirectParam = requestUrl.searchParams.get("redirect");
-        const redirect_to = sanitizeRedirectPath(redirectParam) ?? "/";
 
         const stash = { code_verifier, state, redirect_to };
         const cookie = serialize("oidc_pkce", JSON.stringify(stash), {

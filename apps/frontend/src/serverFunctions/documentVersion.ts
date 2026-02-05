@@ -286,6 +286,37 @@ export const $deleteDocumentVersion = createServerFn({
     await documentVersionRepo.delete(contentId, versionNumber);
   });
 
+// === CREATE VERSION
+
+const createDocVersionRequestSchema = z.object({
+  contentId: z.string(),
+});
+
+/**
+ * Create a new document version from the latest published version.
+ * Copies all published locale content as drafts for the new version.
+ */
+export const $createDocumentVersion = createServerFn({
+  method: "POST",
+})
+  .inputValidator(createDocVersionRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "create");
+
+    const { contentId } = data;
+    // Don't pass dev bypass user ID as it doesn't exist in the user table
+    const userId =
+      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+
+    const result = await documentVersionRepo.createVersionFromPublished(
+      contentId,
+      userId
+    );
+
+    return result;
+  });
+
 // === Public ===
 
 // === GET LATEST DOCUMENT VERSION
@@ -357,7 +388,7 @@ export const getDocumentPublishedVersionsListQueryOptions = (
   data: z.infer<typeof getPublishedDocVersionListRequestSchema>
 ) =>
   queryOptions({
-    queryKey: ["documents", data.contentId, "versions"],
+    queryKey: ["documents", data.contentId, "published-versions", data.locale],
     queryFn: () => $getPublishedDocumentVersionList({ data }),
     staleTime: 5 * 1000 * 60,
   });

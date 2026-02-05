@@ -5,7 +5,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Dot, Loader2, Pencil, Save } from "lucide-react";
+import { Loader2, Pencil, Save } from "lucide-react";
 import { Suspense, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
@@ -27,6 +27,8 @@ import {
   UpsertContentItemData,
 } from "@/serverFunctions/contentItem";
 import { waitUntilNoMutations } from "@/utils/mutations";
+
+import { UnpublishedDot } from "./UnpublishedDot";
 
 type ContentItem = NonNullable<ContentItemResponse>;
 
@@ -55,8 +57,7 @@ function useContentItemDetailsForm({
 
   const { mutate: saveDraft } = useSaveDraft(id);
 
-  const { mutateAsync: publishDraft, isPending: isPublishPending } =
-    usePublishDraft(id);
+  const { mutateAsync: publishDraft } = usePublishDraft(id);
 
   const { mutateAsync: resetDraft } = useResetDraft(id);
 
@@ -199,7 +200,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             value={DOCUMENT_VERSION_STATUS.DRAFT}
           >
             <Pencil /> <span>Editor</span>
-            {isDraftChanged ? <Dot /> : null}
+            {isDraftChanged ? <UnpublishedDot /> : null}
             <div className="w-4">
               {savingStatuses.at(-1) === "pending" && (
                 <Loader2 className="size-4 animate-spin" />
@@ -442,10 +443,7 @@ function useSaveDraft(id: string) {
             return {
               ...item,
               translations: item.translations.map((tr) => {
-                if (
-                  tr.lang === data.lang &&
-                  tr.status === DOCUMENT_VERSION_STATUS.DRAFT
-                ) {
+                if (tr.lang === data.lang && tr.statuses.draft) {
                   return { ...tr, ...data.translationDraft };
                 }
                 return tr;
@@ -517,10 +515,7 @@ function useResetDraft(id: string) {
             return {
               ...item,
               translations: item.translations.map((tr) => {
-                if (
-                  tr.lang === lang &&
-                  tr.status === DOCUMENT_VERSION_STATUS.DRAFT
-                ) {
+                if (tr.lang === lang && tr.statuses.draft) {
                   return { ...tr, status: DOCUMENT_VERSION_STATUS.PUBLISHED };
                 }
                 return tr;

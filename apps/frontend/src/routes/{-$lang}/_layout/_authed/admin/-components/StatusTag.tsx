@@ -24,16 +24,16 @@ const statusTagVariants = cva(
 
 interface StatusProps
   extends VariantProps<typeof statusTagVariants>,
-    React.HTMLProps<HTMLDivElement> {
-  isActive?: boolean;
-}
+    React.HTMLProps<HTMLDivElement> {}
 
-export function StatusTag({ className, isActive, ...props }: StatusProps) {
+export function StatusTag({ className, ...props }: StatusProps) {
   return (
     <div
-      className={cn(statusTagVariants({ status: props.status }), className, {
-        "border-white text-white": isActive,
-      })}
+      className={cn(
+        statusTagVariants({ status: props.status }),
+        "group-data-[active=true]:border-white group-data-[active=true]:text-white",
+        className
+      )}
       {...props}
     >
       {props.status}
@@ -41,24 +41,14 @@ export function StatusTag({ className, isActive, ...props }: StatusProps) {
   );
 }
 
-export function Tag({
-  tag,
-  isActive,
-  className,
-}: {
-  tag: string;
-  isActive?: boolean;
-  className?: string;
-}) {
+export function Tag({ tag, className }: { tag: string; className?: string }) {
   return (
     <div
       className={cn(
         statusTagVariants({ status: "current" }),
         "w-10 text-center",
-        className,
-        {
-          "border-white text-white": isActive,
-        }
+        "group-data-[active=true]:border-white group-data-[active=true]:text-white",
+        className
       )}
     >
       {tag}

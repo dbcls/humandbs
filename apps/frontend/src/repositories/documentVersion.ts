@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 
-import { Locale } from "@/config/i18n-config";
+import { i18n, Locale } from "@/config/i18n-config";
 import { db } from "@/db/database";
 import {
   DOCUMENT_VERSION_STATUS,
@@ -158,6 +158,17 @@ interface DocumentVersionRepo {
    * Use on CMS: delete version button on
    */
   delete: (contentId: string, versionNumber: number) => Promise<unknown>;
+
+  /**
+   * Private
+   * Create new version from latest published version
+   * Copies all published locale content as drafts
+   * Use on CMS: create new version button
+   */
+  createVersionFromPublished: (
+    contentId: string,
+    translatedBy?: string
+  ) => Promise<{ versionNumber: number }>;
 }
 
 export function createDocumentVersionRepository(
@@ -349,5 +360,78 @@ export function createDocumentVersionRepository(
             eq(documentVersion.versionNumber, versionNumber)
           )
         ),
+    createVersionFromPublished: (contentId, translatedBy) =>
+      database.transaction(async (tx) => {
+        // 1. Find latest version number (to determine new version number)
+        const latestVersion = await tx.query.documentVersion.findFirst({
+          where: (table) => eq(table.contentId, contentId),
+          orderBy: (table, { desc }) => [desc(table.versionNumber)],
+          columns: { versionNumber: true },
+        });
+
+        const newVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
+
+        // 2. Get all published versions (across all version numbers)
+        const allPublishedVersions = await tx.query.documentVersion.findMany({
+          where: (table, { and, eq }) =>
+            and(
+              eq(table.contentId, contentId),
+              eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+            ),
+          columns: {
+            locale: true,
+            title: true,
+            content: true,
+            versionNumber: true,
+          },
+          orderBy: (table, { desc }) => [desc(table.versionNumber)],
+        });
+
+        // 3. For each locale, find the latest published version
+        const latestPublishedByLocale = new Map<
+          string,
+          { locale: Locale; title: string | null; content: string | null }
+        >();
+        for (const pv of allPublishedVersions) {
+          // Since results are ordered by versionNumber desc, first occurrence per locale is the latest
+          if (!latestPublishedByLocale.has(pv.locale)) {
+            latestPublishedByLocale.set(pv.locale, {
+              locale: pv.locale,
+              title: pv.title,
+              content: pv.content,
+            });
+          }
+        }
+
+        // 4. Create new draft versions
+        const publishedVersions = Array.from(latestPublishedByLocale.values());
+        if (publishedVersions.length > 0) {
+          // Copy content from latest published version for each locale
+          await tx.insert(documentVersion).values(
+            publishedVersions.map((pv) => ({
+              contentId,
+              versionNumber: newVersionNumber,
+              status: DOCUMENT_VERSION_STATUS.DRAFT,
+              locale: pv.locale,
+              title: pv.title,
+              content: pv.content,
+              translatedBy,
+            }))
+          );
+        } else {
+          // First version - create empty draft for default locale
+          await tx.insert(documentVersion).values({
+            contentId,
+            versionNumber: newVersionNumber,
+            status: DOCUMENT_VERSION_STATUS.DRAFT,
+            locale: i18n.defaultLocale as Locale,
+            title: null,
+            content: null,
+            translatedBy,
+          });
+        }
+
+        return { versionNumber: newVersionNumber };
+      }),
   };
 }

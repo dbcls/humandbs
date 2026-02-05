@@ -1,16 +1,16 @@
+import { useStore } from "@tanstack/react-form";
 import {
   useMutation,
   useMutationState,
-  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Dot, Loader2, Pencil, Save, Trash2, Undo2 } from "lucide-react";
-import { Suspense, useState } from "react";
+import { Loader2, Pencil, Plus, Save } from "lucide-react";
+import { Suspense, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
-import { useAppForm, withForm } from "@/components/form-context/FormContext";
-import { Separator } from "@/components/Separator";
+import { useAppForm } from "@/components/form-context/FormContext";
+import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -20,22 +20,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, Locale } from "@/config/i18n-config";
+import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
+import { transformMarkdoc } from "@/markdoc/config";
+import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
-  DOCUMENT_VERSION_STATUS,
-
-} from "@/db/schema";
-import { cn } from "@/lib/utils";
-import {
+  DocVersionListItemResponse,
   DocVersionResponse,
-  type DocVersionListItemResponse,
+  getDocumentVersionListQueryOptions,
+  getDocumentVersionQueryOptions,
+  $saveDocumentVersionDraft,
+  $publishDocumentVersionDraft,
+  $resetDocumentVersionDraft,
+  $createDocumentVersion,
 } from "@/serverFunctions/documentVersion";
+import { waitUntilNoMutations } from "@/utils/mutations";
 
-
-
-import { StatusTag } from "./StatusTag";
+import { StatusTag, Tag } from "./StatusTag";
+import { UnpublishedDot } from "./UnpublishedDot";
 
 interface FormMeta {
   submitAction: "saveDraft" | "publish" | "resetDraft" | null;
@@ -45,302 +48,194 @@ const defaultMeta: FormMeta = {
   submitAction: null,
 };
 
-type Status = "draft" | "published";
-
 interface FormData {
-  translations: Record<
-    Status,
-    Record<Locale, Pick<DocVersionResponse, "title" | "content">>
-  >;
-  status: Status;
-  locale: Locale;
+  lang: Locale;
+  translations: DocVersionResponse["translations"];
 }
 
-export function DocumentVersion({
-  className,
+function useDocumentVersionForm({
+  initialValues,
   contentId,
+  versionNumber,
 }: {
-  className?: string;
+  initialValues: FormData;
   contentId: string;
+  versionNumber: number;
 }) {
-  const [selectedDocVersion, setSelectedDocVersion] =
-    useState<DocVersionListItemResponse | null>(null);
+  const [defaultValues, setDefaultValues] = useState(initialValues);
+  const prevVersionNumber = useRef(versionNumber);
 
-  const documentVersionsListQO = getDocumentVersionsListQueryOptions({
+  const { mutate: saveDraft } = useSaveDraft(contentId, versionNumber);
+  const { mutateAsync: publishDraft } = usePublishDraft(
     contentId,
-  });
-
-  const documentVersionDraftQO = getDocumentVersionDraftQueryOptions({
-    contentId,
-  });
-
-  const documentVersionPublishedQO =
-    getDocumentVersionPublishedQueryOptions(selectedDocVersion);
-
-  const queryClient = useQueryClient();
-
-  const { data: documentVersionDraft } = useQuery(documentVersionDraftQO);
-  const { data: documentVersionPublished } = useQuery(
-    documentVersionPublishedQO
+    versionNumber
   );
+  const { mutateAsync: resetDraft } = useResetDraft(contentId, versionNumber);
+
+  const isIgnoreRef = useRef(false);
 
   const form = useAppForm({
-    defaultValues: {
-      translations: {
-        [DOCUMENT_VERSION_STATUS.DRAFT]: documentVersionDraft?.translations,
-        [DOCUMENT_VERSION_STATUS.PUBLISHED]:
-          documentVersionPublished?.translations,
-      },
-      status: selectedDocVersion?.statuses[0],
-      locale: i18n.defaultLocale,
-    } as FormData,
+    defaultValues,
     onSubmitMeta: defaultMeta,
-    onSubmit: ({ value, meta }) => {
-      if (!selectedDocVersion) return;
+    onSubmit: ({ value, meta, formApi }) => {
+      if (isIgnoreRef.current) {
+        return;
+      }
+
+      const title = value.translations?.[value.lang]?.draft?.title;
+      const content = value.translations?.[value.lang]?.draft?.content;
+
       switch (meta.submitAction) {
-        case "publishDraft":
-          publishDraft({
-            translations: value.translations[DOCUMENT_VERSION_STATUS.DRAFT],
-            contentId: selectedDocVersion.contentId,
-            versionNumber: selectedDocVersion.versionNumber,
-          });
-          break;
-
         case "saveDraft":
-          saveVersion({
-            translations: value.translations[DOCUMENT_VERSION_STATUS.DRAFT],
-            contentId: selectedDocVersion.contentId,
-            versionNumber: selectedDocVersion.versionNumber,
-            action: meta.submitAction,
-          });
-
+          if (title || content) {
+            saveDraft({
+              locale: value.lang,
+              title: title ?? "",
+              content: content ?? "",
+            });
+          }
           break;
-        default:
-          saveVersion({
-            translations: value.translations[DOCUMENT_VERSION_STATUS.PUBLISHED],
-            contentId: selectedDocVersion.contentId,
-            versionNumber: selectedDocVersion.versionNumber,
-            action: meta.submitAction,
-          });
+        case "resetDraft":
+          isIgnoreRef.current = true;
+          resetDraft({ locale: value.lang })
+            .then(() => {
+              const publishedTitle =
+                value.translations?.[value.lang]?.published?.title ?? "";
+              const publishedContent =
+                value.translations?.[value.lang]?.published?.content ?? "";
 
+              const resetValue = {
+                ...value,
+                translations: {
+                  ...value.translations,
+                  [value.lang]: {
+                    ...value.translations[value.lang],
+                    draft: {
+                      title: publishedTitle,
+                      content: publishedContent,
+                    },
+                  },
+                },
+              };
+              setDefaultValues(resetValue);
+              formApi.reset(resetValue, { keepDefaultValues: false });
+            })
+            .finally(() => {
+              isIgnoreRef.current = false;
+            });
+          break;
+
+        case "publish":
+          isIgnoreRef.current = true;
+          if (title || content) {
+            saveDraft({
+              locale: value.lang,
+              title: title ?? "",
+              content: content ?? "",
+            });
+          }
+
+          publishDraft({ locale: value.lang })
+            .then(() => {
+              const newValue = {
+                ...value,
+                translations: {
+                  ...value.translations,
+                  [value.lang]: {
+                    ...value.translations[value.lang],
+                    published: {
+                      title: title ?? "",
+                      content: content ?? "",
+                    },
+                  },
+                },
+              };
+              setDefaultValues(newValue);
+              formApi.reset(newValue, { keepDefaultValues: false });
+            })
+            .finally(() => {
+              isIgnoreRef.current = false;
+            });
           break;
       }
     },
   });
 
-  return (
-    <form.AppForm>
-      <Card
-        caption={
-          <div className="flex items-center gap-5">
-            <span>Details</span>
+  // Reset form when version number changes (e.g., when selecting a different version)
+  if (prevVersionNumber.current !== versionNumber) {
+    prevVersionNumber.current = versionNumber;
+    setDefaultValues(initialValues);
+    form.reset(initialValues, { keepDefaultValues: false });
+  }
 
-            {/*<form.Subscribe selector={(state) => state.values.status}>
-            {(status) => (
-              <form.AppField name="status">
-                {(field) => (
-                  <field.SwitchField
-                    options={
-                      documentVersionItem?.statuses.map((st) => ({
-                        value: st,
-                        label: (
-                          <StatusTag isActive={st === status} status={st} />
-                        ),
-                      })) || []
-                    }
-                  />
-                )}
-              </form.AppField>
-            )}
-          </form.Subscribe>*/}
-
-            <Suspense fallback={<Skeleton />}>
-              <DocumentVersionSelector
-                contentId={contentId}
-                onSelect={setSelectedDocVersion}
-              />
-            </Suspense>
-
-            <form.AppField name="locale">
-              {(field) => <field.LocaleSwitchField />}
-            </form.AppField>
-          </div>
-        }
-        className={cn("flex h-full flex-1 flex-col", className)}
-        containerClassName="flex flex-col flex-1"
-      >
-        <DocumentVersionContentForm
-          form={form}
-          selectedDocVersion={selectedDocVersion}
-          deleteDraft={deleteDraft}
-          documentVersionDraft={documentVersionDraft}
-          documentVersionPublished={documentVersionPublished}
-        />
-        {/*<form
-          className="flex h-full flex-col gap-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit();
-          }}
-        >
-          <form.Subscribe selector={(state) => state.values.status}>
-            {(status) => (
-              <>
-                <p>
-                  Author:
-                  {status === DOCUMENT_VERSION_STATUS.DRAFT
-                    ? documentVersionDraft?.author.name
-                    : documentVersionPublished?.author.name}
-                </p>
-                <form.Subscribe selector={(state) => state.values.locale}>
-                  {(locale) => (
-                    <>
-                      <form.AppField
-                        name={`translations.${status}.${locale}.title`}
-                      >
-                        {(field) => {
-                          return <field.TextField label="Title" />;
-                        }}
-                      </form.AppField>
-                      <form.AppField
-                        name={`translations.${status}.${locale}.content`}
-                      >
-                        {(field) => (
-                          <Suspense fallback={<div>Loading...</div>}>
-                            <field.ContentAreaField label="Content" />
-                          </Suspense>
-                        )}
-                      </form.AppField>
-                    </>
-                  )}
-                </form.Subscribe>
-              </>
-            )}
-          </form.Subscribe>
-
-          <div className="flex h-fit justify-between gap-5">
-            <form.AppForm>
-              <form.Subscribe
-                selector={(state) => ({
-                  isDirty: state.isDirty,
-                  status: state.values.status,
-                })}
-              >
-                {({ isDirty, status }) => {
-                  return (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          disabled={!isDirty}
-                          variant={"outline"}
-                          onClick={() =>
-                            form.resetField(`translations.${status}`)
-                          }
-                        >
-                          <Undo2 className="size-5" /> Reset
-                        </Button>
-                        {status === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                          <Button
-                            onClick={() => deleteDraft(selectedDocVersion)}
-                          >
-                            <Trash2 className="size-5" /> Delete draft
-                          </Button>
-                        ) : null}
-                      </div>
-
-                      <div className="flex gap-2">
-                        {status === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                          <>
-                            <Button
-                              disabled={!isDirty}
-                              onClick={() =>
-                                form.handleSubmit({ submitAction: "saveDraft" })
-                              }
-                              size={"lg"}
-                              variant={"action"}
-                            >
-                              <Save className="size-5" />
-                              Save draft
-                            </Button>
-                            <Button
-                              disabled={!isDirty}
-                              onClick={() =>
-                                form.handleSubmit({
-                                  submitAction: "publishDraft",
-                                })
-                              }
-                              size={"lg"}
-                              variant={"accent"}
-                            >
-                              Publish draft
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              disabled={!isDirty}
-                              onClick={() =>
-                                form.handleSubmit({
-                                  submitAction: "saveAsDraft",
-                                })
-                              }
-                              size={"lg"}
-                              variant={"action"}
-                            >
-                              <Save className="size-8 [&_path]:stroke-[1.5px]" />
-                              Save as draft
-                            </Button>
-                            <Button
-                              disabled={!isDirty}
-                              onClick={() =>
-                                form.handleSubmit({
-                                  submitAction: "updatePublished",
-                                })
-                              }
-                              size={"lg"}
-                              variant={"accent"}
-                            >
-                              Update published
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  );
-                }}
-              </form.Subscribe>
-            </form.AppForm>
-          </div>
-        </form>*/}
-      </Card>
-    </form.AppForm>
-  );
+  return form;
 }
 
-const DocumentVersionContentForm = withForm({
-  defaultValues: {} as FormData,
-  onSubmitMeta: defaultMeta,
-  props: {
-    deleteDraft: (
-      _value: Pick<
-        DocVersionListItemResponse,
-        "contentId" | "versionNumber"
-      >
-    ) => {},
-    selectedDocVersion: {} as DocVersionListItemResponse | null,
-    documentVersionDraft: {} as DocumentVersionContentResponse,
-    documentVersionPublished: {} as DocumentVersionContentResponse,
-  },
+export function DocumentVersion({ contentId }: { contentId: string }) {
+  const {
+    selectedVersionContent,
+    selectedVersionNumber,
+    setSelectedVersionNumber,
+    versions,
+  } = useDocVersions(contentId);
 
-  render: function Render({
-    form,
-    deleteDraft,
-    selectedDocVersion,
-    documentVersionDraft,
-    documentVersionPublished,
-  }) {
-    return (
+  const savingStatuses = useMutationState({
+    filters: {
+      mutationKey: [
+        "documentVersion",
+        contentId,
+        selectedVersionNumber,
+        "draft",
+        "save",
+      ],
+    },
+    select: (mutation) => mutation.state.status,
+  });
+
+  const { isPending: isPublishPending } = usePublishDraft(
+    contentId,
+    selectedVersionNumber ?? 0
+  );
+
+  const form = useDocumentVersionForm({
+    initialValues: {
+      lang: i18n.defaultLocale,
+      translations: selectedVersionContent.translations,
+    },
+    contentId,
+    versionNumber: selectedVersionNumber ?? 0,
+  });
+
+  const isDraftChanged = useStore(
+    form.store,
+    (state) =>
+      state.isValid &&
+      (state.values.translations[state.values.lang]?.draft?.content !==
+        state.values.translations[state.values.lang]?.published?.content ||
+        state.values.translations[state.values.lang]?.draft?.title !==
+          state.values.translations[state.values.lang]?.published?.title)
+  );
+
+  return (
+    <Card
+      className="flex h-full flex-1 flex-col"
+      containerClassName="flex flex-col flex-1"
+      captionSize={"sm"}
+      caption={
+        <span className="flex items-center gap-5">
+          <DocumentVersionSelector
+            items={versions}
+            versionNumber={selectedVersionNumber}
+            onSelect={setSelectedVersionNumber}
+            contentId={contentId}
+          />
+
+          <form.AppField name="lang">
+            {(field) => <field.LocaleSwitchField />}
+          </form.AppField>
+        </span>
+      }
+    >
       <Tabs className="flex-1" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
         <TabsList>
           <TabsTrigger
@@ -348,7 +243,7 @@ const DocumentVersionContentForm = withForm({
             value={DOCUMENT_VERSION_STATUS.DRAFT}
           >
             <Pencil /> <span>Editor</span>
-            {/*{isDraftChanged ? <Dot /> : null}*/}
+            {isDraftChanged && <UnpublishedDot />}
             <div className="w-4">
               {savingStatuses.at(-1) === "pending" && (
                 <Loader2 className="size-4 animate-spin" />
@@ -369,201 +264,458 @@ const DocumentVersionContentForm = withForm({
           className="flex flex-1 flex-col gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
-          <>
-            <form.Subscribe selector={(state) => state.values.status}>
-              {(status) => (
-                <>
-                  <p>
-                    Author:
-                    {status === DOCUMENT_VERSION_STATUS.DRAFT
-                      ? documentVersionDraft.author.name
-                      : documentVersionPublished.author.name}
-                  </p>
-                  <form.Subscribe selector={(state) => state.values.locale}>
-                    {(locale) => (
-                      <>
-                        <form.AppField
-                          name={`translations.${status}.${locale}.title`}
-                        >
-                          {(field) => {
-                            return <field.TextField label="Title" />;
-                          }}
-                        </form.AppField>
-                        <form.AppField
-                          name={`translations.${status}.${locale}.content`}
-                        >
-                          {(field) => (
-                            <Suspense fallback={<div>Loading...</div>}>
-                              <field.ContentAreaField label="Content" />
-                            </Suspense>
-                          )}
-                        </form.AppField>
-                      </>
-                    )}
-                  </form.Subscribe>
-                </>
-              )}
-            </form.Subscribe>
-
-            <div className="flex h-fit justify-between gap-5">
-              <form.AppForm>
-                <form.Subscribe
-                  selector={(state) => ({
-                    isDirty: state.isDirty,
-                    status: state.values.status,
-                  })}
-                >
-                  {({ isDirty, status }) => {
-                    return (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            disabled={!isDirty}
-                            variant={"outline"}
-                            onClick={() =>
-                              form.resetField(`translations.${status}`)
-                            }
-                          >
-                            <Undo2 className="size-5" /> Reset
-                          </Button>
-                          {status === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                            <Button
-                              onClick={() => deleteDraft(selectedDocVersion)}
-                            >
-                              <Trash2 className="size-5" /> Delete draft
-                            </Button>
-                          ) : null}
-                        </div>
-
-                        <div className="flex gap-2">
-                          {status === DOCUMENT_VERSION_STATUS.DRAFT ? (
-                            <>
-                              <Button
-                                disabled={!isDirty}
-                                onClick={() =>
-                                  form.handleSubmit({
-                                    submitAction: "saveDraft",
-                                  })
-                                }
-                                size={"lg"}
-                                variant={"action"}
-                              >
-                                <Save className="size-5" />
-                                Save draft
-                              </Button>
-                              <Button
-                                disabled={!isDirty}
-                                onClick={() =>
-                                  form.handleSubmit({
-                                    submitAction: "publishDraft",
-                                  })
-                                }
-                                size={"lg"}
-                                variant={"accent"}
-                              >
-                                Publish draft
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                disabled={!isDirty}
-                                onClick={() =>
-                                  form.handleSubmit({
-                                    submitAction: "saveAsDraft",
-                                  })
-                                }
-                                size={"lg"}
-                                variant={"action"}
-                              >
-                                <Save className="size-8 [&_path]:stroke-[1.5px]" />
-                                Save as draft
-                              </Button>
-                              <Button
-                                disabled={!isDirty}
-                                onClick={() =>
-                                  form.handleSubmit({
-                                    submitAction: "updatePublished",
-                                  })
-                                }
-                                size={"lg"}
-                                variant={"accent"}
-                              >
-                                Update published
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </>
-                    );
+          <form.Subscribe selector={(state) => state.values.lang}>
+            {(lang) => (
+              <>
+                <form.AppField
+                  name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
+                  listeners={{
+                    onChange: ({ fieldApi }) => {
+                      fieldApi.form.handleSubmit({
+                        submitAction: "saveDraft",
+                      });
+                    },
+                    onChangeDebounceMs: 800,
                   }}
-                </form.Subscribe>
-              </form.AppForm>
+                >
+                  {(field) => <field.TextField label="Title" />}
+                </form.AppField>
+                <Suspense fallback={<SkeletonLoading />}>
+                  <form.AppField
+                    name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
+                    listeners={{
+                      onChange: ({ fieldApi }) => {
+                        fieldApi.form.handleSubmit({
+                          submitAction: "saveDraft",
+                        });
+                      },
+                      onChangeDebounceMs: 800,
+                    }}
+                  >
+                    {(field) => <field.ContentAreaField label="Content" />}
+                  </form.AppField>
+                </Suspense>
+              </>
+            )}
+          </form.Subscribe>
+
+          <div className="flex items-center justify-between">
+            <Button
+              variant={"outline"}
+              disabled={!isDraftChanged}
+              onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
+            >
+              Reset
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                onClick={() => form.handleSubmit({ submitAction: "publish" })}
+                className="gap-1 self-end"
+                size={"lg"}
+                variant={"accent"}
+                disabled={!isDraftChanged}
+              >
+                <Save className="size-5" />
+                Publish
+              </Button>
             </div>
-          </>
+          </div>
+        </TabsContent>
+        <TabsContent
+          className="flex min-h-0 flex-1 shrink-0 flex-col gap-2 overflow-y-auto"
+          value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+        >
+          <form.Subscribe selector={(state) => state.values.lang}>
+            {(lang) => {
+              if (
+                !selectedVersionContent.translations[lang]?.published?.content
+              ) {
+                return <div>No published content</div>;
+              }
+              const { content } = transformMarkdoc({
+                rawContent:
+                  selectedVersionContent.translations[lang]?.published
+                    ?.content ?? "",
+              });
+
+              return <RenderMarkdoc content={content} />;
+            }}
+          </form.Subscribe>
         </TabsContent>
       </Tabs>
-    );
-  },
-});
+    </Card>
+  );
+}
 
-function useResetDocumentVerDraft(contentId: string, versionNumber: number) {
-  const queryClient = useQueryClient();
+function useDocVersions(contentId: string) {
+  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
+  const { data: versions } = useSuspenseQuery(docVersionsListQO);
 
+  const [selectedVersionNumber, setSelectedVersionNumber] = useState<
+    number | undefined
+  >(versions.at(-1)?.versionNumber);
 
-  return useMutation({
-    mutationKey: [
-      "document",
-      contentId,
-      "version",
-      versionNumber,
-      "draft",
-      "reset",
-    ],
-    mutationFn: ({ lang }: { lang: Locale }) =>
+  const docVersionQO = getDocumentVersionQueryOptions({
+    contentId,
+    versionNumber: selectedVersionNumber,
   });
+
+  const { data: selectedVersionContent } = useSuspenseQuery(docVersionQO);
+
+  return useMemo(
+    () => ({
+      selectedVersionNumber,
+      setSelectedVersionNumber,
+      selectedVersionContent,
+      versions,
+    }),
+    [selectedVersionNumber, selectedVersionContent, versions]
+  );
+}
+
+interface DocumentVersionSelectorProps {
+  items: DocVersionListItemResponse[];
+  onSelect: (versionNumber: number) => void;
+  versionNumber: number | undefined;
+  contentId: string;
 }
 
 function DocumentVersionSelector({
-  contentId,
+  items,
   onSelect,
-}: {
-  contentId: string;
-  onSelect: (version: DocVersionListItemResponse) => void;
-}) {
-  const versionListQO = getDocumentVersionsListQueryOptions({ contentId });
+  versionNumber,
+  contentId,
+}: DocumentVersionSelectorProps) {
+  const { mutate: createVersion, isPending: isCreating } =
+    useCreateVersion(contentId);
 
-  const { data: versions } = useSuspenseQuery(versionListQO);
+  if (typeof versionNumber !== "number") return null;
+
+  const selectedItem = items.find(
+    (item) => item.versionNumber === versionNumber
+  );
+
+  const handleCreateVersion = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    createVersion(undefined, {
+      onSuccess: (data) => {
+        onSelect(data.versionNumber);
+      },
+      onError: (error) => {
+        console.error("Failed to create version:", error);
+      },
+    });
+  };
 
   return (
     <Select
-      defaultValue={`${versions[0].versionNumber}`}
-      onValueChange={(versionNumStr) =>
-        onSelect(
-          versions.find((v) => v.versionNumber === Number(versionNumStr))!
-        )
-      }
+      value={`${versionNumber}`}
+      onValueChange={(versionNumberStr) => onSelect(Number(versionNumberStr))}
     >
-      <SelectTrigger className="w-fit max-w-48">
-        <SelectValue placeholder="Select version" />
+      <SelectTrigger className="h-auto w-auto min-w-48 py-1">
+        <SelectValue>
+          {selectedItem && (
+            <DocumentVersionSelectorItem item={selectedItem} compact />
+          )}
+        </SelectValue>
       </SelectTrigger>
-      <SelectContent className="flex w-fit flex-col gap-2">
-        <Button>Add new</Button>
-        <Separator className="h-2" />
-        <SelectGroup>
-          {versions.map((ver) => (
-            <SelectItem value={`${ver.versionNumber}`} key={ver.versionNumber}>
-              <span className="items-items-center flex gap-1">
-                <span>{ver.versionNumber}</span>
-
-                {ver.statuses.map((s) => (
-                  <StatusTag status={s} key={s} />
-                ))}
-              </span>
+      <SelectContent>
+        <SelectGroup className="flex flex-col gap-1">
+          {items.map((item) => (
+            <SelectItem
+              key={item.versionNumber}
+              value={`${item.versionNumber}`}
+              className="group focus:bg-secondary-light py-2"
+            >
+              <DocumentVersionSelectorItem item={item} />
             </SelectItem>
           ))}
+          <Button
+            variant="accent"
+            onClick={handleCreateVersion}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
+            New Version
+          </Button>
         </SelectGroup>
       </SelectContent>
     </Select>
   );
+}
+
+function DocumentVersionSelectorItem({
+  item,
+  compact,
+}: {
+  item: DocVersionListItemResponse;
+  compact?: boolean;
+}) {
+  return (
+    <div className="text-left text-xs group-focus:text-white">
+      <div className="mb-1 font-medium">Version {item.versionNumber}</div>
+      {!compact && (
+        <ul className="space-y-2">
+          {item.translations.map((tr) => (
+            <li key={tr.locale} className="flex items-start gap-1">
+              <Tag
+                tag={tr.locale}
+                className="group-focus:border-white group-focus:text-white"
+              />
+              <ul className="flex flex-col items-start gap-0.5">
+                {tr.statuses.map((st) => (
+                  <li key={st.status} className="flex items-start gap-2">
+                    <StatusTag
+                      status={st.status}
+                      className="group-focus:border-white group-focus:text-white"
+                    />
+                    <span className="max-w-48 truncate">
+                      {st.title || "(no title)"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function useSaveDraft(contentId: string, versionNumber: number) {
+  const docVersionQO = getDocumentVersionQueryOptions({
+    contentId,
+    versionNumber,
+  });
+  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["documentVersion", contentId, versionNumber, "draft", "save"],
+    mutationFn: ({
+      locale,
+      title,
+      content,
+    }: {
+      locale: Locale;
+      title?: string;
+      content?: string;
+    }) =>
+      $saveDocumentVersionDraft({
+        data: {
+          contentId,
+          versionNumber,
+          locale,
+          title,
+          content,
+        },
+      }),
+
+    onMutate: async (data) => {
+      await queryClient.cancelQueries(docVersionQO);
+
+      const prevVersion = queryClient.getQueryData(docVersionQO.queryKey);
+      const prevList = queryClient.getQueryData(docVersionsListQO.queryKey);
+
+      queryClient.setQueryData(docVersionQO.queryKey, (old) => {
+        if (!old) {
+          return {
+            contentId,
+            versionNumber,
+            translations: {
+              [data.locale]: {
+                draft: { title: data.title ?? "", content: data.content ?? "" },
+              },
+            },
+          };
+        }
+
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [data.locale]: {
+              ...old.translations[data.locale],
+              draft: {
+                title: data.title ?? "",
+                content: data.content ?? "",
+              },
+            },
+          },
+        };
+      });
+
+      return { prevVersion, prevList };
+    },
+
+    onError: (_, __, context) => {
+      if (context?.prevVersion) {
+        queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
+      }
+      if (context?.prevList) {
+        queryClient.setQueryData(docVersionsListQO.queryKey, context.prevList);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(docVersionQO);
+      queryClient.invalidateQueries(docVersionsListQO);
+    },
+  });
+}
+
+function usePublishDraft(contentId: string, versionNumber: number) {
+  const docVersionQO = getDocumentVersionQueryOptions({
+    contentId,
+    versionNumber,
+  });
+  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: [
+      "documentVersion",
+      contentId,
+      versionNumber,
+      "published",
+      "publish",
+    ],
+    mutationFn: async ({ locale }: { locale: Locale }) => {
+      await waitUntilNoMutations(queryClient, {
+        mutationKey: [
+          "documentVersion",
+          contentId,
+          versionNumber,
+          "draft",
+          "save",
+        ],
+      });
+      return $publishDocumentVersionDraft({
+        data: { contentId, versionNumber, locale },
+      });
+    },
+    onMutate: async (data) => {
+      await queryClient.cancelQueries(docVersionQO);
+
+      const previousVersion = queryClient.getQueryData(docVersionQO.queryKey);
+
+      queryClient.setQueryData(docVersionQO.queryKey, (old) => {
+        if (!old) {
+          return old;
+        }
+
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [data.locale]: {
+              ...old.translations[data.locale],
+              published: {
+                title: old.translations[data.locale]?.draft?.title ?? "",
+                content: old.translations[data.locale]?.draft?.content ?? "",
+              },
+            },
+          },
+        };
+      });
+
+      await queryClient.cancelQueries(docVersionsListQO);
+
+      const previousList = queryClient.getQueryData(docVersionsListQO.queryKey);
+
+      return { previousVersion, previousList };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(docVersionQO);
+      queryClient.invalidateQueries(docVersionsListQO);
+    },
+  });
+}
+
+function useResetDraft(contentId: string, versionNumber: number) {
+  const docVersionQO = getDocumentVersionQueryOptions({
+    contentId,
+    versionNumber,
+  });
+  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: [
+      "documentVersion",
+      contentId,
+      versionNumber,
+      "draft",
+      "reset",
+    ],
+    mutationFn: ({ locale }: { locale: Locale }) =>
+      $resetDocumentVersionDraft({
+        data: { contentId, versionNumber, locale },
+      }),
+    onMutate: async ({ locale }) => {
+      await queryClient.cancelQueries(docVersionQO);
+      await queryClient.cancelQueries(docVersionsListQO);
+
+      const prevVersion = queryClient.getQueryData(docVersionQO.queryKey);
+      const prevList = queryClient.getQueryData(docVersionsListQO.queryKey);
+
+      queryClient.setQueryData(docVersionQO.queryKey, (old) => {
+        if (!old) {
+          return old;
+        }
+
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [locale]: {
+              ...old.translations[locale],
+              draft: {
+                title: old.translations[locale]?.published?.title ?? "",
+                content: old.translations[locale]?.published?.content ?? "",
+              },
+            },
+          },
+        };
+      });
+
+      return { prevVersion, prevList };
+    },
+
+    onError: (_, __, context) => {
+      if (context?.prevVersion) {
+        queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
+      }
+      if (context?.prevList) {
+        queryClient.setQueryData(docVersionsListQO.queryKey, context.prevList);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(docVersionQO);
+      queryClient.invalidateQueries(docVersionsListQO);
+    },
+  });
+}
+
+function useCreateVersion(contentId: string) {
+  const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["documentVersion", contentId, "create"],
+    mutationFn: () => $createDocumentVersion({ data: { contentId } }),
+    onSuccess: async () => {
+      // Await the invalidation so the list is refetched before onSuccess callbacks run
+      await queryClient.invalidateQueries(docVersionsListQO);
+    },
+  });
 }

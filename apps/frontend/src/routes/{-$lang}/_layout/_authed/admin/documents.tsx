@@ -5,7 +5,7 @@ import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { DocumentsList } from "./-components/DocumentsList";
-import { DocumentVersion } from "./-components/DocumentVersion2";
+import { DocumentVersion } from "./-components/DocumentVersion";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/documents"
@@ -32,25 +32,14 @@ function RouteComponent() {
       </Card>
 
       {selectedContentId ? (
-        <>
-          {/*<Card className="w-80" caption="Versions">
-            <Suspense
-              fallback={
-                <div>
-                  <Skeleton />
-                </div>
-              }
-            >
-              <DocumentVersionsList
-                contentId={selectedContentId}
-                onSelect={setSelectedVersion}
-              />
-            </Suspense>
-          </Card>*/}
-          {<DocumentVersion contentId={selectedContentId} />}
-        </>
+        <Suspense fallback={<Skeleton className="h-full flex-1" />}>
+          <DocumentVersion
+            key={selectedContentId}
+            contentId={selectedContentId}
+          />
+        </Suspense>
       ) : (
-        <div> No document selected </div>
+        <div>No document selected</div>
       )}
     </>
   );
