@@ -1,0 +1,9 @@
+services:
+  cms-db:
+    userns_mode: "keep-id:uid=999,gid=999"
+  frontend:
+    userns_mode: "keep-id"
+  backend:
+    userns_mode: "keep-id"
+  elasticsearch:
+    userns_mode: "keep-id:uid=1000,gid=1000"

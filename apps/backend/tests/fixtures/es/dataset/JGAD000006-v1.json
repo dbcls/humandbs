@@ -1,0 +1,347 @@
+{
+  "datasetId": "JGAD000006",
+  "version": "v1",
+  "versionReleaseDate": "2014-12-24",
+  "humId": "hum0009",
+  "humVersionId": "hum0009-v1",
+  "releaseDate": "2020-09-28",
+  "criteria": "Controlled-access (Type I)",
+  "typeOfData": {
+    "ja": "NGS(PBAT-seq)",
+    "en": "NGS(PBAT-seq)"
+  },
+  "experiments": [
+    {
+      "header": {
+        "ja": {
+          "text": "JGAS000006",
+          "rawHtml": "<a name=\"jgas000006\"><span><strong> JGAS000006</strong></span></a>"
+        },
+        "en": {
+          "text": "JGAS000006",
+          "rawHtml": "<a name=\"jgas000006\"><span><strong> JGAS000006</strong></span></a>"
+        }
+      },
+      "data": {
+        "Materials and Participants": {
+          "ja": {
+            "text": "11検体 正常卵子、精子、受精卵(着床前胚)、臍帯血 (卵子、着床前胚についてはプールしたDNAを使用)",
+            "rawHtml": "<p><span>11検体</span></p>\n<p><span>正常卵子、精子、受精卵（着床前胚）、臍帯血</span></p>\n<p><span>（卵子、着床前胚についてはプールしたDNAを使用）</span></p>"
+          },
+          "en": {
+            "text": "11検体 正常卵子、精子、受精卵(着床前胚)、臍帯血 (卵子、着床前胚についてはプールしたDNAを使用)",
+            "rawHtml": "<p><span>11検体</span></p>\n<p><span>正常卵子、精子、受精卵（着床前胚）、臍帯血</span></p>\n<p><span>（卵子、着床前胚についてはプールしたDNAを使用）</span></p>"
+          }
+        },
+        "Experimental Method": {
+          "ja": {
+            "text": "ゲノムワイドなメチル化シトシン同定",
+            "rawHtml": "<span>ゲノムワイドなメチル化シトシン同定</span>"
+          },
+          "en": {
+            "text": "ゲノムワイドなメチル化シトシン同定",
+            "rawHtml": "<span>ゲノムワイドなメチル化シトシン同定</span>"
+          }
+        },
+        "Targets": {
+          "ja": null,
+          "en": null
+        },
+        "Platform": {
+          "ja": {
+            "text": "Illumina Hiseq 2000および2500",
+            "rawHtml": "<span>Illumina Hiseq 2000および2500</span>"
+          },
+          "en": {
+            "text": "Illumina Hiseq 2000および2500",
+            "rawHtml": "<span>Illumina Hiseq 2000および2500</span>"
+          }
+        },
+        "Sample Description": {
+          "ja": {
+            "text": "それぞれの組織から抽出したDNAを使用 卵子(増幅有)※1: 79検体をプール 卵子(増幅無)※1: 123検体をプール 精子: 3検体 受精卵(着床前胚): 80検体をプール 臍帯血: 5検体",
+            "rawHtml": "<p><span>それぞれの組織から抽出したDNAを使用</span></p>\n<p><span>卵子（増幅有）<sup>※1</sup>：79検体をプール</span></p>\n<p><span>卵子（増幅無）<sup>※1</sup>：123検体をプール</span></p>\n<p><span>精子：3検体</span></p>\n<p><span>受精卵（着床前胚）：80検体をプール</span></p>\n<p><span>臍帯血：5検体</span></p>"
+          },
+          "en": {
+            "text": "それぞれの組織から抽出したDNAを使用 卵子(増幅有)※1: 79検体をプール 卵子(増幅無)※1: 123検体をプール 精子: 3検体 受精卵(着床前胚): 80検体をプール 臍帯血: 5検体",
+            "rawHtml": "<p><span>それぞれの組織から抽出したDNAを使用</span></p>\n<p><span>卵子（増幅有）<sup>※1</sup>：79検体をプール</span></p>\n<p><span>卵子（増幅無）<sup>※1</sup>：123検体をプール</span></p>\n<p><span>精子：3検体</span></p>\n<p><span>受精卵（着床前胚）：80検体をプール</span></p>\n<p><span>臍帯血：5検体</span></p>"
+          }
+        },
+        "Cell Lines": {
+          "ja": null,
+          "en": null
+        },
+        "Library Construction": {
+          "ja": {
+            "text": "Post-bisulfite adaptor-tagging (PBAT)法※2",
+            "rawHtml": "<span>Post-bisulfite adaptor-tagging (PBAT)法<sup>※2</sup></span>"
+          },
+          "en": {
+            "text": "Post-bisulfite adaptor-tagging (PBAT)法※2",
+            "rawHtml": "<span>Post-bisulfite adaptor-tagging (PBAT)法<sup>※2</sup></span>"
+          }
+        },
+        "Fragmentation": {
+          "ja": {
+            "text": "バイサルファイト処理",
+            "rawHtml": "<span>バイサルファイト処理</span>"
+          },
+          "en": {
+            "text": "バイサルファイト処理",
+            "rawHtml": "<span>バイサルファイト処理</span>"
+          }
+        },
+        "Read Type": {
+          "ja": {
+            "text": "Single-end",
+            "rawHtml": "<span>Single-end</span>"
+          },
+          "en": {
+            "text": "Single-end",
+            "rawHtml": "<span>Single-end</span>"
+          }
+        },
+        "Read Length": {
+          "ja": {
+            "text": "100 bp",
+            "rawHtml": "<span>100 bp</span>"
+          },
+          "en": {
+            "text": "100 bp",
+            "rawHtml": "<span>100 bp</span>"
+          }
+        },
+        "Japanese Genotype-phenotype Archive Dataset Accession": {
+          "ja": {
+            "text": "JGAD000006",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000006\"><span>JGAD000006</span></a>"
+          },
+          "en": {
+            "text": "JGAD000006",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000006\"><span>JGAD000006</span></a>"
+          }
+        },
+        "Total Data Volume": {
+          "ja": {
+            "text": "500 GB",
+            "rawHtml": "<span>500 GB </span>"
+          },
+          "en": {
+            "text": "500 GB",
+            "rawHtml": "<span>500 GB </span>"
+          }
+        },
+        "Policies": {
+          "ja": {
+            "text": "NBDC policy および 民間企業における利用禁止",
+            "rawHtml": "<span><a href=\"/nbdc-policy\">NBDC policy</a> および <a href=\"/policy-companylimitation\">民間企業における利用禁止</a></span>"
+          },
+          "en": {
+            "text": "NBDC policy および 民間企業における利用禁止",
+            "rawHtml": "<span><a href=\"/nbdc-policy\">NBDC policy</a> および <a href=\"/policy-companylimitation\">民間企業における利用禁止</a></span>"
+          }
+        }
+      },
+      "footers": {
+        "ja": [
+          {
+            "text": "下記関連論文1参照",
+            "rawHtml": "<span>※1：下記関連論文1参照</span>"
+          },
+          {
+            "text": "Miura, F., Enomoto, Y., Dairiki, R. & Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照",
+            "rawHtml": "<span>※2：Miura, F., Enomoto, Y., Dairiki, R. &amp; Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照</span>"
+          }
+        ],
+        "en": [
+          {
+            "text": "下記関連論文1参照",
+            "rawHtml": "<span>※1：下記関連論文1参照</span>"
+          },
+          {
+            "text": "Miura, F., Enomoto, Y., Dairiki, R. & Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照",
+            "rawHtml": "<span>※2：Miura, F., Enomoto, Y., Dairiki, R. &amp; Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照</span>"
+          }
+        ]
+      },
+      "searchable": {
+        "subjectCount": null,
+        "subjectCountType": null,
+        "healthStatus": null,
+        "diseases": [],
+        "tissues": [],
+        "isTumor": null,
+        "cellLine": [],
+        "population": [],
+        "sex": null,
+        "ageGroup": null,
+        "assayType": [],
+        "libraryKits": [],
+        "platforms": [],
+        "readType": null,
+        "readLength": null,
+        "sequencingDepth": null,
+        "targetCoverage": null,
+        "referenceGenome": [],
+        "variantCounts": null,
+        "hasPhenotypeData": null,
+        "targets": null,
+        "fileTypes": [],
+        "processedDataTypes": [],
+        "dataVolumeGb": null,
+        "policies": [
+          {
+            "id": "nbdc-policy",
+            "name": {
+              "ja": "NBDC policy",
+              "en": "NBDC policy"
+            },
+            "url": "https://humandbs.dbcls.jp/nbdc-policy"
+          },
+          {
+            "id": "company-limitation-policy",
+            "name": {
+              "ja": "民間企業における利用禁止",
+              "en": "Company User Limit"
+            },
+            "url": "https://humandbs.dbcls.jp/policy-companylimitation"
+          }
+        ]
+      }
+    }
+  ],
+  "originalMetadata": {
+    "alias": "JSUB000003_Dataset_0001",
+    "center_name": "Individual",
+    "accession": "JGAD000006",
+    "IDENTIFIERS": {
+      "SECONDARY_ID": "JGAD00000000006"
+    },
+    "TITLE": "DNA methylation dynamics dataset during early human development.",
+    "DESCRIPTION": "DNA methylation is globally reprogrammed during mammalian preimplantation development, which has been well characterized in the mouse but not in other mammals. Here we report on the single base-resolution DNA methylome of human gametes and blastocysts. Near complete demethylation of the paternal genome was apparent, except for tandem repeat-containing CpG-rich regions, whereas the maternal genome was essentially resistant to replication-dependent global demethylation. The human oocyte methylome was characterized by a unique bimodal distribution of gene body methylation, a particular promoter methylation profile and a high proportion of hypomethylated transposable elements. Methylome and transcriptome comparisons between the human and mouse suggested species-specific regulation of many genes including the important DNA methylation regulators. Our findings are essential to understand the unique gene regulatory mechanisms during early human development and will facilitate preimplantation epigenetic diagnosis of human embryos.",
+    "DATASET_TYPE": "Methylation profiling by high-throughput sequencing",
+    "DATA_REFS": {
+      "DATA_REF": [
+        {
+          "refname": "JGAR000000221",
+          "refcenter": "Individual",
+          "accession": "JGAR000000221"
+        },
+        {
+          "refname": "JGAR000000222",
+          "refcenter": "Individual",
+          "accession": "JGAR000000222"
+        },
+        {
+          "refname": "JGAR000000223",
+          "refcenter": "Individual",
+          "accession": "JGAR000000223"
+        },
+        {
+          "refname": "JGAR000000224",
+          "refcenter": "Individual",
+          "accession": "JGAR000000224"
+        },
+        {
+          "refname": "JGAR000000225",
+          "refcenter": "Individual",
+          "accession": "JGAR000000225"
+        },
+        {
+          "refname": "JGAR000000226",
+          "refcenter": "Individual",
+          "accession": "JGAR000000226"
+        },
+        {
+          "refname": "JGAR000000227",
+          "refcenter": "Individual",
+          "accession": "JGAR000000227"
+        },
+        {
+          "refname": "JGAR000000228",
+          "refcenter": "Individual",
+          "accession": "JGAR000000228"
+        },
+        {
+          "refname": "JGAR000000229",
+          "refcenter": "Individual",
+          "accession": "JGAR000000229"
+        },
+        {
+          "refname": "JGAR000000230",
+          "refcenter": "Individual",
+          "accession": "JGAR000000230"
+        },
+        {
+          "refname": "JGAR000000231",
+          "refcenter": "Individual",
+          "accession": "JGAR000000231"
+        }
+      ]
+    },
+    "ANALYSIS_REFS": {
+      "ANALYSIS_REF": [
+        {
+          "refname": "JGAZ000000001",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000001"
+        },
+        {
+          "refname": "JGAZ000000002",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000002"
+        },
+        {
+          "refname": "JGAZ000000003",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000003"
+        },
+        {
+          "refname": "JGAZ000000004",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000004"
+        },
+        {
+          "refname": "JGAZ000000005",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000005"
+        },
+        {
+          "refname": "JGAZ000000006",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000006"
+        },
+        {
+          "refname": "JGAZ000000007",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000007"
+        },
+        {
+          "refname": "JGAZ000000008",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000008"
+        },
+        {
+          "refname": "JGAZ000000009",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000009"
+        },
+        {
+          "refname": "JGAZ000000010",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000010"
+        },
+        {
+          "refname": "JGAZ000000011",
+          "refcenter": "Individual",
+          "accession": "JGAZ000000011"
+        }
+      ]
+    },
+    "POLICY_REF": {
+      "refname": "JGAP000001",
+      "refcenter": "NBDC",
+      "accession": "JGAP000001"
+    }
+  }
+}

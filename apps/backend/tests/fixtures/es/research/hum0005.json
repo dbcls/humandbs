@@ -1,0 +1,877 @@
+{
+  "humId": "hum0005",
+  "url": {
+    "ja": "https://humandbs.dbcls.jp/hum0005-v8",
+    "en": "https://humandbs.dbcls.jp/en/hum0005-v8"
+  },
+  "title": {
+    "ja": "難聴の遺伝子解析と臨床応用に関する研究",
+    "en": "Genetic Analysis of Hearing Loss and Its Clinical Application"
+  },
+  "summary": {
+    "aims": {
+      "ja": {
+        "text": "様々な難聴および外耳・中耳・内耳奇形の原因遺伝子変異の解明と臨床診断への応用",
+        "rawHtml": "<span><strong>目的： </strong>様々な難聴および外耳・中耳・内耳奇形の原因遺伝子変異の解明と臨床診断への応用</span>"
+      },
+      "en": {
+        "text": "To identify the causative gene mutation of hearing impairment including non-syndromic hearing loss, syndromic hearing loss, and inner, middle, outer ear malformation.",
+        "rawHtml": "<span><strong>Aims: </strong> To identify the causative gene mutation of hearing impairment including non-syndromic hearing loss, syndromic hearing loss, and inner, middle, outer ear malformation.</span>"
+      }
+    },
+    "methods": {
+      "ja": {
+        "text": "既知の難聴関連遺伝子領域の塩基配列を、Ion PGM、Ion Proton、HiSeq 2000、IonS5を用いて決定する",
+        "rawHtml": "<span><strong>方法： </strong>既知の難聴関連遺伝子領域の塩基配列を、Ion PGM、Ion Proton、HiSeq 2000、IonS5を用いて決定する</span>"
+      },
+      "en": {
+        "text": "Massively Parallel DNA Sequencing was performed with an Ion Torrent Personal Genome Machine (PGM), Ion Proton or Ion S5 system using the Ion PGM 200, Proton HiQ Sequencing Kit and Ion 318 Chip or Ion P1 chip (Thermo Fisher Scientific) or 540 chip chef kit (S5) or HiSeq 2000 system (Illumina).",
+        "rawHtml": "<span><strong>Methods: </strong> Massively Parallel DNA Sequencing was performed with an Ion Torrent Personal Genome Machine (PGM), Ion Proton or Ion S5 system using the Ion PGM 200, Proton HiQ Sequencing Kit and Ion 318 Chip or Ion P1 chip (Thermo Fisher Scientific) or 540 chip chef kit (S5) or HiSeq 2000 system (Illumina).</span>"
+      }
+    },
+    "targets": {
+      "ja": {
+        "text": "症候群性難聴 (Usher症候群) : 17症例非症候群性難聴: 39症例 (制限公開) ＋5症例 (非制限公開) ＋19症例 (制限公開) ＋19症例 (制限公開) ＋39症例 (制限公開) ＋1症例 (制限公開) ＋28症例 (制限公開) ＋7症例 (制限公開) ＋26症例 (制限公開) ＋15症例 (制限公開) ＋2969症例 (制限公開)",
+        "rawHtml": "<span><strong>対象： </strong>症候群性難聴（Usher症候群）：17症例</span>\n<span>　　　 非症候群性難聴：39症例（制限公開）＋5症例（非制限公開）＋19症例（制限公開）＋19症例（制限公開）＋39症例（制限公開）＋1症例（制限公開）＋28症例（制限公開）＋7症例（制限公開）＋26症例（制限公開）＋15症例（制限公開）＋2969症例（制限公開）</span>"
+      },
+      "en": {
+        "text": "Usher Syndrome: 17 patients Non-usher syndrome: 39 patients (Controlled-access) + 5 patients (Unrestricted-access) + 19 patients (Controlled-access) + 19 patients (Controlled-access) + 39 patients (Controlled-access) + 1 patient (Controlled-access) + 28 patients (Controlled-access) + 7 patient (Controlled-access) + 26 patients (Controlled-access) + 15 patients (Controlled-access) + 2969 patients (Controlled-access)",
+        "rawHtml": "<span><strong>Participants/Materials: </strong> Usher Syndrome: 17 patients</span>\n<span>　　　　　　&nbsp;　&nbsp;　&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;　Non-usher syndrome: 39 patients (Controlled-access) + 5 patients (Unrestricted-access) + 19 patients (Controlled-access) + 19 patients (Controlled-access) + 39 patients (Controlled-access) + 1 patient (Controlled-access) + 28 patients (Controlled-access) + 7 patient (Controlled-access) + 26 patients (Controlled-access) + 15 patients (Controlled-access) + 2969 patients (Controlled-access)</span>"
+      }
+    },
+    "url": {
+      "ja": [
+        {
+          "text": "https://www.shinshu-jibi.jp/specialty/specialty01",
+          "url": "https://www.shinshu-jibi.jp/specialty/specialty01"
+        }
+      ],
+      "en": []
+    },
+    "footers": {
+      "ja": [
+        {
+          "text": "リリース情報はこちら",
+          "rawHtml": "<span>※リリース情報は<a href=\"/hum0005-v8-release\">こちら</a></span>"
+        },
+        {
+          "text": "制限公開データの利用にあたっては、利用申請が必要です。申請方法はこちら。",
+          "rawHtml": "<span>※制限公開データの利用にあたっては、利用申請が必要です。申請方法は<a href=\"/data-use\">こちら</a>。</span>"
+        },
+        {
+          "text": "論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement) に記載して下さい。記載例はこちら。",
+          "rawHtml": "<span>※論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement)に記載して下さい。記載例は<a href=\"/acknowledgement\">こちら</a>。</span>"
+        }
+      ],
+      "en": [
+        {
+          "text": "Release Note",
+          "rawHtml": "<span>*<a href=\"/en/hum0005-v8-release\">Release Note</a>&nbsp;</span>"
+        },
+        {
+          "text": "Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. Learn more",
+          "rawHtml": "<span>*Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. <a href=\"/en/data-use\">Learn more</a></span>"
+        },
+        {
+          "text": "When the research results including the data which were downloaded from NHA/DRA, are published or presented somewhere, the data user must refer the papers which are related to the data, or include in the acknowledgment. Learn more",
+          "rawHtml": "<span>*When the research results including the data which were downloaded from NHA/DRA, are published or presented somewhere, the data user must refer the papers which are related to the data, or include in the acknowledgment. <a href=\"/en/acknowledgement\">Learn more</a></span>"
+        }
+      ]
+    }
+  },
+  "dataProvider": [
+    {
+      "name": {
+        "ja": {
+          "text": "宇佐美 真一",
+          "rawHtml": "<span><strong>研究代表者： </strong>宇佐美 真一</span>"
+        },
+        "en": {
+          "text": "Shin-ichi Usami",
+          "rawHtml": "<span><strong>Principal Investigator: </strong>Shin-ichi Usami</span>"
+        }
+      },
+      "email": null,
+      "orcid": null,
+      "organization": {
+        "name": {
+          "ja": {
+            "text": "信州大学 医学部 人工聴覚器学講座",
+            "rawHtml": "<span><strong>所 属 機 関： </strong>信州大学 医学部 人工聴覚器学講座</span>"
+          },
+          "en": {
+            "text": "Department of Hearing Implant Sciences, Shinshu University School of Medicine",
+            "rawHtml": "<span><strong>Affiliation: </strong>Department of Hearing Implant Sciences, Shinshu University School of Medicine</span>"
+          }
+        },
+        "address": null
+      }
+    }
+  ],
+  "researchProject": [],
+  "grant": [
+    {
+      "id": [
+        "JP16ek0109114"
+      ],
+      "title": {
+        "ja": "科学的エビデンスに基づいた遺伝性難聴の治療法確立に関する調査研究",
+        "en": "Development of evidence based treatments for inherited hearing loss"
+      },
+      "agency": {
+        "name": {
+          "ja": "日本医療研究開発機構 (AMED) 難治性疾患実用化研究事業",
+          "en": "Practical Research Project for Rare / Intractable Diseases, Japan Agency for Medical Research and Development"
+        }
+      }
+    },
+    {
+      "id": [
+        "JP16kk0205010"
+      ],
+      "title": {
+        "ja": "感覚器障害領域を対象とした統合型臨床ゲノム情報データストレージの構築に関する研究",
+        "en": "Development of unified data storage (DS) of clinical and genomic information for sensory disorders"
+      },
+      "agency": {
+        "name": {
+          "ja": "日本医療研究開発機構 (AMED) 臨床ゲノム情報統合データベース整備事業",
+          "en": "Program for an Integrated Database of Clinical and Genomic Information, Japan Agency for Medical Research and Development"
+        }
+      }
+    },
+    {
+      "id": [
+        "JP18ek0109363"
+      ],
+      "title": {
+        "ja": "遺伝性難聴の診療ガイドライン改定に向けた診断・治療エビデンスの創出",
+        "en": "Development of evidence based clinical management for hereditary hearing loss."
+      },
+      "agency": {
+        "name": {
+          "ja": "日本医療研究開発機構 (AMED) 難治性疾患実用化研究事業",
+          "en": "Practical Research Project for Rare / Intractable Diseases, Japan Agency for Medical Research and Development"
+        }
+      }
+    },
+    {
+      "id": [
+        "20FC1048"
+      ],
+      "title": {
+        "ja": "難治性聴覚障害に関する調査研究",
+        "en": "Research and Survey for Intractable Hearing Loss"
+      },
+      "agency": {
+        "name": {
+          "ja": "厚生労働科学研究費補助金 難治性疾患政策研究事業",
+          "en": "Health and Labour Sciences Research Grant for Comprehensive Research on Disability Health and Welfare"
+        }
+      }
+    },
+    {
+      "id": [
+        "JP16dk0310067"
+      ],
+      "title": {
+        "ja": "原因診断に基づく小児難聴の治療・療育システム構築に関する研究",
+        "en": "Research on building a treatment and rehabilitation system for childhood hearing loss based on causal diagnosis."
+      },
+      "agency": {
+        "name": {
+          "ja": "日本医療研究開発機構 (AMED) 障害者対策総合研究開発事業",
+          "en": "Research and Development Grants for Comprehensive Research for Persons with Disabilities, Japan Agency for Medical Research and Development"
+        }
+      }
+    },
+    {
+      "id": [
+        "JP21ek0109542"
+      ],
+      "title": {
+        "ja": "症候群性難聴の診療ガイドライン改定に向けた診断・治療エビデンスの創出",
+        "en": "Development of evidence based clinical management for syndromic hearing loss."
+      },
+      "agency": {
+        "name": {
+          "ja": "日本医療研究開発機構 (AMED) 難治性疾患実用化研究事業",
+          "en": "Practical Research Project for Rare / Intractable Diseases, Japan Agency for Medical Research and Development"
+        }
+      }
+    },
+    {
+      "id": [
+        "H22-難治-一般-058"
+      ],
+      "title": {
+        "ja": "Usher症候群に関する調査研究",
+        "en": "Research and Survey for Usher syndrome"
+      },
+      "agency": {
+        "name": {
+          "ja": "厚生労働科学研究費補助金 難治性疾患克服研究事業",
+          "en": "Health and Labour Sciences Research Grant for Research on Rare and Intractable Diseases"
+        }
+      }
+    },
+    {
+      "id": [
+        "H24-難治(難)-一般-032"
+      ],
+      "title": {
+        "ja": "遺伝性難聴および外耳、中耳、内耳奇形に関する調査研究",
+        "en": "Research and Survey for Inherited Hearing Loss and Inner-, Middle- and Outer Ear Malfolmation"
+      },
+      "agency": {
+        "name": {
+          "ja": "厚生労働科学研究費補助金 難治性疾患等克服研究事業",
+          "en": "Health and Labour Sciences Research Grant for Research on Rare and Intractable Diseases"
+        }
+      }
+    },
+    {
+      "id": [
+        "H25-感覚-一般-002"
+      ],
+      "title": {
+        "ja": "新しい難聴遺伝子診断システムの開発および臨床応用に関する研究",
+        "en": "Development and Clinical Application of NGS Based Genetic Testing for Deafness"
+      },
+      "agency": {
+        "name": {
+          "ja": "厚生労働科学研究費補助金 障害者対策総合研究事業 障害者対策総合研究開発事業 (感覚器障害分野)",
+          "en": "Health and Labour Sciences Research Grant for Comprehensive Research on Disability Health and Welfare"
+        }
+      }
+    },
+    {
+      "id": [
+        "H26-難治等(難)-一般-032"
+      ],
+      "title": {
+        "ja": "難治性聴覚障害に関する調査研究",
+        "en": "Research and Survey for Intractable Hearing Loss"
+      },
+      "agency": {
+        "name": {
+          "ja": "厚生労働科学研究費補助金 難治性疾患等政策研究事業",
+          "en": "Health and Labour Sciences Research Grant for Comprehensive Research on Disability Health and Welfare"
+        }
+      }
+    },
+    {
+      "id": [
+        "H29-難治等(難)-一般-031"
+      ],
+      "title": {
+        "ja": "難治性聴覚障害に関する調査研究",
+        "en": "Research and Survey for Intractable Hearing Loss"
+      },
+      "agency": {
+        "name": {
+          "ja": "厚生労働科学研究費補助金 難治性疾患等克服研究事業",
+          "en": "Health and Labour Sciences Research Grant for Comprehensive Research on Disability Health and Welfare"
+        }
+      }
+    }
+  ],
+  "relatedPublication": [
+    {
+      "title": {
+        "ja": "Massively parallel DNA sequencing facilitates diagnosis of patients with Usher syndrome type 1.",
+        "en": "Massively parallel DNA sequencing facilitates diagnosis of patients with Usher syndrome type 1."
+      },
+      "doi": "https://doi.org/10.1371/journal.pone.0090688",
+      "datasetIds": [
+        "DRA001273"
+      ]
+    },
+    {
+      "title": {
+        "ja": "An effective screening strategy for deafness in combination with a next-generation sequencing platform: a consecutive analysis.",
+        "en": "An effective screening strategy for deafness in combination with a next-generation sequencing platform: a consecutive analysis."
+      },
+      "doi": "https://doi.org/10.1038/jhg.2015.143",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Frequency of Usher syndrome type 1 in deaf children by massively parallel DNA sequencing.",
+        "en": "Frequency of Usher syndrome type 1 in deaf children by massively parallel DNA sequencing."
+      },
+      "doi": "https://doi.org/10.1038/jhg.2015.168",
+      "datasetIds": [
+        "DRA003791"
+      ]
+    },
+    {
+      "title": {
+        "ja": "POU4F3 mutation screening in Japanese hearing loss patients: Massively parallel DNA sequencing-based analysis identified novel variants associated with autosomal dominant hearing loss",
+        "en": "POU4F3 mutation screening in Japanese hearing loss patients: Massively parallel DNA sequencing-based analysis identified novel variants associated with autosomal dominant hearing loss"
+      },
+      "doi": "https://doi.org/10.1371/journal.pone.0177636",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "WFS1 mutation screening in a large series of Japanese hearing loss patients: Massively parallel DNA sequencing-based analysis.",
+        "en": "WFS1 mutation screening in a large series of Japanese hearing loss patients: Massively parallel DNA sequencing-based analysis."
+      },
+      "doi": "https://doi.org/10.1371/journal.pone.0193359",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "OTOF mutation analysis with massively parallel DNA sequencing in 2,265 Japanese sensorineural hearing loss patients.",
+        "en": "OTOF mutation analysis with massively parallel DNA sequencing in 2,265 Japanese sensorineural hearing loss patients."
+      },
+      "doi": "https://doi.org/10.1371/journal.pone.0215932",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Detailed Clinical Features of Deafness Caused by a Claudin-14 Variant.",
+        "en": "Detailed Clinical Features of Deafness Caused by a Claudin-14 Variant."
+      },
+      "doi": "https://doi.org/10.3390/ijms20184579",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Mutational Spectrum and Clinical Features of Patients with LOXHD1 Variants Identified in an 8074 Hearing Loss Patient Cohort.",
+        "en": "Mutational Spectrum and Clinical Features of Patients with LOXHD1 Variants Identified in an 8074 Hearing Loss Patient Cohort."
+      },
+      "doi": "https://doi.org/10.3390/genes10100735",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Mid-Frequency Hearing Loss Is Characteristic Clinical Feature of OTOA-Associated Hearing Loss.",
+        "en": "Mid-Frequency Hearing Loss Is Characteristic Clinical Feature of OTOA-Associated Hearing Loss."
+      },
+      "doi": "https://doi.org/10.3390/genes10090715",
+      "datasetIds": [
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "The Prevalence and Clinical Characteristics of TECTA-Associated Autosomal Dominant Hearing Loss.",
+        "en": "The Prevalence and Clinical Characteristics of TECTA-Associated Autosomal Dominant Hearing Loss."
+      },
+      "doi": "https://doi.org/10.3390/genes10100744",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Prevalence and Clinical Characteristics of Hearing Loss Caused by MYH14 Variants.",
+        "en": "Prevalence and Clinical Characteristics of Hearing Loss Caused by MYH14 Variants."
+      },
+      "doi": "https://doi.org/10.3390/genes12101623",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Simple and efficient germline copy number variant visualization method for the Ion AmpliSeq™ custom panel.",
+        "en": "Simple and efficient germline copy number variant visualization method for the Ion AmpliSeq™ custom panel."
+      },
+      "doi": "https://doi.org/10.1002/mgg3.399",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "The Clinical Next-Generation Sequencing Database: A Tool for the Unified Management of Clinical Information and Genetic Variants to Accelerate Variant Pathogenicity Classification.",
+        "en": "The Clinical Next-Generation Sequencing Database: A Tool for the Unified Management of Clinical Information and Genetic Variants to Accelerate Variant Pathogenicity Classification."
+      },
+      "doi": "https://doi.org/10.1002/humu.23160",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Frequency and clinical features of hearing loss caused by STRC deletions.",
+        "en": "Frequency and clinical features of hearing loss caused by STRC deletions."
+      },
+      "doi": "https://doi.org/10.1038/s41598-019-40586-7",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Diagnostic pitfalls for GJB2-related hearing loss: A novel deletion detected by Array-CGH analysis in a Japanese patient with congenital profound hearing loss.",
+        "en": "Diagnostic pitfalls for GJB2-related hearing loss: A novel deletion detected by Array-CGH analysis in a Japanese patient with congenital profound hearing loss."
+      },
+      "doi": "https://doi.org/10.1002/ccr3.1800",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Sensorineural hearing loss and mild cardiac phenotype caused by an EYA4 mutation.",
+        "en": "Sensorineural hearing loss and mild cardiac phenotype caused by an EYA4 mutation."
+      },
+      "doi": "https://doi.org/10.1038/s41439-018-0023-9",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Frequency of the STRC-CATSPER2 deletion in STRC-associated hearing loss patients.",
+        "en": "Frequency of the STRC-CATSPER2 deletion in STRC-associated hearing loss patients."
+      },
+      "doi": "https://doi.org/10.1038/s41598-021-04688-5",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Variants in CDH23 cause a broad spectrum of hearing loss: from non-syndromic to syndromic hearing loss as well as from congenital to age-related hearing loss.",
+        "en": "Variants in CDH23 cause a broad spectrum of hearing loss: from non-syndromic to syndromic hearing loss as well as from congenital to age-related hearing loss."
+      },
+      "doi": "https://doi.org/10.1007/s00439-022-02431-2",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Genetic background in late-onset sensorineural hearing loss patients.",
+        "en": "Genetic background in late-onset sensorineural hearing loss patients."
+      },
+      "doi": "https://doi.org/10.1038/s10038-021-00990-2",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "The genetic etiology of hearing loss in Japan revealed by the social health insurance-based genetic testing of 10K.",
+        "en": "The genetic etiology of hearing loss in Japan revealed by the social health insurance-based genetic testing of 10K."
+      },
+      "doi": "https://doi.org/10.1007/s00439-021-02371-3",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Detailed clinical features and genotype-phenotype correlation in an OTOF-related hearing loss cohort in Japan.",
+        "en": "Detailed clinical features and genotype-phenotype correlation in an OTOF-related hearing loss cohort in Japan."
+      },
+      "doi": "https://doi.org/10.1007/s00439-021-02351-7",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Prevalence and clinical features of autosomal dominant and recessive TMC1-associated hearing loss.",
+        "en": "Prevalence and clinical features of autosomal dominant and recessive TMC1-associated hearing loss."
+      },
+      "doi": "https://doi.org/10.1007/s00439-021-02364-2",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Human deafness-associated variants alter the dynamics of key molecules in hair cell stereocilia F-actin cores.",
+        "en": "Human deafness-associated variants alter the dynamics of key molecules in hair cell stereocilia F-actin cores."
+      },
+      "doi": "https://doi.org/10.1007/s00439-021-02304-0",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Identification of a Novel Copy Number Variation of EYA4 Causing Autosomal Dominant Non-syndromic Hearing Loss.",
+        "en": "Identification of a Novel Copy Number Variation of EYA4 Causing Autosomal Dominant Non-syndromic Hearing Loss."
+      },
+      "doi": "https://doi.org/10.1097/MAO.0000000000003169",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Novel ACTG1 mutations in patients identified by massively parallel DNA sequencing cause progressive hearing loss.",
+        "en": "Novel ACTG1 mutations in patients identified by massively parallel DNA sequencing cause progressive hearing loss."
+      },
+      "doi": "https://doi.org/10.1038/s41598-020-63690-5",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Clinical Characteristics and In Vitro Analysis of MYO6 Variants Causing Late-Onset Progressive Hearing Loss.",
+        "en": "Clinical Characteristics and In Vitro Analysis of MYO6 Variants Causing Late-Onset Progressive Hearing Loss."
+      },
+      "doi": "https://doi.org/10.3390/genes11030273",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Prevalence and clinical features of hearing loss caused by EYA4 variants.",
+        "en": "Prevalence and clinical features of hearing loss caused by EYA4 variants."
+      },
+      "doi": "https://doi.org/10.1038/s41598-020-60259-0",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    },
+    {
+      "title": {
+        "ja": "Cochlear Implantation From the Perspective of Genetic Background.",
+        "en": "Cochlear Implantation From the Perspective of Genetic Background."
+      },
+      "doi": "https://doi.org/10.1002/ar.24360",
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ]
+    }
+  ],
+  "controlledAccessUser": [
+    {
+      "name": {
+        "ja": {
+          "text": "湯原 悟志",
+          "rawHtml": "湯原 悟志"
+        },
+        "en": {
+          "text": "Satoshi Yuhara",
+          "rawHtml": "Satoshi Yuhara"
+        }
+      },
+      "organization": {
+        "name": {
+          "ja": {
+            "text": "株式会社エスアールエル 研究開発本部 試験開発部 バイオインフォマティクス課",
+            "rawHtml": "株式会社エスアールエル 研究開発本部 試験開発部 バイオインフォマティクス課"
+          },
+          "en": {
+            "text": "Bioinformatics section, SRL inc.",
+            "rawHtml": "Bioinformatics section, SRL inc."
+          }
+        },
+        "address": {
+          "country": "日本"
+        }
+      },
+      "datasetIds": [
+        "JGAD000032",
+        "JGAD000093",
+        "JGAD000134",
+        "JGAD000244",
+        "JGAD000274",
+        "JGAD000275",
+        "JGAD000285",
+        "JGAD000286",
+        "JGAD000434",
+        "JGAD000490",
+        "JGAD000607"
+      ],
+      "researchTitle": {
+        "ja": "希少疾患クリニカルレポーティングシステムの検証",
+        "en": "Validation of Rare Disease Clinical Reporting System"
+      },
+      "periodOfDataUse": {
+        "startDate": "2024-07-01",
+        "endDate": "2027-03-31"
+      }
+    }
+  ],
+  "versionIds": [
+    "hum0005-v1",
+    "hum0005-v2",
+    "hum0005-v3",
+    "hum0005-v4",
+    "hum0005-v5",
+    "hum0005-v6",
+    "hum0005-v7",
+    "hum0005-v8"
+  ],
+  "latestVersion": "hum0005-v8",
+  "datePublished": "2014-01-27",
+  "dateModified": "2023-10-02"
+}

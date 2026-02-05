@@ -1,30 +1,29 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
     "esModuleInterop": true,
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "moduleResolution": "bundler",
-    "module": "ESNext",
-    "target": "ES2022",
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
     "strictNullChecks": true,
-    "baseUrl": ".",
-    "allowJs": true,
     "noErrorTruncation": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-    },
-
-    "noEmit": true,
+      "@/*": [
+        "./src/*"
+      ]
+    }
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/vite-env.d.ts",
-    "react-table.d.ts",
-  ],
+    "react-table.d.ts"
+  ]
 }

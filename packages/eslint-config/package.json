@@ -1,15 +1,21 @@
 {
     "name": "@humandbs/eslint-config",
     "private": true,
+    "version": "0.0.0",
     "exports": {
         ".": "./index.mjs",
         "./base": "./base.mjs"
+    },
+    "peerDependencies": {
+        "@eslint/js": "^9.0.0",
+        "eslint": "^9.0.0",
+        "eslint-plugin-import": "^2.0.0",
+        "typescript-eslint": "^8.0.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.35.0",
         "eslint": "^9.35.0",
         "eslint-plugin-import": "^2.32.0",
-        "globals": "^16.4.0",
         "typescript-eslint": "^8.43.0"
     }
 }

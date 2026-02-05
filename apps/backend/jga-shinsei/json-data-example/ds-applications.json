@@ -1,0 +1,180 @@
+[
+  {
+    "jds_id": "J-DS002495",
+    "jsub_ids": [],
+    "hum_ids": [],
+    "jga_ids": [],
+    "application": {
+      "study_title": "テスト研究題目",
+      "study_title_en": "Test Study Title",
+      "pi": {
+        "last_name": "テスト姓",
+        "first_name": "テスト名",
+        "last_name_en": "Saga",
+        "first_name_en": "Masakazu",
+        "institution": "テスト組織",
+        "institution_en": "Test Organization",
+        "division": "テストラボ",
+        "division_en": "Test Lab"
+      },
+      "create_date": "2024-12-03T02:40:23.094+00:00"
+    },
+    "components": [
+      {
+        "key": "submission_study_title",
+        "value": "テスト研究題目"
+      },
+      {
+        "key": "submission_study_title_en",
+        "value": "Test Study Title"
+      },
+      {
+        "key": "aim",
+        "value": "テスト目的"
+      },
+      {
+        "key": "aim_en",
+        "value": "Test Purpose"
+      },
+      {
+        "key": "method",
+        "value": "テスト方法"
+      },
+      {
+        "key": "method_en",
+        "value": "Test Method"
+      },
+      {
+        "key": "participant",
+        "value": "テスト対象"
+      },
+      {
+        "key": "participant_en",
+        "value": "Test Participants"
+      },
+      {
+        "key": "restriction",
+        "value": "テスト制限事項"
+      },
+      {
+        "key": "restriction_en",
+        "value": "Test Restrictions"
+      },
+      {
+        "key": "data_access",
+        "value": "submission_open"
+      },
+      {
+        "key": "study_type",
+        "value": "study_type_wgs"
+      },
+      {
+        "key": "file_format",
+        "value": "テキスト形式"
+      },
+      {
+        "key": "file_size",
+        "value": "100MB"
+      },
+      {
+        "key": "release_date",
+        "value": "2024-12-28"
+      },
+      {
+        "key": "icd10",
+        "value": "C00-C97"
+      },
+      {
+        "key": "group_id",
+        "value": "subgrp2116"
+      },
+      {
+        "key": "pi_account_id",
+        "value": "saga_general"
+      },
+      {
+        "key": "pi_email",
+        "value": "test@example.com"
+      },
+      {
+        "key": "pi_last_name",
+        "value": "テスト姓"
+      },
+      {
+        "key": "pi_first_name",
+        "value": "テスト名"
+      },
+      {
+        "key": "pi_last_name_en",
+        "value": "Saga"
+      },
+      {
+        "key": "pi_first_name_en",
+        "value": "Masakazu"
+      },
+      {
+        "key": "pi_institution",
+        "value": "テスト組織"
+      },
+      {
+        "key": "pi_institution_en",
+        "value": "Test Organization"
+      },
+      {
+        "key": "pi_division",
+        "value": "テストラボ"
+      },
+      {
+        "key": "pi_division_en",
+        "value": "Test Lab"
+      },
+      {
+        "key": "pi_job",
+        "value": "教授"
+      },
+      {
+        "key": "pi_job_en",
+        "value": "professor"
+      },
+      {
+        "key": "pi_phone",
+        "value": "012-345-6789"
+      },
+      {
+        "key": "head_name",
+        "value": "機関長太郎"
+      },
+      {
+        "key": "head_job",
+        "value": "所長"
+      },
+      {
+        "key": "head_phone",
+        "value": "098-765-4321"
+      },
+      {
+        "key": "head_email",
+        "value": "head@example.com"
+      }
+    ],
+    "status_history": [
+      {
+        "status": 10,
+        "date": "2024-12-03T02:12:16.232+00:00"
+      },
+      {
+        "status": 20,
+        "date": "2024-12-03T02:24:28.415+00:00"
+      },
+      {
+        "status": 40,
+        "date": "2024-12-03T02:28:59.089+00:00"
+      },
+      {
+        "status": 60,
+        "date": "2024-12-03T02:29:02.957+00:00"
+      }
+    ],
+    "submit_date": "2024-12-03T02:24:28.274+00:00"
+  }
+]

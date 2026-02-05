@@ -5,20 +5,24 @@ import tseslint from "typescript-eslint"
 
 /**
  * A shared ESLint configuration for the repository.
- * Note: files, ignores, languageOptions are omitted here (should be defined in each project (i.e., frontend.mjs, backend.mjs)).
- * */
+ * Note: languageOptions.parserOptions.project should be defined in each project.
+ */
 export default defineConfig([
   {
+    files: ["**/*.{js,mjs,cjs,ts,tsx}"],
     extends: [
       js.configs.recommended,
-      ...tseslint.configs.strict,
-      ...tseslint.configs.stylistic,
+      ...tseslint.configs.strictTypeChecked,
+      ...tseslint.configs.stylisticTypeChecked,
       eslintPluginImport.flatConfigs.recommended,
       eslintPluginImport.flatConfigs.typescript,
     ],
     rules: {
       // TypeScript
       "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/no-unnecessary-type-parameters": "off",
       "@typescript-eslint/no-unused-vars": ["error", {
         argsIgnorePattern: "^_",
         varsIgnorePattern: "^_",

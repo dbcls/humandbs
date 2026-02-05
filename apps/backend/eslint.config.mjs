@@ -4,14 +4,20 @@ import { defineConfig } from "eslint/config"
 import globals from "globals"
 
 export default defineConfig([
+  ...baseConfig,
   {
     files: [
-      "apps/backend/**/*.{js,mjs,cjs,ts,tsx}",
+      "src/**/*.{js,mjs,cjs,ts,tsx}",
+      "tests/**/*.{js,mjs,cjs,ts,tsx}",
     ],
     languageOptions: {
       globals: {
         ...globals.node,
         ...globals.es2024,
+      },
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     plugins: {
@@ -39,6 +45,5 @@ export default defineConfig([
       }],
     },
   },
-  ...baseConfig,
 ])
 

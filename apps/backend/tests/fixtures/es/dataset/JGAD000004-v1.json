@@ -1,0 +1,323 @@
+{
+  "datasetId": "JGAD000004",
+  "version": "v1",
+  "versionReleaseDate": "2014-01-31",
+  "humId": "hum0006",
+  "humVersionId": "hum0006-v1",
+  "releaseDate": "2020-09-28",
+  "criteria": "Controlled-access (Type I)",
+  "typeOfData": {
+    "ja": "アストロサイトーマ NGS(Exome)",
+    "en": "アストロサイトーマ NGS(Exome)"
+  },
+  "experiments": [
+    {
+      "header": {
+        "ja": {
+          "text": "JGAS000004",
+          "rawHtml": "<a name=\"DRA000\"><span><strong>JGAS000004</strong></span></a>"
+        },
+        "en": {
+          "text": "JGAS000004",
+          "rawHtml": "<a name=\"DRA000\"><span><strong>JGAS000004</strong></span></a>"
+        }
+      },
+      "data": {
+        "Materials and Participants": {
+          "ja": {
+            "text": "脳腫瘍患者6名",
+            "rawHtml": "<span>脳腫瘍患者6名</span>"
+          },
+          "en": {
+            "text": "脳腫瘍患者6名",
+            "rawHtml": "<span>脳腫瘍患者6名</span>"
+          }
+        },
+        "Experimental Method": {
+          "ja": {
+            "text": "Exome",
+            "rawHtml": "<span>Exome</span>"
+          },
+          "en": {
+            "text": "Exome",
+            "rawHtml": "<span>Exome</span>"
+          }
+        },
+        "Targets": {
+          "ja": null,
+          "en": null
+        },
+        "Platform": {
+          "ja": {
+            "text": "Illumina [HiSeq 2000]",
+            "rawHtml": "<span>Illumina [HiSeq 2000]</span>"
+          },
+          "en": {
+            "text": "Illumina [HiSeq 2000]",
+            "rawHtml": "<span>Illumina [HiSeq 2000]</span>"
+          }
+        },
+        "Sample Description": {
+          "ja": {
+            "text": "診断や治療の際使用した組織の腫瘍部および末梢血から抽出したDNA",
+            "rawHtml": "<span>診断や治療の際使用した組織の腫瘍部および末梢血から抽出したDNA</span>"
+          },
+          "en": {
+            "text": "診断や治療の際使用した組織の腫瘍部および末梢血から抽出したDNA",
+            "rawHtml": "<span>診断や治療の際使用した組織の腫瘍部および末梢血から抽出したDNA</span>"
+          }
+        },
+        "Cell Lines": {
+          "ja": null,
+          "en": null
+        },
+        "Library Construction": {
+          "ja": {
+            "text": "Agilent SureSelect Human All Exon v.4",
+            "rawHtml": "<span>Agilent SureSelect Human All Exon v.4</span>"
+          },
+          "en": {
+            "text": "Agilent SureSelect Human All Exon v.4",
+            "rawHtml": "<span>Agilent SureSelect Human All Exon v.4</span>"
+          }
+        },
+        "Fragmentation": {
+          "ja": {
+            "text": "超音波断片化(Covaris)",
+            "rawHtml": "<span> 超音波断片化（Covaris） </span>"
+          },
+          "en": {
+            "text": "超音波断片化(Covaris)",
+            "rawHtml": "<span> 超音波断片化（Covaris） </span>"
+          }
+        },
+        "Read Type": {
+          "ja": {
+            "text": "Paired-end",
+            "rawHtml": "<span>Paired-end</span>"
+          },
+          "en": {
+            "text": "Paired-end",
+            "rawHtml": "<span>Paired-end</span>"
+          }
+        },
+        "Read Length": {
+          "ja": {
+            "text": "100 bp",
+            "rawHtml": "<span>100 bp</span>"
+          },
+          "en": {
+            "text": "100 bp",
+            "rawHtml": "<span>100 bp</span>"
+          }
+        },
+        "Japanese Genotype-phenotype Archive Dataset Accession": {
+          "ja": {
+            "text": "JGAD000004",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000004\"><span>JGAD000004</span></a>"
+          },
+          "en": {
+            "text": "JGAD000004",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000004\"><span>JGAD000004</span></a>"
+          }
+        },
+        "Total Data Volume": {
+          "ja": {
+            "text": "376 GB",
+            "rawHtml": "<span>376 GB</span>"
+          },
+          "en": {
+            "text": "376 GB",
+            "rawHtml": "<span>376 GB</span>"
+          }
+        },
+        "Policies": {
+          "ja": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          },
+          "en": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          }
+        }
+      },
+      "footers": {
+        "ja": [],
+        "en": []
+      },
+      "searchable": {
+        "subjectCount": null,
+        "subjectCountType": null,
+        "healthStatus": null,
+        "diseases": [],
+        "tissues": [],
+        "isTumor": null,
+        "cellLine": [],
+        "population": [],
+        "sex": null,
+        "ageGroup": null,
+        "assayType": [],
+        "libraryKits": [],
+        "platforms": [],
+        "readType": null,
+        "readLength": null,
+        "sequencingDepth": null,
+        "targetCoverage": null,
+        "referenceGenome": [],
+        "variantCounts": null,
+        "hasPhenotypeData": null,
+        "targets": null,
+        "fileTypes": [],
+        "processedDataTypes": [],
+        "dataVolumeGb": null,
+        "policies": [
+          {
+            "id": "nbdc-policy",
+            "name": {
+              "ja": "NBDC policy",
+              "en": "NBDC policy"
+            },
+            "url": "https://humandbs.dbcls.jp/nbdc-policy"
+          }
+        ]
+      }
+    }
+  ],
+  "originalMetadata": {
+    "alias": "JSUB000007_Dataset_0001",
+    "center_name": "Individual",
+    "accession": "JGAD000004",
+    "IDENTIFIERS": {
+      "SECONDARY_ID": "JGAD00000000004"
+    },
+    "TITLE": "Exomes of 23 low-grade gliomas to their recurrences resected up to 11 years later.",
+    "DESCRIPTION": "Whole exome sequencing of 23 low-grade gliomas to their recurrences resected up to 11 years later. Reads were aligned to the Human Genome. Feb. 2009 (hg19, GRCh37).",
+    "DATASET_TYPE": "Random exome sequencing",
+    "DATA_REFS": {
+      "DATA_REF": [
+        {
+          "refname": "JGAR000000194",
+          "refcenter": "Individual",
+          "accession": "JGAR000000194"
+        },
+        {
+          "refname": "JGAR000000195",
+          "refcenter": "Individual",
+          "accession": "JGAR000000195"
+        },
+        {
+          "refname": "JGAR000000196",
+          "refcenter": "Individual",
+          "accession": "JGAR000000196"
+        },
+        {
+          "refname": "JGAR000000197",
+          "refcenter": "Individual",
+          "accession": "JGAR000000197"
+        },
+        {
+          "refname": "JGAR000000198",
+          "refcenter": "Individual",
+          "accession": "JGAR000000198"
+        },
+        {
+          "refname": "JGAR000000199",
+          "refcenter": "Individual",
+          "accession": "JGAR000000199"
+        },
+        {
+          "refname": "JGAR000000200",
+          "refcenter": "Individual",
+          "accession": "JGAR000000200"
+        },
+        {
+          "refname": "JGAR000000201",
+          "refcenter": "Individual",
+          "accession": "JGAR000000201"
+        },
+        {
+          "refname": "JGAR000000202",
+          "refcenter": "Individual",
+          "accession": "JGAR000000202"
+        },
+        {
+          "refname": "JGAR000000203",
+          "refcenter": "Individual",
+          "accession": "JGAR000000203"
+        },
+        {
+          "refname": "JGAR000000204",
+          "refcenter": "Individual",
+          "accession": "JGAR000000204"
+        },
+        {
+          "refname": "JGAR000000205",
+          "refcenter": "Individual",
+          "accession": "JGAR000000205"
+        },
+        {
+          "refname": "JGAR000000206",
+          "refcenter": "Individual",
+          "accession": "JGAR000000206"
+        },
+        {
+          "refname": "JGAR000000207",
+          "refcenter": "Individual",
+          "accession": "JGAR000000207"
+        },
+        {
+          "refname": "JGAR000000208",
+          "refcenter": "Individual",
+          "accession": "JGAR000000208"
+        },
+        {
+          "refname": "JGAR000000209",
+          "refcenter": "Individual",
+          "accession": "JGAR000000209"
+        },
+        {
+          "refname": "JGAR000000210",
+          "refcenter": "Individual",
+          "accession": "JGAR000000210"
+        },
+        {
+          "refname": "JGAR000000211",
+          "refcenter": "Individual",
+          "accession": "JGAR000000211"
+        },
+        {
+          "refname": "JGAR000000212",
+          "refcenter": "Individual",
+          "accession": "JGAR000000212"
+        },
+        {
+          "refname": "JGAR000000213",
+          "refcenter": "Individual",
+          "accession": "JGAR000000213"
+        },
+        {
+          "refname": "JGAR000000214",
+          "refcenter": "Individual",
+          "accession": "JGAR000000214"
+        },
+        {
+          "refname": "JGAR000000215",
+          "refcenter": "Individual",
+          "accession": "JGAR000000215"
+        },
+        {
+          "refname": "JGAR000000216",
+          "refcenter": "Individual",
+          "accession": "JGAR000000216"
+        }
+      ]
+    },
+    "ANALYSIS_REFS": null,
+    "POLICY_REF": {
+      "refname": "JGAP000004",
+      "refcenter": "NBDC",
+      "accession": "JGAP000004"
+    }
+  }
+}

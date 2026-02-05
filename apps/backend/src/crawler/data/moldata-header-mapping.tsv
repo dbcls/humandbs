@@ -1,0 +1,207 @@
+日本語版の値	英語版の値	正規化・日本語	正規化・英語
+検出・定量解析ソフトウェア	Acquire/analyze data software	解析方法	Analysis Methods
+コピー数決定アルゴリズム（ソフトウェア）	Algorithm for detecting CNVs (software)	解析方法	Analysis Methods
+メチル化率決定アルゴリズム（ソフトウェア）	Algorithms for Calculating Methylation-rate (software)	解析方法	Analysis Methods
+解析手法（ソフトウェア）	Analysis Method (software)	解析方法	Analysis Methods
+解析ソフトウェア	Analysis Software	解析方法	Analysis Methods
+関連解析（ソフトウェア）	Association Analysis (software)	解析方法	Analysis Methods
+関連解析ソフトウェア	Association Analysis (software)	解析方法	Analysis Methods
+関連解析、メタ解析（ソフトウェア）	Association Analysis & Meta Analysis (software)	解析方法	Analysis Methods
+B細胞受容体レパトア解析方法（ソフトウェア）	BCR repertoire analysis Methods (software)	解析方法	Analysis Methods
+メチレーション率算出方法	Calculation for Methylation Rate	解析方法	Analysis Methods
+オープンクロマチン領域決定アルゴリズム（ソフトウェア）	Detecting method for open chromatin region (software)	解析方法	Analysis Methods
+リードカウント決定アルゴリズム（ソフトウェア）	Detecting method for read count (software)	解析方法	Analysis Methods
+ループ検出方法	Detecting Methods for loops	解析方法	Analysis Methods
+ピーク検出方法	Detecting Methods for peaks	解析方法	Analysis Methods
+発現量決定方法（ソフトウェア）	Detecting Methods for Proteins (software)	解析方法	Analysis Methods
+構造変異検出方法	Detecting Methods for Structural Variation	解析方法	Analysis Methods
+発現量算出方法（ソフトウェア等）	Detecting Methods for Transcripts	解析方法	Analysis Methods
+メチル化コール・メチル化率算出方法	Detecting Methods for Variation	解析方法	Analysis Methods
+遺伝子構造・新規の転写産物推定・発現量算出方法	Detecting Methods for Variation	解析方法	Analysis Methods
+遺伝子構造・新規の転写産物推定・発現量算出方法	Detecting Methods for Variation)	解析方法	Analysis Methods
+eQTL検出方法	Detection method of eQTL	解析方法	Analysis Methods
+eQTL（cis）検出方法	Detection method of eQTL (cis)	解析方法	Analysis Methods
+eQTL（trans）検出方法	Detection method of eQTL (trans)	解析方法	Analysis Methods
+pQTL（cis）検出方法	Detection method of pQTL (cis)	解析方法	Analysis Methods
+sQTL検出方法	Detection method of sQTL	解析方法	Analysis Methods
+２倍体アセンブリ	diploid assembly	解析方法	Analysis Methods
+eQTL検出方法	eQTL algorithm	解析方法	Analysis Methods
+eQTL検出方法	eQTL detection method	解析方法	Analysis Methods
+変異決定方法	Genome Sequence Construction Methods	解析方法	Analysis Methods
+遺伝子型/リードカウント決定アルゴリズム（ソフトウェア）	Genotype Call / Detecting read count Methods (software)	解析方法	Analysis Methods
+コピー数変化領域決定アルゴリズム（ソフトウェア）	Genotype Call Methods (software)	解析方法	Analysis Methods
+遺伝子型決定アルゴリズム（ソフトウェア）	Genotype Call Methods (softwares)	解析方法	Analysis Methods
+遺伝子型決定アルゴリズム（ソフトウェア）	Genotyping Call Methods (software)	解析方法	Analysis Methods
+メタ解析（ソフトウェア）	Meta-analysis (software)	解析方法	Analysis Methods
+宿主配列除去やウイルス検出などのためのソフトウェア	Methods for removing host sequence/detecting viral sequence (software)	解析方法	Analysis Methods
+変異検出方法	Mutation Detection Methods	解析方法	Analysis Methods
+定量アルゴリズム（ソフトウェア）	Parameters	解析方法	Analysis Methods
+ピークコール方法（ソフトウェアなど）	Peak Calling Methods (software)	解析方法	Analysis Methods
+定量アルゴリズム	Quantification Methods (software)	解析方法	Analysis Methods
+SNVコール	SNV Call	解析方法	Analysis Methods
+SNVハプロタイピング	SNV Haplotyping	解析方法	Analysis Methods
+Visiumデータ解析ソフトウェア	Software	解析方法	Analysis Methods
+解析ソフトウェア（可視化ツールなど）	Software	解析方法	Analysis Methods
+発現量解析ソフトウェア	Software for analyzing the quantitative expression	解析方法	Analysis Methods
+構造変異検出方法	Structural Variants Detection Methods	解析方法	Analysis Methods
+変異検出方法	Variation Detection Methods	解析方法	Analysis Methods
+解析方法（ソフトウェア）	Association Analysis (software)	解析方法	Analysis Methods
+バリアント検出方法	Detecting Methods for Variation	解析方法	Analysis Methods
+抗原賦活化方法（温度、溶液、PH, 時間）	Antigen activation method (temperature, reagent, PH, time)	抗原賦活化方法	Antigen Activation
+腸内細菌叢のバクテリア同定方法	Bacteria Identification Methods	腸内細菌叢のバクテリア同定方法	Bacteria Identification
+ブロッキング（試薬、時間）	Blocking method (reagent, time)	ブロッキング	Blocking
+リアライメントおよびベースクオリティのキャリブレーション	Calibration for re-alignment and base quality	リアライメントおよびベースクオリティのキャリブレーション	Calibration for Re-alignment and Base Quality
+リアライメントおよびベースクオリティのキャリブレーション	Calibration of re-alignment and base quality	リアライメントおよびベースクオリティのキャリブレーション	Calibration for Re-alignment and Base Quality
+検体情報（購入の場合）	Cell Lines	購入検体情報	Cell Lines
+細胞処理方法（キット名）	Cell Treatment Method (kit name)	細胞処理方法	Cell Treatment
+発色（試薬、時間）	Chromogen (reagent, time)	発色	Chromogen
+コピー数変異数(QC後)	CNV number	CNV数	CNV Number
+平均カバー率	Coverage (Depth)	平均カバー率	Coverage
+平均カバー率（Depth）	Coverage (Depth)	平均カバー率	Coverage
+平均カバー率	Coverage（Depth）	平均カバー率	Coverage
+平均カバー率（Depth）	Depth (average)	平均カバー率	Coverage
+CRISPR配列構築方法	CRISPR contsruction	CRISPR配列構築方法	CRISPR construction
+データのダウンロード	Data Download	データのダウンロード	Data Download
+NBDCおよび生命情報・DDBJ センターによる加工データのID	Dataset ID of the Processed data by JGA	DBCLSおよび生命情報・DDBJ センターによる加工データのID	Dataset ID of the Processed data by JGA
+Mass Submission System ID	Mass Submission System ID	Assembled Sequence	Assembled Sequence
+実験変数	Experiment variables	実験変数	Experiment Variables
+規模	Targets	実験手法	Experimental Method
+フィルタリング	Filtering	フィルタリング	Filtering
+フィルタリング（QC）方法	QC/Filtering Methods	フィルタリング	Filtering
+フィルタリング	フィルタリング	フィルタリング	Filtering
+フィルタリング	Filtering Methods	フィルタリング	Filtering
+フィルタリング（ノーマライズ、QC方法）	Filtering Methods (normalization, QC)	フィルタリング	Filtering
+フィルタリング（QC）	Methods for removing host sequence/detecting viral sequence (software)	フィルタリング	Filtering
+QC	QC	フィルタリング	Filtering
+クオリティコントロール方法	QC	フィルタリング	Filtering
+クオリティコントロール方法（除外基準）	QC	フィルタリング	Filtering
+QC方法	QC Methods	フィルタリング	Filtering
+QC方法	QC methods	フィルタリング	Filtering
+QC/Filtering方法	QC/Filtering Methods	フィルタリング	Filtering
+断片化方法	Fragmentation Method	断片化方法	Fragmentation
+断片化の方法	Fragmentation Methods	断片化方法	Fragmentation
+Gene Expression Omnibus ID	Gene Expression Omnibus ID	Gene Expression Omnibus Accession	Gene Expression Omnibus Accession
+遺伝子数	Gene number	遺伝子数	Gene Number
+解析対象遺伝子数	Gene Number	遺伝子数	Gene Number
+対象遺伝子数	Gene Numbers	遺伝子数	Gene Number
+ゲノム配列構築方法	Genome Sequence Construction Methods	ゲノム配列構築方法	Genome Sequence Construction
+Genomic Expression Archive Data set ID	Genomic Expression Archive Data set ID	Genomic Expression Archive Accession	Genomic Expression Archive Accession
+Genomic Expression Archive Data set ID	Genomic Expression Archive Dataset ID	Genomic Expression Archive Accession	Genomic Expression Archive Accession
+Genomic Expression Archive ID	Genomic Expression Archive ID	Genomic Expression Archive Accession	Genomic Expression Archive Accession
+HHV-6配列構築方法	HHV-6 sequence construction method	HHV-6配列構築方法	Histological Staining
+組織画像	Tissue Image	組織染色法	Histological Staining
+ヒト配列排除方法	Human Sequence Exclusion Method	ヒト配列除去方法	Host Read Removal
+ヒト配列除去方法	Human Sequence removal Methods	ヒト配列除去方法	Host Read Removal
+固定化方法	Immobilization method	固定化方法	Immobilization
+Imputation方法	Imputation Methods	Imputation方法	Imputation
+Imputation方法	Imputation方法	Imputation方法	Imputation
+INDEL数（QC後）	INDEL Numbers (after QC)	INDEL数	INDEL Number
+Japan Genotype-Phenotype Archive Data Set ID	Japan Genotype-Phenotype Archive Data Set ID	Japanese Genotype-phenotype Archive Dataset Accession	Japanese Genotype-phenotype Archive Dataset Accession
+Japanese Genotype-phenotype Archive Data set ID	Japanese Genotype-phenotype Archive Data set ID	Japanese Genotype-phenotype Archive Dataset Accession	Japanese Genotype-phenotype Archive Dataset Accession
+Japanese Genotype-phenotype Archive Dataset ID	Japanese Genotype-phenotype Archive Dataset ID	Japanese Genotype-phenotype Archive Dataset Accession	Japanese Genotype-phenotype Archive Dataset Accession
+Japan Genotype-Phenotype Archive Data Set ID / DDBJ Sequence Read Archive ID	Japan Genotype-Phenotype Archive Data Set ID / DDBJ Sequence Read Archive ID	Japanese Genotype-phenotype Archive Dataset AccessionとSequence Read Archive Accessionに分ける	Japanese Genotype-phenotype Archive Dataset AccessionとSequence Read Archive Accessionに分ける
+Japanese Genotype-phenotype Archive Dataset ID / DDBJ Sequence Read Archive ID	Japanese Genotype-phenotype Archive Dataset ID / DDBJ Sequence Read Archive ID	Japanese Genotype-phenotype Archive Dataset AccessionとSequence Read Archive Accessionに分ける	Japanese Genotype-phenotype Archive Dataset AccessionとSequence Read Archive Accessionに分ける
+JPOST ID	JPOST ID	JPOST Accession	JPOST Accession
+ライブラリ作製方法（キット名）	Library Construction (kit name)	ライブラリ作製方法	Library Construction
+MAGの構築方法	MAG methods	MAG構築方法	MAG Construction
+マッピング方法	Mapping	マッピング方法	Mapping
+マッピング方法	Mapping Methods	マッピング方法	Mapping
+マッピングクオリティ	Mapping Quality	マッピングクオリティ	Mapping Quality
+対象	Materials	対象	Materials and Participants
+対象	Participants/Materials	対象	Materials and Participants
+対象	Participants/Materials:	対象	Materials and Participants
+対象⋆１	Participants/Materials⋆１	対象	Materials and Participants
+対象⋆4	Participants/Materials⋆4	対象	Materials and Participants
+測定方法	Measurement Method	測定方法	Measurement
+測定条件	Measurement Conditions	測定条件	Measurement Conditions
+測定パラメータ	Measurement Conditions (Parameters)	測定条件	Measurement Conditions
+パラメータ	Parameter	測定条件	Measurement Conditions
+測定パラメータ	Parameters	測定条件	Measurement Conditions
+MetaboBank Accession ID	MetaboBank Accession ID	MetaboBank Accession	MetaboBank Accession
+miRNA数	miRNA number	miRNA数	miRNA Number
+NBDC Data Set ID	NBDC Data Set ID	NBDC Dataset Accession	NBDC Dataset Accession
+NBDC Dataset ID	NBDC Dataset ID	NBDC Dataset Accession	NBDC Dataset Accession
+ノイズの低減方法・補正方法	Noise reduction & Data correction	補正方法	Normalization
+標準化方法	Normalization Methods	補正方法	Normalization
+メチル化アレイ標準化方法	Normalization of methylation array	補正方法	Normalization
+マイクロアレイ標準化方法	Normalization of microarray	補正方法	Normalization
+peak数	Peak Number	peak数	Peak Number
+Platform	Platform	Platform	Platform
+Platform（ハードウェア）	Platform	Platform	Platform
+Platform	Platforms	Platform	Platform
+コメント（利用にあたっての制限事項）	Comments (Policies)	データ利用にあたっての制限事項	Policies
+免疫染色一次抗体（抗体のメーカー・型番、使用濃度、反応温度・時間）	Primary antibodies for IHC（manufacturer, Cat. #, conc., temp., time）	免疫染色一次抗体	Primary antibodies for IHC
+プローブ数	Probe Number	プローブ数	Probe Number
+プローブ数(QC後)	Probe Number (after QC)	プローブ数	Probe Number
+ピーク検出・タンパク同定方法	Peak Detection / Protein Identification Method	タンパク質同定方法	Protein Identification
+マーカー数（raw-call） ※Illumina Final Report形式ファイル	Marker Numbers (without any filtering) ※Illumina Final Report format files	生データバリアント数	Raw Call Variant Number
+重複するリードの除去	Deduplication	重複リード除去法	Read Deduplication
+重複するリードの除去方法	Detecting Methods for Variations	重複リード除去法	Read Deduplication
+リード長（除：バーコード、アダプタ、プライマー、リンカー）	Read Length (without Barcodes, Adaptors, Primers, and Linkers)	リード長	Read Length
+リード長（除：バーコード、アダプター、プライマー、リンカー）	Read Length (without Barcodes, Adaptors, Primers, and Linkers)	リード長	Read Length
+ライブラリ構築方法	Spot Type	ライブラリ構成	Read Type
+試薬	Reagents	試薬	Reagents
+試薬	Reagents (Kit, Version)< /span>	試薬	Reagents
+調整試薬（キット名、バージョン）	Reagents (Kit, Version)	試薬	Reagents
+調整試薬（パネル、キット名、バージョンなど）	Reagents (Panel, Kit, Version)	試薬	Reagents
+リファレンス	Reference	参照配列	Reference Sequence
+リファレンス	Reference Sequence	参照配列	Reference Sequence
+マッピングの際のリファレンス配列	Reference Genome Sequence	参照配列	Reference Sequence
+リファレンス配列	Reference Genome Sequence	参照配列	Reference Sequence
+ウイルス参照配列	Reference sequence for viral genome	参照配列	Reference Sequence
+ライブラリソース	Library Source	試料	Sample Description
+ライブラリソース	Library Source/span>	試料	Sample Description
+ライブラリソース	Library Sources	試料	Sample Description
+組織	Organ/Tissue	試料	Sample Description
+ソース	Source	試料	Sample Description
+試料調製方法	Sample Preparation Method	調製方法	Sample Preparation
+免疫染色二次抗体（抗体のメーカー・型番、使用濃度、反応温度・時間）	Secondary antibodies for IHC（manufacturer, Cat. #, conc., temp., time）	免疫染色二次抗体	Secondary antibodies for IHC
+DDBJ Sequence Read Archive ID	DDBJ Sequence Read Archive ID	Sequence Read Archive Accession	Sequence Read Archive Accession
+DDBJ Sequence Read Archive ID	JDDBJ Sequence Read Archive ID	Sequence Read Archive Accession	Sequence Read Archive Accession
+一塩基変異数	Single Nucleotide Variants Number	SNV数	SNV Number
+SNP数（QC後）	SNP Numbers (after QC)	SNV数	SNV Number
+SNV数（QC後）	SNV Numbers (after QC)	SNV数	SNV Number
+構造多型数	Polymorphism Number (after QC)	SV数	SV Number
+構造多型数	Structural Varinats Number	SV数	SV Number
+SV数（QC後）	SV Numbers (after QC)	SV数	SV Number
+定量対象領域	Metabolic biomarkers	対象領域	Targets
+対象領域（Target Captureの場合）	Target Loci for Captur Methods	対象領域	Targets
+対象領域	Target Loci for Capture Methods	対象領域	Targets
+対象領域（Target Captureの場合）	Target Loci for Capture Methods	対象領域	Targets
+総データ量	Total Data Volume	総データ量	Total Data Volume
+総リード数 / ユニークにマップされたリード数	Total Reads / Uniquely Mapped Reads	総リード数とユニークにマップされたリード数	Total Reads and Uniquely Mapped Reads
+バリデーション方法	Validation Methods	バリデーション方法	Validation
+マーカー数	Marker number	バリアント数	Variant Number
+マーカー数	Marker Number	バリアント数	Variant Number
+マーカー数（imputation & QC後）	Marker Number (after QC)	バリアント数	Variant Number
+マーカー数（QC後）	Marker Number (after QC)	バリアント数	Variant Number
+マーカー数(QC後)	Marker Number (after QC)	バリアント数	Variant Number
+マーカー数(QC後)	Marker Numbers (after QC)	バリアント数	Variant Number
+マーカー数（フィルタ後）	Marker Numbers (after Filtering)	バリアント数	Variant Number
+マーカー数（フィルタ後） ※ped/map形式ファイル	Marker Numbers (after QC) ※ped/map format files	バリアント数	Variant Number
+MS数（QC後）	SV Numbers (after QC)	バリアント数	Variant Number
+バリアント数（QC後）	Variant Numbers (after QC)	バリアント数	Variant Number
+リファレンスパネルに含まれるvariant数	Variant Numbers in reference panel	バリアント数	Variant Number
+ウイルスゲノム構築方法	Virus genome contsruction	ウイルスゲノム構築方法	Virus Genome Construction
+免染工程における洗浄（試薬、時間）	Washing (reagent, time)	免染工程における洗浄	Washing
+アノテーション方法	Annotation	不要な項目のため削除する	不要な項目のため削除する
+実験期間	Experiment date	不要な項目のため削除する	不要な項目のため削除する
+関連データセット	Related Datasets	不要な項目のため削除する	不要な項目のため削除する
+GWAS関連解析（ソフトウェア）	Analysis Methods (software)	解析方法	Analysis Methods
+NBDC Data Set ID / Japanese Genotype-phenotype Archive Data set ID	NBDC Data Set ID / Japanese Genotype-phenotype Archive Data set ID	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける
+NBDC Dataset ID / Japanese Genotype-phenotype Archive Dataset ID	NBDC Dataset ID / Japanese Genotype-phenotype Archive Dataset ID	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける	NBDC Dataset AccessionとJapanese Genotype-phenotype Archive Dataset Accessionに分ける
+Softwear	Softwear	解析方法	Analysis Methods
+Variant Numbers	Variant Numbers	バリアント数	Variant Number
+レパトア解析方法（ソフトウェア）	Repertoire analysis Methods (software)	解析方法	Analysis Methods
+染色体変異検出アルゴリズム（ソフトウェア）	Algorithm for detecting chromosome abnormality (software)	解析方法	Analysis Methods
+バリアント数	Variant Number	バリアント数	Variant Number
+フィルタリング方法	Filtering (QC)	フィルタリング	Filtering
+メタ解析方法	Meta Analysis Methods	解析方法	Analysis Methods
+解析方法	Analysis Methods	解析方法	Analysis Methods
+Phenotype情報	Phenotype Data	被験者属性	Participant Attributes
+mobile element数	Mobile element Number	Mobile Element 数	Mobile Element Number
+mobile element検出方法	Detecting Methods for mobile element	解析方法	Analysis Methods
+vcfファイルの統合方法	Method for merging vcf files	解析方法	Analysis Methods
+vcfファイルのphasing方法	Method for phasing vcf files	解析方法	Analysis Methods
+ポリジェニックリスクスコア算出方法	Calculation Methods for Polygenic Risk Score	解析方法	Analysis Methods
+データセット	NBDC Dataset ID	NBDC Dataset Accession	NBDC Dataset Accession

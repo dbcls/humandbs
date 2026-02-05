@@ -6,6 +6,7 @@ import { HealthResponseSchema } from "@/types"
 const healthRoute = createRoute({
   method: "get",
   path: "/",
+  tags: ["Health"],
   summary: "Health Check",
   description: "Check the health status of the API",
   responses: {
@@ -23,20 +24,11 @@ const healthRoute = createRoute({
 
 export const healthRouter = new OpenAPIHono()
 
-healthRouter.openapi(healthRoute, async (c) => {
-  try {
-    const response = {
-      status: "ok",
-      timestamp: new Date().toISOString(),
-    }
-    const validatedResponse = HealthResponseSchema.parse(response)
-
-    return c.json(validatedResponse, 200)
-  } catch (error) {
-    console.error("Response validation error:", error)
-    return c.json({
-      error: "Internal Server Error",
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : "Unknown error"}`,
-    }, 500)
+healthRouter.openapi(healthRoute, (c) => {
+  const response = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
   }
+  // No validation needed - schema is simple and data is trusted
+  return c.json(response, 200)
 })

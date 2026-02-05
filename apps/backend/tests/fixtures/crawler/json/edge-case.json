@@ -1,0 +1,33 @@
+{
+  "humId": "hum9999",
+  "currentVersion": {
+    "versionId": "v1",
+    "releaseDate": null,
+    "cumulativeReleaseDate": null,
+    "researcher": {
+      "name": null,
+      "affiliation": null,
+      "orcid": null
+    },
+    "researchTitle": {
+      "ja": "",
+      "en": null
+    },
+    "researchPurpose": {
+      "ja": "   ",
+      "en": "-"
+    },
+    "targetDisease": null,
+    "molecularDataType": [],
+    "sampleSize": null,
+    "projectId": {
+      "nbdc": [],
+      "amed": null
+    },
+    "externalLinks": [],
+    "publications": [],
+    "dataProviders": [],
+    "datasets": []
+  },
+  "versions": []
+}

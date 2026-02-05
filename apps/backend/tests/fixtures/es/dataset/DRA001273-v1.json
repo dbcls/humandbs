@@ -1,0 +1,205 @@
+{
+  "datasetId": "DRA001273",
+  "version": "v1",
+  "versionReleaseDate": "2014-01-27",
+  "humId": "hum0005",
+  "humVersionId": "hum0005-v1",
+  "releaseDate": "2014-04-04",
+  "criteria": "Unrestricted-access",
+  "typeOfData": {
+    "ja": "NGS (Target Capture)",
+    "en": "NGS (Target Capture)"
+  },
+  "experiments": [
+    {
+      "header": {
+        "ja": {
+          "text": "DRA001273",
+          "rawHtml": "<a name=\"DRA000\"><span><strong>DRA001273</strong></span></a>"
+        },
+        "en": {
+          "text": "DRA001273",
+          "rawHtml": "<a name=\"DRA000\"><span><strong>DRA001273</strong></span></a>"
+        }
+      },
+      "data": {
+        "Materials and Participants": {
+          "ja": {
+            "text": "17例の症候群性難聴(Usher症候群)",
+            "rawHtml": "<span>17例の症候群性難聴（Usher症候群）</span>"
+          },
+          "en": {
+            "text": "17例の症候群性難聴(Usher症候群)",
+            "rawHtml": "<span>17例の症候群性難聴（Usher症候群）</span>"
+          }
+        },
+        "Experimental Method": {
+          "ja": {
+            "text": "Target Capture",
+            "rawHtml": "<span>Target Capture </span>"
+          },
+          "en": {
+            "text": "Target Capture",
+            "rawHtml": "<span>Target Capture </span>"
+          }
+        },
+        "Targets": {
+          "ja": {
+            "text": "9遺伝子領域 (MYO7A, USH1C, CDH23, PCDH15, SANS[USH1G], USH2A, GPR98[USH2C], DFNB31[USH2D], CLRN[USH3A])",
+            "rawHtml": "<p><span>9遺伝子領域</span></p>\n<p><span>(MYO7A, USH1C, CDH23, PCDH15, SANS[USH1G],</span></p>\n<p><span>USH2A, GPR98[USH2C], DFNB31[USH2D], CLRN[USH3A])</span></p>"
+          },
+          "en": {
+            "text": "9遺伝子領域 (MYO7A, USH1C, CDH23, PCDH15, SANS[USH1G], USH2A, GPR98[USH2C], DFNB31[USH2D], CLRN[USH3A])",
+            "rawHtml": "<p><span>9遺伝子領域</span></p>\n<p><span>(MYO7A, USH1C, CDH23, PCDH15, SANS[USH1G],</span></p>\n<p><span>USH2A, GPR98[USH2C], DFNB31[USH2D], CLRN[USH3A])</span></p>"
+          }
+        },
+        "Platform": {
+          "ja": {
+            "text": "Life technologies [Ion PGM]",
+            "rawHtml": "<span>Life technologies [Ion PGM]</span>"
+          },
+          "en": {
+            "text": "Life technologies [Ion PGM]",
+            "rawHtml": "<span>Life technologies [Ion PGM]</span>"
+          }
+        },
+        "Sample Description": {
+          "ja": {
+            "text": "末梢血から抽出したDNA",
+            "rawHtml": "<span>末梢血から抽出したDNA</span>"
+          },
+          "en": {
+            "text": "末梢血から抽出したDNA",
+            "rawHtml": "<span>末梢血から抽出したDNA</span>"
+          }
+        },
+        "Cell Lines": {
+          "ja": null,
+          "en": null
+        },
+        "Library Construction": {
+          "ja": {
+            "text": "Ion AmpliSeq Custom kit",
+            "rawHtml": "<span>Ion AmpliSeq Custom kit</span>"
+          },
+          "en": {
+            "text": "Ion AmpliSeq Custom kit",
+            "rawHtml": "<span>Ion AmpliSeq Custom kit</span>"
+          }
+        },
+        "Fragmentation": {
+          "ja": null,
+          "en": null
+        },
+        "Read Type": {
+          "ja": {
+            "text": "Single-end",
+            "rawHtml": "<span>Single-end</span>"
+          },
+          "en": {
+            "text": "Single-end",
+            "rawHtml": "<span>Single-end</span>"
+          }
+        },
+        "Read Length": {
+          "ja": {
+            "text": "200 bp",
+            "rawHtml": "<span>200 bp</span>"
+          },
+          "en": {
+            "text": "200 bp",
+            "rawHtml": "<span>200 bp</span>"
+          }
+        },
+        "Sequence Read Archive Accession": {
+          "ja": {
+            "text": "DRA001273",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/sra-submission/DRA001273\"><span>DRA001273</span></a>"
+          },
+          "en": {
+            "text": "DRA001273",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/sra-submission/DRA001273\"><span>DRA001273</span></a>"
+          }
+        },
+        "Total Data Volume": {
+          "ja": {
+            "text": "726.6 MB",
+            "rawHtml": "<span>726.6 MB</span>"
+          },
+          "en": {
+            "text": "726.6 MB",
+            "rawHtml": "<span>726.6 MB</span>"
+          }
+        },
+        "Policies": {
+          "ja": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          },
+          "en": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          }
+        }
+      },
+      "footers": {
+        "ja": [
+          {
+            "text": "論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement) に記載して下さい。記載例はこちら。",
+            "rawHtml": "<span>※論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement)に記載して下さい。記載例は<a href=\"/acknowledgement\">こちら</a>。</span>"
+          }
+        ],
+        "en": [
+          {
+            "text": "論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement) に記載して下さい。記載例はこちら。",
+            "rawHtml": "<span>※論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement)に記載して下さい。記載例は<a href=\"/acknowledgement\">こちら</a>。</span>"
+          }
+        ]
+      },
+      "searchable": {
+        "subjectCount": null,
+        "subjectCountType": null,
+        "healthStatus": null,
+        "diseases": [],
+        "tissues": [],
+        "isTumor": null,
+        "cellLine": [],
+        "population": [],
+        "sex": null,
+        "ageGroup": null,
+        "assayType": [],
+        "libraryKits": [],
+        "platforms": [],
+        "readType": null,
+        "readLength": null,
+        "sequencingDepth": null,
+        "targetCoverage": null,
+        "referenceGenome": [],
+        "variantCounts": null,
+        "hasPhenotypeData": null,
+        "targets": null,
+        "fileTypes": [],
+        "processedDataTypes": [],
+        "dataVolumeGb": null,
+        "policies": [
+          {
+            "id": "nbdc-policy",
+            "name": {
+              "ja": "NBDC policy",
+              "en": "NBDC policy"
+            },
+            "url": "https://humandbs.dbcls.jp/nbdc-policy"
+          }
+        ]
+      }
+    }
+  ],
+  "originalMetadata": {
+    "accession": "DRA001273",
+    "center_name": "SHINSHU_M",
+    "alias": "DRA001273",
+    "lab_name": "Department of Otorhinoralynfgology, Shinshu University, School of Medicine",
+    "submission_date": "2013-12-09T11:05:18.512+09:00",
+    "TITLE": "MPS analysis of Usher syndrome type 1"
+  }
+}

@@ -11,12 +11,12 @@ async function clearDatabase() {
   }
 
   if (process.env.DEBUG_DB_CLEAR === "true") {
-    console.log("process.env.POSTGRES_HOST", process.env.POSTGRES_HOST);
+    console.log("process.env.HUMANDBS_POSTGRES_HOST", process.env.HUMANDBS_POSTGRES_HOST);
   }
 
   const db = drizzle(
     new Pool({
-      connectionString: `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`,
+      connectionString: `postgres://${process.env.HUMANDBS_POSTGRES_USER}:${process.env.HUMANDBS_POSTGRES_PASSWORD}@${process.env.HUMANDBS_POSTGRES_HOST}:${process.env.HUMANDBS_POSTGRES_PORT}/${process.env.HUMANDBS_POSTGRES_DB}`,
     }),
     {
       schema,

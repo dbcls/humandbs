@@ -1,0 +1,89 @@
+{
+  "policy": {
+    "baseUrl": "https://humandbs.dbcls.jp",
+    "canonical": {
+      "nbdc-policy": {
+        "ja": "NBDC policy",
+        "en": "NBDC policy",
+        "path": "/nbdc-policy"
+      },
+      "company-limitation-policy": {
+        "ja": "民間企業における利用禁止",
+        "en": "Company User Limit",
+        "path": "/policy-companylimitation"
+      },
+      "cancer-research-policy": {
+        "ja": "Cancer Research Use Only",
+        "en": "Cancer Research Use Only",
+        "path": "/policy-cancer"
+      },
+      "familial-policy": {
+        "ja": "Familial policy",
+        "en": "Familial policy",
+        "path": "/familial-policy"
+      }
+    },
+    "normalize": {
+      "nbdc policy": "nbdc-policy",
+      "民間企業における利用禁止": "company-limitation-policy",
+      "company user limit": "company-limitation-policy",
+      "academic use only": "company-limitation-policy",
+      "cancer research use only": "cancer-research-policy",
+      "familial policy": "familial-policy"
+    },
+    "urlToCanonical": {
+      "/nbdc-policy": "nbdc-policy",
+      "/en/nbdc-policy": "nbdc-policy",
+      "/policy-companylimitation": "company-limitation-policy",
+      "/en/policy-companylimitation": "company-limitation-policy",
+      "/policy-cancer": "cancer-research-policy",
+      "/en/policy-cancer": "cancer-research-policy",
+      "/familial-policy": "familial-policy",
+      "/en/familial-policy": "familial-policy"
+    }
+  },
+  "criteria": {
+    "canonical": {
+      "Controlled-access (Type I)": {
+        "ja": "制限公開 (Type I)",
+        "en": "Controlled-access (Type I)"
+      },
+      "Controlled-access (Type II)": {
+        "ja": "制限公開 (Type II)",
+        "en": "Controlled-access (Type II)"
+      },
+      "Unrestricted-access": {
+        "ja": "非制限公開",
+        "en": "Unrestricted-access"
+      }
+    },
+    "normalize": {
+      "制限公開(typei)": "Controlled-access (Type I)",
+      "controlledaccess(typei)": "Controlled-access (Type I)",
+      "制限公開(typeii)": "Controlled-access (Type II)",
+      "controlledaccess(typeii)": "Controlled-access (Type II)",
+      "非制限公開": "Unrestricted-access",
+      "unrestrictedaccess": "Unrestricted-access"
+    }
+  },
+  "grant": {
+    "invalidValues": ["None", "null", "なし", "&nbsp;"]
+  },
+  "publication": {
+    "unusedTitles": [
+      "In submission",
+      "under publishing",
+      "投稿中",
+      "投稿準備中"
+    ],
+    "invalidDoiValues": ["doi:", "In submission", "null"],
+    "invalidDatasetIdPatterns": [
+      "genes",
+      "panel",
+      "遺伝子",
+      "^fastq$",
+      "^\\d+$",
+      "^reference$"
+    ]
+  }
+}

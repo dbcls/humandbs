@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Malformed HTML Test</title>
+</head>
+<body>
+  <!-- Missing closing tags and malformed structure -->
+  <div id="main-contents">
+    <div class="research-detail">
+      <h2>研究情報
+      <!-- Missing closing h2 -->
+
+      <table class="data-table">
+        <tr>
+          <th>研究ID</th>
+          <td>hum0001
+          <!-- Missing closing td -->
+        </tr>
+        <!-- Unclosed tr -->
+        <tr>
+          <th>タイトル
+          <td>テスト研究</td>
+        <!-- Missing closing tr -->
+      <!-- Missing closing table -->
+
+      <!-- Nested malformed elements -->
+      <div class="section">
+        <p>This is a test <strong>with <em>nested</strong> tags</em> that are incorrectly closed.</p>
+      </div>
+
+      <!-- Empty elements -->
+      <table></table>
+      <div class="empty-section"></div>
+
+      <!-- Missing attributes -->
+      <a>リンクテキスト（href属性なし）</a>
+
+      <!-- Self-closing in wrong places -->
+      <div />
+      <span/>
+
+      <!-- Malformed entities -->
+      <p>Invalid entity: &invalid; and incomplete: &amp</p>
+    </div>
+  </div>
+</body>
+<!-- Missing closing html -->

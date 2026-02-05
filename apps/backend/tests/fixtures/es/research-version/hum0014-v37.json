@@ -1,0 +1,866 @@
+{
+  "humId": "hum0014",
+  "humVersionId": "hum0014-v37",
+  "version": "v37",
+  "versionReleaseDate": "2025-05-09",
+  "datasets": [
+    {
+      "datasetId": "hum0014.v1.freq.v1",
+      "version": "v8"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.934ctrl.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.lc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.bc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.sc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.cc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.pc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.hf.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.mi.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ua.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.sa.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ar.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.aso.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ci.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ca.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ip.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.pe.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ba.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.chc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.hc.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.cat.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.gla.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ep.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.pd.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.us.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ns.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.uf.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.em.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.op.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ra.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.als.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.hay.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.ad.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.de.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.hl.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.dm.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.gd.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.182ec.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v2.jsnp.92als.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v3.T2DM-1.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v3.T2DM-2.v1",
+      "version": "v4"
+    },
+    {
+      "datasetId": "hum0014.v4.AD.v1",
+      "version": "v4"
+    },
+    {
+      "datasetId": "JGAD000101",
+      "version": "v10"
+    },
+    {
+      "datasetId": "JGAD000102",
+      "version": "v10"
+    },
+    {
+      "datasetId": "hum0014.v5.AF.v1",
+      "version": "v10"
+    },
+    {
+      "datasetId": "JGAD000124",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000123",
+      "version": "v14"
+    },
+    {
+      "datasetId": "hum0014.v6.158k.v1",
+      "version": "v6"
+    },
+    {
+      "datasetId": "JGAD000144",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000145",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000146",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000147",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000148",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000149",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000150",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000151",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000152",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000153",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000154",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000155",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000156",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000157",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000158",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000159",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000160",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000161",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000162",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000163",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000164",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000165",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000166",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000167",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000168",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000169",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000170",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000171",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000172",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000173",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000174",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000175",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000176",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000177",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000178",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000179",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000180",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000181",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000182",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000183",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000184",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000185",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000186",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000187",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000188",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000189",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000190",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000191",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000192",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000193",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000194",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000195",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000196",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000197",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000198",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000199",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000200",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000201",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000220",
+      "version": "v15"
+    },
+    {
+      "datasetId": "JGAD000410",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000430",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000679",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000690",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000758",
+      "version": "v14"
+    },
+    {
+      "datasetId": "JGAD000867",
+      "version": "v15"
+    },
+    {
+      "datasetId": "JGAD000885",
+      "version": "v14"
+    },
+    {
+      "datasetId": "hum0014.v7.POAG.v1",
+      "version": "v4"
+    },
+    {
+      "datasetId": "hum0014.v8.58qt.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v9.Men.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v9.MP.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000209",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v12.T2DMwN.v1",
+      "version": "v4"
+    },
+    {
+      "datasetId": "hum0014.v13.T2DMmeta.v1",
+      "version": "v4"
+    },
+    {
+      "datasetId": "hum0014.v14.smok.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v14.asi.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v14.cpd.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v14.ens.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v14.fcs.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v15.ht.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000288",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v17.AR.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.BA.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.AD.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.GCc.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Cat.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.CA.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.CeC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.CHB.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.CHC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.COPD.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Cir.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.CC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.HF.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.DE.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.UC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.EM.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Ep.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.EC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.GC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Gla.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.GD.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.HT.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.LiC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.IP.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.CI.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Kel.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.LuC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.NS.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.OP.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.OC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.PaC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.PD.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.PAD.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Hay.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.PrC.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.PT.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.RA.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.DM.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.Uro.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v17.UF.v1",
+      "version": "v5"
+    },
+    {
+      "datasetId": "hum0014.v18.BC.v1",
+      "version": "v4"
+    },
+    {
+      "datasetId": "hum0014.v21.CAD.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.drink.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.dpw.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.cafe.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.tea.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.milk.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.ygt.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.cheese.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.natto.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.tofu.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.fish.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.sfish.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.vege.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v19.meat.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v20.cad.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v20.gwas.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v20.prs.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "JGAD000399",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000400",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000438",
+      "version": "v4"
+    },
+    {
+      "datasetId": "JGAD000458",
+      "version": "v4"
+    },
+    {
+      "datasetId": "JGAD000459",
+      "version": "v4"
+    },
+    {
+      "datasetId": "JGAD000531",
+      "version": "v4"
+    },
+    {
+      "datasetId": "JGAD000460",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000720",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000721",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000461",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000495",
+      "version": "v2"
+    },
+    {
+      "datasetId": "JGAD000496",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000868",
+      "version": "v2"
+    },
+    {
+      "datasetId": "JGAD000893",
+      "version": "v1"
+    },
+    {
+      "datasetId": "hum0014.v27.surv.v1",
+      "version": "v3"
+    },
+    {
+      "datasetId": "hum0014.v28.MEs.v1",
+      "version": "v2"
+    },
+    {
+      "datasetId": "hum0014.v29.AF.v1",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000777",
+      "version": "v2"
+    },
+    {
+      "datasetId": "JGAD000831",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000836",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000832",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000833",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000834",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000873",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000881",
+      "version": "v1"
+    },
+    {
+      "datasetId": "JGAD000924",
+      "version": "v1"
+    }
+  ],
+  "releaseNote": {
+    "ja": {
+      "text": "乳がん10,008症例、胃がん10,576症例、大腸がん13,922症例、および、心不全6,038症例、脳梗塞10,486症例などを含む計140,597名のTP53翻訳領域のターゲットシークエンスデータをfastqファイルにて提供する。",
+      "rawHtml": "<span>乳がん10,008症例、胃がん10,576症例、大腸がん13,922症例、および、心不全6,038症例、脳梗塞10,486症例などを含む計140,597名の<em>TP53</em>翻訳領域のターゲットシークエンスデータをfastqファイルにて提供する。</span>\n&nbsp;"
+    },
+    "en": {
+      "text": "Target capture sequencing analyses of the coding regions of TP53 in 140,597 individuals, including those with breast cancer, stomach cancer, colon cancer, heart failure, stroke and other controls were performed. Fastq files are provided.",
+      "rawHtml": "<span>Target capture sequencing analyses of the coding regions of <em>TP53</em> in 140,597 individuals, including those with breast cancer, stomach cancer, colon cancer, heart failure, stroke and other controls were performed. Fastq files are provided.</span>\n&nbsp;"
+    }
+  }
+}

@@ -167,11 +167,11 @@ bun run dev
 ### Required Variables
 
 ```bash
-POSTGRES_USER=your_db_user
-POSTGRES_PASSWORD=your_db_password
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=your_database_name
+HUMANDBS_POSTGRES_USER=your_db_user
+HUMANDBS_POSTGRES_PASSWORD=your_db_password
+HUMANDBS_POSTGRES_HOST=localhost
+HUMANDBS_POSTGRES_PORT=5432
+HUMANDBS_POSTGRES_DB=your_database_name
 NODE_ENV=development
 ```
 

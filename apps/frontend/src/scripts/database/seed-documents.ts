@@ -38,29 +38,24 @@ type DocumentLocaleMap = Map<
 
 function buildDatabaseUrl(): string {
   const {
-    POSTGRES_USER,
-    POSTGRES_PASSWORD,
-    POSTGRES_HOST,
-    POSTGRES_PORT,
-    POSTGRES_DB,
-    DATABASE_URL,
+    HUMANDBS_POSTGRES_USER,
+    HUMANDBS_POSTGRES_PASSWORD,
+    HUMANDBS_POSTGRES_HOST,
+    HUMANDBS_POSTGRES_PORT,
+    HUMANDBS_POSTGRES_DB,
   } = process.env;
 
-  if (DATABASE_URL) {
-    return DATABASE_URL;
+  if (
+    !HUMANDBS_POSTGRES_USER ||
+    !HUMANDBS_POSTGRES_PASSWORD ||
+    !HUMANDBS_POSTGRES_HOST ||
+    !HUMANDBS_POSTGRES_PORT ||
+    !HUMANDBS_POSTGRES_DB
+  ) {
+    throw new Error("Missing required Postgres environment variables.");
   }
 
-  if (!POSTGRES_USER || !POSTGRES_PASSWORD || !POSTGRES_DB) {
-    throw new Error(
-      "Missing required database environment variables. " +
-        "Set either DATABASE_URL or POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DB"
-    );
-  }
-
-  const host = POSTGRES_HOST || "localhost";
-  const port = POSTGRES_PORT || "5432";
-
-  return `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${host}:${port}/${POSTGRES_DB}`;
+  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
 }
 
 function extractImageFilenames(content: string): string[] {

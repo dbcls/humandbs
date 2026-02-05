@@ -1,0 +1,22 @@
+{
+  "humId": "hum0005",
+  "humVersionId": "hum0005-v1",
+  "version": "v1",
+  "versionReleaseDate": "2014-01-27",
+  "datasets": [
+    {
+      "datasetId": "DRA001273",
+      "version": "v1"
+    }
+  ],
+  "releaseNote": {
+    "ja": {
+      "text": "このバージョンでは、症候群性難聴 (Usher症候群) 17症例の9遺伝子領域 (413Mb) のシーケンスデータfastqファイルを提供する。Ion AmpliSeq Custom kitを用いて領域をしぼり、Life technologies [Ion PGM]にて配列を読んでいる (Single: 200 bp) 。",
+      "rawHtml": "<span> このバージョンでは、症候群性難聴（Usher症候群）17症例の9遺伝子領域（413Mb）のシーケンスデータfastqファイルを提供する。Ion AmpliSeq Custom kitを用いて領域をしぼり、Life technologies [Ion PGM]にて配列を読んでいる（Single: 200 bp）。</span>\n&nbsp;\n&nbsp;"
+    },
+    "en": {
+      "text": "DNAs extracted from peripheral blood of 17 Japanese Usher syndrome patients were used and 9 gene regions(109 Kb)were targeted to this study. The regions were narrowed down by using of the Ion AmpliSeq Custom kit and read the sequences by Life technologies [Ion PGM] (Single-end: 200 bp).",
+      "rawHtml": "<span> DNAs extracted from peripheral blood of 17 Japanese Usher syndrome patients were used and 9 gene regions（109 Kb）were targeted to this study. The regions were narrowed down by using of the Ion AmpliSeq Custom kit and read the sequences by Life technologies [Ion PGM] (Single-end: 200 bp).</span>\n&nbsp;\n&nbsp;"
+    }
+  }
+}

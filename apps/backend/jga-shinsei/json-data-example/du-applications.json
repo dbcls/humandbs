@@ -1,0 +1,172 @@
+[
+  {
+    "jdu_id": "J-DU006529",
+    "jgad_ids": ["JGAD000369"],
+    "jgas_ids": ["JGAS000001"],
+    "hum_ids": ["hum0273"],
+    "application": {
+      "study_title": "テスト利用研究",
+      "study_title_en": "Test Data Use Study",
+      "pi": {
+        "last_name": "利用者姓",
+        "first_name": "利用者名",
+        "last_name_en": "User",
+        "first_name_en": "Test",
+        "institution": "利用大学",
+        "institution_en": "User University",
+        "division": "利用研究科",
+        "division_en": "User Lab"
+      },
+      "create_date": "2024-11-22T05:01:28.194+00:00"
+    },
+    "components": [
+      {
+        "key": "use_study_title",
+        "value": "テスト利用研究"
+      },
+      {
+        "key": "use_study_title_en",
+        "value": "Test Data Use Study"
+      },
+      {
+        "key": "use_purpose",
+        "value": "テスト利用目的"
+      },
+      {
+        "key": "use_summary",
+        "value": "テスト利用概要"
+      },
+      {
+        "key": "use_publication",
+        "value": "テスト発表予定"
+      },
+      {
+        "key": "use_dataset_request",
+        "value": "JGAD000369"
+      },
+      {
+        "key": "use_dataset_purpose",
+        "value": "データセット利用目的の説明"
+      },
+      {
+        "key": "use_period_start",
+        "value": "2024-12-01"
+      },
+      {
+        "key": "use_period_end",
+        "value": "2025-11-30"
+      },
+      {
+        "key": "server_status",
+        "value": "onpre"
+      },
+      {
+        "key": "public_key",
+        "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..."
+      },
+      {
+        "key": "group_id",
+        "value": "usegrp1234"
+      },
+      {
+        "key": "pi_account_id",
+        "value": "user_general"
+      },
+      {
+        "key": "pi_email",
+        "value": "user@example.com"
+      },
+      {
+        "key": "pi_last_name",
+        "value": "利用者姓"
+      },
+      {
+        "key": "pi_first_name",
+        "value": "利用者名"
+      },
+      {
+        "key": "pi_last_name_en",
+        "value": "User"
+      },
+      {
+        "key": "pi_first_name_en",
+        "value": "Test"
+      },
+      {
+        "key": "pi_institution",
+        "value": "利用大学"
+      },
+      {
+        "key": "pi_institution_en",
+        "value": "User University"
+      },
+      {
+        "key": "pi_division",
+        "value": "利用研究科"
+      },
+      {
+        "key": "pi_division_en",
+        "value": "User Lab"
+      },
+      {
+        "key": "pi_job",
+        "value": "准教授"
+      },
+      {
+        "key": "pi_job_en",
+        "value": "associate professor"
+      },
+      {
+        "key": "submitter_account_id",
+        "value": "user_general"
+      },
+      {
+        "key": "submitter_email",
+        "value": "user@example.com"
+      },
+      {
+        "key": "member_account_id",
+        "value": "member01"
+      },
+      {
+        "key": "member_email",
+        "value": "member@example.com"
+      },
+      {
+        "key": "member_last_name_en",
+        "value": "Member"
+      },
+      {
+        "key": "member_first_name_en",
+        "value": "Test"
+      },
+      {
+        "key": "collaborator_name",
+        "value": "共同研究者太郎"
+      },
+      {
+        "key": "collaborator_division",
+        "value": "共同研究機関"
+      }
+    ],
+    "status_history": [
+      {
+        "status": 10,
+        "date": "2024-11-22T05:01:28.200+00:00"
+      },
+      {
+        "status": 20,
+        "date": "2024-11-22T05:30:00.000+00:00"
+      },
+      {
+        "status": 40,
+        "date": "2024-11-25T10:00:00.000+00:00"
+      },
+      {
+        "status": 60,
+        "date": "2024-11-28T15:00:00.000+00:00"
+      }
+    ],
+    "submit_date": "2024-11-22T05:30:00.000+00:00"
+  }
+]

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/auth/login")({
           });
         }
 
-        const redirect_uri = process.env.OIDC_REDIRECT_URI!;
+        const redirect_uri = process.env.HUMANDBS_AUTH_REDIRECT_URI!;
         const cfg = await getConfig();
         const code_verifier = oidc.randomPKCECodeVerifier();
         const code_challenge =

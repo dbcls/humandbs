@@ -1,0 +1,227 @@
+{
+  "datasetId": "JGAD000002",
+  "version": "v1",
+  "versionReleaseDate": "2013-12-01",
+  "humId": "hum0001",
+  "humVersionId": "hum0001-v1",
+  "releaseDate": "2020-09-28",
+  "criteria": "Controlled-access (Type I)",
+  "typeOfData": {
+    "ja": "NGS (WGS)",
+    "en": "NGS (WGS)"
+  },
+  "experiments": [
+    {
+      "header": {
+        "ja": {
+          "text": "JGAS000002",
+          "rawHtml": "<a name=\"JGAD000002\"><span><strong> JGAS000002</strong></span></a>"
+        },
+        "en": {
+          "text": "JGAS000002",
+          "rawHtml": "<a name=\"JGAD000002\"><span><strong> JGAS000002</strong></span></a>"
+        }
+      },
+      "data": {
+        "Materials and Participants": {
+          "ja": {
+            "text": "SCA31患者: 1症例",
+            "rawHtml": "<span>SCA31患者：1症例</span>"
+          },
+          "en": {
+            "text": "SCA31患者: 1症例",
+            "rawHtml": "<span>SCA31患者：1症例</span>"
+          }
+        },
+        "Experimental Method": {
+          "ja": {
+            "text": "WGS",
+            "rawHtml": "<span>WGS</span>"
+          },
+          "en": {
+            "text": "WGS",
+            "rawHtml": "<span>WGS</span>"
+          }
+        },
+        "Targets": {
+          "ja": null,
+          "en": null
+        },
+        "Platform": {
+          "ja": {
+            "text": "Illumina [HiSeq 2000]",
+            "rawHtml": "<span>Illumina [HiSeq 2000]</span>"
+          },
+          "en": {
+            "text": "Illumina [HiSeq 2000]",
+            "rawHtml": "<span>Illumina [HiSeq 2000]</span>"
+          }
+        },
+        "Sample Description": {
+          "ja": {
+            "text": "末梢血から抽出したDNA",
+            "rawHtml": "<span>末梢血から抽出したDNA</span>"
+          },
+          "en": {
+            "text": "末梢血から抽出したDNA",
+            "rawHtml": "<span>末梢血から抽出したDNA</span>"
+          }
+        },
+        "Cell Lines": {
+          "ja": null,
+          "en": null
+        },
+        "Library Construction": {
+          "ja": {
+            "text": "TrueSeq DNA Sample Prep Kit v2, Set A",
+            "rawHtml": "<span>TrueSeq DNA Sample Prep Kit v2, Set A</span>"
+          },
+          "en": {
+            "text": "TrueSeq DNA Sample Prep Kit v2, Set A",
+            "rawHtml": "<span>TrueSeq DNA Sample Prep Kit v2, Set A</span>"
+          }
+        },
+        "Fragmentation": {
+          "ja": {
+            "text": "超音波断片化(Covaris E220)",
+            "rawHtml": "<span>超音波断片化（Covaris E220）</span>"
+          },
+          "en": {
+            "text": "超音波断片化(Covaris E220)",
+            "rawHtml": "<span>超音波断片化（Covaris E220）</span>"
+          }
+        },
+        "Read Type": {
+          "ja": {
+            "text": "Paired-end",
+            "rawHtml": "<span>Paired-end</span>"
+          },
+          "en": {
+            "text": "Paired-end",
+            "rawHtml": "<span>Paired-end</span>"
+          }
+        },
+        "Read Length": {
+          "ja": {
+            "text": "100 bp",
+            "rawHtml": "<span>100 bp</span>"
+          },
+          "en": {
+            "text": "100 bp",
+            "rawHtml": "<span>100 bp</span>"
+          }
+        },
+        "Japanese Genotype-phenotype Archive Dataset Accession": {
+          "ja": {
+            "text": "JGAD000002",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000002\"><span>JGAD000002</span></a>"
+          },
+          "en": {
+            "text": "JGAD000002",
+            "rawHtml": "<a href=\"https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000002\"><span>JGAD000002</span></a>"
+          }
+        },
+        "Total Data Volume": {
+          "ja": {
+            "text": "149 GB(1,627,990,590 reads)",
+            "rawHtml": "<span>149 GB（1,627,990,590 reads）</span>"
+          },
+          "en": {
+            "text": "149 GB(1,627,990,590 reads)",
+            "rawHtml": "<span>149 GB（1,627,990,590 reads）</span>"
+          }
+        },
+        "Policies": {
+          "ja": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          },
+          "en": {
+            "text": "NBDC policy",
+            "rawHtml": "<a href=\"/nbdc-policy\"><span>NBDC policy</span></a>"
+          }
+        }
+      },
+      "footers": {
+        "ja": [],
+        "en": []
+      },
+      "searchable": {
+        "subjectCount": 1,
+        "subjectCountType": "individual",
+        "healthStatus": "affected",
+        "diseases": [
+          {
+            "label": "Early-onset cerebellar ataxia",
+            "icd10": "G111"
+          }
+        ],
+        "tissues": [
+          "peripheral blood"
+        ],
+        "isTumor": false,
+        "cellLine": [],
+        "population": [],
+        "sex": null,
+        "ageGroup": null,
+        "assayType": [
+          "WGS"
+        ],
+        "libraryKits": [
+          "TruSeq DNA Sample Prep Kit v2"
+        ],
+        "platforms": [
+          {
+            "vendor": "Illumina",
+            "model": "HiSeq 2000"
+          }
+        ],
+        "readType": "paired-end",
+        "readLength": 100,
+        "sequencingDepth": null,
+        "targetCoverage": null,
+        "referenceGenome": [],
+        "variantCounts": null,
+        "hasPhenotypeData": null,
+        "targets": null,
+        "fileTypes": [],
+        "processedDataTypes": [],
+        "dataVolumeGb": 149,
+        "policies": [
+          {
+            "id": "nbdc-policy",
+            "name": {
+              "ja": "NBDC policy",
+              "en": "NBDC policy"
+            },
+            "url": "https://humandbs.dbcls.jp/nbdc-policy"
+          }
+        ]
+      }
+    }
+  ],
+  "originalMetadata": {
+    "alias": "JSUB000012_Dataset_0001",
+    "center_name": "Individual",
+    "accession": "JGAD000002",
+    "IDENTIFIERS": {
+      "SECONDARY_ID": "JGAD00000000002"
+    },
+    "TITLE": "whole genome data of SCA31 affected sample",
+    "DESCRIPTION": "whole genome data of SCA31 affected sample",
+    "DATASET_TYPE": "Whole genome shotgun sequencing",
+    "DATA_REFS": {
+      "DATA_REF": {
+        "refname": "JGAR000000192",
+        "refcenter": "Individual",
+        "accession": "JGAR000000192"
+      }
+    },
+    "ANALYSIS_REFS": null,
+    "POLICY_REF": {
+      "refname": "JGAP000001",
+      "refcenter": "NBDC",
+      "accession": "JGAP000001"
+    }
+  }
+}
