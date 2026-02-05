@@ -1,3 +1,9 @@
+import { ResearchDetailSchema } from "@humandbs/backend/types";
+import { createFileRoute } from "@tanstack/react-router";
+import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { z } from "zod";
+
 import { Card } from "@/components/Card";
 import { AddressForm } from "@/components/form-context/AddressForm";
 import { useAppForm } from "@/components/form-context/FormContext";
@@ -19,11 +25,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { i18n } from "@/config/i18n-config";
-import { ResearchSchema } from "@humandbs/backend/types";
-import { createFileRoute } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
-import { useState } from "react";
-import z from "zod";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/create"
@@ -136,7 +137,9 @@ function RouteComponent() {
                                     <TableCell>
                                       <Button
                                         variant={"plain"}
-                                        onClick={() => field.removeValue(i)}
+                                        onClick={() => {
+                                          field.removeValue(i);
+                                        }}
                                       >
                                         <Trash2 className="text-danger size-5" />
                                       </Button>
@@ -151,7 +154,9 @@ function RouteComponent() {
                         <Button
                           variant={"outline"}
                           className="self-start"
-                          onClick={() => field.pushValue({ url: "", text: "" })}
+                          onClick={() => {
+                            field.pushValue({ url: "", text: "" });
+                          }}
                         >
                           Add URL
                         </Button>
@@ -359,9 +364,9 @@ function RouteComponent() {
                                                       )}
                                                     </form.AppField>
                                                     <TrashButton
-                                                      onClick={() =>
-                                                        subField.removeValue(j)
-                                                      }
+                                                      onClick={() => {
+                                                        subField.removeValue(j);
+                                                      }}
                                                     />
                                                   </li>
                                                 );
@@ -371,9 +376,9 @@ function RouteComponent() {
                                               <Button
                                                 variant={"outline"}
                                                 className="self-start"
-                                                onClick={() =>
-                                                  subField.pushValue("")
-                                                }
+                                                onClick={() => {
+                                                  subField.pushValue("");
+                                                }}
                                               >
                                                 Add new datasetID
                                               </Button>
@@ -419,7 +424,7 @@ function RouteComponent() {
   );
 }
 
-const ResearchFormSchema = ResearchSchema.omit({
+const ResearchFormSchema = ResearchDetailSchema.omit({
   controlledAccessUser: true,
 });
 

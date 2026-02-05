@@ -1,5 +1,6 @@
+import { cva, type VariantProps } from "class-variance-authority";
+
 import { cn } from "@/lib/utils";
-import { cva, VariantProps } from "class-variance-authority";
 
 const separatorVariants = cva("border-foreground-light my-4 h-px", {
   variants: {

@@ -1,13 +1,13 @@
 import {
-  ResearchesQuerySchema,
-  ResearchSummary,
+  ResearchSearchQuerySchema,
+  type ResearchSummary,
 } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
   createColumnHelper,
-  SortingState,
-  Updater,
+  type SortingState,
+  type Updater,
 } from "@tanstack/react-table";
 import { Search } from "lucide-react";
 import { startTransition, Suspense, useCallback, useMemo } from "react";
@@ -24,7 +24,7 @@ import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 
-export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
+export const researchesSearchParamsSchema = ResearchSearchQuerySchema.omit({
   lang: true,
 });
 

@@ -1,10 +1,11 @@
-import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 import {
   getRouteApi,
   RegisteredRouter,
-  RouteIds,
-  SearchParamOptions,
+  type RouteIds,
+  type SearchParamOptions,
 } from "@tanstack/react-router";
+
+import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
 export function useFilters<
   TId extends RouteIds<RegisteredRouter["routeTree"]>,

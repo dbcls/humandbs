@@ -1,4 +1,4 @@
-import { cva, VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { cn } from "@/lib/utils";

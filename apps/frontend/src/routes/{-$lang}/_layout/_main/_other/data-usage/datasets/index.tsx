@@ -1,10 +1,13 @@
-import { Dataset, DatasetsQuerySchema } from "@humandbs/backend/types";
+import {
+  type DatasetDoc,
+  DatasetSearchQuerySchema,
+} from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   createColumnHelper,
   functionalUpdate,
-  SortingState,
+  type SortingState,
 } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { startTransition } from "react";
@@ -23,7 +26,7 @@ export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/datasets/"
 )({
   component: RouteComponent,
-  validateSearch: zodValidator(DatasetsQuerySchema),
+  validateSearch: zodValidator(DatasetSearchQuerySchema),
   loaderDeps: ({ search: { page, limit, sort, order } }) => {
     return {
       page,
@@ -88,7 +91,7 @@ function RouteComponent() {
   );
 }
 
-export const datasetsColumnHelper = createColumnHelper<Dataset>();
+export const datasetsColumnHelper = createColumnHelper<DatasetDoc>();
 
 export const datasetsColumns = [
   datasetsColumnHelper.accessor("datasetId", {

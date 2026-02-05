@@ -1,11 +1,11 @@
-import { Dataset } from "@humandbs/backend/types";
+import { type DatasetDoc } from "@humandbs/backend/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
-export type CartItem = Dataset;
+export type CartItem = DatasetDoc;
 
 export function useCart() {
   const { user } = useRouteContext({ from: "__root__" });

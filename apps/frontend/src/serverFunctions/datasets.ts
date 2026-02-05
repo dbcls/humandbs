@@ -1,8 +1,7 @@
 import {
   DatasetIdParamsSchema,
-  DatasetsQuerySchema,
+  DatasetSearchQuerySchema,
   LangQuerySchema,
-  LangVersionQuerySchema,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -12,7 +11,7 @@ import { api } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
-  .inputValidator(DatasetsQuerySchema)
+  .inputValidator(DatasetSearchQuerySchema)
   .handler(async ({ data }) => {
     const paginated = await api.getDatasetsPaginated({ search: data });
 
@@ -20,7 +19,7 @@ export const $getDatasetsPaginated = createServerFn({ method: "GET" })
   });
 
 export function getDatasetsPaginatedQueryOptions(
-  query: z.infer<typeof DatasetsQuerySchema>
+  query: z.infer<typeof DatasetSearchQuerySchema>
 ) {
   return queryOptions({
     queryKey: ["datasets", "list", query],

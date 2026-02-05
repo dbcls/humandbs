@@ -1,25 +1,26 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LucideBell } from "lucide-react";
+import { Suspense } from "react";
+import { type Locale, useLocale } from "use-intl";
+
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n-config";
-import { cn, DateStringRange } from "@/lib/utils";
+import { cn, type DateStringRange } from "@/lib/utils";
 import {
   $updateNewsItem,
   getNewsItemsQueryOptions,
-  NewsItemResponse,
+  type NewsItemResponse,
 } from "@/serverFunctions/news";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LucideBell } from "lucide-react";
-import { Suspense, useEffect } from "react";
-import { Locale, useLocale } from "use-intl";
 
-type FormDataType = {
+interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
   isAlert: boolean;
   alertRange: DateStringRange | null;
   locale: Locale;
   publishedAt: string | null;
-};
+}
 
 export function NewsItemContent({
   newsItem,

@@ -4,7 +4,8 @@
  * atypical pattern for Markdoc applications.
  */
 import Markdoc from "@markdoc/markdoc";
-import { MarkdocTag } from "../tags/types";
+
+import { type MarkdocTag } from "../tags/types";
 // import { Document } from "./Document";
 
 export const document = {

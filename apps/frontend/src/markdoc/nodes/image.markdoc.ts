@@ -1,4 +1,4 @@
-import Markdoc, { Schema } from "@markdoc/markdoc";
+import Markdoc, { type Schema } from "@markdoc/markdoc";
 
 /**
  * Returns the pathname of the image, based on image name, language and contentId.

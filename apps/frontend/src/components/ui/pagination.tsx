@@ -1,4 +1,4 @@
-import { Link, LinkComponentProps } from "@tanstack/react-router";
+import { Link, type LinkComponentProps } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,

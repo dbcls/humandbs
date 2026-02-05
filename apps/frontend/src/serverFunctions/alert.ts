@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { and, desc, eq, gte, isNull, lte, or } from "drizzle-orm";
-import { Locale } from "use-intl";
+import { type Locale } from "use-intl";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n-config";
@@ -45,7 +45,7 @@ export const $getAllAlerts = createServerFn({ method: "GET" })
         },
       },
       orderBy: [desc(alert.from)],
-      limit: data?.limit || 100,
+      limit: data?.limit ?? 100,
     });
 
     const response: AlertListItemResponse[] = alerts.map((alert) => ({
@@ -119,7 +119,7 @@ export const $getActiveAlerts = createServerFn({ method: "GET" })
   .inputValidator(z.object({ locale: localeSchema }))
   .handler(async ({ data }) => {
     const now = new Date();
-    const nowStr = toDateString(now) as string;
+    const nowStr = toDateString(now)!;
     const alerts = await db
       .select({
         newsId: alert.newsId,

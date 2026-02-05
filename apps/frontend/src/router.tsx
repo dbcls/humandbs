@@ -1,12 +1,11 @@
 import { QueryClient } from "@tanstack/react-query";
-import { createRouter, LocationRewrite } from "@tanstack/react-router";
+import { createRouter, type LocationRewrite } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
 import { i18n, type Locale, type Messages } from "@/config/i18n-config";
-import { type SessionMeta } from "@/utils/jwt-helpers";
+import { type SessionMeta, type SessionUser } from "@/utils/jwt-helpers";
 
 import { routeTree } from "./routeTree.gen";
-import { type SessionUser } from "./serverFunctions/user";
 
 export interface Context {
   queryClient: QueryClient;

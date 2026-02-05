@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { Locale } from "use-intl";
+import { type Locale } from "use-intl";
 import { z } from "zod";
 
 import { ContentId, contentIdSchema } from "@/config/content-config";

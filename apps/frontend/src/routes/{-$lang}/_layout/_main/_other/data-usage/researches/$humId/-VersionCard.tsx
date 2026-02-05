@@ -1,9 +1,4 @@
-import {
-  Dataset,
-  Person,
-  Publication,
-  ResearchDetail,
-} from "@humandbs/backend/types";
+import { type DatasetDoc, ResearchDetail } from "@humandbs/backend/types";
 import { getRouteApi } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 
@@ -156,7 +151,7 @@ function DatasetInfo({ dataset }: { dataset: Dataset }) {
 }
 
 type DatasetCaptionProps = Pick<
-  Dataset,
+  DatasetDoc,
   "datasetId" | "criteria" | "typeOfData"
 >;
 

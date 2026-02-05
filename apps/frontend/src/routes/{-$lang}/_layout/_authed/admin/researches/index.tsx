@@ -1,6 +1,7 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/"

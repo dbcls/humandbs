@@ -1,8 +1,8 @@
-import { cn } from "@/lib/utils";
-import { i18n, i18n as i18nConfig, Locale } from "@/config/i18n-config";
-import { saveLocaleFn } from "@/serverFunctions/locale";
 import { useRouter } from "@tanstack/react-router";
 import { useLocale } from "use-intl";
+
+import { i18n, i18n as i18nConfig, type Locale } from "@/config/i18n-config";
+import { cn } from "@/lib/utils";
 
 export function LangSwitcher() {
   const router = useRouter();

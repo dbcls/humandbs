@@ -1,18 +1,18 @@
 import {
-  Dataset,
-  DatasetIdParams,
-  DatasetsQuery,
-  DatasetsResponse,
-  DatasetsResponseSchema,
-  DatasetVersionsResponse,
-  HumIdParams,
-  LangQuery,
-  LangVersionQuery,
-  ResearchDetail,
-  ResearchesQuery,
-  ResearchesResponse,
-  ResearchesResponseSchema,
-  ResearchVersionsResponse,
+  DatasetDoc,
+  type DatasetIdParams,
+  type DatasetListingQuery,
+  type DatasetSearchResponse,
+  DatasetSearchResponseSchema,
+  type DatasetVersionsResponse,
+  type HumIdParams,
+  type LangQuery,
+  type LangVersionQuery,
+  type ResearchDetail,
+  type ResearchSearchQuery,
+  type ResearchSearchResponse,
+  ResearchVersionsResponseSchema,
+  type ResearchVersionsResponse,
 } from "@humandbs/backend/types";
 import axios from "axios";
 import { z } from "zod";
@@ -76,8 +76,8 @@ axiosInstance.interceptors.response.use(
 
 interface APIService {
   getResearchListPaginated(query: {
-    search: ResearchesQuery;
-  }): Promise<ResearchesResponse>;
+    search: ResearchSearchQuery;
+  }): Promise<ResearchSearchResponse>;
   getResearchDetail(query: {
     params: HumIdParams;
     search: LangVersionQuery;
@@ -87,12 +87,12 @@ interface APIService {
     search: LangQuery;
   }): Promise<ResearchVersionsResponse>;
   getDatasetsPaginated(query: {
-    search: DatasetsQuery;
-  }): Promise<DatasetsResponse>;
+    search: DatasetListingQuery;
+  }): Promise<DatasetSearchResponse>;
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
-  }): Promise<Dataset>;
+  }): Promise<DatasetDoc>;
   getDatasetVersions(query: {
     params: DatasetIdParams;
     search: LangQuery;
@@ -100,16 +100,16 @@ interface APIService {
 }
 
 export const FixedPaginationSchema =
-  ResearchesResponseSchema.shape.pagination.extend({
+  ResearchVersionsResponseSchema.shape.pagination.extend({
     limit: z.coerce.number(),
     page: z.coerce.number(),
   });
 
-const ResearchesResponseFixedSchema = ResearchesResponseSchema.extend({
+const ResearchesResponseFixedSchema = ResearchVersionsResponseSchema.extend({
   pagination: FixedPaginationSchema,
 });
 
-const DatasetsResponseFixedSchema = DatasetsResponseSchema.extend({
+const DatasetsResponseFixedSchema = DatasetSearchResponseSchema.extend({
   pagination: FixedPaginationSchema,
 });
 
