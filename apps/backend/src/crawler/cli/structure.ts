@@ -332,8 +332,6 @@ const processHumId = (humId: string): ProcessResult => {
       return result
     }
 
-    const latestData = jaLatest ?? enLatest!
-
     // Build inverted map for dataset ID expansion
     const jaMolData = jaLatest?.molecularData ?? []
     const enMolData = enLatest?.molecularData ?? []
@@ -350,9 +348,13 @@ const processHumId = (humId: string): ProcessResult => {
     const invertedMap = invertMolTableToDataset(allMolData)
     const expansionMap = buildDatasetIdExpansionMap(allMolData, invertedMap)
 
-    // Build metadata map
-    const metadataMap = buildDatasetMetadataMap(
-      latestData.summary.datasets,
+    // Build metadata maps separately for ja/en to correctly assign bilingual typeOfData
+    const jaMetadataMap = buildDatasetMetadataMap(
+      jaLatest?.summary.datasets ?? [],
+      allMolData,
+    )
+    const enMetadataMap = buildDatasetMetadataMap(
+      enLatest?.summary.datasets ?? [],
       allMolData,
     )
 
@@ -434,11 +436,11 @@ const processHumId = (humId: string): ProcessResult => {
 
         // Build single-language datasets
         const jaSingleLangDataset = jaData
-          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, jaMolDataForDataset, metadataMap, "ja", onValidationError)
+          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, jaMolDataForDataset, jaMetadataMap, "ja", onValidationError)
           : null
 
         const enSingleLangDataset = enData
-          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, enMolDataForDataset, metadataMap, "en", onValidationError)
+          ? buildSingleLangDataset(datasetId, datasetVersion, releaseDate, humId, humVersionId, enMolDataForDataset, enMetadataMap, "en", onValidationError)
           : null
 
         // Create unified dataset

@@ -705,6 +705,8 @@ const EXPERIMENT_HEADERS = [
   "experimentIndex",
   "header_ja",
   "header_en",
+  "experimentalMethod_ja",
+  "experimentalMethod_en",
   // Searchable fields (editable)
   "searchable_subjectCount",
   "searchable_subjectCountType",
@@ -749,6 +751,8 @@ const experimentToRow = (
     expIndex,
     bilingualTextValueToJa(exp.header),
     bilingualTextValueToEn(exp.header),
+    bilingualTextValueToJa(exp.data["Experimental Method"] ?? null),
+    bilingualTextValueToEn(exp.data["Experimental Method"] ?? null),
     // Searchable (editable)
     s?.subjectCount ?? "",
     s?.subjectCountType ?? "",
