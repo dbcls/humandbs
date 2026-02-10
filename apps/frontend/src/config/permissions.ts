@@ -1,6 +1,6 @@
 import { Asset, Document, DocumentVersion } from "@/db/schema";
 import { Alert, ContentItem, NewsItem } from "@/db/types";
-import { SessionUser } from "@/utils/jwt-helpers";
+import { type SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {
   ADMIN: "admin",

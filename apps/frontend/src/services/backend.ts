@@ -1,5 +1,5 @@
 import {
-  DatasetDoc,
+  type DatasetDoc,
   type DatasetIdParams,
   type DatasetListingQuery,
   type DatasetSearchResponse,
@@ -11,7 +11,7 @@ import {
   type ResearchDetail,
   type ResearchSearchQuery,
   type ResearchSearchResponse,
-  ResearchVersionsResponseSchema,
+  ResearchSearchResponseSchema,
   type ResearchVersionsResponse,
 } from "@humandbs/backend/types";
 import axios from "axios";
@@ -100,12 +100,12 @@ interface APIService {
 }
 
 export const FixedPaginationSchema =
-  ResearchVersionsResponseSchema.shape.pagination.extend({
+  ResearchSearchResponseSchema.shape.pagination.extend({
     limit: z.coerce.number(),
     page: z.coerce.number(),
   });
 
-const ResearchesResponseFixedSchema = ResearchVersionsResponseSchema.extend({
+const ResearchesResponseFixedSchema = ResearchSearchResponseSchema.extend({
   pagination: FixedPaginationSchema,
 });
 

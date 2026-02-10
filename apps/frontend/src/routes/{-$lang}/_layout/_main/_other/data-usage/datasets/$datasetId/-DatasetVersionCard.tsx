@@ -1,4 +1,4 @@
-import { Dataset } from "@humandbs/backend/types";
+import { type DatasetDoc } from "@humandbs/backend/types";
 import { Separator } from "@radix-ui/react-select";
 import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 
@@ -9,7 +9,7 @@ import { ListOfKeyValues } from "@/components/KeyValueCard";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 
-export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
+export function DatasetVersionCard({ versionData }: { versionData: DatasetDoc }) {
   const Route = getRouteApi(
     "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId"
   );

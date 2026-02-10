@@ -8,8 +8,8 @@
  */
 import { z } from "zod"
 
-import { LANG_TYPES, booleanFromString } from "@/api/types/common"
-import { RESEARCH_STATUS } from "@/api/types/workflow"
+import { LANG_TYPES, booleanFromString } from "./common"
+import { RESEARCH_STATUS } from "./workflow"
 
 // === Common Query Schemas ===
 

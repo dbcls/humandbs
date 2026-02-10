@@ -17,7 +17,7 @@ export {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
-} from "@/api/types/response"
+} from "./response"
 export type {
   Pagination,
   BaseResponseMeta,
@@ -28,21 +28,21 @@ export type {
   SingleResponse,
   ListResponse,
   SearchResponse as UnifiedSearchResponse,
-} from "@/api/types/response"
+} from "./response"
 
 // === Common ===
-export { LANG_TYPES, booleanFromString } from "@/api/types/common"
-export type { LangType } from "@/api/types/common"
+export { LANG_TYPES, booleanFromString } from "./common"
+export type { LangType } from "./common"
 
 // === Authentication ===
 export {
   JwtClaimsSchema,
   AuthUserSchema,
-} from "@/api/types/auth"
+} from "./auth"
 export type {
   JwtClaims,
   AuthUser,
-} from "@/api/types/auth"
+} from "./auth"
 
 // === Workflow ===
 export {
@@ -50,9 +50,9 @@ export {
   RESEARCH_STATUS,
   STATUS_ACTIONS,
   StatusTransitions,
-} from "@/api/types/workflow"
-export type { ResearchStatus, StatusAction } from "@/api/types/workflow"
-export type { EsResearchStatus } from "@/api/types/workflow"
+} from "./workflow"
+export type { ResearchStatus, StatusAction } from "./workflow"
+export type { EsResearchStatus } from "./workflow"
 
 // === Facets ===
 export {
@@ -61,14 +61,14 @@ export {
   isValidFacetName,
   FacetValueSchema,
   FacetsMapSchema,
-} from "@/api/types/facets"
+} from "./facets"
 export type {
   DatasetFacetName,
   ResearchFacetName,
   FacetValue,
   FacetsMap,
   TypedFacetsMap,
-} from "@/api/types/facets"
+} from "./facets"
 
 // === ES Documents ===
 export {
@@ -80,7 +80,7 @@ export {
   EsResearchDocSchema,
   EsResearchDetailSchema,
   DatasetVersionItemSchema,
-} from "@/api/types/es-docs"
+} from "./es-docs"
 export type {
   DatasetRef,
   EsDatasetDoc,
@@ -99,7 +99,7 @@ export type {
   EsGrant,
   EsPublication,
   EsSummary,
-} from "@/api/types/es-docs"
+} from "./es-docs"
 
 // === Query Parameters ===
 export {
@@ -113,7 +113,7 @@ export {
   SearchQuerySchema,
   ResearchListQuerySchema,
   DatasetListQuerySchema,
-} from "@/api/types/query-params"
+} from "./query-params"
 export type {
   LangVersionQuery,
   LangQuery,
@@ -125,7 +125,7 @@ export type {
   SearchQuery,
   ResearchListQuery,
   DatasetListQuery,
-} from "@/api/types/query-params"
+} from "./query-params"
 
 // === Filters ===
 export {
@@ -133,13 +133,13 @@ export {
   DatasetFiltersSchema,
   ResearchSearchBodySchema,
   DatasetSearchBodySchema,
-} from "@/api/types/filters"
+} from "./filters"
 export type {
   RangeFilter,
   DatasetFilters,
   ResearchSearchBody,
   DatasetSearchBody,
-} from "@/api/types/filters"
+} from "./filters"
 
 // === Request/Response ===
 export {
@@ -206,7 +206,7 @@ export {
   createUnifiedSingleReadOnlyResponseSchema,
   createUnifiedListResponseSchema,
   createUnifiedSearchResponseSchema,
-} from "@/api/types/request-response"
+} from "./request-response"
 export type {
   ErrorCode,
   ProblemDetails,
@@ -248,4 +248,4 @@ export type {
   IsAdminResponse,
   StatsFacetCount,
   StatsResponse,
-} from "@/api/types/request-response"
+} from "./request-response"

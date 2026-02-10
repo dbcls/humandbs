@@ -43,7 +43,7 @@ import {
   DatasetRefSchema,
   ResearchVersionSchema as CrawlerResearchVersionSchema,
   SearchableDatasetSchema,
-} from "@/crawler/types"
+} from "../crawler/types"
 
 // === Re-export Zod schemas from crawler/types (single source of truth) ===
 
@@ -109,7 +109,7 @@ export type {
   PlatformInfo,
   SearchableExperimentFields,
   SearchableDataset,
-} from "@/crawler/types"
+} from "../crawler/types"
 
 // === ES-specific schemas (extensions for ES documents) ===
 

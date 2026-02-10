@@ -2,7 +2,7 @@ import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
-  type ResearchesQuery,
+  type ResearchSearchQuery,
   ResearchSearchQuerySchema,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchQuerySchema)
   .handler(({ data }) => api.getResearchListPaginated({ search: data }));
 
-export function getResearchesQueryOptions(query: ResearchesQuery) {
+export function getResearchesQueryOptions(query: ResearchSearchQuery) {
   return queryOptions({
     queryKey: ["researches", "list", query],
     queryFn: () => $getResearches({ data: query }),

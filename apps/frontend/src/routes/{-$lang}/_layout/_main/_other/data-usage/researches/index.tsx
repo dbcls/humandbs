@@ -24,6 +24,8 @@ import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 
+const a = ResearchSearchQuerySchema.omit({ lang: true });
+
 export const researchesSearchParamsSchema = ResearchSearchQuerySchema.omit({
   lang: true,
 });

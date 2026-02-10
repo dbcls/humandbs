@@ -3,9 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "types": "./types/shared-types.ts",
+  "types": "./dist/types/types/shared-types.d.ts",
   "exports": {
-    "./types": "./types/shared-types.ts"
+    "./types": {
+      "types": "./dist/types/types/shared-types.d.ts",
+      "import": "./dist/types/types/shared-types.js"
+    }
   },
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",
@@ -23,6 +26,7 @@
     "crawler:import-tsv": "bun run src/crawler/cli/import-tsv.ts",
     "es:load-mappings": "bun run src/es/load-mappings.ts",
     "es:load-docs": "bun run src/es/load-docs.ts",
+    "build:types": "tsc --project tsconfig.build-types.json",
     "test": "bun test",
     "test:crawler": "bun test tests/unit/crawler",
     "test:es": "bun test tests/unit/es",
