@@ -7,7 +7,7 @@ import {
 import { IntlProvider } from "use-intl";
 
 import { i18n, localeSchema } from "@/config/i18n-config";
-import { getMessagesFn } from "@/serverFunctions/locale";
+// import { getMessagesFn } from "@/serverFunctions/locale";
 
 const langSchemaWithDefault = localeSchema.default(i18n.defaultLocale);
 
@@ -30,9 +30,11 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
 
     const lang = parseLang.data || i18n.defaultLocale;
 
-    const messages = await getMessagesFn({
-      data: lang,
-    });
+    const messages = {};
+
+    //   await getMessagesFn({
+    //   data: lang,
+    // });
 
     return {
       messages,

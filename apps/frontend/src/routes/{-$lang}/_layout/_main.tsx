@@ -7,7 +7,7 @@ import { Navbar } from "@/components/Navbar";
 export const Route = createFileRoute("/{-$lang}/_layout/_main")({
   component: RouteComponent,
 
-  loader: async ({ context }) => {
+  loader: () => {
     // const locale = context.lang;
     // const activeAlertTranslations = await context.queryClient.ensureQueryData(
     //   getActiveAlertsQueryOptions({ locale })

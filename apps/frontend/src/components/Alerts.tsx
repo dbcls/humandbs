@@ -1,25 +1,25 @@
-import { useLoaderData, useRouter } from "@tanstack/react-router";
+import { useLoaderData } from "@tanstack/react-router";
 import { LucideX } from "lucide-react";
 import { useLocale } from "use-intl";
 
-import {
-  $saveHiddenAlertIds,
-  ActiveAlertsItemResponse,
-} from "@/serverFunctions/alert";
+// import {
+//   $saveHiddenAlertIds,
+//   ActiveAlertsItemResponse,
+// } from "@/serverFunctions/alert";
 
 import { Link } from "./Link";
 import { Button } from "./ui/button";
 
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });
-  const locale = useLocale();
-  const router = useRouter();
+  // const locale = useLocale();
+  // const router = useRouter();
 
   async function handleHideAlert(newsId: string) {
-    await $saveHiddenAlertIds({ data: { newsId, locale } });
-    await router.invalidate({
-      filter: (r) => r.fullPath !== "/{-$lang}/admin",
-    });
+    // await $saveHiddenAlertIds({ data: { newsId, locale } });
+    // await router.invalidate({
+    //   filter: (r) => r.fullPath !== "/{-$lang}/admin",
+    // });
   }
 
   if (!alerts || alerts.length === 0) return null;
@@ -36,7 +36,7 @@ export function AlertMessage({
   newsId,
   title,
   onHide,
-}: ActiveAlertsItemResponse & {
+}: {
   onHide?: (alertId: string) => void;
 }) {
   const locale = useLocale();

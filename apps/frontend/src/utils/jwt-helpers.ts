@@ -3,8 +3,8 @@ import { serialize } from "cookie";
 import * as jose from "jose";
 import * as oidc from "openid-client";
 
-import { UserRole } from "@/config/permissions";
-import { User } from "@/db/types";
+import type { UserRole } from "@/config/permissions";
+import type { User } from "@/db/types";
 import { getConfig } from "@/lib/oidc";
 
 export const SESSION_COOKIE_NAME = "session_tokens";
@@ -55,7 +55,9 @@ export interface EnsureFreshSessionResult {
 }
 
 const JWKS = jose.createRemoteJWKSet(
-  new URL(`${process.env.HUMANDBS_AUTH_ISSUER_URL}/protocol/openid-connect/certs`)
+  new URL(
+    `${process.env.HUMANDBS_AUTH_ISSUER_URL}/protocol/openid-connect/certs`
+  )
 );
 
 function computeAbsoluteExpiry(expiresIn?: number): string | undefined {

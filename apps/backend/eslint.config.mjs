@@ -6,7 +6,12 @@ import globals from "globals";
 export default defineConfig([
   ...baseConfig,
   {
-    files: ["src/**/*.{js,mjs,cjs,ts,tsx}", "tests/**/*.{js,mjs,cjs,ts,tsx}"],
+    files: [
+      "src/**/*.{js,mjs,cjs,ts,tsx}",
+      "tests/**/*.{js,mjs,cjs,ts,tsx}",
+      "apps/backend/src/**/*.{js,mjs,cjs,ts,tsx}",
+      "apps/backend/tests/**/*.{js,mjs,cjs,ts,tsx}",
+    ],
     languageOptions: {
       globals: {
         ...globals.node,

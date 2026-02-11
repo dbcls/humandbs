@@ -4,15 +4,25 @@ import {
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+// import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import ConfirmationDialog from "@/components/ConfirmationDialog";
-import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
+// import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
 import css from "@/index.css?url";
-import { Context } from "@/router";
-import { $getAuthUser } from "@/serverFunctions/authUser";
+import type { Context } from "@/router";
+// import { $getAuthUser } from "@/serverFunctions/authUser";
 
 export const Route = createRootRouteWithContext<Context>()({
+  beforeLoad: () => {
+    const { user, session } = { user: null, session: null };
+
+    return {
+      user,
+      session,
+    };
+  },
+  component: RootComponent,
+
   head: () => {
     return {
       meta: [
@@ -28,16 +38,6 @@ export const Route = createRootRouteWithContext<Context>()({
       ],
 
       links: [{ rel: "stylesheet", href: css }],
-    };
-  },
-  component: RootComponent,
-
-  beforeLoad: async () => {
-    const { user, session } = await $getAuthUser();
-
-    return {
-      user,
-      session,
     };
   },
 });
@@ -60,8 +60,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-family-sans main-bg text-foreground relative h-fit">
         {children}
-        <TanStackRouterDevtools position="bottom-left" />
-        <SessionRefreshHandler session={session} />
+        {/*<TanStackRouterDevtools position="bottom-left" />*/}
+        {/*<SessionRefreshHandler session={session} />*/}
         <ConfirmationDialog />
         <Scripts />
       </body>

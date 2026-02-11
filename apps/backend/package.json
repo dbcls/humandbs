@@ -3,11 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "types": "./dist/types/types/shared-types.d.ts",
+  "types": "./types/shared-types.ts",
   "exports": {
     "./types": {
-      "types": "./dist/types/types/shared-types.d.ts",
-      "import": "./dist/types/types/shared-types.js"
+      "types": "./types/shared-types.ts",
+      "import": "./types/shared-types.ts"
     }
   },
   "scripts": {

@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, type LocationRewrite } from "@tanstack/react-router";
-import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
+// import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
 import { i18n, type Locale, type Messages } from "@/config/i18n-config";
 import { type SessionMeta, type SessionUser } from "@/utils/jwt-helpers";
@@ -62,7 +62,7 @@ function localeRewrite(): LocationRewrite {
   };
 }
 
-export async function getRouter() {
+export function getRouter() {
   const queryClient = new QueryClient();
 
   const router = createRouter({
@@ -75,10 +75,10 @@ export async function getRouter() {
     rewrite: localeRewrite(),
   });
 
-  setupRouterSsrQueryIntegration({
-    router,
-    queryClient,
-  });
+  // setupRouterSsrQueryIntegration({
+  //   router,
+  //   queryClient,
+  // });
 
   return router;
 }

@@ -1,5 +1,5 @@
-import { Asset, Document, DocumentVersion } from "@/db/schema";
-import { Alert, ContentItem, NewsItem } from "@/db/types";
+import type { Asset, Document, DocumentVersion } from "@/db/schema";
+import type { Alert, ContentItem, NewsItem } from "@/db/types";
 import { type SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {

@@ -24,6 +24,9 @@ export default defineConfig({
   logLevel: "error",
 
   plugins: [
+    tanstackStart({
+      srcDirectory: "src",
+    }),
     tailwindcss(),
 
     tsConfigPaths({
@@ -39,9 +42,6 @@ export default defineConfig({
       },
     }),
 
-    tanstackStart({
-      srcDirectory: "src",
-    }),
     react(),
   ],
 });

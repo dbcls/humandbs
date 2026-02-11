@@ -7,8 +7,8 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
 import { transformMarkdoc } from "@/markdoc/config";
 import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
-import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
+// import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
+// import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
 
@@ -16,13 +16,16 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/")({
   component: Index,
 
   loader: async ({ context }) => {
-    const data = await $getLatestPublishedDocumentVersion({
-      data: { contentId: "home", locale: context.lang },
-    });
+    const data = {};
 
-    const newsTitles = await context.queryClient.ensureQueryData(
-      getNewsTitlesQueryOptions({ locale: context.lang })
-    );
+    //   await $getLatestPublishedDocumentVersion({
+    //   data: { contentId: "home", locale: context.lang },
+    // });
+
+    const newsTitles = [];
+    //   await context.queryClient.ensureQueryData(
+    //   getNewsTitlesQueryOptions({ locale: context.lang })
+    // );
 
     const { content } = transformMarkdoc({ rawContent: data?.content ?? "" });
 
