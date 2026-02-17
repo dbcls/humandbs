@@ -33,6 +33,14 @@ describe("escapeForTsv", () => {
     expect(escapeForTsv("a\rb")).toBe("a\\rb")
   })
 
+  it("should escape backslashes", () => {
+    expect(escapeForTsv("a\\b")).toBe("a\\\\b")
+  })
+
+  it("should escape backslash before control char sequences", () => {
+    expect(escapeForTsv("a\\nb")).toBe("a\\\\nb")
+  })
+
   it("should JSON-stringify objects", () => {
     expect(escapeForTsv({ key: "value" })).toBe("{\"key\":\"value\"}")
   })
@@ -57,6 +65,14 @@ describe("unescapeTsv", () => {
 
   it("should unescape carriage returns", () => {
     expect(unescapeTsv("a\\rb")).toBe("a\rb")
+  })
+
+  it("should unescape backslashes", () => {
+    expect(unescapeTsv("a\\\\b")).toBe("a\\b")
+  })
+
+  it("should unescape backslash-n as backslash+n not newline", () => {
+    expect(unescapeTsv("a\\\\nb")).toBe("a\\nb")
   })
 
   it("should roundtrip with escapeForTsv", () => {

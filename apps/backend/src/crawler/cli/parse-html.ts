@@ -22,7 +22,7 @@ import { DEFAULT_CONCURRENCY, MAX_CONCURRENCY } from "@/crawler/config/urls"
 import { parseDetailPage } from "@/crawler/parsers/detail"
 import { humIdToTitle } from "@/crawler/parsers/home"
 import { parseReleasePage } from "@/crawler/parsers/release"
-import type { LangType, CrawlArgs, CrawlOneResult, CrawlHumIdResult } from "@/crawler/types"
+import type { LangType, RawRelease, CrawlArgs, CrawlOneResult, CrawlHumIdResult } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getErrorMessage } from "@/crawler/utils/error"
 import { getHtmlDir, writeParsedJson, getResultsDir } from "@/crawler/utils/io"
@@ -88,11 +88,14 @@ export const findAllHumIdsFromHtml = (): string[] => {
 
 /**
  * Parse one humVersionId + lang from HTML files
+ *
+ * @param releases - Pre-parsed releases from the latest version's release page
  */
 export const crawlOne = (
   humVersionId: string,
   lang: LangType,
   titleMap: Record<string, string>,
+  releases: RawRelease[],
 ): CrawlOneResult => {
   const htmlDir = getHtmlDir()
 
@@ -108,15 +111,9 @@ export const crawlOne = (
   const humId = (/^(hum\d+)-v\d+/.exec(humVersionId))?.[1] ?? humVersionId
   parsed.title = titleMap[humId] ?? ""
 
-  // Release page (may not exist)
-  let hasRelease = false
-  const releasePath = join(htmlDir, `release-${humVersionId}-${lang}-release.html`)
-  if (existsSync(releasePath)) {
-    const releaseHtml = readFileSync(releasePath, "utf8")
-    const releases = parseReleasePage(releaseHtml, humVersionId, lang)
-    parsed.releases = releases
-    hasRelease = true
-  }
+  // Release: use pre-parsed releases from the latest version's release page
+  parsed.releases = releases
+  const hasRelease = releases.length > 0
 
   writeParsedJson(humVersionId, lang, parsed)
   return { success: true, hasRelease }
@@ -124,6 +121,9 @@ export const crawlOne = (
 
 /**
  * Parse all versions for a humId
+ *
+ * Phase 1: Parse the latest version's release HTML once per lang
+ * Phase 2: Pass the shared releases to crawlOne for all versions
  */
 const crawlAllVersionsForHumId = (
   humId: string,
@@ -135,6 +135,20 @@ const crawlAllVersionsForHumId = (
     return { parsed: 0, errors: 0, noRelease: 0 }
   }
 
+  const htmlDir = getHtmlDir()
+
+  // Phase 1: Parse latest version's release HTML once per lang
+  const releasesByLang = new Map<LangType, RawRelease[]>()
+  const latestHumVersionId = `${humId}-v${latestVersion}`
+  for (const lang of langs) {
+    const releasePath = join(htmlDir, `release-${latestHumVersionId}-${lang}-release.html`)
+    if (existsSync(releasePath)) {
+      const releaseHtml = readFileSync(releasePath, "utf8")
+      releasesByLang.set(lang, parseReleasePage(releaseHtml, latestHumVersionId, lang))
+    }
+  }
+
+  // Phase 2: Parse all versions, passing shared releases
   let parsed = 0
   let errors = 0
   let noRelease = 0
@@ -146,7 +160,8 @@ const crawlAllVersionsForHumId = (
       if (shouldSkipPage(humVersionId, lang)) continue
 
       try {
-        const result = crawlOne(humVersionId, lang, titleMaps[lang])
+        const releases = releasesByLang.get(lang) ?? []
+        const result = crawlOne(humVersionId, lang, titleMaps[lang], releases)
         if (result.success) {
           parsed++
           if (!result.hasRelease) noRelease++

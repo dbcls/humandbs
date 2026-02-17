@@ -34,7 +34,6 @@ import {
   structureGrants,
   structurePublications,
   structureResearchProjects,
-  buildDatasetIdExpansionMap,
   assignBilingualDatasetVersion,
   trackBilingualVersion,
   mergeDataset,
@@ -230,7 +229,6 @@ const buildSingleLangResearch = (
   latestVersion: string,
   datePublished: string,
   dateModified: string,
-  expansionMap: Map<string, Set<string>>,
 ): SingleLangResearch => ({
   humId,
   url: genDetailUrl(latestVersion, lang),
@@ -245,8 +243,8 @@ const buildSingleLangResearch = (
   dataProvider: structureDataProvider(normalized.dataProvider),
   researchProject: structureResearchProjects(normalized.dataProvider),
   grant: structureGrants(normalized.dataProvider.grants),
-  relatedPublication: structurePublications(normalized.publications, expansionMap),
-  controlledAccessUser: structureControlledAccessUsers(normalized.controlledAccessUsers, expansionMap),
+  relatedPublication: structurePublications(normalized.publications),
+  controlledAccessUser: structureControlledAccessUsers(normalized.controlledAccessUsers),
   versionIds,
   latestVersion,
   datePublished,
@@ -344,9 +342,6 @@ const processHumId = (humId: string): ProcessResult => {
         allMolData.push(mol)
       }
     }
-
-    const invertedMap = invertMolTableToDataset(allMolData)
-    const expansionMap = buildDatasetIdExpansionMap(allMolData, invertedMap)
 
     // Build metadata maps separately for ja/en to correctly assign bilingual typeOfData
     const jaMetadataMap = buildDatasetMetadataMap(
@@ -488,10 +483,10 @@ const processHumId = (humId: string): ProcessResult => {
     // Build research
     const versionIds = sortedVersions
     const jaLatestResearch = jaLatest
-      ? buildSingleLangResearch(humId, jaLatest, "ja", versionIds, latestVersion, datePublished, dateModified, expansionMap)
+      ? buildSingleLangResearch(humId, jaLatest, "ja", versionIds, latestVersion, datePublished, dateModified)
       : null
     const enLatestResearch = enLatest
-      ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestVersion, datePublished, dateModified, expansionMap)
+      ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestVersion, datePublished, dateModified)
       : null
 
     const research = mergeResearch(humId, jaLatestResearch, enLatestResearch)

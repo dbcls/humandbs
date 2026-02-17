@@ -437,7 +437,6 @@ export const structureDataProvider = (
  */
 export const structureControlledAccessUsers = (
   users: NormalizedParseResult["controlledAccessUsers"],
-  expansionMap: Map<string, Set<string>>,
 ): SingleLangPerson[] => {
   return users.map(u => ({
     name: { text: u.principalInvestigator ?? "", rawHtml: u.principalInvestigator ?? "" },
@@ -447,9 +446,7 @@ export const structureControlledAccessUsers = (
         address: u.country ? { country: u.country } : null,
       }
       : null,
-    datasetIds: u.datasetIds.length > 0
-      ? expandDatasetIds(u.datasetIds, expansionMap)
-      : undefined,
+    datasetIds: u.datasetIds.length > 0 ? u.datasetIds : undefined,
     researchTitle: u.researchTitle,
     periodOfDataUse: u.periodOfDataUse,
   }))
@@ -471,88 +468,18 @@ export const structureGrants = (
 }
 
 /**
- * Build dataset ID expansion map
- */
-export const buildDatasetIdExpansionMap = (
-  molecularData: NormalizedMolecularData[],
-  invertedMap: Map<string, NormalizedMolecularData[]>,
-): Map<string, Set<string>> => {
-  const expansionMap = new Map<string, Set<string>>()
-
-  for (const molData of molecularData) {
-    const extractedIds = extractDatasetIdsFromMolData(molData)
-    const allIdsInMolTable = new Set<string>()
-
-    for (const type of ["JGAD", "JGAS", "DRA", "GEA", "NBDC_DATASET", "BP", "METABO"] as const) {
-      const ids = extractedIds[type]
-      if (ids) {
-        for (const id of ids) {
-          allIdsInMolTable.add(id)
-        }
-      }
-    }
-
-    const contributesToDatasets = new Set<string>()
-    for (const [datasetId, molDataList] of invertedMap.entries()) {
-      if (molDataList.includes(molData)) {
-        contributesToDatasets.add(datasetId)
-      }
-    }
-
-    for (const id of allIdsInMolTable) {
-      const existing = expansionMap.get(id) ?? new Set()
-      for (const datasetId of contributesToDatasets) {
-        existing.add(datasetId)
-      }
-      expansionMap.set(id, existing)
-    }
-  }
-
-  return expansionMap
-}
-
-/**
- * Expand dataset IDs
- */
-export const expandDatasetIds = (
-  datasetIds: string[],
-  expansionMap: Map<string, Set<string>>,
-): string[] => {
-  const expanded = new Set<string>()
-
-  for (const id of datasetIds) {
-    const expandedIds = expansionMap.get(id)
-    if (expandedIds && expandedIds.size > 0) {
-      for (const expandedId of expandedIds) {
-        expanded.add(expandedId)
-      }
-    } else {
-      expanded.add(id)
-    }
-  }
-
-  return [...expanded].sort()
-}
-
-/**
  * Structure publications
  */
 export const structurePublications = (
   pubs: NormalizedParseResult["publications"],
-  expansionMap: Map<string, Set<string>>,
 ): SingleLangPublication[] => {
   return pubs
     .filter(p => p.title)
-    .map(p => {
-      const expandedIds = p.datasetIds.length > 0
-        ? expandDatasetIds(p.datasetIds, expansionMap)
-        : undefined
-      return {
-        title: p.title!,
-        doi: p.doi,
-        datasetIds: expandedIds,
-      }
-    })
+    .map(p => ({
+      title: p.title!,
+      doi: p.doi,
+      datasetIds: p.datasetIds.length > 0 ? p.datasetIds : undefined,
+    }))
 }
 
 /**

@@ -41,7 +41,7 @@ export const downloadOne = async (
   humVersionId: string,
   lang: LangType,
   useCache: boolean,
-): Promise<{ detail: boolean; release: boolean }> => {
+): Promise<void> => {
   // Detail page: 404 is expected for speculative version probing - don't log as warn
   await fetchHtmlCached(
     genDetailUrl(humVersionId, lang),
@@ -49,26 +49,15 @@ export const downloadOne = async (
     useCache,
     { expectedErrorStatuses: [404] },
   )
-
-  // Release page: should exist if detail exists, so 404 should warn
-  let releaseDownloaded = false
-  try {
-    await fetchHtmlCached(
-      genReleaseUrl(humVersionId, lang),
-      `release-${humVersionId}-${lang}-release.html`,
-      useCache,
-    )
-    releaseDownloaded = true
-  } catch {
-    // Release page fetch failed - logged as warn if 404
-  }
-
-  return { detail: true, release: releaseDownloaded }
 }
 
 /**
  * Download all versions for a humId by trying v1, v2, v3... until 404
  * Returns the number of versions downloaded
+ *
+ * Phase 1: Download detail pages for all versions
+ * Phase 2: Download release page for latest version only
+ *   (latest release page contains release notes for all versions)
  */
 const downloadAllVersionsForHumId = async (
   humId: string,
@@ -77,7 +66,9 @@ const downloadAllVersionsForHumId = async (
 ): Promise<{ downloaded: number; errors: number }> => {
   let downloaded = 0
   let errors = 0
+  let latestVersion = 0
 
+  // Phase 1: Download detail pages for all versions
   for (let v = 1; v <= MAX_VERSION; v++) {
     const humVersionId = `${humId}-v${v}`
     let versionExists = false
@@ -104,6 +95,24 @@ const downloadAllVersionsForHumId = async (
 
     // If no language succeeded for this version, assume no more versions exist
     if (!versionExists) break
+    latestVersion = v
+  }
+
+  // Phase 2: Download release page for latest version only
+  if (latestVersion > 0) {
+    const latestHumVersionId = `${humId}-v${latestVersion}`
+    for (const lang of langs) {
+      if (shouldSkipPage(latestHumVersionId, lang)) continue
+      try {
+        await fetchHtmlCached(
+          genReleaseUrl(latestHumVersionId, lang),
+          `release-${latestHumVersionId}-${lang}-release.html`,
+          useCache,
+        )
+      } catch {
+        logger.warn("Release page download failed", { humVersionId: latestHumVersionId, lang })
+      }
+    }
   }
 
   return { downloaded, errors }
