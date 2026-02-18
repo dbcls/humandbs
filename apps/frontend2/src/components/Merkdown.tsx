@@ -6,12 +6,28 @@ import parse, {
   Element,
 } from "html-react-parser";
 
+import { Callout } from "@/components/markdown/Callout";
 import { cn } from "@/lib/utils";
 import type { MarkdownResult } from "@/utils/markdown";
 
 interface MarkdownProps {
   contentHtml: MarkdownResult;
   className?: string;
+}
+
+type CalloutType = "info" | "tip" | "error" | "warning";
+
+function getCalloutType(rawType?: string): CalloutType {
+  const type = (rawType ?? "info").toLowerCase();
+  if (
+    type === "info" ||
+    type === "tip" ||
+    type === "error" ||
+    type === "warning"
+  ) {
+    return type;
+  }
+  return "info";
 }
 
 export function Markdown({ contentHtml, className }: MarkdownProps) {
@@ -40,13 +56,24 @@ export function Markdown({ contentHtml, className }: MarkdownProps) {
             />
           );
         }
+
+        if (domNode.name === "callout") {
+          return (
+            <Callout
+              type={getCalloutType(domNode.attribs.type)}
+              title={domNode.attribs.title}
+            >
+              {domToReact(domNode.children, options)}
+            </Callout>
+          );
+        }
       }
     },
   };
 
   return (
     <div className={cn("prose", className)}>
-      {parse(contentHtml.markup ?? "")}
+      {parse(contentHtml.markup ?? "", options)}
     </div>
   );
 }
