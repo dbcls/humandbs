@@ -4,7 +4,6 @@ export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
   const headingsToShow =
     headings?.filter((heading) => heading.level <= 2) || [];
 
-  console.log("headinds", headings);
   return (
     <div className="border-secondary static flex w-96 min-w-44 flex-col gap-4 rounded bg-white p-2 md:sticky md:top-4 md:mt-6">
       {headingsToShow.map((heading) => (

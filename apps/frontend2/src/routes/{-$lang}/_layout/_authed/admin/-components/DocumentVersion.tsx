@@ -6,10 +6,11 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +24,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, type Locale } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
   type DocVersionListItemResponse,
   type DocVersionResponse,
@@ -62,7 +61,6 @@ function useDocumentVersionForm({
   contentId: string;
   versionNumber: number;
 }) {
-  const [defaultValues, setDefaultValues] = useState(initialValues);
   const prevVersionNumber = useRef(versionNumber);
 
   const { mutate: saveDraft } = useSaveDraft(contentId, versionNumber);
@@ -75,7 +73,7 @@ function useDocumentVersionForm({
   const isIgnoreRef = useRef(false);
 
   const form = useAppForm({
-    defaultValues,
+    defaultValues: initialValues,
     onSubmitMeta: defaultMeta,
     onSubmit: ({ value, meta, formApi }) => {
       if (isIgnoreRef.current) {
@@ -117,11 +115,13 @@ function useDocumentVersionForm({
                   },
                 },
               };
-              setDefaultValues(resetValue);
               formApi.reset(resetValue, { keepDefaultValues: false });
             })
             .finally(() => {
               isIgnoreRef.current = false;
+            })
+            .catch(() => {
+              formApi.reset();
             });
           break;
 
@@ -150,23 +150,25 @@ function useDocumentVersionForm({
                   },
                 },
               };
-              setDefaultValues(newValue);
               formApi.reset(newValue, { keepDefaultValues: false });
             })
             .finally(() => {
               isIgnoreRef.current = false;
+            })
+            .catch(() => {
+              formApi.reset();
             });
           break;
       }
     },
   });
 
-  // Reset form when version number changes (e.g., when selecting a different version)
-  if (prevVersionNumber.current !== versionNumber) {
-    prevVersionNumber.current = versionNumber;
-    setDefaultValues(initialValues);
-    form.reset(initialValues, { keepDefaultValues: false });
-  }
+  useEffect(() => {
+    if (prevVersionNumber.current !== versionNumber) {
+      prevVersionNumber.current = versionNumber;
+      form.reset(initialValues, { keepDefaultValues: false });
+    }
+  }, [form, initialValues, versionNumber]);
 
   return form;
 }
@@ -333,13 +335,15 @@ export function DocumentVersion({ contentId }: { contentId: string }) {
               ) {
                 return <div>No published content</div>;
               }
-              const { content } = transformMarkdoc({
-                rawContent:
-                  selectedVersionContent.translations[lang]?.published
-                    ?.content ?? "",
-              });
 
-              return <RenderMarkdoc content={content} />;
+              return (
+                <MarkdownClientPreview
+                  source={
+                    selectedVersionContent.translations[lang]?.published
+                      ?.content ?? ""
+                  }
+                />
+              );
             }}
           </form.Subscribe>
         </TabsContent>
@@ -568,9 +572,9 @@ function useSaveDraft(contentId: string, versionNumber: number) {
         queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(docVersionQO);
-      queryClient.invalidateQueries(docVersionsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(docVersionQO);
+      await queryClient.invalidateQueries(docVersionsListQO);
     },
   });
 }
@@ -633,9 +637,9 @@ function usePublishDraft(contentId: string, versionNumber: number) {
 
       return { previousVersion, previousList };
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(docVersionQO);
-      queryClient.invalidateQueries(docVersionsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(docVersionQO);
+      await queryClient.invalidateQueries(docVersionsListQO);
     },
   });
 }
@@ -690,9 +694,9 @@ function useResetDraft(contentId: string, versionNumber: number) {
         queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(docVersionQO);
-      queryClient.invalidateQueries(docVersionsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(docVersionQO);
+      await queryClient.invalidateQueries(docVersionsListQO);
     },
   });
 }

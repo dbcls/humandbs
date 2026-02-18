@@ -10,20 +10,19 @@ import { Suspense, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, type Locale } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
-  type ContentItemResponse,
   $publishContentItemDraftTranslation,
   $resetContentItemTranslationDraft,
   $saveContentItemTranslationDraft,
   getContentQueryOptions,
   getContentsListQueryOptions,
+  type ContentItemResponse,
   type UpsertContentItemData,
 } from "@/serverFunctions/contentItem";
 import { waitUntilNoMutations } from "@/utils/mutations";
@@ -289,11 +288,12 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
               if (!data.translations[lang]?.published?.content) {
                 return <div> No published content</div>;
               }
-              const { content } = transformMarkdoc({
-                rawContent: data.translations[lang]?.published?.content,
-              });
 
-              return <RenderMarkdoc content={content} />;
+              return (
+                <MarkdownClientPreview
+                  source={data.translations[lang]?.published?.content}
+                />
+              );
             }}
           </form.Subscribe>
         </TabsContent>
@@ -464,9 +464,9 @@ function useSaveDraft(id: string) {
         queryClient.setQueryData(contentsListQO.queryKey, context.prevList);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(contentItemQO);
-      queryClient.invalidateQueries(contentsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
     },
   });
 }
@@ -536,9 +536,9 @@ function useResetDraft(id: string) {
         queryClient.setQueryData(contentsListQO.queryKey, context.prevList);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(contentItemQO);
-      queryClient.invalidateQueries(contentsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
     },
   });
 }

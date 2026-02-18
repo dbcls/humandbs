@@ -1,7 +1,10 @@
 import MDEditor from "@uiw/react-md-editor";
+import { useEffect, useState } from "react";
 
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import { Markdown } from "@/components/Merkdown";
+import { renderMarkdown, type MarkdownResult } from "@/utils/markdown";
+
+import { MarkdownClientPreview } from "../markdown/MarkdownClientPreview";
 
 import { useFieldContext } from "./FormContext";
 
@@ -15,16 +18,14 @@ export default function ContentAreaField({ label }: { label: string }) {
         <MDEditor
           highlightEnable={true}
           value={field.state.value ?? ""}
-          onChange={(value) => field.handleChange(value || "")}
+          onChange={(value) => {
+            field.handleChange(value || "");
+          }}
           height="100%"
           className="md-editor flex-1"
           components={{
             preview: (source) => {
-              const { content } = transformMarkdoc({
-                rawContent: source,
-              });
-
-              return <RenderMarkdoc content={content} />;
+              return <MarkdownClientPreview source={source} />;
             },
           }}
         />

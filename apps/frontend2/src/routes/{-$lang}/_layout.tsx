@@ -8,7 +8,7 @@ import { IntlProvider } from "use-intl";
 import { z } from "zod";
 
 import { i18n, localeSchema } from "@/config/i18n";
-// import { $getMessages } from "@/serverFunctions/i18n";
+import { $getMessages } from "@/serverFunctions/i18n";
 
 // import { getMessagesFn } from "@/serverFunctions/locale";
 
@@ -17,7 +17,7 @@ const langSchemaWithDefault = localeSchema.default(i18n.defaultLocale);
 export const Route = createFileRoute("/{-$lang}/_layout")({
   component: RouteComponent,
   params: z.object({ lang: langSchemaWithDefault }),
-  beforeLoad: ({ params, location }) => {
+  beforeLoad: async ({ params, location }) => {
     const parseLang = langSchemaWithDefault.safeParse(params.lang);
 
     // console.log("parseLang", parseLang.data);
@@ -32,11 +32,9 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
 
     const lang = parseLang.data || i18n.defaultLocale;
 
-    const messages = {};
-
-    //   await $getMessages({
-    //   data: lang,
-    // });
+    const messages = await $getMessages({
+      data: lang,
+    });
 
     return {
       messages,
