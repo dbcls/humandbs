@@ -60,8 +60,8 @@ packages/
 
 ### 前提条件
 
-- Docker / Docker Compose
-- (Optional) Podman / podman-compose
+- Docker / Docker Compose（開発環境）
+- Podman / podman-compose（ステージング・本番環境）
 
 ### Quick Start
 
@@ -120,10 +120,10 @@ Keycloak のユーザー名とパスワードから UID を取得するスクリ
 ### Podman での起動
 
 ```bash
-cp env.dev .env
+cp env.staging .env  # or env.production
 cp compose.override.podman.yml compose.override.yml
 mkdir -p humandbs-es-backup
-podman-compose up -d
+podman-compose up -d --build
 ```
 
 ### 環境ファイル

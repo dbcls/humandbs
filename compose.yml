@@ -22,6 +22,7 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
+    restart: always
     init: true
 
   frontend:
@@ -69,6 +70,7 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
+    restart: always
     init: true
 
   backend:
@@ -110,6 +112,7 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
+    restart: always
     init: true
 
   elasticsearch:
@@ -146,6 +149,7 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
+    restart: always
     init: true
 
   nginx:
@@ -164,6 +168,7 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
+    restart: always
     init: true
 
 volumes:
