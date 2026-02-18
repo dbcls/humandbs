@@ -69,8 +69,8 @@
     font-style: normal;
 
     src:
-      url("./assets/fontawesome/fa-regular-400.woff2") format("woff2"),
-      url("./assets/fontawesome/fa-regular-400.ttf") format("truetype");
+      url("../assets/fontawesome/fa-regular-400.woff2") format("woff2"),
+      url("../assets/fontawesome/fa-regular-400.ttf") format("truetype");
   }
 
   @font-face {
@@ -79,8 +79,8 @@
     font-style: normal;
 
     src:
-      url("./assets/fontawesome/fa-solid-900.woff2") format("woff2"),
-      url("./assets/fontawesome/fa-solid-900.ttf") format("truetype");
+      url("../assets/fontawesome/fa-solid-900.woff2") format("woff2"),
+      url("../assets/fontawesome/fa-solid-900.ttf") format("truetype");
   }
 }
 
