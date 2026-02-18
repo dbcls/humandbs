@@ -1,15 +1,92 @@
-import { createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
-import { NotFound } from './components/NotFound'
+import { QueryClient } from "@tanstack/react-query";
+import { createRouter, type LocationRewrite } from "@tanstack/react-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
+
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
+import { NotFound } from "@/components/NotFound";
+import { i18n, type Locale, type Messages } from "@/config/i18n";
+import { routeTree } from "@/routeTree.gen";
+
+export interface Context {
+  queryClient: QueryClient;
+  // auth: Auth;
+  crumb: string;
+  lang: Locale;
+  messages: Messages;
+  // user: SessionUser | null | undefined;
+  // session: SessionMeta | null | undefined;
+}
 
 export function getRouter() {
+  const queryClient = new QueryClient();
+
   const router = createRouter({
     routeTree,
-    defaultPreload: 'intent',
+    context: {
+      queryClient,
+    } as Context,
+    defaultPreload: "intent",
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
-  })
-  return router
+    rewrite: localeRewrite(),
+  });
+
+  setupRouterSsrQueryIntegration({
+    router,
+    queryClient,
+  });
+
+  return router;
+}
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: ReturnType<typeof getRouter>;
+  }
+}
+
+/**
+ * Tanstack Router's rewrite feature - to handle optional locale params
+ * along with widlcard params, i.e. `/{$-lang}/$`. So the "/foo" would
+ * be seen as /${defaultLang}/foo, instead of trying to get lang "foo" of the index
+ *
+ *  `input` sees the real URL the browser requested and can remap it
+ *  to whatever internal shape you prefer before route matching runs.
+ *
+ * `output` runs so you can translate the internal form back to the public form.
+ */
+function localeRewrite(): LocationRewrite {
+  return {
+    input: ({ url }) => {
+      const parts = url.pathname.split("/").slice(1);
+
+      const [maybeLocale] = parts;
+
+      if (
+        maybeLocale &&
+        (maybeLocale.startsWith(".") ||
+          maybeLocale === "auth" ||
+          maybeLocale === "assets" ||
+          maybeLocale === "favicon.ico" ||
+          maybeLocale.startsWith("hum"))
+      ) {
+        return url;
+      }
+
+      if (!i18n.locales.includes(maybeLocale as Locale)) {
+        url.pathname = `/${i18n.defaultLocale}/${parts.join("/")}`;
+      }
+
+      return url;
+    },
+    output: ({ url }) => {
+      const parts = url.pathname.split("/").slice(1);
+      if (parts[0] === i18n.defaultLocale) {
+        parts.shift();
+        url.pathname = parts.length ? `/${parts.join("/")}` : "/";
+      }
+      return url;
+    },
+  };
 }

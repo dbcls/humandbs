@@ -8,7 +8,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-import { Locale } from "@/config/i18n-config";
+import type { Locale } from "@/config/i18n-config";
 
 import { user } from "./auth-schema";
 import { document } from "./document";

@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.json",
   "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
     "strict": true,
@@ -16,6 +17,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "drizzle-orm": ["../../node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["../../node_modules/drizzle-orm/*"],
     },
     "noEmit": true,
   },

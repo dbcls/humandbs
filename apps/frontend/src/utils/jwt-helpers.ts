@@ -234,7 +234,7 @@ export async function ensureFreshSession(
     };
   }
 
-  const refreshedSession = await refreshAccessToken(session.refresh_token);
+  const refreshedSession = await $$refreshAccessToken(session.refresh_token);
   if (!refreshedSession) {
     if (claims) {
       return {

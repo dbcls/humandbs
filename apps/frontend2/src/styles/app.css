@@ -1,30 +1,244 @@
-@import 'tailwindcss' source('../');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
+@plugin "@tailwindcss/typography";
+
+:root {
+  --books: "\f5db";
+  --dataset: "\f1c0";
+  --info: "\f05a";
+  --tip: "\f0eb";
+  --warning: "\f071";
+  --cms-assets-panel-width: 500px;
+  --cms-list-panel-width: 30rem;
+}
+
+@theme {
+  --color-primary: #edeff2;
+  --color-primary-translucent: rgba(0, 0, 0, 0.1);
+
+  --color-secondary: #1a5fbd;
+  --color-secondary-light: #1a96d2;
+  --color-secondary-lighter: #2ebedb;
+
+  --color-tetriary: #002245;
+  --color-tetriary-light: #2a5b73;
+
+  --color-input: #f7f7f7;
+
+  --color-hover: #f5f5f5;
+  --color-accent: #eb0075;
+  --color-accent-light: #ff618e;
+
+  --color-danger: #d51616;
+
+  --color-foreground: black;
+  --color-foreground-dark: #002245;
+  --color-foreground-light: #abb4c4;
+
+  --color-ring: var(--color-secondary);
+
+  --text-lg: 2.8rem;
+  --text-base: 1.6rem;
+  --text-sm: 1.4rem;
+  --text-xs: 1.2rem;
+  --text-2xs: 0.9rem;
+
+  --spacing-cms-assets-panel: var(--cms-assets-panel-width);
+  --spacing-cms-list-panel: var(--cms-list-panel-width);
+
+  --font-sans:
+    i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --font-fontawesome: "FontAwesome6";
 }
 
 @layer base {
   html {
-    color-scheme: light dark;
+    font-size: 62.5%;
   }
 
-  * {
-    @apply border-gray-200 dark:border-gray-800;
-  }
-
-  html,
   body {
-    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
+    @apply text-base;
   }
 
-  .using-mouse * {
-    outline: none !important;
+  @font-face {
+    font-family: "FontAwesome6";
+    font-weight: 400;
+    font-style: normal;
+
+    src:
+      url("./assets/fontawesome/fa-regular-400.woff2") format("woff2"),
+      url("./assets/fontawesome/fa-regular-400.ttf") format("truetype");
+  }
+
+  @font-face {
+    font-family: "FontAwesome6";
+    font-weight: 900;
+    font-style: normal;
+
+    src:
+      url("./assets/fontawesome/fa-solid-900.woff2") format("woff2"),
+      url("./assets/fontawesome/fa-solid-900.ttf") format("truetype");
+  }
+}
+
+:root {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .main-bg {
+    background-image:
+      linear-gradient(
+        var(--color-primary-translucent),
+        var(--color-primary-translucent)
+      ),
+      url("../assets/BG.png");
+    background-blend-mode: multiply;
+    background-repeat: no-repeat;
+    background-position: top;
+    background-size: contain;
+  }
+
+  .md-editor {
+    position: absolute;
+    inset: 0;
+
+    .w-md-editor-content {
+      --md-editor-font-family: "Courier New", Courier, monospace;
+    }
+
+    .w-md-editor-input {
+      position: relative;
+    }
+
+    .w-md-editor-area {
+      position: absolute;
+    }
+
+    .w-md-editor-fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9999;
+    }
+
+    .wmde-markdown-color {
+      > .language-markdown {
+        .code-line {
+          .title {
+            text-decoration: underline !important;
+          }
+        }
+      }
+    }
+
+    /* Enhanced markdown syntax highlighting */
+    .w-md-editor-text-pre,
+    .w-md-editor-text-input,
+    .w-md-editor-text {
+      /* Headings - blue and bold */
+      .token.title {
+        color: #1a5fbd !important;
+        font-weight: bold !important;
+      }
+
+      /* Bold text markers (**) */
+      .token.bold {
+        color: #9333ea !important;
+        font-weight: bold !important;
+      }
+
+      /* Italic text markers (*) */
+      .token.italic {
+        color: #c026d3 !important;
+        font-style: italic !important;
+      }
+
+      /* Links */
+      .token.url,
+      .token.url-link {
+        color: #0891b2 !important;
+      }
+
+      /* List markers (-, *, numbers) */
+      .token.list {
+        color: #ea580c !important;
+        font-weight: bold !important;
+      }
+
+      /* Code blocks and inline code */
+      .token.code {
+        color: #059669 !important;
+        background-color: #f0fdf4 !important;
+      }
+
+      /* Blockquote markers (>) */
+      .token.blockquote {
+        color: #6b7280 !important;
+        font-style: italic !important;
+      }
+
+      /* Horizontal rule (---) */
+      .token.hr {
+        color: #9ca3af !important;
+      }
+
+      /* Punctuation like # for headings, ** for bold */
+      .token.punctuation {
+        color: #9ca3af !important;
+      }
+
+      /* Strike-through */
+      .token.strike {
+        color: #ef4444 !important;
+        text-decoration: line-through !important;
+      }
+    }
+  }
+
+  .link-button {
+    @apply border-secondary text-secondary inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm;
+  }
+}
+
+@layer utilities {
+  .nested-form {
+    position: relative;
+    @apply pl-5;
+
+    &::before {
+      position: absolute;
+      display: block;
+      content: "";
+      width: 0.5rem;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      background-color: var(--color-hover);
+    }
+  }
+
+  .content-inline-icon {
+    @apply my-0 inline h-4;
+  }
+  .content-callout {
+    @apply border-secondary rounded border p-2;
+  }
+
+  /* Tailwind utilities */
+  .animate-spin {
+    animation: var(--animate-spin); /* spin 1s linear infinite */
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 }
