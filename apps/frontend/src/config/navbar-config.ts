@@ -1,6 +1,6 @@
 import { type LinkOptions } from "@tanstack/react-router";
 
-import type { Locale, Messages } from "@/config/i18n-config";
+import type { Locale, Messages } from "@/config/i18n";
 
 type NavLinkId = keyof Messages["Navbar"];
 

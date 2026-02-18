@@ -1,6 +1,6 @@
 import {
   getRouteApi,
-  RegisteredRouter,
+  type RegisteredRouter,
   type RouteIds,
   type SearchParamOptions,
 } from "@tanstack/react-router";

@@ -1,21 +1,21 @@
+import { ChevronDownIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { DateRange } from "react-day-picker";
+
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  DateStringRange,
+  type DateStringRange,
   toDate,
   toDateRange,
   toDateString,
   toDateStringRange,
-} from "@/lib/utils";
-import { ChevronDownIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { DateRange } from "react-day-picker";
+} from "@/utils/dates";
 
 export function DatePicker({
   dateValue,
@@ -65,7 +65,7 @@ export function DateRangePicker({
   const [open, setOpen] = useState(false);
 
   const [dateRange, setDateRange] = useState<DateStringRange | undefined>(
-    value
+    value,
   );
 
   useEffect(() => {
@@ -74,12 +74,10 @@ export function DateRangePicker({
 
   const handleSelect = (
     nextRange: DateRange | undefined,
-    selectedDay: Date | undefined
+    selectedDay: Date | undefined,
   ) => {
     const newRange =
-      dateRange?.from && dateRange?.to
-        ? { from: selectedDay }
-        : (nextRange as DateRange);
+      dateRange?.from && dateRange?.to ? { from: selectedDay } : nextRange!;
 
     setDateRange(toDateStringRange(newRange));
 
@@ -88,7 +86,9 @@ export function DateRangePicker({
       (!newRange?.from && !newRange?.to)
     ) {
       const dateStringRange = toDateStringRange(newRange);
-      dateStringRange && onSelect(dateStringRange);
+      if (dateStringRange) {
+        onSelect(dateStringRange);
+      }
     }
   };
 

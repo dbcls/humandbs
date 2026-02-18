@@ -18,13 +18,14 @@ export const $getAsset = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
       id: z.uuidv4(),
-    })
+    }),
   )
-  .handler(({ data }) =>
-    db.query.asset.findFirst({
+  .handler(async ({ data }) => {
+    const res = await db.query.asset.findFirst({
       where: eq(asset.id, data.id),
-    })
-  );
+    });
+    return res;
+  });
 
 export const $listAssets = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
@@ -40,14 +41,14 @@ export const $searchAssets = createServerFn({ method: "GET" })
       query: z.string().min(1).max(100).default(""),
       limit: z.number().min(1).max(100).default(10),
       offset: z.number().min(0).default(0),
-    })
+    }),
   )
   .handler(({ data }) =>
     db.query.asset.findMany({
       where: or(eq(asset.name, data.query), eq(asset.description, data.query)),
       limit: data.limit,
       offset: data.offset,
-    })
+    }),
   );
 
 async function uploadAssetFile(file: File) {

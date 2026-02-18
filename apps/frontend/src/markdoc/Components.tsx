@@ -1,3 +1,3 @@
 export * from "./LinkImg";
-export * from "./Callout";
+export * from "../components/markdown/Callout";
 export * from "./Version";

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
 import { CONTENT_IDS } from "@/config/content-config";
-import { i18n, Locale } from "@/config/i18n-config";
+import { i18n, type Locale } from "@/config/i18n";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 
@@ -15,7 +15,7 @@ const DOCUMENTS_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
   "seed-data",
-  "documents"
+  "documents",
 );
 
 const PUBLIC_ASSETS_DIR = path.join(
@@ -24,7 +24,7 @@ const PUBLIC_ASSETS_DIR = path.join(
   "..",
   "..",
   "public",
-  "assets"
+  "assets",
 );
 
 const SUPPORTED_LOCALES = i18n.locales;
@@ -132,7 +132,7 @@ function extractFileFilenames(content: string): string[] {
 
 function rewriteImageReferences(
   content: string,
-  availableAssets: Set<string>
+  availableAssets: Set<string>,
 ): string {
   const pattern = /!\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g;
 
@@ -156,7 +156,7 @@ function rewriteImageReferences(
 
 function rewriteFileReferences(
   content: string,
-  availableAssets: Set<string>
+  availableAssets: Set<string>,
 ): string {
   const pattern = /\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g;
 
@@ -197,12 +197,12 @@ function extractTitle(content: string): {
   let title: string | null = null;
 
   // Check for YAML frontmatter (starts with ---)
-  const frontmatterMatch = workingContent.match(/^---\n([\s\S]*?)\n---\n?/);
+  const frontmatterMatch = /^---\n([\s\S]*?)\n---\n?/.exec(workingContent);
 
   if (frontmatterMatch) {
     const frontmatter = frontmatterMatch[1];
     // Extract title from frontmatter
-    const titleMatch = frontmatter.match(/^title:\s*["']?(.+?)["']?\s*$/m);
+    const titleMatch = /^title:\s*["']?(.+?)["']?\s*$/m.exec(frontmatter);
     if (titleMatch) {
       title = titleMatch[1].trim();
     }
@@ -214,7 +214,7 @@ function extractTitle(content: string): {
 
   // If no frontmatter title, try to extract from first # heading
   if (!title) {
-    const headingMatch = workingContent.match(/^#\s+(.+)$/m);
+    const headingMatch = /^#\s+(.+)$/m.exec(workingContent);
     if (headingMatch) {
       title = headingMatch[1].trim();
       // Remove the title line and any immediately following blank lines
@@ -258,7 +258,7 @@ function getMimeType(fileName: string): string {
 }
 
 async function ensureSystemUser(
-  db: ReturnType<typeof drizzle<typeof schema>>
+  db: ReturnType<typeof drizzle<typeof schema>>,
 ): Promise<string> {
   const [existing] = await db
     .select({ id: schema.user.id })
@@ -286,7 +286,7 @@ async function ensureSystemUser(
 }
 
 async function resolveAuthorId(
-  db: ReturnType<typeof drizzle<typeof schema>>
+  db: ReturnType<typeof drizzle<typeof schema>>,
 ): Promise<string> {
   const seedId = process.env.SEED_AUTHOR_ID;
   const email = process.env.SEED_AUTHOR_EMAIL;
@@ -371,7 +371,7 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
 
       if (!VALID_DOCUMENT_IDS.has(documentId)) {
         console.warn(
-          `Skipping document '${documentId}' - not found in CONTENT_IDS configuration`
+          `Skipping document '${documentId}' - not found in CONTENT_IDS configuration`,
         );
         continue;
       }
@@ -425,7 +425,7 @@ async function copyAssets(documents: DocumentLocaleMap): Promise<Set<string>> {
         } catch (error: any) {
           if (error?.code === "ENOENT") {
             console.warn(
-              `Asset not found: ${sourcePath} (referenced in ${locale}/${documentId})`
+              `Asset not found: ${sourcePath} (referenced in ${locale}/${documentId})`,
             );
             continue;
           }
@@ -452,7 +452,7 @@ async function copyAssets(documents: DocumentLocaleMap): Promise<Set<string>> {
 async function seedAssets(
   db: ReturnType<typeof drizzle<typeof schema>>,
   copiedAssets: Set<string>,
-  documents: DocumentLocaleMap
+  documents: DocumentLocaleMap,
 ): Promise<void> {
   for (const assetName of copiedAssets) {
     const [existingAsset] = await db
@@ -563,16 +563,16 @@ async function seedDocuments() {
               eq(schema.documentVersion.locale, locale),
               eq(
                 schema.documentVersion.status,
-                DOCUMENT_VERSION_STATUS.PUBLISHED
-              )
-            )
+                DOCUMENT_VERSION_STATUS.PUBLISHED,
+              ),
+            ),
           )
           .limit(1)
           .execute();
 
         if (existingPublished) {
           console.log(
-            `Skipping ${locale}/${documentId} v${versionNumber} (already published)`
+            `Skipping ${locale}/${documentId} v${versionNumber} (already published)`,
           );
           skippedCount++;
           continue;
@@ -584,11 +584,11 @@ async function seedDocuments() {
         // Rewrite asset references
         let processedContent = rewriteImageReferences(
           contentWithoutTitle,
-          copiedAssets
+          copiedAssets,
         );
         processedContent = rewriteFileReferences(
           processedContent,
-          copiedAssets
+          copiedAssets,
         );
 
         // Insert as published version

@@ -3,20 +3,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { type Locale } from "use-intl";
 import { z } from "zod";
 
-import { ContentId, contentIdSchema } from "@/config/content-config";
-import { localeSchema } from "@/config/i18n-config";
+import { type ContentId, contentIdSchema } from "@/config/content-config";
+import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
-import { DocVersionStatus } from "@/db/schema";
+import { type DocVersionStatus } from "@/db/schema";
 import {
   documentSelectSchema,
   documentVersionSelectSchema,
-  DocumentVersionStatus,
+  type DocumentVersionStatus,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
   createDocumentVersionRepository,
-  DocVersionListItemResponseRaw,
-  DocVersionResponseRaw,
+  type DocVersionListItemResponseRaw,
+  type DocVersionResponseRaw,
 } from "@/repositories/documentVersion";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
@@ -53,22 +53,23 @@ export const $getDocumentVersionList = createServerFn({
     return groupDocumentVersions(versions);
   });
 
-export const getDocumentVersionListQueryOptions = (data: {
+export const getDocumentVersionListQueryOptions = ({
+  contentId,
+}: {
   contentId: string | null;
 }) =>
   queryOptions({
-    queryKey: ["documents", data?.contentId, "versions"],
+    queryKey: ["documents", contentId, "versions"],
     queryFn: () => {
-      if (!data) throw new Error("Invalid data");
-      if (!data.contentId) return Promise.resolve([]);
-      return $getDocumentVersionList({ data: { contentId: data.contentId } });
+      if (!contentId) return Promise.resolve([]);
+      return $getDocumentVersionList({ data: { contentId } });
     },
     staleTime: 5 * 1000 * 60,
-    enabled: !!data && !!data.contentId,
+    enabled: !!contentId,
   });
 
 export function groupDocumentVersions(
-  rawVersions: DocVersionListItemResponseRaw[]
+  rawVersions: DocVersionListItemResponseRaw[],
 ): DocVersionListItemResponse[] {
   const groupedVersions: DocVersionListItemResponse[] = [];
 
@@ -76,12 +77,12 @@ export function groupDocumentVersions(
     const existingVersion = groupedVersions.find(
       (v) =>
         v.contentId === version.contentId &&
-        v.versionNumber === version.versionNumber
+        v.versionNumber === version.versionNumber,
     );
 
     if (existingVersion) {
       const existingTranslation = existingVersion.translations.find(
-        (t) => t.locale === version.locale
+        (t) => t.locale === version.locale,
       );
 
       if (existingTranslation) {
@@ -142,27 +143,29 @@ export const $getDocumentVersion = createServerFn({
 
     const version = await documentVersionRepo.getVersion(
       contentId,
-      versionNumber
+      versionNumber,
     );
 
     return groupDocVersion(version);
   });
 
-export const getDocumentVersionQueryOptions = (data: {
+export const getDocumentVersionQueryOptions = ({
+  contentId,
+  versionNumber,
+}: {
   contentId: ContentId;
   versionNumber: number | undefined;
 }) =>
   queryOptions({
-    queryKey: ["documents", data.contentId, "versions", data.versionNumber],
+    queryKey: ["documents", contentId, "versions", versionNumber],
     queryFn: () => {
-      const { contentId, versionNumber } = data;
       if (!versionNumber) {
         throw new Error("Version number is required");
       }
       return $getDocumentVersion({ data: { contentId, versionNumber } });
     },
     staleTime: 5 * 1000 * 60,
-    enabled: typeof data.versionNumber === "number",
+    enabled: typeof versionNumber === "number",
   });
 
 /**
@@ -171,7 +174,7 @@ export const getDocumentVersionQueryOptions = (data: {
  * @returns grouped result
  */
 export function groupDocVersion(
-  rawVersion: DocVersionResponseRaw[]
+  rawVersion: DocVersionResponseRaw[],
 ): DocVersionResponse {
   const result: DocVersionResponse = {
     contentId: rawVersion[0].contentId,
@@ -237,7 +240,7 @@ export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
     await documentVersionRepo.publish(
       data.contentId,
       data.versionNumber,
-      data.locale
+      data.locale,
     );
   });
 
@@ -252,7 +255,7 @@ export const $unpublishDocumentVersion = createServerFn({ method: "POST" })
     await documentVersionRepo.unpublish(
       data.contentId,
       data.versionNumber,
-      data.locale
+      data.locale,
     );
   });
 
@@ -267,7 +270,7 @@ export const $resetDocumentVersionDraft = createServerFn({ method: "POST" })
     await documentVersionRepo.resetDraft(
       data.contentId,
       data.versionNumber,
-      data.locale
+      data.locale,
     );
   });
 
@@ -311,7 +314,7 @@ export const $createDocumentVersion = createServerFn({
 
     const result = await documentVersionRepo.createVersionFromPublished(
       contentId,
-      userId
+      userId,
     );
 
     return result;
@@ -334,7 +337,7 @@ export const $getLatestPublishedDocumentVersion = createServerFn({
     const { contentId, locale } = data;
     const docVersion = await documentVersionRepo.getLatestPublishedForLocale(
       contentId,
-      locale
+      locale,
     );
 
     if (!docVersion) {
@@ -357,7 +360,7 @@ export const $getPublishedDocumentVersion = createServerFn({
       await documentVersionRepo.getPublishedForVersionNumberAndLocale(
         contentId,
         versionNumber,
-        locale
+        locale,
       );
 
     return docVersion;
@@ -377,17 +380,19 @@ export const $getPublishedDocumentVersionList = createServerFn({
 
     const versions = await documentVersionRepo.getPublishedListForLocale(
       contentId,
-      locale
+      locale,
     );
 
     return versions;
   });
 
-export const getDocumentPublishedVersionsListQueryOptions = (
-  data: z.infer<typeof getPublishedDocVersionListRequestSchema>
-) =>
+export const getDocumentPublishedVersionsListQueryOptions = ({
+  contentId,
+  locale,
+}: z.infer<typeof getPublishedDocVersionListRequestSchema>) =>
   queryOptions({
-    queryKey: ["documents", data.contentId, "published-versions", data.locale],
-    queryFn: () => $getPublishedDocumentVersionList({ data }),
+    queryKey: ["documents", contentId, "published-versions", locale],
+    queryFn: () =>
+      $getPublishedDocumentVersionList({ data: { contentId, locale } }),
     staleTime: 5 * 1000 * 60,
   });

@@ -3,21 +3,21 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
+import { i18n, type Locale, localeSchema } from "@/config/i18n";
 import { getNavConfig } from "@/config/navbar-config";
 import { db } from "@/db/database";
 import {
   contentItem,
   contentTranslation,
   DOCUMENT_VERSION_STATUS,
-  DocVersionStatus,
+  type DocVersionStatus,
 } from "@/db/schema";
 import {
   contentTranslationInsertSchema,
-  ContentTranslationSelect,
-  DocumentVersionStatus,
+  type ContentTranslationSelect,
+  type DocumentVersionStatus,
   statusSchema,
-  User,
+  type User,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { transformMarkdoc } from "@/markdoc/config";
@@ -70,27 +70,26 @@ const $getContentItems = createServerFn({ method: "GET" })
     });
 
     return contentItems.map((item) => {
-      const translations = item.translations.reduce(
-        (acc, curr) => {
-          const existingLang = acc.find((l) => l.lang === curr.lang);
-
-          if (existingLang) {
-            existingLang.statuses[curr.status] = curr.title;
-            acc.sort((a, b) => a.lang.localeCompare(b.lang));
-          } else {
-            acc.push({
-              lang: curr.lang as Locale,
-              statuses: { [curr.status]: curr.title },
-            });
-          }
-
-          return acc;
-        },
-        [] as {
+      const translations = item.translations.reduce<
+        {
           lang: Locale;
           statuses: Partial<Record<DocVersionStatus, string>>;
         }[]
-      );
+      >((acc, curr) => {
+        const existingLang = acc.find((l) => l.lang === curr.lang);
+
+        if (existingLang) {
+          existingLang.statuses[curr.status] = curr.title;
+          acc.sort((a, b) => a.lang.localeCompare(b.lang));
+        } else {
+          acc.push({
+            lang: curr.lang as Locale,
+            statuses: { [curr.status]: curr.title },
+          });
+        }
+
+        return acc;
+      }, []);
 
       return {
         id: item.id,
@@ -151,7 +150,7 @@ export const $getContentItem = createServerFn({ method: "GET" })
             const locale = curr.lang as Locale;
             if (!acc[locale]) acc[locale] = {};
 
-            acc[locale]![status] = {
+            acc[locale][status] = {
               title,
               content,
               updatedAt,
@@ -159,7 +158,7 @@ export const $getContentItem = createServerFn({ method: "GET" })
             };
             return acc;
           },
-          {} as ContentItemResponse["translations"]
+          {} as ContentItemResponse["translations"],
         ) || ({} as ContentItemResponse["translations"]),
     };
   });
@@ -212,7 +211,7 @@ export const $getContentItemTranslation = createServerFn({
         and(
           eq(table.contentId, id),
           eq(table.lang, lang),
-          eq(table.status, status)
+          eq(table.status, status),
         ),
       columns: {
         title: true,
@@ -222,20 +221,16 @@ export const $getContentItemTranslation = createServerFn({
 
     if (!translation) {
       throw new Error(
-        `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`
+        `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`,
       );
     }
 
-    const { content, toc } = transformMarkdoc({
-      rawContent: translation?.content || "",
-      generateTOC: true,
-    });
+    // const { content, toc } = transformMarkdoc({
+    //   rawContent: translation?.content || "",
+    //   generateTOC: true,
+    // });
 
-    return {
-      content: JSON.stringify(content),
-      toc,
-      title: translation?.title,
-    };
+    return translation;
   });
 
 export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
@@ -255,7 +250,7 @@ export const $validateContentId = createServerFn({ method: "GET" })
     const contentId = data;
 
     const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map(
-      (c) => c.id
+      (c) => c.id,
     ) as string[];
 
     const content = await db.query.contentItem.findFirst({
@@ -269,7 +264,7 @@ export const $createContentItem = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       id: z.string(),
-    })
+    }),
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
@@ -277,7 +272,7 @@ export const $createContentItem = createServerFn({ method: "POST" })
 
     const id = data.id;
 
-    const user = context.user!;
+    const user = context.user;
 
     const newContentItem = await db
       .insert(contentItem)
@@ -294,7 +289,7 @@ export const $deleteContentItem = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       id: z.string(),
-    })
+    }),
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
@@ -381,7 +376,7 @@ export const $publishContentItemDraftTranslation = createServerFn({
         and(
           eq(table.contentId, data.id),
           eq(table.lang, data.lang),
-          eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT)
+          eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
         ),
     });
 
@@ -432,8 +427,8 @@ export const $unpublishContentItemTranslation = createServerFn({
         and(
           eq(contentTranslation.contentId, data.id),
           eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
-        )
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+        ),
       )
       .returning();
 
@@ -454,7 +449,7 @@ export const $resetContentItemTranslationDraft = createServerFn({
         and(
           eq(table.contentId, data.id),
           eq(table.lang, data.lang),
-          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
         ),
     });
 
@@ -473,8 +468,8 @@ export const $resetContentItemTranslationDraft = createServerFn({
         and(
           eq(contentTranslation.contentId, data.id),
           eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT)
-        )
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT),
+        ),
       )
       .returning();
 

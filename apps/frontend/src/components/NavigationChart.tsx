@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,9 @@ const OptionComponent = ({
   useEffect(() => {
     updateHeight();
     window.addEventListener("resize", updateHeight);
-    return () => window.removeEventListener("resize", updateHeight);
+    return () => {
+      window.removeEventListener("resize", updateHeight);
+    };
   }, [option.title]);
 
   const optionBaseClasses =
@@ -145,7 +148,9 @@ const StepComponent = ({
           >
             <OptionComponent
               option={option}
-              onOptionClick={() => onOptionClick(option, stepIndex)}
+              onOptionClick={() => {
+                onOptionClick(option, stepIndex);
+              }}
               isEnabled={isEnabled}
               isSelected={selectedOptionId === option.id}
             />
@@ -191,7 +196,7 @@ function NavigationChart({ data, navigate }: NavigationChartProps) {
             key={step.id}
             className={cn(
               "transition-opacity duration-300",
-              isEnabled ? "opacity-100" : "opacity-30"
+              isEnabled ? "opacity-100" : "opacity-30",
             )}
           >
             <StepComponent

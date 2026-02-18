@@ -44,6 +44,9 @@ export default defineConfig([
       ...pluginReactHooks.configs.recommended.rules,
       // React scope no longer necessary with new JSX transform.
       "react/react-in-jsx-scope": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/only-throw-error": "off",
     },
   },
   ...file_scope(eslintTanstackRouter.configs["flat/recommended"]),

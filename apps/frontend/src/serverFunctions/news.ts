@@ -3,20 +3,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { i18n, Locale } from "@/config/i18n-config";
+import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
 import { alert, newsItem, newsTranslation } from "@/db/schema";
 import {
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
-  NewsTranslationSelect,
+  type NewsTranslationSelect,
   newsTranslationSelectSchema,
   newsTranslationUpdateSchema,
-  NewsTranslationUpsert,
+  type NewsTranslationUpsert,
 } from "@/db/types";
-import { toDateString } from "@/lib/utils";
 import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { toDateString } from "@/utils/dates";
 
 export interface NewsTitleResponse {
   alert: boolean;
@@ -35,12 +35,12 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
       locale: z.string(),
-    })
+    }),
   )
   .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
     const locale = data.locale;
 
-    const nowStr = toDateString(new Date()) as string;
+    const nowStr = toDateString(new Date())!;
 
     const news = await db
       .select({
@@ -56,8 +56,8 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
         newsItem,
         and(
           eq(newsTranslation.newsId, newsItem.id),
-          lte(newsItem.publishedAt, nowStr)
-        )
+          lte(newsItem.publishedAt, nowStr),
+        ),
       )
       .leftJoin(alert, eq(alert.newsId, newsItem.id))
       .orderBy(desc(newsItem.publishedAt))
@@ -92,7 +92,7 @@ export function getNewsTitlesQueryOptions({
  */
 export const $getNewsTranslation = createServerFn({ method: "GET" })
   .inputValidator(
-    newsTranslationSelectSchema.pick({ lang: true, newsId: true })
+    newsTranslationSelectSchema.pick({ lang: true, newsId: true }),
   )
   .handler(async ({ data }) => {
     const newsItemId = data.newsId;
@@ -102,7 +102,7 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
     let result = await db.query.newsTranslation.findFirst({
       where: and(
         eq(newsTranslation.newsId, newsItemId),
-        eq(newsTranslation.lang, lang)
+        eq(newsTranslation.lang, lang),
       ),
       columns: {
         title: true,
@@ -121,7 +121,7 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
       result = await db.query.newsTranslation.findFirst({
         where: and(
           eq(newsTranslation.newsId, newsItemId),
-          eq(newsTranslation.lang, i18n.defaultLocale)
+          eq(newsTranslation.lang, i18n.defaultLocale),
         ),
         columns: {
           title: true,
@@ -145,7 +145,7 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
       ...result,
 
       content: JSON.stringify(
-        transformMarkdoc({ rawContent: result?.content ?? "" }).content
+        transformMarkdoc({ rawContent: result?.content ?? "" }).content,
       ),
     };
   });
@@ -169,7 +169,7 @@ export const $getNewsItems = createServerFn({ method: "GET" })
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
-    })
+    }),
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
@@ -206,22 +206,21 @@ export const $getNewsItems = createServerFn({ method: "GET" })
 
     const response = news.map((item) => ({
       ...(item as Omit<News[number], "translations">),
-      translations: item.translations.reduce(
-        (acc, curr) => {
-          acc[curr.lang as Locale] = {
-            content: curr.content,
-            title: curr.title,
-            updatedAt: curr.updatedAt,
-          };
-          return acc;
-        },
-        {} as Partial<
+      translations: item.translations.reduce<
+        Partial<
           Record<
             Locale,
             Pick<NewsTranslationSelect, "content" | "title" | "updatedAt">
           >
         >
-      ),
+      >((acc, curr) => {
+        acc[curr.lang as Locale] = {
+          content: curr.content,
+          title: curr.title,
+          updatedAt: curr.updatedAt,
+        };
+        return acc;
+      }, {}),
     }));
 
     return response;
@@ -257,7 +256,7 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
           lang: locale,
           title: translation?.title!,
           content: translation?.content!,
-        })
+        }),
       );
       //upsert translations
       await tx
@@ -329,7 +328,7 @@ export const $upsertNewsTranslation = createServerFn({ method: "POST" })
 export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(
-    newsTranslationUpdateSchema.pick({ newsId: true, lang: true }).required()
+    newsTranslationUpdateSchema.pick({ newsId: true, lang: true }).required(),
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
@@ -339,8 +338,8 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
       .where(
         and(
           eq(newsTranslation.newsId, data.newsId),
-          eq(newsTranslation.lang, data.lang)
-        )
+          eq(newsTranslation.lang, data.lang),
+        ),
       )
       .returning();
 

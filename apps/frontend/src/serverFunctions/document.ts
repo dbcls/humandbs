@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { ContentId } from "@/config/content-config";
+import { type ContentId } from "@/config/content-config";
 import { db } from "@/db/database";
 import { document } from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";

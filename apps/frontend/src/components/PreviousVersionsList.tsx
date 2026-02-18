@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
-import { type DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
-import { FileRoutesByTo } from "@/routeTree.gen";
+import type { DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
+import type { FileRoutesByTo } from "@/routeTree.gen";
 
 type LinksWithVersionLists = keyof Pick<
   FileRoutesByTo,

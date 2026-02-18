@@ -1,4 +1,5 @@
-import Markdoc, { type Schema } from "@markdoc/markdoc";
+import * as Markdoc from "@markdoc/markdoc";
+import { type Schema } from "@markdoc/markdoc";
 
 import { type MarkdocTag } from "../tags/types";
 
@@ -32,7 +33,7 @@ export const heading: Schema = {
     return new Markdoc.Tag(
       `h${node.attributes.level}`,
       { ...attributes, id },
-      children
+      children,
     );
   },
 } satisfies MarkdocTag;

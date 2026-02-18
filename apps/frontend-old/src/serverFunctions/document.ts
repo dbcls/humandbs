@@ -1,0 +1,68 @@
+import { queryOptions } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { ContentId } from "@/config/content-config";
+import { db } from "@/db/database";
+import { document } from "@/db/schema";
+import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
+import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+
+/** List all documents */
+export const $getDocuments = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  const documents = await db.query.document.findMany();
+
+  return documents as { createdAt: Date; contentId: ContentId }[];
+});
+
+export function getDocumentsQueryOptions() {
+  return queryOptions({
+    queryKey: ["documents"],
+    queryFn: $getDocuments,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Create new document with given contentId (must be unique)
+ */
+export const $createDocument = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(insertDocumentSchema)
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "create");
+
+    const doc = await db.insert(document).values(data).returning();
+
+    return doc;
+  });
+
+export const $validateDocumentContentId = createServerFn({ method: "POST" })
+  .inputValidator(z.string())
+  .handler(async ({ data }) => {
+    const existingDoc = await db.query.document.findFirst({
+      where: eq(document.contentId, data),
+    });
+
+    return !!existingDoc;
+  });
+
+/**
+ * Delete document by contentId
+ */
+export const $deleteDocument = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(documentSelectSchema)
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "delete");
+
+    const doc = await db
+      .delete(document)
+      .where(eq(document.contentId, data.contentId))
+      .returning();
+
+    return doc;
+  });

@@ -3,10 +3,10 @@ import {
   createSelectSchema,
   createUpdateSchema,
 } from "drizzle-zod";
-import { z } from "zod";
+import * as z from "zod";
 
 import { contentIdSchema } from "@/config/content-config";
-import { localeSchema } from "@/config/i18n-config";
+import { localeSchema } from "@/config/i18n";
 
 import * as schema from "./schema";
 
@@ -18,7 +18,7 @@ export const documentSelectSchema = createSelectSchema(schema.document).omit({
 
 export const documentVersionSelectSchema = createSelectSchema(
   schema.documentVersion,
-  { locale: localeSchema, contentId: contentIdSchema }
+  { locale: localeSchema, contentId: contentIdSchema },
 );
 
 export type DocumentSelect = z.infer<typeof documentSelectSchema>;
@@ -86,7 +86,7 @@ export const updateAlertSchema = createUpdateSchema(schema.alert).required({
 export type UpdateAlert = z.infer<typeof updateAlertSchema>;
 
 export const newsTranslationSelectSchema = createSelectSchema(
-  schema.newsTranslation
+  schema.newsTranslation,
 );
 
 export const newsTranslationSelectWithDateStringSchema =
@@ -96,16 +96,16 @@ export const newsTranslationSelectWithDateStringSchema =
   }));
 
 export const newsTranslationUpdateSchema = createUpdateSchema(
-  schema.newsTranslation
+  schema.newsTranslation,
 );
 
 export const newsTranslationInsertSchema = createInsertSchema(
-  schema.newsTranslation
+  schema.newsTranslation,
 );
 
-export const newsTranslationUpsertSchema = z.partialRecord(
+export const newsTranslationUpsertSchema = z.record(
   localeSchema,
-  newsTranslationSelectSchema.pick({ title: true, content: true })
+  newsTranslationSelectSchema.pick({ title: true, content: true }).optional(),
 );
 
 export type NewsTranslationUpsert = z.infer<typeof newsTranslationUpsertSchema>;
@@ -128,11 +128,11 @@ export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
 export type ContentItem = typeof schema.contentItem.$inferSelect;
 
 export const contentTranslationInsertSchema = createInsertSchema(
-  schema.contentTranslation
+  schema.contentTranslation,
 );
 
 export const contentTranslationUpdateSchema = createUpdateSchema(
-  schema.contentTranslation
+  schema.contentTranslation,
 );
 
 export type ContentTranslationSelect =

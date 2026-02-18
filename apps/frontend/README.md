@@ -1,18 +1,20 @@
-# humandbs　フロントエンド
+# Troubleshooting
 
-静的なコンテンツはCMSで管理される
+## 1. Acidentally importing stuff from the server-side
 
-## 静的なPages
+When error is like
 
-- Document - 静的なドキュメント
-- DocumentVersion - 静的なドキュメントのバージョン。 `published` か `draft`、二つの状態がある。`published` は、公開済みで、`draft` は、未公開の状態である。
-- DocumentVersionTranslation - 静的なドキュメントのバージョンの翻訳。
+```sh
+[plugin:vite:import-analysis] Failed to resolve import "tanstack-start-injected-head-scripts:v" from "../../node_modules/@tanstack/start-server-core/dist/esm/router-manifest.js?v=8960f5d8". Does the file exist?
+```
 
-## ニュース
+Most likely it is due importing something that is server-only into client/route file.
 
-- News - ニュースアイテム。
+> ! Types too, unless all named imports are preceded by the `type`, not individual ones
 
-## アラート
+```ts
+// route file
+import { type NewsTitleResponse } from "@/serverFunctions/news"; // ERROR!
 
-- Alert - アラートアイテム。　active なアラートがNavbar のすぐ下に表示される。
-- AlertTranslation - アラートアイテムの翻訳。
+import type { NewsTitleResponse } from "@/serverFunctions/news"; // OK!
+```

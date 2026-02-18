@@ -1,11 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
 
-import { i18n, Locale } from "@/config/i18n-config";
+import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
 import {
   DOCUMENT_VERSION_STATUS,
   documentVersion,
-  DocVersionStatus,
+  type DocVersionStatus,
 } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
 
@@ -61,7 +61,7 @@ interface DocumentVersionRepo {
    */
   getPublishedListForLocale: (
     contentId: string,
-    lang: Locale
+    lang: Locale,
   ) => Promise<DocPublishedVersionListItemResponse[]>;
 
   /**
@@ -70,7 +70,7 @@ interface DocumentVersionRepo {
    */
   getLatestPublishedForLocale: (
     contentId: string,
-    locale: Locale
+    locale: Locale,
   ) => Promise<DocPublishedResponseRaw | undefined>;
 
   /**
@@ -80,7 +80,7 @@ interface DocumentVersionRepo {
   getPublishedForVersionNumberAndLocale: (
     contentId: string,
     versionNumber: number,
-    locale: Locale
+    locale: Locale,
   ) => Promise<DocPublishedVersionResponseRaw | undefined>;
   /**
    * Private
@@ -89,7 +89,7 @@ interface DocumentVersionRepo {
    * @param contentId id of the document (`about`, `home`, etc)
    */
   getVersionList: (
-    contentId: string
+    contentId: string,
   ) => Promise<DocVersionListItemResponseRaw[]>;
 
   /**
@@ -102,7 +102,7 @@ interface DocumentVersionRepo {
    */
   getVersion: (
     contentId: string,
-    versionNumber: number
+    versionNumber: number,
   ) => Promise<DocVersionResponseRaw[]>;
 
   /**
@@ -117,7 +117,7 @@ interface DocumentVersionRepo {
     data: {
       title?: string;
       content?: string;
-    }
+    },
   ) => Promise<unknown>;
 
   /**
@@ -128,7 +128,7 @@ interface DocumentVersionRepo {
   publish: (
     contentId: string,
     versionNumber: number,
-    lang: Locale
+    lang: Locale,
   ) => Promise<unknown>;
 
   /**
@@ -139,7 +139,7 @@ interface DocumentVersionRepo {
   resetDraft: (
     contentId: string,
     versionNumber: number,
-    lang: Locale
+    lang: Locale,
   ) => Promise<unknown>;
 
   /**
@@ -150,7 +150,7 @@ interface DocumentVersionRepo {
   unpublish: (
     contentId: string,
     versionNumber: number,
-    lang: Locale
+    lang: Locale,
   ) => Promise<unknown>;
 
   /** Private
@@ -167,12 +167,12 @@ interface DocumentVersionRepo {
    */
   createVersionFromPublished: (
     contentId: string,
-    translatedBy?: string
+    translatedBy?: string,
   ) => Promise<{ versionNumber: number }>;
 }
 
 export function createDocumentVersionRepository(
-  database: typeof db
+  database: typeof db,
 ): DocumentVersionRepo {
   return {
     getPublishedListForLocale: (contentId, lang) =>
@@ -181,7 +181,7 @@ export function createDocumentVersionRepository(
           and(
             eq(table.contentId, contentId),
             eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-            eq(table.locale, lang)
+            eq(table.locale, lang),
           ),
         columns: {
           title: true,
@@ -198,7 +198,7 @@ export function createDocumentVersionRepository(
           and(
             eq(table.contentId, contentId),
             eq(table.locale, locale),
-            eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+            eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
           ),
         orderBy: (t, { desc }) => desc(t.versionNumber),
         columns: {
@@ -227,7 +227,7 @@ export function createDocumentVersionRepository(
             eq(t.contentId, contentId),
             eq(t.versionNumber, versionNumber),
             eq(t.locale, locale),
-            eq(t.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+            eq(t.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
           ),
         columns: {
           title: true,
@@ -244,7 +244,7 @@ export function createDocumentVersionRepository(
         where: (table, { and, eq }) =>
           and(
             eq(table.contentId, contentId),
-            eq(table.versionNumber, versionNumber)
+            eq(table.versionNumber, versionNumber),
           ),
         columns: {
           title: true,
@@ -285,7 +285,7 @@ export function createDocumentVersionRepository(
               eq(table.contentId, contentId),
               eq(table.versionNumber, versionNumber),
               eq(table.locale, locale),
-              eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT)
+              eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
             ),
         });
         if (!draft) {
@@ -321,7 +321,7 @@ export function createDocumentVersionRepository(
               eq(table.contentId, contentId),
               eq(table.versionNumber, versionNumber),
               eq(table.locale, locale),
-              eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+              eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
             ),
         });
         if (!published) {
@@ -336,8 +336,8 @@ export function createDocumentVersionRepository(
               eq(documentVersion.contentId, contentId),
               eq(documentVersion.versionNumber, versionNumber),
               eq(documentVersion.locale, locale),
-              eq(documentVersion.status, DOCUMENT_VERSION_STATUS.DRAFT)
-            )
+              eq(documentVersion.status, DOCUMENT_VERSION_STATUS.DRAFT),
+            ),
           );
       }),
     unpublish: (contentId, versionNumber, locale) =>
@@ -348,8 +348,8 @@ export function createDocumentVersionRepository(
             eq(documentVersion.contentId, contentId),
             eq(documentVersion.versionNumber, versionNumber),
             eq(documentVersion.locale, locale),
-            eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
-          )
+            eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+          ),
         ),
     delete: (contentId, versionNumber) =>
       database
@@ -357,8 +357,8 @@ export function createDocumentVersionRepository(
         .where(
           and(
             eq(documentVersion.contentId, contentId),
-            eq(documentVersion.versionNumber, versionNumber)
-          )
+            eq(documentVersion.versionNumber, versionNumber),
+          ),
         ),
     createVersionFromPublished: (contentId, translatedBy) =>
       database.transaction(async (tx) => {
@@ -376,7 +376,7 @@ export function createDocumentVersionRepository(
           where: (table, { and, eq }) =>
             and(
               eq(table.contentId, contentId),
-              eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+              eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
             ),
           columns: {
             locale: true,
@@ -416,7 +416,7 @@ export function createDocumentVersionRepository(
               title: pv.title,
               content: pv.content,
               translatedBy,
-            }))
+            })),
           );
         } else {
           // First version - create empty draft for default locale

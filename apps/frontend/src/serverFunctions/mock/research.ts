@@ -6,7 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import path from "node:path";
 import { z } from "zod";
 
-import { localeSchema } from "@/config/i18n-config";
+import { localeSchema } from "@/config/i18n";
 import { filterStringSchema, paginationSchema } from "@/utils/searchParams";
 
 const getResearchListInputSchema = paginationSchema;
@@ -21,8 +21,8 @@ export const $getResearchList = createServerFn({ method: "GET" })
         "..",
         "scripts",
         "mock-data",
-        "research-list.json"
-      )
+        "research-list.json",
+      ),
     ).json()) as ResearchSummary[];
 
     const filterString = data.filter;
@@ -32,7 +32,7 @@ export const $getResearchList = createServerFn({ method: "GET" })
     // Filter and apply pagination. If no filter set, do not filter
     if (filterString) {
       filteredResearchItems = allResearchItems.filter((item) =>
-        item.title.includes(filterString)
+        item.title.includes(filterString),
       );
     }
 
@@ -63,6 +63,6 @@ export const $getResearch = createServerFn({ method: "GET" })
       humId: z.string(),
       lang: localeSchema,
       ver: z.string(),
-    })
+    }),
   )
   .handler(async ({ data }) => {});
