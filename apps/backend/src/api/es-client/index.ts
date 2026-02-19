@@ -95,3 +95,11 @@ export {
   searchDatasets,
   searchResearches,
 } from "@/api/es-client/search"
+
+// JGA Shinsei operations
+export {
+  listDsApplications,
+  getDsApplication,
+  listDuApplications,
+  getDuApplication,
+} from "@/api/es-client/jga-shinsei"

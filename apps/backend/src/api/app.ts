@@ -11,6 +11,7 @@ import { getRequestId, requestIdMiddleware } from "@/api/middleware/request-id"
 import { adminRouter } from "@/api/routes/admin"
 import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
+import { jgaShinseiRouter } from "@/api/routes/jga-shinsei"
 import { researchRouter } from "@/api/routes/research/index"
 import { searchRouter } from "@/api/routes/search"
 import { statsRouter } from "@/api/routes/stats"
@@ -53,6 +54,7 @@ export const createApp = () => {
   api.route("/research", researchRouter)
   api.route("/dataset", datasetRouter)
   api.route("/admin", adminRouter)
+  api.route("/jga-shinsei", jgaShinseiRouter)
 
   // Search routes mounted at root level for POST /research/search, POST /dataset/search, GET /facets
   api.route("/", searchRouter)
@@ -144,6 +146,10 @@ Only admins can approve/reject submissions and unpublish content.
       {
         name: "Admin",
         description: "Administrative operations requiring admin role. Includes admin status check. Admin users are determined by admin_uids.json configuration, not JWT roles.",
+      },
+      {
+        name: "JGA Shinsei",
+        description: "JGA 申請データ (DS: データ提供申請 / DU: データ利用申請) の read-only API。全エンドポイントに admin 認証が必要。",
       },
     ],
   })
