@@ -38,13 +38,20 @@ export const canAccessDataset = async (
 
 // === Aggregation Builders ===
 
-/** Helper to create nested aggregation with reverse_nested for dataset count */
+/** Helper to create nested aggregation with reverse_nested + cardinality for unique dataset count */
 export const nestedFacetAgg = (field: string, size = 50): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
     values: {
       terms: { field, size },
-      aggs: { dataset_count: { reverse_nested: {} } },
+      aggs: {
+        dataset_count: {
+          reverse_nested: {},
+          aggs: {
+            unique: { cardinality: { field: "datasetId" } },
+          },
+        },
+      },
     },
   },
 })
@@ -62,7 +69,14 @@ export const doubleNestedFacetAgg = (
       aggs: {
         values: {
           terms: { field, size },
-          aggs: { dataset_count: { reverse_nested: {} } },
+          aggs: {
+            dataset_count: {
+              reverse_nested: {},
+              aggs: {
+                unique: { cardinality: { field: "datasetId" } },
+              },
+            },
+          },
         },
       },
     },
@@ -81,7 +95,22 @@ export const platformFacetAgg = (size = 50): estypes.AggregationsAggregationCont
           { model: { terms: { field: "experiments.searchable.platformModel", missing_bucket: true } } },
         ],
       },
-      aggs: { dataset_count: { reverse_nested: {} } },
+      aggs: {
+        dataset_count: {
+          reverse_nested: {},
+          aggs: {
+            unique: { cardinality: { field: "datasetId" } },
+          },
+        },
+      },
     },
+  },
+})
+
+/** Helper to create top-level facet aggregation with cardinality for unique dataset count */
+export const topLevelFacetAgg = (field: string, size = 10): estypes.AggregationsAggregationContainer => ({
+  terms: { field, size },
+  aggs: {
+    dataset_count: { cardinality: { field: "datasetId" } },
   },
 })

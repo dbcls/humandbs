@@ -17,6 +17,7 @@ import {
   nestedFacetAgg,
   doubleNestedFacetAgg,
   platformFacetAgg,
+  topLevelFacetAgg,
 } from "@/api/es-client/helpers"
 import {
   nestedTermsQuery,
@@ -234,8 +235,8 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
 // === Facet Aggregation Builders ===
 
 const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregationContainer> => ({
-  // Top-level facets
-  criteria: { terms: { field: "criteria", size: 10 } },
+  // Top-level facets (with cardinality for unique dataset count)
+  criteria: topLevelFacetAgg("criteria"),
 
   // Basic nested facets
   assayType: nestedFacetAgg("experiments.searchable.assayType"),
@@ -277,13 +278,20 @@ const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregatio
 interface TermsBucket {
   key: string | number | boolean
   doc_count: number
-  dataset_count?: { doc_count: number }
+  dataset_count?: {
+    doc_count?: number          // reverse_nested doc_count
+    value?: number              // top-level cardinality
+    unique?: { value: number }  // nested reverse_nested + cardinality
+  }
 }
 
 interface CompositeBucket {
   key: { vendor?: string | null; model?: string | null }
   doc_count: number
-  dataset_count?: { doc_count: number }
+  dataset_count?: {
+    doc_count?: number
+    unique?: { value: number }
+  }
 }
 
 // Type guard for Record<string, unknown>
@@ -315,11 +323,14 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
   if (!aggs) return {}
   const facets: FacetsMap = {}
 
-  // Extract count from bucket, preferring dataset_count (reverse_nested) for nested aggs
+  // Extract count from bucket, preferring cardinality (unique datasetId count) over raw doc_count
   const extractBuckets = (buckets: TermsBucket[]) =>
     buckets.map(b => ({
       value: String(b.key),
-      count: b.dataset_count?.doc_count ?? b.doc_count,
+      count: b.dataset_count?.unique?.value
+        ?? b.dataset_count?.value
+        ?? b.dataset_count?.doc_count
+        ?? b.doc_count,
     }))
 
   // Extract platform composite buckets (vendor + model)
@@ -335,7 +346,9 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
         const value = `${vendor}||${model}`
         return {
           value,
-          count: b.dataset_count?.doc_count ?? b.doc_count,
+          count: b.dataset_count?.unique?.value
+            ?? b.dataset_count?.doc_count
+            ?? b.doc_count,
         }
       })
       .filter((item): item is { value: string; count: number } => item !== null)
@@ -678,14 +691,23 @@ export const searchResearches = async (
     sortSpec = [{ humId: { order } }]
   }
 
-  const res = await esClient.search<EsResearchDoc>({
+  interface ResearchAggs {
+    all_humIds?: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
+  }
+
+  const researchQuery = must.length > 0 ? { bool: { must } } : { match_all: {} }
+  const res = await esClient.search<EsResearchDoc, ResearchAggs>({
     index: ES_INDEX.research,
     from,
     size: limit,
-    query: must.length > 0 ? { bool: { must } } : { match_all: {} },
+    query: researchQuery,
     sort: sortSpec,
     _source: ["humId", "title", "versionIds", "dataProvider", "summary"],
     track_total_hits: true,
+    // Aggregate all matching humIds for facet query (only when facets requested and no humIdFilter)
+    ...(includeFacets && !humIdFilter ? {
+      aggs: { all_humIds: { terms: { field: "humId", size: 10000 } } },
+    } : {}),
   })
 
   const base = res.hits.hits
@@ -746,9 +768,17 @@ export const searchResearches = async (
   if (includeFacets) {
     const datasetFacetQuery: estypes.QueryDslQueryContainer[] = []
     if (humIdFilter) {
+      // Dataset filter already narrowed humIds
       datasetFacetQuery.push({ terms: { humId: humIdFilter } })
-    } else if (data.length > 0) {
-      datasetFacetQuery.push({ terms: { humId: data.map(d => d.humId) } })
+    } else {
+      // Use all matching humIds from Research aggregation (not just current page)
+      const allHumIdBuckets = res.aggregations?.all_humIds?.buckets
+      const allHumIds = Array.isArray(allHumIdBuckets)
+        ? allHumIdBuckets.map(b => b.key)
+        : []
+      if (allHumIds.length > 0) {
+        datasetFacetQuery.push({ terms: { humId: allHumIds } })
+      }
     }
 
     const facetRes = await esClient.search({
