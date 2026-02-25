@@ -20,6 +20,7 @@ import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/
 import { Route as Char123LangChar125LayoutMainHomeRouteImport } from './routes/{-$lang}/_layout/_main/_home'
 import { Route as Char123LangChar125LayoutAuthedAdminRouteRouteImport } from './routes/{-$lang}/_layout/_authed/admin/route'
 import { Route as Char123LangChar125LayoutMainHomeIndexRouteImport } from './routes/{-$lang}/_layout/_main/_home/index'
+import { Route as Char123LangChar125LayoutMainOtherCartRouteImport } from './routes/{-$lang}/_layout/_main/_other/cart'
 import { Route as Char123LangChar125LayoutMainOtherSplatRouteImport } from './routes/{-$lang}/_layout/_main/_other/$'
 import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/news'
 import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
@@ -112,6 +113,12 @@ const Char123LangChar125LayoutMainHomeIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => Char123LangChar125LayoutMainHomeRoute,
+  } as any)
+const Char123LangChar125LayoutMainOtherCartRoute =
+  Char123LangChar125LayoutMainOtherCartRouteImport.update({
+    id: '/cart',
+    path: '/cart',
+    getParentRoute: () => Char123LangChar125LayoutMainOtherRoute,
   } as any)
 const Char123LangChar125LayoutMainOtherSplatRoute =
   Char123LangChar125LayoutMainOtherSplatRouteImport.update({
@@ -383,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
   '/{-$lang}/': typeof Char123LangChar125LayoutMainHomeIndexRoute
   '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   '/{-$lang}/data-usage/datasets': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsRouteRouteWithChildren
@@ -423,6 +431,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
   '/{-$lang}/admin/researches/create': typeof Char123LangChar125LayoutAuthedAdminResearchesCreateRoute
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
@@ -464,6 +473,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/_layout/_authed/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/_layout/_main/_other/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
+  '/{-$lang}/_layout/_main/_other/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
   '/{-$lang}/_layout/_main/_home/': typeof Char123LangChar125LayoutMainHomeIndexRoute
   '/{-$lang}/_layout/_main/_other/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/data-usage/datasets': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsRouteRouteWithChildren
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
+    | '/{-$lang}/cart'
     | '/{-$lang}/'
     | '/{-$lang}/data-submission/navigation'
     | '/{-$lang}/data-usage/datasets'
@@ -549,6 +560,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
+    | '/{-$lang}/cart'
     | '/{-$lang}/admin/researches/create'
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
     | '/{-$lang}/guidelines/$slug'
@@ -589,6 +601,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/documents'
     | '/{-$lang}/_layout/_authed/admin/news'
     | '/{-$lang}/_layout/_main/_other/$'
+    | '/{-$lang}/_layout/_main/_other/cart'
     | '/{-$lang}/_layout/_main/_home/'
     | '/{-$lang}/_layout/_main/_other/data-submission/navigation'
     | '/{-$lang}/_layout/_main/_other/data-usage/datasets'
@@ -704,6 +717,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainHomeIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainHomeRoute
+    }
+    '/{-$lang}/_layout/_main/_other/cart': {
+      id: '/{-$lang}/_layout/_main/_other/cart'
+      path: '/cart'
+      fullPath: '/{-$lang}/cart'
+      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherCartRouteImport
+      parentRoute: typeof Char123LangChar125LayoutMainOtherRoute
     }
     '/{-$lang}/_layout/_main/_other/$': {
       id: '/{-$lang}/_layout/_main/_other/$'
@@ -1191,6 +1211,7 @@ interface Char123LangChar125LayoutMainOtherRouteChildren {
   Char123LangChar125LayoutMainOtherDataUsageRouteRoute: typeof Char123LangChar125LayoutMainOtherDataUsageRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherGuidelinesRouteRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherSplatRoute: typeof Char123LangChar125LayoutMainOtherSplatRoute
+  Char123LangChar125LayoutMainOtherCartRoute: typeof Char123LangChar125LayoutMainOtherCartRoute
 }
 
 const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMainOtherRouteChildren =
@@ -1203,6 +1224,8 @@ const Char123LangChar125LayoutMainOtherRouteChildren: Char123LangChar125LayoutMa
       Char123LangChar125LayoutMainOtherGuidelinesRouteRouteWithChildren,
     Char123LangChar125LayoutMainOtherSplatRoute:
       Char123LangChar125LayoutMainOtherSplatRoute,
+    Char123LangChar125LayoutMainOtherCartRoute:
+      Char123LangChar125LayoutMainOtherCartRoute,
   }
 
 const Char123LangChar125LayoutMainOtherRouteWithChildren =

@@ -5,16 +5,17 @@ import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
 import { DatasetVersionCard } from "./-DatasetVersionCard";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/$version"
+  "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/$version",
 )({
   component: RouteComponent,
   loader: async ({ params, context }) => {
-    const data = await context.queryClient.ensureQueryData(
+    const { data } = await context.queryClient.ensureQueryData(
       getDatasetQueryOptions({
         datasetId: params.datasetId,
         lang: context.lang,
         version: params.version,
-      })
+        includeRawHtml: false,
+      }),
     );
 
     return { data, crumb: params.version };

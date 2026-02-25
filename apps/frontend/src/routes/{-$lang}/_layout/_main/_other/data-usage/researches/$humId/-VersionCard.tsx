@@ -32,8 +32,6 @@ export function VersionCard({
     "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId",
   );
 
-  console.log("versionData", versionData);
-
   const { lang } = Route.useRouteContext();
   const { t } = useTranslations("Research-detail");
 

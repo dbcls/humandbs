@@ -4,9 +4,9 @@ import {
   type DatasetVersionsResponse,
   LangQuerySchema,
   LangVersionQuerySchema,
-  type DatasetDoc,
   type DatasetSearchUnifiedResponse,
   type DatasetListingQuery,
+  type DatasetDetailResponse,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -43,7 +43,7 @@ type DatasetQuery = z.infer<typeof DatasetQuerySchema>;
 
 export const $getDataset = createServerFn({ method: "GET" })
   .inputValidator(DatasetQuerySchema)
-  .handler<Promise<DatasetDoc>>(async ({ data }) => {
+  .handler<Promise<DatasetDetailResponse>>(async ({ data }) => {
     const { datasetId, ...search } = filterDefined(data);
     return await api.getDataset({
       params: { datasetId },

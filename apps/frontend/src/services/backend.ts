@@ -12,6 +12,8 @@ import {
   ResearchSearchResponseSchema,
   type ResearchVersionsListResponse,
   type ResearchSearchUnifiedResponse,
+  DatasetDetailResponseSchema,
+  type DatasetDetailResponse,
   type DatasetSearchUnifiedResponse,
   type ResearchDetailResponse,
 } from "@humandbs/backend/types";
@@ -103,7 +105,7 @@ interface APIService {
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
-  }): Promise<DatasetDoc>;
+  }): Promise<DatasetDetailResponse>;
   getDatasetVersions(query: {
     params: DatasetIdParams;
     search: LangQuery;
@@ -160,7 +162,7 @@ const api: APIService = {
     const res = await axiosInstance.get(`/dataset/${query.params.datasetId}`, {
       params: query.search,
     });
-    return res.data;
+    return res.data as DatasetDetailResponse;
   },
 
   async getDatasetVersions(query) {

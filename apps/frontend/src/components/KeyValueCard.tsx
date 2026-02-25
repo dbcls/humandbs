@@ -3,6 +3,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import { i18n, type Locale } from "@/config/i18n";
 
 import { Separator } from "./Separator";
+import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
 export function KeyValueCard({
   title,
@@ -27,7 +28,7 @@ export function ListOfKeyValues({
     string,
     | string
     | string[]
-    | Record<Locale, { text: string; rawHtml?: string } | null>
+    | Record<Locale, string | { text: string; rawHtml?: string } | null>
     | undefined
     | null
   >;
@@ -36,21 +37,12 @@ export function ListOfKeyValues({
 
   return (
     <dl className="columns-2">
-      {Object.entries(keyValues).map(([key, value], i, arr) => {
-        const resolved =
-          value !== null &&
-          value !== undefined &&
-          typeof value === "object" &&
-          !Array.isArray(value)
-            ? value[lang ?? i18n.defaultLocale]?.text
-            : value;
+      {Object.entries(keyValues).map(([key, val], i, arr) => {
+        const value = extractStringFromPossiblyMultilingualValue(val, lang);
         return (
           <div className="break-inside-avoid-column" key={key}>
-            <KeyValueCard title={key} value={resolved} />
-            <Separator
-              variant={"solid"}
-              show={i < arr.length - 1 && !!resolved}
-            />
+            <KeyValueCard title={key} value={value} />
+            <Separator variant={"solid"} show={i < arr.length - 1 && !!value} />
           </div>
         );
       })}

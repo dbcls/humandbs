@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { getDatasetVersionsQueryOptions } from "@/serverFunctions/datasets";
+import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/versions",
@@ -14,6 +15,7 @@ export const Route = createFileRoute(
       getDatasetVersionsQueryOptions({
         datasetId: params.datasetId,
         lang: context.lang,
+        includeRawHtml: false,
       }),
     );
     return { data, crumb: "Versions" };
@@ -37,7 +39,7 @@ function RouteComponent() {
       <ul>
         {data.map((ver, i) => (
           <li key={i}>
-            <DatasetVersionInfo version={ver} datasetId={datasetId} />
+            <DatasetVersionInfo version={ver} />
           </li>
         ))}
       </ul>
@@ -45,39 +47,26 @@ function RouteComponent() {
   );
 }
 
-function DatasetVersionInfo({
-  datasetId,
-  version,
-}: {
-  datasetId: string;
-  version: DatasetVersionItem;
-}) {
+function DatasetVersionInfo({ version }: { version: DatasetVersionItem }) {
   return (
     <section>
-      <h3 className="inline">
-        <Route.Link
-          className="text-secondary font-semibold"
-          to="../$version"
-          params={{ version: version.version }}
-        >
-          {datasetId}.{version.version}
-        </Route.Link>
-        <span className="text-foreground-light text-2xs ml-3">
-          {version.releaseDate}
-        </span>
-      </h3>
+      <div className="flex gap-2 justify-between">
+        <h3 className="inline">
+          <Route.Link
+            className="text-secondary font-semibold"
+            to="../$version"
+            params={{ version: version.version }}
+          >
+            {version.version}
+          </Route.Link>
+          <span className="text-foreground-light text-2xs ml-3">
+            {version.releaseDate}
+          </span>
+        </h3>
+        <span>{version.criteria}</span>
+      </div>
 
-      {version.criteria && <ListOfParagraphs paragraphs={version.criteria} />}
+      <p>{extractStringFromPossiblyMultilingualValue(version.typeOfData)}</p>
     </section>
-  );
-}
-
-function ListOfParagraphs({ paragraphs }: { paragraphs: string[] }) {
-  return (
-    <div>
-      {paragraphs.map((p, i) => (
-        <p key={i}>{p}</p>
-      ))}
-    </div>
   );
 }
