@@ -19,7 +19,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other")({
 function RouteComponent() {
   return (
     <>
-      {/*<Breadcrumbs />*/}
+      <Breadcrumbs />
       <Outlet />
     </>
   );

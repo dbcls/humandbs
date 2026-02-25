@@ -10,9 +10,10 @@ import {
   type ResearchDetail,
   type ResearchListingQuery,
   ResearchSearchResponseSchema,
-  type ResearchVersionsResponse,
+  type ResearchVersionsListResponse,
   type ResearchSearchUnifiedResponse,
   type DatasetSearchUnifiedResponse,
+  type ResearchDetailResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import axios from "axios";
@@ -91,11 +92,11 @@ interface APIService {
   getResearchDetail(query: {
     params: HumIdParams;
     search: LangVersionQuery;
-  }): Promise<ResearchDetail>;
+  }): Promise<ResearchDetailResponse>;
   getResearchVersions(query: {
     params: HumIdParams;
     search: LangQuery;
-  }): Promise<ResearchVersionsResponse>;
+  }): Promise<ResearchVersionsListResponse>;
   getDatasetsPaginated(query: {
     search: DatasetListingQuery;
   }): Promise<DatasetSearchUnifiedResponse>;
@@ -124,18 +125,18 @@ const api: APIService = {
   },
 
   async getResearchDetail(query) {
-    let params = {} as LangVersionQuery;
-    if (query.search.version) {
-      params = { ...query.search };
-    } else {
-      params = { lang: query.search.lang };
-    }
+    // let params = {} as LangVersionQuery;
+    // if (query.search.version) {
+    //   params = {  ...query.search, includeRawHtml: false };
+    // } else {
+    //   params = { lang: query.search.lang, includeRawHtml: false };
+    // }
 
     const res = await axiosInstance.get(`/research/${query.params.humId}`, {
-      params: params,
+      params: query.search,
     });
 
-    return res.data;
+    return res.data as ResearchDetailResponse;
   },
   async getResearchVersions(query) {
     const res = await axiosInstance.get(
@@ -145,7 +146,7 @@ const api: APIService = {
       },
     );
 
-    return res.data;
+    return res.data as ResearchVersionsListResponse;
   },
 
   async getDatasetsPaginated(query) {

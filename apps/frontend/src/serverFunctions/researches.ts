@@ -38,7 +38,7 @@ export const $getResearchVersions = createServerFn()
   .handler(({ data }) =>
     api.getResearchVersions({
       params: { humId: data.humId },
-      search: { lang: data.lang },
+      search: { lang: data.lang, includeRawHtml: false },
     }),
   );
 
@@ -54,7 +54,9 @@ export function getResearchVersionsQueryOptions(
 
 export const ResearchQuerySchema = z.object({
   ...HumIdParamsSchema.shape,
-  ...LangVersionQuerySchema.shape,
+  ...LangVersionQuerySchema.omit({
+    includeRawHtml: true,
+  }).shape,
 });
 
 export const $getResearch = createServerFn()
@@ -64,7 +66,7 @@ export const $getResearch = createServerFn()
     const { humId, ...search } = filterDefined(data);
 
     return api.getResearchDetail({
-      search,
+      search: { ...search, includeRawHtml: false },
       params: { humId },
     });
   });

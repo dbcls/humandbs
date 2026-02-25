@@ -5,7 +5,7 @@ import { getResearchQueryOptions } from "@/serverFunctions/researches";
 import { VersionCard } from "./-VersionCard";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version"
+  "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version",
 )({
   loader: async ({ params, context }) => {
     const researchInfo = await context.queryClient.ensureQueryData(
@@ -13,9 +13,9 @@ export const Route = createFileRoute(
         humId: params.humId,
         version: params.version,
         lang: context.lang,
-      })
+      }),
     );
-    return { crumb: params.version, data: researchInfo };
+    return { crumb: params.version, data: researchInfo.data };
   },
 
   component: RouteComponent,

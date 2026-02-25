@@ -1,6 +1,10 @@
-import { type DatasetDoc, ResearchDetail } from "@humandbs/backend/types";
-import { getRouteApi } from "@tanstack/react-router";
+import {
+  type DatasetDoc,
+  type ResearchDetailResponse,
+} from "@humandbs/backend/types";
+import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
+import { useTranslations } from "use-intl";
 
 import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
@@ -16,12 +20,22 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
 
-export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
+export function VersionCard({
+  versionData,
+}: {
+  versionData: ResearchDetailResponse["data"];
+}) {
   const Route = getRouteApi(
-    "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId"
+    "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId",
   );
+
+  console.log("versionData", versionData);
+
+  const { lang } = Route.useRouteContext();
+  const { t } = useTranslations("Research-detail");
 
   return (
     <CardWithCaption
@@ -42,15 +56,15 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
         <div className="columns-2 [&>p]:mb-2 [&>p>span]:font-bold">
           <p>
             <span>目的:</span>
-            {versionData?.summary.aims}
+            {versionData.summary.aims[lang ?? i18n.defaultLocale]?.text}
           </p>
           <p>
             <span>方法:</span>
-            {versionData?.summary.methods}
+            {versionData.summary.methods[lang ?? i18n.defaultLocale]?.text}
           </p>
           <p>
             <span>対象:</span>
-            {versionData?.summary.targets}
+            {versionData.summary.targets[lang ?? i18n.defaultLocale]?.text}
           </p>
         </div>
       </article>
@@ -73,16 +87,19 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
         <ContentHeader>提供者情報</ContentHeader>
 
         <ul>
-          {versionData?.dataProvider.map((p) => {
+          {versionData?.dataProvider.map((p, i) => {
             return (
-              <dl key={p.name} className="columns-2">
-                <KeyValueCard title="代表者" value={p.name} />
+              <dl key={i} className="columns-2">
+                <KeyValueCard title="代表者" value={p.name[lang]?.text ?? ""} />
 
-                <KeyValueCard title="所属機関" value={p.organization?.name} />
+                <KeyValueCard
+                  title="所属機関"
+                  value={p.organization?.name[lang]?.text ?? ""}
+                />
 
                 <KeyValueCard
                   title="プロジェクト/研究グループ名"
-                  value={p.researchTitle}
+                  value={p.researchTitle?.[lang] ?? ""}
                 />
 
                 <KeyValueCard title="ORCID" value={p.orcid} />
@@ -90,7 +107,6 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
                   title="Dataset IDs"
                   value={p.datasetIds?.join(", ")}
                 />
-                <KeyValueCard title="ORCID" value={p.organization?.url} />
               </dl>
             );
           })}
@@ -104,6 +120,7 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
           columns={publicationColumns}
           data={versionData?.relatedPublication || []}
           className="mt-4"
+          meta={{ lang, t }}
         />
       </section>
       <Separator className="-mx-4" />
@@ -118,7 +135,9 @@ export function VersionCard({ versionData }: { versionData: ResearchDetail }) {
   );
 }
 
-function DatasetInfo({ dataset }: { dataset: Dataset }) {
+function DatasetInfo({ dataset }: { dataset: DatasetDoc }) {
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
+
   return (
     <CardWithCaption
       caption={
@@ -138,7 +157,9 @@ function DatasetInfo({ dataset }: { dataset: Dataset }) {
             value={`item-${dataset.datasetId}-${i}`}
           >
             <AccordionTrigger className="flex items-center">
-              <h3 className="text-secondary text-sm font-bold">{ex.header}</h3>
+              <h3 className="text-secondary text-sm font-bold">
+                {ex.header[lang]?.text}
+              </h3>
             </AccordionTrigger>
             <AccordionContent className="pt-5">
               <ListOfKeyValues keyValues={ex.data} />
@@ -160,13 +181,15 @@ function DatasetCaption({
   criteria,
   typeOfData,
 }: DatasetCaptionProps) {
+  console.log("dataset caption props", { datasetId, criteria, typeOfData });
   const Route = getRouteApi("/{-$lang}/_layout/_main/_other/data-usage");
+  const { lang } = Route.useRouteContext();
   return (
     <div className="flex justify-between px-3">
       <div className="flex items-center gap-5">
         <TextWithIcon icon={FA_ICONS.dataset}> {datasetId} </TextWithIcon>
         <span className="text-xs">{criteria}</span>
-        <span className="text-xs">{typeOfData}</span>
+        <span className="text-xs">{typeOfData[lang]}</span>
       </div>
 
       <Route.Link
@@ -181,13 +204,20 @@ function DatasetCaption({
   );
 }
 
-const publicationsColumnHelper = createColumnHelper<Publication>();
+const publicationsColumnHelper =
+  createColumnHelper<
+    ResearchDetailResponse["data"]["relatedPublication"][number]
+  >();
 
 const publicationColumns = [
   publicationsColumnHelper.accessor("title", {
     id: "title",
     header: "タイトル",
-    cell: (info) => <span className="text-sm">{info.getValue()}</span>,
+    cell: (ctx) => (
+      <span className="text-sm">
+        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+      </span>
+    ),
   }),
   publicationsColumnHelper.accessor("doi", {
     id: "DOI",
@@ -211,17 +241,22 @@ const publicationColumns = [
   }),
 ];
 
-const dataUsedByColumnsHelper = createColumnHelper<Person>();
+const dataUsedByColumnsHelper =
+  createColumnHelper<
+    ResearchDetailResponse["data"]["controlledAccessUser"][number]
+  >();
 
 const dataUsedByColumns = [
   dataUsedByColumnsHelper.accessor("name", {
     id: "name",
     header: "Name",
-    cell: (ctx) => ctx.getValue(),
+    cell: (ctx) =>
+      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
   dataUsedByColumnsHelper.accessor("organization.name", {
     id: "org.name",
     header: "Organization name",
-    cell: (ctx) => ctx.getValue(),
+    cell: (ctx) =>
+      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
 ];
