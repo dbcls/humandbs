@@ -1,5 +1,5 @@
 import { ResearchListingQuerySchema } from "@humandbs/backend/types";
-import type { ResearchListResponse } from "@humandbs/backend/types";
+import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
@@ -82,7 +82,8 @@ function Caption() {
   );
 }
 
-const columnHelper = createColumnHelper<ResearchListResponse["data"][number]>();
+const columnHelper =
+  createColumnHelper<ResearchSearchUnifiedResponse["data"][number]>();
 
 const columns = [
   columnHelper.accessor("humId", {
@@ -100,22 +101,29 @@ const columns = [
               {ctx.getValue()}
             </TextWithIcon>
           </Route.Link>
-          <ul>
-            {ctx.row.original.datasets?.map((dataset) => (
-              <li key={dataset.datasetId}>
-                <Route.Link
-                  className="text-secondary"
-                  to="../datasets/$datasetId"
-                  params={{ datasetId: dataset.datasetId }}
-                >
-                  <TextWithIcon icon={FA_ICONS.dataset}>
-                    {dataset.datasetId}
-                  </TextWithIcon>
-                </Route.Link>
-              </li>
-            ))}
-          </ul>
         </div>
+      );
+    },
+    size: 15,
+  }),
+  columnHelper.accessor("datasetIds", {
+    id: "datasets",
+    header: "Datasets",
+    cell: (ctx) => {
+      return (
+        <ul>
+          {ctx.row.original.datasetIds.map((datasetId) => (
+            <li key={datasetId}>
+              <Route.Link
+                className="text-secondary"
+                to="../datasets/$datasetId"
+                params={{ datasetId }}
+              >
+                <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
+              </Route.Link>
+            </li>
+          ))}
+        </ul>
       );
     },
     size: 15,
@@ -125,7 +133,7 @@ const columns = [
     header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
     cell: (ctx) => ctx.getValue(),
   }),
-  columnHelper.accessor("versionIds", {
+  columnHelper.accessor("versions", {
     id: "versions",
     header: "Versions",
     size: 10,
@@ -141,24 +149,39 @@ const columns = [
           </Route.Link>
         </li>
         {ctx.renderValue()?.map((version) => (
-          <li key={version}>
+          <li key={version.version}>
             <Route.Link
               to="$humId/$version"
               className="whitespace-nowrap"
               params={{
                 humId: ctx.row.original.humId,
-                version: version,
+                version: version.version,
               }}
             >
-              <span className="text-sm">{version}</span>
+              <span className="text-sm">{version.version}</span>
               <span className="text-2xs text-foreground-light ml-2">
-                {version}
+                {version.version}
               </span>
             </Route.Link>
           </li>
         ))}
       </ul>
     ),
+  }),
+
+  columnHelper.accessor(
+    (row) => row.versions[row.versions.length - 1]?.releaseDate,
+    {
+      id: "releaseDate",
+      header: (ctx) => <SortHeader ctx={ctx} label="Release Date" />,
+      cell: (ctx) => ctx.renderValue(),
+      size: 15,
+    },
+  ),
+  columnHelper.accessor("methods", {
+    id: "methods",
+    header: "手法",
+    cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
   }),
 
   // columnHelper.accessor("datasets", {
@@ -252,7 +275,7 @@ function CardContent() {
       </div>
 
       <Pagination
-        totalPages={researchesData.pagination.totalPages}
+        totalPages={researchesData.meta.pagination.totalPages}
         page={filters.page}
         itemsPerPage={filters.limit}
       />

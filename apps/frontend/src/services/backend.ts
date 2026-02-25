@@ -12,12 +12,11 @@ import {
   type ResearchListingQuery,
   ResearchSearchResponseSchema,
   type ResearchVersionsResponse,
+  type ResearchSearchUnifiedResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import axios from "axios";
 import { z } from "zod";
-
-import type { ResearchListResponse } from "../../../backend/src/api/types";
 
 // Extend Error type to include custom properties
 declare global {
@@ -85,14 +84,10 @@ axiosInstance.interceptors.response.use(
   },
 );
 
-type ResearchListPaginatedResponse = z.infer<
-  typeof ResearchSearchUnifiedResponseSchema
->;
-
 interface APIService {
   getResearchListPaginated(query: {
     search: ResearchListingQuery;
-  }): Promise<ResearchListResponse>;
+  }): Promise<ResearchSearchUnifiedResponse>;
   getResearchDetail(query: {
     params: HumIdParams;
     search: LangVersionQuery;
@@ -129,8 +124,9 @@ const api: APIService = {
     const res = await axiosInstance.get(`/research`, {
       params: query.search,
     });
-    return res.data as ResearchListResponse;
+    return res.data as ResearchSearchUnifiedResponse;
   },
+
   async getResearchDetail(query) {
     let params = {} as LangVersionQuery;
     if (query.search.version) {
