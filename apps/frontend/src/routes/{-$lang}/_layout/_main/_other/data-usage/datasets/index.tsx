@@ -1,6 +1,6 @@
 import {
-  type DatasetDoc,
-  DatasetSearchQuerySchema,
+  DatasetListingQuerySchema,
+  type DatasetSearchUnifiedResponse,
 } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -18,27 +18,23 @@ import { Pagination } from "@/components/Pagination";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { i18n } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 
+const datasetListQuerySchema = DatasetListingQuerySchema.omit({ lang: true });
+
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/datasets/"
+  "/{-$lang}/_layout/_main/_other/data-usage/datasets/",
 )({
   component: RouteComponent,
-  validateSearch: zodValidator(DatasetSearchQuerySchema),
-  loaderDeps: ({ search: { page, limit, sort, order } }) => {
-    return {
-      page,
-      limit,
-      sort,
-      order,
-    };
-  },
+  validateSearch: zodValidator(datasetListQuerySchema),
+  loaderDeps: ({ search }) => search,
   errorComponent: ({ error }) => <div>{error.message}</div>,
   loader: async ({ context, deps }) => {
     await context.queryClient.ensureQueryData(
-      getDatasetsPaginatedQueryOptions({ ...deps, lang: context.lang })
+      getDatasetsPaginatedQueryOptions({ ...deps, lang: context.lang }),
     );
   },
   wrapInSuspense: true,
@@ -50,8 +46,10 @@ function RouteComponent() {
 
   const { lang } = Route.useRouteContext();
   const { data } = useSuspenseQuery(
-    getDatasetsPaginatedQueryOptions({ ...search, lang })
+    getDatasetsPaginatedQueryOptions({ ...search, lang }),
   );
+
+  console.log("data", data);
 
   const { filters, setFilters } = useFilters(Route.id);
 
@@ -77,32 +75,29 @@ function RouteComponent() {
             });
           }}
           sorting={sortingState}
-          meta={{ t }}
+          meta={{ t, lang }}
           columns={datasetsColumns}
           data={data.data}
         />
       </div>
-      <Pagination
-        totalPages={data.pagination.totalPages}
-        page={data.pagination.page}
-        itemsPerPage={data.pagination.limit}
-      />
+      <Pagination pagination={data.meta.pagination} />
     </Card>
   );
 }
 
-export const datasetsColumnHelper = createColumnHelper<DatasetDoc>();
+export const datasetsColumnHelper =
+  createColumnHelper<DatasetSearchUnifiedResponse["data"][number]>();
 
 export const datasetsColumns = [
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("dataset-id")} />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("dataset-id")} />
     ),
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-          {ctx.getValue()}
+          {ctx.renderValue()}
         </TextWithIcon>
       </Route.Link>
     ),
@@ -117,13 +112,30 @@ export const datasetsColumns = [
         label={ctx.table.options.meta?.t?.("release-date")}
       />
     ),
-    cell: (ctx) => ctx.getValue(),
   }),
   datasetsColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => {
       return <p>{ctx.table.options.meta?.t?.("type-of-data")}</p>;
     },
-    cell: (ctx) => ctx.getValue(),
+    cell: (ctx) =>
+      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
+  }),
+  datasetsColumnHelper.accessor("experiments", {
+    id: "experiments",
+    header: "Experiments",
+    cell: (ctx) => (
+      <ul className="space-y-4">
+        {ctx.getValue().map((e, i) => (
+          <li key={i}>
+            {e.header[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}
+          </li>
+        ))}
+      </ul>
+    ),
+  }),
+  datasetsColumnHelper.accessor("criteria", {
+    id: "criteria",
+    header: (ctx) => ctx.table.options.meta?.t("criteria"),
   }),
 ];

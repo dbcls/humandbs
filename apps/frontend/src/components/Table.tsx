@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
 
-function Table<T extends Record<string, any>>({
+function Table<T extends Record<string, unknown>>({
   className,
   columns,
   data,
@@ -75,7 +75,7 @@ function Table<T extends Record<string, any>>({
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                 </th>
               ))}
@@ -106,7 +106,7 @@ function Table<T extends Record<string, any>>({
                   ? null
                   : flexRender(
                       header.column.columnDef.footer,
-                      header.getContext()
+                      header.getContext(),
                     )}
               </th>
             ))}

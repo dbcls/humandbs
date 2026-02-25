@@ -68,7 +68,8 @@
     "dataset-id": "デーセット ID",
     "version": "バージョン",
     "release-date": "公開日付",
-    "type-of-data": "データの種類"
+    "type-of-data": "データの種類",
+    "criteria": "アクセス制限"
   },
   "Data-submission": {
     "data-submission": "データの提供",

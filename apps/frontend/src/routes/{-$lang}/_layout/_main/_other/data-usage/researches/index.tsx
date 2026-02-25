@@ -274,11 +274,7 @@ function CardContent() {
         />
       </div>
 
-      <Pagination
-        totalPages={researchesData.meta.pagination.totalPages}
-        page={filters.page}
-        itemsPerPage={filters.limit}
-      />
+      <Pagination pagination={researchesData.meta.pagination} />
     </>
   );
 }

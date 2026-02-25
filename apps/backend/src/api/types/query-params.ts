@@ -434,9 +434,9 @@ export const DatasetListingQuerySchema = z.object({
   humId: z.string().optional().describe("Filter by parent Research ID"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString.describe(
-    "Include facet aggregation counts in response",
-  ),
+  includeFacets: booleanFromString
+    .describe("Include facet aggregation counts in response")
+    .optional(),
 
   // Include rawHtml fields in response (default: false)
   includeRawHtml: z.coerce

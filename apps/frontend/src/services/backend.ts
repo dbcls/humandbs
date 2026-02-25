@@ -2,7 +2,6 @@ import {
   type DatasetDoc,
   type DatasetIdParams,
   type DatasetListingQuery,
-  type DatasetSearchResponse,
   DatasetSearchResponseSchema,
   type DatasetVersionsResponse,
   type HumIdParams,
@@ -13,6 +12,7 @@ import {
   ResearchSearchResponseSchema,
   type ResearchVersionsResponse,
   type ResearchSearchUnifiedResponse,
+  type DatasetSearchUnifiedResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import axios from "axios";
@@ -98,7 +98,7 @@ interface APIService {
   }): Promise<ResearchVersionsResponse>;
   getDatasetsPaginated(query: {
     search: DatasetListingQuery;
-  }): Promise<DatasetSearchResponse>;
+  }): Promise<DatasetSearchUnifiedResponse>;
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
@@ -114,10 +114,6 @@ export const FixedPaginationSchema =
     limit: z.coerce.number(),
     page: z.coerce.number(),
   });
-
-const DatasetsResponseFixedSchema = DatasetSearchResponseSchema.extend({
-  pagination: FixedPaginationSchema,
-});
 
 const api: APIService = {
   async getResearchListPaginated(query) {
@@ -156,7 +152,7 @@ const api: APIService = {
     const res = await axiosInstance.get(`/dataset`, {
       params: query.search,
     });
-    return DatasetsResponseFixedSchema.parse(res.data);
+    return res.data as DatasetSearchUnifiedResponse;
   },
 
   async getDataset(query) {

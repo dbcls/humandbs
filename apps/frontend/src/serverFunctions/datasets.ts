@@ -1,8 +1,12 @@
 import {
   DatasetIdParamsSchema,
-  DatasetSearchQuerySchema,
+  DatasetListingQuerySchema,
+  type DatasetVersionsResponse,
   LangQuerySchema,
   LangVersionQuerySchema,
+  type DatasetDoc,
+  type DatasetSearchUnifiedResponse,
+  type DatasetListingQuery,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -12,16 +16,14 @@ import { api } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
-  .inputValidator(DatasetSearchQuerySchema)
-  .handler(async ({ data }) => {
+  .inputValidator(DatasetListingQuerySchema)
+  .handler<Promise<DatasetSearchUnifiedResponse>>(async ({ data }) => {
     const paginated = await api.getDatasetsPaginated({ search: data });
 
     return paginated;
   });
 
-export function getDatasetsPaginatedQueryOptions(
-  query: z.infer<typeof DatasetSearchQuerySchema>
-) {
+export function getDatasetsPaginatedQueryOptions(query: DatasetListingQuery) {
   return queryOptions({
     queryKey: ["datasets", "list", query],
     queryFn: async () => {
@@ -41,7 +43,7 @@ type DatasetQuery = z.infer<typeof DatasetQuerySchema>;
 
 export const $getDataset = createServerFn({ method: "GET" })
   .inputValidator(DatasetQuerySchema)
-  .handler(async ({ data }) => {
+  .handler<Promise<DatasetDoc>>(async ({ data }) => {
     const { datasetId, ...search } = filterDefined(data);
     return await api.getDataset({
       params: { datasetId },
@@ -68,11 +70,11 @@ export const $getDatasetVersions = createServerFn({
   method: "GET",
 })
   .inputValidator(DatasetVersionsQuerySchema)
-  .handler(({ data }) =>
+  .handler<Promise<DatasetVersionsResponse>>(({ data }) =>
     api.getDatasetVersions({
       params: { datasetId: data.datasetId },
       search: { lang: data.lang },
-    })
+    }),
   );
 
 export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {

@@ -219,6 +219,13 @@ export {
   VersionCreateResponseSchema,
   LinkedDatasetsListResponseSchema,
   DatasetCreateResponseSchema,
+  // Unified response schemas for /dataset routes
+  DatasetSearchUnifiedResponseSchema,
+  DatasetDetailResponseSchema,
+  DatasetUpdateResponseSchema,
+  DatasetVersionsListResponseSchema,
+  DatasetVersionDetailResponseSchema,
+  LinkedResearchesListResponseSchema,
 } from "./request-response"
 export type {
   ErrorCode,
@@ -274,4 +281,11 @@ export type {
   VersionCreateResponse,
   LinkedDatasetsListResponse,
   DatasetCreateResponse,
+  // Unified response types for /dataset routes
+  DatasetSearchUnifiedResponse,
+  DatasetDetailResponse,
+  DatasetUpdateResponse,
+  DatasetVersionsListResponse,
+  DatasetVersionDetailResponse,
+  LinkedResearchesListResponse,
 } from "./request-response"

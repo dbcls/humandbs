@@ -68,7 +68,8 @@
     "dataset-id": "Dataset ID",
     "version": "Version",
     "release-date": "Release date",
-    "type-of-data": "Type of data"
+    "type-of-data": "Type of data",
+    "criteria": "Access type"
   },
 
   "Data-submission": {

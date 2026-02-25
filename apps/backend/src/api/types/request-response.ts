@@ -28,6 +28,7 @@ import {
 
 import {
   EsDatasetDocSchema,
+  EsDatasetDocWithMergedSchema,
   EsResearchDetailSchema,
   EsResearchVersionDocSchema,
   DatasetVersionItemSchema,
@@ -894,3 +895,47 @@ export type LinkedDatasetsListResponse = z.infer<
 export const DatasetCreateResponseSchema =
   createUnifiedSingleResponseSchema(EsDatasetDocSchema);
 export type DatasetCreateResponse = z.infer<typeof DatasetCreateResponseSchema>;
+
+// === Unified Response Schemas for /dataset Routes ===
+
+/**
+ * Dataset search/list response (GET /dataset, POST /dataset/search)
+ */
+export const DatasetSearchUnifiedResponseSchema =
+  createUnifiedSearchResponseSchema(EsDatasetDocSchema);
+export type DatasetSearchUnifiedResponse = z.infer<typeof DatasetSearchUnifiedResponseSchema>;
+
+/**
+ * Dataset detail response (GET /dataset/{datasetId})
+ */
+export const DatasetDetailResponseSchema =
+  createUnifiedSingleResponseSchema(EsDatasetDocWithMergedSchema);
+export type DatasetDetailResponse = z.infer<typeof DatasetDetailResponseSchema>;
+
+/**
+ * Dataset update response (PUT /dataset/{datasetId}/update)
+ */
+export const DatasetUpdateResponseSchema =
+  createUnifiedSingleResponseSchema(DatasetWithMetadataSchema);
+export type DatasetUpdateResponse = z.infer<typeof DatasetUpdateResponseSchema>;
+
+/**
+ * Dataset versions list response (GET /dataset/{datasetId}/versions)
+ */
+export const DatasetVersionsListResponseSchema =
+  createUnifiedListResponseSchema(DatasetVersionItemSchema);
+export type DatasetVersionsListResponse = z.infer<typeof DatasetVersionsListResponseSchema>;
+
+/**
+ * Dataset version detail response, read-only (GET /dataset/{datasetId}/versions/{version})
+ */
+export const DatasetVersionDetailResponseSchema =
+  createUnifiedSingleReadOnlyResponseSchema(EsDatasetDocWithMergedSchema);
+export type DatasetVersionDetailResponse = z.infer<typeof DatasetVersionDetailResponseSchema>;
+
+/**
+ * Linked researches list response (GET /dataset/{datasetId}/research)
+ */
+export const LinkedResearchesListResponseSchema =
+  createUnifiedListResponseSchema(EsResearchDetailSchema);
+export type LinkedResearchesListResponse = z.infer<typeof LinkedResearchesListResponseSchema>;

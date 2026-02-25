@@ -231,3 +231,42 @@ export type {
   UidsData,
   UidsUnifiedResponse,
 } from "../src/api/types";
+
+// Dataset document with merged searchable fields
+export {
+  EsDatasetDocWithMergedSchema,
+  MergedSearchableSchema,
+  // Clean alias without Es prefix
+  EsDatasetDocWithMergedSchema as DatasetDocWithMergedSchema,
+} from "../src/api/types";
+export type {
+  EsDatasetDocWithMerged,
+  MergedSearchable,
+  EsDatasetDocWithMerged as DatasetDocWithMerged,
+} from "../src/api/types";
+
+// Dataset request schemas
+export { UpdateDatasetRequestSchema } from "../src/api/types";
+export type { UpdateDatasetRequest } from "../src/api/types";
+
+// Dataset with metadata (update response data shape)
+export { DatasetWithMetadataSchema } from "../src/api/types";
+export type { DatasetWithMetadata } from "../src/api/types";
+
+// Unified response schemas for /dataset routes
+export {
+  DatasetSearchUnifiedResponseSchema,
+  DatasetDetailResponseSchema,
+  DatasetUpdateResponseSchema,
+  DatasetVersionsListResponseSchema,
+  DatasetVersionDetailResponseSchema,
+  LinkedResearchesListResponseSchema,
+} from "../src/api/types";
+export type {
+  DatasetSearchUnifiedResponse,
+  DatasetDetailResponse,
+  DatasetUpdateResponse,
+  DatasetVersionsListResponse,
+  DatasetVersionDetailResponse,
+  LinkedResearchesListResponse,
+} from "../src/api/types";

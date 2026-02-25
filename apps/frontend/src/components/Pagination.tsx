@@ -1,3 +1,4 @@
+import type { Pagination as APIPagination } from "@humandbs/backend/types";
 import { useNavigate } from "@tanstack/react-router";
 
 import {
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 // Export function for testing
 export const getVisiblePages = (currentPage: number, totalPages: number) => {
@@ -74,21 +76,17 @@ export const getVisiblePages = (currentPage: number, totalPages: number) => {
 };
 
 interface PaginationProps {
-  totalPages: number;
-  page: number;
-  itemsPerPage?: number;
+  pagination: APIPagination;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
 }
 
 export function Pagination({
-  totalPages,
-  page,
-  itemsPerPage = 20,
+  pagination,
   onItemsPerPageChange,
 }: PaginationProps) {
   const navigate = useNavigate();
 
-  const visiblePages = getVisiblePages(page, totalPages);
+  const visiblePages = getVisiblePages(pagination.page, pagination.totalPages);
 
   const handleItemsPerPageChange = (value: string) => {
     const newItemsPerPage = parseInt(value);
@@ -112,9 +110,11 @@ export function Pagination({
               to="."
               search={(prev) => ({
                 ...prev,
-                page: Math.max(1, page - 1),
+                page: Math.max(1, pagination.page - 1),
               })}
-              className={page === 1 ? "pointer-events-none opacity-50" : ""}
+              className={cn({
+                "pointer-events-none opacity-50": !pagination.hasPrev,
+              })}
               resetScroll={false}
             />
           </PaginationItem>
@@ -133,7 +133,7 @@ export function Pagination({
                 <PaginationLink
                   to="."
                   search={(prev) => ({ ...prev, page: pageNum })}
-                  isActive={pageNum === page}
+                  isActive={pageNum === pagination.page}
                   resetScroll={false}
                 >
                   {pageNum}
@@ -147,11 +147,11 @@ export function Pagination({
               to="."
               search={(prev) => ({
                 ...prev,
-                page: Math.min(totalPages, page + 1),
+                page: Math.min(pagination.totalPages, pagination.page + 1),
               })}
-              className={
-                page === totalPages ? "pointer-events-none opacity-50" : ""
-              }
+              className={cn({
+                "pointer-events-none opacity-50": !pagination.hasNext,
+              })}
               resetScroll={false}
             />
           </PaginationItem>
@@ -161,7 +161,7 @@ export function Pagination({
       <div className="flex items-center gap-2 whitespace-nowrap">
         <span className="text-muted-foreground text-sm">Items per page:</span>
         <Select
-          value={itemsPerPage.toString()}
+          value={pagination.limit.toString()}
           onValueChange={handleItemsPerPageChange}
         >
           <SelectTrigger className="w-fit">
