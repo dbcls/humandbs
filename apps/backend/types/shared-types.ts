@@ -78,6 +78,7 @@ export type {
   DatasetVersionItem,
   ResearchSearchResponse,
   DatasetSearchResponse,
+  ResearchListResponse,
 } from "../src/api/types";
 
 // ES document types (API response format)
