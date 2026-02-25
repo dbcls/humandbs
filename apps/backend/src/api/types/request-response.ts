@@ -7,24 +7,10 @@
  * - Search response schemas
  * - Error response schemas
  */
-import { z } from "zod"
+import { z } from "zod";
 
 // Import from es/types
 
-import {
-  EsDatasetDocSchema,
-  EsResearchDetailSchema,
-  EsResearchVersionDocSchema,
-  DatasetVersionItemSchema,
-} from "./es-docs"
-import { FacetsMapSchema } from "./facets"
-import { ResearchSummarySchema } from "./query-params"
-import {
-  ResponseMetaReadOnlySchema,
-  ResponseMetaWithLockSchema,
-  ResponseMetaWithPaginationSchema,
-} from "./response"
-import { RESEARCH_STATUS } from "./workflow"
 import {
   BilingualTextSchema,
   BilingualTextValueSchema,
@@ -38,7 +24,22 @@ import {
   // Crawler schemas (for API request validation)
   CrawlerResearchSchema as ResearchSchema,
   CrawlerResearchVersionSchema as ResearchVersionSchema,
-} from "../../es/types"
+} from "../../es/types";
+
+import {
+  EsDatasetDocSchema,
+  EsResearchDetailSchema,
+  EsResearchVersionDocSchema,
+  DatasetVersionItemSchema,
+} from "./es-docs";
+import { FacetsMapSchema } from "./facets";
+import { ResearchSummarySchema } from "./query-params";
+import {
+  ResponseMetaReadOnlySchema,
+  ResponseMetaWithLockSchema,
+  ResponseMetaWithPaginationSchema,
+} from "./response";
+import { RESEARCH_STATUS } from "./workflow";
 
 // === Unified Response Schemas ===
 
@@ -52,33 +53,39 @@ export const ExperimentSchemaBase = z.object({
     ja: z.array(TextValueSchema),
     en: z.array(TextValueSchema),
   }),
-})
+});
 
 // Dataset schema for API requests
 export const DatasetSchema = z.object({
-  datasetId: z.string()
+  datasetId: z
+    .string()
     .describe("Unique dataset identifier (e.g., 'JGAD000001')"),
-  version: z.string()
-    .describe("Dataset version (e.g., 'v1', 'v2')"),
-  versionReleaseDate: z.string()
+  version: z.string().describe("Dataset version (e.g., 'v1', 'v2')"),
+  versionReleaseDate: z
+    .string()
     .describe("ISO 8601 date when this version was released"),
-  humId: z.string()
-    .describe("Parent Research identifier (e.g., 'hum0001')"),
-  humVersionId: z.string()
+  humId: z.string().describe("Parent Research identifier (e.g., 'hum0001')"),
+  humVersionId: z
+    .string()
     .describe("Parent Research version identifier (e.g., 'hum0001.v1')"),
-  releaseDate: z.string()
+  releaseDate: z
+    .string()
     .describe("ISO 8601 date when the dataset was first released"),
-  criteria: CriteriaCanonicalSchema
-    .describe("Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'"),
-  typeOfData: z.object({
-    ja: z.string().nullable()
-      .describe("Data type description in Japanese"),
-    en: z.string().nullable()
-      .describe("Data type description in English"),
-  }).describe("Bilingual description of the type of data in this dataset"),
-  experiments: z.array(ExperimentSchemaBase)
-    .describe("Array of experiment records containing sample/sequencing metadata"),
-})
+  criteria: CriteriaCanonicalSchema.describe(
+    "Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'",
+  ),
+  typeOfData: z
+    .object({
+      ja: z.string().nullable().describe("Data type description in Japanese"),
+      en: z.string().nullable().describe("Data type description in English"),
+    })
+    .describe("Bilingual description of the type of data in this dataset"),
+  experiments: z
+    .array(ExperimentSchemaBase)
+    .describe(
+      "Array of experiment records containing sample/sequencing metadata",
+    ),
+});
 
 // === Error Responses ===
 
@@ -92,30 +99,51 @@ export const ERROR_CODES = [
   "NOT_FOUND",
   "CONFLICT",
   "INTERNAL_ERROR",
-] as const
-export type ErrorCode = (typeof ERROR_CODES)[number]
+] as const;
+export type ErrorCode = (typeof ERROR_CODES)[number];
 
 /**
  * RFC 7807 Problem Details for HTTP APIs
  * @see https://tools.ietf.org/html/rfc7807
  */
 export const ProblemDetailsSchema = z.object({
-  type: z.url()
-    .describe("URI reference identifying the problem type (e.g., 'https://api.humandbs.dbcls.jp/errors/not-found')"),
-  title: z.string()
-    .describe("Short, human-readable summary of the problem type (e.g., 'Not Found', 'Validation Error')"),
-  status: z.number().int().min(400).max(599)
+  type: z
+    .url()
+    .describe(
+      "URI reference identifying the problem type (e.g., 'https://api.humandbs.dbcls.jp/errors/not-found')",
+    ),
+  title: z
+    .string()
+    .describe(
+      "Short, human-readable summary of the problem type (e.g., 'Not Found', 'Validation Error')",
+    ),
+  status: z
+    .number()
+    .int()
+    .min(400)
+    .max(599)
     .describe("HTTP status code for this error (e.g., 400, 401, 404, 500)"),
-  detail: z.string().optional()
-    .describe("Human-readable explanation specific to this occurrence of the problem"),
-  instance: z.string().optional()
-    .describe("URI reference for the specific occurrence, usually the request path"),
-  timestamp: z.string()
+  detail: z
+    .string()
+    .optional()
+    .describe(
+      "Human-readable explanation specific to this occurrence of the problem",
+    ),
+  instance: z
+    .string()
+    .optional()
+    .describe(
+      "URI reference for the specific occurrence, usually the request path",
+    ),
+  timestamp: z
+    .string()
     .describe("ISO 8601 timestamp of when the error occurred"),
-  requestId: z.string().optional()
+  requestId: z
+    .string()
+    .optional()
     .describe("Unique request identifier for tracing and debugging"),
-})
-export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
+});
+export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>;
 
 // === Response Meta Schema ===
 
@@ -126,8 +154,8 @@ export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
 export const ResponseMetaSchema = z.object({
   _seq_no: z.number(),
   _primary_term: z.number(),
-})
-export type ResponseMeta = z.infer<typeof ResponseMetaSchema>
+});
+export type ResponseMeta = z.infer<typeof ResponseMetaSchema>;
 
 // === Research API ===
 
@@ -139,32 +167,46 @@ export type ResponseMeta = z.infer<typeof ResponseMetaSchema>
  */
 export const CreateResearchRequestSchema = z.object({
   // Optional humId - auto-generated if not provided (hum0001, hum0002, ...)
-  humId: z.string().optional()
+  humId: z
+    .string()
+    .optional()
     .describe("Research ID (e.g., 'hum0001'). Auto-generated if not provided."),
 
   // Research fields - all optional with defaults
-  title: BilingualTextSchema.optional()
-    .describe("Research title in Japanese and English"),
-  summary: SummarySchema.optional()
-    .describe("Research summary including aims, methods, and targets"),
-  dataProvider: z.array(PersonSchema).optional()
+  title: BilingualTextSchema.optional().describe(
+    "Research title in Japanese and English",
+  ),
+  summary: SummarySchema.optional().describe(
+    "Research summary including aims, methods, and targets",
+  ),
+  dataProvider: z
+    .array(PersonSchema)
+    .optional()
     .describe("Data providers (researchers providing the data)"),
-  researchProject: z.array(ResearchProjectSchema).optional()
+  researchProject: z
+    .array(ResearchProjectSchema)
+    .optional()
     .describe("Related research projects"),
-  grant: z.array(GrantSchema).optional()
-    .describe("Funding grants"),
-  relatedPublication: z.array(PublicationSchema).optional()
+  grant: z.array(GrantSchema).optional().describe("Funding grants"),
+  relatedPublication: z
+    .array(PublicationSchema)
+    .optional()
     .describe("Related publications (papers, preprints)"),
 
   // Admin assigns owner UIDs (optional, defaults to empty array)
-  uids: z.array(z.string()).optional()
-    .describe("Keycloak user IDs (sub) who can edit this Research. Admin-only field."),
+  uids: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Keycloak user IDs (sub) who can edit this Research. Admin-only field.",
+    ),
 
   // Initial version release note (optional)
-  initialReleaseNote: BilingualTextValueSchema.optional()
-    .describe("Release note for the initial version (v1)"),
-})
-export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
+  initialReleaseNote: BilingualTextValueSchema.optional().describe(
+    "Release note for the initial version (v1)",
+  ),
+});
+export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>;
 
 /**
  * Update research request (full replacement)
@@ -173,26 +215,41 @@ export type CreateResearchRequest = z.infer<typeof CreateResearchRequestSchema>
  * Includes optimistic locking fields (_seq_no, _primary_term) for concurrent edit detection
  */
 export const UpdateResearchRequestSchema = z.object({
-  title: BilingualTextSchema.optional()
-    .describe("Research title in Japanese and English"),
-  summary: SummarySchema.optional()
-    .describe("Research summary including aims, methods, and targets"),
-  dataProvider: z.array(PersonSchema).optional()
+  title: BilingualTextSchema.optional().describe(
+    "Research title in Japanese and English",
+  ),
+  summary: SummarySchema.optional().describe(
+    "Research summary including aims, methods, and targets",
+  ),
+  dataProvider: z
+    .array(PersonSchema)
+    .optional()
     .describe("Data providers (researchers providing the data)"),
-  researchProject: z.array(ResearchProjectSchema).optional()
+  researchProject: z
+    .array(ResearchProjectSchema)
+    .optional()
     .describe("Related research projects"),
-  grant: z.array(GrantSchema).optional()
-    .describe("Funding grants"),
-  relatedPublication: z.array(PublicationSchema).optional()
+  grant: z.array(GrantSchema).optional().describe("Funding grants"),
+  relatedPublication: z
+    .array(PublicationSchema)
+    .optional()
     .describe("Related publications (papers, preprints)"),
-  controlledAccessUser: z.array(PersonSchema).optional()
+  controlledAccessUser: z
+    .array(PersonSchema)
+    .optional()
     .describe("Users with controlled access to the data"),
-  _seq_no: z.number()
-    .describe("Sequence number for optimistic locking. Obtained from GET response."),
-  _primary_term: z.number()
-    .describe("Primary term for optimistic locking. Obtained from GET response."),
-})
-export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>
+  _seq_no: z
+    .number()
+    .describe(
+      "Sequence number for optimistic locking. Obtained from GET response.",
+    ),
+  _primary_term: z
+    .number()
+    .describe(
+      "Primary term for optimistic locking. Obtained from GET response.",
+    ),
+});
+export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>;
 
 /**
  * Research with status (extends Research with API-specific fields)
@@ -200,16 +257,16 @@ export type UpdateResearchRequest = z.infer<typeof UpdateResearchRequestSchema>
 export const ResearchWithStatusSchema = ResearchSchema.extend({
   status: z.enum(RESEARCH_STATUS),
   uids: z.array(z.string()).default([]), // Keycloak sub (UUID) of users who can edit this research
-})
-export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
+});
+export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>;
 
 /**
  * Research response with status info
  */
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
   datasets: z.array(DatasetSchema).optional(), // Embedded datasets (for detail view)
-})
-export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
+});
+export type ResearchResponse = z.infer<typeof ResearchResponseSchema>;
 
 /**
  * Research list response
@@ -224,8 +281,8 @@ export const ResearchListResponseSchema = z.object({
     hasNext: z.boolean(),
     hasPrev: z.boolean(),
   }),
-})
-export type ResearchListResponse = z.infer<typeof ResearchListResponseSchema>
+});
+export type ResearchListResponse = z.infer<typeof ResearchListResponseSchema>;
 
 // === Research UIDs API ===
 
@@ -234,22 +291,26 @@ export type ResearchListResponse = z.infer<typeof ResearchListResponseSchema>
  * Includes optimistic locking fields
  */
 export const UpdateUidsRequestSchema = z.object({
-  uids: z.array(z.string()).describe("Keycloak sub (UUID) array of users who can edit this research"),
+  uids: z
+    .array(z.string())
+    .describe("Keycloak sub (UUID) array of users who can edit this research"),
   _seq_no: z.number().describe("Sequence number for optimistic locking"),
   _primary_term: z.number().describe("Primary term for optimistic locking"),
-})
-export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
+});
+export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>;
 
 /**
  * Update UIDs response
  */
 export const UpdateUidsResponseSchema = z.object({
-  humId: z.string()
-    .describe("Research identifier"),
-  uids: z.array(z.string())
-    .describe("Updated list of Keycloak user IDs (sub) who can edit this Research"),
-})
-export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>
+  humId: z.string().describe("Research identifier"),
+  uids: z
+    .array(z.string())
+    .describe(
+      "Updated list of Keycloak user IDs (sub) who can edit this Research",
+    ),
+});
+export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>;
 
 // === Version API ===
 
@@ -258,38 +319,43 @@ export type UpdateUidsResponse = z.infer<typeof UpdateUidsResponseSchema>
  * Note: datasets are automatically copied from the previous version
  */
 export const CreateVersionRequestSchema = z.object({
-  releaseNote: BilingualTextValueSchema.optional()
-    .describe("Bilingual release note describing changes in this version"),
-})
-export type CreateVersionRequest = z.infer<typeof CreateVersionRequestSchema>
+  releaseNote: BilingualTextValueSchema.optional().describe(
+    "Bilingual release note describing changes in this version",
+  ),
+});
+export type CreateVersionRequest = z.infer<typeof CreateVersionRequestSchema>;
 
 /**
  * Version response
  */
 export const VersionResponseSchema = ResearchVersionSchema.extend({
   datasets: z.array(DatasetSchema).optional(),
-})
-export type VersionResponse = z.infer<typeof VersionResponseSchema>
+});
+export type VersionResponse = z.infer<typeof VersionResponseSchema>;
 
 /**
  * Versions list response
  */
 export const VersionsListResponseSchema = z.object({
   data: z.array(VersionResponseSchema),
-})
-export type VersionsListResponse = z.infer<typeof VersionsListResponseSchema>
+});
+export type VersionsListResponse = z.infer<typeof VersionsListResponseSchema>;
 
 // Research versions response
 export const ResearchVersionsResponseSchema = z.object({
   data: z.array(EsResearchVersionDocSchema),
-})
-export type ResearchVersionsResponse = z.infer<typeof ResearchVersionsResponseSchema>
+});
+export type ResearchVersionsResponse = z.infer<
+  typeof ResearchVersionsResponseSchema
+>;
 
 // Dataset versions response
 export const DatasetVersionsResponseSchema = z.object({
   data: z.array(DatasetVersionItemSchema),
-})
-export type DatasetVersionsResponse = z.infer<typeof DatasetVersionsResponseSchema>
+});
+export type DatasetVersionsResponse = z.infer<
+  typeof DatasetVersionsResponseSchema
+>;
 
 // === Dataset API ===
 
@@ -310,8 +376,8 @@ export const CreateDatasetRequestSchema = z.object({
     en: z.string().nullable(),
   }),
   experiments: z.array(ExperimentSchemaBase),
-})
-export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
+});
+export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>;
 
 /**
  * Update dataset request (full replacement)
@@ -330,8 +396,8 @@ export const UpdateDatasetRequestSchema = z.object({
   experiments: z.array(ExperimentSchemaBase),
   _seq_no: z.number().describe("Sequence number for optimistic locking"),
   _primary_term: z.number().describe("Primary term for optimistic locking"),
-})
-export type UpdateDatasetRequest = z.infer<typeof UpdateDatasetRequestSchema>
+});
+export type UpdateDatasetRequest = z.infer<typeof UpdateDatasetRequestSchema>;
 
 /**
  * Dataset with metadata
@@ -340,8 +406,8 @@ export const DatasetWithMetadataSchema = DatasetSchema.extend({
   ownerId: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-})
-export type DatasetWithMetadata = z.infer<typeof DatasetWithMetadataSchema>
+});
+export type DatasetWithMetadata = z.infer<typeof DatasetWithMetadataSchema>;
 
 /**
  * Dataset list response
@@ -356,8 +422,8 @@ export const DatasetListResponseSchema = z.object({
     hasNext: z.boolean(),
     hasPrev: z.boolean(),
   }),
-})
-export type DatasetListResponse = z.infer<typeof DatasetListResponseSchema>
+});
+export type DatasetListResponse = z.infer<typeof DatasetListResponseSchema>;
 
 // === Create Dataset for Research ===
 
@@ -366,18 +432,30 @@ export type DatasetListResponse = z.infer<typeof DatasetListResponseSchema>
  * All fields are optional - defaults will be used
  */
 export const CreateDatasetForResearchRequestSchema = z.object({
-  datasetId: z.string().optional()
-    .describe("Dataset ID. Auto-generated (DRAFT-{humId}-{uuid}) if not provided."),
-  releaseDate: z.string().optional()
+  datasetId: z
+    .string()
+    .optional()
+    .describe(
+      "Dataset ID. Auto-generated (DRAFT-{humId}-{uuid}) if not provided.",
+    ),
+  releaseDate: z
+    .string()
+    .optional()
     .describe("ISO 8601 date for dataset release. Defaults to current date."),
-  criteria: CriteriaCanonicalSchema.optional()
-    .describe("Data access criteria. Defaults to 'Controlled-access (Type I)'."),
-  typeOfData: BilingualTextSchema.optional()
-    .describe("Bilingual description of the data type"),
-  experiments: z.array(ExperimentSchemaBase).optional()
+  criteria: CriteriaCanonicalSchema.optional().describe(
+    "Data access criteria. Defaults to 'Controlled-access (Type I)'.",
+  ),
+  typeOfData: BilingualTextSchema.optional().describe(
+    "Bilingual description of the data type",
+  ),
+  experiments: z
+    .array(ExperimentSchemaBase)
+    .optional()
     .describe("Array of experiment records. Defaults to empty array."),
-})
-export type CreateDatasetForResearchRequest = z.infer<typeof CreateDatasetForResearchRequestSchema>
+});
+export type CreateDatasetForResearchRequest = z.infer<
+  typeof CreateDatasetForResearchRequestSchema
+>;
 
 // === Link API (Research-Dataset relationship) ===
 
@@ -386,8 +464,10 @@ export type CreateDatasetForResearchRequest = z.infer<typeof CreateDatasetForRes
  */
 export const LinkedDatasetsResponseSchema = z.object({
   data: z.array(EsDatasetDocSchema),
-})
-export type LinkedDatasetsResponse = z.infer<typeof LinkedDatasetsResponseSchema>
+});
+export type LinkedDatasetsResponse = z.infer<
+  typeof LinkedDatasetsResponseSchema
+>;
 
 /**
  * Linked researches response
@@ -395,8 +475,10 @@ export type LinkedDatasetsResponse = z.infer<typeof LinkedDatasetsResponseSchema
  */
 export const LinkedResearchesResponseSchema = z.object({
   data: z.array(EsResearchDetailSchema),
-})
-export type LinkedResearchesResponse = z.infer<typeof LinkedResearchesResponseSchema>
+});
+export type LinkedResearchesResponse = z.infer<
+  typeof LinkedResearchesResponseSchema
+>;
 
 // === Status Transition API ===
 
@@ -405,18 +487,23 @@ export type LinkedResearchesResponse = z.infer<typeof LinkedResearchesResponseSc
  * Returns current state for optimistic locking
  */
 export const WorkflowResponseSchema = z.object({
-  humId: z.string()
-    .describe("Research identifier"),
-  status: z.enum(RESEARCH_STATUS)
-    .describe("Current status after the workflow action: 'draft', 'review', 'published', or 'deleted'"),
-  dateModified: z.string()
+  humId: z.string().describe("Research identifier"),
+  status: z
+    .enum(RESEARCH_STATUS)
+    .describe(
+      "Current status after the workflow action: 'draft', 'review', 'published', or 'deleted'",
+    ),
+  dateModified: z
+    .string()
     .describe("ISO 8601 timestamp when the Research was last modified"),
-  _seq_no: z.number()
+  _seq_no: z
+    .number()
     .describe("Elasticsearch sequence number for subsequent updates"),
-  _primary_term: z.number()
+  _primary_term: z
+    .number()
     .describe("Elasticsearch primary term for subsequent updates"),
-})
-export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>
+});
+export type WorkflowResponse = z.infer<typeof WorkflowResponseSchema>;
 
 // === Search Responses ===
 
@@ -431,8 +518,10 @@ export const ResearchSearchResponseSchema = z.object({
     hasPrev: z.boolean(),
   }),
   facets: FacetsMapSchema.optional(),
-})
-export type ResearchSearchResponse = z.infer<typeof ResearchSearchResponseSchema>
+});
+export type ResearchSearchResponse = z.infer<
+  typeof ResearchSearchResponseSchema
+>;
 
 export const DatasetSearchResponseSchema = z.object({
   data: z.array(EsDatasetDocSchema),
@@ -445,8 +534,8 @@ export const DatasetSearchResponseSchema = z.object({
     hasPrev: z.boolean(),
   }),
   facets: FacetsMapSchema.optional(),
-})
-export type DatasetSearchResponse = z.infer<typeof DatasetSearchResponseSchema>
+});
+export type DatasetSearchResponse = z.infer<typeof DatasetSearchResponseSchema>;
 
 // === Search Result Items ===
 
@@ -462,8 +551,8 @@ export const SearchResearchResultSchema = z.object({
   releaseDate: z.string().optional(),
   score: z.number().optional(),
   highlights: z.record(z.string(), z.array(z.string())).optional(),
-})
-export type SearchResearchResult = z.infer<typeof SearchResearchResultSchema>
+});
+export type SearchResearchResult = z.infer<typeof SearchResearchResultSchema>;
 
 /**
  * Search result item (Dataset)
@@ -472,21 +561,25 @@ export const SearchDatasetResultSchema = z.object({
   type: z.literal("dataset"),
   datasetId: z.string(),
   humId: z.string(), // Parent research
-  typeOfData: z.object({
-    ja: z.string().nullable(),
-    en: z.string().nullable(),
-  }).optional(),
+  typeOfData: z
+    .object({
+      ja: z.string().nullable(),
+      en: z.string().nullable(),
+    })
+    .optional(),
   criteria: CriteriaCanonicalSchema.optional(),
   score: z.number().optional(),
   highlights: z.record(z.string(), z.array(z.string())).optional(),
-})
-export type SearchDatasetResult = z.infer<typeof SearchDatasetResultSchema>
+});
+export type SearchDatasetResult = z.infer<typeof SearchDatasetResultSchema>;
 
 /**
  * Combined search response
  */
 export const SearchResponseSchema = z.object({
-  data: z.array(z.union([SearchResearchResultSchema, SearchDatasetResultSchema])),
+  data: z.array(
+    z.union([SearchResearchResultSchema, SearchDatasetResultSchema]),
+  ),
   pagination: z.object({
     page: z.number(),
     limit: z.number(),
@@ -495,98 +588,122 @@ export const SearchResponseSchema = z.object({
     hasNext: z.boolean(),
     hasPrev: z.boolean(),
   }),
-  facets: z.record(z.string(), z.array(z.object({
-    value: z.string(),
-    count: z.number(),
-  }))).optional(),
-})
-export type SearchResponse = z.infer<typeof SearchResponseSchema>
+  facets: z
+    .record(
+      z.string(),
+      z.array(
+        z.object({
+          value: z.string(),
+          count: z.number(),
+        }),
+      ),
+    )
+    .optional(),
+});
+export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 
 /**
  * Facets response
  */
 export const FacetsResponseSchema = z.object({
-  facets: z.record(z.string(), z.array(z.object({
-    value: z.string(),
-    count: z.number(),
-  }))),
-})
-export type FacetsResponse = z.infer<typeof FacetsResponseSchema>
+  facets: z.record(
+    z.string(),
+    z.array(
+      z.object({
+        value: z.string(),
+        count: z.number(),
+      }),
+    ),
+  ),
+});
+export type FacetsResponse = z.infer<typeof FacetsResponseSchema>;
 
 /**
  * Facet value with count
  */
 export const FacetValueWithCountSchema = z.object({
-  value: z.string()
+  value: z
+    .string()
     .describe("The facet value (e.g., 'WGS', 'Controlled-access (Type I)')"),
-  count: z.number()
-    .describe("Number of resources matching this facet value"),
-})
-export type FacetValueWithCount = z.infer<typeof FacetValueWithCountSchema>
+  count: z.number().describe("Number of resources matching this facet value"),
+});
+export type FacetValueWithCount = z.infer<typeof FacetValueWithCountSchema>;
 
 /**
  * Single facet field response (with counts)
  */
 export const FacetFieldResponseSchema = z.object({
-  fieldName: z.string()
-    .describe("The facet field name (e.g., 'assayType', 'criteria', 'platform')"),
-  values: z.array(FacetValueWithCountSchema)
+  fieldName: z
+    .string()
+    .describe(
+      "The facet field name (e.g., 'assayType', 'criteria', 'platform')",
+    ),
+  values: z
+    .array(FacetValueWithCountSchema)
     .describe("Available values for this facet with their counts"),
-})
-export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>
+});
+export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>;
 
 /**
  * All facets response (GET /facets) - with counts
  */
-export const AllFacetsResponseSchema = z.record(z.string(), z.array(FacetValueWithCountSchema))
-  .describe("Map of facet field names to their available values with counts")
-export type AllFacetsResponse = z.infer<typeof AllFacetsResponseSchema>
+export const AllFacetsResponseSchema = z
+  .record(z.string(), z.array(FacetValueWithCountSchema))
+  .describe("Map of facet field names to their available values with counts");
+export type AllFacetsResponse = z.infer<typeof AllFacetsResponseSchema>;
 
 // === Path Parameters ===
 
 export const HumIdParamsSchema = z.object({
-  humId: z.string()
-    .describe("Research identifier (e.g., 'hum0001'). Unique across all Research resources."),
-})
-export type HumIdParams = z.infer<typeof HumIdParamsSchema>
+  humId: z
+    .string()
+    .describe(
+      "Research identifier (e.g., 'hum0001'). Unique across all Research resources.",
+    ),
+});
+export type HumIdParams = z.infer<typeof HumIdParamsSchema>;
 
 export const DatasetIdParamsSchema = z.object({
-  datasetId: z.string()
-    .describe("Dataset identifier (e.g., 'JGAD000001'). Unique across all Dataset resources."),
-})
-export type DatasetIdParams = z.infer<typeof DatasetIdParamsSchema>
+  datasetId: z
+    .string()
+    .describe(
+      "Dataset identifier (e.g., 'JGAD000001'). Unique across all Dataset resources.",
+    ),
+});
+export type DatasetIdParams = z.infer<typeof DatasetIdParamsSchema>;
 
 export const VersionParamsSchema = z.object({
-  humId: z.string()
-    .describe("Research identifier (e.g., 'hum0001')"),
-  version: z.string().regex(/^v\d+$/)
+  humId: z.string().describe("Research identifier (e.g., 'hum0001')"),
+  version: z
+    .string()
+    .regex(/^v\d+$/)
     .describe("Version number in format v1, v2, v3, etc. (e.g., 'v1', 'v2')"),
-})
-export type VersionParams = z.infer<typeof VersionParamsSchema>
+});
+export type VersionParams = z.infer<typeof VersionParamsSchema>;
 
 export const DatasetVersionParamsSchema = z.object({
-  datasetId: z.string()
-    .describe("Dataset identifier (e.g., 'JGAD000001')"),
-  version: z.string().regex(/^v\d+$/)
+  datasetId: z.string().describe("Dataset identifier (e.g., 'JGAD000001')"),
+  version: z
+    .string()
+    .regex(/^v\d+$/)
     .describe("Version number in format v1, v2, v3, etc. (e.g., 'v1', 'v2')"),
-})
-export type DatasetVersionParams = z.infer<typeof DatasetVersionParamsSchema>
+});
+export type DatasetVersionParams = z.infer<typeof DatasetVersionParamsSchema>;
 
 // === Simple Response Schemas ===
 
 export const HealthResponseSchema = z.object({
-  status: z.string()
-    .describe("Health status indicator ('ok' when healthy)"),
-  timestamp: z.string()
-    .describe("ISO 8601 timestamp of the health check"),
-})
-export type HealthResponse = z.infer<typeof HealthResponseSchema>
+  status: z.string().describe("Health status indicator ('ok' when healthy)"),
+  timestamp: z.string().describe("ISO 8601 timestamp of the health check"),
+});
+export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
 export const IsAdminResponseSchema = z.object({
-  isAdmin: z.boolean()
+  isAdmin: z
+    .boolean()
     .describe("Whether the authenticated user has admin privileges"),
-})
-export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
+});
+export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>;
 
 // === Stats API ===
 
@@ -594,12 +711,14 @@ export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
  * Stats facet counts per Research/Dataset
  */
 export const StatsFacetCountSchema = z.object({
-  research: z.number()
+  research: z
+    .number()
     .describe("Number of Research resources with this facet value"),
-  dataset: z.number()
+  dataset: z
+    .number()
     .describe("Number of Dataset resources with this facet value"),
-})
-export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>
+});
+export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>;
 
 /**
  * Stats response (GET /stats)
@@ -607,55 +726,171 @@ export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>
  * Facets include both Research and Dataset counts per value
  */
 export const StatsResponseSchema = z.object({
-  research: z.object({
-    total: z.number()
-      .describe("Total number of published Research resources"),
-  }).describe("Research resource statistics"),
-  dataset: z.object({
-    total: z.number()
-      .describe("Total number of published Dataset resources"),
-  }).describe("Dataset resource statistics"),
-  facets: z.record(z.string(), z.record(z.string(), StatsFacetCountSchema))
-    .describe("Facet aggregations with Research/Dataset counts per value. Outer key is field name (e.g., 'criteria'), inner key is facet value."),
-})
-export type StatsResponse = z.infer<typeof StatsResponseSchema>
+  research: z
+    .object({
+      total: z
+        .number()
+        .describe("Total number of published Research resources"),
+    })
+    .describe("Research resource statistics"),
+  dataset: z
+    .object({
+      total: z.number().describe("Total number of published Dataset resources"),
+    })
+    .describe("Dataset resource statistics"),
+  facets: z
+    .record(z.string(), z.record(z.string(), StatsFacetCountSchema))
+    .describe(
+      "Facet aggregations with Research/Dataset counts per value. Outer key is field name (e.g., 'criteria'), inner key is facet value.",
+    ),
+});
+export type StatsResponse = z.infer<typeof StatsResponseSchema>;
 
 /**
  * Create unified single response schema (with optimistic locking)
  */
-export const createUnifiedSingleResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+export const createUnifiedSingleResponseSchema = <T extends z.ZodType>(
+  dataSchema: T,
+) =>
   z.object({
     data: dataSchema,
     meta: ResponseMetaWithLockSchema,
-  })
+  });
 
 /**
  * Create unified single read-only response schema
  */
-export const createUnifiedSingleReadOnlyResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+export const createUnifiedSingleReadOnlyResponseSchema = <T extends z.ZodType>(
+  dataSchema: T,
+) =>
   z.object({
     data: dataSchema,
     meta: ResponseMetaReadOnlySchema,
-  })
+  });
 
 /**
  * Create unified list response schema
  */
-export const createUnifiedListResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
+export const createUnifiedListResponseSchema = <T extends z.ZodType>(
+  itemSchema: T,
+) =>
   z.object({
     data: z.array(itemSchema),
     meta: ResponseMetaWithPaginationSchema,
-  })
+  });
 
 /**
  * Create unified search response schema with facets
  */
-export const createUnifiedSearchResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
+export const createUnifiedSearchResponseSchema = <T extends z.ZodType>(
+  itemSchema: T,
+) =>
   z.object({
     data: z.array(itemSchema),
     meta: ResponseMetaWithPaginationSchema,
     facets: FacetsMapSchema.optional(),
-  })
+  });
 
 // Re-export schemas for route definitions (ResearchSchema, ResearchVersionSchema only - DatasetSchema defined above)
-export { ResearchSchema, ResearchVersionSchema }
+export { ResearchSchema, ResearchVersionSchema };
+
+// === Unified Response Schemas for /research Routes ===
+
+/**
+ * Workflow action response data (submit, approve, reject, unpublish)
+ */
+export const WorkflowDataSchema = z.object({
+  humId: z.string(),
+  status: z.enum(RESEARCH_STATUS),
+  dateModified: z.string(),
+});
+export type WorkflowData = z.infer<typeof WorkflowDataSchema>;
+
+export const WorkflowUnifiedResponseSchema =
+  createUnifiedSingleResponseSchema(WorkflowDataSchema);
+export type WorkflowUnifiedResponse = z.infer<
+  typeof WorkflowUnifiedResponseSchema
+>;
+
+/**
+ * UIDs update response data
+ */
+export const UidsDataSchema = z.object({
+  humId: z.string(),
+  uids: z.array(z.string()),
+});
+export type UidsData = z.infer<typeof UidsDataSchema>;
+
+export const UidsUnifiedResponseSchema =
+  createUnifiedSingleResponseSchema(UidsDataSchema);
+export type UidsUnifiedResponse = z.infer<typeof UidsUnifiedResponseSchema>;
+
+/**
+ * Research detail response (GET /research/{humId})
+ * Omits internal ES locking fields from data — they are surfaced in meta instead.
+ */
+export const ResearchDetailResponseSchema = createUnifiedSingleResponseSchema(
+  EsResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
+);
+export type ResearchDetailResponse = z.infer<
+  typeof ResearchDetailResponseSchema
+>;
+
+/**
+ * Research create/update response (POST /research/new, PUT /research/{humId}/update)
+ */
+export const ResearchWithLockResponseSchema = createUnifiedSingleResponseSchema(
+  ResearchResponseSchema,
+);
+export type ResearchWithLockResponse = z.infer<
+  typeof ResearchWithLockResponseSchema
+>;
+
+/**
+ * Research search/list response (GET /research, POST /research/search)
+ */
+export const ResearchSearchUnifiedResponseSchema =
+  createUnifiedSearchResponseSchema(ResearchSummarySchema);
+export type ResearchSearchUnifiedResponse = z.infer<
+  typeof ResearchSearchUnifiedResponseSchema
+>;
+
+/**
+ * Research versions list response (GET /research/{humId}/versions)
+ */
+export const ResearchVersionsListResponseSchema =
+  createUnifiedListResponseSchema(EsResearchVersionDocSchema);
+export type ResearchVersionsListResponse = z.infer<
+  typeof ResearchVersionsListResponseSchema
+>;
+
+/**
+ * Specific version detail response, read-only (GET /research/{humId}/versions/{version})
+ */
+export const VersionDetailResponseSchema =
+  createUnifiedSingleReadOnlyResponseSchema(VersionResponseSchema);
+export type VersionDetailResponse = z.infer<typeof VersionDetailResponseSchema>;
+
+/**
+ * Version create response (POST /research/{humId}/versions/new)
+ */
+export const VersionCreateResponseSchema = createUnifiedSingleResponseSchema(
+  VersionResponseSchema,
+);
+export type VersionCreateResponse = z.infer<typeof VersionCreateResponseSchema>;
+
+/**
+ * Linked datasets list response (GET /research/{humId}/dataset)
+ */
+export const LinkedDatasetsListResponseSchema =
+  createUnifiedListResponseSchema(EsDatasetDocSchema);
+export type LinkedDatasetsListResponse = z.infer<
+  typeof LinkedDatasetsListResponseSchema
+>;
+
+/**
+ * Dataset create response (POST /research/{humId}/dataset/new)
+ */
+export const DatasetCreateResponseSchema =
+  createUnifiedSingleResponseSchema(EsDatasetDocSchema);
+export type DatasetCreateResponse = z.infer<typeof DatasetCreateResponseSchema>;

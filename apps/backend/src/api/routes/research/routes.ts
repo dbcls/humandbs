@@ -4,7 +4,7 @@
  * OpenAPI route specifications for Research API endpoints.
  * Uses unified response schemas with data + meta structure.
  */
-import { createRoute, z } from "@hono/zod-openapi";
+import { createRoute } from "@hono/zod-openapi";
 
 import {
   ErrorSpec401,
@@ -14,85 +14,27 @@ import {
   ErrorSpec500,
 } from "@/api/routes/errors";
 import {
+  CreateDatasetForResearchRequestSchema,
   CreateResearchRequestSchema,
   CreateVersionRequestSchema,
-  EsDatasetDocSchema,
-  EsResearchDetailSchema,
-  EsResearchVersionDocSchema,
-  ExperimentSchemaBase,
+  DatasetCreateResponseSchema,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
+  LinkedDatasetsListResponseSchema,
+  ResearchDetailResponseSchema,
   ResearchListingQuerySchema,
-  ResearchResponseSchema,
-  ResearchSummarySchema,
+  ResearchSearchUnifiedResponseSchema,
+  ResearchVersionsListResponseSchema,
+  ResearchWithLockResponseSchema,
   UpdateResearchRequestSchema,
   UpdateUidsRequestSchema,
+  UidsUnifiedResponseSchema,
+  VersionCreateResponseSchema,
+  VersionDetailResponseSchema,
   VersionParamsSchema,
-  VersionResponseSchema,
-  createUnifiedListResponseSchema,
-  createUnifiedSearchResponseSchema,
-  createUnifiedSingleReadOnlyResponseSchema,
-  createUnifiedSingleResponseSchema,
+  WorkflowUnifiedResponseSchema,
 } from "@/api/types";
-import { RESEARCH_STATUS } from "@/api/types/workflow";
-
-// === Unified Response Schemas ===
-
-// Research detail with optimistic locking
-const ResearchDetailResponseSchema = createUnifiedSingleResponseSchema(
-  EsResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
-);
-
-// Research response with optimistic locking (for create/update)
-const ResearchWithLockResponseSchema = createUnifiedSingleResponseSchema(
-  ResearchResponseSchema,
-);
-
-// Research search/list response
-const ResearchSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(
-  ResearchSummarySchema,
-);
-
-// Research versions list response
-const ResearchVersionsListResponseSchema = createUnifiedListResponseSchema(
-  EsResearchVersionDocSchema,
-);
-
-// Version detail (read-only - historical versions)
-const VersionDetailResponseSchema = createUnifiedSingleReadOnlyResponseSchema(
-  VersionResponseSchema,
-);
-
-// Version create response (with lock)
-const VersionCreateResponseSchema = createUnifiedSingleResponseSchema(
-  VersionResponseSchema,
-);
-
-// Linked datasets list response
-const LinkedDatasetsListResponseSchema =
-  createUnifiedListResponseSchema(EsDatasetDocSchema);
-
-// Dataset create response (with lock)
-const DatasetCreateResponseSchema =
-  createUnifiedSingleResponseSchema(EsDatasetDocSchema);
-
-// Workflow response (with lock)
-const WorkflowDataSchema = z.object({
-  humId: z.string(),
-  status: z.enum(RESEARCH_STATUS),
-  dateModified: z.string(),
-});
-const WorkflowUnifiedResponseSchema =
-  createUnifiedSingleResponseSchema(WorkflowDataSchema);
-
-// UIDs response (with lock)
-const UidsDataSchema = z.object({
-  humId: z.string(),
-  uids: z.array(z.string()),
-});
-const UidsUnifiedResponseSchema =
-  createUnifiedSingleResponseSchema(UidsDataSchema);
 
 // === CRUD Routes ===
 
@@ -375,37 +317,7 @@ export const createDatasetForResearchRoute = createRoute({
     params: HumIdParamsSchema,
     body: {
       content: {
-        "application/json": {
-          schema: z.object({
-            datasetId: z
-              .string()
-              .optional()
-              .describe("Dataset ID (auto-generated if not provided)"),
-            releaseDate: z
-              .string()
-              .optional()
-              .describe("Release date (ISO 8601 format)"),
-            criteria: z
-              .enum([
-                "Controlled-access (Type I)",
-                "Controlled-access (Type II)",
-                "Unrestricted-access",
-              ])
-              .optional()
-              .describe("Data access criteria"),
-            typeOfData: z
-              .object({
-                ja: z.string().nullable(),
-                en: z.string().nullable(),
-              })
-              .optional()
-              .describe("Type of data in Japanese and English"),
-            experiments: z
-              .array(ExperimentSchemaBase)
-              .optional()
-              .describe("Experiment data tables"),
-          }),
-        },
+        "application/json": { schema: CreateDatasetForResearchRequestSchema },
       },
     },
   },

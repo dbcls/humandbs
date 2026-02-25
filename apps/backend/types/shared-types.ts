@@ -138,3 +138,96 @@ export type { AllFacetsResponse, FacetFieldResponse } from "../src/api/types";
 // Simple response types
 export { HealthResponseSchema, IsAdminResponseSchema } from "../src/api/types";
 export type { HealthResponse, IsAdminResponse } from "../src/api/types";
+
+// Workflow status
+export { ResearchStatusSchema, RESEARCH_STATUS } from "../src/api/types";
+export type { ResearchStatus } from "../src/api/types";
+
+// Response meta and pagination
+export {
+  PaginationSchema,
+  BaseResponseMetaSchema,
+  ResponseMetaReadOnlySchema,
+  ResponseMetaWithLockSchema,
+  ResponseMetaWithPaginationSchema,
+} from "../src/api/types";
+export type {
+  Pagination,
+  BaseResponseMeta,
+  ResponseMetaReadOnly,
+  ResponseMetaWithLock,
+  ResponseMetaWithPagination,
+  SingleReadOnlyResponse,
+  SingleResponse,
+  ListResponse,
+  UnifiedSearchResponse,
+} from "../src/api/types";
+
+// Unified response schema factories
+export {
+  createUnifiedSingleResponseSchema,
+  createUnifiedSingleReadOnlyResponseSchema,
+  createUnifiedListResponseSchema,
+  createUnifiedSearchResponseSchema,
+} from "../src/api/types";
+
+// Request schemas for /research routes
+export {
+  CreateResearchRequestSchema,
+  UpdateResearchRequestSchema,
+  CreateVersionRequestSchema,
+  UpdateUidsRequestSchema,
+  ExperimentSchemaBase,
+  CreateDatasetForResearchRequestSchema,
+} from "../src/api/types";
+export type {
+  CreateResearchRequest,
+  UpdateResearchRequest,
+  CreateVersionRequest,
+  UpdateUidsRequest,
+  CreateDatasetForResearchRequest,
+} from "../src/api/types";
+
+// Additional response schemas for /research routes
+export {
+  ResearchResponseSchema,
+  ResearchWithStatusSchema,
+  VersionResponseSchema,
+  UpdateUidsResponseSchema,
+} from "../src/api/types";
+export type {
+  ResearchResponse,
+  ResearchWithStatus,
+  VersionResponse,
+  UpdateUidsResponse,
+} from "../src/api/types";
+
+// Unified response schemas for /research routes
+export {
+  ResearchDetailResponseSchema,
+  ResearchWithLockResponseSchema,
+  ResearchSearchUnifiedResponseSchema,
+  ResearchVersionsListResponseSchema,
+  VersionDetailResponseSchema,
+  VersionCreateResponseSchema,
+  LinkedDatasetsListResponseSchema,
+  DatasetCreateResponseSchema,
+  WorkflowDataSchema,
+  WorkflowUnifiedResponseSchema,
+  UidsDataSchema,
+  UidsUnifiedResponseSchema,
+} from "../src/api/types";
+export type {
+  ResearchDetailResponse,
+  ResearchWithLockResponse,
+  ResearchSearchUnifiedResponse,
+  ResearchVersionsListResponse,
+  VersionDetailResponse,
+  VersionCreateResponse,
+  LinkedDatasetsListResponse,
+  DatasetCreateResponse,
+  WorkflowData,
+  WorkflowUnifiedResponse,
+  UidsData,
+  UidsUnifiedResponse,
+} from "../src/api/types";

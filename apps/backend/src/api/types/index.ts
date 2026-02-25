@@ -206,6 +206,19 @@ export {
   createUnifiedSingleReadOnlyResponseSchema,
   createUnifiedListResponseSchema,
   createUnifiedSearchResponseSchema,
+  // Unified response schemas for /research routes
+  WorkflowDataSchema,
+  WorkflowUnifiedResponseSchema,
+  UidsDataSchema,
+  UidsUnifiedResponseSchema,
+  ResearchDetailResponseSchema,
+  ResearchWithLockResponseSchema,
+  ResearchSearchUnifiedResponseSchema,
+  ResearchVersionsListResponseSchema,
+  VersionDetailResponseSchema,
+  VersionCreateResponseSchema,
+  LinkedDatasetsListResponseSchema,
+  DatasetCreateResponseSchema,
 } from "./request-response"
 export type {
   ErrorCode,
@@ -248,4 +261,17 @@ export type {
   IsAdminResponse,
   StatsFacetCount,
   StatsResponse,
+  // Unified response types for /research routes
+  WorkflowData,
+  WorkflowUnifiedResponse,
+  UidsData,
+  UidsUnifiedResponse,
+  ResearchDetailResponse,
+  ResearchWithLockResponse,
+  ResearchSearchUnifiedResponse,
+  ResearchVersionsListResponse,
+  VersionDetailResponse,
+  VersionCreateResponse,
+  LinkedDatasetsListResponse,
+  DatasetCreateResponse,
 } from "./request-response"
