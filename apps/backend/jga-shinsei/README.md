@@ -174,10 +174,120 @@ J-DS ID: J-DS002504
   PI: 山田太郎 (○○大学)
 ```
 
+## EAV -> API フレンドリー変換
+
+DB ダンプの `components` 配列は EAV (Entity-Attribute-Value) パターンで、そのままでは扱いにくい。
+`transform.ts` で API フレンドリーなネスト構造に変換する。
+
+### パイプライン
+
+```plaintext
+java-source/                        json-data/
+  NbdcComponentKey.java               ds-applications.json ---+
+  messages.properties                  du-applications.json --+
+  messages_en.properties               component-keys.json ---+
+       |                                                      |
+       v [1]                                                  v [3]
+  component-keys.json ---------> (referenced by) ---> *-transformed.json
+```
+
+```plaintext
+[PostgreSQL] --[2]--> ds-applications.json
+                      du-applications.json
+```
+
+| Step | Script | Input | Output | Timing |
+|------|--------|-------|--------|--------|
+| [1] | `convert-java-source.ts` | `java-source/` 3 files | `component-keys.json` | Java source update only |
+| [2] | `dump-all-data.sh` | PostgreSQL | `*-applications.json` | Daily batch |
+| [3] | `transform.ts` | `component-keys.json` + `*-applications.json` | `*-transformed.json` | After dump |
+
+### 使い方
+
+```bash
+# 1. コンポーネントキー定義の生成 (初回 or Java ソース更新時のみ)
+bun run scripts/convert-java-source.ts
+
+# 2. DB ダンプ (日次バッチ)
+./scripts/dump-all-data.sh
+
+# 3. 構造変換
+bun run scripts/transform.ts
+# => json-data/ds-applications-transformed.json (42 records)
+# => json-data/du-applications-transformed.json (102 records)
+```
+
+### java-source/ の中身
+
+JGA 申請システムの Java ソースから抜き出した 3 ファイル。コンポーネントキーの定義元。
+
+| ファイル | 内容 |
+|---------|------|
+| `NbdcComponentKey.java` | Enum 定義。全キー名と `multiValue` フラグ |
+| `messages.properties` | 日本語ラベル |
+| `messages_en.properties` | 英語ラベル |
+
+### 変換前 (EAV)
+
+```json
+{
+  "jds_id": "J-DS002495",
+  "application": { "create_date": "2024-12-03T..." },
+  "components": [
+    { "key": "aim", "value": "ゲノム解析による..." },
+    { "key": "aim_en", "value": "Genomic analysis..." },
+    { "key": "pi_first_name", "value": "太郎" },
+    { "key": "pi_first_name_en", "value": "Taro" },
+    { "key": "collaborator_name", "value": "Alice" },
+    { "key": "collaborator_name", "value": "Bob" }
+  ],
+  "status_history": [{ "status": 10, "date": "2024-12-03T..." }],
+  "submit_date": "2024-12-03T..."
+}
+```
+
+### 変換後 (API フレンドリー)
+
+```json
+{
+  "jdsId": "J-DS002495",
+  "aim": { "ja": "ゲノム解析による...", "en": "Genomic analysis..." },
+  "pi": {
+    "firstName": { "ja": "太郎", "en": "Taro" },
+    "institution": { "ja": "○○大学", "en": "XX University" }
+  },
+  "collaborators": [
+    { "name": "Alice", "division": "..." },
+    { "name": "Bob", "division": "..." }
+  ],
+  "statusHistory": [
+    { "status": 10, "statusLabel": { "ja": "申請書類作成中", "en": "Preparing" }, "date": "..." }
+  ],
+  "createDate": "2024-12-03T..."
+}
+```
+
+主な変換ルール:
+
+- **snake_case → camelCase**: `pi_first_name` → `pi.firstName`
+- **BilingualText マージ**: `aim` + `aim_en` → `{ ja, en }`
+- **multiValue グループ紐付け**: 同一キーの複数値を index でオブジェクト配列化
+- **ステータスラベル付与**: ステータスコードに日英ラベルを追加
+- **Boolean 変換**: `"TRUE"` / `"ok"` → `true`
+
+詳細は [出力スキーマ定義](docs/output-schema.md) を参照。
+
+### テスト
+
+```bash
+bun test
+```
+
 ## 詳細ドキュメント
 
 - [ID の種類と関係](docs/id-relationships.md)
 - [データベーススキーマ](docs/database-schema.md)
+- [出力スキーマ定義](docs/output-schema.md)
 
 ## 開発者向け
 

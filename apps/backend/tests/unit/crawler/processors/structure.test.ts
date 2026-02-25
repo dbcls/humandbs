@@ -1,10 +1,8 @@
 import { describe, expect, it } from "bun:test"
-import fc from "fast-check"
 
 import {
   validateAndCorrectCriteria,
   convertCriteriaToDisplay,
-  expandDatasetIds,
   mergeExperiments,
   mergeDataset,
   mergeSummary,
@@ -128,108 +126,6 @@ describe("processors/structure.ts", () => {
 
     it("should return null for null input", () => {
       expect(convertCriteriaToDisplay(null, "ja")).toBeNull()
-    })
-  })
-
-  // ===========================================================================
-  // expandDatasetIds
-  // ===========================================================================
-  describe("expandDatasetIds", () => {
-    it("should expand dataset IDs using expansion map", () => {
-      const expansionMap = new Map<string, Set<string>>()
-      expansionMap.set("JGAS000001", new Set(["JGAD000001", "JGAD000002"]))
-
-      const result = expandDatasetIds(["JGAS000001"], expansionMap)
-
-      expect(result).toContain("JGAD000001")
-      expect(result).toContain("JGAD000002")
-    })
-
-    it("should return original ID when no expansion exists", () => {
-      const expansionMap = new Map<string, Set<string>>()
-
-      const result = expandDatasetIds(["JGAD000001"], expansionMap)
-
-      expect(result).toEqual(["JGAD000001"])
-    })
-
-    it("should sort expanded IDs", () => {
-      const expansionMap = new Map<string, Set<string>>()
-      expansionMap.set("JGAS000001", new Set(["JGAD000003", "JGAD000001", "JGAD000002"]))
-
-      const result = expandDatasetIds(["JGAS000001"], expansionMap)
-
-      expect(result).toEqual(["JGAD000001", "JGAD000002", "JGAD000003"])
-    })
-
-    it("should handle multiple input IDs", () => {
-      const expansionMap = new Map<string, Set<string>>()
-      expansionMap.set("JGAS000001", new Set(["JGAD000001"]))
-      expansionMap.set("JGAS000002", new Set(["JGAD000002"]))
-
-      const result = expandDatasetIds(["JGAS000001", "JGAS000002"], expansionMap)
-
-      expect(result).toContain("JGAD000001")
-      expect(result).toContain("JGAD000002")
-    })
-
-    it("should deduplicate expanded IDs", () => {
-      const expansionMap = new Map<string, Set<string>>()
-      expansionMap.set("JGAS000001", new Set(["JGAD000001"]))
-      expansionMap.set("JGAS000002", new Set(["JGAD000001"]))
-
-      const result = expandDatasetIds(["JGAS000001", "JGAS000002"], expansionMap)
-
-      expect(result).toEqual(["JGAD000001"])
-    })
-
-    // バグ発見テスト: 境界値・PBT
-    describe("boundary values and properties", () => {
-      it("should handle empty input array", () => {
-        const expansionMap = new Map<string, Set<string>>()
-        expansionMap.set("JGAS000001", new Set(["JGAD000001"]))
-
-        const result = expandDatasetIds([], expansionMap)
-        expect(result).toEqual([])
-      })
-
-      it("should handle empty expansion map", () => {
-        const result = expandDatasetIds(["JGAS000001", "JGAD000002"], new Map())
-        expect(result).toEqual(["JGAD000002", "JGAS000001"]) // ソートされる
-      })
-
-      it("should handle large expansion set", () => {
-        const expansionMap = new Map<string, Set<string>>()
-        const largeSet = new Set<string>()
-        for (let i = 1; i <= 100; i++) {
-          largeSet.add(`JGAD${i.toString().padStart(6, "0")}`)
-        }
-        expansionMap.set("JGAS000001", largeSet)
-
-        const result = expandDatasetIds(["JGAS000001"], expansionMap)
-        expect(result).toHaveLength(100)
-        // Should be sorted
-        expect(result[0]).toBe("JGAD000001")
-        expect(result[99]).toBe("JGAD000100")
-      })
-
-      it("(PBT) should always return sorted unique array", () => {
-        fc.assert(
-          fc.property(
-            fc.array(fc.string(), { minLength: 0, maxLength: 10 }),
-            (ids) => {
-              const result = expandDatasetIds(ids, new Map())
-              // Result should be sorted
-              const sorted = [...result].sort()
-              expect(result).toEqual(sorted)
-              // Result should have no duplicates
-              const unique = [...new Set(result)]
-              expect(result).toEqual(unique)
-            },
-          ),
-          { numRuns: 50 },
-        )
-      })
     })
   })
 

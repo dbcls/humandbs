@@ -20,16 +20,21 @@ export const escapeForTsv = (value: unknown): string => {
   }
 
   return str
+    .replace(/\\/g, "\\\\")
     .replace(/\t/g, "\\t")
     .replace(/\n/g, "\\n")
     .replace(/\r/g, "\\r")
 }
 
+const UNESCAPE_MAP: Record<string, string> = {
+  "\\": "\\",
+  t: "\t",
+  n: "\n",
+  r: "\r",
+}
+
 export const unescapeTsv = (value: string): string => {
-  return value
-    .replace(/\\t/g, "\t")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
+  return value.replace(/\\([\\tnr])/g, (_, ch: string) => UNESCAPE_MAP[ch] ?? ch)
 }
 
 // Row conversion

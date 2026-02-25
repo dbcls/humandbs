@@ -8,5 +8,6 @@ joomla/dumps/
 
 # jga-shinsei
 jga-shinsei/dumps/
+jga-shinsei/java-source/
 jga-shinsei/json-data/
 jga-shinsei/.env

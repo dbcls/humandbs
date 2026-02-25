@@ -25,9 +25,16 @@ COPY apps/frontend/package.json ./apps/frontend/
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 
-RUN bun install
+# chmod: named volume inherits image permissions on first creation;
+#        make writable so arbitrary UID (Podman keep-id) can run `bun install`.
+RUN bun install --frozen-lockfile && \
+    chmod -R a+rwX node_modules
 
 COPY . .
+
+# Writable home for arbitrary UID (Podman keep-id).
+ENV HOME=/home/app
+RUN mkdir -p /home/app && chmod 777 /home/app
 
 ENTRYPOINT [""]
 CMD ["sleep", "infinity"]

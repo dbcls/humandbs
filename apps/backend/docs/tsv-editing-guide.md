@@ -4,52 +4,46 @@ HumanDBs のデータを手動で編集・校正するためのガイド。
 
 ## 作業場所
 
-**Google Spreadsheet**: <https://docs.google.com/spreadsheets/d/1rB0HnbS8cQ6kBmclXGii1lSe1w2Y_syH9bG-aI24gpY/edit>
-
-各 TSV が Spreadsheet の Tab に対応している。
+**Google Spreadsheet**: <https://docs.google.com/spreadsheets/d/1yAWRGBsj2BqilaMKerbxQl38vbpDsLiYA5X8i2KY55w/edit?usp=sharing>
 
 ## やること
 
-### 1. 翻訳・校正作業
+※ Research / Dataset / Experiment の関係については [Dataset と Experiment の概念](#dataset-と-experiment-の概念) を参照。
 
-| Tab | 作業内容 |
+### 1. Research 系 / 2. Dataset
+
+現ポータルから機械的に抽出したデータ。
+変なデータがないかを確認し、余裕があれば修正する。
+
+| Tab | 編集内容 |
 |-----|---------|
-| Research | タイトルの日英翻訳・校正 |
-| ResearchSummary | 研究概要の日英翻訳・校正 |
-| ResearchVersion | リリースノートの日英翻訳・校正 |
+| Research | タイトル（title_ja, title_en） |
+| ResearchSummary | 研究概要（aims, methods, targets） |
+| ResearchDataProvider | 提供者名、所属、メール、ORCID |
+| ResearchVersion | リリースノート |
+| ResearchGrant | 助成金 ID、タイトル、機関名 |
+| ResearchPublication | 論文タイトル、DOI |
+| ResearchProject | プロジェクト名、URL |
+| ResearchCAU | 制限公開利用者名、所属、研究タイトル、利用期間 |
+| Dataset | データタイプ（typeOfData）、公開条件（criteria）、公開日（releaseDate） |
 
-### 2. Dataset の確認
+ResearchGrant, ResearchPublication, ResearchProject, ResearchCAU は、1 行に複数件が詰め込まれている場合、行を分離してもよい（[行の追加・分離](#行の追加分離)を参照）。
 
-データタイプ（typeOfData）、公開条件（criteria）、公開日（releaseDate）を確認・修正。
+### 3. Experiment
 
-### 3. 情報の補完・分離
+LLM で最新 Dataset から検索・統計用に抽出したデータ。
+間違っていても検索でヒットしない程度の影響なので、後から随時修正できる。
 
-| Tab | 作業内容 |
+| Tab | 編集内容 |
 |-----|---------|
-| ResearchDataProvider | 提供者情報の補完、複数人が1行に詰め込まれている場合の分離 |
-| ResearchGrant | 助成金情報の補完 |
-| ResearchPublication | 論文タイトル・DOI の補完 |
-| ResearchProject | プロジェクト名・URL の補完 |
-| ResearchCAU | 制限公開利用者情報の補完 |
+| Experiment | ヘッダー（header_ja, header_en）、searchable_* フィールド |
 
-### 4. Experiment の編集
+**header 列について:**
+`header_ja` / `header_en` は元の MolTable のヘッダーをそのまま取得しており、Accession ID（例: `JGAS000123`）などが入っていることが多い。
+主に assay type（実験種別）を記入する: `WGS`, `RNA-seq`, `Targeted panel sequencing`, `全ゲノムシーケンス` など。
 
-LLM が抽出した `searchable_*` フィールドを確認・修正する。
-値は英語に統一する（日本語のみの情報は英訳する）。
-
-**確認ポイント:**
-
-- 疾患名（searchable_diseases）が正しいか
-- 組織名（searchable_tissues）が正しいか
-- アッセイ種別（searchable_assayType）が正しいか
-- 被験者数（searchable_subjectCount）が正しいか
-- その他 searchable_* フィールドの値
-
-**よくある修正:**
-
-- LLM が抽出できなかった情報を追加
-- 誤って抽出された情報を削除・修正
-- 日本語のみの情報を英語に翻訳
+**searchable_* フィールドについて:**
+値は英語に統一する。詳細は [searchable フィールド一覧](#searchable-フィールド一覧) を参照。
 
 ## 編集のルール
 
@@ -58,10 +52,11 @@ LLM が抽出した `searchable_*` フィールドを確認・修正する。
 **編集禁止（識別子・参照情報）:**
 Spreadsheet 上で薄紅色の背景で表示されている。
 
-- `humId`, `humVersionId`, `version`, `datasetId`, `experimentIndex`
+- `humId`, `humVersionId`, `version`, `datasetId`
 - `url_ja`, `url_en`
-- `datasetIds`（ResearchPublication, ResearchCAU, ResearchVersion）
 - `versionIds`, `latestVersion`, `firstReleaseDate`, `lastReleaseDate`
+- `versionReleaseDate`（ResearchVersion, Dataset）
+- `datasetIds`（ResearchPublication, ResearchCAU, ResearchVersion）
 
 **編集可能:**
 上記以外のカラム（背景色なし）。
@@ -79,6 +74,28 @@ Spreadsheet 上で薄紅色の背景で表示されている。
 ### comment カラム
 
 各行の最後にある `comment` カラムは自由記述用。メモや確認事項を記入できる。インポート時は無視される。
+
+### 行の追加・分離
+
+`index` フィールドを編集することで行の追加・分離ができる:
+
+```plaintext
+# 元（1行に2人）
+humId    index  name_ja
+hum0001  0      山田太郎、鈴木花子
+
+# 編集後（2行に分離）
+humId    index  name_ja
+hum0001  0      山田太郎
+hum0001  1      鈴木花子
+```
+
+### 表記揺れについて
+
+`tissues`, `assayType` などの一部フィールドは、LLM 抽出後に機械的な処理（[facet-normalize](crawler-pipeline.md#9-facet-normalize)）で表記を統一している。
+対象フィールドと変換ルールは [`src/crawler/data/facet-mappings/`](../src/crawler/data/facet-mappings/) の TSV を参照。
+
+※ この分類・統一ルールは今後見直す可能性がある。
 
 ## searchable フィールド一覧
 
@@ -98,7 +115,7 @@ Experiment Tab で編集する主要なフィールド:
 | ageGroup | 年齢層 | `infant` / `child` / `adult` / `elderly` / `mixed` |
 | assayType | アッセイ種別 | `["WGS", "RNA-seq", "ChIP-seq"]` |
 | libraryKits | ライブラリキット | `["TruSeq DNA"]` |
-| platforms | シーケンサー | `["Illumina NovaSeq 6000"]` |
+| platforms | シーケンサー | `[{"vendor": "Illumina", "model": "NovaSeq 6000"}]` |
 | readType | リードタイプ | `single-end` / `paired-end` |
 | readLength | リード長 (bp) | `150` |
 | sequencingDepth | シーケンス深度 (x) | `30` |
@@ -111,42 +128,47 @@ Experiment Tab で編集する主要なフィールド:
 | dataVolumeGb | データ容量 (GB) | `500` |
 | variantCounts | バリアント数 | `{"snv": 5000000, "indel": 100000, "cnv": null, "sv": null, "total": null}` |
 
-## 注意事項
+## Dataset と Experiment の概念
 
-### Experiment Tab の header 列について
-
-Experiment Tab の `header_ja` / `header_en` は、元の MolTable（Molecular Data テーブル）のヘッダーをそのまま取得している。
-MolTable のヘッダーは Accession ID（例: `JGAS000123`）などが入っていることが多く、Experiment の内容を表すヘッダーとしては不適切。
-
-**主に assay type（実験種別）を記入する:**
-
-- `WGS`
-- `RNA-seq`
-- `Targeted panel sequencing`
-- `全ゲノムシーケンス`
-- `エクソームシーケンス`
-
-### 行の追加・分離
-
-`index` フィールドを編集することで行の追加・分離ができる:
+編集時に参照する元の HTML ページには「Molecular Data」テーブル（MolTable）が記載されている。
+クローラーパイプラインでは、この MolTable を変換し、以下の階層構造にしている:
 
 ```plaintext
-# 元（1行に2人）
-humId    index  name_ja
-hum0001  0      山田太郎、鈴木花子
-
-# 編集後（2行に分離）
-humId    index  name_ja
-hum0001  0      山田太郎
-hum0001  1      鈴木花子
+Research (hum0001)
+  └─ Dataset (JGAD000001, hum0001.v1.freq.v1, ...)
+       └─ Experiment (≒ MolTable のセル)
 ```
 
-### 表記揺れは気にしなくてよい
+### Dataset ID
 
-`tissues`, `assayType` などの表記揺れは機械的な処理（[facet-normalize](crawler-pipeline.md#9-facet-normalize)）で自動的に統一される。
-意味が正しければ細かい表記の違いは気にしなくてよい。
+Dataset ID として以下の外部 ID を流用している:
 
-対象フィールドと変換ルールは [`src/crawler/data/facet-mappings/`](../src/crawler/data/facet-mappings/) の TSV を参照。
+- `JGAD000000` - JGA Dataset（JGAS は JGAD に展開される）
+- `E-GEAD-000` - GEA
+- `DRA000000` 等 - DDBJ Sequence Read Archive
+- `PRJDB00000` - BioProject
+- `MTBKS000` - MetaboBank
+- `hum0000.v0.xxx.v0` - NBDC 独自形式（外部 ID がない場合）
+
+### MolTable から Dataset / Experiment への変換
+
+ある hum ページに複数の MolTable がある場合、同じ Dataset ID が複数の MolTable に出現することがある。
+この場合、Dataset は MolTable をまたいで統合され、各 MolTable からの情報が Experiment として格納される。
+
+例:
+
+```plain
+MolTableA = [Dataset1, Dataset2]
+MolTableB = [Dataset2, Dataset3]
+
+↓ 変換後
+
+Dataset1 = [ExperimentA]               # MolTableA 由来
+Dataset2 = [ExperimentA, ExperimentB]  # MolTableA, MolTableB 両方由来
+Dataset3 = [ExperimentB]               # MolTableB 由来
+```
+
+詳細は [クローラーパイプライン](crawler-pipeline.md) を参照。
 
 ## 反映方法
 

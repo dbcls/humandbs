@@ -15,6 +15,8 @@ export const ES_INDEX = {
   research: "research",
   researchVersion: "research-version",
   dataset: "dataset",
+  jgaShinseiDs: "jga-shinsei-ds",
+  jgaShinseiDu: "jga-shinsei-du",
 } as const
 
 // === Client Configuration ===
