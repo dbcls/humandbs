@@ -7,7 +7,7 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Search, X as XIcon } from "lucide-react";
 import {
   startTransition,
   Suspense,
@@ -66,19 +66,45 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
+  const [panelOpen, setPanelOpen] = useState(false);
+
   return (
-    <Card caption={<Caption />}>
-      <Suspense>
-        <Facets />
-      </Suspense>
-      <Suspense fallback={<SkeletonLoading />}>
-        <CardContent />
-      </Suspense>
+    <Card
+      caption={
+        <Caption
+          onFilterClick={() => {
+            setPanelOpen((v) => !v);
+          }}
+        />
+      }
+    >
+      <div className="relative overflow-hidden">
+        <Suspense fallback={<SkeletonLoading />}>
+          <CardContent />
+        </Suspense>
+
+        {/* Facets slide-in panel — overlays from the right inside the card */}
+        <div
+          className={cn(
+            "absolute inset-y-0 right-0 z-10 w-80 overflow-y-auto border-l border-l-primary-translucent bg-white shadow-lg",
+            "transition-transform duration-300 ease-in-out",
+            panelOpen ? "translate-x-0" : "translate-x-full",
+          )}
+        >
+          <Suspense>
+            <Facets
+              onClose={() => {
+                setPanelOpen(false);
+              }}
+            />
+          </Suspense>
+        </div>
+      </div>
     </Card>
   );
 }
 
-function Facets() {
+function Facets({ onClose }: { onClose: () => void }) {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
@@ -88,71 +114,164 @@ function Facets() {
 
   const { data: allFacetsData } = useSuspenseQuery(getAllFacetsQueryOptions());
 
-  const { filters, toggleArrayFilter } = useFilters(Route.id);
+  const { filters, setFilters, resetFilters, toggleArrayFilter } = useFilters(
+    Route.id,
+  );
 
   // Optimistic local state: tracks pending checkbox changes before the URL updates.
   // Shape: { "criteria:Unrestricted-access": true, "assayType:WGS": false, ... }
   const [optimistic, setOptimistic] = useState<Record<string, boolean>>({});
 
+  const hasAnyFilter =
+    filters.datasetFilters != null &&
+    Object.keys(filters.datasetFilters).length > 0;
+
+  const resetGroup = (groupKey: string) => {
+    const activeValues =
+      (filters.datasetFilters?.[
+        groupKey as keyof typeof filters.datasetFilters
+      ] as string[] | undefined) ?? [];
+    const { [groupKey as keyof typeof filters.datasetFilters]: _, ...rest } =
+      filters.datasetFilters ?? {};
+    setFilters({
+      datasetFilters: Object.keys(rest).length > 0 ? rest : undefined,
+      page: 1,
+    } as never);
+    // Optimistically mark each value in this group as unchecked so they
+    // don't flicker back to checked while the URL catches up.
+    setOptimistic((prev) => ({
+      ...prev,
+      ...Object.fromEntries(
+        activeValues.map((v) => [`${groupKey}:${v}`, false]),
+      ),
+    }));
+  };
+
   if (!allFacetsData.data) return null;
 
   return (
-    <Accordion type="multiple">
-      {Object.entries(allFacetsData.data).map(([key, value]) => (
-        <AccordionItem key={key} value={key}>
-          <AccordionTrigger>{key}</AccordionTrigger>
-          <AccordionContent>
-            <ul>
-              {value.map((val) => {
-                const optimisticKey = `${key}:${val.value}`;
-                const urlActive = (
-                  (filters.datasetFilters?.[
-                    key as keyof typeof filters.datasetFilters
-                  ] as string[] | undefined) ?? []
-                ).includes(val.value);
-                const isChecked =
-                  optimisticKey in optimistic
-                    ? optimistic[optimisticKey]
-                    : urlActive;
-
-                const count =
-                  searchResults?.facets?.[key]?.find(
-                    (f) => f.value === val.value,
-                  )?.count ?? 0;
-
-                return (
-                  <li key={`${key}-${val.value}`}>
-                    <Label>
-                      <span className={cn({ "opacity-40": isFetching })}>
-                        {val.value}: {count}
-                      </span>
-                      <Checkbox
-                        checked={isChecked}
-                        onCheckedChange={(checked) => {
-                          // Update local state immediately for instant feedback
-                          setOptimistic((prev) => ({
-                            ...prev,
-                            [optimisticKey]: !!checked,
-                          }));
-                          startTransition(() => {
-                            toggleArrayFilter(
-                              "datasetFilters",
-                              key,
-                              val.value,
-                              !!checked,
-                            );
-                          });
-                        }}
-                      />
-                    </Label>
-                  </li>
+    <div>
+      <div className="flex items-center justify-between p-3">
+        <span className="text-sm font-medium">Filters</span>
+        <div className="flex items-center gap-1">
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="slim"
+              className="text-xs text-muted-foreground"
+              onClick={() => {
+                // Optimistically mark every active value as unchecked
+                const allUnchecked = Object.fromEntries(
+                  Object.entries(filters.datasetFilters ?? {}).flatMap(
+                    ([groupKey, vals]) =>
+                      ((vals as string[] | undefined) ?? []).map((v) => [
+                        `${groupKey}:${v}`,
+                        false,
+                      ]),
+                  ),
                 );
-              })}
-            </ul>
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
+                setOptimistic(allUnchecked);
+                resetFilters();
+              }}
+            >
+              Reset all
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <XIcon className="size-4" />
+          </Button>
+        </div>
+      </div>
+      <Accordion
+        type="multiple"
+        className="px-3"
+        defaultValue={Object.keys(filters.datasetFilters ?? {})}
+      >
+        {Object.entries(allFacetsData.data).map(([key, value]) => (
+          <AccordionItem
+            key={key}
+            value={key}
+            className={"border-b-primary-translucent"}
+          >
+            <AccordionTrigger className="text-secondary font-bold relative">
+              <span>{key}</span>
+              {(
+                (filters.datasetFilters?.[
+                  key as keyof typeof filters.datasetFilters
+                ] as string[] | undefined) ?? []
+              ).length > 0 && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="slim"
+                  className="absolute right-0 top-0 h-auto px-0 text-xs text-muted-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    resetGroup(key);
+                  }}
+                >
+                  <div>Reset</div>
+                </Button>
+              )}
+            </AccordionTrigger>
+            <AccordionContent className="pl-5 py-1 ">
+              <ul className="space-y-2">
+                {value.map((val) => {
+                  const optimisticKey = `${key}:${val.value}`;
+                  const urlActive = (
+                    (filters.datasetFilters?.[
+                      key as keyof typeof filters.datasetFilters
+                    ] as string[] | undefined) ?? []
+                  ).includes(val.value);
+                  const isChecked =
+                    optimisticKey in optimistic
+                      ? optimistic[optimisticKey]
+                      : urlActive;
+
+                  const count =
+                    searchResults?.facets?.[key]?.find(
+                      (f) => f.value === val.value,
+                    )?.count ?? 0;
+
+                  return (
+                    <li key={`${key}-${val.value}`}>
+                      <Label className="flex justify-between items-start">
+                        <span>
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              // Update local state immediately for instant feedback
+                              setOptimistic((prev) => ({
+                                ...prev,
+                                [optimisticKey]: !!checked,
+                              }));
+                              startTransition(() => {
+                                toggleArrayFilter(
+                                  "datasetFilters",
+                                  key,
+                                  val.value,
+                                  !!checked,
+                                );
+                              });
+                            }}
+                          />
+                          <span
+                            className={cn("ml-2", { "opacity-40": isFetching })}
+                          >
+                            {val.value}
+                          </span>
+                        </span>
+                        <span>{count}</span>
+                      </Label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </div>
   );
 }
 
@@ -205,7 +324,7 @@ function CardContent() {
   );
 }
 
-function Caption() {
+function Caption({ onFilterClick }: { onFilterClick: () => void }) {
   const t = useTranslations("Research-list");
 
   const { setFilters } = useFilters(Route.id);
@@ -224,6 +343,13 @@ function Caption() {
           </Button>
           <Button variant={"tableAction"} size={"tableAction"}>
             Excel
+          </Button>
+          <Button
+            variant={"tableAction"}
+            size={"tableAction"}
+            onClick={onFilterClick}
+          >
+            Filters
           </Button>
         </div>
 
