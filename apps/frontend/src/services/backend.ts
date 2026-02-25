@@ -1,24 +1,22 @@
 import {
-  type DatasetDoc,
   type DatasetIdParams,
   type DatasetListingQuery,
-  DatasetSearchResponseSchema,
   type DatasetVersionsResponse,
   type HumIdParams,
   type LangQuery,
   type LangVersionQuery,
-  type ResearchDetail,
   type ResearchListingQuery,
   ResearchSearchResponseSchema,
   type ResearchVersionsListResponse,
   type ResearchSearchUnifiedResponse,
-  DatasetDetailResponseSchema,
   type DatasetDetailResponse,
   type DatasetSearchUnifiedResponse,
   type ResearchDetailResponse,
+  type ResearchSearchBody,
+  type AllFacetsResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 import { z } from "zod";
 
 // Extend Error type to include custom properties
@@ -45,7 +43,7 @@ const axiosInstance = axios.create({
 // Add response interceptor to handle errors properly
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError) => {
     // Handle Axios errors more gracefully to prevent crashes
     const url = error.config?.url || "unknown";
     const method = error.config?.method?.toUpperCase() || "unknown";
@@ -110,6 +108,10 @@ interface APIService {
     params: DatasetIdParams;
     search: LangQuery;
   }): Promise<DatasetVersionsResponse>;
+  searchResearches(
+    query: ResearchSearchBody,
+  ): Promise<ResearchSearchUnifiedResponse>;
+  getAllFacets(): Promise<{ data: AllFacetsResponse }>;
 }
 
 export const FixedPaginationSchema =
@@ -120,35 +122,34 @@ export const FixedPaginationSchema =
 
 const api: APIService = {
   async getResearchListPaginated(query) {
-    const res = await axiosInstance.get(`/research`, {
-      params: query.search,
-    });
-    return res.data as ResearchSearchUnifiedResponse;
+    const res = await axiosInstance.get<ResearchSearchUnifiedResponse>(
+      `/research`,
+      {
+        params: query.search,
+      },
+    );
+    return res.data;
   },
 
   async getResearchDetail(query) {
-    // let params = {} as LangVersionQuery;
-    // if (query.search.version) {
-    //   params = {  ...query.search, includeRawHtml: false };
-    // } else {
-    //   params = { lang: query.search.lang, includeRawHtml: false };
-    // }
+    const res = await axiosInstance.get<ResearchDetailResponse>(
+      `/research/${query.params.humId}`,
+      {
+        params: query.search,
+      },
+    );
 
-    const res = await axiosInstance.get(`/research/${query.params.humId}`, {
-      params: query.search,
-    });
-
-    return res.data as ResearchDetailResponse;
+    return res.data;
   },
   async getResearchVersions(query) {
-    const res = await axiosInstance.get(
+    const res = await axiosInstance.get<ResearchVersionsListResponse>(
       `/research/${query.params.humId}/versions`,
       {
         params: query.search,
       },
     );
 
-    return res.data as ResearchVersionsListResponse;
+    return res.data;
   },
 
   async getDatasetsPaginated(query) {
@@ -159,19 +160,37 @@ const api: APIService = {
   },
 
   async getDataset(query) {
-    const res = await axiosInstance.get(`/dataset/${query.params.datasetId}`, {
-      params: query.search,
-    });
-    return res.data as DatasetDetailResponse;
+    const res = await axiosInstance.get<DatasetDetailResponse>(
+      `/dataset/${query.params.datasetId}`,
+      {
+        params: query.search,
+      },
+    );
+    return res.data;
   },
 
   async getDatasetVersions(query) {
-    const res = await axiosInstance.get(
+    const res = await axiosInstance.get<DatasetVersionsResponse>(
       `/dataset/${query.params.datasetId}/versions`,
       {
         params: query.search,
       },
     );
+
+    return res.data;
+  },
+
+  async searchResearches(query) {
+    const res = await axiosInstance<ResearchSearchUnifiedResponse>({
+      method: "POST",
+      url: `/research/search`,
+      data: query,
+    });
+
+    return res.data;
+  },
+  async getAllFacets() {
+    const res = await axiosInstance.get<{ data: AllFacetsResponse }>(`/facets`);
 
     return res.data;
   },

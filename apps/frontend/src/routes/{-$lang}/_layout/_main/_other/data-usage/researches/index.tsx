@@ -1,4 +1,4 @@
-import { ResearchListingQuerySchema } from "@humandbs/backend/types";
+import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
@@ -17,13 +17,24 @@ import { Pagination } from "@/components/Pagination";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
+import { cn } from "@/lib/utils";
+import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 
-export const researchesSearchParamsSchema = ResearchListingQuerySchema.omit({
+export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   lang: true,
+  includeFacets: true,
 });
 
 export const Route = createFileRoute(
@@ -31,29 +42,153 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
-  loaderDeps: ({ search: { page, limit, sort, order } }) => ({
-    page,
-    limit,
-    sort,
-    order,
-  }),
-
+  loaderDeps: ({ search }) => search,
   loader: ({ deps, context }) => {
     context.queryClient.ensureQueryData(
       getResearchesQueryOptions({
         ...deps,
+        includeFacets: true,
         lang: context.lang,
-        includeRawHtml: false,
       }),
     );
+
+    context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
   },
   errorComponent: ({ error }) => {
     return <div>{error.message}</div>;
   },
 });
 
+function RouteComponent() {
+  return (
+    <Card caption={<Caption />}>
+      <Suspense>
+        <Facets />
+      </Suspense>
+      <Suspense fallback={<SkeletonLoading />}>
+        <CardContent />
+      </Suspense>
+    </Card>
+  );
+}
+
+function Facets() {
+  const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
+
+  const { data: searchResults, isFetching } = useSuspenseQuery(
+    getResearchesQueryOptions({ ...search, lang, includeFacets: true }),
+  );
+
+  const { data: allFacetsData } = useSuspenseQuery(getAllFacetsQueryOptions());
+
+  const { filters, toggleArrayFilter } = useFilters(Route.id);
+
+  if (!allFacetsData.data) return null;
+
+  return (
+    <Accordion type="multiple">
+      {Object.entries(allFacetsData.data).map(([key, value]) => (
+        <AccordionItem key={key} value={key}>
+          <AccordionTrigger>{key}</AccordionTrigger>
+          <AccordionContent>
+            <ul>
+              {value.map((val) => {
+                const activeValues =
+                  (filters.datasetFilters?.[
+                    key as keyof typeof filters.datasetFilters
+                  ] as string[] | undefined) ?? [];
+
+                const count =
+                  searchResults.facets?.[key]?.find(
+                    (f) => f.value === val.value,
+                  )?.count ?? 0;
+
+                return (
+                  <li key={`${key}-${val.value}`}>
+                    <Label>
+                      <span className={cn({ "opacity-40": isFetching })}>
+                        {val.value}: {count}
+                      </span>
+                      <Checkbox
+                        checked={activeValues.includes(val.value)}
+                        disabled={count === 0}
+                        onCheckedChange={(checked) => {
+                          startTransition(() => {
+                            toggleArrayFilter(
+                              "datasetFilters",
+                              key,
+                              val.value,
+                              !!checked,
+                            );
+                          });
+                        }}
+                      />
+                    </Label>
+                  </li>
+                );
+              })}
+            </ul>
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  );
+}
+
+function CardContent() {
+  const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
+
+  const { data: researchesData } = useSuspenseQuery(
+    getResearchesQueryOptions({ ...search, lang, includeFacets: true }),
+  );
+
+  const sorting = useMemo(() => {
+    if (!search.sort) return [];
+    return [{ id: search.sort, desc: search.order === "desc" }];
+  }, [search.sort, search.order]);
+
+  const { filters, setFilters } = useFilters(Route.id);
+
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const sortingState: SortingState = [
+        { id: filters.sort, desc: filters.order === "desc" },
+      ];
+      const newState = functionalUpdate(updater, sortingState);
+
+      startTransition(() => {
+        setFilters({
+          sort: newState[0]?.id,
+          order: newState[0]?.desc ? "desc" : "asc",
+        });
+      });
+    },
+    [setFilters, filters],
+  );
+
+  return (
+    <>
+      <div className="overflow-x-auto">
+        <Table
+          className="mt-4 text-sm"
+          columns={columns}
+          data={researchesData.data}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+        />
+      </div>
+
+      <Pagination pagination={researchesData.meta.pagination} />
+    </>
+  );
+}
+
 function Caption() {
   const t = useTranslations("Research-list");
+
+  const { setFilters } = useFilters(Route.id);
 
   return (
     <div className="flex items-center justify-between">
@@ -76,6 +211,16 @@ function Caption() {
           type="text"
           placeholder="検索"
           beforeIcon={<Search size={22} />}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const target = e.target as HTMLInputElement;
+              const value = target.value;
+
+              startTransition(() => {
+                setFilters({ q: value || undefined });
+              });
+            }
+          }}
         />
       </div>
     </div>
@@ -183,98 +328,4 @@ const columns = [
     header: "手法",
     cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
   }),
-
-  // columnHelper.accessor("datasets", {
-  //   id: "typeOfData",
-  //   header: "データタイプ",
-  //   cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
-  //   maxSize: 15,
-  // }),
-  // columnHelper.accessor("methods", {
-  //   id: "methods",
-  //   header: "手法",
-  //   cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
-  // }),
-  // columnHelper.accessor("platforms", {
-  //   id: "platforms",
-  //   header: "プラットホーム",
-  //   cell: (ctx) => (
-  //     <ul>
-  //       {ctx.getValue().map((p) => (
-  //         <li
-  //           key={p}
-  //           className="text-sm"
-  //           dangerouslySetInnerHTML={{ __html: p }}
-  //         />
-  //       ))}
-  //     </ul>
-  //   ),
-  // }),
-  // columnHelper.accessor("targets", {
-  //   id: "targets",
-  //   header: "目的",
-  //   cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
-  // }),
 ];
-// table using Tanstack table:
-
-function RouteComponent() {
-  return (
-    <Card caption={<Caption />}>
-      <Suspense fallback={<SkeletonLoading />}>
-        <CardContent />
-      </Suspense>
-    </Card>
-  );
-}
-
-function CardContent() {
-  const search = Route.useSearch();
-  const { lang } = Route.useRouteContext();
-
-  const { data: researchesData } = useSuspenseQuery(
-    getResearchesQueryOptions({ ...search, lang }),
-  );
-
-  console.log("researchesData", researchesData);
-
-  const sorting = useMemo(() => {
-    if (!search.sort) return [];
-    return [{ id: search.sort, desc: search.order === "desc" }];
-  }, [search.sort, search.order]);
-
-  const { filters, setFilters } = useFilters(Route.id);
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const sortingState: SortingState = [
-        { id: filters.sort, desc: filters.order === "desc" },
-      ];
-      const newState = functionalUpdate(updater, sortingState);
-
-      startTransition(() => {
-        setFilters({
-          sort: newState[0]?.id,
-          order: newState[0]?.desc ? "desc" : "asc",
-        });
-      });
-    },
-    [setFilters, filters],
-  );
-
-  return (
-    <>
-      <div className="overflow-x-auto">
-        <Table
-          className="mt-4 text-sm"
-          columns={columns}
-          data={researchesData.data}
-          sorting={sorting}
-          onSortingChange={handleSortingChange}
-        />
-      </div>
-
-      <Pagination pagination={researchesData.meta.pagination} />
-    </>
-  );
-}
