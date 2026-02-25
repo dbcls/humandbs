@@ -1,5 +1,4 @@
 // src/utils/markdown.ts
-import { createIsomorphicFn } from "@tanstack/react-start";
 import type { Element, ElementContent, Root, RootContent } from "hast";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeRaw from "rehype-raw";

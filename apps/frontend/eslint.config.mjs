@@ -47,6 +47,7 @@ export default defineConfig([
       "@typescript-eslint/prefer-nullish-coalescing": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/only-throw-error": "off",
+      "@typescript-eslint/no-floating-promises": "off",
     },
   },
   ...file_scope(eslintTanstackRouter.configs["flat/recommended"]),

@@ -4,7 +4,7 @@
  * OpenAPI route specifications for Research API endpoints.
  * Uses unified response schemas with data + meta structure.
  */
-import { createRoute, z } from "@hono/zod-openapi"
+import { createRoute, z } from "@hono/zod-openapi";
 
 import {
   ErrorSpec401,
@@ -12,7 +12,7 @@ import {
   ErrorSpec404,
   ErrorSpec409,
   ErrorSpec500,
-} from "@/api/routes/errors"
+} from "@/api/routes/errors";
 import {
   CreateResearchRequestSchema,
   CreateVersionRequestSchema,
@@ -34,51 +34,65 @@ import {
   createUnifiedSearchResponseSchema,
   createUnifiedSingleReadOnlyResponseSchema,
   createUnifiedSingleResponseSchema,
-} from "@/api/types"
-import { RESEARCH_STATUS } from "@/api/types/workflow"
+} from "@/api/types";
+import { RESEARCH_STATUS } from "@/api/types/workflow";
 
 // === Unified Response Schemas ===
 
 // Research detail with optimistic locking
 const ResearchDetailResponseSchema = createUnifiedSingleResponseSchema(
   EsResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
-)
+);
 
 // Research response with optimistic locking (for create/update)
-const ResearchWithLockResponseSchema = createUnifiedSingleResponseSchema(ResearchResponseSchema)
+const ResearchWithLockResponseSchema = createUnifiedSingleResponseSchema(
+  ResearchResponseSchema,
+);
 
 // Research search/list response
-const ResearchSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(ResearchSummarySchema)
+const ResearchSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(
+  ResearchSummarySchema,
+);
 
 // Research versions list response
-const ResearchVersionsListResponseSchema = createUnifiedListResponseSchema(EsResearchVersionDocSchema)
+const ResearchVersionsListResponseSchema = createUnifiedListResponseSchema(
+  EsResearchVersionDocSchema,
+);
 
 // Version detail (read-only - historical versions)
-const VersionDetailResponseSchema = createUnifiedSingleReadOnlyResponseSchema(VersionResponseSchema)
+const VersionDetailResponseSchema = createUnifiedSingleReadOnlyResponseSchema(
+  VersionResponseSchema,
+);
 
 // Version create response (with lock)
-const VersionCreateResponseSchema = createUnifiedSingleResponseSchema(VersionResponseSchema)
+const VersionCreateResponseSchema = createUnifiedSingleResponseSchema(
+  VersionResponseSchema,
+);
 
 // Linked datasets list response
-const LinkedDatasetsListResponseSchema = createUnifiedListResponseSchema(EsDatasetDocSchema)
+const LinkedDatasetsListResponseSchema =
+  createUnifiedListResponseSchema(EsDatasetDocSchema);
 
 // Dataset create response (with lock)
-const DatasetCreateResponseSchema = createUnifiedSingleResponseSchema(EsDatasetDocSchema)
+const DatasetCreateResponseSchema =
+  createUnifiedSingleResponseSchema(EsDatasetDocSchema);
 
 // Workflow response (with lock)
 const WorkflowDataSchema = z.object({
   humId: z.string(),
   status: z.enum(RESEARCH_STATUS),
   dateModified: z.string(),
-})
-const WorkflowUnifiedResponseSchema = createUnifiedSingleResponseSchema(WorkflowDataSchema)
+});
+const WorkflowUnifiedResponseSchema =
+  createUnifiedSingleResponseSchema(WorkflowDataSchema);
 
 // UIDs response (with lock)
 const UidsDataSchema = z.object({
   humId: z.string(),
   uids: z.array(z.string()),
-})
-const UidsUnifiedResponseSchema = createUnifiedSingleResponseSchema(UidsDataSchema)
+});
+const UidsUnifiedResponseSchema =
+  createUnifiedSingleResponseSchema(UidsDataSchema);
 
 // === CRUD Routes ===
 
@@ -100,13 +114,15 @@ export const listResearchRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchSearchUnifiedResponseSchema } },
+      content: {
+        "application/json": { schema: ResearchSearchUnifiedResponseSchema },
+      },
       description: "List of research with optional facets",
     },
     403: ErrorSpec403,
     500: ErrorSpec500,
   },
-})
+});
 
 export const createResearchRoute = createRoute({
   method: "post",
@@ -123,18 +139,22 @@ export const createResearchRoute = createRoute({
 - All fields are optional; defaults are used for missing fields
 - Admin can assign uids (owner list) to grant edit access to other users`,
   request: {
-    body: { content: { "application/json": { schema: CreateResearchRequestSchema } } },
+    body: {
+      content: { "application/json": { schema: CreateResearchRequestSchema } },
+    },
   },
   responses: {
     201: {
-      content: { "application/json": { schema: ResearchWithLockResponseSchema } },
+      content: {
+        "application/json": { schema: ResearchWithLockResponseSchema },
+      },
       description: "Research created successfully",
     },
     401: ErrorSpec401,
     403: ErrorSpec403,
     500: ErrorSpec500,
   },
-})
+});
 
 export const getResearchRoute = createRoute({
   method: "get",
@@ -161,7 +181,7 @@ Returns the latest version by default. Use GET /research/{humId}/versions/{versi
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-})
+});
 
 export const updateResearchRoute = createRoute({
   method: "put",
@@ -177,11 +197,15 @@ export const updateResearchRoute = createRoute({
 **Note:** humId, url, versionIds, latestVersion, datePublished cannot be modified.`,
   request: {
     params: HumIdParamsSchema,
-    body: { content: { "application/json": { schema: UpdateResearchRequestSchema } } },
+    body: {
+      content: { "application/json": { schema: UpdateResearchRequestSchema } },
+    },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchWithLockResponseSchema } },
+      content: {
+        "application/json": { schema: ResearchWithLockResponseSchema },
+      },
       description: "Research updated successfully",
     },
     401: ErrorSpec401,
@@ -190,7 +214,7 @@ export const updateResearchRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 export const deleteResearchRoute = createRoute({
   method: "post",
@@ -216,7 +240,7 @@ export const deleteResearchRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 // === Version Routes ===
 
@@ -238,13 +262,15 @@ Returns version history including:
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchVersionsListResponseSchema } },
+      content: {
+        "application/json": { schema: ResearchVersionsListResponseSchema },
+      },
       description: "List of versions",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-})
+});
 
 export const getVersionRoute = createRoute({
   method: "get",
@@ -266,7 +292,7 @@ Version format: v1, v2, v3, etc.`,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-})
+});
 
 export const createVersionRoute = createRoute({
   method: "post",
@@ -284,7 +310,9 @@ export const createVersionRoute = createRoute({
 - Dataset versions are finalized when Research is approved`,
   request: {
     params: HumIdParamsSchema,
-    body: { content: { "application/json": { schema: CreateVersionRequestSchema } } },
+    body: {
+      content: { "application/json": { schema: CreateVersionRequestSchema } },
+    },
   },
   responses: {
     201: {
@@ -297,7 +325,7 @@ export const createVersionRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 // === Dataset Routes ===
 
@@ -318,13 +346,15 @@ export const listLinkedDatasetsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: LinkedDatasetsListResponseSchema } },
+      content: {
+        "application/json": { schema: LinkedDatasetsListResponseSchema },
+      },
       description: "List of linked datasets",
     },
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-})
+});
 
 export const createDatasetForResearchRoute = createRoute({
   method: "post",
@@ -347,18 +377,33 @@ export const createDatasetForResearchRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            datasetId: z.string().optional().describe("Dataset ID (auto-generated if not provided)"),
-            releaseDate: z.string().optional().describe("Release date (ISO 8601 format)"),
-            criteria: z.enum([
-              "Controlled-access (Type I)",
-              "Controlled-access (Type II)",
-              "Unrestricted-access",
-            ]).optional().describe("Data access criteria"),
-            typeOfData: z.object({
-              ja: z.string().nullable(),
-              en: z.string().nullable(),
-            }).optional().describe("Type of data in Japanese and English"),
-            experiments: z.array(ExperimentSchemaBase).optional().describe("Experiment data tables"),
+            datasetId: z
+              .string()
+              .optional()
+              .describe("Dataset ID (auto-generated if not provided)"),
+            releaseDate: z
+              .string()
+              .optional()
+              .describe("Release date (ISO 8601 format)"),
+            criteria: z
+              .enum([
+                "Controlled-access (Type I)",
+                "Controlled-access (Type II)",
+                "Unrestricted-access",
+              ])
+              .optional()
+              .describe("Data access criteria"),
+            typeOfData: z
+              .object({
+                ja: z.string().nullable(),
+                en: z.string().nullable(),
+              })
+              .optional()
+              .describe("Type of data in Japanese and English"),
+            experiments: z
+              .array(ExperimentSchemaBase)
+              .optional()
+              .describe("Experiment data tables"),
           }),
         },
       },
@@ -375,7 +420,7 @@ export const createDatasetForResearchRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 // === Workflow Routes ===
 
@@ -396,7 +441,9 @@ Returns 409 Conflict if Research is not in draft status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
+      content: {
+        "application/json": { schema: WorkflowUnifiedResponseSchema },
+      },
       description: "Status changed to review",
     },
     401: ErrorSpec401,
@@ -405,7 +452,7 @@ Returns 409 Conflict if Research is not in draft status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 export const approveRoute = createRoute({
   method: "post",
@@ -428,7 +475,9 @@ Returns 409 Conflict if Research is not in review status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
+      content: {
+        "application/json": { schema: WorkflowUnifiedResponseSchema },
+      },
       description: "Status changed to published",
     },
     401: ErrorSpec401,
@@ -437,7 +486,7 @@ Returns 409 Conflict if Research is not in review status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 export const rejectRoute = createRoute({
   method: "post",
@@ -458,7 +507,9 @@ Returns 409 Conflict if Research is not in review status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
+      content: {
+        "application/json": { schema: WorkflowUnifiedResponseSchema },
+      },
       description: "Status changed to draft",
     },
     401: ErrorSpec401,
@@ -467,7 +518,7 @@ Returns 409 Conflict if Research is not in review status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 export const unpublishRoute = createRoute({
   method: "post",
@@ -488,7 +539,9 @@ Returns 409 Conflict if Research is not in published status.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: WorkflowUnifiedResponseSchema } },
+      content: {
+        "application/json": { schema: WorkflowUnifiedResponseSchema },
+      },
       description: "Status changed to draft",
     },
     401: ErrorSpec401,
@@ -497,7 +550,7 @@ Returns 409 Conflict if Research is not in published status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});
 
 // === UIDs Route ===
 
@@ -518,7 +571,9 @@ export const updateUidsRoute = createRoute({
 **Optimistic Locking:** Include _seq_no and _primary_term from GET response.`,
   request: {
     params: HumIdParamsSchema,
-    body: { content: { "application/json": { schema: UpdateUidsRequestSchema } } },
+    body: {
+      content: { "application/json": { schema: UpdateUidsRequestSchema } },
+    },
   },
   responses: {
     200: {
@@ -531,4 +586,4 @@ export const updateUidsRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-})
+});

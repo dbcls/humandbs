@@ -9,8 +9,7 @@ import {
   type LangQuery,
   type LangVersionQuery,
   type ResearchDetail,
-  type ResearchSearchQuery,
-  type ResearchSearchResponse,
+  type ResearchListingQuery,
   ResearchSearchResponseSchema,
   type ResearchVersionsResponse,
 } from "@humandbs/backend/types";
@@ -86,9 +85,13 @@ axiosInstance.interceptors.response.use(
   },
 );
 
+type ResearchListPaginatedResponse = z.infer<
+  typeof ResearchSearchUnifiedResponseSchema
+>;
+
 interface APIService {
   getResearchListPaginated(query: {
-    search: ResearchSearchQuery;
+    search: ResearchListingQuery;
   }): Promise<ResearchListResponse>;
   getResearchDetail(query: {
     params: HumIdParams;

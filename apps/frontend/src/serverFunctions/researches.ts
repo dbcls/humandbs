@@ -2,8 +2,8 @@ import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
-  type ResearchSearchQuery,
-  ResearchSearchQuerySchema,
+  ResearchListingQuerySchema,
+  type ResearchListingQuery,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -12,11 +12,15 @@ import { z } from "zod";
 import { api } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 
-export const $getResearches = createServerFn()
-  .inputValidator(ResearchSearchQuerySchema)
-  .handler(({ data }) => api.getResearchListPaginated({ search: data }));
+import type { ResearchListResponse } from "../../../backend/src/api/types";
 
-export function getResearchesQueryOptions(query: ResearchSearchQuery) {
+export const $getResearches = createServerFn()
+  .inputValidator(ResearchListingQuerySchema)
+  .handler<Promise<ResearchListResponse>>(({ data }) =>
+    api.getResearchListPaginated({ search: data }),
+  );
+
+export function getResearchesQueryOptions(query: ResearchListingQuery) {
   return queryOptions({
     queryKey: ["researches", "list", query],
     queryFn: () => $getResearches({ data: query }),
@@ -36,11 +40,11 @@ export const $getResearchVersions = createServerFn()
     api.getResearchVersions({
       params: { humId: data.humId },
       search: { lang: data.lang },
-    })
+    }),
   );
 
 export function getResearchVersionsQueryOptions(
-  query: z.infer<typeof ResearchVersionsQuerySchema>
+  query: z.infer<typeof ResearchVersionsQuerySchema>,
 ) {
   return queryOptions({
     queryKey: ["researches", "versions", query],
@@ -67,7 +71,7 @@ export const $getResearch = createServerFn()
   });
 
 export function getResearchQueryOptions(
-  query: z.infer<typeof ResearchQuerySchema>
+  query: z.infer<typeof ResearchQuerySchema>,
 ) {
   return queryOptions({
     queryKey: ["researches", "byId", query],

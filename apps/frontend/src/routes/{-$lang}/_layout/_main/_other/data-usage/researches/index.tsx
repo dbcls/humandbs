@@ -1,7 +1,5 @@
-import {
-  ResearchSearchQuerySchema,
-  type ResearchSummary,
-} from "@humandbs/backend/types";
+import { ResearchListingQuerySchema } from "@humandbs/backend/types";
+import type { ResearchListResponse } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
@@ -24,12 +22,12 @@ import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 
-export const researchesSearchParamsSchema = ResearchSearchQuerySchema.omit({
+export const researchesSearchParamsSchema = ResearchListingQuerySchema.omit({
   lang: true,
 });
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/"
+  "/{-$lang}/_layout/_main/_other/data-usage/researches/",
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
@@ -40,9 +38,13 @@ export const Route = createFileRoute(
     order,
   }),
 
-  loader: async ({ deps, context }) => {
-    await context.queryClient.ensureQueryData(
-      getResearchesQueryOptions({ ...deps, lang: context.lang })
+  loader: ({ deps, context }) => {
+    context.queryClient.ensureQueryData(
+      getResearchesQueryOptions({
+        ...deps,
+        lang: context.lang,
+        includeRawHtml: false,
+      }),
     );
   },
   errorComponent: ({ error }) => {
@@ -80,7 +82,7 @@ function Caption() {
   );
 }
 
-const columnHelper = createColumnHelper<ResearchSummary>();
+const columnHelper = createColumnHelper<ResearchListResponse["data"][number]>();
 
 const columns = [
   columnHelper.accessor("humId", {
@@ -99,14 +101,16 @@ const columns = [
             </TextWithIcon>
           </Route.Link>
           <ul>
-            {ctx.row.original.datasetIds.map((dataset) => (
-              <li key={dataset}>
+            {ctx.row.original.datasets?.map((dataset) => (
+              <li key={dataset.datasetId}>
                 <Route.Link
                   className="text-secondary"
                   to="../datasets/$datasetId"
-                  params={{ datasetId: dataset }}
+                  params={{ datasetId: dataset.datasetId }}
                 >
-                  <TextWithIcon icon={FA_ICONS.dataset}>{dataset}</TextWithIcon>
+                  <TextWithIcon icon={FA_ICONS.dataset}>
+                    {dataset.datasetId}
+                  </TextWithIcon>
                 </Route.Link>
               </li>
             ))}
@@ -121,7 +125,7 @@ const columns = [
     header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
     cell: (ctx) => ctx.getValue(),
   }),
-  columnHelper.accessor("versions", {
+  columnHelper.accessor("versionIds", {
     id: "versions",
     header: "Versions",
     size: 10,
@@ -137,18 +141,18 @@ const columns = [
           </Route.Link>
         </li>
         {ctx.renderValue()?.map((version) => (
-          <li key={version.version}>
+          <li key={version}>
             <Route.Link
               to="$humId/$version"
               className="whitespace-nowrap"
               params={{
                 humId: ctx.row.original.humId,
-                version: version.version,
+                version: version,
               }}
             >
-              <span className="text-sm">{version.version}</span>
+              <span className="text-sm">{version}</span>
               <span className="text-2xs text-foreground-light ml-2">
-                {version.releaseDate}
+                {version}
               </span>
             </Route.Link>
           </li>
@@ -157,37 +161,37 @@ const columns = [
     ),
   }),
 
-  columnHelper.accessor("typeOfData", {
-    id: "typeOfData",
-    header: "データタイプ",
-    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
-    maxSize: 15,
-  }),
-  columnHelper.accessor("methods", {
-    id: "methods",
-    header: "手法",
-    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
-  }),
-  columnHelper.accessor("platforms", {
-    id: "platforms",
-    header: "プラットホーム",
-    cell: (ctx) => (
-      <ul>
-        {ctx.getValue().map((p) => (
-          <li
-            key={p}
-            className="text-sm"
-            dangerouslySetInnerHTML={{ __html: p }}
-          />
-        ))}
-      </ul>
-    ),
-  }),
-  columnHelper.accessor("targets", {
-    id: "targets",
-    header: "目的",
-    cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
-  }),
+  // columnHelper.accessor("datasets", {
+  //   id: "typeOfData",
+  //   header: "データタイプ",
+  //   cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
+  //   maxSize: 15,
+  // }),
+  // columnHelper.accessor("methods", {
+  //   id: "methods",
+  //   header: "手法",
+  //   cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
+  // }),
+  // columnHelper.accessor("platforms", {
+  //   id: "platforms",
+  //   header: "プラットホーム",
+  //   cell: (ctx) => (
+  //     <ul>
+  //       {ctx.getValue().map((p) => (
+  //         <li
+  //           key={p}
+  //           className="text-sm"
+  //           dangerouslySetInnerHTML={{ __html: p }}
+  //         />
+  //       ))}
+  //     </ul>
+  //   ),
+  // }),
+  // columnHelper.accessor("targets", {
+  //   id: "targets",
+  //   header: "目的",
+  //   cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
+  // }),
 ];
 // table using Tanstack table:
 
@@ -206,8 +210,10 @@ function CardContent() {
   const { lang } = Route.useRouteContext();
 
   const { data: researchesData } = useSuspenseQuery(
-    getResearchesQueryOptions({ ...search, lang })
+    getResearchesQueryOptions({ ...search, lang }),
   );
+
+  console.log("researchesData", researchesData);
 
   const sorting = useMemo(() => {
     if (!search.sort) return [];
@@ -216,12 +222,11 @@ function CardContent() {
 
   const { filters, setFilters } = useFilters(Route.id);
 
-  const sortingState: SortingState = [
-    { id: filters.sort, desc: filters.order === "desc" },
-  ];
-
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
+      const sortingState: SortingState = [
+        { id: filters.sort, desc: filters.order === "desc" },
+      ];
       const newState = functionalUpdate(updater, sortingState);
 
       startTransition(() => {
@@ -231,7 +236,7 @@ function CardContent() {
         });
       });
     },
-    [setFilters]
+    [setFilters, filters],
   );
 
   return (
