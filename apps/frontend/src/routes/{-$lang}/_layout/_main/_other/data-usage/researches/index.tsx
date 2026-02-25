@@ -1,6 +1,6 @@
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
   createColumnHelper,
@@ -8,7 +8,13 @@ import {
   type Updater,
 } from "@tanstack/react-table";
 import { Search } from "lucide-react";
-import { startTransition, Suspense, useCallback, useMemo } from "react";
+import {
+  startTransition,
+  Suspense,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
@@ -76,13 +82,17 @@ function Facets() {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
-  const { data: searchResults, isFetching } = useSuspenseQuery(
+  const { data: searchResults, isFetching } = useQuery(
     getResearchesQueryOptions({ ...search, lang, includeFacets: true }),
   );
 
   const { data: allFacetsData } = useSuspenseQuery(getAllFacetsQueryOptions());
 
   const { filters, toggleArrayFilter } = useFilters(Route.id);
+
+  // Optimistic local state: tracks pending checkbox changes before the URL updates.
+  // Shape: { "criteria:Unrestricted-access": true, "assayType:WGS": false, ... }
+  const [optimistic, setOptimistic] = useState<Record<string, boolean>>({});
 
   if (!allFacetsData.data) return null;
 
@@ -94,13 +104,19 @@ function Facets() {
           <AccordionContent>
             <ul>
               {value.map((val) => {
-                const activeValues =
+                const optimisticKey = `${key}:${val.value}`;
+                const urlActive = (
                   (filters.datasetFilters?.[
                     key as keyof typeof filters.datasetFilters
-                  ] as string[] | undefined) ?? [];
+                  ] as string[] | undefined) ?? []
+                ).includes(val.value);
+                const isChecked =
+                  optimisticKey in optimistic
+                    ? optimistic[optimisticKey]
+                    : urlActive;
 
                 const count =
-                  searchResults.facets?.[key]?.find(
+                  searchResults?.facets?.[key]?.find(
                     (f) => f.value === val.value,
                   )?.count ?? 0;
 
@@ -111,9 +127,13 @@ function Facets() {
                         {val.value}: {count}
                       </span>
                       <Checkbox
-                        checked={activeValues.includes(val.value)}
-                        disabled={count === 0}
+                        checked={isChecked}
                         onCheckedChange={(checked) => {
+                          // Update local state immediately for instant feedback
+                          setOptimistic((prev) => ({
+                            ...prev,
+                            [optimisticKey]: !!checked,
+                          }));
                           startTransition(() => {
                             toggleArrayFilter(
                               "datasetFilters",
