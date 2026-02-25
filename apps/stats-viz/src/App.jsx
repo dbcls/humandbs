@@ -24,6 +24,70 @@ function hashUnit(input) {
   return ((h >>> 0) % 10000) / 10000;
 }
 
+function computeVisibleAngleRange(
+  centerX,
+  centerY,
+  radius,
+  margin,
+  width,
+  height,
+  referenceAngle,
+) {
+  const samples = 720;
+  const angles = [];
+  for (let i = 0; i < samples; i += 1) {
+    const raw = (i / samples) * Math.PI * 2;
+    // Unwrap around the reference so intervals crossing 0/2PI stay contiguous.
+    const a = referenceAngle + angleDelta(referenceAngle, raw);
+    const x = centerX + Math.cos(a) * radius;
+    const y = centerY + Math.sin(a) * radius;
+    if (
+      x >= margin &&
+      x <= width - margin &&
+      y >= margin &&
+      y <= height - margin
+    ) {
+      angles.push(a);
+    }
+  }
+  if (angles.length === 0) {
+    return null;
+  }
+
+  const sorted = angles.sort((a, b) => a - b);
+  let bestStart = sorted[0];
+  let bestEnd = sorted[0];
+  let runStart = sorted[0];
+  let prev = sorted[0];
+  const step = ((Math.PI * 2) / samples) * 1.6;
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const curr = sorted[i];
+    if (curr - prev > step) {
+      if (prev - runStart > bestEnd - bestStart) {
+        bestStart = runStart;
+        bestEnd = prev;
+      }
+      runStart = curr;
+    }
+    prev = curr;
+  }
+  if (prev - runStart > bestEnd - bestStart) {
+    bestStart = runStart;
+    bestEnd = prev;
+  }
+
+  return { min: bestStart, max: bestEnd };
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function angleDelta(from, to) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
 function normalizeStatsResponse(payload) {
   const data = payload?.data ?? payload;
 
@@ -133,6 +197,7 @@ function PlanetChart({ stats }) {
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
+    const svgNode = svg.node();
     svg.selectAll("*").remove();
 
     const centerX = 110;
@@ -213,8 +278,6 @@ function PlanetChart({ stats }) {
     systems.forEach((system, i) => {
       const theta = (angleStops[i % angleStops.length] * Math.PI) / 180;
       const radius = ringStops[i % ringStops.length];
-      const x = centerX + Math.cos(theta) * radius;
-      const y = centerY + Math.sin(theta) * radius;
       const paletteIndex = i % palettes.length;
       const localSatellites = system.satellites.slice(0, 24);
       const satLayout = localSatellites.map((sat, satIdx) => {
@@ -249,23 +312,77 @@ function PlanetChart({ stats }) {
         maxOrbitRadius + maxSatRadius + 120,
       );
 
-      const baseSpeed = 0.02 + i * 0.002 + (i % 3) * 0.0015;
-      const recycleAngle = -1.78 + i * 0.06;
+      const speedSeed = hashUnit(`${system.facet}:hub-speed`);
+      const dirSeed = hashUnit(`${system.facet}:hub-dir`);
+      const phaseSeed = hashUnit(`${system.facet}:hub-phase`);
+      const direction = dirSeed < 0.5 ? -1 : 1;
+      const baseSpeedMag = 0.008 + i * 0.001 + speedSeed * 0.0018;
+      const baseSpeed = direction * baseSpeedMag;
+      const visibleArc = computeVisibleAngleRange(
+        centerX,
+        centerY,
+        radius,
+        Math.max(12, hubRadius + 6),
+        WIDTH,
+        HEIGHT,
+        theta,
+      );
+      const arcMin = visibleArc?.min ?? theta - 0.22;
+      const arcMax = visibleArc?.max ?? theta + 0.22;
+      const clampedTheta = Math.max(arcMin, Math.min(arcMax, theta));
+      const clampedX = centerX + Math.cos(clampedTheta) * radius;
+      const clampedY = centerY + Math.sin(clampedTheta) * radius;
 
       const hub = systemsLayer
         .append("g")
-        .attr("transform", `translate(${x},${y})`)
+        .attr("transform", `translate(${clampedX},${clampedY})`)
         .datum({
-          angle: theta,
+          angle: clampedTheta,
           radius,
           speed: baseSpeed,
-          recycleAngle,
+          baseSpeed,
+          noisePhase: phaseSeed * Math.PI * 2,
+          noiseAmp: 0.0012 + speedSeed * 0.0015,
+          minAngle: arcMin,
+          maxAngle: arcMax,
+          hubRadius,
           visibilityRadius,
-          wasVisible: true,
-          recycledAfterInvisible: false,
         });
 
       hubAnchors.push(hub);
+
+      const dragHub = d3
+        .drag()
+        .on("start", () => {
+          const d = hub.datum();
+          d.dragging = true;
+          d.speed = 0;
+          d.dragStartAngle = d.angle;
+          d.dragStartPointerAngle = null;
+          tooltip.style("opacity", 0);
+        })
+        .on("drag", (event) => {
+          const d = hub.datum();
+          const [px, py] = d3.pointer(event, svgNode);
+          const pointerAngle = Math.atan2(py - centerY, px - centerX);
+          if (d.dragStartPointerAngle === null) {
+            d.dragStartPointerAngle = pointerAngle;
+          }
+          const delta = angleDelta(d.dragStartPointerAngle, pointerAngle);
+          const nextAngle = d.dragStartAngle + delta;
+          d.angle = clamp(nextAngle, d.minAngle, d.maxAngle);
+          const tx = centerX + Math.cos(d.angle) * d.radius;
+          const ty = centerY + Math.sin(d.angle) * d.radius;
+          hub.attr("transform", `translate(${tx},${ty})`);
+        })
+        .on("end", () => {
+          const d = hub.datum();
+          d.dragging = false;
+          d.dragStartPointerAngle = null;
+          d.speed = d.baseSpeed * 0.5;
+        });
+
+      hub.call(dragHub);
 
       hub
         .append("circle")
@@ -290,7 +407,6 @@ function PlanetChart({ stats }) {
               <div class="tt-row"><span>Research</span><strong>${researchTotal}</strong></div>
               <div class="tt-row"><span>Dataset</span><strong>${datasetTotalFacet}</strong></div>
               <div class="tt-row"><span>Total</span><strong>${system.total}</strong></div>
-              <div class="tt-row"><span>Satellites</span><strong>${localSatellites.length}</strong></div>
               <div class="tt-divider"></div>
               ${satellitesRows}
             `);
@@ -299,15 +415,11 @@ function PlanetChart({ stats }) {
           tooltip.style("opacity", 0);
         });
 
-      const anchor = hubRadius > 66 ? "middle" : "start";
-      const textX = hubRadius > 66 ? 0 : hubRadius + 12;
-      const textY = hubRadius > 66 ? -hubRadius - 14 : 2;
-
       hub
         .append("text")
-        .attr("x", textX)
-        .attr("y", textY)
-        .attr("text-anchor", anchor)
+        .attr("x", 0)
+        .attr("y", -hubRadius - 12)
+        .attr("text-anchor", "middle")
         .attr("fill", "#01122b")
         .attr("font-size", 20)
         .attr("font-weight", 700)
@@ -322,8 +434,6 @@ function PlanetChart({ stats }) {
           const angle = seedAngle * Math.PI * 2;
           const sx = Math.cos(angle) * orbitRadius;
           const sy = Math.sin(angle) * orbitRadius;
-          const labelDx = sx >= 0 ? radiusPx + 6 : -radiusPx - 6;
-          const labelAnchor = sx >= 0 ? "start" : "end";
 
           const circle = satellitesLayer
             .append("circle")
@@ -343,9 +453,9 @@ function PlanetChart({ stats }) {
             label = satellitesLayer
               .append("text")
               .attr("class", "sat-label")
-              .attr("x", sx + labelDx)
-              .attr("y", sy + 4)
-              .attr("text-anchor", labelAnchor)
+              .attr("x", sx)
+              .attr("y", sy - radiusPx - 6)
+              .attr("text-anchor", "middle")
               .attr("fill", "#00132d")
               .attr("font-size", 11)
               .attr("font-weight", 700)
@@ -356,7 +466,7 @@ function PlanetChart({ stats }) {
             circle,
             label,
             angle,
-            speed: -(0.05 + seedSpeed * 0.2 + satIdx * 0.004),
+            speed: -(0.025 + seedSpeed * 0.1 + satIdx * 0.002),
             orbitRadius,
             radiusPx,
             labelPad: 6,
@@ -383,27 +493,69 @@ function PlanetChart({ stats }) {
       const dt = (elapsedMs - lastTickMs) / 1000;
       lastTickMs = elapsedMs;
 
-      hubAnchors.forEach((hub) => {
-        const d = hub.datum();
-        d.angle += d.speed * dt;
+      const hubData = hubAnchors.map((hub) => ({ hub, d: hub.datum() }));
 
-        let tx = centerX + Math.cos(d.angle) * d.radius;
-        let ty = centerY + Math.sin(d.angle) * d.radius;
-        const vr = d.visibilityRadius ?? 0;
-        const visible =
-          tx + vr >= 0 && tx - vr <= WIDTH && ty + vr >= 0 && ty - vr <= HEIGHT;
+      hubData.forEach(({ d }) => {
+        if (d.dragging) return;
+        const wobble =
+          Math.sin(elapsedMs * 0.00025 + d.noisePhase) * d.noiseAmp;
+        d.speed += (d.baseSpeed - d.speed) * Math.min(1, dt * 2.2);
+        d.speed += wobble * dt;
+      });
 
-        if (visible) {
-          d.wasVisible = true;
-          d.recycledAfterInvisible = false;
-        } else if (d.wasVisible && !d.recycledAfterInvisible) {
-          d.angle = d.recycleAngle;
-          d.recycledAfterInvisible = true;
-          d.wasVisible = false;
-          tx = centerX + Math.cos(d.angle) * d.radius;
-          ty = centerY + Math.sin(d.angle) * d.radius;
+      for (let i = 0; i < hubData.length; i += 1) {
+        for (let j = i + 1; j < hubData.length; j += 1) {
+          const a = hubData[i].d;
+          const b = hubData[j].d;
+          if (a.dragging || b.dragging) continue;
+          const ax = centerX + Math.cos(a.angle) * a.radius;
+          const ay = centerY + Math.sin(a.angle) * a.radius;
+          const bx = centerX + Math.cos(b.angle) * b.radius;
+          const by = centerY + Math.sin(b.angle) * b.radius;
+          const dx = ax - bx;
+          const dy = ay - by;
+          const dist = Math.hypot(dx, dy) || 0.0001;
+          const minDist = a.hubRadius + b.hubRadius + 30;
+          if (dist < minDist) {
+            const overlap = (minDist - dist) / minDist;
+            const taX = -Math.sin(a.angle);
+            const taY = Math.cos(a.angle);
+            const tbX = -Math.sin(b.angle);
+            const tbY = Math.cos(b.angle);
+            const pushA = dx * taX + dy * taY >= 0 ? 1 : -1;
+            const pushB = dx * tbX + dy * tbY >= 0 ? -1 : 1;
+            const impulse = overlap * 0.028;
+            a.speed += pushA * impulse;
+            b.speed += pushB * impulse;
+          }
         }
+      }
 
+      hubData.forEach(({ hub, d }) => {
+        if (!d.dragging) {
+          d.angle += d.speed * dt;
+          if (d.angle < d.minAngle) {
+            d.angle = d.minAngle;
+            const bounce = Math.max(
+              Math.abs(d.speed) * 0.75,
+              Math.abs(d.baseSpeed) * 0.8,
+              0.004,
+            );
+            d.baseSpeed = Math.abs(d.baseSpeed);
+            d.speed = bounce;
+          } else if (d.angle > d.maxAngle) {
+            d.angle = d.maxAngle;
+            const bounce = Math.max(
+              Math.abs(d.speed) * 0.75,
+              Math.abs(d.baseSpeed) * 0.8,
+              0.004,
+            );
+            d.baseSpeed = -Math.abs(d.baseSpeed);
+            d.speed = -bounce;
+          }
+        }
+        const tx = centerX + Math.cos(d.angle) * d.radius;
+        const ty = centerY + Math.sin(d.angle) * d.radius;
         hub.attr("transform", `translate(${tx},${ty})`);
       });
 
@@ -415,14 +567,10 @@ function PlanetChart({ stats }) {
 
           entry.circle.attr("cx", sx).attr("cy", sy);
           if (entry.label) {
-            const rightSide = sx >= 0;
-            const dx = rightSide
-              ? entry.radiusPx + entry.labelPad
-              : -entry.radiusPx - entry.labelPad;
             entry.label
-              .attr("x", sx + dx)
-              .attr("y", sy + 4)
-              .attr("text-anchor", rightSide ? "start" : "end");
+              .attr("x", sx)
+              .attr("y", sy - entry.radiusPx - entry.labelPad)
+              .attr("text-anchor", "middle");
           }
         });
       });
