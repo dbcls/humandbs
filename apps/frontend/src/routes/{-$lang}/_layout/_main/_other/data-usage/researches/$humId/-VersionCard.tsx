@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/accordion";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
+import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
 export function VersionCard({
   versionData,
@@ -156,7 +157,10 @@ function DatasetInfo({ dataset }: { dataset: DatasetDoc }) {
           >
             <AccordionTrigger className="flex items-center">
               <h3 className="text-secondary text-sm font-bold">
-                {ex.header[lang]?.text}
+                {extractStringFromPossiblyMultilingualValue(
+                  ex.data?.["Experimental Method"],
+                  lang,
+                )}
               </h3>
             </AccordionTrigger>
             <AccordionContent className="pt-5">
