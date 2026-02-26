@@ -61,7 +61,9 @@
     "dataset": "Dataset"
   },
   "Research-list": {
-    "research-list": "Research list"
+    "research-list": "Research list",
+    "date-published": "Date published",
+    "date-modified": "Date modified"
   },
   "Dataset-list": {
     "dataset-list": "Dataset List",

@@ -61,7 +61,9 @@
     "dataset": "データセット"
   },
   "Research-list": {
-    "research-list": "研究一覧"
+    "research-list": "研究一覧",
+    "date-published": "公開日付",
+    "date-modified": "更新日付"
   },
   "Dataset-list": {
     "dataset-list": "デーセット一覧",
