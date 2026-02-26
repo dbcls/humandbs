@@ -1,12 +1,12 @@
 import {
   DatasetIdParamsSchema,
-  DatasetListingQuerySchema,
   type DatasetVersionsResponse,
   LangQuerySchema,
   LangVersionQuerySchema,
   type DatasetSearchUnifiedResponse,
-  type DatasetListingQuery,
   type DatasetDetailResponse,
+  DatasetSearchBodySchema,
+  type DatasetSearchBody,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -16,18 +16,22 @@ import { api } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
-  .inputValidator(DatasetListingQuerySchema)
+  .inputValidator(DatasetSearchBodySchema)
   .handler<Promise<DatasetSearchUnifiedResponse>>(async ({ data }) => {
-    const paginated = await api.getDatasetsPaginated({ search: data });
+    const paginated = await api.searchDatasets(data);
 
     return paginated;
   });
 
-export function getDatasetsPaginatedQueryOptions(query: DatasetListingQuery) {
+export function getDatasetsPaginatedQueryOptions(
+  data: Omit<DatasetSearchBody, "includeFacets">,
+) {
   return queryOptions({
-    queryKey: ["datasets", "list", query],
+    queryKey: ["datasets", "list", data],
     queryFn: async () => {
-      return await $getDatasetsPaginated({ data: query });
+      return await $getDatasetsPaginated({
+        data: { ...data, includeFacets: true },
+      });
     },
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 60,

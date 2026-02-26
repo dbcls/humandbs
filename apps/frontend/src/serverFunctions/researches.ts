@@ -19,10 +19,12 @@ export const $getResearches = createServerFn()
     api.searchResearches(data),
   );
 
-export function getResearchesQueryOptions(query: ResearchSearchBody) {
+export function getResearchesQueryOptions(
+  data: Omit<ResearchSearchBody, "includeFacets">,
+) {
   return queryOptions({
-    queryKey: ["researches", "list", query],
-    queryFn: () => $getResearches({ data: query }),
+    queryKey: ["researches", "list", data],
+    queryFn: () => $getResearches({ data: { ...data, includeFacets: true } }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
     placeholderData: keepPreviousData,
   });

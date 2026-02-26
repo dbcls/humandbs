@@ -14,6 +14,7 @@ import {
   type ResearchDetailResponse,
   type ResearchSearchBody,
   type AllFacetsResponse,
+  type DatasetSearchBody,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import axios, { type AxiosError } from "axios";
@@ -111,6 +112,9 @@ interface APIService {
   searchResearches(
     query: ResearchSearchBody,
   ): Promise<ResearchSearchUnifiedResponse>;
+  searchDatasets(
+    query: DatasetSearchBody,
+  ): Promise<DatasetSearchUnifiedResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
 }
 
@@ -184,6 +188,15 @@ const api: APIService = {
     const res = await axiosInstance<ResearchSearchUnifiedResponse>({
       method: "POST",
       url: `/research/search`,
+      data: query,
+    });
+
+    return res.data;
+  },
+  async searchDatasets(query) {
+    const res = await axiosInstance<DatasetSearchUnifiedResponse>({
+      method: "POST",
+      url: `/dataset/search`,
       data: query,
     });
 
