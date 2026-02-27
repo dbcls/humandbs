@@ -19,11 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {beforeIcon}
           </div>
         ) : null}
-        {afterIcon ? (
-          <div className="pointer-events-none flex items-center pr-2">
-            {afterIcon}
-          </div>
-        ) : null}
+
         <input
           type={type}
           className={cn(
@@ -32,14 +28,19 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {
               "pl-2": !beforeIcon,
               "pr-2": !afterIcon,
-            }
+            },
           )}
           ref={ref}
           {...props}
         />
+        {afterIcon ? (
+          <div className="pointer-events-none flex items-center pr-2">
+            {afterIcon}
+          </div>
+        ) : null}
       </div>
     );
-  }
+  },
 );
 Input.displayName = "Input";
 

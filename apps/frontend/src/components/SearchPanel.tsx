@@ -610,16 +610,20 @@ function BooleanFacetItem({
               onUpdate(id, val === "true");
             }}
           >
-            <Label className="flex items-center gap-2">
-              <RadioGroupItem value="true" />
-              <span>True</span>{" "}
+            <Label className="flex items-center justify-between gap-2">
+              <span>
+                <RadioGroupItem value="true" />
+                <span className="ml-2">True</span>
+              </span>
               <span>
                 {facetCounts?.find((f) => f.value === "1")?.count || 0}
               </span>
             </Label>
-            <Label className="flex items-center gap-2">
-              <RadioGroupItem value="false" />
-              <span>False</span>
+            <Label className="flex items-center justify-between gap-2">
+              <span>
+                <RadioGroupItem value="false" />
+                <span className="ml-2">False</span>
+              </span>
               <span>
                 {facetCounts?.find((f) => f.value === "0")?.count || 0}
               </span>
