@@ -3,7 +3,6 @@ import { startTransition, useEffect, useState } from "react";
 
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export function SearchCaption({
   title,
@@ -43,27 +42,30 @@ export function SearchCaption({
           type="text"
           placeholder="検索"
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+          }}
           beforeIcon={<Search size={22} />}
           afterIcon={
             <>
-              {committedQuery && (
-                <Button
-                  variant={"plain"}
-                  className={cn("pointer-events-auto text-secondary-light")}
-                  onClick={() => {
-                    setInputValue("");
-                    startTransition(() => {
-                      onQueryChange(undefined);
-                    });
-                  }}
-                >
-                  <X size={22} />
-                </Button>
-              )}
+              <Button
+                variant={"plain"}
+                size={"icon"}
+                className={"pointer-events-auto text-secondary-light"}
+                disabled={!committedQuery}
+                onClick={() => {
+                  setInputValue("");
+                  startTransition(() => {
+                    onQueryChange(undefined);
+                  });
+                }}
+              >
+                <X size={22} />
+              </Button>
 
               <Button
                 variant={"plain"}
+                size={"icon"}
                 className="pointer-events-auto text-secondary-light"
                 onClick={onFilterClick}
               >
