@@ -277,99 +277,97 @@ export function SearchPanel({
         onClose={onClose}
       />
 
-      <div className="flex-1 px-3 pb-2">
-        <Accordion
-          type="multiple"
-          defaultValue={sections
-            .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-            .map((s) => s.id)}
-        >
-          {sections.map((section) => {
-            switch (section.type) {
-              case "checkbox":
-                return (
-                  <CheckboxFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={draft[section.id]}
-                    onUpdate={updateDraftField}
-                    options={section.options}
-                    facetCounts={facetCounts?.[section.id]}
-                    isFetching={isFetching}
-                  />
-                );
-              case "text":
-                return (
-                  <TextFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={(draft[section.id] as string) ?? ""}
-                    onUpdate={updateDraftField}
-                  />
-                );
-              case "text-filter":
-                return (
-                  <TextFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={(draft[section.id] as string) ?? ""}
-                    onUpdate={updateDraftField}
-                  />
-                );
-              case "boolean":
-                return (
-                  <BooleanFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={draft[section.id] as boolean | undefined}
-                    onUpdate={updateDraftField}
-                    facetCounts={facetCounts?.[section.id]}
-                  />
-                );
-              case "text-list":
-                return (
-                  <TextListFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={
-                      Array.isArray(draft[section.id])
-                        ? (draft[section.id] as string[])
-                        : []
-                    }
-                    onUpdate={updateDraftField}
-                  />
-                );
-              case "range":
-              case "range-filter":
-                return (
-                  <RangeFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={
-                      (draft[section.id] as RangeFilter | undefined) ?? {}
-                    }
-                    onUpdate={updateDraftField}
-                  />
-                );
-              case "date-range":
-              case "date-range-filter":
-                return (
-                  <DateRangeFacetItem
-                    key={section.id}
-                    id={section.id}
-                    draftValue={
-                      (draft[section.id] as RangeFilter | undefined) ?? {}
-                    }
-                    onUpdate={updateDraftField}
-                  />
-                );
-              default:
-                return null;
-            }
-          })}
-        </Accordion>
-      </div>
-
+      <Accordion
+        className="px-3 pb-2"
+        type="multiple"
+        defaultValue={sections
+          .filter((s) => normalizeValue(draft[s.id]) !== undefined)
+          .map((s) => s.id)}
+      >
+        {sections.map((section) => {
+          switch (section.type) {
+            case "checkbox":
+              return (
+                <CheckboxFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={draft[section.id]}
+                  onUpdate={updateDraftField}
+                  options={section.options}
+                  facetCounts={facetCounts?.[section.id]}
+                  isFetching={isFetching}
+                />
+              );
+            case "text":
+              return (
+                <TextFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={(draft[section.id] as string) ?? ""}
+                  onUpdate={updateDraftField}
+                />
+              );
+            case "text-filter":
+              return (
+                <TextFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={(draft[section.id] as string) ?? ""}
+                  onUpdate={updateDraftField}
+                />
+              );
+            case "boolean":
+              return (
+                <BooleanFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={draft[section.id] as boolean | undefined}
+                  onUpdate={updateDraftField}
+                  facetCounts={facetCounts?.[section.id]}
+                />
+              );
+            case "text-list":
+              return (
+                <TextListFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={
+                    Array.isArray(draft[section.id])
+                      ? (draft[section.id] as string[])
+                      : []
+                  }
+                  onUpdate={updateDraftField}
+                />
+              );
+            case "range":
+            case "range-filter":
+              return (
+                <RangeFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={
+                    (draft[section.id] as RangeFilter | undefined) ?? {}
+                  }
+                  onUpdate={updateDraftField}
+                />
+              );
+            case "date-range":
+            case "date-range-filter":
+              return (
+                <DateRangeFacetItem
+                  key={section.id}
+                  id={section.id}
+                  draftValue={
+                    (draft[section.id] as RangeFilter | undefined) ?? {}
+                  }
+                  onUpdate={updateDraftField}
+                />
+              );
+            default:
+              return null;
+          }
+        })}
+      </Accordion>
       <PanelFooter onSearch={handleSearch} onReset={handleResetAndApply} />
     </div>
   );
@@ -421,7 +419,11 @@ function PanelFooter({
         <Button variant="outline" onClick={onReset}>
           Reset
         </Button>
-        <Button variant="accent" onClick={onSearch}>
+        <Button
+          variant="accent"
+          className="flex-1 text-center block"
+          onClick={onSearch}
+        >
           Search
         </Button>
       </div>
