@@ -1,7 +1,7 @@
 export const cleanEmptyParams = <T extends Record<string, any>>(
-  search: T
+  search: T,
 ): T => {
-  const newSearch = { ...search };
+  const newSearch = Object.assign({}, search);
   Object.keys(newSearch).forEach((key) => {
     const value = newSearch[key];
     if (

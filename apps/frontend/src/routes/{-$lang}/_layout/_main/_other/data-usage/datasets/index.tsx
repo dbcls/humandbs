@@ -11,17 +11,18 @@ import {
 } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { Search } from "lucide-react";
-import { startTransition, Suspense, useState } from "react";
+import { startTransition, Suspense, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Pagination } from "@/components/Pagination";
-import { SearchPanel } from "@/components/SearchPanel";
+import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
+import { DATASET_FACET_CONFIG } from "@/config/facet-config";
 import { i18n } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -47,7 +48,6 @@ export const Route = createFileRoute(
         ...deps,
         sort: deps.sort ?? "datasetId",
         lang: context.lang,
-        includeFacets: true,
       }),
     );
     context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
@@ -81,13 +81,15 @@ function RouteComponent() {
           panelOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
-        <Suspense>
-          <FacetsAdapter
-            onClose={() => {
-              setPanelOpen(false);
-            }}
-          />
-        </Suspense>
+        {panelOpen ? (
+          <Suspense>
+            <FacetsAdapter
+              onClose={() => {
+                setPanelOpen(false);
+              }}
+            />
+          </Suspense>
+        ) : null}
       </div>
     </Card>
   );
@@ -143,19 +145,78 @@ function Caption({ onFilterClick }: { onFilterClick: () => void }) {
 }
 
 function FacetsAdapter({ onClose }: { onClose: () => void }) {
-  const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
+
+  const { filters, setFilters } = useFilters(Route.id);
 
   const { data: searchResults, isFetching } = useQuery(
     getDatasetsPaginatedQueryOptions({
-      ...search,
-
+      ...filters,
       lang,
-      includeFacets: true,
     }),
   );
 
-  const { filters, setFilters, toggleArrayFilter } = useFilters(Route.id);
+  const { data: allFacetsData } = useSuspenseQuery(getAllFacetsQueryOptions());
+
+  const sections = useMemo((): SectionConfig[] => {
+    const activeFilters = filters.filters ?? {};
+    const groupKey = "filters";
+    const result: SectionConfig[] = [];
+
+    for (const [key, facetType] of Object.entries(DATASET_FACET_CONFIG)) {
+      const activeValue = activeFilters[key as keyof typeof activeFilters];
+
+      switch (facetType) {
+        case "checkbox":
+          result.push({
+            type: "checkbox",
+            id: key,
+            groupKey,
+            value: (activeValue as string[]) ?? [],
+            options:
+              allFacetsData?.data[key]?.map(
+                (f: { value: string }) => f.value,
+              ) ?? [],
+          } as SectionConfig);
+          break;
+        case "text":
+          result.push({
+            type: "text",
+            id: key,
+            groupKey,
+            value: (activeValue as string) ?? "",
+          } as SectionConfig);
+          break;
+        case "text-list":
+          result.push({
+            type: "text-list",
+            id: key,
+            groupKey,
+            value: (activeValue as string[]) ?? [],
+          } as SectionConfig);
+          break;
+        case "boolean":
+          result.push({
+            type: "boolean",
+            id: key,
+            groupKey,
+            value: activeValue as boolean | undefined,
+          } as SectionConfig);
+          break;
+        case "range":
+        case "date-range":
+          result.push({
+            type: facetType,
+            id: key,
+            groupKey,
+            value: (activeValue as { min?: string | number; max?: string | number }) ?? {},
+          } as SectionConfig);
+          break;
+      }
+    }
+
+    return result;
+  }, [filters.filters, allFacetsData]);
 
   return (
     <SearchPanel
@@ -163,14 +224,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
       isFetching={isFetching}
       facetCounts={searchResults?.facets}
       onSetFilters={setFilters}
-      onToggleArrayFilter={toggleArrayFilter}
-      sections={[
-        {
-          type: "checkbox-facets",
-          groupKey: "filters",
-          activeFilters: filters.filters ?? {},
-        },
-      ]}
+      sections={sections}
     />
   );
 }
