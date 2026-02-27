@@ -112,7 +112,18 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   const sections = useMemo((): SectionConfig[] => {
     const activeFilters = filters.datasetFilters ?? {};
     const groupKey = "datasetFilters";
-    const result: SectionConfig[] = [];
+    const result: SectionConfig[] = [
+      {
+        type: "date-range-filter",
+        id: "datePublished",
+        value: filters.datePublished ?? {},
+      },
+      {
+        type: "date-range-filter",
+        id: "dateModified",
+        value: filters.dateModified ?? {},
+      },
+    ];
 
     for (const [key, facetType] of Object.entries(DATASET_FACET_CONFIG)) {
       const activeValue = activeFilters[key as keyof typeof activeFilters];
@@ -125,7 +136,9 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
             groupKey,
             value: (activeValue as string[]) ?? [],
             options:
-              allFacetsData?.data[key]?.map((f: { value: string }) => f.value) ?? [],
+              allFacetsData?.data[key]?.map(
+                (f: { value: string }) => f.value,
+              ) ?? [],
           } as SectionConfig);
           break;
         case "text":
@@ -158,14 +171,18 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
             type: facetType,
             id: key,
             groupKey,
-            value: (activeValue as { min?: string | number; max?: string | number }) ?? {},
+            value:
+              (activeValue as {
+                min?: string | number;
+                max?: string | number;
+              }) ?? {},
           } as SectionConfig);
           break;
       }
     }
 
     return result;
-  }, [filters.datasetFilters, allFacetsData]);
+  }, [filters, allFacetsData]);
 
   return (
     <SearchPanel
@@ -269,7 +286,7 @@ function Caption({ onFilterClick }: { onFilterClick: () => void }) {
               const value = target.value;
 
               startTransition(() => {
-                setFilters({ q: value || undefined });
+                setFilters({ query: value || undefined });
               });
             }
           }}

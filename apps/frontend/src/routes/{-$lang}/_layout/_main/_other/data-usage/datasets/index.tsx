@@ -134,7 +134,7 @@ function Caption({ onFilterClick }: { onFilterClick: () => void }) {
               const value = target.value;
 
               startTransition(() => {
-                setFilters({ q: value || undefined });
+                setFilters({ query: value || undefined });
               });
             }
           }}
@@ -161,7 +161,9 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   const sections = useMemo((): SectionConfig[] => {
     const activeFilters = filters.filters ?? {};
     const groupKey = "filters";
-    const result: SectionConfig[] = [];
+    const result: SectionConfig[] = [
+      { type: "text-filter", id: "humId", value: filters.humId ?? "" },
+    ];
 
     for (const [key, facetType] of Object.entries(DATASET_FACET_CONFIG)) {
       const activeValue = activeFilters[key as keyof typeof activeFilters];
@@ -209,14 +211,18 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
             type: facetType,
             id: key,
             groupKey,
-            value: (activeValue as { min?: string | number; max?: string | number }) ?? {},
+            value:
+              (activeValue as {
+                min?: string | number;
+                max?: string | number;
+              }) ?? {},
           } as SectionConfig);
           break;
       }
     }
 
     return result;
-  }, [filters.filters, allFacetsData]);
+  }, [filters, allFacetsData]);
 
   return (
     <SearchPanel

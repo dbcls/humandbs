@@ -54,10 +54,13 @@ export type DateRangeFacetConfig = {
 export interface RangeFilterConfig {
   type: "range-filter";
   id: string;
-  value: {
-    min: number;
-    max: number;
-  };
+  value: RangeFilter;
+}
+
+export interface DateRangeFilterConfig {
+  type: "date-range-filter";
+  id: string;
+  value: RangeFilter;
 }
 
 export interface TextFilterConfig {
@@ -111,6 +114,7 @@ export type SectionConfig =
   | RangeFacetConfig
   | DateRangeFacetConfig
   | RangeFilterConfig
+  | DateRangeFilterConfig
   | TextFilterConfig;
 
 // === Helper: check if a section has a groupKey (facet configs do, top-level filters don't) ===
@@ -348,6 +352,7 @@ export function SearchPanel({
                   />
                 );
               case "date-range":
+              case "date-range-filter":
                 return (
                   <DateRangeFacetItem
                     key={section.id}
