@@ -102,6 +102,9 @@ export const $$getSession = createServerOnlyFn((): Session | null => {
 });
 
 export const $$getJWT = createServerOnlyFn(() => {
+  if (process.env.AUTH_DEV_BYPASS === "true") {
+    return process.env.AUTH_DEV_USER_ID ?? "dev-user-id";
+  }
   const session = $$getSession();
   return session?.access_token ?? null;
 });

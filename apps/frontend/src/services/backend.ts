@@ -33,7 +33,7 @@ import { z } from "zod";
 declare global {
   interface Error {
     status?: number;
-    data?: any;
+    data?: unknown;
   }
 }
 
@@ -120,12 +120,15 @@ interface APIService {
   }): Promise<DatasetVersionsResponse>;
   searchResearches(
     query: ResearchSearchBody,
+    accessToken?: string,
   ): Promise<ResearchSearchUnifiedResponse>;
   searchDatasets(
     query: DatasetSearchBody,
   ): Promise<DatasetSearchUnifiedResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
-  createResearch(body: CreateResearchRequest): Promise<ResearchWithLockResponse>;
+  createResearch(
+    body: CreateResearchRequest,
+  ): Promise<ResearchWithLockResponse>;
   updateResearch(
     humId: string,
     body: UpdateResearchRequest,
@@ -215,11 +218,14 @@ const api: APIService = {
     return res.data;
   },
 
-  async searchResearches(query) {
+  async searchResearches(query, accessToken) {
     const res = await axiosInstance<ResearchSearchUnifiedResponse>({
       method: "POST",
       url: `/research/search`,
       data: query,
+      ...(accessToken
+        ? { headers: { Authorization: `Bearer ${accessToken}` } }
+        : {}),
     });
 
     return res.data;

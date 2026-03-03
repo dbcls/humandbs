@@ -29,10 +29,10 @@ function getDevBypassResponse(): AuthUserResponse | null {
     roleEnv === "editor" ? USER_ROLES.EDITOR : USER_ROLES.ADMIN;
 
   const mockUser: SessionUser = {
-    id: "dev-user-id",
-    name: `Dev User (${role})`,
-    email: "dev@localhost",
-    username: "devuser",
+    id: process.env.AUTH_DEV_USER_ID ?? "dev-user-id",
+    name: process.env.AUTH_DEV_NAME ?? `Dev User (${role})`,
+    email: process.env.AUTH_DEV_EMAIL ?? "dev@localhost",
+    username: process.env.AUTH_DEV_USERNAME ?? "devuser",
     role,
   };
 
@@ -50,7 +50,7 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
   async () => {
     // Check for dev bypass first
     const bypassResponse = getDevBypassResponse();
-    if (bypassResponse) {
+    if (bypassResponse && process.env.NODE_ENV === "development") {
       return bypassResponse;
     }
 

@@ -12,12 +12,14 @@ import { z } from "zod";
 
 import { api } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
+import { $$getJWT } from "@/utils/jwt-helpers";
 
 export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchBodySchema)
-  .handler<Promise<ResearchSearchUnifiedResponse>>(({ data }) =>
-    api.searchResearches(data),
-  );
+  .handler<Promise<ResearchSearchUnifiedResponse>>(({ data }) => {
+    const accessToken = $$getJWT();
+    return api.searchResearches(data, accessToken ?? undefined);
+  });
 
 export function getResearchesQueryOptions(
   data: Omit<ResearchSearchBody, "includeFacets">,
