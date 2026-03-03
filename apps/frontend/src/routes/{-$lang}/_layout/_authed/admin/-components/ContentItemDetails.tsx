@@ -6,7 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Save } from "lucide-react";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useRef } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
@@ -52,7 +52,7 @@ function useContentItemDetailsForm({
   initialValues: FormData;
   id: string;
 }) {
-  const [defaultValues, setDefaultValues] = useState(initialValues);
+  // const [defaultValues, setDefaultValues] = useState(initialValues);
 
   const { mutate: saveDraft } = useSaveDraft(id);
 
@@ -63,7 +63,7 @@ function useContentItemDetailsForm({
   const isIgnoreRef = useRef(false);
 
   const form = useAppForm({
-    defaultValues,
+    defaultValues: initialValues,
     onSubmitMeta: defaultMeta,
     onSubmit: async ({ value, meta, formApi }) => {
       if (isIgnoreRef.current) {
@@ -109,7 +109,7 @@ function useContentItemDetailsForm({
                 },
               },
             };
-            setDefaultValues(resetValue);
+            // setDefaultValues(resetValue);
             formApi.reset(resetValue, { keepDefaultValues: false });
           } finally {
             isIgnoreRef.current = false;
@@ -131,8 +131,23 @@ function useContentItemDetailsForm({
 
           try {
             await publishDraft({ lang: value.lang });
-            setDefaultValues(value);
-            formApi.reset(value, { keepDefaultValues: false });
+            // setDefaultValues(value);
+
+            const newValue = {
+              ...value,
+              translation: {
+                ...value.translation,
+                [value.lang]: {
+                  ...value.translation[value.lang],
+                  published: {
+                    title: title ?? "",
+                    content: content ?? "",
+                  },
+                },
+              },
+            };
+
+            formApi.reset(newValue, { keepDefaultValues: false });
           } finally {
             isIgnoreRef.current = false;
           }
@@ -166,15 +181,29 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
     id,
   });
 
-  const isDraftChanged = useStore(
-    form.store,
-    (state) =>
+  const isDraftChanged = useStore(form.store, (state) => {
+    console.table({
+      draft: {
+        content: state.values.translation[state.values.lang]?.draft?.content,
+        title: state.values.translation[state.values.lang]?.draft?.title,
+      },
+      published: {
+        content:
+          state.values.translation[state.values.lang]?.published?.content,
+        title: state.values.translation[state.values.lang]?.published?.title,
+      },
+    });
+
+    return (
       state.isValid &&
       (state.values.translation[state.values.lang]?.draft?.content !==
         state.values.translation[state.values.lang]?.published?.content ||
         state.values.translation[state.values.lang]?.draft?.title !==
-          state.values.translation[state.values.lang]?.draft?.title),
-  );
+          state.values.translation[state.values.lang]?.published?.title)
+    );
+  });
+
+  console.log("isDraftChanged", isDraftChanged);
 
   return (
     <Card
@@ -260,23 +289,26 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             <Button
               variant={"outline"}
               disabled={!isDraftChanged}
-              onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
+              onClick={() => {
+                form.handleSubmit({ submitAction: "resetDraft" });
+              }}
             >
               Reset
             </Button>
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                onClick={() => form.handleSubmit({ submitAction: "publish" })}
-                className="gap-1 self-end"
-                size={"lg"}
-                variant={"accent"}
-                disabled={!isDraftChanged}
-              >
-                <Save className="size-5" />
-                Publish
-              </Button>
-            </div>
+
+            <Button
+              type="submit"
+              onClick={() => {
+                form.handleSubmit({ submitAction: "publish" });
+              }}
+              className="gap-1 self-end"
+              size={"lg"}
+              variant={"accent"}
+              disabled={!isDraftChanged}
+            >
+              <Save className="size-5" />
+              Publish
+            </Button>
           </div>
         </TabsContent>
         <TabsContent
@@ -335,7 +367,9 @@ function usePublishDraft(id: string) {
             [data.lang]: {
               ...old.translations[data.lang],
               published: {
-                ...old.translations[data.lang]?.published,
+                status: "published",
+                updatedAt: new Date(),
+                title: old.translations[data.lang]?.draft?.title,
                 content: old.translations[data.lang]?.draft?.content,
               },
             },
@@ -375,6 +409,24 @@ function usePublishDraft(id: string) {
       });
 
       return { previousContentItem, previousContentsList };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousContentItem) {
+        queryClient.setQueryData(
+          contentItemQO.queryKey,
+          context.previousContentItem,
+        );
+      }
+      if (context?.previousContentsList) {
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.previousContentsList,
+        );
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
     },
   });
 }
@@ -494,11 +546,15 @@ function useResetDraft(id: string) {
         }
 
         return {
+          ...old,
           translations: {
             ...old.translations,
             [lang]: {
               ...old.translations[lang],
-              draft: old.translations[lang]?.published || {},
+              draft: {
+                title: old.translations[lang]?.published?.title ?? "",
+                content: old.translations[lang]?.published?.content ?? "",
+              },
             },
           },
         };

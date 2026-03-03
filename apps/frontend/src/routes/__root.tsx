@@ -8,6 +8,7 @@ import {
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import * as React from "react";
 
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { NotFound } from "@/components/NotFound";
 import { SessionRefreshHandler } from "@/components/SessionRefreshHandler";
@@ -84,7 +85,7 @@ function RootDocument() {
         <Outlet />
         <TanStackRouterDevtools position="bottom-left" />
         <SessionRefreshHandler session={session} />
-        {/*<ConfirmationDialog />*/}
+        <ConfirmationDialog />
         <Scripts />
       </body>
     </html>

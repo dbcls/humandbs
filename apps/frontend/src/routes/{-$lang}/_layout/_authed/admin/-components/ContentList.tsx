@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import z from "zod";
+import { z } from "zod";
 
 import { Input } from "@/components/Input";
 import { ListItem } from "@/components/ListItem";
@@ -181,6 +181,7 @@ function ContentListItem({
       <TrashButton
         onClick={(e) => {
           e.stopPropagation();
+          console.log("item id", item.id);
           onClickDelete(item.id);
         }}
       />
@@ -194,7 +195,7 @@ function AddNewDialog() {
   const queryClient = useQueryClient();
   const contentsListQO = getContentsListQueryOptions();
 
-  const { mutate: createContent } = useMutation({
+  const { mutateAsync: createContent } = useMutation({
     mutationFn: (id: string) => $createContentItem({ data: { id } }),
 
     onMutate: async (id) => {
@@ -229,8 +230,9 @@ function AddNewDialog() {
       contentId: "",
     },
 
-    onSubmit: ({ value }) => {
-      createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
+    onSubmit: async ({ value }) => {
+      await createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
+      setOpen(false);
     },
   });
 
@@ -250,14 +252,9 @@ function AddNewDialog() {
       <DialogContent>
         <DialogTitle className="text-base">Add Content</DialogTitle>
         <form
-          onSubmit={async (e) => {
+          onSubmit={(e) => {
             e.preventDefault();
-            e.stopPropagation();
-            await form.handleSubmit();
-
-            if (form.state.fieldMeta.contentId?.errors.length === 0) {
-              setOpen(false);
-            }
+            form.handleSubmit();
           }}
           className="flex flex-col gap-2"
         >
@@ -274,7 +271,7 @@ function AddNewDialog() {
                   },
                 ),
 
-              onChangeAsyncDebounceMs: 1000,
+              onChangeAsyncDebounceMs: 500,
               onChangeAsync: z
                 .string()
                 .refine((val) => validateContentId({ data: val }), {

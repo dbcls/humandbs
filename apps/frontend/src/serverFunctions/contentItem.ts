@@ -20,7 +20,6 @@ import {
   type User,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 export function getContentsListQueryOptions() {
@@ -141,25 +140,36 @@ export const $getContentItem = createServerFn({ method: "GET" })
       },
     });
 
+    const translations =
+      content?.translations.reduce(
+        (acc, curr) => {
+          const { title, content, updatedAt, status } = curr;
+          const locale = curr.lang as Locale;
+          if (!acc[locale]) acc[locale] = {};
+
+          acc[locale][status] = {
+            title,
+            content,
+            updatedAt,
+            status,
+          };
+          return acc;
+        },
+        {} as ContentItemResponse["translations"],
+      ) || ({} as ContentItemResponse["translations"]);
+
+    const presentLocales = Object.keys(translations) as Locale[];
+
+    // copy published content into draft if no draft present
+    for (const locale of presentLocales) {
+      if (!translations[locale]?.draft && !!translations[locale]?.published) {
+        translations[locale].draft = { ...translations[locale].published };
+      }
+    }
+
     return {
       author: content?.author,
-      translations:
-        content?.translations.reduce(
-          (acc, curr) => {
-            const { title, content, updatedAt, status } = curr;
-            const locale = curr.lang as Locale;
-            if (!acc[locale]) acc[locale] = {};
-
-            acc[locale][status] = {
-              title,
-              content,
-              updatedAt,
-              status,
-            };
-            return acc;
-          },
-          {} as ContentItemResponse["translations"],
-        ) || ({} as ContentItemResponse["translations"]),
+      translations,
     };
   });
 
@@ -274,13 +284,28 @@ export const $createContentItem = createServerFn({ method: "POST" })
 
     const user = context.user;
 
-    const newContentItem = await db
-      .insert(contentItem)
-      .values({
-        id,
-        authorId: user.id,
-      })
-      .returning();
+    const newContentItem = await db.transaction(async (tx) => {
+      const newContentItem = await tx
+        .insert(contentItem)
+        .values({
+          id,
+          authorId: user.id,
+        })
+        .returning();
+
+      // add empty contents
+      for (const locale of i18n.locales) {
+        await tx.insert(contentTranslation).values({
+          contentId: newContentItem[0].id,
+          lang: locale,
+          status: DOCUMENT_VERSION_STATUS.DRAFT,
+          title: "",
+          content: "",
+        });
+      }
+
+      return newContentItem;
+    });
 
     return newContentItem[0];
   });

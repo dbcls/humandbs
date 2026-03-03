@@ -197,6 +197,15 @@ export function groupDocVersion(
         content: verStatusLang.content ?? "",
       };
     }
+
+    // copy published content in draft
+    if (!translation.draft) {
+      translation.draft = {
+        content: translation.published?.content ?? "",
+        title: translation.published?.title ?? "",
+      };
+    }
+
     result.translations[verStatusLang.locale] = translation;
   }
   return result;
