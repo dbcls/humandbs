@@ -46,7 +46,7 @@ function Card({
       ) : null}
       <div
         className={cn(
-          "relative",
+          "relative min-h-0",
           {
             "mt-3": !!caption && captionSize === "sm",
             "mt-10": !!caption && captionSize === "lg",

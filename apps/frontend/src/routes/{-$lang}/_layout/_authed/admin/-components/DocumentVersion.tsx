@@ -118,7 +118,7 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
         </span>
       }
     >
-      <Tabs className="flex-1" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
+      <Tabs className="flex-1 min-h-0" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
         <TabsList>
           <TabsTrigger
             className="flex items-center gap-2"
@@ -209,7 +209,7 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
           </div>
         </TabsContent>
         <TabsContent
-          className="flex min-h-0 flex-1 shrink-0 flex-col gap-2 overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
           value={DOCUMENT_VERSION_STATUS.PUBLISHED}
         >
           <form.Subscribe selector={(state) => state.values.lang}>
