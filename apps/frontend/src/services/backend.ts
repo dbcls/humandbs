@@ -15,6 +15,15 @@ import {
   type ResearchSearchBody,
   type AllFacetsResponse,
   type DatasetSearchBody,
+  type CreateResearchRequest,
+  type UpdateResearchRequest,
+  type UpdateUidsRequest,
+  type CreateVersionRequest,
+  type CreateDatasetForResearchRequest,
+  type ResearchWithLockResponse,
+  type WorkflowUnifiedResponse,
+  type VersionCreateResponse,
+  type DatasetCreateResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import axios, { type AxiosError } from "axios";
@@ -116,6 +125,28 @@ interface APIService {
     query: DatasetSearchBody,
   ): Promise<DatasetSearchUnifiedResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
+  createResearch(body: CreateResearchRequest): Promise<ResearchWithLockResponse>;
+  updateResearch(
+    humId: string,
+    body: UpdateResearchRequest,
+  ): Promise<ResearchWithLockResponse>;
+  deleteResearch(humId: string): Promise<void>;
+  updateResearchUids(
+    humId: string,
+    body: UpdateUidsRequest,
+  ): Promise<ResearchWithLockResponse>;
+  createResearchVersion(
+    humId: string,
+    body: CreateVersionRequest,
+  ): Promise<VersionCreateResponse>;
+  submitResearch(humId: string): Promise<WorkflowUnifiedResponse>;
+  approveResearch(humId: string): Promise<WorkflowUnifiedResponse>;
+  rejectResearch(humId: string): Promise<WorkflowUnifiedResponse>;
+  unpublishResearch(humId: string): Promise<WorkflowUnifiedResponse>;
+  createDatasetForResearch(
+    humId: string,
+    body: CreateDatasetForResearchRequest,
+  ): Promise<DatasetCreateResponse>;
 }
 
 export const FixedPaginationSchema =
@@ -205,6 +236,78 @@ const api: APIService = {
   async getAllFacets() {
     const res = await axiosInstance.get<{ data: AllFacetsResponse }>(`/facets`);
 
+    return res.data;
+  },
+
+  async createResearch(body) {
+    const res = await axiosInstance.post<ResearchWithLockResponse>(
+      `/research/new`,
+      body,
+    );
+    return res.data;
+  },
+
+  async updateResearch(humId, body) {
+    const res = await axiosInstance.put<ResearchWithLockResponse>(
+      `/research/${humId}/update`,
+      body,
+    );
+    return res.data;
+  },
+
+  async deleteResearch(humId) {
+    await axiosInstance.post(`/research/${humId}/delete`);
+  },
+
+  async updateResearchUids(humId, body) {
+    const res = await axiosInstance.put<ResearchWithLockResponse>(
+      `/research/${humId}/uids`,
+      body,
+    );
+    return res.data;
+  },
+
+  async createResearchVersion(humId, body) {
+    const res = await axiosInstance.post<VersionCreateResponse>(
+      `/research/${humId}/versions/new`,
+      body,
+    );
+    return res.data;
+  },
+
+  async submitResearch(humId) {
+    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
+      `/research/${humId}/submit`,
+    );
+    return res.data;
+  },
+
+  async approveResearch(humId) {
+    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
+      `/research/${humId}/approve`,
+    );
+    return res.data;
+  },
+
+  async rejectResearch(humId) {
+    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
+      `/research/${humId}/reject`,
+    );
+    return res.data;
+  },
+
+  async unpublishResearch(humId) {
+    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
+      `/research/${humId}/unpublish`,
+    );
+    return res.data;
+  },
+
+  async createDatasetForResearch(humId, body) {
+    const res = await axiosInstance.post<DatasetCreateResponse>(
+      `/research/${humId}/dataset/new`,
+      body,
+    );
     return res.data;
   },
 };
