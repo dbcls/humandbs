@@ -32,6 +32,7 @@ import {
   getDocumentVersionQueryOptions,
   $saveDocumentVersionDraft,
   $publishDocumentVersionDraft,
+  $unpublishDocumentVersion,
   $resetDocumentVersionDraft,
   $createDocumentVersion,
 } from "@/serverFunctions/documentVersion";
@@ -79,13 +80,18 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
     selectedVersionNumber ?? 0,
   );
 
+  const { mutate: unpublishVersion, isPending: isUnpublishPending } =
+    useUnpublishVersion(contentId, selectedVersionNumber ?? 0);
+
+  const versionNumber = selectedVersionNumber ?? 0;
+
   const form = useDocumentVersionForm({
     initialValues: {
       lang: i18n.defaultLocale,
       translations: selectedVersionContent.translations,
     },
     contentId,
-    versionNumber: selectedVersionNumber ?? 0,
+    versionNumber,
   });
 
   const isDraftChanged = useStore(
@@ -118,7 +124,10 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
         </span>
       }
     >
-      <Tabs className="flex-1 min-h-0" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
+      <Tabs
+        className="flex-1 min-h-0"
+        defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+      >
         <TabsList>
           <TabsTrigger
             className="flex items-center gap-2"
@@ -138,7 +147,9 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
           >
             <span>Live</span>
             <div className="w-4">
-              {isPublishPending && <Loader2 className="size-4 animate-spin" />}
+              {(isPublishPending || isUnpublishPending) && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
             </div>
           </TabsTrigger>
         </TabsList>
@@ -181,9 +192,10 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
             )}
           </form.Subscribe>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-2">
             <Button
               variant={"outline"}
+              size={"lg"}
               disabled={!isDraftChanged}
               onClick={() => {
                 form.handleSubmit({ submitAction: "resetDraft" });
@@ -221,12 +233,27 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
               }
 
               return (
-                <MarkdownClientPreview
-                  source={
-                    selectedVersionContent.translations[lang]?.published
-                      ?.content ?? ""
-                  }
-                />
+                <>
+                  <MarkdownClientPreview
+                    source={
+                      selectedVersionContent.translations[lang]?.published
+                        ?.content ?? ""
+                    }
+                  />
+
+                  <div className="border-t border-foreground-light pt-2">
+                    <Button
+                      variant={"outline"}
+                      size={"lg"}
+                      onClick={() => {
+                        unpublishVersion({ locale: lang });
+                      }}
+                      disabled={isUnpublishPending}
+                    >
+                      Unpublish
+                    </Button>
+                  </div>
+                </>
               );
             }}
           </form.Subscribe>
@@ -297,7 +324,7 @@ function useDocumentVersionForm({
                   },
                 },
               };
-              formApi.reset(resetValue, { keepDefaultValues: false });
+              formApi.reset(resetValue, { keepDefaultValues: true });
             })
             .finally(() => {
               isIgnoreRef.current = false;
@@ -332,7 +359,7 @@ function useDocumentVersionForm({
                   },
                 },
               };
-              formApi.reset(newValue, { keepDefaultValues: false });
+              formApi.reset(newValue, { keepDefaultValues: true });
             })
             .finally(() => {
               isIgnoreRef.current = false;
@@ -705,6 +732,109 @@ function useResetDraft(contentId: ContentId, versionNumber: number) {
     onError: (_, __, context) => {
       if (context?.prevVersion) {
         queryClient.setQueryData(docVersionQO.queryKey, context.prevVersion);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(docVersionQO);
+      await queryClient.invalidateQueries(docVersionsListQO);
+    },
+  });
+}
+
+function useUnpublishVersion(contentId: ContentId, versionNumber: number) {
+  const { version: docVersionQO, list: docVersionsListQO } =
+    useDocVersionQueryOptions(contentId, versionNumber);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: [
+      "documentVersion",
+      contentId,
+      versionNumber,
+      "published",
+      "unpublish",
+    ],
+    mutationFn: ({ locale }: { locale: Locale }) =>
+      $unpublishDocumentVersion({
+        data: { contentId, versionNumber, locale },
+      }),
+    onMutate: async (data) => {
+      await queryClient.cancelQueries(docVersionQO);
+
+      const previousVersion = queryClient.getQueryData(docVersionQO.queryKey);
+
+      queryClient.setQueryData(docVersionQO.queryKey, (old) => {
+        if (!old) return old;
+        const localeData = old.translations[data.locale];
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [data.locale]: {
+              ...localeData,
+              // If no draft exists, copy published content into draft
+              draft: localeData?.draft ?? localeData?.published,
+              published: undefined,
+            },
+          },
+        };
+      });
+
+      await queryClient.cancelQueries(docVersionsListQO);
+      const previousList = queryClient.getQueryData(docVersionsListQO.queryKey);
+
+      queryClient.setQueryData(
+        docVersionsListQO.queryKey,
+        (old: DocVersionListItemResponse[] | undefined) => {
+          if (!old) return old;
+          return old.map((item) => {
+            if (item.versionNumber !== versionNumber) return item;
+            return {
+              ...item,
+              translations: item.translations.map((t) => {
+                if (t.locale !== data.locale) return t;
+                const withoutPublished = t.statuses.filter(
+                  (s) => s.status !== "published",
+                );
+                const hasDraft = withoutPublished.some(
+                  (s) => s.status === "draft",
+                );
+                const publishedEntry = t.statuses.find(
+                  (s) => s.status === "published",
+                );
+                return {
+                  ...t,
+                  statuses:
+                    hasDraft || !publishedEntry
+                      ? withoutPublished
+                      : [
+                          ...withoutPublished,
+                          {
+                            status: "draft" as const,
+                            title: publishedEntry.title,
+                          },
+                        ],
+                };
+              }),
+            };
+          });
+        },
+      );
+
+      return { previousVersion, previousList };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousVersion) {
+        queryClient.setQueryData(
+          docVersionQO.queryKey,
+          context.previousVersion,
+        );
+      }
+      if (context?.previousList) {
+        queryClient.setQueryData(
+          docVersionsListQO.queryKey,
+          context.previousList,
+        );
       }
     },
     onSettled: async () => {

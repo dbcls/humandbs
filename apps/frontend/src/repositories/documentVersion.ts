@@ -341,16 +341,41 @@ export function createDocumentVersionRepository(
           );
       }),
     unpublish: (contentId, versionNumber, locale) =>
-      database
-        .delete(documentVersion)
-        .where(
-          and(
-            eq(documentVersion.contentId, contentId),
-            eq(documentVersion.versionNumber, versionNumber),
-            eq(documentVersion.locale, locale),
-            eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-          ),
-        ),
+      database.transaction(async (tx) => {
+        const published = await tx.query.documentVersion.findFirst({
+          where: (table, { and, eq }) =>
+            and(
+              eq(table.contentId, contentId),
+              eq(table.versionNumber, versionNumber),
+              eq(table.locale, locale),
+              eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+            ),
+        });
+        if (!published) {
+          throw new Error("Published version not found");
+        }
+
+        // If no draft exists, copy published content into draft
+        await tx
+          .insert(documentVersion)
+          .values({
+            ...published,
+            status: DOCUMENT_VERSION_STATUS.DRAFT,
+            updatedAt: new Date(),
+          })
+          .onConflictDoNothing();
+
+        return tx
+          .delete(documentVersion)
+          .where(
+            and(
+              eq(documentVersion.contentId, contentId),
+              eq(documentVersion.versionNumber, versionNumber),
+              eq(documentVersion.locale, locale),
+              eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+            ),
+          );
+      }),
     delete: (contentId, versionNumber) =>
       database
         .delete(documentVersion)

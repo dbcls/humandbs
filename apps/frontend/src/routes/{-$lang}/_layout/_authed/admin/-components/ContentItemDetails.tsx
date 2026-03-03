@@ -20,6 +20,7 @@ import {
   $publishContentItemDraftTranslation,
   $resetContentItemTranslationDraft,
   $saveContentItemTranslationDraft,
+  $unpublishContentItemTranslation,
   getContentQueryOptions,
   getContentsListQueryOptions,
   type ContentItemResponse,
@@ -110,7 +111,7 @@ function useContentItemDetailsForm({
               },
             };
             // setDefaultValues(resetValue);
-            formApi.reset(resetValue, { keepDefaultValues: false });
+            formApi.reset(resetValue, { keepDefaultValues: true });
           } finally {
             isIgnoreRef.current = false;
           }
@@ -131,7 +132,6 @@ function useContentItemDetailsForm({
 
           try {
             await publishDraft({ lang: value.lang });
-            // setDefaultValues(value);
 
             const newValue = {
               ...value,
@@ -147,7 +147,7 @@ function useContentItemDetailsForm({
               },
             };
 
-            formApi.reset(newValue, { keepDefaultValues: false });
+            formApi.reset(newValue, { keepDefaultValues: true });
           } finally {
             isIgnoreRef.current = false;
           }
@@ -172,6 +172,8 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
   });
 
   const { isPending: isPublishPending } = usePublishDraft(id);
+  const { mutate: unpublishDraft, isPending: isUnpublishPending } =
+    useUnpublishDraft(id);
 
   const form = useContentItemDetailsForm({
     initialValues: {
@@ -220,7 +222,10 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
         </span>
       }
     >
-      <Tabs className="flex-1 min-h-0" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
+      <Tabs
+        className="flex-1 min-h-0"
+        defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+      >
         <TabsList>
           <TabsTrigger
             className="flex items-center gap-2"
@@ -240,7 +245,9 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           >
             <span>Live</span>
             <div className="w-4">
-              {isPublishPending && <Loader2 className="size-4 animate-spin" />}
+              {(isPublishPending || isUnpublishPending) && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
             </div>
           </TabsTrigger>
         </TabsList>
@@ -322,9 +329,23 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
               }
 
               return (
-                <MarkdownClientPreview
-                  source={data.translations[lang]?.published?.content}
-                />
+                <>
+                  <MarkdownClientPreview
+                    source={data.translations[lang]?.published?.content}
+                  />
+                  <div className="border-t border-foreground-light pt-2">
+                    <Button
+                      variant={"outline"}
+                      size={"lg"}
+                      onClick={() => {
+                        unpublishDraft({ lang });
+                      }}
+                      disabled={isUnpublishPending}
+                    >
+                      Unpublish
+                    </Button>
+                  </div>
+                </>
               );
             }}
           </form.Subscribe>
@@ -514,6 +535,86 @@ function useSaveDraft(id: string) {
       }
       if (context?.prevList) {
         queryClient.setQueryData(contentsListQO.queryKey, context.prevList);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
+    },
+  });
+}
+
+function useUnpublishDraft(id: string) {
+  const contentItemQO = getContentQueryOptions(id);
+  const contentsListQO = getContentsListQueryOptions();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["content", "published", id, "unpublish"],
+    mutationFn: ({ lang }: { lang: Locale }) =>
+      $unpublishContentItemTranslation({ data: { id, lang } }),
+    onMutate: async (data) => {
+      await queryClient.cancelQueries(contentItemQO);
+      await queryClient.cancelQueries(contentsListQO);
+
+      const previousContentItem = queryClient.getQueryData(
+        contentItemQO.queryKey,
+      );
+      const previousContentsList = queryClient.getQueryData(
+        contentsListQO.queryKey,
+      );
+
+      queryClient.setQueryData(contentItemQO.queryKey, (old) => {
+        if (!old) return old;
+        const localeData = old.translations[data.lang];
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [data.lang]: {
+              ...localeData,
+              draft: localeData?.draft ?? localeData?.published,
+              published: undefined,
+            },
+          },
+        };
+      });
+
+      queryClient.setQueryData(contentsListQO.queryKey, (old) => {
+        if (!old) return old;
+        return old.map((item) => {
+          if (item.id !== id) return item;
+          return {
+            ...item,
+            translations: item.translations.map((tr) => {
+              if (tr.lang !== data.lang) return tr;
+              const { published, ...withoutPublished } = tr.statuses;
+              return {
+                ...tr,
+                statuses: {
+                  ...("draft" in tr.statuses ? {} : { draft: published }),
+                  ...withoutPublished,
+                },
+              };
+            }),
+          };
+        });
+      });
+
+      return { previousContentItem, previousContentsList };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousContentItem) {
+        queryClient.setQueryData(
+          contentItemQO.queryKey,
+          context.previousContentItem,
+        );
+      }
+      if (context?.previousContentsList) {
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.previousContentsList,
+        );
       }
     },
     onSettled: async () => {
