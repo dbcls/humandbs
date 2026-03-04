@@ -81,10 +81,10 @@ const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Pa
 const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQuery => {
   const datasetFilters = convertDatasetFiltersToQuery(body.datasetFilters)
 
-  const sortMap: Record<string, "humId" | "title" | "releaseDate" | "relevance"> = {
+  const sortMap: Record<string, "humId" | "title" | "releaseDate" | "datePublished" | "dateModified" | "relevance"> = {
     humId: "humId",
-    datePublished: "releaseDate",
-    dateModified: "releaseDate",
+    datePublished: "datePublished",
+    dateModified: "dateModified",
   }
 
   return {

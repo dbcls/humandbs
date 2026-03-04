@@ -208,10 +208,6 @@ export const ResearchSearchBodySchema = z.object({
     .boolean()
     .default(false)
     .describe("Include facet aggregation counts in response"),
-  fields: z
-    .array(z.string())
-    .optional()
-    .describe("Additional fields to include in response"),
 })
 export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>
 
@@ -279,9 +275,5 @@ export const DatasetSearchBodySchema = z.object({
     .boolean()
     .default(false)
     .describe("Include facet aggregation counts in response"),
-  fields: z
-    .array(z.string())
-    .optional()
-    .describe("Additional fields to include in response"),
 })
 export type DatasetSearchBody = z.infer<typeof DatasetSearchBodySchema>

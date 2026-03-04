@@ -335,7 +335,7 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 
   const body = c.req.valid("json")
 
-  // Use optimistic lock values from request body (per api-spec.md)
+  // Use optimistic lock values from request body (per architecture.md)
   // If not provided, fall back to current values for backwards compatibility
   const seqNo = body._seq_no ?? currentSeqNo
   const primaryTerm = body._primary_term ?? currentPrimaryTerm

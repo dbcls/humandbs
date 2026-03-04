@@ -132,7 +132,7 @@ export const ResearchSearchQuerySchema = z.object({
     .default("ja")
     .describe("Response language for bilingual fields"),
   sort: z
-    .enum(["humId", "title", "releaseDate", "relevance"])
+    .enum(["humId", "title", "releaseDate", "datePublished", "dateModified", "relevance"])
     .default("humId")
     .describe("Sort field. Use 'relevance' for full-text search ranking"),
   order: z

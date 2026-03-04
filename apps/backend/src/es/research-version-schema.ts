@@ -18,8 +18,8 @@ export const researchVersionSchema = {
   // Dates
   versionReleaseDate: f.date(),
 
-  // Dataset references
-  datasetIds: f.keyword(),
+  // Dataset references (datasets field is stored in _source as Array<{datasetId, version}>
+  // but not indexed — no current need to search/filter by dataset ID on ResearchVersion)
 
   // Release note with bilingual text+rawHtml
   releaseNote: f.bilingualTextValue(),

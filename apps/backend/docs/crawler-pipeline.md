@@ -44,9 +44,17 @@ crawler-results/
 │
 └── tsv/                      <- Step 10 出力
     ├── research.tsv
+    ├── research-summary.tsv
+    ├── research-data-provider.tsv
+    ├── research-grant.tsv
+    ├── research-publication.tsv
+    ├── research-project.tsv
+    ├── research-cau.tsv
+    ├── research-version.tsv
     ├── dataset.tsv
+    ├── dataset-latest.tsv
     ├── experiment.tsv
-    └── ...
+    └── experiment-latest.tsv
 ```
 
 ## 各ステップの詳細
@@ -157,20 +165,18 @@ bun run crawler:enrich
 Ollama LLM を使って実験データから構造化フィールド (searchable) を抽出する。
 
 ```bash
-bun run crawler:llm-extract
+bun run crawler:llm-extract -h <host> -p <port>
 
-# オプション
---file {id}       # 特定ファイルのみ処理
---hum-id {id}     # 特定の humId のみ処理（複数指定可: --hum-id hum0001 --hum-id hum0002）
---dataset-id {id} # 特定の datasetId のみ処理（複数指定可: --dataset-id JGAD000001 --dataset-id JGAD000002）
---host {host}     # Ollama ホスト (デフォルト: localhost)
---port {port}     # Ollama ポート (デフォルト: 11434)
---model {name}    # Ollama モデル名 (例: llama3.3:70b)
---timeout {ms}    # リクエストタイムアウト (デフォルト: 300000)
---concurrency {n} # LLM 並列呼び出し数 (デフォルト 16)
---dry-run         # LLM 呼び出しなし
---force           # 既存フィールドを強制上書き
---latest-only     # 各データセット最新バージョンのみ処理 (デフォルト)
+# 主要オプション
+--hum-id, -i {id...}        # 特定の humId のみ処理 (複数指定可)
+--dataset-id, -d {id...}    # 特定の datasetId のみ処理 (複数指定可)
+--file, -f {datasetId}      # 単一ファイルを処理
+--model, -m {name}          # Ollama モデル名 (例: llama3.3:70b)
+--concurrency, -c {n}       # 並列 LLM 呼び出し数 (デフォルト: 16)
+--timeout, -t {ms}          # リクエストタイムアウト (デフォルト: 300000)
+--latest-only               # 最新バージョンのみ処理 (デフォルト: true)
+--force                     # 既存フィールドを強制上書き
+--dry-run                   # LLM 呼び出しなし
 ```
 
 | 項目 | 内容 |
@@ -179,7 +185,7 @@ bun run crawler:llm-extract
 | 出力 | 同じディレクトリに上書き (in-place) |
 | 処理内容 | 実験メタデータから検索可能フィールドを抽出。Idempotent (既に抽出済みの場合スキップ)。 |
 
-詳細は [LLM フィールド抽出](./llm-extract-design.md) を参照。
+CLI オプション全量と設計の詳細は [LLM フィールド抽出](./llm-extract-design.md) を参照。
 
 ### Step 7: icd10-normalize
 
@@ -188,9 +194,8 @@ bun run crawler:llm-extract
 ```bash
 bun run crawler:icd10-normalize
 
-# オプション
+# 主要オプション
 --hum-id {id}   # 特定の humId のみ処理
---latest-only   # 最新バージョンのみ処理 (デフォルト)
 --dry-run       # 変更を適用せず試行
 --check         # 正規化データを検証 (無効な場合はエラー終了)
 ```
@@ -201,7 +206,7 @@ bun run crawler:icd10-normalize
 | 出力 | 同じディレクトリに上書き (in-place) |
 | 処理内容 | 疾患ラベルから ICD-10 コードを抽出。手動分割定義を適用。 |
 
-詳細は [ICD10 疾患正規化](./icd10-normalization.md) を参照。
+マッピングデータの管理と対応手順の詳細は [ICD10 疾患正規化](./icd10-normalization.md) を参照。
 
 ### Step 8: facet-values
 
@@ -301,6 +306,7 @@ bun run crawler:enrich --hum-id hum0001
 bun run crawler:llm-extract --hum-id hum0001
 bun run crawler:icd10-normalize --hum-id hum0001
 bun run crawler:facet-normalize --hum-id hum0001
+# Step 8 (facet-values) は全 Dataset を横断して集計するため --hum-id 非対応。部分実行時はスキップ可能。
 bun run crawler:export-tsv --hum-id hum0001
 ```
 
@@ -318,6 +324,7 @@ bun run crawler:icd10-normalize && \
 bun run crawler:facet-values && \
 bun run crawler:facet-normalize && \
 bun run crawler:export-tsv
+# Step 11 (import-tsv) は手動編集後に実行するため、自動パイプラインには含めない
 ```
 
 ## トラブルシューティング

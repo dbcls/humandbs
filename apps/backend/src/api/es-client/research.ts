@@ -495,8 +495,8 @@ export const updateResearchUids = async (
 // === Research Deletion ===
 
 /**
- * Delete Research (logical deletion)
- * Admin only - sets status to "deleted"
+ * Delete Research (logical deletion) and physically delete linked Datasets
+ * Admin only - sets status to "deleted" and removes all linked Dataset documents
  *
  * @param humId - Research ID
  * @param seqNo - Sequence number for optimistic locking
@@ -523,6 +523,13 @@ export const deleteResearch = async (
         },
       },
       refresh: "wait_for",
+    })
+
+    // Physically delete all linked Datasets
+    await esClient.deleteByQuery({
+      index: ES_INDEX.dataset,
+      query: { term: { humId } },
+      refresh: true,
     })
 
     return true

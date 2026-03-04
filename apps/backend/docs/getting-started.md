@@ -43,4 +43,4 @@ curl http://localhost:8080/api/health
 ## 次のステップ
 
 - クローラーを実行する場合: [crawler-pipeline.md](crawler-pipeline.md)
-- API 仕様を確認する場合: [api-spec.md](api-spec.md)
+- API の使い方を確認する場合: [api-guide.md](api-guide.md)

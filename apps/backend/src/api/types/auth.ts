@@ -27,7 +27,7 @@ export type JwtClaims = z.infer<typeof JwtClaimsSchema>
  * Authenticated user context
  * Note: Roles are NOT extracted from Keycloak JWT.
  * - isAdmin is determined by admin_uids.json file
- * - Owner status is determined by Research.researcherUids field
+ * - Owner status is determined by Research.uids field
  */
 export const AuthUserSchema = z.object({
   userId: z.string(),

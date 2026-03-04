@@ -112,7 +112,6 @@ describe("es/schema-consistency", () => {
         "humVersionId",
         "version",
         "versionReleaseDate",
-        "datasetIds",
         "releaseNote",
       ]
 
@@ -177,28 +176,20 @@ describe("es/schema-consistency", () => {
       const esSchemaFieldSet = new Set(esSchemaFields)
 
       // Check fields in Zod but not in ES schema
-      for (const field of zodFields) {
+      // datasets field is stored in _source but not indexed (no ES mapping entry)
+      const zodFieldsExcludingUnindexed = zodFields.filter(f => f !== "datasets")
+      for (const field of zodFieldsExcludingUnindexed) {
         if (!esSchemaFieldSet.has(field)) {
-          // datasets in Zod maps to datasetIds in ES schema
-          if (field === "datasets") {
-            expect(esSchemaFieldSet.has("datasetIds")).toBe(true)
-          } else {
-            // This will fail with a clear message
-            expect(esSchemaFields).toContain(field)
-          }
+          // This will fail with a clear message
+          expect(esSchemaFields).toContain(field)
         }
       }
 
       // Check fields in ES schema but not in Zod
       for (const field of esSchemaFields) {
         if (!zodFieldSet.has(field)) {
-          // datasetIds in ES schema maps to datasets in Zod
-          if (field === "datasetIds") {
-            expect(zodFieldSet.has("datasets")).toBe(true)
-          } else {
-            // This will fail with a clear message
-            expect(zodFields).toContain(field)
-          }
+          // This will fail with a clear message
+          expect(zodFields).toContain(field)
         }
       }
     })

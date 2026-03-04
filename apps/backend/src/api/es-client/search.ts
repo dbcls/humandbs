@@ -687,8 +687,10 @@ export const searchResearches = async (
   } else if (sort === "title") {
     const titleKw = lang === "en" ? "title.en.kw" : "title.ja.kw"
     sortSpec = [{ [titleKw]: { order } }, { humId: { order: "asc" } }]
-  } else if (sort === "releaseDate") {
+  } else if (sort === "releaseDate" || sort === "dateModified") {
     sortSpec = [{ dateModified: { order, missing: "_last" } }, { humId: { order: "asc" } }]
+  } else if (sort === "datePublished") {
+    sortSpec = [{ datePublished: { order, missing: "_last" } }, { humId: { order: "asc" } }]
   } else {
     sortSpec = [{ humId: { order } }]
   }

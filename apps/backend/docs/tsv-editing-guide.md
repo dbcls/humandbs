@@ -99,34 +99,19 @@ hum0001  1      鈴木花子
 
 ## searchable フィールド一覧
 
-Experiment Tab で編集する主要なフィールド:
+フィールドの定義と型は `src/crawler/types/structured.ts` の `SearchableExperimentFieldsSchema` を参照。
 
-| カラム | 説明 | 値の例 |
-|--------|------|--------|
-| subjectCount | 被験者数 | `100` |
-| subjectCountType | 被験者数の単位 | `individual` / `sample` / `mixed` |
-| healthStatus | 健康状態 | `healthy` / `affected` / `mixed` |
-| diseases | 疾患名 | `["Breast cancer(C50)", "Lung cancer"]` |
-| tissues | 組織・臓器 | `["peripheral blood", "liver"]` |
-| isTumor | 腫瘍サンプルか | `tumor` / `normal` / `mixed` |
-| cellLine | 細胞株名 | `["HeLa", "HEK293"]` |
-| population | 集団 | `["Japanese", "European"]` |
-| sex | 性別 | `male` / `female` / `mixed` |
-| ageGroup | 年齢層 | `infant` / `child` / `adult` / `elderly` / `mixed` |
-| assayType | アッセイ種別 | `["WGS", "RNA-seq", "ChIP-seq"]` |
-| libraryKits | ライブラリキット | `["TruSeq DNA"]` |
-| platforms | シーケンサー | `[{"vendor": "Illumina", "model": "NovaSeq 6000"}]` |
-| readType | リードタイプ | `single-end` / `paired-end` |
-| readLength | リード長 (bp) | `150` |
-| sequencingDepth | シーケンス深度 (x) | `30` |
-| targetCoverage | ターゲットカバレッジ (%) | `99` |
-| referenceGenome | 参照ゲノム | `["GRCh38", "GRCh37"]` |
-| hasPhenotypeData | 表現型データ有無 | `TRUE` / `FALSE` |
-| targets | ターゲット領域 | `exome` / `panel` |
-| fileTypes | ファイル形式 | `["FASTQ", "BAM", "VCF"]` |
-| processedDataTypes | 処理済みデータ | `["VCF", "expression matrix"]` |
-| dataVolumeGb | データ容量 (GB) | `500` |
-| variantCounts | バリアント数 | `{"snv": 5000000, "indel": 100000, "cnv": null, "sv": null, "total": null}` |
+TSV 編集時の値の書き方:
+
+| 型 | 書き方 | 例 |
+|----|--------|-----|
+| enum | 値をそのまま | `healthy`, `tumor`, `paired-end` |
+| string[] | JSON 配列 | `["WGS", "RNA-seq"]` |
+| DiseaseInfo[] | 疾患名(ICD10) | `["Breast cancer(C50)", "Lung cancer"]` |
+| PlatformInfo[] | JSON | `[{"vendor": "Illumina", "model": "NovaSeq 6000"}]` |
+| VariantCounts | JSON | `{"snv": 5000000, "indel": null, "cnv": null, "sv": null, "total": null}` |
+| number | 数字のみ | `100`, `30`, `500` |
+| boolean | TRUE / FALSE | `TRUE` |
 
 ## Dataset と Experiment の概念
 

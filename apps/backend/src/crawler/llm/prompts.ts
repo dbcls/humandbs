@@ -75,7 +75,7 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
 Input:
 {
   "en": {
-    "header": { "text": "JGAS000100" },
+    "header": "JGAS000100",
     "data": {
       "Materials and Participants": {
         "text": "Lung cancer (ICD10: C34): 50 adult male cases\\ntumor tissue: 50 samples\\n10 Healthy female controls\\nperipheral blood: 10 samples"

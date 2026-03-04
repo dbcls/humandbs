@@ -46,7 +46,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const query = c.req.valid("query")
     const authUser = c.get("authUser")
 
-    // Validate status filter permissions per api-spec.md
+    // Validate status filter permissions per architecture.md
     if (query.status) {
       // public: can only request "published"
       if (!authUser && query.status !== "published") {
@@ -149,7 +149,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
 
     const body = c.req.valid("json")
 
-    // Use optimistic lock values from request body (per api-spec.md)
+    // Use optimistic lock values from request body (per architecture.md)
     // If not provided, fall back to values from middleware for backwards compatibility
     const seqNo = body._seq_no ?? research.seqNo
     const primaryTerm = body._primary_term ?? research.primaryTerm

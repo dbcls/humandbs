@@ -263,32 +263,6 @@ export const requireAdmin: MiddlewareHandler = createMiddleware(async (c, next) 
   await next()
 })
 
-/**
- * Check if user is an owner of a research (based on researcherUids)
- * Returns true if user's UID is in the research's researcherUids array
- */
-export function isResearchOwner(authUser: AuthUser | null, researcherUids: string[]): boolean {
-  if (!authUser) return false
-  return researcherUids.includes(authUser.userId)
-}
-
-/**
- * Check if user can access a research resource
- * Returns true if user is admin or owner (in researcherUids)
- */
-export function canAccessResearch(authUser: AuthUser | null, researcherUids: string[]): boolean {
-  if (!authUser) return false
-  if (authUser.isAdmin) return true
-  return isResearchOwner(authUser, researcherUids)
-}
-
-/**
- * Check if user can modify a research resource
- * Returns true if user is admin or owner (in researcherUids)
- */
-export function canModifyResearch(authUser: AuthUser | null, researcherUids: string[]): boolean {
-  return canAccessResearch(authUser, researcherUids)
-}
 
 /**
  * Check if user can delete a resource

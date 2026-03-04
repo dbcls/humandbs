@@ -5,10 +5,10 @@
  * in crawler-results/html/
  *
  * Usage:
- *   bun run crawler:download                    # Download all humIds
- *   bun run crawler:download --hum-id hum0001   # Download specific humId only
- *   bun run crawler:download --lang ja          # Japanese only
- *   bun run crawler:download --force            # Ignore cache and re-download
+ *   bun run crawler:download-html                    # Download all humIds
+ *   bun run crawler:download-html --hum-id hum0001   # Download specific humId only
+ *   bun run crawler:download-html --lang ja          # Japanese only
+ *   bun run crawler:download-html --force            # Ignore cache and re-download
  */
 import { join } from "path"
 import yargs from "yargs"
