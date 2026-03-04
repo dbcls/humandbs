@@ -192,7 +192,7 @@ interface APIService {
 }
 
 export const FixedPaginationSchema =
-  ResearchSearchResponseSchema.shape.pagination.extend({
+  ResearchSearchResponseSchema.shape.meta.shape.pagination.extend({
     limit: z.coerce.number(),
     page: z.coerce.number(),
   });
