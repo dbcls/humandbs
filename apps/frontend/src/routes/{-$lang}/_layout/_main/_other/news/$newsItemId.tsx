@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Card } from "@/components/Card";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import { Markdown } from "@/components/Merkdown";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
+import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/news/$newsItemId",
@@ -17,16 +18,18 @@ export const Route = createFileRoute(
       getNewsTranslationQueryOptions({ newsItemId: id, lang }),
     );
 
-    return { newsItem, crumb: newsItem.title };
+    const contentHtml = await renderMarkdown(newsItem.content ?? "");
+
+    return { contentHtml, title: newsItem.title };
   },
 });
 
 function RouteComponent() {
-  const { newsItem } = Route.useLoaderData();
+  const { contentHtml, title } = Route.useLoaderData();
 
   return (
-    <Card caption={newsItem?.title}>
-      <RenderMarkdoc content={newsItem?.content} />
+    <Card caption={title}>
+      <Markdown contentHtml={contentHtml} />
     </Card>
   );
 }

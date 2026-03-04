@@ -89,7 +89,7 @@ export const $getDatasetVersions = createServerFn({
   .handler<Promise<DatasetVersionsListResponse>>(({ data }) =>
     api.getDatasetVersions({
       params: { datasetId: data.datasetId },
-      search: { lang: data.lang },
+      search: { lang: data.lang, includeRawHtml: false },
     }),
   );
 

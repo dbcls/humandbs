@@ -5,8 +5,7 @@ import { useTranslations } from "use-intl";
 import InfographicsImg from "@/assets/Infographics.png";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
-// import { transformMarkdoc } from "@/markdoc/config";
-// import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+
 // import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 // import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
@@ -102,7 +101,6 @@ function HomeContent() {
   return (
     <>
       <h1></h1>
-      {/*<RenderMarkdoc content={content} />*/}
     </>
   );
 }

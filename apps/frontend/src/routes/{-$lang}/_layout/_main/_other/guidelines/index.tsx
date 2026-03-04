@@ -4,8 +4,6 @@ import { useTranslations } from "use-intl";
 import { Card } from "@/components/Card";
 import { Markdown } from "@/components/Merkdown";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
-// import { transformMarkdoc } from "@/markdoc/config";
-// import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { TOC } from "@/components/TOC";
 import {
   $getLatestPublishedDocumentVersion,

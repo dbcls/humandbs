@@ -14,7 +14,6 @@ import {
   newsTranslationUpdateSchema,
   type NewsTranslationUpsert,
 } from "@/db/types";
-import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { toDateString } from "@/utils/dates";
 
@@ -141,13 +140,7 @@ export const $getNewsTranslation = createServerFn({ method: "GET" })
       throw new Error("News translation not found");
     }
 
-    return {
-      ...result,
-
-      content: JSON.stringify(
-        transformMarkdoc({ rawContent: result?.content ?? "" }).content,
-      ),
-    };
+    return result;
   });
 
 export function getNewsTranslationQueryOptions({
@@ -354,7 +347,7 @@ export const $createNewsItem = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     context.checkPermission("news", "create");
 
-    const user = context.user!;
+    const user = context.user;
 
     const [result] = await db
       .insert(newsItem)

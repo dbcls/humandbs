@@ -4,7 +4,6 @@ import { z } from "zod";
 import { Card } from "@/components/Card";
 import { Markdown } from "@/components/Merkdown";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-// import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { $getContentItemTranslation } from "@/serverFunctions/contentItem";
 import { renderMarkdown } from "@/utils/markdown";
 
