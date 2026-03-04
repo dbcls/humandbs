@@ -1,6 +1,11 @@
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import {
+  type QueryKey,
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
   createColumnHelper,
@@ -25,7 +30,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Locale } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
-import { getResearchesQueryOptions } from "@/serverFunctions/researches";
+import {
+  $deleteResearch,
+  getResearchesQueryOptions,
+} from "@/serverFunctions/researches";
+import useConfirmationStore from "@/stores/confirmationStore";
 
 import { CreateResearchDialog } from "./-CreateResearchDialog";
 import { UpdateResearchDialog } from "./-UpdateResearchDialog";
@@ -48,6 +57,10 @@ export const Route = createFileRoute(
   },
 });
 
+interface DeleteOptimisticContext {
+  previousLists: [QueryKey, ResearchSearchUnifiedResponse | undefined][];
+}
+
 function RouteComponent() {
   return (
     <Card
@@ -67,6 +80,8 @@ function CardContent() {
   const { lang } = Route.useRouteContext();
   const search = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
+  const queryClient = useQueryClient();
+  const { openConfirmation } = useConfirmationStore();
   const [editingHumId, setEditingHumId] = useState<string | null>(null);
 
   const sorting = useMemo(() => {
@@ -97,6 +112,65 @@ function CardContent() {
     setEditingHumId(null);
   }, []);
 
+  const { mutate: deleteResearch } = useMutation<
+    void,
+    Error,
+    string,
+    DeleteOptimisticContext
+  >({
+    mutationFn: async (humId) => {
+      const result = await $deleteResearch({ data: { humId } });
+      if (!result.ok && result.code !== "NOT_FOUND") {
+        throw new Error(result.error);
+      }
+    },
+    onMutate: async (humId) => {
+      await queryClient.cancelQueries({ queryKey: ["researches", "list"] });
+
+      const previousLists =
+        queryClient.getQueriesData<ResearchSearchUnifiedResponse>({
+          queryKey: ["researches", "list"],
+        });
+
+      queryClient.setQueriesData<ResearchSearchUnifiedResponse>(
+        { queryKey: ["researches", "list"] },
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          return {
+            ...oldData,
+            data: oldData.data.filter((research) => research.humId !== humId),
+          };
+        },
+      );
+
+      return { previousLists };
+    },
+    onError: (_error, _humId, context) => {
+      context?.previousLists.forEach(([queryKey, previousData]) => {
+        queryClient.setQueryData(queryKey, previousData);
+      });
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+    },
+  });
+
+  const handleDelete = useCallback(
+    (humId: string) => {
+      openConfirmation({
+        title: "Delete Research",
+        description: `are you really want to delete research ${humId} ?`,
+        actionLabel: "Delete",
+        onAction: () => {
+          deleteResearch(humId);
+        },
+      });
+    },
+    [deleteResearch, openConfirmation],
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-auto">
@@ -106,6 +180,7 @@ function CardContent() {
             sorting={sorting}
             onSortingChange={handleSortingChange}
             onEdit={handleEdit}
+            onDelete={handleDelete}
           />
         </Suspense>
       </div>
@@ -126,17 +201,22 @@ function ResearchTable({
   sorting,
   onSortingChange,
   onEdit,
+  onDelete,
 }: {
   lang: Locale;
   sorting: SortingState;
   onSortingChange: (updater: Updater<SortingState>) => void;
   onEdit: (humId: string) => void;
+  onDelete: (humId: string) => void;
 }) {
   const search = Route.useSearch();
   const { data: researchesData } = useSuspenseQuery(
     getResearchesQueryOptions({ ...search, lang }),
   );
-  const columns = useMemo(() => getColumns(onEdit), [onEdit]);
+  const columns = useMemo(
+    () => getColumns(onEdit, onDelete),
+    [onDelete, onEdit],
+  );
 
   return (
     <Table
@@ -158,7 +238,14 @@ function TablePagination({ lang }: { lang: Locale }) {
 }
 
 function TableSkeleton() {
-  const columns = useMemo(() => getColumns(() => {}), []);
+  const columns = useMemo(
+    () =>
+      getColumns(
+        () => {},
+        () => {},
+      ),
+    [],
+  );
   const table = useReactTable({
     data: [],
     columns,
@@ -213,7 +300,10 @@ function TableSkeleton() {
 const columnHelper =
   createColumnHelper<ResearchSearchUnifiedResponse["data"][number]>();
 
-function getColumns(onEdit: (humId: string) => void) {
+function getColumns(
+  onEdit: (humId: string) => void,
+  onDelete: (humId: string) => void,
+) {
   return [
     columnHelper.accessor("humId", {
       id: "humId",
@@ -281,16 +371,29 @@ function getColumns(onEdit: (humId: string) => void) {
       header: "Actions",
       size: 8,
       cell: (ctx) => (
-        <Button
-          type="button"
-          variant="outline"
-          size="slim"
-          onClick={() => {
-            onEdit(ctx.row.original.humId);
-          }}
-        >
-          Edit
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="slim"
+            onClick={() => {
+              onEdit(ctx.row.original.humId);
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="slim"
+            className="text-danger"
+            onClick={() => {
+              onDelete(ctx.row.original.humId);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
       ),
     }),
   ];

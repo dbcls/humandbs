@@ -36,6 +36,13 @@ export type UpdateResearchUidsResult =
       error: string;
       code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
     };
+export type DeleteResearchResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
 
 export const $createResearch = createServerFn({ method: "POST" })
   .inputValidator(CreateResearchRequestSchema)
@@ -116,6 +123,41 @@ export const $updateResearchUids = createServerFn({ method: "POST" })
         const detail =
           (error.data as { detail?: string } | undefined)?.detail ??
           "Failed to update research uids.";
+        if (error.status === 409) {
+          return { ok: false, error: detail, code: "CONFLICT" };
+        }
+        if (error.status === 403) {
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        }
+        if (error.status === 404) {
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        }
+        if (error.status === 401) {
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
+      }
+      throw error;
+    }
+  });
+
+const DeleteResearchInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+});
+
+export const $deleteResearch = createServerFn({ method: "POST" })
+  .inputValidator(DeleteResearchInputSchema)
+  .handler<Promise<DeleteResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      await api.deleteResearch(data.humId, accessToken);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to delete research.";
         if (error.status === 409) {
           return { ok: false, error: detail, code: "CONFLICT" };
         }
