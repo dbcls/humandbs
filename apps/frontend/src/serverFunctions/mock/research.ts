@@ -1,5 +1,5 @@
 import type {
-  ResearchesResponse,
+  ResearchSearchResponse,
   ResearchSummary,
 } from "@humandbs/backend/types";
 import { createServerFn } from "@tanstack/react-start";
@@ -42,7 +42,7 @@ export const $getResearchList = createServerFn({ method: "GET" })
     const endIndex = startIndex + limit;
     const pageItems = filteredResearchItems.slice(startIndex, endIndex);
 
-    const result: ResearchesResponse = {
+    const result: ResearchSearchResponse = {
       data: pageItems,
       pagination: {
         page,

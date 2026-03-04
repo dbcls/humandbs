@@ -5,7 +5,7 @@ import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/news/$newsItemId"
+  "/{-$lang}/_layout/_main/_other/news/$newsItemId",
 )({
   component: RouteComponent,
 
@@ -14,7 +14,7 @@ export const Route = createFileRoute(
     const id = params.newsItemId;
 
     const newsItem = await context.queryClient.ensureQueryData(
-      getNewsTranslationQueryOptions({ newsItemId: id, lang })
+      getNewsTranslationQueryOptions({ newsItemId: id, lang }),
     );
 
     return { newsItem, crumb: newsItem.title };

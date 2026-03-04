@@ -1,6 +1,6 @@
 import {
   DatasetSearchBodySchema,
-  type DatasetSearchUnifiedResponse,
+  type DatasetSearchResponse,
 } from "@humandbs/backend/types";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -162,7 +162,7 @@ function CardContent() {
 }
 
 export const datasetsColumnHelper =
-  createColumnHelper<DatasetSearchUnifiedResponse["data"][number]>();
+  createColumnHelper<DatasetSearchResponse["data"][number]>();
 
 export const datasetsColumns = [
   datasetsColumnHelper.accessor("datasetId", {

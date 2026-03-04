@@ -1,5 +1,5 @@
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
-import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
+import type { ResearchSearchResponse } from "@humandbs/backend/types";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
@@ -169,7 +169,7 @@ function CardContent() {
 }
 
 const columnHelper =
-  createColumnHelper<ResearchSearchUnifiedResponse["data"][number]>();
+  createColumnHelper<ResearchSearchResponse["data"][number]>();
 
 const columns = [
   columnHelper.accessor("humId", {

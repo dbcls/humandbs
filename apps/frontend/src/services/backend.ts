@@ -1,16 +1,16 @@
 import {
   type DatasetIdParams,
   type DatasetListingQuery,
-  type DatasetVersionsResponse,
+  type DatasetVersionsListResponse,
   type HumIdParams,
   type LangQuery,
   type LangVersionQuery,
   type ResearchListingQuery,
   ResearchSearchResponseSchema,
   type ResearchVersionsListResponse,
-  type ResearchSearchUnifiedResponse,
+  type ResearchSearchResponse,
   type DatasetDetailResponse,
-  type DatasetSearchUnifiedResponse,
+  type DatasetSearchResponse,
   type ResearchDetailResponse,
   type ResearchSearchBody,
   type AllFacetsResponse,
@@ -21,7 +21,7 @@ import {
   type CreateVersionRequest,
   type CreateDatasetForResearchRequest,
   type ResearchWithLockResponse,
-  type WorkflowUnifiedResponse,
+  type WorkflowResponse,
   type VersionCreateResponse,
   type DatasetCreateResponse,
 } from "@humandbs/backend/types";
@@ -59,7 +59,10 @@ async function request<T>(
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) {
-        url.searchParams.set(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+        url.searchParams.set(
+          key,
+          typeof value === "object" ? JSON.stringify(value) : String(value),
+        );
       }
     }
   }
@@ -90,7 +93,11 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
-function get<T>(path: string, params?: Record<string, unknown>, headers?: HeadersInit) {
+function get<T>(
+  path: string,
+  params?: Record<string, unknown>,
+  headers?: HeadersInit,
+) {
   return request<T>(path, { method: "GET", params, headers });
 }
 
@@ -117,10 +124,11 @@ function authHeader(accessToken: string): HeadersInit {
 interface APIService {
   getResearchListPaginated(query: {
     search: ResearchListingQuery;
-  }): Promise<ResearchSearchUnifiedResponse>;
+  }): Promise<ResearchSearchResponse>;
   getResearchDetail(query: {
     params: HumIdParams;
     search: LangVersionQuery;
+    accessToken?: string;
   }): Promise<ResearchDetailResponse>;
   getResearchVersions(query: {
     params: HumIdParams;
@@ -128,7 +136,7 @@ interface APIService {
   }): Promise<ResearchVersionsListResponse>;
   getDatasetsPaginated(query: {
     search: DatasetListingQuery;
-  }): Promise<DatasetSearchUnifiedResponse>;
+  }): Promise<DatasetSearchResponse>;
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
@@ -136,15 +144,15 @@ interface APIService {
   getDatasetVersions(query: {
     params: DatasetIdParams;
     search: LangQuery;
-  }): Promise<DatasetVersionsResponse>;
+  }): Promise<DatasetVersionsListResponse>;
   searchResearches(
     query: ResearchSearchBody,
     accessToken?: string,
-  ): Promise<ResearchSearchUnifiedResponse>;
+  ): Promise<ResearchSearchResponse>;
   searchDatasets(
     query: DatasetSearchBody,
     accessToken?: string,
-  ): Promise<DatasetSearchUnifiedResponse>;
+  ): Promise<DatasetSearchResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
   createResearch(
     body: CreateResearchRequest,
@@ -166,22 +174,16 @@ interface APIService {
     body: CreateVersionRequest,
     accessToken: string,
   ): Promise<VersionCreateResponse>;
-  submitResearch(
-    humId: string,
-    accessToken: string,
-  ): Promise<WorkflowUnifiedResponse>;
+  submitResearch(humId: string, accessToken: string): Promise<WorkflowResponse>;
   approveResearch(
     humId: string,
     accessToken: string,
-  ): Promise<WorkflowUnifiedResponse>;
-  rejectResearch(
-    humId: string,
-    accessToken: string,
-  ): Promise<WorkflowUnifiedResponse>;
+  ): Promise<WorkflowResponse>;
+  rejectResearch(humId: string, accessToken: string): Promise<WorkflowResponse>;
   unpublishResearch(
     humId: string,
     accessToken: string,
-  ): Promise<WorkflowUnifiedResponse>;
+  ): Promise<WorkflowResponse>;
   createDatasetForResearch(
     humId: string,
     body: CreateDatasetForResearchRequest,
@@ -190,20 +192,24 @@ interface APIService {
 }
 
 export const FixedPaginationSchema =
-  ResearchSearchResponseSchema.shape.pagination.extend({
+  ResearchSearchResponseSchema.shape.meta.shape.pagination.extend({
     limit: z.coerce.number(),
     page: z.coerce.number(),
   });
 
 const api: APIService = {
   getResearchListPaginated(query) {
-    return get<ResearchSearchUnifiedResponse>(`/research`, query.search as Record<string, unknown>);
+    return get<ResearchSearchResponse>(
+      `/research`,
+      query.search as Record<string, unknown>,
+    );
   },
 
   getResearchDetail(query) {
     return get<ResearchDetailResponse>(
       `/research/${query.params.humId}`,
       query.search as Record<string, unknown>,
+      query.accessToken ? authHeader(query.accessToken) : undefined,
     );
   },
 
@@ -215,7 +221,10 @@ const api: APIService = {
   },
 
   getDatasetsPaginated(query) {
-    return get<DatasetSearchUnifiedResponse>(`/dataset`, query.search as Record<string, unknown>);
+    return get<DatasetSearchResponse>(
+      `/dataset`,
+      query.search as Record<string, unknown>,
+    );
   },
 
   getDataset(query) {
@@ -226,14 +235,14 @@ const api: APIService = {
   },
 
   getDatasetVersions(query) {
-    return get<DatasetVersionsResponse>(
+    return get<DatasetVersionsListResponse>(
       `/dataset/${query.params.datasetId}/versions`,
       query.search as Record<string, unknown>,
     );
   },
 
   searchResearches(query, accessToken) {
-    return post<ResearchSearchUnifiedResponse>(
+    return post<ResearchSearchResponse>(
       `/research/search`,
       query,
       accessToken ? authHeader(accessToken) : undefined,
@@ -241,7 +250,7 @@ const api: APIService = {
   },
 
   searchDatasets(query, accessToken) {
-    return post<DatasetSearchUnifiedResponse>(
+    return post<DatasetSearchResponse>(
       `/dataset/search`,
       query,
       accessToken ? authHeader(accessToken) : undefined,
@@ -253,43 +262,83 @@ const api: APIService = {
   },
 
   createResearch(body, accessToken) {
-    return post<ResearchWithLockResponse>(`/research/new`, body, authHeader(accessToken));
+    return post<ResearchWithLockResponse>(
+      `/research/new`,
+      body,
+      authHeader(accessToken),
+    );
   },
 
   updateResearch(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(`/research/${humId}/update`, body, authHeader(accessToken));
+    return put<ResearchWithLockResponse>(
+      `/research/${humId}/update`,
+      body,
+      authHeader(accessToken),
+    );
   },
 
   async deleteResearch(humId, accessToken) {
-    await post<undefined>(`/research/${humId}/delete`, null, authHeader(accessToken));
+    await post<undefined>(
+      `/research/${humId}/delete`,
+      null,
+      authHeader(accessToken),
+    );
   },
 
   updateResearchUids(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(`/research/${humId}/uids`, body, authHeader(accessToken));
+    return put<ResearchWithLockResponse>(
+      `/research/${humId}/uids`,
+      body,
+      authHeader(accessToken),
+    );
   },
 
   createResearchVersion(humId, body, accessToken) {
-    return post<VersionCreateResponse>(`/research/${humId}/versions/new`, body, authHeader(accessToken));
+    return post<VersionCreateResponse>(
+      `/research/${humId}/versions/new`,
+      body,
+      authHeader(accessToken),
+    );
   },
 
   submitResearch(humId, accessToken) {
-    return post<WorkflowUnifiedResponse>(`/research/${humId}/submit`, null, authHeader(accessToken));
+    return post<WorkflowResponse>(
+      `/research/${humId}/submit`,
+      null,
+      authHeader(accessToken),
+    );
   },
 
   approveResearch(humId, accessToken) {
-    return post<WorkflowUnifiedResponse>(`/research/${humId}/approve`, null, authHeader(accessToken));
+    return post<WorkflowResponse>(
+      `/research/${humId}/approve`,
+      null,
+      authHeader(accessToken),
+    );
   },
 
   rejectResearch(humId, accessToken) {
-    return post<WorkflowUnifiedResponse>(`/research/${humId}/reject`, null, authHeader(accessToken));
+    return post<WorkflowResponse>(
+      `/research/${humId}/reject`,
+      null,
+      authHeader(accessToken),
+    );
   },
 
   unpublishResearch(humId, accessToken) {
-    return post<WorkflowUnifiedResponse>(`/research/${humId}/unpublish`, null, authHeader(accessToken));
+    return post<WorkflowResponse>(
+      `/research/${humId}/unpublish`,
+      null,
+      authHeader(accessToken),
+    );
   },
 
   createDatasetForResearch(humId, body, accessToken) {
-    return post<DatasetCreateResponse>(`/research/${humId}/dataset/new`, body, authHeader(accessToken));
+    return post<DatasetCreateResponse>(
+      `/research/${humId}/dataset/new`,
+      body,
+      authHeader(accessToken),
+    );
   },
 };
 

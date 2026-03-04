@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import {
   Cuboid,
+  Database,
   Files,
   LibraryBig,
   Newspaper,
@@ -24,6 +25,7 @@ export const tabParamSchema = z.enum([
   "content",
   "users",
   "researches",
+  "datasets",
   "assets",
 ]);
 
@@ -189,6 +191,15 @@ function NavPanel() {
           </span>
         }
         tab="researches"
+      />
+      <PanelItem
+        title={
+          <span>
+            <Database className="mr-2 inline size-5 align-middle leading-normal" />
+            Datasets
+          </span>
+        }
+        tab="datasets"
       />
       <PanelItem
         title={

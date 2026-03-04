@@ -726,10 +726,10 @@ const ArraySection = withForm({
             <Label className="font-semibold">{label}</Label>
             <div className="flex flex-col gap-3">
               {field.state.value?.map((_: unknown, i: number) => (
-                <div key={i} className="relative rounded border p-3">
+                <div key={i} className="relative rounded border p-3 pr-10">
                   <button
                     type="button"
-                    className="absolute top-2 right-2"
+                    className="absolute top-2 right-2 z-10"
                     onClick={() => {
                       field.removeValue(i);
                     }}
