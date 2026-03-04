@@ -103,7 +103,7 @@ export const MergedSearchableSchema = z.object({
   diseases: z.array(z.object({
     label: z.string()
       .describe("Disease name/label"),
-    icd10: z.string()
+    icd10: z.string().nullable().transform(v => v ?? "")
       .describe("ICD-10 disease classification code"),
   })).describe("Diseases associated with the dataset (multiple diseases supported)"),
 

@@ -118,12 +118,11 @@ export type {
 
 /**
  * Normalized disease info schema for ES documents
- * Differs from CrawlerDiseaseInfoSchema: icd10 is required (not nullable)
- * because icd10-normalize step ensures all diseases have a valid ICD10 code before ES indexing
+ * icd10 is nullable because not all diseases have been normalized yet
  */
 export const NormalizedDiseaseSchema = z.object({
   label: z.string(),
-  icd10: z.string(), // Required in ES (normalized from crawler's nullable version)
+  icd10: z.string().nullable().transform(v => v ?? ""),
 })
 export type NormalizedDisease = z.infer<typeof NormalizedDiseaseSchema>
 
