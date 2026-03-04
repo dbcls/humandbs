@@ -331,6 +331,28 @@ docker compose exec backend bun run test:integration
 - `bun test`（デフォルト）ではインテグレーションテストは除外される
 - インテグレーションテストは `tests/integration/` に配置する
 
+### スモークテスト（外部 HTTP）
+
+デプロイ後の疎通確認用。real HTTP (`fetch()`) でローカルマシンから外部 URL を叩く。
+
+- `SMOKE_TEST_BASE_URL` 環境変数で対象 URL を指定
+- 読み取り専用エンドポイントのみ（データ変更なし）
+- 認証必要エンドポイントは 401 チェックのみ
+- 内部型に依存しない（外部クライアント視点）
+- テストは `tests/smoke/` に配置する
+
+```bash
+# dev
+SMOKE_TEST_BASE_URL=http://localhost:8080 bun run test:smoke
+
+# staging
+SMOKE_TEST_BASE_URL=https://humandbs-staging.ddbj.nig.ac.jp/api bun run test:smoke
+```
+
+注意:
+- `bun test`（デフォルト）ではスモークテストは除外される
+- サーバーが到達不能な場合、テストは skip される
+
 ## 目標メトリクス
 
 | 項目 | 目標 |
