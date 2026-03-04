@@ -3,6 +3,7 @@
 ...	__DELETE__
 ....	__DELETE__
 16S rRNA Sequencing	16S rRNA Sequencing
+3' single-cell RNA-seq	scRNA-seq
 3' single-nucleus RNA-seq	scRNA-seq
 5' and 3' single-cell RNA-seq	scRNA-seq
 5' single-cell RNA-seq	scRNA-seq
@@ -18,7 +19,9 @@ BCR repertoire analysis	BCR-seq
 BCR-seq	BCR-seq
 BD Ab-seq	CITE-seq
 Bismark methylation extractor	__DELETE__
+bisulfite sequencing	Methyl-seq
 Bisulfite sequencing	Methyl-seq
+BS-Seq	Methyl-seq
 bulk RNA-seq	RNA-seq
 CAGE-seq	CAGE-seq
 Capture Methyl-seq	Methyl-seq
@@ -27,6 +30,7 @@ cDNA microarray	Microarray
 ChIP-seq	ChIP-seq
 Chorome	__DELETE__
 CITE-seq	CITE-seq
+Clinical data	__DELETE__
 COBRA assay	Targeted DNA sequencing
 CUT&RUN-seq	CUT&RUN-seq
 CUT&TAG-seq	CUT&TAG-seq
@@ -90,8 +94,11 @@ genotyping array	Genotyping Array
 Genotyping array	Genotyping Array
 Genotyping Array	Genotyping Array
 genotyping by array	Genotyping Array
+Genotyping by array	Genotyping Array
+GSTM1 GSTT1 deletion mutant multiplex PCR	Targeted DNA sequencing
 GWAS	GWAS
 gwgs	WGS
+HE staining	Histological Imaging
 Hi-C	Hi-C
 Histological image	Histological Imaging
 Histological Imaging	Histological Imaging
@@ -152,7 +159,9 @@ NGS	__DELETE__
 NGS(WGS)	WGS
 Oxford Nanopore sequencing	__DELETE__
 PacBio long‑read sequencing	__DELETE__
+pathological image	Pathological Imaging
 pathological imaging	Pathological Imaging
+Pathological imaging	Pathological Imaging
 Pathological Imaging	Pathological Imaging
 pathology image	Pathological Imaging
 pathology imaging	Pathological Imaging
@@ -217,6 +226,7 @@ Spatial transcriptomics	Spatial transcriptomics
 sQTL	sQTL
 string	__DELETE__
 t-nanoEM	Methyl-seq
+TaqMan analysis	Targeted DNA sequencing
 TaqMan assay	qRT-PCR
 Target bisulfite sequencing	Methyl-seq
 Target Capture	Targeted DNA sequencing
@@ -231,6 +241,7 @@ TGS	__DELETE__
 The         	__DELETE__
 Thermal	__DELETE__
 title	__DELETE__
+Treatment information	__DELETE__
 VDJ-seq	VDJ-seq
 Visium Spatial Gene Expression	Spatial transcriptomics
 Visium Spatial Gene Expression, Xenium In Situ Gene Expression and custom: 302 genes (Human Lung panel: Human Lung panel: 202 genes, custom: 100 genes)	Spatial transcriptomics
@@ -247,4 +258,5 @@ Whole Genome Sequencing	WGS
 Whole‑genome bisulfite sequencing (WGBS)	WGBS
 Xenium In Situ Gene Expression	Spatial transcriptomics
 ゲノムワイド関連解析	GWAS
+メチル化アレイ	Methylation Array
 全ゲノム変異(Whole-genome genotyping)	Genotyping Array

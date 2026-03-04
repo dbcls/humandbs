@@ -1,17 +1,14 @@
-\n	__DELETE__
    …  .......  	__DELETE__
    …  .......  	__DELETE__
-   …  .......  	__DELETE__
 ,	__DELETE__
-:[	__DELETE__
 .	__DELETE__
 ...	__DELETE__
 ......	__DELETE__
 ................ ..............	__DELETE__
-]?	__DELETE__
-}	__DELETE__
 1) BD Rhapsody T Cell Expression Panel Hs (BD Biosciences Cat#633751) 2) Rhapsody Supplemental Gene Primer for IL10 and NRP1. 3) T cell receptor	BD Rhapsody T Cell Expression Panel Hs + Supplemental Gene Primer (IL10, NRP1) + T cell receptor
 151 cancer-related genes ClearSeq SS Comprehensive Cancer kits	ClearSeq SS Comprehensive Cancer Kit (151 cancer-related genes)
+251 refseq genes on chr3p21 (Table 1)	
+2932 proteins	
 30 immune response-related proteins	
 30 proteins related to immune response	30 immune response-related proteins
 302 genes (Human Lung panel: 202 genes, custom: 100 genes)	Human Lung panel (202 genes) + custom genes (100 genes)
@@ -19,84 +16,145 @@
 340-gene panel (including Ig heavy/light chain loci)	
 340-gene panel (including immunoglobulin heavy and light chain loci)	340-gene panel (including Ig heavy/light chain loci)
 340‑gene panel (including immunoglobulin heavy and light chain loci)	340-gene panel (including Ig heavy/light chain loci)
+376,602 methylation sites	
 380 genes or regions	380 genes or regions
+40 immune cell fractions	
 409 genes (Ion Ampliseq Comprehensive Cancer Panel)	Ion AmpliSeq Comprehensive Cancer Panel (409 genes)
+431,736 CpGs (autosomal chromosomes)	
+450K probes	
+485577 methylation sites	
+487,557 probes	
 52 genes	
 52 genes (gene list)	52 genes
+58 clinical laboratory values	
+67 genes which were reported as candidates for MM development (chromatin remodeling, histone modification, transcription factor, TP53, CDKN2A, NF2, Table 2)	
 69 gene regions	
 69 gene regions (ACTG1, CABP2, CCDC50, CDH23, CEACAM16, CIB2, CLDN14, COCH, COL11A2, COL4A6, CRYM, DFNA5, DFNB59, DIAPH1, ESPN, ESRRB, EYA4, GIPC3, GJB2, GJB3, GJB6, GPSM2, GRHL2, GRXCR1, HGF, ILDR1, KARS, KCNQ4, LHFPL5, LOXHD1, LRTOMT, MARVELD2, MIRN96, MSRB3, MYH14, MYH9, MYO15A, MYO1A, MYO3A, MYO6, MYO7A, OTOA, OTOF, PCDH15, PNPT1, POU3F4, POU4F3, PRPS1, PTPRQ, RDX, SERPINB6, SLC17A8, SLC26A4, SLC26A5, SMAC, SMPX, STRC, TECTA, TJP2, TMC1, TMIE, TMPRSS3, TPRN, TRIOBP, USH1C, USH2A, WFS1, WHRN)	69 gene regions
+69 genes (ACTG1, CABP2, CCDC50, CDH23, CEACAM16, CIB2, CLDN14, COCH, COL11A2, COL4A6, CRYM, DFNA5, DFNB59, DIAPH1, ESPN, ESRRB, EYA4, GIPC3, GJB2, GJB3, GJB6, GPSM2, GRHL2, GRXCR1, HGF, ILDR1, KARS, KCNQ4, LHFPL5, LOXHD1, LRTOMT, MARVELD2, MIRN96, MSRB3, MYH14, MYH9, MYO15A, MYO1A, MYO3A, MYO6, MYO7A, OTOA, OTOF, PCDH15, PNPT1, POU3F4, POU4F3, PRPS1, PTPRQ, RDX, SERPINB6, SLC17A8, SLC26A4, SLC26A5, SMAC, SMPX, STRC, TECTA, TJP2, TMC1, TMIE, TMPRSS3, TPRN, TRIOBP, USH1C, USH2A, WFS1, WHRN)	69 gene regions
+69 genes (ACTG1, CCDC50, CDH23, CEACAM16, CLDN14, COCH, COL11A2, CRYM, DFNA5, DFNB59, DIAPH1, ESPN, ESRRB, EYA4, GIPC3, GJB2, GJB3, GJB6, GPSM2, GRHL2, GRXCR1, HGF, ILDR1, KCNQ4, LHFPL5, LOXHD1, LRTOMT, MARVELD2, MIRN96, MSRB3, MYH14, MYH9, MYO15A, MYO1A, MYO3A, MYO6, MYO7A, OTOA, OTOF, PCDH15, POU3F4, POU4F3, PRPS1, PTPRQ, RDX, SERPINB6, SLC17A8, SLC26A4, SLC26A5, SMAC, SMPX, STRC, TECTA, TJP2, TMC1, TMIE, TMPRSS3, TPRN, TRIOBP, USH1C, USH2A, WFS1, WHRN)	69 gene regions
 9 gene regions	
 9 gene regions (MYO7A, USH1C, CDH23, PCDH15, SANS[USH1G], USH2A, GPR98[USH2C], DFNB31[USH2D], CLRN[USH3A])	9 gene regions
 90 genes	
 90 genes (ACTG1, AIFM1, ALMS1, ...)	90 genes
 90 genes (ACTG1, AIFM1, ALMS1, ATP2B2, AIFM1, ALMS1, ... )	90 genes
-Ab-seq antibody list	Ab-seq antibody list
+90 genes (ACTG1, AIFM1, ALMS1, ATP2B2, CABP2, CACNA1D, CATSPER2, CCDC50, CDH23, CEACAM16, CIB2, CLDN14, CLRN1, COCH, COL11A2, CRYL1, CRYM, DFNA5, DIABLO, DIAPH1, DSPP, ESPN, ESSRB, EYA1, EYA4, FOXI1, GIPC3, GJB2, GJB3, GJB6, GPR98, GPSM2, GRHL2, GRXCR1, HGF, ILDR1, KCNJ10, KCNQ1, KCNQ4, LHFPL5, LOXHD1, LRTOMT, MARVELD2, MSRB3, MYH14, MYH9, MYO15A, MYO1A, MYO3A, MYO6, MYO7A, OTOA, OTOF, OTOG, OTOGL, P2RX2, PCDH15, PDZD7, PJVK, PNPT1, POU3F4, POU4F3, PRPS1, PTPRQ, RDX, SERPINB6, SIX1, SLC17A8, SLC26A4, SLC26A5, SMPX, STRC, TECTA, TJP2, TMC1, TMIE, TMPRSS3, TPRN, TRIOBP, TSPEAR, USH1C, USH1G, USH2A, WFS1, WHRN, MIR96, MIR182, MIR183, MTRNR1, MTTS1)	90 genes
+:[	__DELETE__
 ABL1, AKT1, AKT3, ALK, APC, ATM, AXL, BCL2L11, BRAF, BRCA1, BRCA2, CCND1, CDH1, CD274, CDKN2A, CFTR, CREBBP, CSF1R, DCC, EGFR, EPHA2, ERBB2, ERBB3, ERBB4, FGFR1, GNA11, GNAQ, GNAS, HGF, IDH1, IDH2, JAK2, KDR, KRAS, MAP2K1, MAP2K2, MET, NOTCH1, NPM1, NRAS, PDGFRA, PTEN, PTPN11, RET, ROS1, SETD2, SMAD4, SMARCA4, SMARCB1, SMO, SPOP, SRC, STK11, TP53, TSC2, VHL, etc.	Cancer-related gene list
+ALL Exon (50Mb)	whole exome
+AR-V7 (androgen receptor splice variant 7)	
+ARID1A, NOTCH2, CXCR4, MYD88, PRDM1, CD274, PDCD1LG2, RAG2, KMT2D, MYBBP1A, TP53, CD79B	Gene list (12 genes)
+Ab-seq antibody list	Ab-seq antibody list
 Adult patients	__DELETE__
+Agilent Haloplex Target Enrichment: 69 genes (Table 3) Illumina Truseq Custom Amplicon: 68 genes (Table 3)	
 Agilent SureSelect XT Methyl-Seq (3,156,463 CpG sites)	
 Agilent SureSelect XT Methyl-Seq capture bait targeting 3,156,463 CG sites	Agilent SureSelect XT Methyl-Seq (3,156,463 CpG sites)
 All exon regions of 23 genes	
-all exon regions of the following 23 genes: ASXL1, CBL, CEBPA, DDX41, DNMT3A, ETV6, EZH2, GATA2, GNAS, GNB1, IDH1, IDH2, JAK2, KRAS, MYD88, NRAS, PPM1D, RUNX1, SF3B1, SRSF2, TET2, TP53, U2AF1	All exon regions of 23 genes
-analysis	__DELETE__
-androgen receptor, splicing variant 7 (AR-V7)	AR-V7 (androgen receptor splice variant 7)
-AR-V7 (androgen receptor splice variant 7)	
-ARID1A, NOTCH2, CXCR4, MYD88, PRDM1, CD274, PDCD1LG2, RAG2, KMT2D, MYBBP1A, TP53, CD79B	Gene list (12 genes)
+All human exons	whole exome
+Antibodies: 6 types (H3K4me3, H3K4me1, H3K9me3, H3K27ac, H3K27me3, H3K36me3) + Input	H3K4me3, H3K4me1, H3K9me3, H3K27ac, H3K27me3, H3K36me3
 BD Rhapsody T Cell Expression Panel Hs + Supplemental Gene Primer (IL10, NRP1) + T cell receptor	
-blah	__DELETE__
 C	__DELETE__
+CD4+ T cells	
+CHEK1, MRE11A, H2AFX, TP53, BRCA1, CHEK2, BARD1, ALK, MYCN, ATRX, ARID1A, ARID1B, PHOX2B, PTPN11, HRAS, KRAS, NRAS	
+CTCF, H3K27Ac, HNF1B	
 Cancer-related gene list	
-cDNA	__DELETE__
-cell	__DELETE__
-chr6: 29943290-29943607	chr6:29943290-29943607
-chr6:29943290-29943607	
 ClearSeq SS Comprehensive Cancer Kit (151 cancer-related genes)	
-cortical	__DELETE__
+CpG methylation	
 CpG sites	CpG sites
 Cycle/fluorescent protein correspondence table	
 Cycle/fluorescent protein correspondence table (JGAD000696) Cycle/fluorescent protein correspondence table (JGAD000807)	Cycle/fluorescent protein correspondence table
+DNA methylation	
 DNA methylation profiling (Infinium MethylationEPIC BeadChip)	Infinium MethylationEPIC BeadChip
-exome	Exome
+Direct sequencing: XRCC1-1449delGGCC, TYMS_3UTR_6R_INS, TYMS_5UTR_3R_VNTR, EGFR, KRAS, BRAF, ERBB2, TP53; TaqMan: ABCB1, ABCC1, ABCC2, CYP1B1, CYP2A6, CYP2C8, CYP3A4, CYP3A5, DPYD, ERCC1, ERCC2, GSTP1, UGT1A1, XRCC1, XRCC3; Multiplex PCR: GSTM1, GSTT1; qRT-PCR: ABCB1, ABCC1, ABCC2, ABCG2, ACTB, ALAD, ASPRV1, BCL2, BRCA1, C20orf43, DMKN, DPYD, ERCC1, GAPDH, GDA, GSTP1, HPRT1, KRAS, MFTHR, OPRT, RRM1, TMEM18, TOP1, TUBB3, TYMS, UGT2B10, UMPS; COBRA: APC, CDKN2A, MLH1; cDNA microarray: 41,000 probes (27,934 genes)	
+EGFR/KRAS regions, and EML4-ALK/KIF5B-RET regions. Specimen 1: Mixed amplicons from 1 case with EML4-ALK (EML4-ALK region) and 1 case with KIF5B-RET (KIF5B-RET region) (1 specimen). Specimens 2-7: Amplicons from EGFR and KRAS regions (6 specimens).	
 Exome	
+Exon regions of 2,761 genes (7 Mb)	
 Gene list (12 genes)	
 GeneList	__DELETE__
+H3.5, H3.3	
+H3K27ac	
+H3K4me3, H3K4me1, H3K9me3, H3K27ac, H3K27me3, H3K36me3	
+H3K4me3, H3K4me1, H3K9me3, H3K27ac, H3K27me3, H3K36me3, Input	H3K4me3, H3K4me1, H3K9me3, H3K27ac, H3K27me3, H3K36me3
+H3K4me3, H3K9me3, H3K27me3, H3K27ac, H3K4me1, H3K36me3	H3K4me3, H3K4me1, H3K9me3, H3K27ac, H3K27me3, H3K36me3
 HLA region	
 HLA region (HLA-A, -B, -C, -DMA, -DMB, -DOA, -DOB, -DPA1, -DPB1, -DQA1, -DQB1, -DRA, -DRB1, -DRB2, -DRB3, -DRB4, -DRB5, -DRB6, -DRB7, -DRB8, -DRB9, -E, -F, -G, -H, -J, -L, -V, MICA, MICB, TAP1, TAP2)	HLA region
-human genome containing HBV integration sites	Human genome with HBV integration sites
-Human genome with HBV integration sites	
+HLA region (HLA-A, -C, -B, -DRB1, -DQB1, -DPB1)	
+HLA region (chr6: 29,000,000-34,000,000, GRCh37); 8817 variants (SNP: 7149, HLA 2-digit/4-digit: 226, HLA amino acid polymorphisms: 1442); HLA loci: HLA-A, -C, -B, -DRB1, -DQA1, -DQB1, -DPA1, -DPB1	
+Human All Exon	whole exome
+Human All Exon V4+UTRs	whole exome
+Human All Exon V5 (50M)	whole exome
+Human All Exon V5 + lincRNA	whole exome
+Human All Exon V5+UTRs	whole exome
 Human Lung panel (202 genes) + custom genes (100 genes)	
+Human genome including HBV integration sites	
+Human genome with HBV integration sites	
 IgVH V-C region	
+IgVH, IgVK/L, TCRalpha, TCRbeta	
 Immuno-PGx panel	Immuno-PGx panel
 Infinium MethylationEPIC BeadChip	
 Ion AmpliSeq Comprehensive Cancer Panel (409 genes)	
 LDLR (Chr19:11089463-11133820), PCSK9 (Chr1:55039548-55064852) - CRISPR-Cas9 targeted sequencing	
+LDLR(Low-Density Lipoprotein Receptor): Chr19: 11089463-11133820 PCSK9(Proprotein Convertase Subtilisin/Kexin Type 9): Chr1: 55039548-55064852	
 LDLR(Low-Density Lipoprotein Receptor): Chr19: 11089463-11133820 PCSK9(Proprotein Convertase Subtilisin/Kexin Type 9): Chr1: 55039548-55064852 ※CRISPR-Cas9により全ゲノムからLDLRとPCSK9遺伝子を特定切断後、シーケンスアダプターを加えターゲットシーケンシングを実施している。ライブラリ作成時、バックグラウンドDNAを除去していないため、他領域のリードも少量含まれている。	LDLR (Chr19:11089463-11133820), PCSK9 (Chr1:55039548-55064852) - CRISPR-Cas9 targeted sequencing
 M1	__DELETE__
 Methylome	Methylome
 NCC Oncopanel v2	NCC Oncopanel v2
 No translation	__DELETE__
-null	__DELETE__
-pharmacokinetics-related 100 gene coding regions 1846 variants + CYP2D6 gene diplotype + NAT2 gene diplotype	Pharmacokinetics-related genes (100 genes + CYP2D6/NAT2 diplotypes)
 Pharmacokinetics-related genes (100 genes + CYP2D6/NAT2 diplotypes)	
-phenotype data	__DELETE__
 Precision ID mtDNA Whole Genome Panel	Precision ID mtDNA Whole Genome Panel
 S	__DELETE__
-some	__DELETE__
-t	__DELETE__
+SureSelect Human All Exon V4 + HBV genome + lincRNA	
 T-cell receptor beta chain region	
 T-cell receptor β chain region	T-cell receptor beta chain region
-t0	__DELETE__
+TACC2 (chr10: 123,748,689-124,014,057 [ref: hg19])	
 TACC2 (chr10:123,748,689-124,014,057; hg19)	
 TACC2(chr10: 123,748,689-124,014,057 [ref: hg19])	TACC2 (chr10:123,748,689-124,014,057; hg19)
-target	__DELETE__
-Target Capture: 1型糖尿病(ICD10: E10) 32 cases (per description)??	__DELETE__
-targetName	__DELETE__
+TCRα, TCRβ	
 TERT gene promoter region + exon regions of 69 genes	TERT promoter + exon regions of 69 genes
 TERT promoter + exon regions of 69 genes	
-Twist Alliance Pan-cancer Methylation Panel - 1.5 MB	Twist Alliance Pan-cancer Methylation Panel (1.5 Mb)
+Target Capture: 1型糖尿病(ICD10: E10) 32 cases (per description)??	__DELETE__
 Twist Alliance Pan-cancer Methylation Panel (1.5 Mb)	
+Twist Alliance Pan-cancer Methylation Panel - 1.5 MB	Twist Alliance Pan-cancer Methylation Panel (1.5 Mb)
 V region to C region of IgVH gene	IgVH V-C region
+V region to C region of TCRα, TCRβ, IgVH and IgVκ/λ genes	
 Visium Spatial Gene Expression	Visium Spatial Gene Expression
-whole transcriptome	Whole transcriptome
 Whole transcriptome	
+\n	__DELETE__
+]?	__DELETE__
+all exon regions of the following 23 genes: ASXL1, CBL, CEBPA, DDX41, DNMT3A, ETV6, EZH2, GATA2, GNAS, GNB1, IDH1, IDH2, JAK2, KRAS, MYD88, NRAS, PPM1D, RUNX1, SF3B1, SRSF2, TET2, TP53, U2AF1	All exon regions of 23 genes
+analysis	__DELETE__
+androgen receptor, splicing variant 7 (AR-V7)	AR-V7 (androgen receptor splice variant 7)
+autosome: ~6,000,000 SNVs (hg19); X chromosome: ~150,000 SNVs (hg19)	
+autosomes and X chromosome	
+autosomes and X chromosome variants	autosomes and X chromosome
+batch1: 2941 proteins, batch2: 2939 proteins	2932 proteins
+blah	__DELETE__
+cDNA	__DELETE__
+cell	__DELETE__
+chr6: 29943290-29943607	chr6:29943290-29943607
+chr6:29943290-29943607	
+cortical	__DELETE__
+exome	Exome
+genome-wide DNA methylation	DNA methylation
+human exome	whole exome
+human genome containing HBV integration sites	Human genome with HBV integration sites
+mRNA	
+methylation	DNA methylation
+miRNA	
+null	__DELETE__
+pharmacokinetics-related 100 gene coding regions 1846 variants + CYP2D6 gene diplotype + NAT2 gene diplotype	Pharmacokinetics-related genes (100 genes + CYP2D6/NAT2 diplotypes)
+phenotype data	__DELETE__
+polyA RNA	
+polyA RNA and genomic DNA extracted from CD4-positive T cells isolated from whole blood	
+promoter activities	
+small RNA	
+some	__DELETE__
+t	__DELETE__
+t0	__DELETE__
+target	__DELETE__
+targetName	__DELETE__
+whole exome	
+whole transcriptome	Whole transcriptome
 xGen Acute Myeloid Leukemia Cancer Panel	
 xGen® Acute Myeloid Leukemia Cancer Panel	xGen Acute Myeloid Leukemia Cancer Panel
+}	__DELETE__
+   …  .......  	__DELETE__

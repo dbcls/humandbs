@@ -1,40 +1,126 @@
  Peripheral Blood.	Peripheral Blood
 ....	__DELETE__
 3D culture cells	3D culture cells
-absorptive epithelial cells	absorptive epithelial cells
-adenoma	adenoma
-adenomyotic lesion	adenomyotic lesion
-adjacent normal tissue	adjacent normal tissue
-adjacent tissue-derived organoid	adjacent tissue-derived organoid
-adrenal gland	adrenal gland
-adult human dermal fibroblast	dermal fibroblast
-alveolar epithelial cells	alveolar epithelial cells
 AML blasts	AML blasts
-ascites mononuclear cells	ascites mononuclear cells
 ATAC	__DELETE__
 ATAC-seq	__DELETE__
 B cell	B cells
 B cell line	B cell line
 B cells	B cells
 B-cell	B cells
+Blood	peripheral blood
+Brain	brain
+CAR-T cells	CAR-T cells
+CD14 positive cells	CD14+ cells
+CD14+ cells	CD14+ cells
+CD14-positive cells	CD14-positive cells
+CD161+Th17 cells (after activation)	
+CD161+Th17 cells (before activation)	
+CD34 positive cells	CD34+ cells
+CD34+ cells	CD34+ cells
+CD4 positive T cell	CD4 positive T cell
+CD4 positive T cells	CD4+ T cells
+CD4 positive T lymphocytes	CD4+ T cells
+CD4 positive cells	CD4+ cells
+CD4+ T cells	CD4+ T cells
+CD4+ cells	CD4+ cells
+CD4+T cells	CD4+ T cells
+CD4-positive T cells	CD4-positive T cells
+CD4-positive T lymphocytes	CD4-positive T lymphocytes
+CD8 positive T cells	CD8+ T cells
+CD8 positive cells	CD8+ cells
+CD8+ T cells	CD8+ T cells
+CD8+ cells	CD8+ cells
+CD8-positive T cells	CD8+ T cells
+CT cells	__DELETE__
+CTC	circulating tumor cells
+CTOS	
+ChIP	__DELETE__
+ChIP-seq	__DELETE__
+Cytotrophoblast cells	cytotrophoblast
+DNA	__DELETE__
+ES cells	ESC
+ESC	ESC
+Endometrium	endometrium
+Extravillous trophoblast cells	extravillous trophoblast
+FFPE	FFPE tissue
+FFPE desmoid tumor tissue	FFPE desmoid tumor tissue
+FFPE non-tumor tissue	FFPE non-tumor tissue
+FFPE sample	FFPE tissue
+FFPE samples	FFPE tissue
+FFPE specimen	FFPE specimen
+FFPE tissue	FFPE tissue
+FFPE tumor tissue	tumor tissue (FFPE)
+Foxp3+ effector T cells	Foxp3+ effector T cells
+Foxp3+ effector conventional T cells	Foxp3+ effector T cells
+Glandular epithelial cells	glandular epithelial cells
+HBL	__DELETE__
+HCC	hepatocellular carcinoma
+HeLa cells	HeLa cells
+Heart	heart
+Human Dermal Fibroblast	dermal fibroblast
+Japanese	__DELETE__
+Jurkat cells	Jurkat cells
+LCL	LCL
+Liver	liver
+MM tumor	
+Mononuclear Cells from Cord Blood	cord blood mononuclear cells
+NK cells	NK cells
+PBL	peripheral blood lymphocytes
+PBMC	PBMC
+PCNSL	PCNSL
+PCNSL tissue	PCNSL
+PDX tumor	PDX tumor
+PDX tumor tissue	PDX tumor
+Peripheral Blood	peripheral blood
+Peripheral Blood.	Peripheral Blood
+Peripheral Blood.	peripheral blood
+Peripheral blood	peripheral blood
+Placenta	placenta
+Plasma	plasma
+RNA	__DELETE__
+RNA-seq	__DELETE__
+Skeletal muscle	skeletal muscle
+Stromal cells	stromal cells
+Syncytiotrophoblast cells	
+T cells	T cells
+T cells isolated from non-tumor tissues	TILs
+T cells isolated from tumor tissues	TILs
+T-cell	T cells
+TILs	TILs
+TS cells	TSC
+TSC	TSC
+Th1 cells	
+Trophoblast stem cells	TSC
+Urine	urine
+WGS	__DELETE__
+absorptive epithelial cells	absorptive epithelial cells
+adenoma	adenoma
+adenomyotic lesion	adenomyotic lesion
+adjacent normal tissue	adjacent normal tissue
+adjacent tissue-derived organoid	adjacent tissue-derived organoid
+adrenal gland	adrenal gland
+adult dermal fibroblasts	dermal fibroblast
+adult human dermal fibroblast	dermal fibroblast
+alveolar epithelial cells	alveolar epithelial cells
+ascites mononuclear cells	ascites mononuclear cells
 blastocyst	blastocyst
 blood	peripheral blood
-Blood	peripheral blood
 blood cells	peripheral blood
 blood plasma	plasma
 blood sample	peripheral blood
 bone marrow	bone marrow
+bone marrow FFPE samples	bone marrow
+bone marrow FFPE specimen	bone marrow FFPE specimen
+bone marrow FFPE specimens	bone marrow
 bone marrow aspirate	bone marrow
 bone marrow aspirates	bone marrow
 bone marrow cells	bone marrow
-bone marrow FFPE samples	bone marrow
-bone marrow FFPE specimen	bone marrow FFPE specimen
 bone marrow fluid	bone marrow
 bone marrow mononuclear cells	bone marrow mononuclear cells
 bone marrow plasma cells	bone marrow plasma cells
 bone marrow stromal cells	bone marrow stromal cells
 brain	brain
-Brain	brain
 brain tissue	brain
 brain tumor	brain tumor
 brain tumor tissue	brain tumor
@@ -42,6 +128,7 @@ breast	breast
 breast cancer tissue	breast tumor
 breast tissue	breast
 breast tumor	breast tumor
+breast tumor tissue	breast tumor
 bronchoalveolar lavage fluid	bronchoalveolar lavage fluid
 buccal fibroblasts	buccal fibroblasts
 buccal mucosa	buccal mucosa
@@ -52,27 +139,8 @@ cancer	__DELETE__
 cancer tissue	tumor tissue
 cancer tissues	tumor tissue
 cancerdetects	__DELETE__
-CAR-T cells	CAR-T cells
 cardiac muscle cells	cardiomyocytes
 cardiomyocytes	cardiomyocytes
-CD14 positive cells	CD14+ cells
-CD14-positive cells	CD14-positive cells
-CD14+ cells	CD14+ cells
-CD34 positive cells	CD34+ cells
-CD34+ cells	CD34+ cells
-CD4 positive cells	CD4+ cells
-CD4 positive T cell	CD4 positive T cell
-CD4 positive T cells	CD4+ T cells
-CD4 positive T lymphocytes	CD4+ T cells
-CD4-positive T cells	CD4-positive T cells
-CD4-positive T lymphocytes	CD4-positive T lymphocytes
-CD4+ cells	CD4+ cells
-CD4+ T cells	CD4+ T cells
-CD4+T cells	CD4+ T cells
-CD8 positive cells	CD8+ cells
-CD8 positive T cells	CD8+ T cells
-CD8+ cells	CD8+ cells
-CD8+ T cells	CD8+ T cells
 cell	__DELETE__
 cell free DNA from peripheral blood	cfDNA
 cell line	__DELETE__
@@ -84,8 +152,6 @@ cervical tissue	cervix
 cervix	cervix
 cfDNA	cfDNA
 cheek mucosa	buccal mucosa
-ChIP	__DELETE__
-ChIP-seq	__DELETE__
 chorionic villi	chorionic villi
 chromatin DNA	__DELETE__
 circulating tumor cells	circulating tumor cells
@@ -94,6 +160,7 @@ clinical tissue	__DELETE__
 clinically cured skin	skin
 clinically healed skin	clinically healed skin
 colon	colon
+colon (non-tumor tissue)	colonic mucosa
 colon adenoma	colon adenoma
 colon cancer tissue	colon tumor
 colon mucosa	colonic mucosa
@@ -106,14 +173,18 @@ colon tumor tissue	colon tumor tissue
 colonic mucosa	colonic mucosa
 colorectal	colorectal
 colorectal cancer tissue	colorectal tumor
+colorectal mucosa absorptive epithelial cells	
 colorectal tissue	colorectal
 colorectal tumor	colorectal tumor
+colorectal tumor tissue	colorectal tumor
+complete hydatidiform mole	
 cord blood	cord blood
+cord blood cell	cord blood
 cord blood cells	cord blood
 cord blood mononuclear cells	cord blood mononuclear cells
 corneal epithelial cells	corneal epithelial cells
-CT cells	__DELETE__
-CTC	circulating tumor cells
+corrected iPS cell-derived alveolar organoid EpCAM+CPM+ cells	
+corrected iPS cell-derived alveolar organoid EpCAM-CPM- cells	
 culture cells	culture cells
 cultured cell	__DELETE__
 cultured cells	__DELETE__
@@ -126,26 +197,28 @@ dermal fibroblast	dermal fibroblast
 desmoid tumor	desmoid tumor
 desmoid tumor tissue	desmoid tumor
 dna	__DELETE__
-DNA	__DELETE__
 duodenum organoid	duodenum organoid
 duodenum organoids	duodenum organoids
+early placenta	placenta
 early placenta tissue	early placenta tissue
 early-stage normal pregnancy decidua	early-stage normal pregnancy decidua
-effector conventional T cells	effector T cells
 effector T cells	effector T cells
 effector Treg	effector Treg
+effector conventional T cells	effector T cells
 egg	egg
 embryonic stem cells	embryonic stem cells
 embryos	embryos
+endometrial carcinoma	
+endometrial carcinoma resected tissue	endometrial carcinoma
 endometrial tissue	endometrium
 endometriotic lesion	endometriotic lesion
 endometrium	endometrium
+endometrium stromal cells	stromal cells
 epithelial tissue	epithelial tissue
-ES cells	ESC
-ESC	ESC
 exosome	exosome
 exosome I	exosome I
 exosome II	exosome II
+exosome fraction	exosome
 extravillous trophoblast	extravillous trophoblast
 extravillous trophoblast cells	extravillous trophoblast
 facial sebum	facial sebum
@@ -153,56 +226,62 @@ fat-containing HCC	fat-containing HCC
 fat-free HCC	fat-free HCC
 fecal DNA	fecal DNA
 feces	stool
-FFPE desmoid tumor tissue	FFPE desmoid tumor tissue
-FFPE non-tumor tissue	FFPE non-tumor tissue
-FFPE sample	FFPE tissue
-FFPE samples	FFPE tissue
-FFPE specimen	FFPE specimen
-FFPE tissue	FFPE tissue
-FFPE tumor tissue	tumor tissue (FFPE)
 fibroblast	fibroblasts
 fibroblast cells	fibroblasts
 fibroblasts	fibroblasts
-Foxp3+ effector conventional T cells	Foxp3+ effector T cells
-Foxp3+ effector T cells	Foxp3+ effector T cells
+foveolar epithelial cells	
 fresh-frozen desmoid tumor tissue	fresh-frozen desmoid tumor tissue
 frozen brain tissue	brain
 frozen liver tissue	liver
+frozen specimen	
 frozen spinal cord tissue	spinal cord
 frozen tumor tissue	frozen tumor tissue
-gallbladder	gallbladder
-gastric mucosa	gastric mucosa
-gastric polyp	gastric polyp
-gastric tumor	gastric tumor
-gastric tumor tissue	gastric tumor tissue
 gDNA	__DELETE__
 gDNA from peripheral blood	__DELETE__
+gallbladder	gallbladder
+gastric mucosa	gastric mucosa
+gastric mucosa foveolar epithelial cells (surface mucous cells)	foveolar epithelial cells
+gastric polyp	gastric polyp
+gastric tissue	gastric mucosa
+gastric tumor	gastric tumor
+gastric tumor tissue	gastric tumor tissue
 genetically engineered pancreatic duct organoids	pancreatic organoids
 genomic DNA	__DELETE__
 germline cells	germline cells
 gingiva	gingiva
 gland duct	gland duct
+glandular epithelial cell	glandular epithelial cells
 glandular epithelial cells	glandular epithelial cells
 glioma stem cell	glioma stem cells
 glioma stem cells	glioma stem cells
 gut microbiome	gut microbiome
-HBL	__DELETE__
-HCC	hepatocellular carcinoma
 healthy	__DELETE__
 healthy skin	healthy skin
 heart	heart
-Heart	heart
 heart muscle cells	cardiomyocytes
 heart muscle sample	heart
 heart tissue	heart tissue
-HeLa cells	HeLa cells
 hepatoblastoma cell lines	__DELETE__
 hepatocellular carcinoma	hepatocellular carcinoma
 hepatocytes	hepatocytes
 human dermal fibroblast	dermal fibroblast
+human placental stem cell line	
 human placental stem cells	placental stem cells
 human trophoblast stem cells	human trophoblast stem cells
 human umbilical cord blood-derived mononuclear cells	human umbilical cord blood-derived mononuclear cells
+iPS cell-derived NSC	iPS cell-derived NSC
+iPS cell-derived alveolar organoid EpCAM+CPM+ cells	
+iPS cell-derived alveolar organoid EpCAM-CPM- cells	
+iPS cell-derived differentiated cardiomyocytes	iPSC-derived cardiomyocytes
+iPS cell-derived differentiated heart muscle cells	iPSC-derived cardiomyocytes
+iPS cell-derived neuronal cells	iPS cell-derived neuronal cells
+iPS cells	iPSC
+iPS-derived NSCs	iPSC-derived NSCs
+iPS-derived neurons	iPSC-derived neurons
+iPSC	iPSC
+iPSC-derived NSCs	iPSC-derived NSCs
+iPSC-derived cardiomyocytes	iPSC-derived cardiomyocytes
+iPSC-derived neurons	iPSC-derived neurons
 immune cell subsets	immune cell subsets
 immune cells	immune cells
 induced pluripotent stem cells	induced pluripotent stem cells
@@ -217,20 +296,9 @@ intestinal microbiome	gut microbiome
 intestinal mucosa	intestinal mucosa
 intestinal organoid epithelial cells	intestinal organoids
 intestinal organoids	intestinal organoids
-iPS cell-derived differentiated heart muscle cells	iPSC-derived cardiomyocytes
-iPS cell-derived neuronal cells	iPS cell-derived neuronal cells
-iPS cell-derived NSC	iPS cell-derived NSC
-iPS cells	iPSC
-iPS-derived neurons	iPSC-derived neurons
-iPS-derived NSCs	iPSC-derived NSCs
-iPSC	iPSC
-iPSC-derived cardiomyocytes	iPSC-derived cardiomyocytes
-iPSC-derived neurons	iPSC-derived neurons
-iPSC-derived NSCs	iPSC-derived NSCs
-Japanese	__DELETE__
-Jurkat cells	Jurkat cells
 kidney	kidney
 kidney biopsy	kidney biopsy
+kidney biopsy cells	kidney biopsy
 kidney organoid	kidney organoid
 kidney organoids	kidney organoids
 kidney tissue	kidney
@@ -239,18 +307,19 @@ kidney tumor tissue	kidney tumor
 labial salivary glands	salivary gland
 late-stage normal pregnancy decidua	late-stage normal pregnancy decidua
 late-stage normal pregnancy peripheral blood	late-stage normal pregnancy peripheral blood
-LCL	LCL
 leiomyomatous lesion	leiomyomatous lesion
 lesion skin	lesion skin
+lesion tissue	
 lesional skin	lesional skin
 lesional tissue	lesional tissue
 leukemia cells	leukemia cells
 leukemia stem cell	leukemia stem cells
 leukemia stem cells	leukemia stem cells
 leukocytes	leukocytes
+leukocytes from peripheral blood	peripheral blood
 liver	liver
-Liver	liver
 liver cancer cell line	liver cancer cell line
+liver cancer clinical tissue	liver tumor tissue
 liver cells	liver
 liver cirrhosis	liver cirrhosis
 liver cirrhosis lesion	liver cirrhosis
@@ -267,12 +336,15 @@ lung tumor tissue	lung tumor
 lymph node	lymph node
 lymph node FFPE samples	lymph node
 lymph node FFPE specimen	lymph node FFPE specimen
+lymph node FFPE specimens	lymph node
 lymph node metastasis	lymph node metastasis
 lymph node tissue	lymph node
 lymph node tumor-infiltrating lymphocytes	TILs
 lymphocytes	lymphocytes
 lymphocytes isolated from peripheral blood	lymphocytes
 lymphoid fractions	lymphoid fractions
+mGC cells	mGC cells
+mRNA	__DELETE__
 maternal blood	maternal blood
 medulla tissue	medulla tissue
 metastatic lesion	metastatic lesion
@@ -281,25 +353,27 @@ metastatic lymph node	lymph node metastasis
 metastatic tumor	metastatic tumor
 metastatic tumor tissue	metastatic tumor
 metastatic tumor tissues	metastatic tumor
-mGC cells	mGC cells
 mitochondrial DNA	__DELETE__
 monocytes	monocytes
+monocytes derived from peripheral blood mononuclear cells	monocytes
 mononuclear cells from cord blood	cord blood mononuclear cells
 mononuclear cells in ascites	ascites mononuclear cells
 mucous epithelial cells	mucous epithelial cells
 muscle	muscle
 muscle biopsy	muscle
 muscle tissue	muscle
+naive CD4+ T cells	
 naive T cells	naive T cells
 naive Treg	naive Treg
 nasal polyp	nasal polyp
 neural epithelial cell	neural epithelial cells
 neural epithelial cells	neural epithelial cells
 neuroblastoma cell lines	__DELETE__
+neuroepithelial cells	
 neuroglial tumor	neuroglial tumor
 neuroglioma	neuroglioma
+neuronal nuclei	
 neutrophils	neutrophils
-NK cells	NK cells
 non-cancer tissue	normal tissue
 non-cancer tissues	normal tissue
 non-cancerous tissue	normal tissue
@@ -309,10 +383,12 @@ non-tumor cells	normal cells
 non-tumor kidney tissue	normal kidney
 non-tumor samples from surgically resected tissues	normal tissue
 non-tumor tissue	normal tissue
+non-tumor tissue (PBMC)	PBMC
 non-tumor tissue (cyst)	cyst
 non-tumor tissue (normal colon mucosa)	colonic mucosa
+non-tumor tissue (normal colorectal mucosa)	colonic mucosa
 non-tumor tissue (normal kidney tissue)	normal kidney
-non-tumor tissue (PBMC)	PBMC
+non-tumor tissue (normal tissue)	normal tissue
 non-tumor tissue of fat-containing HCC	non-tumor tissue of fat-containing HCC
 non-tumor tissues	normal tissue
 normal	__DELETE__
@@ -324,6 +400,7 @@ normal gallbladder	gallbladder
 normal gastric mucosa	gastric mucosa
 normal intestinal mucosa	intestinal mucosa
 normal kidney	normal kidney
+normal kidney tissue	normal kidney
 normal lung	lung
 normal muscle tissue	muscle
 normal or inflammatory/tumor tissues	__DELETE__
@@ -352,36 +429,31 @@ organoids derived from healthy normal colonic tissues	colon organoids
 organoids derived from tumor tissues	tumor organoids
 organoids from normal colonic tissue	colon organoids
 osteoblasts	osteoblasts
+pancreas	
 pancreatic organoids	pancreatic organoids
 pancreatic tumor tissue	pancreatic tumor tissue
 patient derived organoid	patient-derived organoids
 patient-derived AML blasts	AML blasts
 patient-derived organoids	patient-derived organoids
-PBL	peripheral blood lymphocytes
-PBMC	PBMC
-PCNSL	PCNSL
-PCNSL tissue	PCNSL
-PDX tumor	PDX tumor
-PDX tumor tissue	PDX tumor
 per subject: ...	__DELETE__
 peripheral	peripheral
 peripheral blood	peripheral blood
-Peripheral blood	peripheral blood
-Peripheral Blood	peripheral blood
 peripheral blood (normal leukocytes)	peripheral blood (normal leukocytes)
 peripheral blood CD4+ T cells	CD4+ T cells
+peripheral blood RNA	peripheral blood
 peripheral blood cells	peripheral blood
 peripheral blood gDNA	__DELETE__
 peripheral blood immune cells	peripheral blood
+peripheral blood leukocytes	peripheral blood
 peripheral blood lymphocyte	peripheral blood lymphocyte
 peripheral blood lymphocytes	peripheral blood lymphocytes
 peripheral blood monocyte	peripheral blood monocyte
+peripheral blood monocytes	peripheral blood monocyte
 peripheral blood mononuclear cell	PBMC
 peripheral blood mononuclear cells	PBMC
 peripheral blood mononuclear cells (PBMC)	PBMC
 peripheral blood plasma	plasma
-Peripheral Blood.	Peripheral Blood
-Peripheral Blood.	peripheral blood
+peritumoral tissue-derived organoid	
 placenta	placenta
 placental membrane	placental membrane
 placental stem cells	placental stem cells
@@ -393,6 +465,7 @@ pre-implantation embryo	pre-implantation embryo
 pre-leukemia stem cell	pre-leukemic stem cells
 pre-leukemic stem cells	pre-leukemic stem cells
 pregnancy hypertension nephropathy decidua	pregnancy hypertension nephropathy decidua
+preimplantation embryo	embryos
 preimplantation embryos	embryos
 primary lesion	primary lesion
 primary tumor	primary tumor tissue
@@ -405,14 +478,18 @@ recurrent lesion	recurrent lesion
 recurrent tumor	recurrent tumor
 renal biopsy specimen	kidney biopsy
 renal cortex	renal cortex
+resected specimen	
 resected tissue	surgical specimen
-RNA	__DELETE__
-RNA-seq	__DELETE__
+resected tumor tissue	tumor tissue
+resected tumor tissue (lung cancer)	lung tumor tissue
+resected tumor tissue (pleural mesothelioma)	tumor tissue
 saliva	saliva
+salivary duct	salivary gland
 salivary gland	salivary gland
 salivary gland carcinoma	salivary gland carcinoma
 salivary gland ductal carcinoma tissue	salivary gland carcinoma
 salivary gland tissue	salivary gland
+salivary gland tumor tissue	salivary gland carcinoma
 scalp sebum	scalp sebum
 sebum	sebum
 sebum of facial skin	facial sebum
@@ -421,11 +498,11 @@ serum	serum
 serum sample	serum
 sigmoid colon	sigmoid colon
 skeletal muscle	skeletal muscle
-Skeletal muscle	skeletal muscle
 skin	skin
 skin fibroblast	skin fibroblasts
 skin fibroblasts	skin fibroblasts
 skin tissue	skin
+soft tissue	
 sperm	sperm
 spinal cord	spinal cord
 spinal cord tissue	spinal cord
@@ -437,11 +514,15 @@ stomach tissue	stomach tissue
 stomach tumor tissue	gastric tumor
 stool	stool
 stratum corneum	stratum corneum
+stromal cell	stromal cells
 stromal cells	stromal cells
+stromal tissue	stromal cells
 submandibular gland	submandibular gland
+surface mucous cells	foveolar epithelial cells
 surface mucus cells	surface mucus cells
 surgical section	surgical specimen
 surgical specimen	surgical specimen
+surgically dissected tissue	
 syncytiotrophoblast	syncytiotrophoblast
 syncytiotrophoblast cells	syncytiotrophoblast
 synovial fibroblast	synovial fibroblast
@@ -451,49 +532,57 @@ synovial fluid	synovial fluid
 synovial fluid sample	synovial fluid
 synovial tissue	synovium
 synovium	synovium
-T cells	T cells
-T-cell	T cells
 testicular tissue	testis
 testis	testis
 testis tissue	testis tissue
 thymic hyperplasia	thymic hyperplasia
+thymic hyperplasia tissue	
 thymus	thymus
 thymus tumor	thymus tumor
 thymus tumor tissue	thymus tumor
-TILs	TILs
+tissue	__DELETE__
 tonsil	tonsil
 tonsil specimens	tonsil
 total RNA	__DELETE__
 total RNA from CRISPR-activated Jurkat cells	__DELETE__
 transverse colon	transverse colon
 trophoblast	trophoblast
+trophoblast stem cell	TSC
+trophoblast stem cell derived from female CT (differentiated to EVT)	
+trophoblast stem cell derived from female CT (differentiated to ST)	
+trophoblast stem cell derived from female CT (undifferentiated)	
 trophoblast stem cells	TSC
-TS cells	TSC
-TSC	TSC
 tumor	tumor tissue
 tumor cells	tumor cells
 tumor organoid	tumor organoid
 tumor organoids	tumor organoids
 tumor samples	tumor tissue
 tumor tissue	tumor tissue
+tumor tissue (FFPE specimen)	tumor tissue (FFPE)
 tumor tissue (FFPE)	tumor tissue (FFPE)
+tumor tissue (metastatic lesion)	tumor tissue (metastatic)
+tumor tissue (metastatic tumor)	tumor tissue (metastatic)
+tumor tissue (metastatic)	
+tumor tissue (primary lesion)	tumor tissue (primary)
+tumor tissue (primary tumor)	tumor tissue (primary)
+tumor tissue (primary)	
 tumor tissue section	tumor tissue section
 tumor tissue-derived organoid	tumor tissue-derived organoid
 tumor tissues	tumor tissue
 tumor-derived organoid	tumor-derived organoid
 tumor-derived organoids	tumor organoids
-tumor-infiltrating lymphocytes	TILs
 tumor-infiltrating T cells	TILs
+tumor-infiltrating lymphocytes	TILs
 umbilical cord	umbilical cord
 umbilical cord blood	cord blood
 umbilical cord blood mononuclear cells	umbilical cord blood mononuclear cells
 umbilical cord tissue	umbilical cord
 uninfected cells	uninfected cells
 urine	urine
-Urine	urine
 uterine endometrium	endometrium
 uterine tissue	uterine tissue
-WGS	__DELETE__
+villous stromal cell	villous stromal cells
+villous stromal cells	
 white blood cell DNA	__DELETE__
 white blood cells	leukocytes
 whole blood	peripheral blood

@@ -35,11 +35,14 @@ fastq	__DELETE__
 FASTQ	__DELETE__
 GRCh36	GRCh36
 GRCh37	GRCh37
+GRCh37_decoy	GRCh37
 GRCh37.p13	GRCh37
 GRCh37/hg19	GRCh37
+GRCh37/hg19 (hs37d5)	GRCh37
 GRCh37/hg19(hs37d5)	GRCh37
 GRCh37d5	GRCh37
 GRCh38	GRCh38
+GRCh38 (build 2020-A, 10x Genomics)	GRCh38
 GRCh38-2020-A	GRCh38
 GRCh38-2020-A (GENCODE v32/Ensembl 98)	GRCh38
 GRCh38-3.0.0	GRCh38
@@ -58,7 +61,9 @@ Japanese	__DELETE__
 mm10	mm10
 NCBI Build 36.3	GRCh36
 population	__DELETE__
+refdata-cellranger-GRCh38-3.0.0	GRCh38
 refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0	GRCh38
+refdata-GRCh38-1.0.0	GRCh38
 RNA-seq	__DELETE__
 RNA-Seq	__DELETE__
 t	__DELETE__

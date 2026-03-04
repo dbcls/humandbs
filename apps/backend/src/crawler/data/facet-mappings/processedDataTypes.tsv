@@ -4,6 +4,7 @@
 aligned	__DELETE__
 aligned reads	__DELETE__
 aligned_reads	aligned_reads
+alignment	BAM
 bai	BAI
 BAI	BAI
 bam	BAM
@@ -12,6 +13,7 @@ bam [ref: hg19]	BAM
 bam [ref: hg19/hg38]	BAM
 bam [ref: hg38]	BAM
 barcodes.tsv	__DELETE__
+barcodes.tsv.gz	TSV.GZ
 bed	BED
 BED	BED
 bedpe	BEDPE
@@ -25,11 +27,14 @@ bw	BigWig
 called	__DELETE__
 cell_type	__DELETE__
 cfa..	__DELETE__
+CHP	
 cloupe	Cloupe
 Cloupe	Cloupe
+CLOUPE	Cloupe
 CNV	CNV
 contig_fasta	__DELETE__
 count data	__DELETE__
+CpG methylation rate data	DNA methylation data
 csv	CSV
 CSV	CSV
 csv.gz	CSV.GZ
@@ -43,7 +48,10 @@ DOCUMENT	DOCUMENT
 exome sequencing	__DELETE__
 experiment description	__DELETE__
 expression data	__DELETE__
+expression matrix	
+expression matrix (txt)	expression matrix
 expression matrix data	__DELETE__
+expression matrix data (txt)	expression matrix
 fast5	FAST5
 FAST5	FAST5
 fasta	FASTA
@@ -51,7 +59,10 @@ FASTA	FASTA
 fastq	FASTQ
 FASTQ	FASTQ
 features.tsv	__DELETE__
+features.tsv.gz	TSV.GZ
 fpkm	__DELETE__
+FPKM	
+FPKM txt	FPKM
 GATK	__DELETE__
 gDNA	__DELETE__
 gene expression	__DELETE__
@@ -60,6 +71,7 @@ genomic variant data	__DELETE__
 genotype	__DELETE__
 genotype call	__DELETE__
 genotype data	__DELETE__
+Genotype data	
 genotypes	__DELETE__
 gff	GFF
 GFF	GFF
@@ -70,7 +82,10 @@ gvcf	GVCF
 GVCF	GVCF
 gwas	__DELETE__
 GWAS	GWAS
+GWAS summary data	GWAS summary statistics
 gwas summary statistics	__DELETE__
+GWAS summary statistics	
+GWAS summary statistics (zip)	GWAS summary statistics
 h5	HDF5
 H5	HDF5
 hdf5	HDF5
@@ -88,12 +103,16 @@ intensity data	__DELETE__
 json	JSON
 JSON	JSON
 list	__DELETE__
+MAG	
+MAG (Metagenome-Assembled Genome)	MAG
 map	MAP
 MAP	MAP
 matrix	__DELETE__
 MATRIX	MATRIX
 matrix.mtx	__DELETE__
+matrix.mtx.gz	MTX
 metabolomics data	__DELETE__
+methylation rate	DNA methylation data
 microarray	__DELETE__
 microarray data	__DELETE__
 mtx	MTX
@@ -106,8 +125,11 @@ Parquet	PARQUET
 PBMC	__DELETE__
 ped	PED
 PED	PED
+ped/map	PED||MAP
 phenotype	__DELETE__
+phenotype data	Phenotype data
 Phenotype data	Phenotype data
+Phenotype data (txt.gz)	Phenotype data
 phenotypes	__DELETE__
 PLINK Assoc	PLINK Assoc
 plink binary	PLINK Binary
@@ -137,6 +159,7 @@ TBI	TBI
 tdf	TDF
 TDF	TDF
 tif	TIFF
+TIF	TIFF
 tiff	TIFF
 TIFF	TIFF
 tissue_type	__DELETE__
@@ -158,6 +181,7 @@ variants	__DELETE__
 vcf	VCF
 VCF	VCF
 vcf_aggregate	VCF
+VCF_aggregate	VCF
 vcf.gz	VCF
 WGS	__DELETE__
 wig	WIG
@@ -167,6 +191,8 @@ xls	XLS
 XLS	XLS
 xlsx	XLSX
 XLSX	XLSX
+xlx	XLS
+XLX	XLS
 zarr	ZARR
 Zarr	ZARR
 zip	ZIP
