@@ -65,7 +65,9 @@ function RouteComponent() {
         <SearchCaption
           title={t("dataset-list")}
           committedQuery={search.query ?? ""}
-          onQueryChange={(query) => setFilters({ query })}
+          onQueryChange={(query) => {
+            setFilters({ query });
+          }}
           onFilterClick={onFilterClick}
         />
       )}

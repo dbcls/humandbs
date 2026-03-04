@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
-import { CONTENT_IDS } from "@/config/content-config";
+import { CONTENT_IDS, type ContentId } from "@/config/content-config";
 import { i18n, type Locale } from "@/config/i18n";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
@@ -357,8 +357,8 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
     try {
       console.log(`Reading locale folder: ${localeDir}`);
       entries = await readdir(localeDir, { withFileTypes: true });
-    } catch (error: any) {
-      if (error?.code === "ENOENT") {
+    } catch (error: unknown) {
+      if ((error as { code: unknown })?.code === "ENOENT") {
         console.warn(`Missing locale folder: ${localeDir}`);
         continue;
       }
@@ -367,7 +367,7 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const documentId = entry.name;
+      const documentId = entry.name as ContentId;
 
       if (!VALID_DOCUMENT_IDS.has(documentId)) {
         console.warn(
@@ -381,11 +381,12 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
       let content: string;
       try {
         content = await readFile(contentPath, "utf8");
-      } catch (error: any) {
-        if (error?.code === "ENOENT") {
+      } catch (error: unknown) {
+        if ((error as { code?: unknown })?.code === "ENOENT") {
           console.warn(`Missing content file: ${contentPath}`);
           continue;
         }
+
         throw error;
       }
 
@@ -422,8 +423,8 @@ async function copyAssets(documents: DocumentLocaleMap): Promise<Set<string>> {
 
         try {
           await stat(sourcePath);
-        } catch (error: any) {
-          if (error?.code === "ENOENT") {
+        } catch (error: unknown) {
+          if ((error as { code?: unknown })?.code === "ENOENT") {
             console.warn(
               `Asset not found: ${sourcePath} (referenced in ${locale}/${documentId})`,
             );
@@ -628,7 +629,7 @@ if (import.meta.main) {
       console.log("\nDone!");
       process.exit(0);
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       console.error("Fatal error:", err);
       process.exit(1);
     });

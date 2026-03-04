@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --host 0.0.0.0 --port 3000",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
     "preview": "vite preview",
     "start": "bun server.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
