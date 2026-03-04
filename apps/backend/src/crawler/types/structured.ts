@@ -33,7 +33,7 @@ export const HealthStatusSchema = z.enum(["healthy", "affected", "mixed"])
 export type HealthStatus = z.infer<typeof HealthStatusSchema>
 
 /** Read type */
-export const ReadTypeSchema = z.enum(["single-end", "paired-end"])
+export const ReadTypeSchema = z.enum(["single-end", "paired-end", "mixed"])
 export type ReadType = z.infer<typeof ReadTypeSchema>
 
 /** Disease information (icd10 is nullable in crawler output, but required after icd10-normalize) */
@@ -45,8 +45,8 @@ export type DiseaseInfo = z.infer<typeof DiseaseInfoSchema>
 
 /** Platform information */
 export const PlatformInfoSchema = z.object({
-  vendor: z.string(),
-  model: z.string(),
+  vendor: z.string().nullable(),
+  model: z.string().nullable(),
 })
 export type PlatformInfo = z.infer<typeof PlatformInfoSchema>
 
@@ -118,7 +118,7 @@ export const SearchableExperimentFieldsSchema = z.object({
   platforms: z.array(PlatformInfoSchema)
     .describe("Sequencing platforms used"),
   readType: ReadTypeSchema.nullable()
-    .describe("Read type: 'single-end' or 'paired-end'"),
+    .describe("Read type: 'single-end', 'paired-end', or 'mixed'"),
   readLength: z.number().nullable()
     .describe("Read length in base pairs"),
 

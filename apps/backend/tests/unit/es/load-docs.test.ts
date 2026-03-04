@@ -6,7 +6,6 @@ import {
   idResearchVersion,
   idDataset,
   transformResearch,
-  transformDataset,
 } from "@/es/load-docs"
 
 describe("es/load-docs.ts", () => {
@@ -143,44 +142,4 @@ describe("es/load-docs.ts", () => {
     })
   })
 
-  // ===========================================================================
-  // transformDataset
-  // ===========================================================================
-  describe("transformDataset", () => {
-    it("should return document as-is (no transformation)", () => {
-      const doc = {
-        datasetId: "DRA001273",
-        version: "v1",
-        experiments: [
-          {
-            searchable: {
-              platforms: [
-                { vendor: "Illumina", model: "HiSeq 2500" },
-                { vendor: "Thermo Fisher", model: "Ion PGM" },
-              ],
-            },
-          },
-        ],
-      }
-      const result = transformDataset(doc)
-      expect(result).toEqual(doc)
-    })
-
-    it("should preserve platforms array for nested aggregation in API", () => {
-      const doc = {
-        datasetId: "DRA001273",
-        version: "v1",
-        experiments: [
-          {
-            searchable: {
-              platforms: [{ vendor: "Illumina", model: "HiSeq 2500" }],
-            },
-          },
-        ],
-      }
-      const result = transformDataset(doc)
-      const searchable = (result.experiments as { searchable: Record<string, unknown> }[])[0].searchable
-      expect(searchable.platforms).toEqual([{ vendor: "Illumina", model: "HiSeq 2500" }])
-    })
-  })
 })

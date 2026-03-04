@@ -289,8 +289,9 @@
     "Agilent||SurePrint G3 Human GE v2 8x60K Microarray"
   ],
   "readType": [
+    "single-end",
     "paired-end",
-    "single-end"
+    "mixed"
   ],
   "referenceGenome": [
     "GRCh38",

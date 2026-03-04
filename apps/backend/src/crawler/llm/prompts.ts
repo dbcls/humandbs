@@ -51,8 +51,9 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
 - libraryKits: ALL library prep kit names. Empty [] if none.
 - platforms: Array of platform objects with vendor and model. Extract ALL platforms if multiple used.
   Example: [{ "vendor": "Illumina", "model": "NovaSeq 6000" }, { "vendor": "Thermo Fisher", "model": "Ion Proton" }]
+  Use null for vendor or model if unknown.
   Empty [] if none stated.
-- readType: "single-end" or "paired-end". null if not stated.
+- readType: "single-end", "paired-end", or "mixed" (when both types are present). null if not stated.
 - readLength: Read length in bp (number only). null if not stated.
 - sequencingDepth: Average sequencing depth/coverage as number (e.g. "30x" → 30, "168x" → 168). Look in "Coverage" field. null if not stated.
 - targetCoverage: Target region coverage percentage as number (e.g. "95%" → 95). null if not stated.

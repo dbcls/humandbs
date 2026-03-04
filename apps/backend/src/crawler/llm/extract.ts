@@ -20,7 +20,7 @@ const HealthStatusEnum = z.enum(["healthy", "affected", "mixed"])
 const IsTumorEnum = z.enum(["tumor", "normal", "mixed"])
 const SexEnum = z.enum(["male", "female", "mixed"])
 const AgeGroupEnum = z.enum(["infant", "child", "adult", "elderly", "mixed"])
-const ReadTypeEnum = z.enum(["single-end", "paired-end"])
+const ReadTypeEnum = z.enum(["single-end", "paired-end", "mixed"])
 
 const DiseaseInfoBaseSchema = z.object({
   label: z.string(),
@@ -28,8 +28,8 @@ const DiseaseInfoBaseSchema = z.object({
 })
 
 const PlatformInfoBaseSchema = z.object({
-  vendor: z.string(),
-  model: z.string(),
+  vendor: z.string().nullable(),
+  model: z.string().nullable(),
 })
 
 const VariantCountsBaseSchema = z.object({
@@ -89,8 +89,8 @@ const VariantCountsWithCatch = VariantCountsBaseSchema.extend({
 }).strict()
 
 const PlatformInfoWithCatch = PlatformInfoBaseSchema.extend({
-  vendor: z.string().catch(""),
-  model: z.string().catch(""),
+  vendor: z.string().nullable().catch(null),
+  model: z.string().nullable().catch(null),
 }).strict()
 
 /** Parse array with element-level filtering: invalid elements are dropped instead of failing the whole array */

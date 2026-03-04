@@ -109,9 +109,9 @@ export const MergedSearchableSchema = z.object({
 
   // Platform
   platforms: z.array(z.object({
-    vendor: z.string()
+    vendor: z.string().nullable()
       .describe("Platform vendor (e.g., 'Illumina', 'PacBio')"),
-    model: z.string()
+    model: z.string().nullable()
       .describe("Platform model (e.g., 'NovaSeq 6000', 'Sequel II')"),
   })).describe("Sequencing platforms used"),
   readType: z.array(z.string())

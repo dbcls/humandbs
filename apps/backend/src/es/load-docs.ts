@@ -14,27 +14,14 @@
 import { Client, HttpConnection } from "@elastic/elasticsearch"
 import { existsSync, readdirSync, readFileSync } from "fs"
 import { join, dirname } from "path"
+import type { z } from "zod"
 
-// === Types ===
-
-interface DatasetDoc {
-  datasetId: string
-  version: string
-  [key: string]: unknown
-}
-
-interface ResearchDoc {
-  humId: string
-  status?: string
-  uids?: string[]
-  [key: string]: unknown
-}
-
-interface ResearchVersionDoc {
-  humId: string
-  version: string
-  [key: string]: unknown
-}
+import {
+  EsResearchSchema,
+  EsDatasetSchema,
+  ResearchVersionSchema,
+} from "./types"
+import type { EsResearch, EsDataset, ResearchVersion } from "./types"
 
 // === Constants ===
 
@@ -74,25 +61,16 @@ export const idDataset = (datasetId: string, version: string): string =>
  * Transform research document for ES indexing
  * - Add default status and uids if not present
  */
-export const transformResearch = (doc: ResearchDoc): ResearchDoc => ({
+export const transformResearch = (doc: Record<string, unknown>): Record<string, unknown> => ({
   ...doc,
-  status: doc.status ?? "published",
-  uids: doc.uids ?? [],
+  status: (doc.status as string | undefined) ?? "published",
+  uids: (doc.uids as string[] | undefined) ?? [],
 })
-
-/**
- * Transform dataset document for ES indexing
- * - No transformation needed; platforms are stored as-is
- * - Facet aggregation is handled via nested aggregation in API
- */
-export const transformDataset = (doc: DatasetDoc): DatasetDoc => {
-  return doc
-}
 
 /**
  * Find crawler-results directory by searching up from current file
  */
-function findResultsDir(): string {
+export const findResultsDir = (): string => {
   let currentDir = dirname(__filename)
   while (!existsSync(join(currentDir, "package.json"))) {
     const parentDir = dirname(currentDir)
@@ -101,13 +79,14 @@ function findResultsDir(): string {
     }
     currentDir = parentDir
   }
+
   return join(currentDir, "crawler-results")
 }
 
 /**
  * Get the source directory for a given type
  */
-function getSourceDir(type: "research" | "research-version" | "dataset"): string {
+export const getSourceDir = (type: "research" | "research-version" | "dataset"): string => {
   const resultsDir = findResultsDir()
   const structuredDir = join(resultsDir, "structured-json", type)
 
@@ -121,16 +100,19 @@ function getSourceDir(type: "research" | "research-version" | "dataset"): string
 /**
  * Read all JSON files from a directory
  */
-function readJsonFilesFromDir<T>(dir: string): T[] {
+export const readJsonFilesFromDir = (dir: string): { fileName: string; data: unknown }[] => {
   if (!existsSync(dir)) {
     console.warn(`Directory not found: ${dir}`)
+
     return []
   }
 
   const files = readdirSync(dir).filter((f) => f.endsWith(".json"))
+
   return files.map((f) => {
     const content = readFileSync(join(dir, f), "utf8")
-    return JSON.parse(content) as T
+
+    return { fileName: f, data: JSON.parse(content) as unknown }
   })
 }
 
@@ -150,19 +132,19 @@ const main = async () => {
   console.log(`  Research Version: ${researchVersionDir}`)
   console.log(`  Dataset: ${datasetDir}`)
 
-  const researchDocs = readJsonFilesFromDir<ResearchDoc>(researchDir)
-  const researchVersionDocs = readJsonFilesFromDir<ResearchVersionDoc>(researchVersionDir)
-  const datasetDocs = readJsonFilesFromDir<DatasetDoc>(datasetDir)
+  const researchRaw = readJsonFilesFromDir(researchDir)
+  const researchVersionRaw = readJsonFilesFromDir(researchVersionDir)
+  const datasetRaw = readJsonFilesFromDir(datasetDir)
 
-  console.log("\nLoaded documents:")
-  console.log(`  Research: ${researchDocs.length}`)
-  console.log(`  Research Version: ${researchVersionDocs.length}`)
-  console.log(`  Dataset: ${datasetDocs.length}`)
+  console.log("\nLoaded files:")
+  console.log(`  Research: ${researchRaw.length}`)
+  console.log(`  Research Version: ${researchVersionRaw.length}`)
+  console.log(`  Dataset: ${datasetRaw.length}`)
 
   if (
-    researchDocs.length === 0 &&
-    researchVersionDocs.length === 0 &&
-    datasetDocs.length === 0
+    researchRaw.length === 0 &&
+    researchVersionRaw.length === 0 &&
+    datasetRaw.length === 0
   ) {
     console.log("\nNo documents to index. Exiting.")
     return
@@ -185,22 +167,50 @@ const main = async () => {
 
   const BATCH_SIZE = 100
 
+  /**
+   * Validate raw documents with optional transform, then bulk-index.
+   * Documents that fail Zod validation are logged and skipped.
+   */
   const bulkIndex = async <T>(
     index: keyof typeof INDEX,
-    docs: T[],
+    rawDocs: { fileName: string; data: unknown }[],
+    schema: z.ZodType<T>,
     genId: (doc: T) => string,
-    transform?: (doc: T) => T,
+    transform?: (doc: Record<string, unknown>) => Record<string, unknown>,
   ) => {
-    if (docs.length === 0) return
+    if (rawDocs.length === 0) return
 
-    const transformedDocs = transform ? docs.map(transform) : docs
+    // transform → validate
+    const validDocs: T[] = []
+    for (const { fileName, data } of rawDocs) {
+      const transformed = transform
+        ? transform(data as Record<string, unknown>)
+        : data
+      const parsed = schema.safeParse(transformed)
+      if (!parsed.success) {
+        console.error(
+          `Validation failed for ${INDEX[index]}/${fileName}:`,
+          parsed.error.issues,
+        )
+        continue
+      }
+      validDocs.push(parsed.data)
+    }
+
+    if (validDocs.length < rawDocs.length) {
+      console.warn(
+        `\n${INDEX[index]}: ${rawDocs.length - validDocs.length}/${rawDocs.length} documents skipped due to validation errors`,
+      )
+    }
+
+    if (validDocs.length === 0) return
 
     // Split into batches to avoid payload size limits
     let totalIndexed = 0
     let totalErrors = 0
 
-    for (let i = 0; i < transformedDocs.length; i += BATCH_SIZE) {
-      const batch = transformedDocs.slice(i, i + BATCH_SIZE)
+    for (let i = 0; i < validDocs.length; i += BATCH_SIZE) {
+      const batch = validDocs.slice(i, i + BATCH_SIZE)
       const ops = batch.flatMap((doc) => [
         { index: { _index: INDEX[index], _id: genId(doc) } },
         doc,
@@ -229,18 +239,18 @@ const main = async () => {
     await client.indices.refresh({ index: INDEX[index] })
 
     if (totalErrors > 0) {
-      console.log(`\nIndexed ${totalIndexed}/${docs.length} documents -> ${INDEX[index]} (${totalErrors} errors)`)
+      console.log(`\nIndexed ${totalIndexed}/${validDocs.length} documents -> ${INDEX[index]} (${totalErrors} errors)`)
     } else {
-      console.log(`\nIndexed ${docs.length} documents -> ${INDEX[index]}`)
+      console.log(`\nIndexed ${validDocs.length} documents -> ${INDEX[index]}`)
     }
   }
 
   // Index documents (no lang suffix in IDs)
-  await bulkIndex("research", researchDocs, (d) => idResearch(d.humId), transformResearch)
-  await bulkIndex("researchVersion", researchVersionDocs, (d) =>
+  await bulkIndex("research", researchRaw, EsResearchSchema, (d) => idResearch(d.humId), transformResearch)
+  await bulkIndex("researchVersion", researchVersionRaw, ResearchVersionSchema, (d) =>
     idResearchVersion(d.humId, d.version),
   )
-  await bulkIndex("dataset", datasetDocs, (d) => idDataset(d.datasetId, d.version), transformDataset)
+  await bulkIndex("dataset", datasetRaw, EsDatasetSchema, (d) => idDataset(d.datasetId, d.version))
 
   console.log("\nDone!")
 }

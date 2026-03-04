@@ -10,6 +10,9 @@ Backend の開発を始めるための手順。
 ## 1. Elasticsearch の準備
 
 ```bash
+# ドキュメント検証（dry-run、ES 接続不要）
+bun run es:validate-docs
+
 # インデックス作成
 bun run es:load-mappings
 

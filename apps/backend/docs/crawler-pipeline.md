@@ -325,6 +325,12 @@ bun run crawler:facet-values && \
 bun run crawler:facet-normalize && \
 bun run crawler:export-tsv
 # Step 11 (import-tsv) は手動編集後に実行するため、自動パイプラインには含めない
+
+# ES 投入前に Zod スキーマでバリデーション (dry-run、ES 接続不要)
+bun run es:validate-docs
+
+# ES 投入
+bun run es:load-mappings && bun run es:load-docs
 ```
 
 ## トラブルシューティング

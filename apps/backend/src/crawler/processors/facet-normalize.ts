@@ -247,8 +247,22 @@ export const normalizePlatforms = (
   const seenCombinations = new Set<string>()
 
   for (const platform of platforms) {
-    const vendorResult = normalizeValue(platform.vendor, vendorMapping)
-    const modelResult = normalizeValue(platform.model, modelMapping)
+    // Normalize empty/whitespace vendor/model to null (consistent with array field handling)
+    const vendor = platform.vendor !== null && isEmptyOrWhitespace(platform.vendor) ? null : platform.vendor
+    const model = platform.model !== null && isEmptyOrWhitespace(platform.model) ? null : platform.model
+
+    // null values cannot be passed to normalizeValue — keep as-is and deduplicate
+    if (vendor === null || model === null) {
+      const key = `${vendor}|${model}`
+      if (!seenCombinations.has(key)) {
+        seenCombinations.add(key)
+        normalizedList.push({ vendor, model })
+      }
+      continue
+    }
+
+    const vendorResult = normalizeValue(vendor, vendorMapping)
+    const modelResult = normalizeValue(model, modelMapping)
 
     // Skip if either vendor or model should be deleted
     if (vendorResult.shouldDelete || modelResult.shouldDelete) {
@@ -256,16 +270,16 @@ export const normalizePlatforms = (
     }
 
     if (vendorResult.wasUnmapped) {
-      unmappedVendors.push(platform.vendor)
+      unmappedVendors.push(vendor)
     }
     if (modelResult.wasUnmapped) {
-      unmappedModels.push(platform.model)
+      unmappedModels.push(model)
     }
     if (vendorResult.wasPending) {
-      pendingVendors.push(platform.vendor)
+      pendingVendors.push(vendor)
     }
     if (modelResult.wasPending) {
-      pendingModels.push(platform.model)
+      pendingModels.push(model)
     }
 
     // For platforms, use the first normalized value (multi-value not supported for vendor/model)

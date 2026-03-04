@@ -23,6 +23,7 @@
     "crawler:export-tsv": "bun run src/crawler/cli/export-tsv.ts",
     "crawler:import-tsv": "bun run src/crawler/cli/import-tsv.ts",
     "es:load-mappings": "bun run src/es/load-mappings.ts",
+    "es:validate-docs": "bun run src/es/validate-docs.ts",
     "es:load-docs": "bun run src/es/load-docs.ts",
     "jga-shinsei:load-mappings": "bun run jga-shinsei/scripts/es-load-mappings.ts",
     "jga-shinsei:load-docs": "bun run jga-shinsei/scripts/es-load-docs.ts",
@@ -31,6 +32,7 @@
     "test:es": "bun test tests/unit/es",
     "test:api": "bun test tests/unit/api",
     "test:integration": "bun test --test-root ./tests/integration",
+    "test:smoke": "bun test --test-root ./tests/smoke",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix"
