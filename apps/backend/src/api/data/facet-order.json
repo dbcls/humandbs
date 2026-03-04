@@ -1,0 +1,9 @@
+{
+  "assayType": [
+    "WGS",
+    "WES",
+    "RNA-seq",
+    "scRNA-seq",
+    "GWAS"
+  ]
+}

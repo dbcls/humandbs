@@ -9,6 +9,7 @@
  */
 import type { estypes } from "@elastic/elasticsearch"
 
+import facetOrder from "@/api/data/facet-order.json"
 import { buildStatusFilter, getPublishedHumIds } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
@@ -334,6 +335,17 @@ const isCompositeBucketArray = (value: unknown): value is CompositeBucket[] => {
   )
 }
 
+/** Sort facet values: prioritized values first (in defined order), then remaining by count descending */
+export const applyFacetOrder = (values: FacetValue[], order: string[]): FacetValue[] => {
+  const orderIndex = new Map(order.map((v, i) => [v, i]))
+  return values.toSorted((a, b) => {
+    const aIdx = orderIndex.get(a.value) ?? Infinity
+    const bIdx = orderIndex.get(b.value) ?? Infinity
+    if (aIdx !== bIdx) return aIdx - bIdx
+    return b.count - a.count
+  })
+}
+
 const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => {
   if (!aggs) return {}
   const facets: Record<string, FacetValue[]> = {}
@@ -427,6 +439,14 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
     const buckets = findBuckets(agg)
     if (buckets) {
       facets[key] = extractBuckets(buckets)
+    }
+  }
+
+  // Apply ordering from facet-order.json
+  for (const [key, values] of Object.entries(facets)) {
+    const order = (facetOrder as Record<string, string[]>)[key]
+    if (order) {
+      facets[key] = applyFacetOrder(values, order)
     }
   }
 
