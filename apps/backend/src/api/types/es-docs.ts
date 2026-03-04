@@ -16,7 +16,7 @@ import {
   EsResearchVersionSchema,
   IsTumorSchema,
   VariantCountsSchema,
-} from "../../es/types"
+} from "@/es/types"
 
 // Re-export for convenience
 export type {
@@ -28,7 +28,7 @@ export type {
   EsGrant,
   EsPublication,
   EsSummary,
-} from "../../es/types"
+} from "@/es/types"
 
 // === Re-export ES schemas for convenience ===
 

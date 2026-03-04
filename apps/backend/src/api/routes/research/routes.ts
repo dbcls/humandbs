@@ -4,7 +4,7 @@
  * OpenAPI route specifications for Research API endpoints.
  * Uses unified response schemas with data + meta structure.
  */
-import { createRoute } from "@hono/zod-openapi";
+import { createRoute } from "@hono/zod-openapi"
 
 import {
   ErrorSpec401,
@@ -12,7 +12,7 @@ import {
   ErrorSpec404,
   ErrorSpec409,
   ErrorSpec500,
-} from "@/api/routes/errors";
+} from "@/api/routes/errors"
 import {
   CreateDatasetForResearchRequestSchema,
   CreateResearchRequestSchema,
@@ -34,7 +34,7 @@ import {
   VersionDetailResponseSchema,
   VersionParamsSchema,
   WorkflowUnifiedResponseSchema,
-} from "@/api/types";
+} from "@/api/types"
 
 // === CRUD Routes ===
 
@@ -64,7 +64,7 @@ export const listResearchRoute = createRoute({
     403: ErrorSpec403,
     500: ErrorSpec500,
   },
-});
+})
 
 export const createResearchRoute = createRoute({
   method: "post",
@@ -96,7 +96,7 @@ export const createResearchRoute = createRoute({
     403: ErrorSpec403,
     500: ErrorSpec500,
   },
-});
+})
 
 export const getResearchRoute = createRoute({
   method: "get",
@@ -123,7 +123,7 @@ Returns the latest version by default. Use GET /research/{humId}/versions/{versi
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-});
+})
 
 export const updateResearchRoute = createRoute({
   method: "put",
@@ -156,7 +156,7 @@ export const updateResearchRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 export const deleteResearchRoute = createRoute({
   method: "post",
@@ -182,7 +182,7 @@ export const deleteResearchRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 // === Version Routes ===
 
@@ -212,7 +212,7 @@ Returns version history including:
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-});
+})
 
 export const getVersionRoute = createRoute({
   method: "get",
@@ -234,7 +234,7 @@ Version format: v1, v2, v3, etc.`,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-});
+})
 
 export const createVersionRoute = createRoute({
   method: "post",
@@ -267,7 +267,7 @@ export const createVersionRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 // === Dataset Routes ===
 
@@ -296,7 +296,7 @@ export const listLinkedDatasetsRoute = createRoute({
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
-});
+})
 
 export const createDatasetForResearchRoute = createRoute({
   method: "post",
@@ -332,7 +332,7 @@ export const createDatasetForResearchRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 // === Workflow Routes ===
 
@@ -364,7 +364,7 @@ Returns 409 Conflict if Research is not in draft status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 export const approveRoute = createRoute({
   method: "post",
@@ -398,7 +398,7 @@ Returns 409 Conflict if Research is not in review status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 export const rejectRoute = createRoute({
   method: "post",
@@ -430,7 +430,7 @@ Returns 409 Conflict if Research is not in review status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 export const unpublishRoute = createRoute({
   method: "post",
@@ -462,7 +462,7 @@ Returns 409 Conflict if Research is not in published status.`,
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})
 
 // === UIDs Route ===
 
@@ -498,4 +498,4 @@ export const updateUidsRoute = createRoute({
     409: ErrorSpec409,
     500: ErrorSpec500,
   },
-});
+})

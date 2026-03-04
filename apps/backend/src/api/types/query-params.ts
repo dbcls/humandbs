@@ -6,11 +6,12 @@
  * - Research listing/search query schemas
  * - Dataset listing/search query schemas
  */
-import { z } from "zod";
+import { z } from "zod"
 
-import { LANG_TYPES, booleanFromString } from "./common";
-import { RESEARCH_STATUS } from "./workflow";
 import { IsTumorSchema } from "../../es/types"
+
+import { LANG_TYPES, booleanFromString } from "./common"
+import { RESEARCH_STATUS } from "./workflow"
 
 // === Common Query Schemas ===
 
@@ -34,8 +35,8 @@ export const LangVersionQuerySchema = z.object({
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
     ),
-});
-export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>;
+})
+export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>
 
 // Lang query
 export const LangQuerySchema = z.object({
@@ -49,8 +50,8 @@ export const LangQuerySchema = z.object({
     .describe(
       "Include rawHtml fields in response (default: false). Useful for rich text editing.",
     ),
-});
-export type LangQuery = z.infer<typeof LangQuerySchema>;
+})
+export type LangQuery = z.infer<typeof LangQuerySchema>
 
 // === Research Listing Query (GET /research) ===
 
@@ -106,8 +107,8 @@ export const ResearchListingQuerySchema = z.object({
     .describe(
       "Include rawHtml fields (e.g., summary.aims.rawHtml) in response",
     ),
-});
-export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>;
+})
+export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>
 
 // === Research Search Query & Response ===
 
@@ -399,8 +400,8 @@ export const ResearchSearchQuerySchema = z.object({
     .boolean()
     .default(false)
     .describe("Include rawHtml fields in response"),
-});
-export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>;
+})
+export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>
 
 // === Dataset Listing Query (GET /dataset) ===
 
@@ -446,8 +447,8 @@ export const DatasetListingQuerySchema = z.object({
     .boolean()
     .default(false)
     .describe("Include rawHtml fields in response"),
-});
-export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>;
+})
+export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>
 
 // === Dataset Search Query ===
 
@@ -709,8 +710,8 @@ export const DatasetSearchQuerySchema = z.object({
     .boolean()
     .default(false)
     .describe("Include rawHtml fields in response"),
-});
-export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>;
+})
+export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 
 // === Research Summary (for list view) ===
 
@@ -745,8 +746,8 @@ export const ResearchSummarySchema = z.object({
   criteria: z
     .string()
     .describe("Data access criteria summary (e.g., 'Controlled-access')"),
-});
-export type ResearchSummary = z.infer<typeof ResearchSummarySchema>;
+})
+export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
 
 // === Search Query (Legacy) ===
 
@@ -778,8 +779,8 @@ export const SearchQuerySchema = z.object({
   criteria: z.string().optional(),
   minSubjects: z.coerce.number().int().min(0).optional(),
   maxSubjects: z.coerce.number().int().min(0).optional(),
-});
-export type SearchQuery = z.infer<typeof SearchQuerySchema>;
+})
+export type SearchQuery = z.infer<typeof SearchQuerySchema>
 
 // === List Query Schemas (for CRUD) ===
 
@@ -792,8 +793,8 @@ export const ResearchListQuerySchema = z.object({
   sort: z.enum(["humId", "title", "releaseDate", "updatedAt"]).default("humId"),
   order: z.enum(["asc", "desc"]).default("asc"),
   status: z.enum(RESEARCH_STATUS).optional(), // For authenticated users
-});
-export type ResearchListQuery = z.infer<typeof ResearchListQuerySchema>;
+})
+export type ResearchListQuery = z.infer<typeof ResearchListQuerySchema>
 
 /**
  * Dataset list query parameters
@@ -803,5 +804,5 @@ export const DatasetListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sort: z.enum(["datasetId", "releaseDate", "updatedAt"]).default("datasetId"),
   order: z.enum(["asc", "desc"]).default("asc"),
-});
-export type DatasetListQuery = z.infer<typeof DatasetListQuerySchema>;
+})
+export type DatasetListQuery = z.infer<typeof DatasetListQuerySchema>

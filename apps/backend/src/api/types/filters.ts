@@ -7,9 +7,9 @@
  * - Research search body schema
  * - Dataset search body schema
  */
-import { z } from "zod";
+import { z } from "zod"
 
-import { IsTumorSchema } from "../../es/types";
+import { IsTumorSchema } from "@/es/types"
 
 // === Range Filter ===
 
@@ -19,8 +19,8 @@ import { IsTumorSchema } from "../../es/types";
 export const RangeFilterSchema = z.object({
   min: z.union([z.string(), z.number()]).optional(),
   max: z.union([z.string(), z.number()]).optional(),
-});
-export type RangeFilter = z.infer<typeof RangeFilterSchema>;
+})
+export type RangeFilter = z.infer<typeof RangeFilterSchema>
 
 // === Dataset Filters (POST search) ===
 
@@ -139,8 +139,8 @@ export const DatasetFiltersSchema = z.object({
   variantTotal: RangeFilterSchema.optional().describe(
     "Total variant count range",
   ),
-});
-export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>;
+})
+export type DatasetFilters = z.infer<typeof DatasetFiltersSchema>
 
 // === Research Search Body (POST /research/search) ===
 
@@ -212,8 +212,8 @@ export const ResearchSearchBodySchema = z.object({
     .array(z.string())
     .optional()
     .describe("Additional fields to include in response"),
-});
-export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>;
+})
+export type ResearchSearchBody = z.infer<typeof ResearchSearchBodySchema>
 
 // === Dataset Search Body (POST /dataset/search) ===
 
@@ -283,5 +283,5 @@ export const DatasetSearchBodySchema = z.object({
     .array(z.string())
     .optional()
     .describe("Additional fields to include in response"),
-});
-export type DatasetSearchBody = z.infer<typeof DatasetSearchBodySchema>;
+})
+export type DatasetSearchBody = z.infer<typeof DatasetSearchBodySchema>

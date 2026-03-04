@@ -8,7 +8,7 @@
  *
  * Dependency flow: crawler/types → es/types → api/types
  */
-import { z } from "zod";
+import { z } from "zod"
 
 import {
   // Common schemas (used locally)
@@ -44,7 +44,7 @@ import {
   DatasetRefSchema,
   ResearchVersionSchema as CrawlerResearchVersionSchema,
   SearchableDatasetSchema,
-} from "../crawler/types";
+} from "../crawler/types"
 
 // === Re-export Zod schemas from crawler/types (single source of truth) ===
 
@@ -82,7 +82,7 @@ export {
   DatasetRefSchema,
   CrawlerResearchVersionSchema,
   SearchableDatasetSchema,
-};
+}
 
 // Re-export types for convenience
 export type {
@@ -112,7 +112,7 @@ export type {
   IsTumor,
   SearchableExperimentFields,
   SearchableDataset,
-} from "../crawler/types";
+} from "../crawler/types"
 
 // === ES-specific schemas (extensions for ES documents) ===
 
@@ -124,8 +124,8 @@ export type {
 export const NormalizedDiseaseSchema = z.object({
   label: z.string(),
   icd10: z.string(), // Required in ES (normalized from crawler's nullable version)
-});
-export type NormalizedDisease = z.infer<typeof NormalizedDiseaseSchema>;
+})
+export type NormalizedDisease = z.infer<typeof NormalizedDiseaseSchema>
 
 /**
  * SearchableExperimentFields schema for ES documents
@@ -227,10 +227,10 @@ export const SearchableExperimentFieldsSchema = z.object({
   policies: z
     .array(NormalizedPolicySchema)
     .describe("Data access policies applicable to this experiment"),
-});
+})
 export type EsSearchableExperimentFields = z.infer<
   typeof SearchableExperimentFieldsSchema
->;
+>
 
 // === ES Experiment Schema ===
 
@@ -242,8 +242,8 @@ export const EsExperimentSchema = z.object({
     en: z.array(TextValueSchema),
   }),
   searchable: SearchableExperimentFieldsSchema.optional(),
-});
-export type EsExperiment = z.infer<typeof EsExperimentSchema>;
+})
+export type EsExperiment = z.infer<typeof EsExperimentSchema>
 
 // === ES Dataset Schema ===
 
@@ -280,8 +280,8 @@ export const EsDatasetSchema = z.object({
     .describe(
       "Original metadata preserved from the data source (for debugging/audit)",
     ),
-});
-export type EsDataset = z.infer<typeof EsDatasetSchema>;
+})
+export type EsDataset = z.infer<typeof EsDatasetSchema>
 
 // === ES Person Schema (for Research) ===
 
@@ -310,8 +310,8 @@ export const EsPersonSchema = z.object({
     })
     .nullable()
     .optional(),
-});
-export type EsPerson = z.infer<typeof EsPersonSchema>;
+})
+export type EsPerson = z.infer<typeof EsPersonSchema>
 
 // === ES Research Project Schema ===
 
@@ -324,8 +324,8 @@ export const EsResearchProjectSchema = z.object({
     })
     .nullable()
     .optional(),
-});
-export type EsResearchProject = z.infer<typeof EsResearchProjectSchema>;
+})
+export type EsResearchProject = z.infer<typeof EsResearchProjectSchema>
 
 // === ES Grant Schema ===
 
@@ -335,8 +335,8 @@ export const EsGrantSchema = z.object({
   agency: z.object({
     name: BilingualTextSchema,
   }),
-});
-export type EsGrant = z.infer<typeof EsGrantSchema>;
+})
+export type EsGrant = z.infer<typeof EsGrantSchema>
 
 // === ES Publication Schema ===
 
@@ -344,8 +344,8 @@ export const EsPublicationSchema = z.object({
   title: BilingualTextSchema,
   doi: z.string().nullable().optional(),
   datasetIds: z.array(z.string()).optional(),
-});
-export type EsPublication = z.infer<typeof EsPublicationSchema>;
+})
+export type EsPublication = z.infer<typeof EsPublicationSchema>
 
 // === ES Summary Schema ===
 
@@ -361,8 +361,8 @@ export const EsSummarySchema = z.object({
     ja: z.array(TextValueSchema),
     en: z.array(TextValueSchema),
   }),
-});
-export type EsSummary = z.infer<typeof EsSummarySchema>;
+})
+export type EsSummary = z.infer<typeof EsSummarySchema>
 
 // === ES Research Schema ===
 
@@ -371,8 +371,8 @@ export const ResearchStatusSchema = z.enum([
   "review",
   "published",
   "deleted",
-]);
-export type ResearchStatus = z.infer<typeof ResearchStatusSchema>;
+])
+export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
 
 export const EsResearchSchema = z.object({
   humId: z
@@ -419,8 +419,8 @@ export const EsResearchSchema = z.object({
   uids: z
     .array(z.string())
     .describe("Keycloak user IDs (sub) who can edit this Research"),
-});
-export type EsResearch = z.infer<typeof EsResearchSchema>;
+})
+export type EsResearch = z.infer<typeof EsResearchSchema>
 
 // === ES Research Version Schema ===
 
@@ -441,5 +441,5 @@ export const EsResearchVersionSchema = z.object({
   releaseNote: BilingualTextValueSchema.describe(
     "Bilingual release note describing changes in this version",
   ),
-});
-export type EsResearchVersion = z.infer<typeof EsResearchVersionSchema>;
+})
+export type EsResearchVersion = z.infer<typeof EsResearchVersionSchema>
