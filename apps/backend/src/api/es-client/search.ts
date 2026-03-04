@@ -685,7 +685,8 @@ export const searchResearches = async (
     // Relevance sort without query - fall back to humId
     sortSpec = [{ humId: { order } }]
   } else if (sort === "title") {
-    sortSpec = [{ "title.kw": { order } }, { humId: { order: "asc" } }]
+    const titleKw = lang === "en" ? "title.en.kw" : "title.ja.kw"
+    sortSpec = [{ [titleKw]: { order } }, { humId: { order: "asc" } }]
   } else if (sort === "releaseDate") {
     sortSpec = [{ dateModified: { order, missing: "_last" } }, { humId: { order: "asc" } }]
   } else {
