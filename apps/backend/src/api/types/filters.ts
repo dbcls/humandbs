@@ -9,6 +9,8 @@
  */
 import { z } from "zod"
 
+import { IsTumorSchema } from "@/es/types"
+
 // === Range Filter ===
 
 /**
@@ -40,8 +42,8 @@ export const DatasetFiltersSchema = z.object({
     .describe("ICD-10 disease codes (prefix match, e.g., 'C34' matches 'C34.1')"),
   tissues: z.array(z.string()).optional()
     .describe("Tissue types (facet selection)"),
-  isTumor: z.boolean().optional()
-    .describe("Filter by tumor sample status"),
+  isTumor: IsTumorSchema.optional()
+    .describe("Filter by tumor sample status: 'tumor', 'normal', or 'mixed'"),
   cellLine: z.array(z.string()).optional()
     .describe("Cell line names (facet selection)"),
   population: z.array(z.string()).optional()

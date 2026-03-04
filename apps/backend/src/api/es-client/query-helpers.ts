@@ -68,6 +68,18 @@ export const doubleNestedTermsQuery = (
   },
 })
 
+/** nested + term query (single string value) */
+export const nestedTermQuery = (
+  path: string,
+  field: string,
+  value: string,
+): estypes.QueryDslQueryContainer => ({
+  nested: {
+    path,
+    query: { term: { [field]: value } },
+  },
+})
+
 /** nested + boolean term query */
 export const nestedBooleanTermQuery = (
   path: string,

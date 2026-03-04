@@ -168,7 +168,7 @@ interface SearchableExperimentFields {
 
   // 生物学的サンプル
   tissues: string[]
-  isTumor: boolean | null
+  isTumor: "tumor" | "normal" | "mixed" | null
   cellLine: string[]
   population: string[]
 

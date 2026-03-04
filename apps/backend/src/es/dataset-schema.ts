@@ -59,7 +59,7 @@ export const datasetSchema = {
 
       // Biological sample info
       tissues: f.keyword(),
-      isTumor: f.boolean(),
+      isTumor: f.keyword(),
       cellLine: f.keyword(),
       population: f.keyword(),
 

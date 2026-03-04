@@ -100,3 +100,10 @@ export const parseBooleanOrNull = (value: string): boolean | null => {
   if (value === "false") return false
   return null
 }
+
+export const parseIsTumorOrNull = (value: string): "tumor" | "normal" | "mixed" | null => {
+  if (!value || value.trim() === "") return null
+  const v = value.trim().toLowerCase()
+  if (v === "tumor" || v === "normal" || v === "mixed") return v
+  return null
+}

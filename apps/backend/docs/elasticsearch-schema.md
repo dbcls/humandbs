@@ -214,7 +214,7 @@ ES mapping (JSON)
 
       // 生物学的サンプル
       tissues: keyword[],
-      isTumor: boolean,
+      isTumor: keyword,                     // "tumor" | "normal" | "mixed"
       cellLine: keyword[],
       population: keyword[],
 

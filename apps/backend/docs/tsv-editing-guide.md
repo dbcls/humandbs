@@ -108,7 +108,7 @@ Experiment Tab で編集する主要なフィールド:
 | healthStatus | 健康状態 | `healthy` / `affected` / `mixed` |
 | diseases | 疾患名 | `["Breast cancer(C50)", "Lung cancer"]` |
 | tissues | 組織・臓器 | `["peripheral blood", "liver"]` |
-| isTumor | 腫瘍サンプルか | `TRUE` / `FALSE` |
+| isTumor | 腫瘍サンプルか | `tumor` / `normal` / `mixed` |
 | cellLine | 細胞株名 | `["HeLa", "HEK293"]` |
 | population | 集団 | `["Japanese", "European"]` |
 | sex | 性別 | `male` / `female` / `mixed` |

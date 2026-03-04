@@ -14,6 +14,7 @@ import {
   EsDatasetSchema,
   EsResearchSchema,
   EsResearchVersionSchema,
+  IsTumorSchema,
   VariantCountsSchema,
 } from "@/es/types"
 
@@ -109,8 +110,8 @@ export const MergedSearchableSchema = z.object({
   // Biological sample info
   tissues: z.array(z.string())
     .describe("Tissue types used in the study (e.g., 'Blood', 'Liver')"),
-  isTumor: z.array(z.boolean())
-    .describe("Whether samples include tumor tissue"),
+  isTumor: z.array(IsTumorSchema)
+    .describe("Whether samples include tumor tissue: 'tumor', 'normal', or 'mixed'"),
   cellLine: z.array(z.string())
     .describe("Cell line names if applicable"),
   population: z.array(z.string())

@@ -66,8 +66,10 @@ const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Pa
   // Direct string fields
   if (filters.disease) query.disease = filters.disease
 
-  // Boolean fields
+  // String enum field
   if (filters.isTumor !== undefined) query.isTumor = filters.isTumor
+
+  // Boolean fields
   if (filters.hasPhenotypeData !== undefined) query.hasPhenotypeData = filters.hasPhenotypeData
 
   return query as Partial<DatasetSearchQuery>

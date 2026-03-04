@@ -1028,7 +1028,7 @@ interface DatasetFilters {
 
   // 生体サンプル
   tissue?: string[]                 // ファセット選択
-  isTumor?: boolean
+  isTumor?: "tumor" | "normal" | "mixed"
   cellLine?: string[]               // ファセット選択
   population?: string[]             // ファセット選択
 

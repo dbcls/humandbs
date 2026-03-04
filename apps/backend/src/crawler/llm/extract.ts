@@ -17,6 +17,7 @@ import { EXTRACTION_PROMPT } from "./prompts"
 
 const SubjectCountTypeEnum = z.enum(["individual", "sample", "mixed"])
 const HealthStatusEnum = z.enum(["healthy", "affected", "mixed"])
+const IsTumorEnum = z.enum(["tumor", "normal", "mixed"])
 const SexEnum = z.enum(["male", "female", "mixed"])
 const AgeGroupEnum = z.enum(["infant", "child", "adult", "elderly", "mixed"])
 const ReadTypeEnum = z.enum(["single-end", "paired-end"])
@@ -49,7 +50,7 @@ const LlmOutputBaseSchema = z.object({
   healthStatus: HealthStatusEnum.nullable(),
   diseases: z.array(DiseaseInfoBaseSchema),
   tissues: z.array(z.string()),
-  isTumor: z.boolean().nullable(),
+  isTumor: IsTumorEnum.nullable(),
   cellLine: z.array(z.string()),
   population: z.array(z.string()),
   sex: SexEnum.nullable(),
@@ -114,7 +115,7 @@ export const SearchableExperimentFieldsSchema = z.object({
   healthStatus: HealthStatusEnum.nullable().catch(null),
   diseases: safeFilteredArray(DiseaseInfoWithCatch),
   tissues: z.array(z.string()).catch([]),
-  isTumor: z.boolean().nullable().catch(null),
+  isTumor: IsTumorEnum.nullable().catch(null),
   cellLine: z.array(z.string()).catch([]),
   population: z.array(z.string()).catch([]),
   sex: SexEnum.nullable().catch(null),

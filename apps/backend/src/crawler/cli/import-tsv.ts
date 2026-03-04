@@ -44,6 +44,7 @@ import {
   parseJsonField,
   parseNumberOrNull,
   parseBooleanOrNull,
+  parseIsTumorOrNull,
   type TsvRow,
 } from "@/crawler/utils/tsv"
 
@@ -651,7 +652,7 @@ export const importExperimentTsv = (): void => {
           healthStatus: (row.searchable_healthStatus as HealthStatus) || null,
           diseases,
           tissues: parseJsonField<string[]>(row.searchable_tissues, []),
-          isTumor: parseBooleanOrNull(row.searchable_isTumor),
+          isTumor: parseIsTumorOrNull(row.searchable_isTumor),
           cellLine: parseJsonField<string[]>(row.searchable_cellLine, []),
           population: parseJsonField<string[]>(row.searchable_population, []),
           sex: (row.searchable_sex as Sex) || null,

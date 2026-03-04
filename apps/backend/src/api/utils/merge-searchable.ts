@@ -3,7 +3,7 @@
  *
  * Merges all experiment.searchable fields into a single Dataset-level mergedSearchable.
  */
-import type { SearchableExperimentFields, VariantCounts } from "@/crawler/types"
+import type { SearchableExperimentFields, VariantCounts, IsTumor } from "@/crawler/types"
 
 /**
  * Merged searchable fields at Dataset level
@@ -20,7 +20,7 @@ export interface MergedSearchable {
 
   // Biological sample info
   tissues: string[] // concat unique
-  isTumor: boolean[] // unique values
+  isTumor: IsTumor[] // unique values
   cellLine: string[] // concat unique
   population: string[] // concat unique
 
@@ -173,8 +173,8 @@ export const mergeSearchableFields = (searchables: SearchableExperimentFields[])
     processedDataTypes: uniqueStrings(searchables.flatMap(s => s.processedDataTypes)),
     policies: uniqueObjects(searchables.flatMap(s => s.policies)),
 
-    // Unique arrays from boolean
-    isTumor: uniqueObjects(searchables.map(s => s.isTumor).filter((v): v is boolean => v !== null)),
+    // Unique arrays from string enum
+    isTumor: [...new Set(searchables.map(s => s.isTumor).filter((v): v is IsTumor => v !== null))],
 
     // Unique arrays from enum
     sex: uniqueStrings(searchables.map(s => s.sex).filter((v): v is NonNullable<typeof v> => v !== null)),

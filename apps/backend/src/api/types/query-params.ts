@@ -10,6 +10,7 @@ import { z } from "zod"
 
 import { LANG_TYPES, booleanFromString } from "@/api/types/common"
 import { RESEARCH_STATUS } from "@/api/types/workflow"
+import { IsTumorSchema } from "@/es/types"
 
 // === Common Query Schemas ===
 
@@ -152,8 +153,8 @@ export const ResearchSearchQuerySchema = z.object({
     .describe("Filter by presence of phenotype data"),
   cellLine: z.string().optional()
     .describe("Filter by cell line (exact match)"),
-  isTumor: booleanFromString
-    .describe("Filter by tumor sample status"),
+  isTumor: IsTumorSchema.optional()
+    .describe("Filter by tumor sample status: tumor, normal, or mixed"),
   policyId: z.string().optional()
     .describe("Filter by data access policy ID"),
 
@@ -308,8 +309,8 @@ export const DatasetSearchQuerySchema = z.object({
     .describe("Filter by presence of phenotype data"),
   cellLine: z.string().optional()
     .describe("Filter by cell line (exact match)"),
-  isTumor: booleanFromString
-    .describe("Filter by tumor sample status"),
+  isTumor: IsTumorSchema.optional()
+    .describe("Filter by tumor sample status: tumor, normal, or mixed"),
   policyId: z.string().optional()
     .describe("Filter by data access policy ID"),
 

@@ -157,6 +157,7 @@ export const DATASET_STRING_FILTER_PARAMS = [
   "policyId",
   "diseaseIcd10",
   "cellLine",
+  "isTumor",
 ] as const
 
 /**
@@ -164,7 +165,6 @@ export const DATASET_STRING_FILTER_PARAMS = [
  */
 export const DATASET_BOOLEAN_FILTER_PARAMS = [
   "hasPhenotypeData",
-  "isTumor",
 ] as const
 
 /**

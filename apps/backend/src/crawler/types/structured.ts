@@ -60,6 +60,10 @@ export type Sex = z.infer<typeof SexSchema>
 export const AgeGroupSchema = z.enum(["infant", "child", "adult", "elderly", "mixed"])
 export type AgeGroup = z.infer<typeof AgeGroupSchema>
 
+/** Tumor status */
+export const IsTumorSchema = z.enum(["tumor", "normal", "mixed"])
+export type IsTumor = z.infer<typeof IsTumorSchema>
+
 /** Variant counts */
 export const VariantCountsSchema = z.object({
   snv: z.number().nullable(),
@@ -82,7 +86,7 @@ export const SearchableExperimentFieldsSchema = z.object({
 
   // Biological sample info
   tissues: z.array(z.string()),
-  isTumor: z.boolean().nullable(),
+  isTumor: IsTumorSchema.nullable(),
   cellLine: z.array(z.string()),
   population: z.array(z.string()),
 
