@@ -3,11 +3,9 @@ import { Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DocumentVersionListItemResponse } from "@/serverFunctions/documentVersion";
 
 import { DocumentsList } from "./-components/DocumentsList";
-import { DocumentVersionContent } from "./-components/DocumentVersionContent";
-import { DocumentVersionsList } from "./-components/DocumentVersionsList";
+import { DocumentVersion } from "./-components/DocumentVersion";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/documents"
@@ -18,16 +16,6 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const [selectedContentId, setSelectedContentId] = useState<string>();
 
-  const [selectedVersion, setSelectedVersion] =
-    useState<DocumentVersionListItemResponse | null>(null);
-
-  function handleSelectDoc(contentId: string) {
-    if (selectedContentId !== contentId) {
-      setSelectedVersion(null);
-    }
-    setSelectedContentId(contentId);
-  }
-
   return (
     <>
       <Card
@@ -37,41 +25,21 @@ function RouteComponent() {
       >
         <Suspense fallback={<Skeleton />}>
           <DocumentsList
-            onSelectDoc={handleSelectDoc}
+            onSelectDoc={setSelectedContentId}
             selectedContentId={selectedContentId}
           />
         </Suspense>
       </Card>
 
       {selectedContentId ? (
-        <>
-          <Card className="w-80" caption="Versions">
-            <Suspense
-              fallback={
-                <div>
-                  <Skeleton />
-                </div>
-              }
-            >
-              <DocumentVersionsList
-                contentId={selectedContentId}
-                onSelect={setSelectedVersion}
-              />
-            </Suspense>
-          </Card>
-          {selectedVersion?.versionNumber ? (
-            <DocumentVersionContent
-              key={selectedVersion.contentId + selectedVersion.versionNumber}
-              documentVersionItem={selectedVersion}
-            />
-          ) : (
-            <Card className="flex-1" captionSize={"sm"} caption="Details">
-              Select a version
-            </Card>
-          )}
-        </>
+        <Suspense fallback={<Skeleton className="h-full flex-1" />}>
+          <DocumentVersion
+            key={selectedContentId}
+            contentId={selectedContentId}
+          />
+        </Suspense>
       ) : (
-        <div> No document selected </div>
+        <div>No document selected</div>
       )}
     </>
   );

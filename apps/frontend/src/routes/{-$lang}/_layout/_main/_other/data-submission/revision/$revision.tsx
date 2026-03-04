@@ -1,33 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { Card } from "@/components/Card";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getDocumentVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
+import { Markdown } from "@/components/Merkdown";
+import { TOC } from "@/components/TOC";
+import { $getPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
+import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/revision/$revision"
+  "/{-$lang}/_layout/_main/_other/data-submission/revision/$revision",
 )({
   component: RouteComponent,
 
   loader: async ({ context, params }) => {
-    const version = await context.queryClient.ensureQueryData(
-      getDocumentVersionTranslationQueryOptions({
-        contentId: "data-submission",
-        versionNumber: Number(params.revision),
+    const data = await $getPublishedDocumentVersion({
+      data: {
+        contentId: "guidelines",
         locale: context.lang,
-      })
-    );
+        versionNumber: Number(params.revision),
+      },
+    });
 
-    return { version, crumb: `Revision ${params.revision}` };
+    const contentHtml = await renderMarkdown(data?.content ?? "");
+
+    return {
+      contentHtml,
+      title: data?.title,
+      crumb: `Revision ${params.revision}`,
+    };
   },
 });
 
 function RouteComponent() {
-  const { version } = Route.useLoaderData();
+  const { contentHtml, title } = Route.useLoaderData();
 
   return (
-    <Card caption={version.title}>
-      <RenderMarkdoc className="mx-auto" content={version.content} />
+    <Card caption={title}>
+      <TOC headings={contentHtml.headings} />
+      <Markdown className="mx-auto" contentHtml={contentHtml} />
     </Card>
   );
 }

@@ -6,7 +6,7 @@ import { NavigationChart } from "@/components/NavigationChart";
 import { $getNavigationFlowchartData } from "@/serverFunctions/navigationFlowchart";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/navigation/"
+  "/{-$lang}/_layout/_main/_other/data-submission/navigation/",
 )({
   component: RouteComponent,
   loader: () =>

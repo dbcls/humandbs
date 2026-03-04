@@ -2,46 +2,43 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
+import { Markdown } from "@/components/Merkdown";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import { Button } from "@/components/ui/button";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
 import {
-  getDocumentLatestPublishedVersionTranslationQueryOptions,
-  getDocumentPublishedVersionsListQueryOptions,
-} from "@/serverFunctions/documentVersionTranslation";
+  $getLatestPublishedDocumentVersion,
+  $getPublishedDocumentVersionList,
+} from "@/serverFunctions/documentVersion";
+import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/"
+  "/{-$lang}/_layout/_main/_other/data-submission/",
 )({
   component: RouteComponent,
   loader: async ({ context }) => {
-    const { content, title } = await context.queryClient.ensureQueryData(
-      getDocumentLatestPublishedVersionTranslationQueryOptions({
-        contentId: "data-submission",
-        locale: context.lang,
-      })
-    );
+    const data = await $getLatestPublishedDocumentVersion({
+      data: { contentId: "data-submission", locale: context.lang },
+    });
 
-    const versions = await context.queryClient.ensureQueryData(
-      getDocumentPublishedVersionsListQueryOptions({
-        contentId: "data-submission",
-        locale: context.lang,
-      })
-    );
+    const versions = await $getPublishedDocumentVersionList({
+      data: { contentId: "data-submission", locale: context.lang },
+    });
 
-    return { content, title, versions };
+    const contentHtml = await renderMarkdown(data.content ?? "");
+
+    return { contentHtml, versions, title: data.title };
   },
 });
 
 function RouteComponent() {
-  const { content, title, versions } = Route.useLoaderData();
+  const { contentHtml, versions, title } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const t = useTranslations("Navbar");
   const tCommon = useTranslations("common");
 
   return (
     <Card caption={title} captionSize={"lg"}>
-      <RenderMarkdoc className="mx-auto" content={content} />
+      <Markdown className="mx-auto" contentHtml={contentHtml} />
       <PreviousVersionsList
         documentName={t("data-submission")}
         slug="/{-$lang}/data-submission"

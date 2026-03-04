@@ -7,7 +7,10 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 
-const FRONT_FILES = ["src/**/*.{js,mjs,cjs,ts,tsx}"];
+const FRONT_FILES = [
+  "src/**/*.{js,mjs,cjs,ts,tsx}",
+  "apps/frontend/src/**/*.{js,mjs,cjs,ts,tsx}",
+];
 const file_scope = (cfg) =>
   Array.isArray(cfg)
     ? cfg.map((c) => ({ ...c, files: FRONT_FILES }))
@@ -41,6 +44,10 @@ export default defineConfig([
       ...pluginReactHooks.configs.recommended.rules,
       // React scope no longer necessary with new JSX transform.
       "react/react-in-jsx-scope": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/only-throw-error": "off",
+      "@typescript-eslint/no-floating-promises": "off",
     },
   },
   ...file_scope(eslintTanstackRouter.configs["flat/recommended"]),

@@ -1,117 +1,59 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { User } from "better-auth";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
-import { Locale } from "use-intl";
+import { type Locale } from "use-intl";
 import { z } from "zod";
 
-import { i18n } from "@/config/i18n-config";
-import { USER_ROLES } from "@/config/permissions";
+import { type ContentId, contentIdSchema } from "@/config/content-config";
+import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
+import { type DocVersionStatus } from "@/db/schema";
 import {
-  DOCUMENT_VERSION_STATUS,
-  documentVersion,
-  DocumentVersionTranslation,
-  documentVersionTranslation,
-} from "@/db/schema";
-import {
-  documentVersionSchema,
-  DocumentVersionStatus,
-  InsertDocumentVersionTranslationParams,
+  documentSelectSchema,
+  documentVersionSelectSchema,
+  type DocumentVersionStatus,
 } from "@/db/types";
-import { buildConflictUpdateColumns } from "@/db/utils";
-import { unionOfLiterals } from "@/lib/utils";
+import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
-  authMiddleware,
-  hasPermissionMiddleware,
-} from "@/middleware/authMiddleware";
+  createDocumentVersionRepository,
+  type DocVersionListItemResponseRaw,
+  type DocVersionResponseRaw,
+} from "@/repositories/documentVersion";
 
-export interface DocumentVersionListItemResponse {
-  statuses: DocumentVersionStatus[];
-  locales: Locale[];
+const documentVersionRepo = createDocumentVersionRepository(db);
+
+// === For CMS ===
+
+// === LIST VERSIONS
+
+export interface DocVersionListItemResponse {
   versionNumber: number;
   contentId: string;
+  translations: {
+    locale: Locale;
+    statuses: { status: DocumentVersionStatus; title: string }[];
+  }[];
 }
 
-/** Read a document version list */
-export const $getDocumentVersions = createServerFn({
+const docVersionsRequestSchema = documentSelectSchema;
+/**
+ * Get version list for given document. For CMS.
+ */
+export const $getDocumentVersionList = createServerFn({
   method: "GET",
 })
-  .middleware([authMiddleware])
-  .inputValidator(
-    z.object({
-      contentId: z.string(),
-    })
-  )
+  .inputValidator(docVersionsRequestSchema)
+  .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "list");
+
     const { contentId } = data;
 
-    // if just public user, filter out drafts
-    const filterOutDrafts = !(
-      context.user?.role === USER_ROLES.ADMIN ||
-      context.user?.role === USER_ROLES.EDITOR
-    );
+    const versions = await documentVersionRepo.getVersionList(contentId);
 
-    const versions = await db.query.documentVersion.findMany({
-      where: (table) => {
-        if (filterOutDrafts) {
-          return and(eq(table.contentId, contentId), ne(table.status, "draft"));
-        }
-
-        return eq(table.contentId, contentId);
-      },
-      with: {
-        translations: {
-          columns: {
-            locale: true,
-          },
-        },
-      },
-
-      orderBy: [desc(documentVersion.versionNumber)],
-    });
-
-    // Group by documentId and versionNumber
-    const groupedVersions = versions.reduce(
-      (acc, version) => {
-        const key = `${version.contentId}-${version.versionNumber}`;
-        if (!acc[key]) {
-          acc[key] = {
-            statuses: new Set(),
-            locales: new Set(),
-            versionNumber: version.versionNumber,
-            contentId: version.contentId,
-          };
-        }
-
-        acc[key].statuses.add(version.status);
-        version.translations.forEach((t) => {
-          acc[key].locales.add(t.locale as Locale);
-        });
-
-        return acc;
-      },
-      {} as Record<
-        string,
-        {
-          statuses: Set<DocumentVersionStatus>;
-          locales: Set<Locale>;
-          versionNumber: number;
-          contentId: string;
-        }
-      >
-    );
-
-    // Convert grouped results back to array format
-    return Object.values(groupedVersions).map((group) => ({
-      statuses: Array.from(group.statuses).sort(),
-      locales: Array.from(group.locales).sort(),
-      versionNumber: group.versionNumber,
-      contentId: group.contentId,
-    })) satisfies DocumentVersionListItemResponse[];
+    return groupDocumentVersions(versions);
   });
 
-export const getDocumentVersionsListQueryOptions = ({
+export const getDocumentVersionListQueryOptions = ({
   contentId,
 }: {
   contentId: string | null;
@@ -120,444 +62,346 @@ export const getDocumentVersionsListQueryOptions = ({
     queryKey: ["documents", contentId, "versions"],
     queryFn: () => {
       if (!contentId) return Promise.resolve([]);
-      return $getDocumentVersions({ data: { contentId } });
+      return $getDocumentVersionList({ data: { contentId } });
     },
     staleTime: 5 * 1000 * 60,
     enabled: !!contentId,
   });
 
-const selectDocumentVersionSchema = documentVersionSchema.pick({
+export function groupDocumentVersions(
+  rawVersions: DocVersionListItemResponseRaw[],
+): DocVersionListItemResponse[] {
+  const groupedVersions: DocVersionListItemResponse[] = [];
+
+  for (const version of rawVersions) {
+    const existingVersion = groupedVersions.find(
+      (v) =>
+        v.contentId === version.contentId &&
+        v.versionNumber === version.versionNumber,
+    );
+
+    if (existingVersion) {
+      const existingTranslation = existingVersion.translations.find(
+        (t) => t.locale === version.locale,
+      );
+
+      if (existingTranslation) {
+        existingTranslation.statuses.push({
+          status: version.status,
+          title: version.title ?? "",
+        });
+      } else {
+        existingVersion.translations.push({
+          locale: version.locale,
+          statuses: [{ status: version.status, title: version.title ?? "" }],
+        });
+      }
+    } else {
+      groupedVersions.push({
+        versionNumber: version.versionNumber,
+        contentId: version.contentId,
+        translations: [
+          {
+            locale: version.locale,
+            statuses: [{ status: version.status, title: version.title ?? "" }],
+          },
+        ],
+      });
+    }
+  }
+
+  return groupedVersions;
+}
+
+// === GET VERSION
+
+export interface DocVersionResponse {
+  contentId: string;
+  versionNumber: number;
+  translations: Partial<
+    Record<
+      Locale,
+      Partial<Record<DocVersionStatus, { title: string; content: string }>>
+    >
+  >;
+}
+
+const docVersionRequestSchema = documentVersionSelectSchema.pick({
   contentId: true,
   versionNumber: true,
-  status: true,
 });
 
-interface Author {
-  id: string;
-  name: string;
-  email: string;
-}
-
-/** CMS document version response */
-export type DocumentVersionResponse = Partial<
-  Record<DocumentVersionStatus, DocumentVersionContentResponse>
->;
-
-export interface DocumentVersionContentResponse {
-  id: string;
-  translations: Record<Locale, DocumentVersionTranslation>;
-  versionNumber: number;
-  status: DocumentVersionStatus;
-  author: Author;
-}
-
-/**
- * Get document version with content
- */
 export const $getDocumentVersion = createServerFn({
   method: "GET",
 })
+  .inputValidator(docVersionRequestSchema)
   .middleware([hasPermissionMiddleware])
-  .inputValidator(selectDocumentVersionSchema)
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "view");
 
-    const result = await db.query.documentVersion.findFirst({
-      where: (table) =>
-        and(
-          eq(table.contentId, data.contentId),
-          eq(table.versionNumber, data.versionNumber),
-          eq(table.status, data.status)
-        ),
-      with: {
-        translations: true,
-        author: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-      columns: {
-        authorId: false,
-      },
-    });
+    const { contentId, versionNumber } = data;
 
-    if (!result) {
-      return null;
-    }
+    const version = await documentVersionRepo.getVersion(
+      contentId,
+      versionNumber,
+    );
 
-    return {
-      ...result,
-      translations:
-        result?.translations.reduce(
-          (acc, translation) => {
-            acc[translation.locale as Locale] = translation;
-            return acc;
-          },
-          {} as DocumentVersionContentResponse["translations"]
-        ) || ({} as DocumentVersionContentResponse["translations"]),
-    } satisfies DocumentVersionContentResponse;
+    return groupDocVersion(version);
   });
 
-export const getDocumentVersionDraftQueryOptions = ({
+export const getDocumentVersionQueryOptions = ({
   contentId,
   versionNumber,
 }: {
-  contentId: string;
-  versionNumber: number;
+  contentId: ContentId;
+  versionNumber: number | undefined;
 }) =>
   queryOptions({
-    queryKey: [
-      "documents",
-      contentId,
-      "versions",
-      versionNumber,
-      DOCUMENT_VERSION_STATUS.DRAFT,
-    ],
-    queryFn: () =>
-      $getDocumentVersion({
-        data: {
-          contentId,
-          versionNumber,
-          status: DOCUMENT_VERSION_STATUS.DRAFT,
-        },
-      }),
-
+    queryKey: ["documents", contentId, "versions", versionNumber],
+    queryFn: () => {
+      if (!versionNumber) {
+        throw new Error("Version number is required");
+      }
+      return $getDocumentVersion({ data: { contentId, versionNumber } });
+    },
     staleTime: 5 * 1000 * 60,
-    enabled: !!contentId && !!versionNumber,
-  });
-
-export const getDocumentVersionPublishedQueryOptions = ({
-  contentId,
-  versionNumber,
-}: {
-  contentId: string;
-  versionNumber: number;
-}) =>
-  queryOptions({
-    queryKey: [
-      "documents",
-      contentId,
-      "versions",
-      versionNumber,
-      DOCUMENT_VERSION_STATUS.PUBLISHED,
-    ],
-    queryFn: () =>
-      $getDocumentVersion({
-        data: {
-          contentId,
-          versionNumber,
-          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-        },
-      }),
-    staleTime: 5 * 1000 * 60,
-    enabled: !!contentId && !!versionNumber,
-  });
-
-/** Create new document version */
-export const $createDocumentVersion = createServerFn({
-  method: "POST",
-})
-  .inputValidator(
-    z.object({
-      contentId: z.string(),
-    })
-  )
-  .middleware([hasPermissionMiddleware])
-  .handler(async ({ data, context }) => {
-    context.checkPermission("documentVersions", "create");
-
-    const user = context.user!;
-
-    const { contentId } = data;
-
-    // Find the latest version number for this document
-    const latestVersion = await db.query.documentVersion.findFirst({
-      where: (table) => eq(table.contentId, contentId),
-      orderBy: (table, { desc }) => [desc(table.versionNumber)],
-      columns: { versionNumber: true },
-    });
-
-    const newVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
-
-    const result = await db
-      .insert(documentVersion)
-      .values({
-        authorId: user.id,
-        contentId,
-        versionNumber: newVersionNumber,
-      })
-      .returning();
-
-    return result;
+    enabled: typeof versionNumber === "number",
   });
 
 /**
- * Clone documentVersion into new version
+ *
+ * @param rawVersion raw version return
+ * @returns grouped result
  */
-export const $cloneDocumentVersion = createServerFn({
-  method: "POST",
-})
-  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
-  .middleware([hasPermissionMiddleware])
-  .handler(async ({ data, context }) => {
-    context.checkPermission("documentVersions", "create");
-    const { contentId, versionNumber } = data;
+export function groupDocVersion(
+  rawVersion: DocVersionResponseRaw[],
+): DocVersionResponse {
+  const result: DocVersionResponse = {
+    contentId: rawVersion[0].contentId,
+    versionNumber: rawVersion[0].versionNumber,
+    translations: {},
+  };
 
-    const existingVersionWithTranslations =
-      await db.query.documentVersion.findFirst({
-        where: (table) =>
-          and(
-            eq(table.contentId, contentId),
-            eq(table.versionNumber, versionNumber),
-            eq(table.status, "published")
-          ),
-        with: {
-          translations: true,
+  for (const verStatusLang of rawVersion) {
+    let translation = result.translations[verStatusLang.locale];
+    if (!translation) {
+      translation = {
+        [verStatusLang.status]: {
+          title: verStatusLang.title,
+          content: verStatusLang.content,
         },
-      });
-
-    if (!existingVersionWithTranslations) {
-      throw new Error("Document version not found");
+      };
+    } else {
+      translation[verStatusLang.status] = {
+        title: verStatusLang.title ?? "",
+        content: verStatusLang.content ?? "",
+      };
     }
 
-    const { translations, id, ...restExistingVersion } =
-      existingVersionWithTranslations;
-
-    // Find the latest version number for this document
-    const latestVersion = await db.query.documentVersion.findFirst({
-      where: (table) => eq(table.contentId, contentId),
-      orderBy: (table, { desc }) => [desc(table.versionNumber)],
-      columns: { versionNumber: true },
-    });
-
-    const newVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
-
-    const result = await db.transaction(async (tx) => {
-      const newVersion = await tx
-        .insert(documentVersion)
-        .values({
-          ...restExistingVersion,
-          versionNumber: newVersionNumber,
-          createdAt: new Date(),
-          authorId: context.user!.id,
-          status: "draft",
-        })
-        .returning();
-
-      const newTranslations = await tx
-        .insert(documentVersionTranslation)
-        .values(
-          translations.map((tr) => ({
-            ...tr,
-            documentVersionId: newVersion[0].id,
-            createdAt: new Date(),
-          }))
-        )
-        .returning();
-
-      return {
-        ...newVersion[0],
-        translations: newTranslations,
+    // copy published content in draft
+    if (!translation.draft) {
+      translation.draft = {
+        content: translation.published?.content ?? "",
+        title: translation.published?.title ?? "",
       };
-    });
+    }
 
-    return result;
+    result.translations[verStatusLang.locale] = translation;
+  }
+  return result;
+}
+
+// === SAVE DRAFT
+
+const saveDocVersionDraftRequestSchema = z.object({
+  contentId: z.string(),
+  versionNumber: z.number(),
+  locale: localeSchema,
+  title: z.string().optional(),
+  content: z.string().optional(),
+});
+
+export const $saveDocumentVersionDraft = createServerFn({ method: "POST" })
+  .inputValidator(saveDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    const { contentId, versionNumber, locale, ...rest } = data;
+
+    await documentVersionRepo.saveDraft(contentId, versionNumber, locale, rest);
   });
 
-/** Delete document version */
+// === PUBLISH DRAFT
+
+const publishDocVersionDraftRequestSchema = z.object({
+  contentId: contentIdSchema,
+  versionNumber: z.number(),
+  locale: localeSchema,
+});
+
+export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
+  .inputValidator(publishDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "publish");
+
+    await documentVersionRepo.publish(
+      data.contentId,
+      data.versionNumber,
+      data.locale,
+    );
+  });
+
+// === UNPUBLISH DRAFT
+
+export const $unpublishDocumentVersion = createServerFn({ method: "POST" })
+  .inputValidator(publishDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "delete");
+
+    await documentVersionRepo.unpublish(
+      data.contentId,
+      data.versionNumber,
+      data.locale,
+    );
+  });
+
+// === RESET DRAFT
+
+export const $resetDocumentVersionDraft = createServerFn({ method: "POST" })
+  .inputValidator(publishDocVersionDraftRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "update");
+
+    await documentVersionRepo.resetDraft(
+      data.contentId,
+      data.versionNumber,
+      data.locale,
+    );
+  });
+
+// === DELETE VERSION
+
 export const $deleteDocumentVersion = createServerFn({
   method: "POST",
 })
-  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
+  .inputValidator(docVersionRequestSchema)
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
 
     const { contentId, versionNumber } = data;
 
-    const [result] = await db
-      .delete(documentVersion)
-      .where(
-        and(
-          eq(documentVersion.contentId, contentId),
-          eq(documentVersion.versionNumber, versionNumber)
-        )
-      )
-      .returning();
+    await documentVersionRepo.delete(contentId, versionNumber);
+  });
+
+// === CREATE VERSION
+
+const createDocVersionRequestSchema = z.object({
+  contentId: z.string(),
+});
+
+/**
+ * Create a new document version from the latest published version.
+ * Copies all published locale content as drafts for the new version.
+ */
+export const $createDocumentVersion = createServerFn({
+  method: "POST",
+})
+  .inputValidator(createDocVersionRequestSchema)
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ data, context }) => {
+    context.checkPermission("documentVersions", "create");
+
+    const { contentId } = data;
+    // Don't pass dev bypass user ID as it doesn't exist in the user table
+    const userId =
+      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+
+    const result = await documentVersionRepo.createVersionFromPublished(
+      contentId,
+      userId,
+    );
 
     return result;
   });
 
-// Define schemas for translation fields based on status
-const draftTranslationSchema = z.object({
-  title: z.string().nullable().optional(),
-  content: z.string().nullable().optional(),
+// === Public ===
+
+// === GET LATEST DOCUMENT VERSION
+
+const docPublishedVersionsRequestSchema = documentVersionSelectSchema.pick({
+  contentId: true,
+  locale: true,
 });
 
-const publishedTranslationSchema = z.object({
-  title: z.string().nullable(),
-  content: z.string().nullable(),
-});
-
-// Draft document version schema
-const draftVersionSchema = selectDocumentVersionSchema.extend({
-  status: z.literal("draft"),
-  translations: z.partialRecord(
-    unionOfLiterals(i18n.locales),
-    draftTranslationSchema
-  ),
-});
-
-// Published document version schema
-const publishedVersionSchema = selectDocumentVersionSchema.extend({
-  status: z.literal("published"),
-  translations: z.record(
-    unionOfLiterals(i18n.locales),
-    publishedTranslationSchema
-  ),
-});
-
-// Create a discriminated union based on status
-const versionUpdateSchema = z.discriminatedUnion("status", [
-  draftVersionSchema,
-  publishedVersionSchema,
-]);
-
-/**
- * Save/Update document version.
- * Set `status:"draft"` or `status:"published"` to upsert draft or published version
- */
-export const $saveDocumentVersion = createServerFn({
-  method: "POST",
+export const $getLatestPublishedDocumentVersion = createServerFn({
+  method: "GET",
 })
-  .middleware([hasPermissionMiddleware])
-  .inputValidator(versionUpdateSchema)
-  .handler(async ({ data, context }) => {
-    context.checkPermission("documentVersions", "update");
-    await upsertDocVersion({ data, user: context.user });
+  .inputValidator(docPublishedVersionsRequestSchema)
+  .handler(async ({ data }) => {
+    const { contentId, locale } = data;
+    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(
+      contentId,
+      locale,
+    );
+
+    if (!docVersion) {
+      throw new Error("Page not found");
+    }
+    return docVersion;
   });
 
-/**
- * Publish documentVersion draft and delete draft
- */
-export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
-  .middleware([hasPermissionMiddleware])
-  .inputValidator(draftVersionSchema.omit({ status: true }))
-  .handler(async ({ data, context }) => {
-    context.checkPermission("documentVersions", "publish");
+// === GET PUBLISHED DOCUMENT VERSION FOR VN AND LOCALE
 
-    // We received a draft but need to validate the content as if it were published
-    // Check if any required fields are missing before proceeding
-    const validatedData = publishedVersionSchema.parse({
-      ...data,
-      status: "published",
-    });
+const getDocumentVersionRequestSchema = publishDocVersionDraftRequestSchema;
 
-    await upsertDocVersion({
-      data: { ...validatedData, status: "published" } as z.infer<
-        typeof publishedVersionSchema
-      >,
-      user: context.user,
-    });
-
-    // delete draft on publish
-    await db
-      .delete(documentVersion)
-      .where(
-        and(
-          eq(documentVersion.contentId, data.contentId),
-          eq(documentVersion.versionNumber, data.versionNumber),
-          eq(documentVersion.status, "draft")
-        )
-      );
-  });
-
-async function upsertDocVersion({
-  data,
-  user,
-}: {
-  data:
-    | z.infer<typeof draftVersionSchema>
-    | z.infer<typeof publishedVersionSchema>;
-  user: User | undefined;
-}) {
-  const { contentId, versionNumber, translations, status } = data;
-
-  await db.transaction(async (tx) => {
-    // Upsert the document version
-
-    const [upsertedDocVersion] = await tx
-      .insert(documentVersion)
-      .values({
+export const $getPublishedDocumentVersion = createServerFn({
+  method: "GET",
+})
+  .inputValidator(getDocumentVersionRequestSchema)
+  .handler(async ({ data }) => {
+    const { contentId, versionNumber, locale } = data;
+    const docVersion =
+      await documentVersionRepo.getPublishedForVersionNumberAndLocale(
         contentId,
         versionNumber,
-        status,
-        authorId: user!.id,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [
-          documentVersion.contentId,
-          documentVersion.versionNumber,
-          documentVersion.status,
-        ],
-
-        set: {
-          updatedAt: new Date(),
-          authorId: sql.raw(`excluded.author_id`),
-        },
-      })
-      .returning();
-
-    // Prepare translations for upsert
-    const translationsToUpsert: InsertDocumentVersionTranslationParams[] =
-      Object.entries(translations).map(([locale, t]) => ({
-        ...t,
-        documentVersionId: upsertedDocVersion.id,
-        updatedAt: new Date(),
         locale,
-        translatedBy: user!.id,
-      }));
-
-    // upsert  doc ver translations
-    await tx
-      .insert(documentVersionTranslation)
-      .values(translationsToUpsert)
-      .onConflictDoUpdate({
-        target: [
-          documentVersionTranslation.documentVersionId,
-          documentVersionTranslation.locale,
-        ],
-
-        set: buildConflictUpdateColumns(documentVersionTranslation, [
-          "content",
-          "title",
-          "updatedAt",
-          "documentVersionId",
-        ]),
-      });
-  });
-}
-
-/**
- * Delete ocumentVersion draft
- */
-export const $deleteDocumentVersionDraft = createServerFn({ method: "POST" })
-  .middleware([hasPermissionMiddleware])
-  .inputValidator(selectDocumentVersionSchema.omit({ status: true }))
-  .handler(async ({ data, context }) => {
-    context.checkPermission("documentVersions", "update");
-
-    await db
-      .delete(documentVersion)
-      .where(
-        and(
-          eq(documentVersion.contentId, data.contentId),
-          eq(documentVersion.versionNumber, data.versionNumber),
-          eq(documentVersion.status, "draft")
-        )
       );
+
+    return docVersion;
+  });
+
+// === GET PUBLISHED VERSIONS LIST
+
+const getPublishedDocVersionListRequestSchema =
+  docPublishedVersionsRequestSchema;
+
+export const $getPublishedDocumentVersionList = createServerFn({
+  method: "GET",
+})
+  .inputValidator(getPublishedDocVersionListRequestSchema)
+  .handler(async ({ data }) => {
+    const { contentId, locale } = data;
+
+    const versions = await documentVersionRepo.getPublishedListForLocale(
+      contentId,
+      locale,
+    );
+
+    return versions;
+  });
+
+export const getDocumentPublishedVersionsListQueryOptions = ({
+  contentId,
+  locale,
+}: z.infer<typeof getPublishedDocVersionListRequestSchema>) =>
+  queryOptions({
+    queryKey: ["documents", contentId, "published-versions", locale],
+    queryFn: () =>
+      $getPublishedDocumentVersionList({ data: { contentId, locale } }),
+    staleTime: 5 * 1000 * 60,
   });

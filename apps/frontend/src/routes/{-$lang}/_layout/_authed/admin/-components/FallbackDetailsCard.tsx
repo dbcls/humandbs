@@ -1,6 +1,6 @@
 import { Card } from "@/components/Card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { i18n } from "@/config/i18n-config";
+import { i18n } from "@/config/i18n";
 
 export function FallbackDetailsCard() {
   return (

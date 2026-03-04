@@ -3,11 +3,11 @@ import { parse } from "cookie";
 
 import {
   createClearSessionCookie,
-  createSessionCookie,
-  ensureFreshSession,
-  parseSession,
+  $$createSessionCookie,
+  $$ensureFreshSession,
+  $$parseSession,
   SESSION_COOKIE_NAME,
-  SessionMeta,
+  type SessionMeta,
 } from "@/utils/jwt-helpers";
 
 export const Route = createFileRoute("/auth/refresh")({
@@ -17,10 +17,10 @@ export const Route = createFileRoute("/auth/refresh")({
         const cookieHeader = request.headers.get("cookie") ?? "";
         const cookies = parse(cookieHeader);
         const rawSession = cookies[SESSION_COOKIE_NAME];
-        const existingSession = rawSession ? parseSession(rawSession) : null;
+        const existingSession = rawSession ? $$parseSession(rawSession) : null;
 
         const { session, claims, refreshed, shouldClear } =
-          await ensureFreshSession({
+          await $$ensureFreshSession({
             session: existingSession,
           });
 
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/auth/refresh")({
         });
 
         if (refreshed) {
-          headers.append("Set-Cookie", createSessionCookie(session));
+          headers.append("Set-Cookie", $$createSessionCookie(session));
         }
 
         const sessionMeta: SessionMeta = {
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/auth/refresh")({
           {
             status: 200,
             headers,
-          }
+          },
         );
       },
     },

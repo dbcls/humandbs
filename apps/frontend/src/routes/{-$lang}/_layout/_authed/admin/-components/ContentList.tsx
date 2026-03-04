@@ -4,16 +4,14 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-
-import { Button } from "@/components/ui/button";
-import useConfirmationStore from "@/stores/confirmationStore";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import z from "zod";
-import { Input } from "@/components/Input";
+import { z } from "zod";
 
+import { Input } from "@/components/Input";
 import { ListItem } from "@/components/ListItem";
 import { TrashButton } from "@/components/TrashButton";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -21,18 +19,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
-import { DOCUMENT_VERSION_STATUS, DocVersionStatus } from "@/db/schema";
-import { ContentItem, DocumentVersionStatus } from "@/db/types";
+import { localeSchema } from "@/config/i18n";
 import {
   $createContentItem,
   $deleteContentItem,
   $validateContentId,
-  ContentItemResponse,
-  ContentItemsListItem,
-  ContentTranslationResponse,
+  type ContentItemsListItem,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
+import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { StatusTag, Tag } from "./StatusTag";
@@ -40,11 +35,9 @@ import { StatusTag, Tag } from "./StatusTag";
 export function ContentList({
   selectedContentId,
   onSelectContent,
-  onClickAdd,
 }: {
   selectedContentId: string | null;
   onSelectContent: (contentId: string | null) => void;
-  onClickAdd: () => void;
 }) {
   const queryClient = useQueryClient();
 
@@ -70,7 +63,7 @@ export function ContentList({
       if (context?.prevContentList) {
         queryClient.setQueryData(
           contentsListQO.queryKey,
-          context.prevContentList
+          context.prevContentList,
         );
       }
     },
@@ -91,68 +84,108 @@ export function ContentList({
     });
   }
 
+  console.log("contents", contents);
+
   return (
-    <ul>
-      <li className="mb-5">
-        <AddNewDialog />
-      </li>
-      {contents.map((content) => {
-        const isActive = content.id === selectedContentId;
+    <>
+      <AddNewDialog />
 
-        const langs = [
-          ...new Set(content.translations.map((t) => t.lang)),
-        ].sort();
+      <ul>
+        {contents.map((content) => {
+          const isActive = content.id === selectedContentId;
 
-        const showItems = langs.map((l) => {
-          const item =
-            content.translations.find(
-              (tr) => tr.status === "published" && tr.lang === l
-            ) ||
-            content.translations.find(
-              (tr) => tr.status === "draft" && tr.lang === l
-            );
-          return item as NonNullable<
-            ContentItemsListItem["translations"][number]
-          >;
-        });
-
-        return (
-          <ListItem
-            onClick={() => onSelectContent(content.id)}
-            key={content.id}
-            isActive={isActive}
-          >
-            <div className="text-sm font-medium">
-              <span>{content.id}</span>
-              <ul className="space-y-1">
-                {showItems.map((tr) => {
-                  return (
-                    <li
-                      key={tr.lang}
-                      className="flex items-center gap-1 text-xs"
-                    >
-                      <Tag tag={tr.lang} isActive={isActive} />
-
-                      <StatusTag status={tr.status} isActive={isActive} />
-
-                      <span>{tr.title}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            <TrashButton
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClickDeleteContentItem(content.id);
+          return (
+            <ListItem
+              onClick={() => {
+                onSelectContent(content.id);
               }}
+              key={content.id}
               isActive={isActive}
-            />
-          </ListItem>
-        );
-      })}
-    </ul>
+            >
+              <ContentListItem
+                item={content}
+                onClickDelete={handleClickDeleteContentItem}
+              />
+              {/*<div className="text-sm font-medium">
+                <span>{content.id}</span>
+                <ul className="space-y-1">
+                  {showItems.map((tr) => {
+                    return (
+                      <li
+                        key={tr.lang}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <Tag tag={tr.lang} isActive={isActive} />
+
+                        <StatusTag status={tr.status} isActive={isActive} />
+
+                        <span>{tr.title}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <TrashButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClickDeleteContentItem(content.id);
+                }}
+                isActive={isActive}
+              />*/}
+            </ListItem>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+function ContentListItem({
+  item,
+  onClickDelete,
+}: {
+  item: ContentItemsListItem;
+  onClickDelete: (id: string) => void;
+}) {
+  return (
+    <>
+      <div className="text-sm font-medium">
+        <p className="mb-2">{item.id}</p>
+        <ul className="space-y-2">
+          {item.translations.map((tr) => {
+            return (
+              <li key={tr.lang} className="flex items-start gap-1 text-xs">
+                <Tag tag={tr.lang} />
+
+                <ul className="flex flex-col items-start">
+                  {tr.statuses.published ? (
+                    <li className="flex items-start gap-2">
+                      <StatusTag status={"published"} />
+                      <span>{tr.statuses.published}</span>
+                    </li>
+                  ) : null}
+
+                  {tr.statuses.draft ? (
+                    <li className="flex items-start gap-2">
+                      <StatusTag status={"draft"} />
+                      <span>{tr.statuses.draft}</span>
+                    </li>
+                  ) : null}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <TrashButton
+        onClick={(e) => {
+          e.stopPropagation();
+          console.log("item id", item.id);
+          onClickDelete(item.id);
+        }}
+      />
+    </>
   );
 }
 
@@ -162,14 +195,14 @@ function AddNewDialog() {
   const queryClient = useQueryClient();
   const contentsListQO = getContentsListQueryOptions();
 
-  const { mutate: createContent } = useMutation({
+  const { mutateAsync: createContent } = useMutation({
     mutationFn: (id: string) => $createContentItem({ data: { id } }),
 
     onMutate: async (id) => {
       await queryClient.cancelQueries(contentsListQO);
 
       const prevContentItems = queryClient.getQueryData(
-        contentsListQO.queryKey
+        contentsListQO.queryKey,
       );
 
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
@@ -183,7 +216,7 @@ function AddNewDialog() {
       if (context?.prevContentItems) {
         queryClient.setQueryData(
           contentsListQO.queryKey,
-          context?.prevContentItems
+          context?.prevContentItems,
         );
       }
     },
@@ -198,7 +231,8 @@ function AddNewDialog() {
     },
 
     onSubmit: async ({ value }) => {
-      createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
+      await createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
+      setOpen(false);
     },
   });
 
@@ -213,19 +247,14 @@ function AddNewDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <AddNewButton />
+        <AddNewButton className="mb-5" />
       </DialogTrigger>
       <DialogContent>
         <DialogTitle className="text-base">Add Content</DialogTitle>
         <form
-          onSubmit={async (e) => {
+          onSubmit={(e) => {
             e.preventDefault();
-            e.stopPropagation();
-            await form.handleSubmit();
-
-            if (form.state.fieldMeta.contentId?.errors.length === 0) {
-              setOpen(false);
-            }
+            form.handleSubmit();
           }}
           className="flex flex-col gap-2"
         >
@@ -239,10 +268,10 @@ function AddNewDialog() {
                   (val) => !localeSchema.safeParse(val.split("/")?.[0]).success,
                   {
                     message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
-                  }
+                  },
                 ),
 
-              onChangeAsyncDebounceMs: 1000,
+              onChangeAsyncDebounceMs: 500,
               onChangeAsync: z
                 .string()
                 .refine((val) => validateContentId({ data: val }), {
@@ -257,7 +286,9 @@ function AddNewDialog() {
                   <Input
                     name={field.name}
                     value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value.trim())}
+                    onChange={(e) => {
+                      field.handleChange(e.target.value.trim());
+                    }}
                   />
                   {!field.state.meta.isValid && (
                     <em

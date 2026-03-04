@@ -33,7 +33,7 @@ function getTabRoute(tabFromPath: string | undefined): TabType | null {
   if (!tabFromPath) return null;
 
   const afterAdminSegment = [
-    ...(tabFromPath?.match(/\/admin\/([^\/]+)/i) || []),
+    ...(/\/admin\/([^\/]+)/i.exec(tabFromPath) || []),
   ]?.[1];
 
   if (tabParamSchema.safeParse(afterAdminSegment).success)
@@ -43,7 +43,7 @@ function getTabRoute(tabFromPath: string | undefined): TabType | null {
 }
 
 function stringifySearch(
-  search: Record<string, string | number> | undefined | null
+  search: Record<string, string | number> | undefined | null,
 ) {
   if (!search) return "";
 
@@ -52,7 +52,9 @@ function stringifySearch(
   const appendValue = (key: string, value: unknown) => {
     if (value === undefined || value === null) return;
     if (Array.isArray(value)) {
-      value.forEach((entry) => appendValue(key, entry));
+      value.forEach((entry) => {
+        appendValue(key, entry);
+      });
       return;
     }
     params.append(key, String(value));
@@ -72,7 +74,7 @@ function buildRedirectTarget(
     search?: Record<string, string | number>;
     hash?: string;
   },
-  fallback: string
+  fallback: string,
 ) {
   try {
     const pathname =
@@ -95,7 +97,7 @@ function buildRedirectTarget(
 }
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
-  beforeLoad: async ({ context, matches, location }) => {
+  beforeLoad: ({ context, matches, location }) => {
     if (context.user?.role !== USER_ROLES.ADMIN) {
       const fallback =
         typeof context.lang === "string" && context.lang.length > 0
@@ -126,7 +128,7 @@ function RouteComponent() {
   return (
     <main className="flex h-screen flex-col gap-2 p-4">
       <Navbar />
-      <section className="flex max-h-full flex-1 items-stretch gap-3">
+      <section className="flex min-h-0 flex-1 items-stretch gap-3">
         <NavPanel />
         <Outlet />
       </section>

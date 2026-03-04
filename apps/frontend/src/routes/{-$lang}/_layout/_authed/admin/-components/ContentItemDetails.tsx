@@ -1,22 +1,3 @@
-import { Card } from "@/components/Card";
-import { useAppForm } from "@/components/form-context/FormContext";
-import { SkeletonLoading } from "@/components/Skeleton";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { i18n, Locale } from "@/config/i18n-config";
-import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import { transformMarkdoc } from "@/markdoc/config";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import {
-  type ContentItemResponse,
-  $publishContentItemDraftTranslation,
-  $resetContentItemTranslationDraft,
-  $saveContentItemTranslationDraft,
-  getContentQueryOptions,
-  getContentsListQueryOptions,
-  UpsertContentItemData,
-} from "@/serverFunctions/contentItem";
-import { waitUntilNoMutations } from "@/utils/mutations";
 import { useStore } from "@tanstack/react-form";
 import {
   useMutation,
@@ -24,23 +5,45 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Dot, Loader2, Pencil, Save } from "lucide-react";
-import { Suspense, useRef, useState } from "react";
+import { Loader2, Pencil, Save } from "lucide-react";
+import { Suspense, useRef } from "react";
+
+import { Card } from "@/components/Card";
+import { useAppForm } from "@/components/form-context/FormContext";
+import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
+import { SkeletonLoading } from "@/components/Skeleton";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { i18n, type Locale } from "@/config/i18n";
+import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import {
+  $publishContentItemDraftTranslation,
+  $resetContentItemTranslationDraft,
+  $saveContentItemTranslationDraft,
+  $unpublishContentItemTranslation,
+  getContentQueryOptions,
+  getContentsListQueryOptions,
+  type ContentItemResponse,
+  type UpsertContentItemData,
+} from "@/serverFunctions/contentItem";
+import { waitUntilNoMutations } from "@/utils/mutations";
+
+import { UnpublishedDot } from "./UnpublishedDot";
 
 type ContentItem = NonNullable<ContentItemResponse>;
 
-type FormMeta = {
+interface FormMeta {
   submitAction: "saveDraft" | "publish" | "resetDraft" | null;
-};
+}
 
 const defaultMeta: FormMeta = {
   submitAction: null,
 };
 
-type FormData = {
+interface FormData {
   lang: Locale;
   translation: ContentItem["translations"];
-};
+}
 
 // use custom hook to suport resetting to not default values
 function useContentItemDetailsForm({
@@ -50,21 +53,20 @@ function useContentItemDetailsForm({
   initialValues: FormData;
   id: string;
 }) {
-  const [defaultValues, setDefaultValues] = useState(initialValues);
+  // const [defaultValues, setDefaultValues] = useState(initialValues);
 
   const { mutate: saveDraft } = useSaveDraft(id);
 
-  const { mutateAsync: publishDraft, isPending: isPublishPending } =
-    usePublishDraft(id);
+  const { mutateAsync: publishDraft } = usePublishDraft(id);
 
   const { mutateAsync: resetDraft } = useResetDraft(id);
 
   const isIgnoreRef = useRef(false);
 
   const form = useAppForm({
-    defaultValues,
+    defaultValues: initialValues,
     onSubmitMeta: defaultMeta,
-    onSubmit: ({ value, meta, formApi }) => {
+    onSubmit: async ({ value, meta, formApi }) => {
       if (isIgnoreRef.current) {
         console.log("skipping save");
         return;
@@ -88,36 +90,35 @@ function useContentItemDetailsForm({
           break;
         case "resetDraft":
           isIgnoreRef.current = true;
-          resetDraft(value)
-            .then(() => {
-              const publishedTitle =
-                value.translation?.[value.lang]?.published?.title ?? "";
-              const publishedContent =
-                value.translation?.[value.lang]?.published?.content ?? "";
+          try {
+            await resetDraft(value);
+            const publishedTitle =
+              value.translation?.[value.lang]?.published?.title ?? "";
+            const publishedContent =
+              value.translation?.[value.lang]?.published?.content ?? "";
 
-              const resetValue = {
-                ...value,
-                translation: {
-                  ...value.translation,
-                  [value.lang]: {
-                    ...value.translation[value.lang],
-                    draft: {
-                      title: publishedTitle,
-                      content: publishedContent,
-                    },
+            const resetValue = {
+              ...value,
+              translation: {
+                ...value.translation,
+                [value.lang]: {
+                  ...value.translation[value.lang],
+                  draft: {
+                    title: publishedTitle,
+                    content: publishedContent,
                   },
                 },
-              };
-              setDefaultValues(resetValue);
-              formApi.reset(resetValue, { keepDefaultValues: false });
-            })
-            .finally(() => {
-              isIgnoreRef.current = false;
-            });
+              },
+            };
+            // setDefaultValues(resetValue);
+            formApi.reset(resetValue, { keepDefaultValues: true });
+          } finally {
+            isIgnoreRef.current = false;
+          }
 
           break;
 
-        case "publish":
+        case "publish": {
           isIgnoreRef.current = true;
           if (title || content) {
             saveDraft({
@@ -129,16 +130,30 @@ function useContentItemDetailsForm({
             });
           }
 
-          publishDraft({ lang: value.lang })
-            .then(() => {
-              setDefaultValues(value);
-              formApi.reset(value, { keepDefaultValues: false });
-            })
-            .finally(() => {
-              isIgnoreRef.current = false;
-            });
+          try {
+            await publishDraft({ lang: value.lang });
+
+            const newValue = {
+              ...value,
+              translation: {
+                ...value.translation,
+                [value.lang]: {
+                  ...value.translation[value.lang],
+                  published: {
+                    title: title ?? "",
+                    content: content ?? "",
+                  },
+                },
+              },
+            };
+
+            formApi.reset(newValue, { keepDefaultValues: true });
+          } finally {
+            isIgnoreRef.current = false;
+          }
 
           break;
+        }
       }
     },
   });
@@ -157,6 +172,8 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
   });
 
   const { isPending: isPublishPending } = usePublishDraft(id);
+  const { mutate: unpublishDraft, isPending: isUnpublishPending } =
+    useUnpublishDraft(id);
 
   const form = useContentItemDetailsForm({
     initialValues: {
@@ -166,15 +183,29 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
     id,
   });
 
-  const isDraftChanged = useStore(
-    form.store,
-    (state) =>
+  const isDraftChanged = useStore(form.store, (state) => {
+    console.table({
+      draft: {
+        content: state.values.translation[state.values.lang]?.draft?.content,
+        title: state.values.translation[state.values.lang]?.draft?.title,
+      },
+      published: {
+        content:
+          state.values.translation[state.values.lang]?.published?.content,
+        title: state.values.translation[state.values.lang]?.published?.title,
+      },
+    });
+
+    return (
       state.isValid &&
       (state.values.translation[state.values.lang]?.draft?.content !==
         state.values.translation[state.values.lang]?.published?.content ||
         state.values.translation[state.values.lang]?.draft?.title !==
-          state.values.translation[state.values.lang]?.draft?.title)
-  );
+          state.values.translation[state.values.lang]?.published?.title)
+    );
+  });
+
+  console.log("isDraftChanged", isDraftChanged);
 
   return (
     <Card
@@ -191,14 +222,17 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
         </span>
       }
     >
-      <Tabs className="flex-1" defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}>
+      <Tabs
+        className="flex-1 min-h-0"
+        defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+      >
         <TabsList>
           <TabsTrigger
             className="flex items-center gap-2"
             value={DOCUMENT_VERSION_STATUS.DRAFT}
           >
             <Pencil /> <span>Editor</span>
-            {isDraftChanged ? <Dot /> : null}
+            {isDraftChanged ? <UnpublishedDot /> : null}
             <div className="w-4">
               {savingStatuses.at(-1) === "pending" && (
                 <Loader2 className="size-4 animate-spin" />
@@ -211,7 +245,9 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           >
             <span>Live</span>
             <div className="w-4">
-              {isPublishPending && <Loader2 className="size-4 animate-spin" />}
+              {(isPublishPending || isUnpublishPending) && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
             </div>
           </TabsTrigger>
         </TabsList>
@@ -260,27 +296,30 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             <Button
               variant={"outline"}
               disabled={!isDraftChanged}
-              onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
+              onClick={() => {
+                form.handleSubmit({ submitAction: "resetDraft" });
+              }}
             >
               Reset
             </Button>
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                onClick={() => form.handleSubmit({ submitAction: "publish" })}
-                className="gap-1 self-end"
-                size={"lg"}
-                variant={"accent"}
-                disabled={!isDraftChanged}
-              >
-                <Save className="size-5" />
-                Publish
-              </Button>
-            </div>
+
+            <Button
+              type="submit"
+              onClick={() => {
+                form.handleSubmit({ submitAction: "publish" });
+              }}
+              className="gap-1 self-end"
+              size={"lg"}
+              variant={"accent"}
+              disabled={!isDraftChanged}
+            >
+              <Save className="size-5" />
+              Publish
+            </Button>
           </div>
         </TabsContent>
         <TabsContent
-          className="flex min-h-0 flex-1 shrink-0 flex-col gap-2 overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
           value={DOCUMENT_VERSION_STATUS.PUBLISHED}
         >
           <form.Subscribe selector={(state) => state.values.lang}>
@@ -288,11 +327,26 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
               if (!data.translations[lang]?.published?.content) {
                 return <div> No published content</div>;
               }
-              const { content } = transformMarkdoc({
-                rawContent: data.translations[lang]?.published?.content,
-              });
 
-              return <RenderMarkdoc content={content} />;
+              return (
+                <>
+                  <MarkdownClientPreview
+                    source={data.translations[lang]?.published?.content}
+                  />
+                  <div className="border-t border-foreground-light pt-2">
+                    <Button
+                      variant={"outline"}
+                      size={"lg"}
+                      onClick={() => {
+                        unpublishDraft({ lang });
+                      }}
+                      disabled={isUnpublishPending}
+                    >
+                      Unpublish
+                    </Button>
+                  </div>
+                </>
+              );
             }}
           </form.Subscribe>
         </TabsContent>
@@ -319,7 +373,7 @@ function usePublishDraft(id: string) {
       await queryClient.cancelQueries(contentItemQO);
 
       const previousContentItem = queryClient.getQueryData(
-        contentItemQO.queryKey
+        contentItemQO.queryKey,
       );
 
       queryClient.setQueryData(contentItemQO.queryKey, (old) => {
@@ -334,7 +388,9 @@ function usePublishDraft(id: string) {
             [data.lang]: {
               ...old.translations[data.lang],
               published: {
-                ...old.translations[data.lang]?.published,
+                status: "published",
+                updatedAt: new Date(),
+                title: old.translations[data.lang]?.draft?.title,
                 content: old.translations[data.lang]?.draft?.content,
               },
             },
@@ -345,7 +401,7 @@ function usePublishDraft(id: string) {
       await queryClient.cancelQueries(contentsListQO);
 
       const previousContentsList = queryClient.getQueryData(
-        contentsListQO.queryKey
+        contentsListQO.queryKey,
       );
 
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
@@ -374,6 +430,24 @@ function usePublishDraft(id: string) {
       });
 
       return { previousContentItem, previousContentsList };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousContentItem) {
+        queryClient.setQueryData(
+          contentItemQO.queryKey,
+          context.previousContentItem,
+        );
+      }
+      if (context?.previousContentsList) {
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.previousContentsList,
+        );
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
     },
   });
 }
@@ -441,10 +515,7 @@ function useSaveDraft(id: string) {
             return {
               ...item,
               translations: item.translations.map((tr) => {
-                if (
-                  tr.lang === data.lang &&
-                  tr.status === DOCUMENT_VERSION_STATUS.DRAFT
-                ) {
+                if (tr.lang === data.lang && tr.statuses.draft) {
                   return { ...tr, ...data.translationDraft };
                 }
                 return tr;
@@ -466,9 +537,89 @@ function useSaveDraft(id: string) {
         queryClient.setQueryData(contentsListQO.queryKey, context.prevList);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(contentItemQO);
-      queryClient.invalidateQueries(contentsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
+    },
+  });
+}
+
+function useUnpublishDraft(id: string) {
+  const contentItemQO = getContentQueryOptions(id);
+  const contentsListQO = getContentsListQueryOptions();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["content", "published", id, "unpublish"],
+    mutationFn: ({ lang }: { lang: Locale }) =>
+      $unpublishContentItemTranslation({ data: { id, lang } }),
+    onMutate: async (data) => {
+      await queryClient.cancelQueries(contentItemQO);
+      await queryClient.cancelQueries(contentsListQO);
+
+      const previousContentItem = queryClient.getQueryData(
+        contentItemQO.queryKey,
+      );
+      const previousContentsList = queryClient.getQueryData(
+        contentsListQO.queryKey,
+      );
+
+      queryClient.setQueryData(contentItemQO.queryKey, (old) => {
+        if (!old) return old;
+        const localeData = old.translations[data.lang];
+        return {
+          ...old,
+          translations: {
+            ...old.translations,
+            [data.lang]: {
+              ...localeData,
+              draft: localeData?.draft ?? localeData?.published,
+              published: undefined,
+            },
+          },
+        };
+      });
+
+      queryClient.setQueryData(contentsListQO.queryKey, (old) => {
+        if (!old) return old;
+        return old.map((item) => {
+          if (item.id !== id) return item;
+          return {
+            ...item,
+            translations: item.translations.map((tr) => {
+              if (tr.lang !== data.lang) return tr;
+              const { published, ...withoutPublished } = tr.statuses;
+              return {
+                ...tr,
+                statuses: {
+                  ...("draft" in tr.statuses ? {} : { draft: published }),
+                  ...withoutPublished,
+                },
+              };
+            }),
+          };
+        });
+      });
+
+      return { previousContentItem, previousContentsList };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousContentItem) {
+        queryClient.setQueryData(
+          contentItemQO.queryKey,
+          context.previousContentItem,
+        );
+      }
+      if (context?.previousContentsList) {
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.previousContentsList,
+        );
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
     },
   });
 }
@@ -496,11 +647,15 @@ function useResetDraft(id: string) {
         }
 
         return {
+          ...old,
           translations: {
             ...old.translations,
             [lang]: {
               ...old.translations[lang],
-              draft: old.translations[lang]?.published || {},
+              draft: {
+                title: old.translations[lang]?.published?.title ?? "",
+                content: old.translations[lang]?.published?.content ?? "",
+              },
             },
           },
         };
@@ -516,10 +671,7 @@ function useResetDraft(id: string) {
             return {
               ...item,
               translations: item.translations.map((tr) => {
-                if (
-                  tr.lang === lang &&
-                  tr.status === DOCUMENT_VERSION_STATUS.DRAFT
-                ) {
+                if (tr.lang === lang && tr.statuses.draft) {
                   return { ...tr, status: DOCUMENT_VERSION_STATUS.PUBLISHED };
                 }
                 return tr;
@@ -541,9 +693,9 @@ function useResetDraft(id: string) {
         queryClient.setQueryData(contentsListQO.queryKey, context.prevList);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries(contentItemQO);
-      queryClient.invalidateQueries(contentsListQO);
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentItemQO);
+      await queryClient.invalidateQueries(contentsListQO);
     },
   });
 }

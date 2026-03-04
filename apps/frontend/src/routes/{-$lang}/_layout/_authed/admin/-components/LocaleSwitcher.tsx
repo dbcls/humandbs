@@ -1,5 +1,5 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { i18n, Locale } from "@/config/i18n-config";
+import { i18n, type Locale } from "@/config/i18n";
 
 export function LocaleSwitcher({
   locale,

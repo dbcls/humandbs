@@ -11,8 +11,8 @@ import { Parser } from "htmlparser2";
 import { FAILSAFE_SCHEMA, load } from "js-yaml";
 import { z } from "zod";
 
-import { ContentId, contentIdSchema } from "@/config/content-config";
-import { localeSchema } from "@/config/i18n-config";
+import { type ContentId, contentIdSchema } from "@/config/content-config";
+import { localeSchema } from "@/config/i18n";
 import * as nodes from "@/markdoc/nodes/index";
 import * as tags from "@/markdoc/tags/index";
 
@@ -20,6 +20,9 @@ type Tokens = ReturnType<typeof Markdoc.Tokenizer.prototype.tokenize>;
 
 const contentPath = "./public/content";
 
+/**
+ * @deprecated - Use CMS instead of files
+ */
 async function getFileContent({
   contentId,
   lang,
@@ -31,7 +34,7 @@ async function getFileContent({
     `${contentPath}/${lang}/${contentId}/content.md`,
     {
       encoding: "utf-8",
-    }
+    },
   );
 
   return file;
@@ -130,11 +133,11 @@ export type Heading = {
  */
 function collectHeadings(
   node: Tag | Tag["children"][number],
-  sections: Heading[] = []
+  sections: Heading[] = [],
 ) {
   if (node instanceof Markdoc.Tag) {
     // Match all h1, h2, h3… tags
-    if (node.name.match(/h\d/)) {
+    if (/h\d/.exec(node.name)) {
       const title = node.children[0];
 
       if (typeof title === "string") {

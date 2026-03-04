@@ -1,21 +1,23 @@
-import { cn } from "@/lib/utils";
 import {
-  ColumnDef,
-  DeepValue,
+  type ColumnDef,
+  type DeepValue,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  HeaderContext,
-  OnChangeFn,
-  RowData,
-  SortingState,
-  TableMeta,
+  type HeaderContext,
+  type OnChangeFn,
+  type RowData,
+  type SortingState,
+  type TableMeta,
   useReactTable,
 } from "@tanstack/react-table";
-import { Button } from "./ui/button";
 import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
 
-function Table<T extends Record<string, any>>({
+import { cn } from "@/lib/utils";
+
+import { Button } from "./ui/button";
+
+function Table<T extends Record<string, unknown>>({
   className,
   columns,
   data,
@@ -73,7 +75,7 @@ function Table<T extends Record<string, any>>({
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                 </th>
               ))}
@@ -104,7 +106,7 @@ function Table<T extends Record<string, any>>({
                   ? null
                   : flexRender(
                       header.column.columnDef.footer,
-                      header.getContext()
+                      header.getContext(),
                     )}
               </th>
             ))}

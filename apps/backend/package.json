@@ -5,7 +5,10 @@
   "type": "module",
   "types": "./types/shared-types.ts",
   "exports": {
-    "./types": "./types/shared-types.ts"
+    "./types": {
+      "types": "./types/shared-types.ts",
+      "import": "./types/shared-types.ts"
+    }
   },
   "scripts": {
     "dev": "bun run --watch src/api/run-server.ts",

@@ -1,35 +1,42 @@
-import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 import {
   getRouteApi,
-  RegisteredRouter,
-  RouteIds,
-  SearchParamOptions,
+  type RegisteredRouter,
+  type RouteIds,
 } from "@tanstack/react-router";
 
+import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
+
+const preservedKeys = ["sort", "limit", "order"];
 export function useFilters<
   TId extends RouteIds<RegisteredRouter["routeTree"]>,
-  TSearchParams extends SearchParamOptions<
-    RegisteredRouter,
-    TId,
-    TId
-  >["search"],
 >(routeId: TId) {
   const routeApi = getRouteApi<TId>(routeId);
 
   const navigate = routeApi.useNavigate();
   const filters = routeApi.useSearch();
 
-  const setFilters = (partialFilters: Partial<TSearchParams>) =>
+  const setFilters = (partialFilters: Record<string, unknown>) =>
     navigate({
-      search: cleanEmptyParams({
-        ...filters,
-        ...partialFilters,
-      }) as TSearchParams,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search: cleanEmptyParams({ ...filters, ...partialFilters }) as any,
       resetScroll: false,
     });
 
-  const resetFilters = () =>
-    navigate({ search: {} as TSearchParams, resetScroll: false });
+  const preservedSearch = Object.entries(filters).reduce<
+    Record<string, unknown>
+  >((acc, [key, value]) => {
+    if (preservedKeys.includes(key)) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+  const resetFilters = () => {
+    navigate({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search: cleanEmptyParams({ ...preservedSearch, page: 1 }) as any,
+      resetScroll: false,
+    });
+  };
 
   return {
     filters,

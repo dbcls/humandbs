@@ -3,9 +3,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { type ContentId } from "@/config/content-config";
 import { db } from "@/db/database";
 import { document } from "@/db/schema";
-import { insertDocumentSchema } from "@/db/types";
+import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 /** List all documents */
@@ -14,7 +15,7 @@ export const $getDocuments = createServerFn({
 }).handler(async () => {
   const documents = await db.query.document.findMany();
 
-  return documents;
+  return documents as { createdAt: Date; contentId: ContentId }[];
 });
 
 export function getDocumentsQueryOptions() {
@@ -54,7 +55,7 @@ export const $validateDocumentContentId = createServerFn({ method: "POST" })
  */
 export const $deleteDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .inputValidator(z.object({ contentId: z.string() }))
+  .inputValidator(documentSelectSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "delete");
 

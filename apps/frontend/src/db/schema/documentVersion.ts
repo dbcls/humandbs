@@ -6,9 +6,9 @@ import {
   primaryKey,
   text,
   timestamp,
-  uniqueIndex,
-  uuid,
 } from "drizzle-orm/pg-core";
+
+import type { Locale } from "@/config/i18n";
 
 import { user } from "./auth-schema";
 import { document } from "./document";
@@ -29,67 +29,41 @@ export const documentVersionStatus = pgEnum("document_version_status", [
 export const documentVersion = pgTable(
   "document_version",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    versionNumber: integer("version_number").notNull(),
-    authorId: text("author_id")
-      .notNull()
-      .references(() => user.id),
     contentId: text("content_id")
-      .notNull()
-      .references(() => document.contentId, { onDelete: "cascade" }),
+      .references(() => document.contentId, { onDelete: "cascade" })
+      .notNull(),
+    versionNumber: integer("version_number").notNull(),
     status: documentVersionStatus("status").notNull().default("draft"),
-    lastDraftSavedAt: timestamp("last_draft_saved_at"),
-    publishedAt: timestamp("published_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (table) => [
-    // Each version number can have at most one draft and one published version
-    uniqueIndex().on(table.contentId, table.versionNumber, table.status),
-  ]
-);
-
-export type DocumentVersion = typeof documentVersion.$inferSelect;
-
-export const documentVersionTranslation = pgTable(
-  "document_version_translation",
-  {
+    locale: text("locale").notNull().$type<Locale>(),
     title: text("name"),
-    documentVersionId: uuid("document_version_id")
-      .notNull()
-      .references(() => documentVersion.id, { onDelete: "cascade" }),
-    locale: text("locale").notNull(),
     content: text("content"),
     translatedBy: text("translated_by").references(() => user.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.documentVersionId, table.locale] })]
+  (table) => [
+    primaryKey({
+      columns: [
+        table.contentId,
+        table.versionNumber,
+        table.locale,
+        table.status,
+      ],
+    }),
+  ]
 );
 
-export type DocumentVersionTranslation =
-  typeof documentVersionTranslation.$inferSelect;
+export type DocumentVersion = typeof documentVersion.$inferSelect;
 
 export const documentVersionRelations = relations(
   documentVersion,
-  ({ many, one }) => ({
-    translations: many(documentVersionTranslation),
-    author: one(user, {
-      fields: [documentVersion.authorId],
-      references: [user.id],
-    }),
-  })
-);
-
-export const documentVersionTranslationsRelations = relations(
-  documentVersionTranslation,
   ({ one }) => ({
-    version: one(documentVersion, {
-      fields: [documentVersionTranslation.documentVersionId],
-      references: [documentVersion.id],
+    document: one(document, {
+      fields: [documentVersion.contentId],
+      references: [document.contentId],
     }),
-    translator: one(user, {
-      fields: [documentVersionTranslation.translatedBy],
+    author: one(user, {
+      fields: [documentVersion.translatedBy],
       references: [user.id],
     }),
   })

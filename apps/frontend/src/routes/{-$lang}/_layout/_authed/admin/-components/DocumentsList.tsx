@@ -1,3 +1,13 @@
+import { useForm } from "@tanstack/react-form";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { Trash2Icon } from "lucide-react";
+import { useState } from "react";
+import { useTranslations } from "use-intl";
+
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { type ContentId } from "@/config/content-config";
 import {
   $createDocument,
   $deleteDocument,
@@ -16,16 +26,7 @@ import {
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { useForm } from "@tanstack/react-form";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { Trash2Icon } from "lucide-react";
-import { useState } from "react";
-import { useTranslations } from "use-intl";
-import z from "zod";
+
 import { AddNewButton } from "./AddNewButton";
 
 export function DocumentsList({
@@ -45,7 +46,7 @@ export function DocumentsList({
   const { openConfirmation } = useConfirmationStore();
 
   const { mutate: createDocument } = useMutation({
-    mutationFn: (contentId: string) =>
+    mutationFn: (contentId: ContentId) =>
       $createDocument({ data: { contentId: contentId } }),
 
     onMutate: async (contentId) => {
@@ -99,7 +100,9 @@ export function DocumentsList({
       title: "Delete Document",
       description: `Are you sure you want to delete document ${contentId}?`,
       actionLabel: "Delete",
-      onAction: () => deleteDocument(contentId),
+      onAction: () => {
+        deleteDocument(contentId);
+      },
     });
   }
 
@@ -109,113 +112,112 @@ export function DocumentsList({
     },
 
     onSubmit: async ({ value }) => {
-      createDocument(value.contentId);
+      createDocument(value.contentId as ContentId);
     },
   });
 
   const [open, setOpen] = useState(false);
 
   return (
-    <ul>
-      <li className="mb-5">
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <AddNewButton />
-          </DialogTrigger>
-          <DialogContent>
-            <DialogTitle className="text-base">Add Document</DialogTitle>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                form.handleSubmit();
-                setOpen(false);
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <AddNewButton className="mb-5" />
+        </DialogTrigger>
+        <DialogContent>
+          <DialogTitle className="text-base">Add Document</DialogTitle>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+              setOpen(false);
+            }}
+            className="flex flex-col gap-2"
+          >
+            <form.Field
+              name="contentId"
+              validators={{
+                onChangeAsyncDebounceMs: 500,
+                onChangeAsync: async ({ value }) => {
+                  if (!value || value.length < 1) {
+                    return "Content ID is required";
+                  }
+                  if (value.length > 100) {
+                    return "Content ID must be 100 characters or less";
+                  }
+                  const isExisting = await $validateDocumentContentId({
+                    data: value as ContentId,
+                  });
+                  if (isExisting) {
+                    return "Document with this contentId already exists";
+                  }
+                  return undefined;
+                },
               }}
-              className="flex flex-col gap-2"
             >
-              <form.Field
-                name="contentId"
-                validators={{
-                  onChangeAsyncDebounceMs: 500,
-                  onChangeAsync: z
-                    .string()
-                    .min(1)
-                    .max(100)
-                    .refine(
-                      async (value) => {
-                        const isExisting = await $validateDocumentContentId({
-                          data: value,
-                        });
-                        return !isExisting;
-                      },
-                      {
-                        message: "Document with this contentId already exists",
-                      }
-                    ),
+              {(field) => {
+                return (
+                  <Label className="block space-y-2">
+                    <span>Content ID</span>
+                    <Input
+                      name={field.name}
+                      value={field.state.value}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value);
+                      }}
+                    />
+                    {!field.state.meta.isValid && (
+                      <em role="alert" className="text-danger text-xs">
+                        {field.state.meta.errors.join(", ")}
+                      </em>
+                    )}
+                  </Label>
+                );
+              }}
+            </form.Field>
+            <form.Subscribe selector={(state) => state.canSubmit}>
+              {(canSubmit) => (
+                <Button
+                  type="submit"
+                  className="self-end"
+                  disabled={!canSubmit}
+                >
+                  Submit
+                </Button>
+              )}
+            </form.Subscribe>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ul>
+        {documents.map((doc) => {
+          const isActive = doc.contentId === selectedContentId;
+          return (
+            <ListItem
+              key={doc.contentId}
+              role="menuitem"
+              onClick={() => {
+                onSelectDoc(doc.contentId);
+              }}
+              isActive={isActive}
+            >
+              <span>{t(doc.contentId)} </span>
+              <Button
+                variant={"ghost"}
+                size={"slim"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClickDeleteDoc(doc.contentId);
                 }}
               >
-                {(field) => {
-                  return (
-                    <Label className="block space-y-2">
-                      <span>Content ID</span>
-                      <Input
-                        name={field.name}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                      />
-                      {!field.state.meta.isValid && (
-                        <em role="alert" className="text-danger text-xs">
-                          {field.state.meta.errors
-                            .map((e) => e?.message)
-                            .join(", ")}
-                        </em>
-                      )}
-                    </Label>
-                  );
-                }}
-              </form.Field>
-              <form.Subscribe selector={(state) => state.canSubmit}>
-                {(canSubmit) => (
-                  <Button
-                    type="submit"
-                    className="self-end"
-                    disabled={!canSubmit}
-                  >
-                    Submit
-                  </Button>
-                )}
-              </form.Subscribe>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </li>
-      {documents.map((doc) => {
-        const isActive = doc.contentId === selectedContentId;
-        return (
-          <ListItem
-            key={doc.contentId}
-            role="menuitem"
-            onClick={() => onSelectDoc(doc.contentId)}
-            isActive={isActive}
-          >
-            <span>{t(doc.contentId as any)} </span>
-            <Button
-              variant={"ghost"}
-              size={"slim"}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClickDeleteDoc(doc.contentId);
-              }}
-            >
-              <Trash2Icon
-                className={cn("text-danger size-5 transition-colors", {
-                  "text-white": isActive,
-                })}
-              />
-            </Button>
-          </ListItem>
-        );
-      })}
-    </ul>
+                <Trash2Icon className="text-danger size-5 transition-colors group-data-[active=true]:text-white" />
+              </Button>
+            </ListItem>
+          );
+        })}
+      </ul>
+    </>
   );
 }

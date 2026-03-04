@@ -1,4 +1,4 @@
-import Markdoc, { Config, Tag } from "@markdoc/markdoc";
+import Markdoc, { type Config, Tag } from "@markdoc/markdoc";
 import { Parser } from "htmlparser2";
 import yaml from "js-yaml";
 
@@ -99,7 +99,7 @@ export function collectHeadings(
 ) {
   if (node instanceof Markdoc.Tag) {
     // Match all h1, h2, h3… tags
-    if (node.name.match(/h\d/)) {
+    if (/h\d/.exec(node.name)) {
       const title = node.children[0];
 
       if (typeof title === "string") {

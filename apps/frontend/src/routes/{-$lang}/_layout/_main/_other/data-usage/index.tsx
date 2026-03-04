@@ -2,34 +2,40 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
+import { Markdown } from "@/components/Merkdown";
 import { Button } from "@/components/ui/button";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getDocumentLatestPublishedVersionTranslationQueryOptions } from "@/serverFunctions/documentVersionTranslation";
+import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
+import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/"
+  "/{-$lang}/_layout/_main/_other/data-usage/",
 )({
   component: RouteComponent,
   loader: async ({ context }) => {
-    const { content, title } = await context.queryClient.ensureQueryData(
-      getDocumentLatestPublishedVersionTranslationQueryOptions({
+    const data = await $getLatestPublishedDocumentVersion({
+      data: {
         contentId: "data-usage",
         locale: context.lang,
-      })
-    );
+      },
+    });
 
-    return { content, title };
+    const contentHtml = await renderMarkdown(data.content ?? "");
+
+    return {
+      contentHtml,
+      title: data.title,
+    };
   },
 });
 
 function RouteComponent() {
-  const { content, title } = Route.useLoaderData();
+  const { contentHtml, title } = Route.useLoaderData();
 
   const navigate = Route.useNavigate();
   const t = useTranslations("Front");
   return (
     <Card caption={title} captionSize={"lg"}>
-      <RenderMarkdoc className="mx-auto" content={content} />
+      <Markdown className="mx-auto" contentHtml={contentHtml} />
       <div className="flex justify-center">
         <Button
           variant={"action"}

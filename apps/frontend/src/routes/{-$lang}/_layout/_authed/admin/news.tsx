@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   $createNewsItem,
   getNewsItemsQueryOptions,
-  NewsItemResponse,
+  type NewsItemResponse,
 } from "@/serverFunctions/news";
 
 import { NewsItemContent } from "./-components/NewsItemContent";
@@ -23,7 +23,9 @@ function RouteComponent() {
 
   async function handleAddNewsItem() {
     await $createNewsItem({});
-    queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+    await queryClient.invalidateQueries(
+      getNewsItemsQueryOptions({ limit: 100 }),
+    );
   }
 
   return (

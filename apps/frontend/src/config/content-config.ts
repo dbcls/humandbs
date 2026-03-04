@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { enumFromStringArray } from "../lib/utils";
+import { enumFromStringArray } from "@/utils/zod";
 
 export const CONTENT_IDS = {
   guidelines: [
@@ -22,7 +22,7 @@ export const CONTENT_IDS = {
 } as const;
 
 export const contentIdSchema = enumFromStringArray(
-  Object.values(CONTENT_IDS).flat()
+  Object.values(CONTENT_IDS).flat(),
 );
 
 export type ContentId = z.infer<typeof contentIdSchema>;

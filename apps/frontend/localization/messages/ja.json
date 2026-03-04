@@ -61,14 +61,17 @@
     "dataset": "データセット"
   },
   "Research-list": {
-    "research-list": "研究一覧"
+    "research-list": "研究一覧",
+    "date-published": "公開日付",
+    "date-modified": "更新日付"
   },
   "Dataset-list": {
     "dataset-list": "デーセット一覧",
     "dataset-id": "デーセット ID",
     "version": "バージョン",
     "release-date": "公開日付",
-    "type-of-data": "データの種類"
+    "type-of-data": "データの種類",
+    "criteria": "アクセス制限"
   },
   "Data-submission": {
     "data-submission": "データの提供",

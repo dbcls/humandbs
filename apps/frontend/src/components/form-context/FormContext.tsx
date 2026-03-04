@@ -1,12 +1,13 @@
 import { createFormHookContexts, createFormHook } from "@tanstack/react-form";
 import { lazy } from "react";
-import TextField from "./TextField";
+
 import CheckboxField from "./CheckboxField";
-import SwitchField from "./SwitchField";
-import UpdateButton from "./UpdateButton";
 import LocaleSwitchField from "./LocaleSwitchField";
-import TextAreaField from "./TextAreaField";
 import SelectField from "./SelectField";
+import SwitchField from "./SwitchField";
+import TextAreaField from "./TextAreaField";
+import TextField from "./TextField";
+import UpdateButton from "./UpdateButton";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();

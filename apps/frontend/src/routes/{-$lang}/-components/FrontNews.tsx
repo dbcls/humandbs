@@ -3,7 +3,8 @@ import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Link } from "@/components/Link";
-import { type NewsTitleResponse } from "@/serverFunctions/news";
+import type { Locale } from "@/config/i18n";
+import type { NewsTitleResponse } from "@/serverFunctions/news";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (

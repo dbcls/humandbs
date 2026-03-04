@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { NavigationData } from "@/components/NavigationChart";
+import type { NavigationData } from "@/components/NavigationChart";
 
-import { getLocaleFn } from "./locale";
+import { $getLocale } from "./i18n";
 
 export const $getNavigationFlowchartData = createServerFn({
   method: "GET",
@@ -14,10 +14,10 @@ export const $getNavigationFlowchartData = createServerFn({
         z.literal("data-submission"),
         z.literal("before-application"),
       ]),
-    })
+    }),
   )
   .handler(async ({ data }) => {
-    const locale = await getLocaleFn();
+    const locale = await $getLocale();
 
     const type = data.type;
 

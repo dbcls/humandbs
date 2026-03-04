@@ -1,12 +1,14 @@
-import { Locale, Messages } from "@/config/i18n-config";
-import { LinkOptions } from "@tanstack/react-router";
+import { type LinkOptions } from "@tanstack/react-router";
+
+import type { Locale, Messages } from "@/config/i18n";
+
 type NavLinkId = keyof Messages["Navbar"];
 
 // First let's define our types
-type BaseNavItem = {
+interface BaseNavItem {
   id: NavLinkId;
   linkOptions: LinkOptions;
-};
+}
 
 type NavItemWithChildren = BaseNavItem & {
   children?: BaseNavItem[];

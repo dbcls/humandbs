@@ -1,12 +1,11 @@
 import { QueryClient } from "@tanstack/react-query";
-import { createRouter, LocationRewrite } from "@tanstack/react-router";
+import { createRouter, type LocationRewrite } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
-import { i18n, type Locale, type Messages } from "@/config/i18n-config";
-import { type SessionMeta } from "@/utils/jwt-helpers";
-
-import { routeTree } from "./routeTree.gen";
-import { type SessionUser } from "./serverFunctions/user";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
+import { NotFound } from "@/components/NotFound";
+import { i18n, type Locale, type Messages } from "@/config/i18n";
+import { routeTree } from "@/routeTree.gen";
 
 export interface Context {
   queryClient: QueryClient;
@@ -14,8 +13,37 @@ export interface Context {
   crumb: string;
   lang: Locale;
   messages: Messages;
-  user: SessionUser | null | undefined;
-  session: SessionMeta | null | undefined;
+  // user: SessionUser | null | undefined;
+  // session: SessionMeta | null | undefined;
+}
+
+export function getRouter() {
+  const queryClient = new QueryClient();
+
+  const router = createRouter({
+    routeTree,
+    context: {
+      queryClient,
+    } as Context,
+    defaultPreload: "intent",
+    defaultErrorComponent: DefaultCatchBoundary,
+    defaultNotFoundComponent: () => <NotFound />,
+    scrollRestoration: true,
+    rewrite: localeRewrite(),
+  });
+
+  setupRouterSsrQueryIntegration({
+    router,
+    queryClient,
+  });
+
+  return router;
+}
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: ReturnType<typeof getRouter>;
+  }
 }
 
 /**
@@ -61,31 +89,4 @@ function localeRewrite(): LocationRewrite {
       return url;
     },
   };
-}
-
-export async function getRouter() {
-  const queryClient = new QueryClient();
-
-  const router = createRouter({
-    routeTree,
-    context: {
-      queryClient,
-    } as Context,
-    defaultPreload: "intent",
-    scrollRestoration: true,
-    rewrite: localeRewrite(),
-  });
-
-  setupRouterSsrQueryIntegration({
-    router,
-    queryClient,
-  });
-
-  return router;
-}
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: ReturnType<typeof getRouter>;
-  }
 }

@@ -193,3 +193,8 @@ compose.override.yml
 
 # Admin UID file (sensitive)
 admin_uids.json
+
+# AI docs
+ai-docs
+
+apps/frontend-old

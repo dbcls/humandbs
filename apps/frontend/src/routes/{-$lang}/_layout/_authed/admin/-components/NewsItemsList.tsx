@@ -1,26 +1,26 @@
-import { Card } from "@/components/Card";
-import { ListItem } from "@/components/ListItem";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import {
-  $deleteNewsItem,
-  getNewsItemsQueryOptions,
-  NewsItemResponse,
-} from "@/serverFunctions/news";
-import useConfirmationStore from "@/stores/confirmationStore";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { LucideBell, Trash2Icon } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
-import { Tag } from "./StatusTag";
-import { AddNewButton } from "./AddNewButton";
+
+import { Card } from "@/components/Card";
+import { ListItem } from "@/components/ListItem";
 import { TrashButton } from "@/components/TrashButton";
+import {
+  $deleteNewsItem,
+  getNewsItemsQueryOptions,
+  type NewsItemResponse,
+} from "@/serverFunctions/news";
+import useConfirmationStore from "@/stores/confirmationStore";
+
+import { AddNewButton } from "./AddNewButton";
+import { Tag } from "./StatusTag";
 
 export function NewsItemsList({
   onClickAdd,
   selectedNewsItem,
   onSelectNewsItem,
 }: {
-  onClickAdd: () => void;
+  onClickAdd: () => Promise<void>;
   selectedNewsItem: NewsItemResponse | undefined;
   onSelectNewsItem: (item: NewsItemResponse) => void;
 }) {
@@ -29,7 +29,7 @@ export function NewsItemsList({
 
   const queryClient = useQueryClient();
   const { data: newsItems } = useSuspenseQuery(
-    getNewsItemsQueryOptions({ limit: 100 })
+    getNewsItemsQueryOptions({ limit: 100 }),
   );
 
   const locale = useLocale();
@@ -44,7 +44,7 @@ export function NewsItemsList({
         await $deleteNewsItem({ data: { id: item.id } });
         queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
       },
-      onCancel: () => {},
+
       cancelLabel: t("cancel"),
       actionLabel: (
         <>
@@ -61,16 +61,16 @@ export function NewsItemsList({
       className="w-cms-list-panel flex h-full flex-col"
       containerClassName="overflow-auto flex-1 max-h-full"
     >
+      <AddNewButton className="mb-5" onClick={onClickAdd} />
       <ul>
-        <li className="mb-5">
-          <AddNewButton onClick={onClickAdd} />
-        </li>
         {newsItems.map((item) => {
           const isActive = item.id === selectedNewsItem?.id;
           return (
             <ListItem
               key={item.id}
-              onClick={() => onSelectNewsItem(item)}
+              onClick={() => {
+                onSelectNewsItem(item);
+              }}
               isActive={isActive}
             >
               <div className="text-sm font-medium">
@@ -92,7 +92,7 @@ export function NewsItemsList({
                           <Tag tag={lang} isActive={isActive} />
                           <span>{tr.title}</span>
                         </li>
-                      )
+                      ),
                     )}
                 </ul>
               </div>

@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
-import { Input } from "../ui/input";
+
 import { Label } from "../ui/label";
-import { useFieldContext } from "./FormContext";
 import {
   Select,
   SelectContent,
@@ -10,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+
+import { useFieldContext } from "./FormContext";
 
 export default function SelectField({
   label,

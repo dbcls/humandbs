@@ -1,13 +1,14 @@
-import { ResearchVersionDoc } from "@humandbs/backend/types";
-import { createFileRoute } from "@tanstack/react-router";
+import type { ResearchVersionDoc } from "@humandbs/backend/types";
+import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { Separator } from "@/components/Separator";
+import { i18n } from "@/config/i18n";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions"
+  "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions",
 )({
   component: RouteComponent,
   loader: async ({ context, params }) => {
@@ -15,7 +16,8 @@ export const Route = createFileRoute(
       getResearchVersionsQueryOptions({
         humId: params.humId,
         lang: context.lang,
-      })
+        includeRawHtml: false,
+      }),
     );
     return { data: versions.data, crumb: "Versions" };
   },
@@ -48,6 +50,7 @@ function RouteComponent() {
 }
 
 function VersionInfo({ version }: { version: ResearchVersionDoc }) {
+  const { lang } = useRouteContext({ strict: false });
   return (
     <section>
       <h3 className="inline">
@@ -59,13 +62,11 @@ function VersionInfo({ version }: { version: ResearchVersionDoc }) {
           {version.humVersionId}
         </Route.Link>
         <span className="text-foreground-light text-2xs ml-3">
-          {version.releaseDate}
+          {version.versionReleaseDate}
         </span>
       </h3>
       <section className="text-sm">
-        {version.releaseNote.map((r, i) => (
-          <p key={i}>{r}</p>
-        ))}
+        {version.releaseNote[lang ?? i18n.defaultLocale]?.text}
       </section>
     </section>
   );

@@ -1,32 +1,32 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { User } from "better-auth";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { i18n, Locale, localeSchema } from "@/config/i18n-config";
+import { i18n, type Locale, localeSchema } from "@/config/i18n";
 import { getNavConfig } from "@/config/navbar-config";
 import { db } from "@/db/database";
 import {
   contentItem,
   contentTranslation,
   DOCUMENT_VERSION_STATUS,
+  type DocVersionStatus,
 } from "@/db/schema";
 import {
   contentTranslationInsertSchema,
-  ContentTranslationSelect,
-  DocumentVersionStatus,
+  type ContentTranslationSelect,
+  type DocumentVersionStatus,
   statusSchema,
+  type User,
 } from "@/db/types";
 import { buildConflictUpdateColumns } from "@/db/utils";
-import { transformMarkdoc } from "@/markdoc/config";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 export function getContentsListQueryOptions() {
   return queryOptions({
     queryKey: ["contents"],
     queryFn: $getContentItems,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes,
   });
 }
 
@@ -40,7 +40,10 @@ export function getContentQueryOptions(id: string) {
 
 export interface ContentItemsListItem {
   id: string;
-  translations: Pick<ContentTranslationSelect, "title" | "lang" | "status">[];
+  translations: {
+    lang: Locale;
+    statuses: Partial<Record<DocVersionStatus, string>>;
+  }[];
 }
 
 const $getContentItems = createServerFn({ method: "GET" })
@@ -65,7 +68,33 @@ const $getContentItems = createServerFn({ method: "GET" })
       },
     });
 
-    return contentItems;
+    return contentItems.map((item) => {
+      const translations = item.translations.reduce<
+        {
+          lang: Locale;
+          statuses: Partial<Record<DocVersionStatus, string>>;
+        }[]
+      >((acc, curr) => {
+        const existingLang = acc.find((l) => l.lang === curr.lang);
+
+        if (existingLang) {
+          existingLang.statuses[curr.status] = curr.title;
+          acc.sort((a, b) => a.lang.localeCompare(b.lang));
+        } else {
+          acc.push({
+            lang: curr.lang as Locale,
+            statuses: { [curr.status]: curr.title },
+          });
+        }
+
+        return acc;
+      }, []);
+
+      return {
+        id: item.id,
+        translations,
+      };
+    });
   });
 
 export type ContentTranslationResponse = Omit<
@@ -111,25 +140,36 @@ export const $getContentItem = createServerFn({ method: "GET" })
       },
     });
 
+    const translations =
+      content?.translations.reduce(
+        (acc, curr) => {
+          const { title, content, updatedAt, status } = curr;
+          const locale = curr.lang as Locale;
+          if (!acc[locale]) acc[locale] = {};
+
+          acc[locale][status] = {
+            title,
+            content,
+            updatedAt,
+            status,
+          };
+          return acc;
+        },
+        {} as ContentItemResponse["translations"],
+      ) || ({} as ContentItemResponse["translations"]);
+
+    const presentLocales = Object.keys(translations) as Locale[];
+
+    // copy published content into draft if no draft present
+    for (const locale of presentLocales) {
+      if (!translations[locale]?.draft && !!translations[locale]?.published) {
+        translations[locale].draft = { ...translations[locale].published };
+      }
+    }
+
     return {
       author: content?.author,
-      translations:
-        content?.translations.reduce(
-          (acc, curr) => {
-            const { title, content, updatedAt, status } = curr;
-            const locale = curr.lang as Locale;
-            if (!acc[locale]) acc[locale] = {};
-
-            acc[locale]![status] = {
-              title,
-              content,
-              updatedAt,
-              status,
-            };
-            return acc;
-          },
-          {} as ContentItemResponse["translations"]
-        ) || ({} as ContentItemResponse["translations"]),
+      translations,
     };
   });
 
@@ -181,7 +221,7 @@ export const $getContentItemTranslation = createServerFn({
         and(
           eq(table.contentId, id),
           eq(table.lang, lang),
-          eq(table.status, status)
+          eq(table.status, status),
         ),
       columns: {
         title: true,
@@ -191,20 +231,16 @@ export const $getContentItemTranslation = createServerFn({
 
     if (!translation) {
       throw new Error(
-        `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`
+        `${status.replace(/^./g, (m) => m.toUpperCase())} content with id "${data.id}" not found`,
       );
     }
 
-    const { content, toc } = transformMarkdoc({
-      rawContent: translation?.content || "",
-      generateTOC: true,
-    });
+    // const { content, toc } = transformMarkdoc({
+    //   rawContent: translation?.content || "",
+    //   generateTOC: true,
+    // });
 
-    return {
-      content: JSON.stringify(content),
-      toc,
-      title: translation?.title,
-    };
+    return translation;
   });
 
 export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
@@ -224,7 +260,7 @@ export const $validateContentId = createServerFn({ method: "GET" })
     const contentId = data;
 
     const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map(
-      (c) => c.id
+      (c) => c.id,
     ) as string[];
 
     const content = await db.query.contentItem.findFirst({
@@ -238,7 +274,7 @@ export const $createContentItem = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       id: z.string(),
-    })
+    }),
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
@@ -246,15 +282,30 @@ export const $createContentItem = createServerFn({ method: "POST" })
 
     const id = data.id;
 
-    const user = context.user!;
+    const user = context.user;
 
-    const newContentItem = await db
-      .insert(contentItem)
-      .values({
-        id,
-        authorId: user.id,
-      })
-      .returning();
+    const newContentItem = await db.transaction(async (tx) => {
+      const newContentItem = await tx
+        .insert(contentItem)
+        .values({
+          id,
+          authorId: user.id,
+        })
+        .returning();
+
+      // add empty contents
+      for (const locale of i18n.locales) {
+        await tx.insert(contentTranslation).values({
+          contentId: newContentItem[0].id,
+          lang: locale,
+          status: DOCUMENT_VERSION_STATUS.DRAFT,
+          title: "",
+          content: "",
+        });
+      }
+
+      return newContentItem;
+    });
 
     return newContentItem[0];
   });
@@ -263,7 +314,7 @@ export const $deleteContentItem = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       id: z.string(),
-    })
+    }),
   )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ context, data }) => {
@@ -350,7 +401,7 @@ export const $publishContentItemDraftTranslation = createServerFn({
         and(
           eq(table.contentId, data.id),
           eq(table.lang, data.lang),
-          eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT)
+          eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
         ),
     });
 
@@ -401,8 +452,8 @@ export const $unpublishContentItemTranslation = createServerFn({
         and(
           eq(contentTranslation.contentId, data.id),
           eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
-        )
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+        ),
       )
       .returning();
 
@@ -423,7 +474,7 @@ export const $resetContentItemTranslationDraft = createServerFn({
         and(
           eq(table.contentId, data.id),
           eq(table.lang, data.lang),
-          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED)
+          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
         ),
     });
 
@@ -442,8 +493,8 @@ export const $resetContentItemTranslationDraft = createServerFn({
         and(
           eq(contentTranslation.contentId, data.id),
           eq(contentTranslation.lang, data.lang),
-          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT)
-        )
+          eq(contentTranslation.status, DOCUMENT_VERSION_STATUS.DRAFT),
+        ),
       )
       .returning();
 

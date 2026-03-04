@@ -1,11 +1,6 @@
-import {
-  Asset,
-  Document,
-  DocumentVersion,
-  DocumentVersionTranslation,
-} from "@/db/schema";
-import { Alert, ContentItem, NewsItem } from "@/db/types";
-import { SessionUser } from "@/serverFunctions/user";
+import type { Asset, Document, DocumentVersion } from "@/db/schema";
+import type { Alert, ContentItem, NewsItem } from "@/db/types";
+import { type SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {
   ADMIN: "admin",
@@ -13,21 +8,22 @@ export const USER_ROLES = {
   USER: "user",
 } as const;
 
-type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 type PermissionCheck<Key extends keyof Permissions> =
   | boolean
   | ((user: SessionUser | null, data: Permissions[Key]["dataType"]) => boolean);
 
-type RolesWithPermissions = {
-  [R in UserRole]: Partial<{
-    [Key in keyof Permissions]: Partial<{
-      [Action in Permissions[Key]["action"]]: PermissionCheck<Key>;
-    }>;
-  }>;
-};
+type RolesWithPermissions = Record<
+  UserRole,
+  Partial<{
+    [Key in keyof Permissions]: Partial<
+      Record<Permissions[Key]["action"], PermissionCheck<Key>>
+    >;
+  }>
+>;
 
-export type Permissions = {
+export interface Permissions {
   users: {
     dataType: SessionUser;
     action: "view" | "delete" | "changeRole";
@@ -42,11 +38,7 @@ export type Permissions = {
   };
   documentVersions: {
     dataType: DocumentVersion;
-    action: "view" | "publish" | "update" | "create" | "delete";
-  };
-  documentVersionTranslations: {
-    dataType: DocumentVersionTranslation;
-    action: "view" | "update" | "create" | "delete";
+    action: "view" | "publish" | "update" | "create" | "delete" | "list";
   };
   assets: {
     dataType: Asset;
@@ -60,7 +52,7 @@ export type Permissions = {
     dataType: Alert;
     action: "list" | "update" | "create" | "delete";
   };
-};
+}
 
 const ROLES = {
   admin: {
@@ -81,13 +73,9 @@ const ROLES = {
       publish: true,
       update: true,
       delete: true,
+      list: true,
     },
-    documentVersionTranslations: {
-      view: true,
-      update: true,
-      create: true,
-      delete: true,
-    },
+
     contents: {
       list: true,
       view: true,
@@ -127,12 +115,7 @@ const ROLES = {
       publish: true,
       update: true,
       delete: false,
-    },
-    documentVersionTranslations: {
-      view: true,
-      update: true,
-      create: true,
-      delete: true,
+      list: true,
     },
     contents: {
       list: true,
@@ -163,7 +146,7 @@ const ROLES = {
   user: {},
 } as const satisfies RolesWithPermissions;
 
-export const roles = Object.keys(ROLES) as Array<keyof RolesWithPermissions>;
+export const roles = Object.keys(ROLES) as (keyof RolesWithPermissions)[];
 
 export function hasPermission<Resource extends keyof Permissions>(
   user: SessionUser | null,

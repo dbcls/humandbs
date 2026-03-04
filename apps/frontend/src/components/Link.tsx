@@ -1,5 +1,8 @@
-import { Link as BaseLink, LinkComponentProps } from "@tanstack/react-router";
-import { cva, VariantProps } from "class-variance-authority";
+import {
+  Link as BaseLink,
+  type LinkComponentProps,
+} from "@tanstack/react-router";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 

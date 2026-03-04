@@ -36,45 +36,23 @@ import {
   UnauthorizedError,
 } from "@/api/routes/errors"
 import {
-  createUnifiedListResponseSchema,
-  createUnifiedSearchResponseSchema,
-  createUnifiedSingleReadOnlyResponseSchema,
-  createUnifiedSingleResponseSchema,
+  DatasetDetailResponseSchema,
   DatasetIdParamsSchema,
   DatasetListingQuerySchema,
-  DatasetVersionItemSchema,
+  DatasetSearchUnifiedResponseSchema,
+  DatasetUpdateResponseSchema,
+  DatasetVersionDetailResponseSchema,
   DatasetVersionParamsSchema,
-  DatasetWithMetadataSchema,
-  EsDatasetDocSchema,
+  DatasetVersionsListResponseSchema,
   EsDatasetDocWithMergedSchema,
-  EsResearchDetailSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
+  LinkedResearchesListResponseSchema,
   UpdateDatasetRequestSchema,
 } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { addMergedSearchable } from "@/api/utils/merge-searchable"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
-
-// === Unified Response Schemas ===
-
-// Dataset search/list response
-const DatasetSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(EsDatasetDocSchema)
-
-// Dataset detail with optimistic locking
-const DatasetDetailResponseSchema = createUnifiedSingleResponseSchema(EsDatasetDocWithMergedSchema)
-
-// Dataset update response with optimistic locking
-const DatasetUpdateResponseSchema = createUnifiedSingleResponseSchema(DatasetWithMetadataSchema)
-
-// Dataset versions list response
-const DatasetVersionsListResponseSchema = createUnifiedListResponseSchema(DatasetVersionItemSchema)
-
-// Dataset version detail (read-only - historical versions)
-const DatasetVersionDetailResponseSchema = createUnifiedSingleReadOnlyResponseSchema(EsDatasetDocWithMergedSchema)
-
-// Linked researches list response
-const LinkedResearchesListResponseSchema = createUnifiedListResponseSchema(EsResearchDetailSchema)
 
 // === Route Definitions ===
 

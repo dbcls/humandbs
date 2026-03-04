@@ -1,5 +1,6 @@
-import DBCLSLogo from "@/assets/DBCLS_Logo.png";
 import { useTranslations } from "use-intl";
+
+import DBCLSLogo from "@/assets/DBCLS_Logo.png";
 
 export function Footer() {
   const t = useTranslations("Footer");

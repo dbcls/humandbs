@@ -1,7 +1,8 @@
-import { FileRoutesByTo } from "@/routeTree.gen";
-import { DocumentPublishedVersionsListItemResponse } from "@/serverFunctions/documentVersionTranslation";
 import { Link } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
+
+import type { DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
+import type { FileRoutesByTo } from "@/routeTree.gen";
 
 type LinksWithVersionLists = keyof Pick<
   FileRoutesByTo,
@@ -14,7 +15,7 @@ export function PreviousVersionsList({
   documentName,
 }: {
   slug: LinksWithVersionLists;
-  versions: DocumentPublishedVersionsListItemResponse[];
+  versions: DocPublishedVersionListItemResponse[];
   documentName: string;
 }) {
   const tCommon = useTranslations("common");
@@ -37,7 +38,7 @@ export function PreviousVersionsList({
             >
               <span>{version.title}</span>
             </Link>
-            <span>{version.createdAt.toLocaleDateString(lang)}</span>
+            <span>{new Date(version.createdAt).toLocaleDateString(lang)}</span>
           </li>
         ))}
       </ul>

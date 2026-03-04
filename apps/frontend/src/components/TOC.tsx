@@ -1,0 +1,20 @@
+import type { MarkdownHeading } from "@/utils/markdown";
+
+export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
+  const headingsToShow =
+    headings?.filter((heading) => heading.level <= 2) || [];
+
+  return (
+    <div className="border-secondary static flex w-96 min-w-44 flex-col gap-4 rounded bg-white p-2 md:sticky md:top-4 md:mt-6">
+      {headingsToShow.map((heading) => (
+        <a
+          key={heading.id}
+          href={`#${heading.id}`}
+          className="text-sm font-medium text-gray-500 hover:text-gray-700"
+        >
+          {heading.text}
+        </a>
+      ))}
+    </div>
+  );
+}

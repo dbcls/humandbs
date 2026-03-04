@@ -1,4 +1,4 @@
-import Markdoc, { RenderableTreeNode } from "@markdoc/markdoc";
+import Markdoc, { type RenderableTreeNode } from "@markdoc/markdoc";
 import { CatchBoundary } from "@tanstack/react-router";
 import React from "react";
 

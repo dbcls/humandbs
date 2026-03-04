@@ -3,23 +3,33 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Alerts } from "@/components/Alerts";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+// import { getActiveAlertsQueryOptions } from "@/utils/query-options/alerts";
+// import { $getActiveAlerts } from "@/serverFunctions/alert";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main")({
   component: RouteComponent,
 
   loader: async ({ context }) => {
-    // const locale = context.lang;
-    // const activeAlertTranslations = await context.queryClient.ensureQueryData(
-    //   getActiveAlertsQueryOptions({ locale })
+    const locale = context.lang;
+    const activeAlertTranslations = [];
+
+    //   await $getActiveAlerts({
+    //   data: { locale },
+    // });
+
+    //   await context.queryClient.ensureQueryData(
+    //   getActiveAlertsQueryOptions({ locale }),
     // );
 
-    // const hiddenAlerts = await $getHiddenAlertIds();
+    console.log("activeAlertTranslations", activeAlertTranslations);
+    const hiddenAlerts = [];
+
+    //await $getHiddenAlertIds();
 
     return {
-      // alerts: activeAlertTranslations.filter(
-      //   (alert) => !hiddenAlerts.includes(alert.newsId)
-      // ),
-      alerts: [],
+      alerts: activeAlertTranslations.filter(
+        (alert) => !hiddenAlerts.includes(alert.newsId),
+      ),
     };
   },
 });

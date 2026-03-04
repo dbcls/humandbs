@@ -61,14 +61,17 @@
     "dataset": "Dataset"
   },
   "Research-list": {
-    "research-list": "Research list"
+    "research-list": "Research list",
+    "date-published": "Date published",
+    "date-modified": "Date modified"
   },
   "Dataset-list": {
     "dataset-list": "Dataset List",
     "dataset-id": "Dataset ID",
     "version": "Version",
     "release-date": "Release date",
-    "type-of-data": "Type of data"
+    "type-of-data": "Type of data",
+    "criteria": "Access type"
   },
 
   "Data-submission": {

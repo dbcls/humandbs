@@ -1,4 +1,4 @@
-import { Dataset } from "@humandbs/backend/types";
+import { type DatasetDoc } from "@humandbs/backend/types";
 import { Separator } from "@radix-ui/react-select";
 import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 
@@ -7,11 +7,16 @@ import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { ListOfKeyValues } from "@/components/KeyValueCard";
 import { Button } from "@/components/ui/button";
+import { i18n } from "@/config/i18n";
 import { useCart } from "@/hooks/useCart";
 
-export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
+export function DatasetVersionCard({
+  versionData,
+}: {
+  versionData: DatasetDoc;
+}) {
   const Route = getRouteApi(
-    "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId"
+    "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId",
   );
 
   const infoKeyValues = {
@@ -23,10 +28,10 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
   const { add, cart } = useCart();
 
   const isInCart = cart.some(
-    (item) => item.datasetId === versionData.datasetId
+    (item) => item.datasetId === versionData.datasetId,
   );
 
-  const { user } = useRouteContext({ from: "__root__" });
+  const { user, lang } = Route.useRouteContext();
 
   return (
     <CardWithCaption
@@ -44,7 +49,9 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
                   variant={"accent"}
                   className="rounded-full"
                   disabled={isInCart}
-                  onClick={() => add(versionData)}
+                  onClick={() => {
+                    add(versionData);
+                  }}
                 >
                   {isInCart ? "Already in cart" : " Add to cart"}
                 </Button>
@@ -66,14 +73,16 @@ export function DatasetVersionCard({ versionData }: { versionData: Dataset }) {
         <ul className="space-y-5">
           {versionData.experiments.map((ex, i) => (
             <li key={i}>
-              <ContentHeader variant={"block"}>{ex.header}</ContentHeader>
+              <ContentHeader variant={"block"}>
+                {ex.header[lang ?? i18n.defaultLocale]?.text}
+              </ContentHeader>
               <ListOfKeyValues keyValues={ex.data} />
 
-              {ex.footers.length > 0 && (
+              {ex.footers[lang ?? i18n.defaultLocale].length > 0 && (
                 <>
                   <Separator />
-                  {ex.footers.map((footer, i) => (
-                    <p key={i}>{footer}</p>
+                  {ex.footers[lang ?? i18n.defaultLocale].map((footer, i) => (
+                    <p key={i}>{footer.text}</p>
                   ))}
                 </>
               )}

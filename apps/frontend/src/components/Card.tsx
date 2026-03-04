@@ -1,4 +1,4 @@
-import { cva, VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -16,9 +16,9 @@ const cardCaptionVariants = cva(
   {
     variants: {
       captionSize: {
-        lg: "text-lg",
-        sm: "text-sm",
-        default: "text-base",
+        lg: "text-lg mt-10",
+        sm: "text-sm mt-3",
+        default: "text-base mt-4",
       },
     },
     defaultVariants: {
@@ -46,11 +46,11 @@ function Card({
       ) : null}
       <div
         className={cn(
-          "relative",
+          "relative min-h-0",
           {
-            "mt-4": !!caption && captionSize === "sm",
-            "mt-8": !!caption && captionSize === "default",
+            "mt-3": !!caption && captionSize === "sm",
             "mt-10": !!caption && captionSize === "lg",
+            "mt-4": !!caption && captionSize === "default",
           },
           containerClassName
         )}

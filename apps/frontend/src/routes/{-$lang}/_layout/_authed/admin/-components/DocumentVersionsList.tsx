@@ -1,15 +1,3 @@
-import { ListItem } from "@/components/ListItem";
-import { Button } from "@/components/ui/button";
-
-import { cn } from "@/lib/utils";
-import {
-  $cloneDocumentVersion,
-  $createDocumentVersion,
-  $deleteDocumentVersion,
-  type DocumentVersionListItemResponse,
-  getDocumentVersionsListQueryOptions,
-} from "@/serverFunctions/documentVersion";
-import useConfirmationStore from "@/stores/confirmationStore";
 import {
   useMutation,
   useQueryClient,
@@ -17,15 +5,28 @@ import {
 } from "@tanstack/react-query";
 import { CopyIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { StatusTag } from "./StatusTag";
+
+import { ListItem } from "@/components/ListItem";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  $cloneDocumentVersion,
+  $createDocumentVersion,
+  $deleteDocumentVersion,
+  type DocVersionListItemResponse,
+  getDocumentVersionsListQueryOptions,
+} from "@/serverFunctions/documentVersion";
+import useConfirmationStore from "@/stores/confirmationStore";
+
 import { AddNewButton } from "./AddNewButton";
+import { StatusTag } from "./StatusTag";
 
 export function DocumentVersionsList({
   contentId,
   onSelect,
 }: {
   contentId: string;
-  onSelect: (documentVersionItem: DocumentVersionListItemResponse) => void;
+  onSelect: (documentVersionItem: DocVersionListItemResponse) => void;
 }) {
   const documentVersionsListQO = getDocumentVersionsListQueryOptions({
     contentId,
@@ -34,7 +35,7 @@ export function DocumentVersionsList({
   const { data: versions } = useSuspenseQuery(documentVersionsListQO);
 
   const [selectedVersion, setSelectedVersion] = useState<
-    DocumentVersionListItemResponse | undefined
+    DocVersionListItemResponse | undefined
   >(versions[0]);
 
   const queryClient = useQueryClient();
@@ -133,13 +134,13 @@ export function DocumentVersionsList({
     },
   });
 
-  const canCloneVersion = (version: DocumentVersionListItemResponse) => {
+  const canCloneVersion = (version: DocVersionListItemResponse) => {
     return !(
       version.statuses.includes("draft") && version.statuses.length === 1
     );
   };
 
-  function handleSelectVersion(version: DocumentVersionListItemResponse) {
+  function handleSelectVersion(version: DocVersionListItemResponse) {
     setSelectedVersion(version);
     onSelect(version);
   }
@@ -150,7 +151,7 @@ export function DocumentVersionsList({
         <AddNewButton onClick={handleAddNewVersion} />
       </li>
 
-      {versions.map((v, index) => {
+      {versions.map((v) => {
         const isActive = selectedVersion?.versionNumber === v.versionNumber;
         return (
           <ListItem

@@ -1,17 +1,13 @@
 {
   "extends": "../../tsconfig.json",
+
   "compilerOptions": {
-    "lib": [
-      "ESNext"
-    ],
+    "composite": true,
+    "lib": ["ESNext"],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/types": [
-        "types/shared-types.ts"
-      ]
-    }
-  }
+      "@/*": ["./src/*"],
+      "@/types": ["types/shared-types.ts"],
+    },
+  },
 }

@@ -6,33 +6,51 @@
  * - Research listing/search query schemas
  * - Dataset listing/search query schemas
  */
-import { z } from "zod"
+import { z } from "zod";
 
-import { LANG_TYPES, booleanFromString } from "@/api/types/common"
-import { RESEARCH_STATUS } from "@/api/types/workflow"
-import { IsTumorSchema } from "@/es/types"
+import { LANG_TYPES, booleanFromString } from "./common";
+import { RESEARCH_STATUS } from "./workflow";
+import { IsTumorSchema } from "../../es/types"
 
 // === Common Query Schemas ===
 
 // Lang version query
 export const LangVersionQuerySchema = z.object({
-  lang: z.enum(LANG_TYPES).default("ja")
+  lang: z
+    .enum(LANG_TYPES)
+    .default("ja")
     .describe("Response language for bilingual fields ('ja' or 'en')"),
-  version: z.string().regex(/^v\d+$/).nullable().optional()
-    .describe("Specific version to retrieve (e.g., 'v1', 'v2'). Defaults to latest version."),
-  includeRawHtml: z.coerce.boolean().default(false)
-    .describe("Include rawHtml fields in response (default: false). Useful for rich text editing."),
-})
-export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>
+  version: z
+    .string()
+    .regex(/^v\d+$/)
+    .nullable()
+    .optional()
+    .describe(
+      "Specific version to retrieve (e.g., 'v1', 'v2'). Defaults to latest version.",
+    ),
+  includeRawHtml: z.coerce
+    .boolean()
+    .default(false)
+    .describe(
+      "Include rawHtml fields in response (default: false). Useful for rich text editing.",
+    ),
+});
+export type LangVersionQuery = z.infer<typeof LangVersionQuerySchema>;
 
 // Lang query
 export const LangQuerySchema = z.object({
-  lang: z.enum(LANG_TYPES).default("ja")
+  lang: z
+    .enum(LANG_TYPES)
+    .default("ja")
     .describe("Response language for bilingual fields ('ja' or 'en')"),
-  includeRawHtml: z.coerce.boolean().default(false)
-    .describe("Include rawHtml fields in response (default: false). Useful for rich text editing."),
-})
-export type LangQuery = z.infer<typeof LangQuerySchema>
+  includeRawHtml: z.coerce
+    .boolean()
+    .default(false)
+    .describe(
+      "Include rawHtml fields in response (default: false). Useful for rich text editing.",
+    ),
+});
+export type LangQuery = z.infer<typeof LangQuerySchema>;
 
 // === Research Listing Query (GET /research) ===
 
@@ -42,112 +60,213 @@ export type LangQuery = z.infer<typeof LangQuerySchema>
  */
 export const ResearchListingQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1)
+  page: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(1)
     .describe("Page number for pagination (1-indexed)"),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
     .describe("Number of items per page (max: 100)"),
-  lang: z.enum(LANG_TYPES).default("ja")
+  lang: z
+    .enum(LANG_TYPES)
+    .default("ja")
     .describe("Response language for bilingual fields"),
-  sort: z.enum(["humId", "title", "releaseDate"]).default("humId")
+  sort: z
+    .enum(["humId", "title", "releaseDate"])
+    .default("humId")
     .describe("Sort field"),
-  order: z.enum(["asc", "desc"]).default("asc")
-    .describe("Sort order"),
+  order: z.enum(["asc", "desc"]).default("asc").describe("Sort order"),
 
   // Status filter (admin only for non-published)
-  status: z.enum(["draft", "review", "published", "deleted"]).optional()
-    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+  status: z
+    .enum(["draft", "review", "published", "deleted"])
+    .optional()
+    .describe(
+      "Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted",
+    ),
 
   // Optional humId filter for specific research
-  humId: z.string().optional()
-    .describe("Filter by specific Research ID"),
+  humId: z.string().optional().describe("Filter by specific Research ID"),
 
   // Include facet counts in response
   includeFacets: booleanFromString
-    .describe("Include facet aggregation counts in response"),
+    .describe("Include facet aggregation counts in response")
+    .optional(),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false)
-    .describe("Include rawHtml fields (e.g., summary.aims.rawHtml) in response"),
-})
-export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>
+  includeRawHtml: z.coerce
+    .boolean()
+    .default(false)
+    .describe(
+      "Include rawHtml fields (e.g., summary.aims.rawHtml) in response",
+    ),
+});
+export type ResearchListingQuery = z.infer<typeof ResearchListingQuerySchema>;
 
 // === Research Search Query & Response ===
 
 export const ResearchSearchQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1)
+  page: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(1)
     .describe("Page number for pagination (1-indexed)"),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
     .describe("Number of items per page (max: 100)"),
-  lang: z.enum(LANG_TYPES).default("ja")
+  lang: z
+    .enum(LANG_TYPES)
+    .default("ja")
     .describe("Response language for bilingual fields"),
-  sort: z.enum(["humId", "title", "releaseDate", "relevance"]).default("humId")
+  sort: z
+    .enum(["humId", "title", "releaseDate", "relevance"])
+    .default("humId")
     .describe("Sort field. Use 'relevance' for full-text search ranking"),
-  order: z.enum(["asc", "desc"]).default("asc")
+  order: z
+    .enum(["asc", "desc"])
+    .default("asc")
     .describe("Sort order (default: desc when sort=relevance)"),
 
   // Status filter (admin only for non-published)
-  status: z.enum(["draft", "review", "published", "deleted"]).optional()
-    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+  status: z
+    .enum(["draft", "review", "published", "deleted"])
+    .optional()
+    .describe(
+      "Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted",
+    ),
 
   // Full-text search
-  q: z.string().optional()
-    .describe("Full-text search query. Searches title, aims, methods, and targets"),
+  q: z
+    .string()
+    .optional()
+    .describe(
+      "Full-text search query. Searches title, aims, methods, and targets",
+    ),
 
   // Research-specific filters (legacy, kept for backwards compatibility)
-  releasedAfter: z.string().optional()
+  releasedAfter: z
+    .string()
+    .optional()
     .describe("Filter by release date >= (ISO 8601 date, legacy)"),
-  releasedBefore: z.string().optional()
+  releasedBefore: z
+    .string()
+    .optional()
     .describe("Filter by release date <= (ISO 8601 date, legacy)"),
 
   // Date range filters for POST search
-  minDatePublished: z.string().optional()
+  minDatePublished: z
+    .string()
+    .optional()
     .describe("Filter by datePublished >= (ISO 8601 date)"),
-  maxDatePublished: z.string().optional()
+  maxDatePublished: z
+    .string()
+    .optional()
     .describe("Filter by datePublished <= (ISO 8601 date)"),
-  minDateModified: z.string().optional()
+  minDateModified: z
+    .string()
+    .optional()
     .describe("Filter by dateModified >= (ISO 8601 date)"),
-  maxDateModified: z.string().optional()
+  maxDateModified: z
+    .string()
+    .optional()
     .describe("Filter by dateModified <= (ISO 8601 date)"),
 
   // Filter Research by Dataset attributes (comma-separated for OR)
-  assayType: z.string().optional()
+  assayType: z
+    .string()
+    .optional()
     .describe("Filter by assay type (comma-separated for OR, e.g., 'WGS,WES')"),
-  disease: z.string().optional()
+  disease: z
+    .string()
+    .optional()
     .describe("Filter by disease label (partial match)"),
-  diseaseIcd10: z.string().optional()
+  diseaseIcd10: z
+    .string()
+    .optional()
     .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
-  tissues: z.string().optional()
+  tissues: z
+    .string()
+    .optional()
     .describe("Filter by tissue type (comma-separated for OR)"),
-  population: z.string().optional()
+  population: z
+    .string()
+    .optional()
     .describe("Filter by population (comma-separated for OR)"),
-  platform: z.string().optional()
+  platform: z
+    .string()
+    .optional()
     .describe("Filter by sequencing platform (comma-separated for OR)"),
-  criteria: z.string().optional()
-    .describe("Filter by data access criteria: Controlled-access (Type I/II), Unrestricted-access"),
-  fileTypes: z.string().optional()
+  criteria: z
+    .string()
+    .optional()
+    .describe(
+      "Filter by data access criteria: Controlled-access (Type I/II), Unrestricted-access",
+    ),
+  fileTypes: z
+    .string()
+    .optional()
     .describe("Filter by file type (comma-separated for OR)"),
-  minSubjects: z.coerce.number().int().min(0).optional()
+  minSubjects: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum subject count"),
-  maxSubjects: z.coerce.number().int().min(0).optional()
+  maxSubjects: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum subject count"),
 
   // Extended filters
-  healthStatus: z.string().optional()
-    .describe("Filter by health status: healthy, affected, mixed (comma-separated for OR)"),
-  subjectCountType: z.string().optional()
+  healthStatus: z
+    .string()
+    .optional()
+    .describe(
+      "Filter by health status: healthy, affected, mixed (comma-separated for OR)",
+    ),
+  subjectCountType: z
+    .string()
+    .optional()
     .describe("Filter by subject count type: individual, sample, mixed"),
-  sex: z.string().optional()
+  sex: z
+    .string()
+    .optional()
     .describe("Filter by sex: male, female, mixed (comma-separated for OR)"),
-  ageGroup: z.string().optional()
-    .describe("Filter by age group: infant, child, adult, elderly, mixed (comma-separated for OR)"),
-  libraryKits: z.string().optional()
+  ageGroup: z
+    .string()
+    .optional()
+    .describe(
+      "Filter by age group: infant, child, adult, elderly, mixed (comma-separated for OR)",
+    ),
+  libraryKits: z
+    .string()
+    .optional()
     .describe("Filter by library preparation kit (comma-separated for OR)"),
-  readType: z.string().optional()
+  readType: z
+    .string()
+    .optional()
     .describe("Filter by read type: single-end, paired-end"),
-  referenceGenome: z.string().optional()
+  referenceGenome: z
+    .string()
+    .optional()
     .describe("Filter by reference genome (comma-separated for OR)"),
-  processedDataTypes: z.string().optional()
+  processedDataTypes: z
+    .string()
+    .optional()
     .describe("Filter by processed data types (comma-separated for OR)"),
   hasPhenotypeData: booleanFromString
     .describe("Filter by presence of phenotype data"),
@@ -159,56 +278,129 @@ export const ResearchSearchQuerySchema = z.object({
     .describe("Filter by data access policy ID"),
 
   // Range filters
-  minReleaseDate: z.string().optional()
+  minReleaseDate: z
+    .string()
+    .optional()
     .describe("Filter by Dataset release date >= (ISO 8601 date)"),
-  maxReleaseDate: z.string().optional()
+  maxReleaseDate: z
+    .string()
+    .optional()
     .describe("Filter by Dataset release date <= (ISO 8601 date)"),
-  minReadLength: z.coerce.number().int().min(0).optional()
+  minReadLength: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum read length (bp)"),
-  maxReadLength: z.coerce.number().int().min(0).optional()
+  maxReadLength: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum read length (bp)"),
-  minSequencingDepth: z.coerce.number().min(0).optional()
+  minSequencingDepth: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Minimum sequencing depth (x)"),
-  maxSequencingDepth: z.coerce.number().min(0).optional()
+  maxSequencingDepth: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Maximum sequencing depth (x)"),
-  minTargetCoverage: z.coerce.number().min(0).optional()
+  minTargetCoverage: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Minimum target coverage (%)"),
-  maxTargetCoverage: z.coerce.number().min(0).optional()
+  maxTargetCoverage: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Maximum target coverage (%)"),
-  minDataVolumeGb: z.coerce.number().min(0).optional()
+  minDataVolumeGb: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Minimum data volume (GB)"),
-  maxDataVolumeGb: z.coerce.number().min(0).optional()
+  maxDataVolumeGb: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Maximum data volume (GB)"),
-  minVariantSnv: z.coerce.number().int().min(0).optional()
+  minVariantSnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum SNV variant count"),
-  maxVariantSnv: z.coerce.number().int().min(0).optional()
+  maxVariantSnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum SNV variant count"),
-  minVariantIndel: z.coerce.number().int().min(0).optional()
+  minVariantIndel: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum indel variant count"),
-  maxVariantIndel: z.coerce.number().int().min(0).optional()
+  maxVariantIndel: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum indel variant count"),
-  minVariantCnv: z.coerce.number().int().min(0).optional()
+  minVariantCnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum CNV variant count"),
-  maxVariantCnv: z.coerce.number().int().min(0).optional()
+  maxVariantCnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum CNV variant count"),
-  minVariantSv: z.coerce.number().int().min(0).optional()
+  minVariantSv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum SV variant count"),
-  maxVariantSv: z.coerce.number().int().min(0).optional()
+  maxVariantSv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum SV variant count"),
-  minVariantTotal: z.coerce.number().int().min(0).optional()
+  minVariantTotal: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum total variant count"),
-  maxVariantTotal: z.coerce.number().int().min(0).optional()
+  maxVariantTotal: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum total variant count"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString
-    .describe("Include facet aggregation counts in response"),
+  includeFacets: booleanFromString.describe(
+    "Include facet aggregation counts in response",
+  ),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false)
+  includeRawHtml: z.coerce
+    .boolean()
+    .default(false)
     .describe("Include rawHtml fields in response"),
-})
-export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>
+});
+export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>;
 
 // === Dataset Listing Query (GET /dataset) ===
 
@@ -218,92 +410,173 @@ export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>
  */
 export const DatasetListingQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1)
+  page: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(1)
     .describe("Page number for pagination (1-indexed)"),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
     .describe("Number of items per page (max: 100)"),
-  lang: z.enum(LANG_TYPES).default("ja")
+  lang: z
+    .enum(LANG_TYPES)
+    .default("ja")
     .describe("Response language for bilingual fields"),
-  sort: z.enum(["datasetId", "releaseDate"]).default("datasetId")
+  sort: z
+    .enum(["datasetId", "releaseDate"])
+    .default("datasetId")
     .describe("Sort field"),
-  order: z.enum(["asc", "desc"]).default("asc")
-    .describe("Sort order"),
+  order: z.enum(["asc", "desc"]).default("asc").describe("Sort order"),
 
   // Parent Research ID filter
-  humId: z.string().optional()
-    .describe("Filter by parent Research ID"),
+  humId: z.string().optional().describe("Filter by parent Research ID"),
 
   // Include facet counts in response
   includeFacets: booleanFromString
-    .describe("Include facet aggregation counts in response"),
+    .describe("Include facet aggregation counts in response")
+    .optional(),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false)
+  includeRawHtml: z.coerce
+    .boolean()
+    .default(false)
     .describe("Include rawHtml fields in response"),
-})
-export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>
+});
+export type DatasetListingQuery = z.infer<typeof DatasetListingQuerySchema>;
 
 // === Dataset Search Query ===
 
 export const DatasetSearchQuerySchema = z.object({
   // Pagination
-  page: z.coerce.number().int().min(1).default(1)
+  page: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(1)
     .describe("Page number for pagination (1-indexed)"),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
     .describe("Number of items per page (max: 100)"),
-  lang: z.enum(LANG_TYPES).default("ja")
+  lang: z
+    .enum(LANG_TYPES)
+    .default("ja")
     .describe("Response language for bilingual fields"),
-  sort: z.enum(["datasetId", "releaseDate", "relevance"]).default("datasetId")
+  sort: z
+    .enum(["datasetId", "releaseDate", "relevance"])
+    .default("datasetId")
     .describe("Sort field. Use 'relevance' for full-text search ranking"),
-  order: z.enum(["asc", "desc"]).default("asc")
+  order: z
+    .enum(["asc", "desc"])
+    .default("asc")
     .describe("Sort order (default: desc when sort=relevance)"),
 
   // Full-text search
-  q: z.string().optional()
-    .describe("Full-text search query. Searches typeOfData, experiments.header, and experiments.searchable.targets"),
+  q: z
+    .string()
+    .optional()
+    .describe(
+      "Full-text search query. Searches typeOfData, experiments.header, and experiments.searchable.targets",
+    ),
 
   // Dataset filters
-  humId: z.string().optional()
+  humId: z
+    .string()
+    .optional()
     .describe("Filter by parent Research ID (exact match)"),
-  criteria: z.string().optional()
+  criteria: z
+    .string()
+    .optional()
     .describe("Filter by data access criteria (comma-separated for OR)"),
-  typeOfData: z.string().optional()
+  typeOfData: z
+    .string()
+    .optional()
     .describe("Filter by data type (partial match)"),
-  assayType: z.string().optional()
+  assayType: z
+    .string()
+    .optional()
     .describe("Filter by assay type (comma-separated for OR)"),
-  disease: z.string().optional()
+  disease: z
+    .string()
+    .optional()
     .describe("Filter by disease label (partial match)"),
-  diseaseIcd10: z.string().optional()
+  diseaseIcd10: z
+    .string()
+    .optional()
     .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
-  tissues: z.string().optional()
+  tissues: z
+    .string()
+    .optional()
     .describe("Filter by tissue type (comma-separated for OR)"),
-  population: z.string().optional()
+  population: z
+    .string()
+    .optional()
     .describe("Filter by population (comma-separated for OR)"),
-  platform: z.string().optional()
+  platform: z
+    .string()
+    .optional()
     .describe("Filter by sequencing platform model (comma-separated for OR)"),
-  fileTypes: z.string().optional()
+  fileTypes: z
+    .string()
+    .optional()
     .describe("Filter by file type (comma-separated for OR)"),
-  minSubjects: z.coerce.number().int().min(0).optional()
+  minSubjects: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum subject count"),
-  maxSubjects: z.coerce.number().int().min(0).optional()
+  maxSubjects: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum subject count"),
 
   // Extended filters
-  healthStatus: z.string().optional()
-    .describe("Filter by health status: healthy, affected, mixed (comma-separated for OR)"),
-  subjectCountType: z.string().optional()
+  healthStatus: z
+    .string()
+    .optional()
+    .describe(
+      "Filter by health status: healthy, affected, mixed (comma-separated for OR)",
+    ),
+  subjectCountType: z
+    .string()
+    .optional()
     .describe("Filter by subject count type: individual, sample, mixed"),
-  sex: z.string().optional()
+  sex: z
+    .string()
+    .optional()
     .describe("Filter by sex: male, female, mixed (comma-separated for OR)"),
-  ageGroup: z.string().optional()
-    .describe("Filter by age group: infant, child, adult, elderly, mixed (comma-separated for OR)"),
-  libraryKits: z.string().optional()
+  ageGroup: z
+    .string()
+    .optional()
+    .describe(
+      "Filter by age group: infant, child, adult, elderly, mixed (comma-separated for OR)",
+    ),
+  libraryKits: z
+    .string()
+    .optional()
     .describe("Filter by library preparation kit (comma-separated for OR)"),
-  readType: z.string().optional()
+  readType: z
+    .string()
+    .optional()
     .describe("Filter by read type: single-end, paired-end"),
-  referenceGenome: z.string().optional()
+  referenceGenome: z
+    .string()
+    .optional()
     .describe("Filter by reference genome (comma-separated for OR)"),
-  processedDataTypes: z.string().optional()
+  processedDataTypes: z
+    .string()
+    .optional()
     .describe("Filter by processed data types (comma-separated for OR)"),
   hasPhenotypeData: booleanFromString
     .describe("Filter by presence of phenotype data"),
@@ -315,88 +588,165 @@ export const DatasetSearchQuerySchema = z.object({
     .describe("Filter by data access policy ID"),
 
   // Range filters
-  minReleaseDate: z.string().optional()
+  minReleaseDate: z
+    .string()
+    .optional()
     .describe("Filter by release date >= (ISO 8601 date)"),
-  maxReleaseDate: z.string().optional()
+  maxReleaseDate: z
+    .string()
+    .optional()
     .describe("Filter by release date <= (ISO 8601 date)"),
-  minReadLength: z.coerce.number().int().min(0).optional()
+  minReadLength: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum read length (bp)"),
-  maxReadLength: z.coerce.number().int().min(0).optional()
+  maxReadLength: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum read length (bp)"),
-  minSequencingDepth: z.coerce.number().min(0).optional()
+  minSequencingDepth: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Minimum sequencing depth (x)"),
-  maxSequencingDepth: z.coerce.number().min(0).optional()
+  maxSequencingDepth: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Maximum sequencing depth (x)"),
-  minTargetCoverage: z.coerce.number().min(0).optional()
+  minTargetCoverage: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Minimum target coverage (%)"),
-  maxTargetCoverage: z.coerce.number().min(0).optional()
+  maxTargetCoverage: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Maximum target coverage (%)"),
-  minDataVolumeGb: z.coerce.number().min(0).optional()
+  minDataVolumeGb: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Minimum data volume (GB)"),
-  maxDataVolumeGb: z.coerce.number().min(0).optional()
+  maxDataVolumeGb: z.coerce
+    .number()
+    .min(0)
+    .optional()
     .describe("Maximum data volume (GB)"),
-  minVariantSnv: z.coerce.number().int().min(0).optional()
+  minVariantSnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum SNV variant count"),
-  maxVariantSnv: z.coerce.number().int().min(0).optional()
+  maxVariantSnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum SNV variant count"),
-  minVariantIndel: z.coerce.number().int().min(0).optional()
+  minVariantIndel: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum indel variant count"),
-  maxVariantIndel: z.coerce.number().int().min(0).optional()
+  maxVariantIndel: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum indel variant count"),
-  minVariantCnv: z.coerce.number().int().min(0).optional()
+  minVariantCnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum CNV variant count"),
-  maxVariantCnv: z.coerce.number().int().min(0).optional()
+  maxVariantCnv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum CNV variant count"),
-  minVariantSv: z.coerce.number().int().min(0).optional()
+  minVariantSv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum SV variant count"),
-  maxVariantSv: z.coerce.number().int().min(0).optional()
+  maxVariantSv: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum SV variant count"),
-  minVariantTotal: z.coerce.number().int().min(0).optional()
+  minVariantTotal: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Minimum total variant count"),
-  maxVariantTotal: z.coerce.number().int().min(0).optional()
+  maxVariantTotal: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .optional()
     .describe("Maximum total variant count"),
 
   // Include facet counts in response
-  includeFacets: booleanFromString
-    .describe("Include facet aggregation counts in response"),
+  includeFacets: booleanFromString.describe(
+    "Include facet aggregation counts in response",
+  ),
 
   // Include rawHtml fields in response (default: false)
-  includeRawHtml: z.coerce.boolean().default(false)
+  includeRawHtml: z.coerce
+    .boolean()
+    .default(false)
     .describe("Include rawHtml fields in response"),
-})
-export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
+});
+export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>;
 
 // === Research Summary (for list view) ===
 
 export const ResearchSummarySchema = z.object({
-  humId: z.string()
-    .describe("Research identifier (e.g., 'hum0001')"),
-  lang: z.enum(LANG_TYPES)
+  humId: z.string().describe("Research identifier (e.g., 'hum0001')"),
+  lang: z
+    .enum(LANG_TYPES)
     .describe("Language of text fields in this response ('ja' or 'en')"),
-  title: z.string()
-    .describe("Research title in the requested language"),
-  versions: z.array(z.object({
-    version: z.string()
-      .describe("Version identifier (e.g., 'v1', 'v2')"),
-    releaseDate: z.string()
-      .describe("ISO 8601 date when this version was released"),
-  })).describe("Available versions of this Research"),
-  methods: z.string()
-    .describe("Summary of research methods (plain text)"),
-  datasetIds: z.array(z.string())
+  title: z.string().describe("Research title in the requested language"),
+  versions: z
+    .array(
+      z.object({
+        version: z.string().describe("Version identifier (e.g., 'v1', 'v2')"),
+        releaseDate: z
+          .string()
+          .describe("ISO 8601 date when this version was released"),
+      }),
+    )
+    .describe("Available versions of this Research"),
+  methods: z.string().describe("Summary of research methods (plain text)"),
+  datasetIds: z
+    .array(z.string())
     .describe("IDs of datasets belonging to this Research"),
-  typeOfData: z.array(z.string())
+  typeOfData: z
+    .array(z.string())
     .describe("Types of data available (aggregated from datasets)"),
-  platforms: z.array(z.string())
+  platforms: z
+    .array(z.string())
     .describe("Sequencing platforms used (aggregated from datasets)"),
-  targets: z.string()
-    .describe("Summary of research targets (plain text)"),
-  dataProvider: z.array(z.string())
-    .describe("Names of data providers"),
-  criteria: z.string()
+  targets: z.string().describe("Summary of research targets (plain text)"),
+  dataProvider: z.array(z.string()).describe("Names of data providers"),
+  criteria: z
+    .string()
     .describe("Data access criteria summary (e.g., 'Controlled-access')"),
-})
-export type ResearchSummary = z.infer<typeof ResearchSummarySchema>
+});
+export type ResearchSummary = z.infer<typeof ResearchSummarySchema>;
 
 // === Search Query (Legacy) ===
 
@@ -428,8 +778,8 @@ export const SearchQuerySchema = z.object({
   criteria: z.string().optional(),
   minSubjects: z.coerce.number().int().min(0).optional(),
   maxSubjects: z.coerce.number().int().min(0).optional(),
-})
-export type SearchQuery = z.infer<typeof SearchQuerySchema>
+});
+export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 
 // === List Query Schemas (for CRUD) ===
 
@@ -442,8 +792,8 @@ export const ResearchListQuerySchema = z.object({
   sort: z.enum(["humId", "title", "releaseDate", "updatedAt"]).default("humId"),
   order: z.enum(["asc", "desc"]).default("asc"),
   status: z.enum(RESEARCH_STATUS).optional(), // For authenticated users
-})
-export type ResearchListQuery = z.infer<typeof ResearchListQuerySchema>
+});
+export type ResearchListQuery = z.infer<typeof ResearchListQuerySchema>;
 
 /**
  * Dataset list query parameters
@@ -453,5 +803,5 @@ export const DatasetListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sort: z.enum(["datasetId", "releaseDate", "updatedAt"]).default("datasetId"),
   order: z.enum(["asc", "desc"]).default("asc"),
-})
-export type DatasetListQuery = z.infer<typeof DatasetListQuerySchema>
+});
+export type DatasetListQuery = z.infer<typeof DatasetListQuerySchema>;

@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Card } from "@/components/Card";
+import { Markdown } from "@/components/Merkdown";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
-import { getContentTranslationQueryOptions } from "@/serverFunctions/contentItem";
+// import { RenderMarkdoc } from "@/markdoc/RenderMarkdoc";
+import { $getContentItemTranslation } from "@/serverFunctions/contentItem";
+import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
@@ -12,16 +14,20 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
-    console.log("document id", params._splat);
-    const content = await context.queryClient.ensureQueryData(
-      getContentTranslationQueryOptions({
+    const data = await $getContentItemTranslation({
+      data: {
         id: params._splat,
         lang: context.lang,
         status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-      })
-    );
+      },
+    });
 
-    return content;
+    const contentHtml = await renderMarkdown(data.content);
+
+    return {
+      contentHtml,
+      title: data.title,
+    };
   },
   errorComponent: ({ error }) => (
     <div>
@@ -32,11 +38,11 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 });
 
 function RouteComponent() {
-  const { content, title } = Route.useLoaderData();
+  const { contentHtml, title } = Route.useLoaderData();
 
   return (
     <Card caption={title} captionSize={"lg"}>
-      <RenderMarkdoc className="mx-auto" content={content || ""} />
+      <Markdown className="mx-auto" contentHtml={contentHtml} />
     </Card>
   );
 }

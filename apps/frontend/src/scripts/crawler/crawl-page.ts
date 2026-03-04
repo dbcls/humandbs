@@ -76,7 +76,7 @@ async function fetchAndParse(): Promise<void> {
         content,
         $,
         documentDir,
-        filesDirName
+        filesDirName,
       );
 
       const mdFilePath = path.join(documentDir, mdFileName);
@@ -95,7 +95,7 @@ async function fetchAndParse(): Promise<void> {
 async function downloadFiles(
   html: string,
   $: cheerio.CheerioAPI,
-  filesDir: string
+  filesDir: string,
 ): Promise<void> {
   // Download images
   const imagePromises = $("div.item-page img")
@@ -123,7 +123,7 @@ async function downloadFiles(
           const errorMessage = err instanceof Error ? err.message : String(err);
           console.error(
             `Failed to download image from ${imageUrl.href}:`,
-            errorMessage
+            errorMessage,
           );
         }
       }
@@ -168,7 +168,7 @@ async function convertToMarkdown(
   html: string,
   $: cheerio.CheerioAPI,
   filesDir: string,
-  filesDirName: string
+  filesDirName: string,
 ): Promise<string> {
   const turndownService = new TurndownService({
     blankReplacement: function (content: string, node: any) {
@@ -187,8 +187,7 @@ async function convertToMarkdown(
   });
 
   turndownService.addRule("callouts", {
-    filter: (node: any) =>
-      node.classList && node.classList.contains("callout-wrapper"),
+    filter: (node: any) => node.classList?.contains("callout-wrapper"),
     replacement: (content: string, node: any) => content.trim(),
   });
 
@@ -228,7 +227,7 @@ async function convertToMarkdown(
           const errorMessage = err instanceof Error ? err.message : String(err);
           console.error(
             `Failed to download image from ${imageUrl.href}:`,
-            errorMessage
+            errorMessage,
           );
         }
       }
@@ -305,7 +304,7 @@ ${innerContent}
         {% /callout %}
         <p></p>
       </div>
-    `.trim()
+    `.trim(),
       );
       $(el).replaceWith(replacement);
     });
@@ -341,7 +340,7 @@ ${innerContent}
         {% /callout %}
         <p></p>
       </div>
-    `.trim()
+    `.trim(),
       );
       $(el).replaceWith(replacement);
     });

@@ -1,86 +1,175 @@
-import {
-  ResearchesQuerySchema,
-  ResearchSummary,
-} from "@humandbs/backend/types";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { ResearchSearchBodySchema } from "@humandbs/backend/types";
+import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
   createColumnHelper,
-  SortingState,
-  Updater,
+  type SortingState,
+  type Updater,
 } from "@tanstack/react-table";
-import { Search } from "lucide-react";
-import { startTransition, Suspense, useCallback, useMemo } from "react";
+import { startTransition, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
 
-import { Card } from "@/components/Card";
-import { Input } from "@/components/Input";
+import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination } from "@/components/Pagination";
-import { SkeletonLoading } from "@/components/Skeleton";
+import { SearchCaption } from "@/components/SearchCaption";
+import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
-import { Button } from "@/components/ui/button";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
+import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
+import { buildFacetSections } from "@/utils/buildFacetSections";
 
-export const researchesSearchParamsSchema = ResearchesQuerySchema.omit({
+export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   lang: true,
+  includeFacets: true,
 });
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/"
+  "/{-$lang}/_layout/_main/_other/data-usage/researches/",
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
-  loaderDeps: ({ search: { page, limit, sort, order } }) => ({
-    page,
-    limit,
-    sort,
-    order,
-  }),
-
-  loader: async ({ deps, context }) => {
-    await context.queryClient.ensureQueryData(
-      getResearchesQueryOptions({ ...deps, lang: context.lang })
+  loaderDeps: ({ search }) => search,
+  loader: ({ deps, context }) => {
+    context.queryClient.ensureQueryData(
+      getResearchesQueryOptions({
+        ...deps,
+        lang: context.lang,
+      }),
     );
+
+    context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
   },
   errorComponent: ({ error }) => {
     return <div>{error.message}</div>;
   },
 });
 
-function Caption() {
+function RouteComponent() {
   const t = useTranslations("Research-list");
+  const search = Route.useSearch();
+  const { setFilters } = useFilters(Route.id);
 
   return (
-    <div className="flex items-center justify-between">
-      <h3 className="text-lg">{t("research-list")}</h3>
-
-      <div className="flex items-stretch gap-4">
-        <div className="flex gap-1">
-          <Button variant={"tableAction"} size={"tableAction"}>
-            Copy
-          </Button>
-          <Button variant={"tableAction"} size={"tableAction"}>
-            CSV
-          </Button>
-          <Button variant={"tableAction"} size={"tableAction"}>
-            Excel
-          </Button>
-        </div>
-
-        <Input
-          type="text"
-          placeholder="検索"
-          beforeIcon={<Search size={22} />}
+    <FilterableCard
+      caption={({ onFilterClick }) => (
+        <SearchCaption
+          title={t("research-list")}
+          committedQuery={search.query ?? ""}
+          onQueryChange={(query) => setFilters({ query })}
+          onFilterClick={onFilterClick}
         />
-      </div>
-    </div>
+      )}
+      renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
+    >
+      <CardContent />
+    </FilterableCard>
   );
 }
 
-const columnHelper = createColumnHelper<ResearchSummary>();
+function FacetsAdapter({ onClose }: { onClose: () => void }) {
+  const { lang } = Route.useRouteContext();
+
+  const { filters, setFilters } = useFilters(Route.id);
+
+  const { data: searchResults, isFetching } = useQuery(
+    getResearchesQueryOptions({ ...filters, lang }),
+  );
+
+  const { data: allFacetsData } = useSuspenseQuery(getAllFacetsQueryOptions());
+
+  const sections = useMemo((): SectionConfig[] => {
+    const topLevel: SectionConfig[] = [
+      {
+        type: "date-range-filter",
+        id: "datePublished",
+        value: filters.datePublished ?? {},
+      },
+      {
+        type: "date-range-filter",
+        id: "dateModified",
+        value: filters.dateModified ?? {},
+      },
+    ];
+
+    return [
+      ...topLevel,
+      ...buildFacetSections(
+        filters.datasetFilters ?? {},
+        "datasetFilters",
+        allFacetsData?.data,
+      ),
+    ];
+  }, [filters, allFacetsData]);
+
+  return (
+    <SearchPanel
+      onClose={onClose}
+      isFetching={isFetching}
+      facetCounts={searchResults?.facets}
+      onSetFilters={setFilters}
+      sections={sections}
+    />
+  );
+}
+
+function CardContent() {
+  const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
+
+  const t = useTranslations("Research-list");
+
+  const { data: researchesData } = useSuspenseQuery(
+    getResearchesQueryOptions({ ...search, lang }),
+  );
+
+  const sorting = useMemo(() => {
+    if (!search.sort) return [];
+    return [{ id: search.sort, desc: search.order === "desc" }];
+  }, [search.sort, search.order]);
+
+  const { filters, setFilters } = useFilters(Route.id);
+
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const sortingState: SortingState = [
+        { id: filters.sort ?? "humId", desc: filters.order === "desc" },
+      ];
+      const newState = functionalUpdate(updater, sortingState);
+
+      startTransition(() => {
+        setFilters({
+          sort: newState[0]?.id,
+          order: newState[0]?.desc ? "desc" : "asc",
+        });
+      });
+    },
+    [setFilters, filters],
+  );
+
+  return (
+    <>
+      <div className="overflow-x-auto">
+        <Table
+          className="mt-4 text-sm"
+          columns={columns}
+          data={researchesData.data}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+          meta={{ t, lang }}
+        />
+      </div>
+
+      <Pagination pagination={researchesData.meta.pagination} />
+    </>
+  );
+}
+
+const columnHelper =
+  createColumnHelper<ResearchSearchUnifiedResponse["data"][number]>();
 
 const columns = [
   columnHelper.accessor("humId", {
@@ -98,20 +187,29 @@ const columns = [
               {ctx.getValue()}
             </TextWithIcon>
           </Route.Link>
-          <ul>
-            {ctx.row.original.datasetIds.map((dataset) => (
-              <li key={dataset}>
-                <Route.Link
-                  className="text-secondary"
-                  to="../datasets/$datasetId"
-                  params={{ datasetId: dataset }}
-                >
-                  <TextWithIcon icon={FA_ICONS.dataset}>{dataset}</TextWithIcon>
-                </Route.Link>
-              </li>
-            ))}
-          </ul>
         </div>
+      );
+    },
+    size: 15,
+  }),
+  columnHelper.accessor("datasetIds", {
+    id: "datasets",
+    header: "Datasets",
+    cell: (ctx) => {
+      return (
+        <ul>
+          {ctx.row.original.datasetIds.map((datasetId) => (
+            <li key={datasetId}>
+              <Route.Link
+                className="text-secondary"
+                to="../datasets/$datasetId"
+                params={{ datasetId }}
+              >
+                <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
+              </Route.Link>
+            </li>
+          ))}
+        </ul>
       );
     },
     size: 15,
@@ -121,136 +219,52 @@ const columns = [
     header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
     cell: (ctx) => ctx.getValue(),
   }),
-  columnHelper.accessor("versions", {
-    id: "versions",
-    header: "Versions",
+  columnHelper.accessor((row) => row.versions[0], {
+    id: "datePublished",
+    header: (ctx) => <SortHeader ctx={ctx} label="Date published" />,
     size: 10,
     cell: (ctx) => (
-      <ul>
-        <li>
-          <Route.Link
-            className="text-secondary text-sm"
-            to="$humId/versions"
-            params={{ humId: ctx.row.original.humId }}
-          >
-            All versions
-          </Route.Link>
-        </li>
-        {ctx.renderValue()?.map((version) => (
-          <li key={version.version}>
-            <Route.Link
-              to="$humId/$version"
-              className="whitespace-nowrap"
-              params={{
-                humId: ctx.row.original.humId,
-                version: version.version,
-              }}
-            >
-              <span className="text-sm">{version.version}</span>
-              <span className="text-2xs text-foreground-light ml-2">
-                {version.releaseDate}
-              </span>
-            </Route.Link>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <span>{ctx.getValue().releaseDate}</span>
+
+        <Route.Link
+          to="$humId/$version"
+          className="whitespace-nowrap inline-block ml-2"
+          params={{
+            humId: ctx.row.original.humId,
+            version: ctx.getValue().version,
+          }}
+        >
+          <span className="text-sm">({ctx.getValue().version})</span>
+        </Route.Link>
+      </div>
     ),
   }),
 
-  columnHelper.accessor("typeOfData", {
-    id: "typeOfData",
-    header: "データタイプ",
-    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
-    maxSize: 15,
+  columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
+    id: "dateModified",
+    header: (ctx) => <SortHeader ctx={ctx} label="Date Modified" />,
+    cell: (ctx) => (
+      <div>
+        <span>{ctx.getValue().releaseDate}</span>
+
+        <Route.Link
+          to="$humId/$version"
+          className="whitespace-nowrap inline-block ml-2"
+          params={{
+            humId: ctx.row.original.humId,
+            version: ctx.getValue().version,
+          }}
+        >
+          <span className="text-sm">({ctx.getValue().version})</span>
+        </Route.Link>
+      </div>
+    ),
+    size: 15,
   }),
   columnHelper.accessor("methods", {
     id: "methods",
     header: "手法",
-    cell: (ctx) => <p className="text-sm">{ctx.getValue()}</p>,
-  }),
-  columnHelper.accessor("platforms", {
-    id: "platforms",
-    header: "プラットホーム",
-    cell: (ctx) => (
-      <ul>
-        {ctx.getValue().map((p) => (
-          <li
-            key={p}
-            className="text-sm"
-            dangerouslySetInnerHTML={{ __html: p }}
-          />
-        ))}
-      </ul>
-    ),
-  }),
-  columnHelper.accessor("targets", {
-    id: "targets",
-    header: "目的",
-    cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
+    cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
   }),
 ];
-// table using Tanstack table:
-
-function RouteComponent() {
-  return (
-    <Card caption={<Caption />}>
-      <Suspense fallback={<SkeletonLoading />}>
-        <CardContent />
-      </Suspense>
-    </Card>
-  );
-}
-
-function CardContent() {
-  const search = Route.useSearch();
-  const { lang } = Route.useRouteContext();
-
-  const { data: researchesData } = useSuspenseQuery(
-    getResearchesQueryOptions({ ...search, lang })
-  );
-
-  const sorting = useMemo(() => {
-    if (!search.sort) return [];
-    return [{ id: search.sort, desc: search.order === "desc" }];
-  }, [search.sort, search.order]);
-
-  const { filters, setFilters } = useFilters(Route.id);
-
-  const sortingState: SortingState = [
-    { id: filters.sort, desc: filters.order === "desc" },
-  ];
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newState = functionalUpdate(updater, sortingState);
-
-      startTransition(() => {
-        setFilters({
-          sort: newState[0]?.id,
-          order: newState[0]?.desc ? "desc" : "asc",
-        });
-      });
-    },
-    [setFilters]
-  );
-
-  return (
-    <>
-      <div className="overflow-x-auto">
-        <Table
-          className="mt-4 text-sm"
-          columns={columns}
-          data={researchesData.data}
-          sorting={sorting}
-          onSortingChange={handleSortingChange}
-        />
-      </div>
-
-      <Pagination
-        totalPages={researchesData.pagination.totalPages}
-        page={filters.page}
-        itemsPerPage={filters.limit}
-      />
-    </>
-  );
-}

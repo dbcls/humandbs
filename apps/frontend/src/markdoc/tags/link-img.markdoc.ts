@@ -1,4 +1,4 @@
-import { MarkdocTag } from "./types";
+import type { MarkdocTag } from "./types";
 
 export const linkImg = {
   render: "LinkImg",

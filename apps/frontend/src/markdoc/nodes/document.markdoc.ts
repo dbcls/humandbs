@@ -3,8 +3,9 @@
  * raw Markdoc source text to AST, to be consumed in _app. This is an
  * atypical pattern for Markdoc applications.
  */
-import Markdoc from "@markdoc/markdoc";
-import { MarkdocTag } from "../tags/types";
+import * as Markdoc from "@markdoc/markdoc";
+
+import { type MarkdocTag } from "../tags/types";
 // import { Document } from "./Document";
 
 export const document = {
@@ -15,7 +16,7 @@ export const document = {
     return new Markdoc.Tag(
       this.render,
       { source: config.source },
-      node.transformChildren(config)
+      node.transformChildren(config),
     );
   },
 } satisfies MarkdocTag;

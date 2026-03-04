@@ -1,7 +1,4 @@
-# Ignore artifacts:
-build
-dist
-coverage
-
-# Ignore all HTML files:
-**/*.html
+**/build
+**/public
+pnpm-lock.yaml
+routeTree.gen.ts
