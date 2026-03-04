@@ -11,6 +11,8 @@
  */
 import { z } from "zod"
 
+import type { FacetsMap } from "./facets"
+
 // === Pagination ===
 
 /**
@@ -120,7 +122,7 @@ export interface ListResponse<T> {
 /**
  * Search response type with facets
  */
-export interface SearchResponse<T, F = Record<string, { value: string; count: number }[] | undefined>> {
+export interface SearchResponse<T, F = FacetsMap> {
   data: T[]
   meta: ResponseMetaWithPagination
   facets?: F

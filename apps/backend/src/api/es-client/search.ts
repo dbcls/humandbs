@@ -21,6 +21,13 @@ import {
   topLevelFacetAgg,
 } from "@/api/es-client/helpers"
 import {
+  buildDatasetMultiMatchQuery,
+  buildDatasetSortSpec,
+  buildResearchDateRangeFilters,
+  buildResearchMultiMatchQuery,
+  buildResearchSortSpec,
+} from "@/api/es-client/query-builders"
+import {
   nestedTermsQuery,
   nestedTermQuery,
   nestedRangeQuery,
@@ -30,28 +37,29 @@ import {
 } from "@/api/es-client/query-helpers"
 import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import {
-  EsDatasetDocSchema,
-  EsResearchDocSchema,
-  EsResearchVersionDocSchema,
+  EsDatasetSchema,
+  EsResearchSchema,
+  ResearchVersionSchema,
+  createPagination,
 } from "@/api/types"
 import type {
   DatasetSearchQuery,
   ResearchSearchQuery,
+  Pagination,
   FacetValue,
   FacetsMap,
-  EsDatasetDoc,
-  EsResearchDoc,
-  EsResearchVersionDoc,
+  EsDataset,
+  EsResearch,
+  ResearchVersion,
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
-import type { Pagination } from "@/api/types/response"
 
 // === Types ===
 
 /** Internal search result (not the API response shape) */
 interface DatasetSearchResult {
-  data: EsDatasetDoc[]
+  data: EsDataset[]
   pagination: Pagination
   facets?: FacetsMap
 }
@@ -484,38 +492,18 @@ export const searchDatasets = async (
 
   // Full-text search
   if (q) {
-    must.push({
-      multi_match: {
-        query: q,
-        fields: [
-          "typeOfData.ja^2",
-          "typeOfData.en^2",
-          "experiments.header.ja.text",
-          "experiments.header.en.text",
-          "experiments.searchable.targets",
-        ],
-        type: "best_fields",
-        fuzziness: "AUTO",
-      },
-    })
+    must.push(buildDatasetMultiMatchQuery(q))
   }
 
   // Sort configuration
-  let sortSpec: estypes.Sort
-  if (sort === "relevance" && q) {
-    sortSpec = [{ _score: { order: "desc" } }, { datasetId: { order: "asc" } }]
-  } else if (sort === "releaseDate") {
-    sortSpec = [{ releaseDate: { order, missing: "_last" } }, { datasetId: { order: "asc" } }]
-  } else {
-    sortSpec = [{ datasetId: { order } }]
-  }
+  const sortSpec = buildDatasetSortSpec(sort, order, !!q)
 
   interface Aggs {
     uniq_ids: estypes.AggregationsCardinalityAggregate
     [key: string]: estypes.AggregationsAggregate
   }
 
-  const res = await esClient.search<EsDatasetDoc, Aggs>({
+  const res = await esClient.search<EsDataset, Aggs>({
     index: ES_INDEX.dataset,
     from,
     size: limit,
@@ -541,28 +529,21 @@ export const searchDatasets = async (
     },
   })
 
-  interface InnerHit { _id: string; _source?: EsDatasetDoc }
+  interface InnerHit { _id: string; _source?: EsDataset }
   interface Hit { inner_hits?: { latest?: { hits: { hits: InnerHit[] } } } }
 
   const hits = (res.hits.hits as Hit[])
     .flatMap(hit => hit.inner_hits?.latest?.hits.hits ?? [])
     .map(inner => inner._source)
-    .filter((src): src is EsDatasetDoc => !!src)
-    .map(src => EsDatasetDocSchema.parse(src))
+    .filter((src): src is EsDataset => !!src)
+    .map(src => EsDatasetSchema.parse(src))
 
   const total = esTotal(res.aggregations?.uniq_ids?.value ?? 0)
   const facets = includeFacets ? extractFacets(res.aggregations as unknown as Record<string, unknown>) : undefined
 
   return {
     data: hits,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
-      hasNext: from + limit < total,
-      hasPrev: from > 0,
-    },
+    pagination: createPagination(total, page, limit),
     facets,
   }
 }
@@ -600,7 +581,6 @@ export const searchResearches = async (
 ): Promise<ResearchSearchResult> => {
   const {
     page, limit, lang, sort, order, q,
-    releasedAfter, releasedBefore,
     minDatePublished, maxDatePublished, minDateModified, maxDateModified,
     includeFacets, status: requestedStatus,
   } = params
@@ -669,72 +649,23 @@ export const searchResearches = async (
 
   // Full-text search
   if (q) {
-    must.push({
-      multi_match: {
-        query: q,
-        fields: [
-          "title.ja^2",
-          "title.en^2",
-          "summary.aims.ja.text",
-          "summary.aims.en.text",
-          "summary.methods.ja.text",
-          "summary.methods.en.text",
-          "summary.targets.ja.text",
-          "summary.targets.en.text",
-        ],
-        type: "best_fields",
-        fuzziness: "AUTO",
-      },
-    })
+    must.push(buildResearchMultiMatchQuery(q))
   }
 
-  // Date range filters (legacy: releasedAfter/releasedBefore)
-  if (releasedAfter) {
-    must.push({ range: { dateModified: { gte: releasedAfter } } })
-  }
-  if (releasedBefore) {
-    must.push({ range: { datePublished: { lte: releasedBefore } } })
-  }
-
-  // Date range filters (new: minDatePublished/maxDatePublished, minDateModified/maxDateModified)
-  if (minDatePublished) {
-    must.push({ range: { datePublished: { gte: minDatePublished } } })
-  }
-  if (maxDatePublished) {
-    must.push({ range: { datePublished: { lte: maxDatePublished } } })
-  }
-  if (minDateModified) {
-    must.push({ range: { dateModified: { gte: minDateModified } } })
-  }
-  if (maxDateModified) {
-    must.push({ range: { dateModified: { lte: maxDateModified } } })
-  }
+  // Date range filters
+  must.push(...buildResearchDateRangeFilters({
+    minDatePublished, maxDatePublished, minDateModified, maxDateModified,
+  }))
 
   // Sort configuration
-  let sortSpec: estypes.Sort
-  if (sort === "relevance" && q) {
-    // Relevance sort with full-text search query
-    sortSpec = [{ _score: { order: "desc" } }, { humId: { order: "asc" } }]
-  } else if (sort === "relevance") {
-    // Relevance sort without query - fall back to humId
-    sortSpec = [{ humId: { order } }]
-  } else if (sort === "title") {
-    const titleKw = lang === "en" ? "title.en.kw" : "title.ja.kw"
-    sortSpec = [{ [titleKw]: { order } }, { humId: { order: "asc" } }]
-  } else if (sort === "releaseDate" || sort === "dateModified") {
-    sortSpec = [{ dateModified: { order, missing: "_last" } }, { humId: { order: "asc" } }]
-  } else if (sort === "datePublished") {
-    sortSpec = [{ datePublished: { order, missing: "_last" } }, { humId: { order: "asc" } }]
-  } else {
-    sortSpec = [{ humId: { order } }]
-  }
+  const sortSpec = buildResearchSortSpec(sort, order, lang, !!q)
 
   interface ResearchAggs {
     all_humIds?: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
   }
 
   const researchQuery = must.length > 0 ? { bool: { must } } : { match_all: {} }
-  const res = await esClient.search<EsResearchDoc, ResearchAggs>({
+  const res = await esClient.search<EsResearch, ResearchAggs>({
     index: ES_INDEX.research,
     from,
     size: limit,
@@ -750,19 +681,19 @@ export const searchResearches = async (
 
   const base = res.hits.hits
     .map(hit => hit._source)
-    .filter((doc): doc is EsResearchDoc => !!doc)
-    .map(doc => EsResearchDocSchema.pick({
+    .filter((doc): doc is EsResearch => !!doc)
+    .map(doc => EsResearchSchema.pick({
       humId: true, title: true, versionIds: true, dataProvider: true, summary: true,
     }).parse(doc))
 
   // Fetch version and dataset details
   const rvIds = base.flatMap(doc => doc.versionIds)
-  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, (doc: unknown) => EsResearchVersionDocSchema.parse(doc))
+  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, (doc: unknown) => ResearchVersionSchema.parse(doc))
 
   // datasets is now { datasetId, version }[], convert to ES IDs
   const dsRefs = Array.from(rvMap.values()).flatMap(rv => rv.datasets)
   const dsIds = uniq(dsRefs.map(ref => `${ref.datasetId}-${ref.version}`))
-  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetDocSchema.parse(doc))
+  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetSchema.parse(doc))
 
   // Helper to extract text from BilingualTextValue
   const extractText = (value: { ja: { text: string } | null; en: { text: string } | null } | null | undefined): string => {
@@ -777,9 +708,9 @@ export const searchResearches = async (
   }
 
   const data: ResearchSummary[] = base.map(d => {
-    const rvs = d.versionIds.map(id => rvMap.get(id)).filter((x): x is EsResearchVersionDoc => !!x)
+    const rvs = d.versionIds.map(id => rvMap.get(id)).filter((x): x is ResearchVersion => !!x)
     const datasetRefs = rvs.flatMap(rv => rv.datasets)
-    const datasets = datasetRefs.map(ref => dsMap.get(`${ref.datasetId}-${ref.version}`)).filter((x): x is EsDatasetDoc => !!x)
+    const datasets = datasetRefs.map(ref => dsMap.get(`${ref.datasetId}-${ref.version}`)).filter((x): x is EsDataset => !!x)
 
     const versions = rvs.map(rv => ({ version: rv.version, releaseDate: rv.versionReleaseDate }))
     const methods = extractText(d.summary?.methods)
@@ -831,14 +762,7 @@ export const searchResearches = async (
 
   return {
     data,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
-      hasNext: from + limit < total,
-      hasPrev: from > 0,
-    },
+    pagination: createPagination(total, page, limit),
     facets,
   }
 }

@@ -14,7 +14,7 @@ import {
   idDataset,
 } from "@/es/load-docs"
 import {
-  NormalizedDiseaseSchema,
+  DiseaseInfoSchema,
 } from "@/es/types"
 
 describe("es/schema-properties (PBT)", () => {
@@ -156,16 +156,16 @@ describe("es/schema-properties (PBT)", () => {
   // ===========================================================================
   // Schema validation properties
   // ===========================================================================
-  describe("NormalizedDiseaseSchema properties", () => {
+  describe("DiseaseInfoSchema properties", () => {
     it("should accept valid disease objects", () => {
       fc.assert(
         fc.property(
           fc.record({
             label: fc.string({ minLength: 1 }),
-            icd10: fc.string({ minLength: 1 }),
+            icd10: fc.oneof(fc.string({ minLength: 1 }), fc.constant(null)),
           }),
           (disease) => {
-            const result = NormalizedDiseaseSchema.safeParse(disease)
+            const result = DiseaseInfoSchema.safeParse(disease)
             expect(result.success).toBe(true)
           },
         ),
@@ -175,11 +175,11 @@ describe("es/schema-properties (PBT)", () => {
 
     it("should reject objects without required fields", () => {
       // Missing icd10
-      const result1 = NormalizedDiseaseSchema.safeParse({ label: "test" })
+      const result1 = DiseaseInfoSchema.safeParse({ label: "test" })
       expect(result1.success).toBe(false)
 
       // Missing label
-      const result2 = NormalizedDiseaseSchema.safeParse({ icd10: "A00" })
+      const result2 = DiseaseInfoSchema.safeParse({ icd10: "A00" })
       expect(result2.success).toBe(false)
     })
   })

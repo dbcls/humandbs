@@ -7,7 +7,8 @@
 import { z } from "zod"
 
 /** Language type for ja/en versions */
-export type LangType = "ja" | "en"
+export const LANG_TYPES = ["ja", "en"] as const
+export type LangType = (typeof LANG_TYPES)[number]
 
 // === Zod Schemas (ES で使う型) ===
 

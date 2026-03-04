@@ -9,7 +9,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import type { AuthUser, EsDatasetDoc, EsResearchDoc } from "@/api/types"
+import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
 
 // === String Utilities ===
 
@@ -24,8 +24,8 @@ export const splitComma = (s: string | undefined): string[] =>
  */
 export const canAccessDataset = async (
   authUser: AuthUser | null,
-  dataset: EsDatasetDoc,
-  getResearchDoc: (humId: string) => Promise<EsResearchDoc | null>,
+  dataset: EsDataset,
+  getResearchDoc: (humId: string) => Promise<EsResearch | null>,
 ): Promise<boolean> => {
   if (authUser?.isAdmin) return true
 

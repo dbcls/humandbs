@@ -8,6 +8,7 @@
 import type { DatasetIdType } from "./common"
 
 // Common types
+export { LANG_TYPES } from "./common"
 export type {
   LangType,
   TextValue,

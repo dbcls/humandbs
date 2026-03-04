@@ -22,7 +22,7 @@ import {
   createSingleReadOnlyResponseSchema,
   DATASET_FACET_NAMES,
   DatasetSearchBodySchema,
-  EsDatasetDocSchema,
+  EsDatasetSchema,
   FacetFieldResponseSchema,
   FacetFilterQuerySchema,
   FacetsMapSchema,
@@ -132,7 +132,7 @@ const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearchQuery 
 const ResearchSearchResponseSchema = createSearchResponseSchema(ResearchSummarySchema)
 
 // Dataset search response
-const DatasetSearchResponseSchema = createSearchResponseSchema(EsDatasetDocSchema)
+const DatasetSearchResponseSchema = createSearchResponseSchema(EsDatasetSchema)
 
 // All facets response (read-only)
 const AllFacetsResponseSchema = createSingleReadOnlyResponseSchema(FacetsMapSchema)

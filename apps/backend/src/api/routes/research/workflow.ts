@@ -10,7 +10,7 @@ import { validateStatusTransition } from "@/api/es-client/auth"
 import { updateResearchStatus } from "@/api/es-client/research"
 import { singleResponse } from "@/api/helpers/response"
 import { ConflictError } from "@/api/routes/errors"
-import type { EsResearchDoc, ResearchStatus, StatusAction } from "@/api/types"
+import type { EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 
 import {
   submitRoute,
@@ -20,7 +20,7 @@ import {
 } from "./routes"
 
 /** Research document with optimistic locking fields (set by middleware) */
-type ResearchWithSeqNo = EsResearchDoc & { seqNo: number; primaryTerm: number }
+type ResearchWithSeqNo = EsResearch & { seqNo: number; primaryTerm: number }
 
 /**
  * Create a status transition handler

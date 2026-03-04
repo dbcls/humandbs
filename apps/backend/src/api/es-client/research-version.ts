@@ -11,13 +11,13 @@ import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
 import { mgetMap } from "@/api/es-client/utils"
 import {
-  EsResearchDocSchema,
-  EsResearchVersionDocSchema,
+  EsResearchSchema,
+  ResearchVersionSchema,
 } from "@/api/types"
 import type {
   AuthUser,
-  EsResearchDoc,
-  EsResearchVersionDoc,
+  EsResearch,
+  ResearchVersion,
 } from "@/api/types"
 
 // === ResearchVersion Retrieval ===
@@ -25,18 +25,18 @@ import type {
 export const getResearchVersion = async (
   humId: string,
   { version }: { version?: string },
-): Promise<EsResearchVersionDoc | null> => {
+): Promise<ResearchVersion | null> => {
   if (version) {
     const id = `${humId}-${version}` // lang suffix removed (BilingualText format)
-    const res = await esClient.get<EsResearchVersionDoc>({
+    const res = await esClient.get<ResearchVersion>({
       index: ES_INDEX.researchVersion,
       id,
     }, { ignore: [404] })
-    return res.found && res._source ? EsResearchVersionDocSchema.parse(res._source) : null
+    return res.found && res._source ? ResearchVersionSchema.parse(res._source) : null
   }
 
   // If the version is not specified, get the latest version
-  const { hits } = await esClient.search<EsResearchVersionDoc>({
+  const { hits } = await esClient.search<ResearchVersion>({
     index: ES_INDEX.researchVersion,
     size: 1,
     query: { term: { humId } },
@@ -48,7 +48,7 @@ export const getResearchVersion = async (
     track_total_hits: false,
   })
   const hit = hits.hits[0]
-  return hit?._source != null ? EsResearchVersionDocSchema.parse(hit._source) : null
+  return hit?._source != null ? ResearchVersionSchema.parse(hit._source) : null
 }
 
 /**
@@ -56,8 +56,8 @@ export const getResearchVersion = async (
  */
 export const getResearchVersionWithSeqNo = async (
   humVersionId: string,
-): Promise<{ doc: EsResearchVersionDoc; seqNo: number; primaryTerm: number } | null> => {
-  const res = await esClient.get<EsResearchVersionDoc>({
+): Promise<{ doc: ResearchVersion; seqNo: number; primaryTerm: number } | null> => {
+  const res = await esClient.get<ResearchVersion>({
     index: ES_INDEX.researchVersion,
     id: humVersionId,
   }, { ignore: [404] })
@@ -65,7 +65,7 @@ export const getResearchVersionWithSeqNo = async (
   if (!res.found || !res._source) return null
 
   return {
-    doc: EsResearchVersionDocSchema.parse(res._source),
+    doc: ResearchVersionSchema.parse(res._source),
     seqNo: res._seq_no ?? 0,
     primaryTerm: res._primary_term ?? 0,
   }
@@ -74,13 +74,13 @@ export const getResearchVersionWithSeqNo = async (
 export const listResearchVersions = async (
   humId: string,
   authUser: AuthUser | null = null,
-): Promise<EsResearchVersionDoc[] | null> => {
-  const res = await esClient.get<EsResearchDoc>({
+): Promise<ResearchVersion[] | null> => {
+  const res = await esClient.get<EsResearch>({
     index: ES_INDEX.research,
     id: humId, // lang suffix removed (BilingualText format)
   }, { ignore: [404] })
   if (!res.found || !res._source) return null
-  const researchDoc = EsResearchDocSchema.parse(res._source)
+  const researchDoc = EsResearchSchema.parse(res._source)
 
   // Authorization check: verify user can access this Research
   if (!canAccessResearchDoc(authUser, researchDoc)) {
@@ -89,17 +89,17 @@ export const listResearchVersions = async (
 
   const rvIds = researchDoc.versionIds
   if (rvIds.length === 0) return []
-  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, (doc: unknown) => EsResearchVersionDocSchema.parse(doc))
+  const rvMap = await mgetMap(ES_INDEX.researchVersion, rvIds, (doc: unknown) => ResearchVersionSchema.parse(doc))
 
   return rvIds
     .map((id: string) => rvMap.get(id))
-    .filter((x): x is EsResearchVersionDoc => !!x)
+    .filter((x): x is ResearchVersion => !!x)
 }
 
 export const listResearchVersionsSorted = async (
   humId: string,
   authUser: AuthUser | null = null,
-): Promise<EsResearchVersionDoc[] | null> => {
+): Promise<ResearchVersion[] | null> => {
   const rows = await listResearchVersions(humId, authUser)
   if (!rows) return null
   const verNum = (v: string) => Number(/^v(\d+)$/.exec(v)?.[1] ?? -1)
@@ -126,18 +126,18 @@ export const createResearchVersion = async (
   datasets: { datasetId: string; version: string }[] | undefined,
   seqNo: number,
   primaryTerm: number,
-): Promise<EsResearchVersionDoc | null> => {
+): Promise<ResearchVersion | null> => {
   const now = new Date().toISOString().split("T")[0]
 
   // Get current research to determine new version number
-  const researchRes = await esClient.get<EsResearchDoc>({
+  const researchRes = await esClient.get<EsResearch>({
     index: ES_INDEX.research,
     id: humId,
   }, { ignore: [404] })
   if (!researchRes.found || !researchRes._source) {
     throw new Error(`Research ${humId} not found`)
   }
-  const research = EsResearchDocSchema.parse(researchRes._source)
+  const research = EsResearchSchema.parse(researchRes._source)
 
   // Calculate new version number
   const currentVersionNum = research.versionIds.length
@@ -152,7 +152,7 @@ export const createResearchVersion = async (
   }
 
   // Create new ResearchVersion document
-  const versionDoc: EsResearchVersionDoc = {
+  const versionDoc: ResearchVersion = {
     humId,
     humVersionId: newHumVersionId,
     version: newVersion,
@@ -211,7 +211,7 @@ export const createResearchVersion = async (
     throw error
   }
 
-  return EsResearchVersionDocSchema.parse(versionDoc)
+  return ResearchVersionSchema.parse(versionDoc)
 }
 
 // === Dataset Linking ===

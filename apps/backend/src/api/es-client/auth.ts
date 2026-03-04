@@ -9,7 +9,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import { esClient, ES_INDEX } from "@/api/es-client/client"
-import type { AuthUser, EsResearchDoc, StatusAction } from "@/api/types"
+import type { AuthUser, EsResearch, StatusAction } from "@/api/types"
 import { StatusTransitions } from "@/api/types"
 
 // === Authorization Filters ===
@@ -49,7 +49,7 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
  */
 export const canAccessResearchDoc = (
   authUser: AuthUser | null,
-  researchDoc: EsResearchDoc,
+  researchDoc: EsResearch,
 ): boolean => {
   if (authUser?.isAdmin) return true
   if (researchDoc.status === "published") return true
@@ -114,7 +114,7 @@ export const validateStatusTransition = (
 export const canPerformTransition = (
   authUser: AuthUser | null,
   action: StatusAction,
-  research: EsResearchDoc,
+  research: EsResearch,
 ): boolean => {
   if (!authUser) return false
 

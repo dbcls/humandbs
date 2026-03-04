@@ -11,7 +11,7 @@ import { join } from "path"
 import {
   EsResearchSchema,
   EsDatasetSchema,
-  EsResearchVersionSchema,
+  ResearchVersionSchema,
 } from "@/es/types"
 
 // Path to fixtures
@@ -84,7 +84,7 @@ describe("es/real-data-validation", () => {
 
     for (const { filename, data } of files) {
       it(`should validate ${filename}`, () => {
-        const result = EsResearchVersionSchema.safeParse(data)
+        const result = ResearchVersionSchema.safeParse(data)
         if (!result.success) {
           console.error(`Validation errors for ${filename}:`)
           console.error(JSON.stringify(result.error.issues, null, 2))

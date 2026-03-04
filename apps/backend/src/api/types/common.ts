@@ -7,10 +7,10 @@
  */
 import { z } from "zod"
 
-// === Language Types ===
+// === Language Types (re-exported from es/types, SSOT is crawler/types) ===
 
-export const LANG_TYPES = ["ja", "en"] as const
-export type LangType = (typeof LANG_TYPES)[number]
+export { LANG_TYPES } from "../../es/types"
+export type { LangType } from "../../es/types"
 
 // === Zod Preprocessing Helpers ===
 

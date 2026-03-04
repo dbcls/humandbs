@@ -6,11 +6,11 @@
  */
 import { mock } from "bun:test"
 
-import type { EsResearchDoc, EsResearchVersionDoc, EsDatasetDoc, AuthUser } from "@/api/types"
+import type { EsResearch, ResearchVersion, EsDataset, AuthUser } from "@/api/types"
 
 // === Mock Data Factories ===
 
-export const createMockResearchDoc = (overrides: Partial<EsResearchDoc> = {}): EsResearchDoc => ({
+export const createMockResearchDoc = (overrides: Partial<EsResearch> = {}): EsResearch => ({
   humId: "hum0001",
   url: { ja: "https://humandbs.dbcls.jp/hum0001", en: "https://humandbs.dbcls.jp/en/hum0001" },
   title: { ja: "テスト研究", en: "Test Research" },
@@ -35,7 +35,7 @@ export const createMockResearchDoc = (overrides: Partial<EsResearchDoc> = {}): E
   ...overrides,
 })
 
-export const createMockResearchVersionDoc = (overrides: Partial<EsResearchVersionDoc> = {}): EsResearchVersionDoc => ({
+export const createMockResearchVersionDoc = (overrides: Partial<ResearchVersion> = {}): ResearchVersion => ({
   humId: "hum0001",
   humVersionId: "hum0001-v1",
   version: "v1",
@@ -48,7 +48,7 @@ export const createMockResearchVersionDoc = (overrides: Partial<EsResearchVersio
   ...overrides,
 })
 
-export const createMockDatasetDoc = (overrides: Partial<EsDatasetDoc> = {}): EsDatasetDoc => ({
+export const createMockDatasetDoc = (overrides: Partial<EsDataset> = {}): EsDataset => ({
   datasetId: "JGAD000001",
   version: "v1",
   humId: "hum0001",

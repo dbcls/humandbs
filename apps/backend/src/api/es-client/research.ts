@@ -13,17 +13,17 @@ import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/clien
 import { getResearchVersion } from "@/api/es-client/research-version"
 import { mgetMap } from "@/api/es-client/utils"
 import {
-  EsDatasetDocSchema,
-  EsResearchDocSchema,
-  EsResearchVersionDocSchema,
-  EsResearchDetailSchema,
+  EsDatasetSchema,
+  EsResearchSchema,
+  ResearchVersionSchema,
+  ResearchDetailSchema,
 } from "@/api/types"
 import type {
   AuthUser,
-  EsDatasetDoc,
-  EsResearchDoc,
-  EsResearchVersionDoc,
-  EsResearchDetail,
+  EsDataset,
+  EsResearch,
+  ResearchVersion,
+  ResearchDetail,
   ResearchStatus,
 } from "@/api/types"
 
@@ -67,13 +67,13 @@ const createEsError = (error: unknown, operation: string, humId: string): Error 
 
 export const getResearchDoc = async (
   humId: string,
-): Promise<EsResearchDoc | null> => {
+): Promise<EsResearch | null> => {
   const id = humId // lang suffix removed (BilingualText format)
-  const res = await esClient.get<EsResearchDoc>({
+  const res = await esClient.get<EsResearch>({
     index: ES_INDEX.research,
     id,
   }, { ignore: [404] })
-  return res.found && res._source ? EsResearchDocSchema.parse(res._source) : null
+  return res.found && res._source ? EsResearchSchema.parse(res._source) : null
 }
 
 /**
@@ -81,8 +81,8 @@ export const getResearchDoc = async (
  */
 export const getResearchWithSeqNo = async (
   humId: string,
-): Promise<{ doc: EsResearchDoc; seqNo: number; primaryTerm: number } | null> => {
-  const res = await esClient.get<EsResearchDoc>({
+): Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number } | null> => {
+  const res = await esClient.get<EsResearch>({
     index: ES_INDEX.research,
     id: humId,
   }, { ignore: [404] })
@@ -90,7 +90,7 @@ export const getResearchWithSeqNo = async (
   if (!res.found || !res._source) return null
 
   return {
-    doc: EsResearchDocSchema.parse(res._source),
+    doc: EsResearchSchema.parse(res._source),
     seqNo: res._seq_no ?? 0,
     primaryTerm: res._primary_term ?? 0,
   }
@@ -100,7 +100,7 @@ export const getResearchDetail = async (
   humId: string,
   { version }: { version?: string },
   authUser: AuthUser | null = null,
-): Promise<EsResearchDetail | null> => {
+): Promise<ResearchDetail | null> => {
   const [researchWithSeqNo, researchVersionDoc] = await Promise.all([
     getResearchWithSeqNo(humId),
     getResearchVersion(humId, { version }),
@@ -117,12 +117,12 @@ export const getResearchDetail = async (
   // datasets is now { datasetId, version }[]
   const dsRefs = researchVersionDoc.datasets
   const dsIds = dsRefs.map(ref => `${ref.datasetId}-${ref.version}`)
-  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetDocSchema.parse(doc))
-  const datasets = dsIds.map(id => dsMap.get(id)).filter((x): x is EsDatasetDoc => !!x)
+  const dsMap = await mgetMap(ES_INDEX.dataset, dsIds, (doc: unknown) => EsDatasetSchema.parse(doc))
+  const datasets = dsIds.map(id => dsMap.get(id)).filter((x): x is EsDataset => !!x)
 
   const { versionIds: _versionIds, ...researchDocRest } = researchDoc
 
-  return EsResearchDetailSchema.parse({
+  return ResearchDetailSchema.parse({
     ...researchDocRest,
     humVersionId: researchVersionDoc.humVersionId,
     version: researchVersionDoc.version,
@@ -212,7 +212,7 @@ export const createResearch = async (params: {
   uids?: string[]
   humId?: string
   initialReleaseNote?: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-}): Promise<{ research: EsResearchDoc; version: EsResearchVersionDoc }> => {
+}): Promise<{ research: EsResearch; version: ResearchVersion }> => {
   const now = new Date().toISOString().split("T")[0]
 
   // Default summary structure
@@ -235,7 +235,7 @@ export const createResearch = async (params: {
     const humVersionId = `${humId}.${version}`
 
     // Create Research document with defaults for optional fields
-    const researchDoc: EsResearchDoc = {
+    const researchDoc: EsResearch = {
       humId,
       url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
       title: params.title ?? { ja: null, en: null },
@@ -254,7 +254,7 @@ export const createResearch = async (params: {
     }
 
     // Create ResearchVersion document (v1)
-    const versionDoc: EsResearchVersionDoc = {
+    const versionDoc: ResearchVersion = {
       humId,
       humVersionId,
       version,
@@ -315,8 +315,8 @@ export const createResearch = async (params: {
 
     // Success - return the created documents
     return {
-      research: EsResearchDocSchema.parse(researchDoc),
-      version: EsResearchVersionDocSchema.parse(versionDoc),
+      research: EsResearchSchema.parse(researchDoc),
+      version: ResearchVersionSchema.parse(versionDoc),
     }
   }
 
@@ -389,7 +389,7 @@ export const updateResearch = async (
   },
   seqNo: number,
   primaryTerm: number,
-): Promise<EsResearchDoc | null> => {
+): Promise<EsResearch | null> => {
   try {
     const now = new Date().toISOString().split("T")[0]
 
@@ -423,7 +423,7 @@ export const updateResearchStatus = async (
   newStatus: ResearchStatus,
   seqNo: number,
   primaryTerm: number,
-): Promise<{ doc: EsResearchDoc; seqNo: number; primaryTerm: number; dateModified: string } | null> => {
+): Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null> => {
   try {
     const now = new Date().toISOString().split("T")[0]
 
@@ -548,10 +548,10 @@ export const deleteResearch = async (
 export const getPendingReviews = async (
   page = 1,
   limit = 20,
-): Promise<{ data: EsResearchDoc[]; total: number }> => {
+): Promise<{ data: EsResearch[]; total: number }> => {
   const from = (page - 1) * limit
 
-  const res = await esClient.search<EsResearchDoc>({
+  const res = await esClient.search<EsResearch>({
     index: ES_INDEX.research,
     from,
     size: limit,
@@ -563,8 +563,8 @@ export const getPendingReviews = async (
 
   const data = res.hits.hits
     .map(hit => hit._source)
-    .filter((doc): doc is EsResearchDoc => !!doc)
-    .map(doc => EsResearchDocSchema.parse(doc))
+    .filter((doc): doc is EsResearch => !!doc)
+    .map(doc => EsResearchSchema.parse(doc))
 
   const total = typeof res.hits.total === "number" ? res.hits.total : res.hits.total?.value ?? 0
 

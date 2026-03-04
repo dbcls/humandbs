@@ -18,8 +18,8 @@ import {
   unlinkDatasetFromResearch,
 } from "@/api/es-client/research-version"
 import { logger } from "@/api/logger"
-import { EsDatasetDocSchema } from "@/api/types"
-import type { AuthUser, DatasetVersionItem, EsDatasetDoc, EsResearchDetail } from "@/api/types"
+import { EsDatasetSchema } from "@/api/types"
+import type { AuthUser, DatasetVersionItem, EsDataset, ResearchDetail } from "@/api/types"
 
 // === Dataset Retrieval ===
 
@@ -28,7 +28,7 @@ import type { AuthUser, DatasetVersionItem, EsDatasetDoc, EsResearchDetail } fro
  */
 const canAccessDataset = async (
   authUser: AuthUser | null,
-  dataset: EsDatasetDoc,
+  dataset: EsDataset,
 ): Promise<boolean> => {
   if (authUser?.isAdmin) return true
 
@@ -43,19 +43,19 @@ export const getDataset = async (
   datasetId: string,
   { version }: { version?: string },
   authUser: AuthUser | null = null,
-): Promise<EsDatasetDoc | null> => {
-  let dataset: EsDatasetDoc | null = null
+): Promise<EsDataset | null> => {
+  let dataset: EsDataset | null = null
 
   if (version) {
     const id = `${datasetId}-${version}` // lang suffix removed (BilingualText format)
-    const res = await esClient.get<EsDatasetDoc>({
+    const res = await esClient.get<EsDataset>({
       index: ES_INDEX.dataset,
       id,
     }, { ignore: [404] })
-    dataset = res.found && res._source ? EsDatasetDocSchema.parse(res._source) : null
+    dataset = res.found && res._source ? EsDatasetSchema.parse(res._source) : null
   } else {
     // If the version is not specified, get the latest version
-    const { hits } = await esClient.search<EsDatasetDoc>({
+    const { hits } = await esClient.search<EsDataset>({
       index: ES_INDEX.dataset,
       size: 1,
       query: { term: { datasetId } },
@@ -67,7 +67,7 @@ export const getDataset = async (
       track_total_hits: false,
     })
     const hit = hits.hits[0]
-    dataset = hit?._source != null ? EsDatasetDocSchema.parse(hit._source) : null
+    dataset = hit?._source != null ? EsDatasetSchema.parse(hit._source) : null
   }
 
   if (!dataset) return null
@@ -85,9 +85,9 @@ export const getDataset = async (
 export const getDatasetWithSeqNo = async (
   datasetId: string,
   version: string,
-): Promise<{ doc: EsDatasetDoc; seqNo: number; primaryTerm: number } | null> => {
+): Promise<{ doc: EsDataset; seqNo: number; primaryTerm: number } | null> => {
   const id = `${datasetId}-${version}`
-  const res = await esClient.get<EsDatasetDoc>({
+  const res = await esClient.get<EsDataset>({
     index: ES_INDEX.dataset,
     id,
   }, { ignore: [404] })
@@ -95,7 +95,7 @@ export const getDatasetWithSeqNo = async (
   if (!res.found || !res._source) return null
 
   return {
-    doc: EsDatasetDocSchema.parse(res._source),
+    doc: EsDatasetSchema.parse(res._source),
     seqNo: res._seq_no ?? 0,
     primaryTerm: res._primary_term ?? 0,
   }
@@ -105,7 +105,7 @@ export const listDatasetVersions = async (
   datasetId: string,
   authUser: AuthUser | null = null,
 ): Promise<DatasetVersionItem[] | null> => {
-  const res = await esClient.search<EsDatasetDoc>({
+  const res = await esClient.search<EsDataset>({
     index: ES_INDEX.dataset,
     size: 500,
     query: { term: { datasetId } },
@@ -119,7 +119,7 @@ export const listDatasetVersions = async (
 
   const rows = res.hits.hits
     .map(h => h._source)
-    .filter((d): d is EsDatasetDoc => !!d)
+    .filter((d): d is EsDataset => !!d)
 
   if (rows.length === 0) return []
 
@@ -196,7 +196,7 @@ export const createDataset = async (params: {
     data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
     footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
   }[]
-}, autoLinkToResearch = true): Promise<EsDatasetDoc> => {
+}, autoLinkToResearch = true): Promise<EsDataset> => {
   const now = new Date().toISOString().split("T")[0]
 
   // Generate datasetId if not provided
@@ -206,7 +206,7 @@ export const createDataset = async (params: {
   const version = await getNextDatasetVersion(datasetId)
 
   // Create Dataset document
-  const datasetDoc: EsDatasetDoc = {
+  const datasetDoc: EsDataset = {
     datasetId,
     version,
     versionReleaseDate: now,
@@ -249,7 +249,7 @@ export const createDataset = async (params: {
     }
   }
 
-  return EsDatasetDocSchema.parse(datasetDoc)
+  return EsDatasetSchema.parse(datasetDoc)
 }
 
 // === Dataset Updates ===
@@ -282,7 +282,7 @@ export const updateDataset = async (
   },
   seqNo: number,
   primaryTerm: number,
-): Promise<EsDatasetDoc | null> => {
+): Promise<EsDataset | null> => {
   const esId = `${datasetId}-${version}`
 
   try {
@@ -330,7 +330,7 @@ export const replaceDatasetId = async (
   oldDatasetId: string,
   version: string,
   newDatasetId: string,
-): Promise<EsDatasetDoc | null> => {
+): Promise<EsDataset | null> => {
   // Get old dataset
   const oldResult = await getDatasetWithSeqNo(oldDatasetId, version)
   if (!oldResult) {
@@ -342,7 +342,7 @@ export const replaceDatasetId = async (
   const newEsId = `${newDatasetId}-${version}`
 
   // Create new document with new datasetId
-  const newDoc: EsDatasetDoc = {
+  const newDoc: EsDataset = {
     ...oldDoc,
     datasetId: newDatasetId,
   }
@@ -411,7 +411,7 @@ export const replaceDatasetId = async (
     logger.warn("Failed to delete old Dataset", { oldEsId, error: String(error) })
   }
 
-  return EsDatasetDocSchema.parse(newDoc)
+  return EsDatasetSchema.parse(newDoc)
 }
 
 // === Dataset Deletion ===
@@ -452,7 +452,7 @@ export const deleteDataset = async (
   } else {
     // Delete all versions of this dataset
     // First, get all versions
-    const { hits } = await esClient.search<EsDatasetDoc>({
+    const { hits } = await esClient.search<EsDataset>({
       index: ES_INDEX.dataset,
       size: 1000,
       query: { term: { datasetId } },
@@ -490,7 +490,7 @@ export const deleteDataset = async (
 export const getResearchByDatasetId = async (
   datasetId: string,
   authUser: AuthUser | null = null,
-): Promise<EsResearchDetail | null> => {
+): Promise<ResearchDetail | null> => {
   // Import getResearchDetail dynamically to avoid circular dependency
   const { getResearchDetail } = await import("@/api/es-client/research")
 

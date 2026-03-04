@@ -17,7 +17,7 @@ export {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
-} from "./response";
+} from "./response"
 export type {
   Pagination,
   BaseResponseMeta,
@@ -28,15 +28,15 @@ export type {
   SingleResponse,
   ListResponse,
   SearchResponse,
-} from "./response";
+} from "./response"
 
 // === Common ===
-export { LANG_TYPES, booleanFromString } from "./common";
-export type { LangType } from "./common";
+export { LANG_TYPES, booleanFromString } from "./common"
+export type { LangType } from "./common"
 
 // === Authentication ===
-export { JwtClaimsSchema, AuthUserSchema } from "./auth";
-export type { JwtClaims, AuthUser } from "./auth";
+export { JwtClaimsSchema, AuthUserSchema } from "./auth"
+export type { JwtClaims, AuthUser } from "./auth"
 
 // === Workflow ===
 export {
@@ -44,9 +44,8 @@ export {
   RESEARCH_STATUS,
   STATUS_ACTIONS,
   StatusTransitions,
-} from "./workflow";
-export type { ResearchStatus, StatusAction } from "./workflow";
-export type { EsResearchStatus } from "./workflow";
+} from "./workflow"
+export type { ResearchStatus, StatusAction } from "./workflow"
 
 // === Facets ===
 export {
@@ -55,44 +54,46 @@ export {
   isValidFacetName,
   FacetValueSchema,
   FacetsMapSchema,
-} from "./facets";
+} from "./facets"
 export type {
   DatasetFacetName,
   ResearchFacetName,
   FacetValue,
   FacetsMap,
-} from "./facets";
+} from "./facets"
 
 // === ES Documents ===
 export {
   DatasetRefSchema,
-  EsDatasetDocSchema,
-  EsDatasetDocWithMergedSchema,
-  MergedSearchableSchema,
-  EsResearchVersionDocSchema,
-  EsResearchDocSchema,
-  EsResearchDetailSchema,
-  DatasetVersionItemSchema,
-} from "./es-docs";
+  EsDatasetSchema,
+  EsResearchSchema,
+  ResearchVersionSchema,
+} from "./es-docs"
 export type {
   DatasetRef,
-  EsDatasetDoc,
-  EsDatasetDocWithMerged,
-  MergedSearchable,
-  EsResearchVersionDoc,
-  EsResearchDoc,
-  EsResearchDetail,
-  DatasetVersionItem,
-  // Re-exported from es/types
   EsDataset,
   EsResearch,
-  EsResearchVersion,
-  EsExperiment,
-  EsPerson,
-  EsGrant,
-  EsPublication,
-  EsSummary,
-} from "./es-docs";
+  ResearchVersion,
+  Experiment,
+  Person,
+  Grant,
+  Publication,
+  Summary,
+} from "./es-docs"
+
+// === API View Models ===
+export {
+  ResearchDetailSchema,
+  DatasetVersionItemSchema,
+  MergedSearchableSchema,
+  DatasetDocWithMergedSchema,
+} from "./views"
+export type {
+  ResearchDetail,
+  DatasetVersionItem,
+  MergedSearchable,
+  DatasetDocWithMerged,
+} from "./views"
 
 // === Query Parameters ===
 export {
@@ -104,10 +105,7 @@ export {
   DatasetSearchQuerySchema,
   FacetFilterQuerySchema,
   ResearchSummarySchema,
-  SearchQuerySchema,
-  ResearchListQuerySchema,
-  DatasetListQuerySchema,
-} from "./query-params";
+} from "./query-params"
 export type {
   LangVersionQuery,
   LangQuery,
@@ -117,10 +115,7 @@ export type {
   DatasetSearchQuery,
   FacetFilterQuery,
   ResearchSummary,
-  SearchQuery,
-  ResearchListQuery,
-  DatasetListQuery,
-} from "./query-params";
+} from "./query-params"
 
 // === Filters ===
 export {
@@ -128,24 +123,22 @@ export {
   DatasetFiltersSchema,
   ResearchSearchBodySchema,
   DatasetSearchBodySchema,
-} from "./filters";
+} from "./filters"
 export type {
   RangeFilter,
   DatasetFilters,
   ResearchSearchBody,
   DatasetSearchBody,
-} from "./filters";
+} from "./filters"
 
 // === Request/Response ===
 export {
   // Experiment/Dataset schemas
   ExperimentSchemaBase,
-  DatasetSchema,
+  ApiDatasetSchema,
   // Error schemas
   ERROR_CODES,
   ProblemDetailsSchema,
-  // Response meta
-  ResponseMetaSchema,
   // Research API
   CreateResearchRequestSchema,
   UpdateResearchRequestSchema,
@@ -156,20 +149,12 @@ export {
   // Version API
   CreateVersionRequestSchema,
   VersionResponseSchema,
-  VersionsListResponseSchema,
   // Dataset API
   CreateDatasetRequestSchema,
   UpdateDatasetRequestSchema,
   DatasetWithMetadataSchema,
-  DatasetListResponseSchema,
   CreateDatasetForResearchRequestSchema,
-  // Link API
-  LinkedDatasetsResponseSchema,
-  LinkedResearchesResponseSchema,
-  // Search responses
-  SearchResearchResultSchema,
-  SearchDatasetResultSchema,
-  FacetsResponseSchema,
+  // Facet responses
   FacetValueWithCountSchema,
   FacetFieldResponseSchema,
   AllFacetsResponseSchema,
@@ -186,7 +171,6 @@ export {
   StatsResponseSchema,
   // Re-exported schemas
   ResearchSchema,
-  ResearchVersionSchema,
   // Response schema factories
   createSingleResponseSchema,
   createSingleReadOnlyResponseSchema,
@@ -212,11 +196,10 @@ export {
   DatasetVersionsListResponseSchema,
   DatasetVersionDetailResponseSchema,
   LinkedResearchesListResponseSchema,
-} from "./request-response";
+} from "./request-response"
 export type {
   ErrorCode,
   ProblemDetails,
-  ResponseMeta,
   CreateResearchRequest,
   UpdateResearchRequest,
   ResearchWithStatus,
@@ -224,17 +207,10 @@ export type {
   UpdateUidsRequest,
   CreateVersionRequest,
   VersionResponse,
-  VersionsListResponse,
   CreateDatasetRequest,
   UpdateDatasetRequest,
   DatasetWithMetadata,
-  DatasetListResponse,
   CreateDatasetForResearchRequest,
-  LinkedDatasetsResponse,
-  LinkedResearchesResponse,
-  SearchResearchResult,
-  SearchDatasetResult,
-  FacetsResponse,
   FacetValueWithCount,
   FacetFieldResponse,
   AllFacetsResponse,
@@ -266,4 +242,4 @@ export type {
   DatasetVersionsListResponse,
   DatasetVersionDetailResponse,
   LinkedResearchesListResponse,
-} from "./request-response";
+} from "./request-response"

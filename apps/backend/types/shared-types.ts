@@ -7,6 +7,9 @@
  *
  * Note: This file intentionally re-exports from api/types rather than
  * defining types directly, to maintain a single source of truth.
+ *
+ * Naming convention: Public API uses clean names (no Es- prefix).
+ * Internal Es-prefixed names are NOT exported here.
  */
 
 // === Re-exports from api/types ===
@@ -74,37 +77,26 @@ export type {
   DatasetVersionItem,
 } from "../src/api/types";
 
-// ES document types (API response format)
-// Note: Exported with both Es-prefixed names (internal) and clean names (external API)
+// ES document types (API response format) - clean names only
 export {
   DatasetRefSchema,
-  EsDatasetDocSchema,
-  EsResearchDocSchema,
-  EsResearchVersionDocSchema,
-  EsResearchDetailSchema,
-  // Clean aliases without Es prefix
-  EsDatasetDocSchema as DatasetDocSchema,
-  EsResearchDocSchema as ResearchDocSchema,
-  EsResearchVersionDocSchema as ResearchVersionDocSchema,
-  EsResearchDetailSchema as ResearchDetailSchema,
+  EsDatasetSchema as DatasetDocSchema,
+  EsResearchSchema as ResearchDocSchema,
+  ResearchVersionSchema as ResearchVersionDocSchema,
+  ResearchDetailSchema,
 } from "../src/api/types";
 export type {
   DatasetRef,
-  EsDatasetDoc,
-  EsResearchDoc,
-  EsResearchVersionDoc,
-  EsResearchDetail,
-  // Sub-document types embedded in API responses
-  EsExperiment,
-  EsPerson,
-  EsGrant,
-  EsPublication,
-  EsSummary,
-  // Clean aliases without Es prefix
-  EsDatasetDoc as DatasetDoc,
-  EsResearchDoc as ResearchDoc,
-  EsResearchVersionDoc as ResearchVersionDoc,
-  EsResearchDetail as ResearchDetail,
+  EsDataset as DatasetDoc,
+  EsResearch as ResearchDoc,
+  ResearchVersion as ResearchVersionDoc,
+  ResearchDetail,
+  // Sub-document types embedded in API responses - clean names
+  Experiment,
+  Person,
+  Grant,
+  Publication,
+  Summary,
 } from "../src/api/types";
 
 // Path parameters
@@ -166,7 +158,7 @@ export type {
 
 // Request/data schemas
 export {
-  DatasetSchema,
+  ApiDatasetSchema,
   CreateResearchRequestSchema,
   UpdateResearchRequestSchema,
   CreateVersionRequestSchema,
@@ -180,18 +172,6 @@ export type {
   CreateVersionRequest,
   UpdateUidsRequest,
   CreateDatasetForResearchRequest,
-} from "../src/api/types";
-
-// Additional response schemas for /research routes
-export {
-  ResearchResponseSchema,
-  ResearchWithStatusSchema,
-  VersionResponseSchema,
-} from "../src/api/types";
-export type {
-  ResearchResponse,
-  ResearchWithStatus,
-  VersionResponse,
 } from "../src/api/types";
 
 // Response schemas for /research routes
@@ -224,17 +204,14 @@ export type {
   UidsResponse,
 } from "../src/api/types";
 
-// Dataset document with merged searchable fields
+// Dataset document with merged searchable fields - clean names
 export {
-  EsDatasetDocWithMergedSchema,
+  DatasetDocWithMergedSchema,
   MergedSearchableSchema,
-  // Clean alias without Es prefix
-  EsDatasetDocWithMergedSchema as DatasetDocWithMergedSchema,
 } from "../src/api/types";
 export type {
-  EsDatasetDocWithMerged,
+  DatasetDocWithMerged,
   MergedSearchable,
-  EsDatasetDocWithMerged as DatasetDocWithMerged,
 } from "../src/api/types";
 
 // Dataset request schemas

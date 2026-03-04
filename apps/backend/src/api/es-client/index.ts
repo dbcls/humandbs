@@ -90,6 +90,15 @@ export {
   getResearchByDatasetId,
 } from "@/api/es-client/dataset"
 
+// Query builders (pure functions)
+export {
+  buildDatasetSortSpec,
+  buildResearchSortSpec,
+  buildDatasetMultiMatchQuery,
+  buildResearchMultiMatchQuery,
+  buildResearchDateRangeFilters,
+} from "@/api/es-client/query-builders"
+
 // Search operations
 export {
   searchDatasets,

@@ -3,60 +3,8 @@
  *
  * Merges all experiment.searchable fields into a single Dataset-level mergedSearchable.
  */
-import type { SearchableExperimentFields, VariantCounts, IsTumor } from "@/crawler/types"
-
-/**
- * Merged searchable fields at Dataset level
- * Single-valued fields are converted to arrays when multiple experiments have different values
- */
-export interface MergedSearchable {
-  // Subject/sample info
-  subjectCount: number | null // sum
-  subjectCountType: string[] // unique values
-  healthStatus: string[] // unique values
-
-  // Disease info (multiple diseases supported)
-  diseases: { label: string; icd10: string }[] // unique
-
-  // Biological sample info
-  tissues: string[] // concat unique
-  isTumor: IsTumor[] // unique values
-  cellLine: string[] // concat unique
-  population: string[] // concat unique
-
-  // Demographics
-  sex: string[] // unique values
-  ageGroup: string[] // unique values
-
-  // Experimental method
-  assayType: string[] // concat unique
-  libraryKits: string[] // concat unique
-
-  // Platform
-  platforms: { vendor: string; model: string }[] // concat unique
-  readType: string[] // unique values
-  readLength: number | null // max
-
-  // Sequencing quality
-  sequencingDepth: number | null // max
-  targetCoverage: number | null // max
-  referenceGenome: string[] // concat unique
-
-  // Variant data
-  variantCounts: VariantCounts | null // sum each field
-  hasPhenotypeData: boolean | null // OR (true if any is true)
-
-  // Target region
-  targets: string[] // unique values
-
-  // Data info
-  fileTypes: string[] // concat unique
-  processedDataTypes: string[] // concat unique
-  dataVolumeGb: number | null // sum
-
-  // Policies (rule-based, not LLM)
-  policies: { id: string; name: { ja: string | null; en: string | null }; url: string | null }[] // concat unique by id
-}
+import type { MergedSearchable } from "@/api/types"
+import type { SearchableExperimentFields, VariantCounts, IsTumor } from "@/es/types"
 
 /**
  * Unique array helper for strings
@@ -160,8 +108,7 @@ export const mergeSearchableFields = (searchables: SearchableExperimentFields[])
     subjectCountType: uniqueStrings(searchables.map(s => s.subjectCountType).filter((v): v is NonNullable<typeof v> => v !== null)),
     healthStatus: uniqueStrings(searchables.map(s => s.healthStatus).filter((v): v is NonNullable<typeof v> => v !== null)),
 
-    // Concat unique - for diseases, ensure icd10 is converted to non-null string
-    diseases: uniqueObjects(searchables.flatMap(s => s.diseases).map(d => ({ label: d.label, icd10: d.icd10 ?? "" }))),
+    diseases: uniqueObjects(searchables.flatMap(s => s.diseases)),
     tissues: uniqueStrings(searchables.flatMap(s => s.tissues)),
     cellLine: uniqueStrings(searchables.flatMap(s => s.cellLine)),
     population: uniqueStrings(searchables.flatMap(s => s.population)),

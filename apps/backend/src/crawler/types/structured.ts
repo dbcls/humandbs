@@ -81,51 +81,76 @@ export type VariantCounts = z.infer<typeof VariantCountsSchema>
 /** Experiment-level searchable fields (extracted via LLM + rule-based) */
 export const SearchableExperimentFieldsSchema = z.object({
   // Subject/sample info
-  subjectCount: z.number().nullable(),
-  subjectCountType: SubjectCountTypeSchema.nullable(),
-  healthStatus: HealthStatusSchema.nullable(),
+  subjectCount: z.number().nullable()
+    .describe("Number of subjects/samples in this experiment"),
+  subjectCountType: SubjectCountTypeSchema.nullable()
+    .describe("Type of subject count: 'individual', 'sample', or 'mixed'"),
+  healthStatus: HealthStatusSchema.nullable()
+    .describe("Health status of subjects: 'healthy', 'affected', or 'mixed'"),
 
   // Disease info (multiple diseases supported)
-  diseases: z.array(DiseaseInfoSchema),
+  diseases: z.array(DiseaseInfoSchema)
+    .describe("Diseases associated with the experiment"),
 
   // Biological sample info
-  tissues: z.array(z.string()),
-  isTumor: IsTumorSchema.nullable(),
-  cellLine: z.array(z.string()),
-  population: z.array(z.string()),
+  tissues: z.array(z.string())
+    .describe("Tissue types used (e.g., 'Blood', 'Liver')"),
+  isTumor: IsTumorSchema.nullable()
+    .describe("Whether samples include tumor tissue: 'tumor', 'normal', or 'mixed'"),
+  cellLine: z.array(z.string())
+    .describe("Cell line names if applicable"),
+  population: z.array(z.string())
+    .describe("Population groups (e.g., 'Japanese', 'East Asian')"),
 
   // Demographics
-  sex: SexSchema.nullable(),
-  ageGroup: AgeGroupSchema.nullable(),
+  sex: SexSchema.nullable()
+    .describe("Biological sex: 'male', 'female', or 'mixed'"),
+  ageGroup: AgeGroupSchema.nullable()
+    .describe("Age group: 'infant', 'child', 'adult', 'elderly', or 'mixed'"),
 
   // Experimental method
-  assayType: z.array(z.string()),
-  libraryKits: z.array(z.string()),
+  assayType: z.array(z.string())
+    .describe("Assay types (e.g., 'WGS', 'WES', 'RNA-seq')"),
+  libraryKits: z.array(z.string())
+    .describe("Library preparation kits used"),
 
-  // Platform
-  platforms: z.array(PlatformInfoSchema),
-  readType: ReadTypeSchema.nullable(),
-  readLength: z.number().nullable(),
+  // Platform (nested for vendor/model relationship)
+  platforms: z.array(PlatformInfoSchema)
+    .describe("Sequencing platforms used"),
+  readType: ReadTypeSchema.nullable()
+    .describe("Read type: 'single-end' or 'paired-end'"),
+  readLength: z.number().nullable()
+    .describe("Read length in base pairs"),
 
   // Sequencing quality
-  sequencingDepth: z.number().nullable(),
-  targetCoverage: z.number().nullable(),
-  referenceGenome: z.array(z.string()),
+  sequencingDepth: z.number().nullable()
+    .describe("Average sequencing depth (coverage)"),
+  targetCoverage: z.number().nullable()
+    .describe("Target region coverage percentage"),
+  referenceGenome: z.array(z.string())
+    .describe("Reference genome versions (e.g., 'GRCh38', 'GRCh37')"),
 
   // Variant data
-  variantCounts: VariantCountsSchema.nullable(),
-  hasPhenotypeData: z.boolean().nullable(),
+  variantCounts: VariantCountsSchema.nullable()
+    .describe("Variant counts by type (SNV, indel, CNV, SV)"),
+  hasPhenotypeData: z.boolean().nullable()
+    .describe("Whether phenotype data is available"),
 
   // Target region
-  targets: z.string().nullable(),
+  targets: z.string().nullable()
+    .describe("Target regions or gene panels"),
 
   // Data info
-  fileTypes: z.array(z.string()),
-  processedDataTypes: z.array(z.string()),
-  dataVolumeGb: z.number().nullable(),
+  fileTypes: z.array(z.string())
+    .describe("Available file types (e.g., 'FASTQ', 'BAM', 'VCF')"),
+  processedDataTypes: z.array(z.string())
+    .describe("Types of processed data available"),
+  dataVolumeGb: z.number().nullable()
+    .describe("Total data volume in gigabytes"),
 
   // Policies (rule-based, not LLM)
-  policies: z.array(NormalizedPolicySchema),
+  policies: z.array(NormalizedPolicySchema)
+    .describe("Data access policies applicable to this experiment"),
 })
 export type SearchableExperimentFields = z.infer<
   typeof SearchableExperimentFieldsSchema
@@ -148,22 +173,28 @@ export type Experiment = z.infer<typeof ExperimentSchema>
 /** Dataset (language-integrated) */
 export const DatasetSchema = z.object({
   // Language-independent
-  datasetId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  humId: z.string(),
-  humVersionId: z.string(),
-  releaseDate: z.string(),
-  criteria: CriteriaCanonicalSchema, // must not be null, single value
+  datasetId: z.string()
+    .describe("Unique dataset identifier (e.g., 'JGAD000001')"),
+  version: z.string()
+    .describe("Dataset version (e.g., 'v1', 'v2')"),
+  versionReleaseDate: z.string()
+    .describe("ISO 8601 date when this dataset version was released"),
+  humId: z.string()
+    .describe("Parent Research identifier (e.g., 'hum0001')"),
+  humVersionId: z.string()
+    .describe("Parent Research version identifier (e.g., 'hum0001.v1')"),
+  releaseDate: z.string()
+    .describe("ISO 8601 date when the dataset was first released"),
+  criteria: CriteriaCanonicalSchema
+    .describe("Data access criteria: 'Controlled-access (Type I)', 'Controlled-access (Type II)', or 'Unrestricted-access'"),
 
   // Language-dependent - at least one of ja/en must be non-null
-  typeOfData: z.object({
-    ja: z.string().nullable(),
-    en: z.string().nullable(),
-  }),
+  typeOfData: BilingualTextSchema
+    .describe("Bilingual description of the type of data in this dataset"),
 
   // Experiments (ja/en pairs)
-  experiments: z.array(ExperimentSchema),
+  experiments: z.array(ExperimentSchema)
+    .describe("Array of experiment records containing sample/sequencing metadata"),
 })
 export type Dataset = z.infer<typeof DatasetSchema>
 
@@ -233,35 +264,48 @@ export type Publication = z.infer<typeof PublicationSchema>
 /** Research (language-integrated) */
 export const ResearchSchema = z.object({
   // Language-independent
-  humId: z.string(),
-  url: BilingualTextSchema,
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001'). Unique across all Research resources."),
+  url: BilingualTextSchema
+    .describe("URLs to the Research detail page (Japanese and English)"),
 
   // Language-dependent
-  title: BilingualTextSchema,
-  summary: SummarySchema,
+  title: BilingualTextSchema
+    .describe("Research title in Japanese and English"),
+  summary: SummarySchema
+    .describe("Research summary including aims, methods, and targets"),
 
   // Data provider
-  dataProvider: z.array(PersonSchema),
+  dataProvider: z.array(PersonSchema)
+    .describe("Data providers (researchers providing the data)"),
 
   // Research project
-  researchProject: z.array(ResearchProjectSchema),
+  researchProject: z.array(ResearchProjectSchema)
+    .describe("Related research projects"),
 
   // Grant information
-  grant: z.array(GrantSchema),
+  grant: z.array(GrantSchema)
+    .describe("Funding grants"),
 
   // Publications (accumulated)
-  relatedPublication: z.array(PublicationSchema),
+  relatedPublication: z.array(PublicationSchema)
+    .describe("Related publications (papers, preprints)"),
 
   // Controlled access users (accumulated)
-  controlledAccessUser: z.array(PersonSchema),
+  controlledAccessUser: z.array(PersonSchema)
+    .describe("Users with controlled access to the data"),
 
   // Version references
-  versionIds: z.array(z.string()),
-  latestVersion: z.string(),
+  versionIds: z.array(z.string())
+    .describe("List of version identifiers (e.g., ['hum0001.v1', 'hum0001.v2'])"),
+  latestVersion: z.string()
+    .describe("Latest version number (e.g., 'v2')"),
 
   // Timestamps
-  datePublished: z.string(),
-  dateModified: z.string(),
+  datePublished: z.string()
+    .describe("ISO 8601 timestamp when the Research was first published"),
+  dateModified: z.string()
+    .describe("ISO 8601 timestamp when the Research was last modified"),
 })
 export type Research = z.infer<typeof ResearchSchema>
 
@@ -275,14 +319,20 @@ export type DatasetRef = z.infer<typeof DatasetRefSchema>
 /** Research version (language-integrated) */
 export const ResearchVersionSchema = z.object({
   // Language-independent
-  humId: z.string(),
-  humVersionId: z.string(),
-  version: z.string(),
-  versionReleaseDate: z.string(),
-  datasets: z.array(DatasetRefSchema),
+  humId: z.string()
+    .describe("Research identifier (e.g., 'hum0001')"),
+  humVersionId: z.string()
+    .describe("Research version identifier (e.g., 'hum0001.v1')"),
+  version: z.string()
+    .describe("Version number (e.g., 'v1', 'v2')"),
+  versionReleaseDate: z.string()
+    .describe("ISO 8601 date when this version was released"),
+  datasets: z.array(DatasetRefSchema)
+    .describe("References to datasets linked to this Research version"),
 
   // Language-dependent
-  releaseNote: BilingualTextValueSchema,
+  releaseNote: BilingualTextValueSchema
+    .describe("Bilingual release note describing changes in this version"),
 })
 export type ResearchVersion = z.infer<typeof ResearchVersionSchema>
 

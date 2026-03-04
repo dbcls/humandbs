@@ -17,12 +17,12 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@/api/routes/errors"
-import type { AuthUser, EsResearchDoc } from "@/api/types"
+import type { AuthUser, EsResearch } from "@/api/types"
 
 // Extend Hono context with research data
 declare module "hono" {
   interface ContextVariableMap {
-    research: EsResearchDoc & { seqNo: number; primaryTerm: number }
+    research: EsResearch & { seqNo: number; primaryTerm: number }
   }
 }
 
@@ -103,7 +103,7 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
 /**
  * Check if user can modify the resource (admin or owner)
  */
-export const canModifyResource = (authUser: AuthUser | null, doc: EsResearchDoc): boolean => {
+export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): boolean => {
   if (!authUser) return false
   if (authUser.isAdmin) return true
   return doc.uids.includes(authUser.userId)

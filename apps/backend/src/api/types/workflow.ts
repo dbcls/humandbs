@@ -2,27 +2,21 @@
  * Research workflow type definitions
  *
  * This module provides:
- * - Research publication status
+ * - Research publication status (derived from es/types)
  * - Status transition actions
  * - Status transition rules
  */
 import { z } from "zod"
 
-// Re-export from es/types for convenience
-import { ResearchStatusSchema as EsResearchStatusSchema } from "../../es/types"
+import { ResearchStatusSchema } from "../../es/types"
 
-export const ResearchStatusSchema = EsResearchStatusSchema
-export type EsResearchStatus = z.infer<typeof ResearchStatusSchema>
+export { ResearchStatusSchema }
+export type ResearchStatus = z.infer<typeof ResearchStatusSchema>
 
-// === Research Status & Workflow ===
+// Zod schema から導出（手動同期不要）
+export const RESEARCH_STATUS = ResearchStatusSchema.options
 
-/**
- * Research publication status
- * Note: "deleted" is included for type compatibility with ES documents,
- * but deleted resources are filtered out in API responses (return 404)
- */
-export const RESEARCH_STATUS = ["draft", "review", "published", "deleted"] as const
-export type ResearchStatus = (typeof RESEARCH_STATUS)[number]
+// === Status Transition ===
 
 /**
  * Status transition actions

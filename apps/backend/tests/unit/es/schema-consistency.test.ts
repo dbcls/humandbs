@@ -13,7 +13,7 @@ import { researchVersionSchema, researchVersionMapping } from "@/es/research-ver
 import {
   EsResearchSchema,
   EsDatasetSchema,
-  EsResearchVersionSchema,
+  ResearchVersionSchema,
 } from "@/es/types"
 
 /**
@@ -166,9 +166,9 @@ describe("es/schema-consistency", () => {
     })
   })
 
-  describe("EsResearchVersionSchema vs researchVersionSchema", () => {
+  describe("ResearchVersionSchema vs researchVersionSchema", () => {
     it("should have matching top-level fields", () => {
-      const zodFields = getZodFieldNames(EsResearchVersionSchema)
+      const zodFields = getZodFieldNames(ResearchVersionSchema)
       const esSchemaFields = getSchemaFieldNames(researchVersionSchema)
 
       // Compare field sets

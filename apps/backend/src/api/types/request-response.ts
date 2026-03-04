@@ -12,21 +12,6 @@ import { z } from "zod"
 // Import from es/types
 
 import {
-  EsDatasetDocSchema,
-  EsDatasetDocWithMergedSchema,
-  EsResearchDetailSchema,
-  EsResearchVersionDocSchema,
-  DatasetVersionItemSchema,
-} from "./es-docs"
-import { FacetsMapSchema } from "./facets"
-import { ResearchSummarySchema } from "./query-params"
-import {
-  ResponseMetaReadOnlySchema,
-  ResponseMetaWithLockSchema,
-  ResponseMetaWithPaginationSchema,
-} from "./response"
-import { RESEARCH_STATUS } from "./workflow"
-import {
   BilingualTextSchema,
   BilingualTextValueSchema,
   CriteriaCanonicalSchema,
@@ -38,8 +23,23 @@ import {
   TextValueSchema,
   // Crawler schemas (for API request validation)
   CrawlerResearchSchema as ResearchSchema,
-  CrawlerResearchVersionSchema as ResearchVersionSchema,
+  ResearchVersionSchema,
 } from "../../es/types"
+
+import { EsDatasetSchema } from "./es-docs"
+import { FacetsMapSchema } from "./facets"
+import { ResearchSummarySchema } from "./query-params"
+import {
+  ResponseMetaReadOnlySchema,
+  ResponseMetaWithLockSchema,
+  ResponseMetaWithPaginationSchema,
+} from "./response"
+import {
+  DatasetDocWithMergedSchema,
+  ResearchDetailSchema,
+  DatasetVersionItemSchema,
+} from "./views"
+import { RESEARCH_STATUS } from "./workflow"
 
 // === Response Schemas ===
 
@@ -56,7 +56,7 @@ export const ExperimentSchemaBase = z.object({
 })
 
 // Dataset schema for API requests
-export const DatasetSchema = z.object({
+export const ApiDatasetSchema = z.object({
   datasetId: z
     .string()
     .describe("Unique dataset identifier (e.g., 'JGAD000001')"),
@@ -144,18 +144,6 @@ export const ProblemDetailsSchema = z.object({
     .describe("Unique request identifier for tracing and debugging"),
 })
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
-
-// === Response Meta Schema ===
-
-/**
- * Meta information for single resource responses
- * Contains optimistic locking fields
- */
-export const ResponseMetaSchema = z.object({
-  _seq_no: z.number(),
-  _primary_term: z.number(),
-})
-export type ResponseMeta = z.infer<typeof ResponseMetaSchema>
 
 // === Research API ===
 
@@ -264,7 +252,7 @@ export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
  * Research response with status info
  */
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
-  datasets: z.array(DatasetSchema).optional(), // Embedded datasets (for detail view)
+  datasets: z.array(ApiDatasetSchema).optional(), // Embedded datasets (for detail view)
 })
 export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
 
@@ -300,17 +288,9 @@ export type CreateVersionRequest = z.infer<typeof CreateVersionRequestSchema>
  * Version response
  */
 export const VersionResponseSchema = ResearchVersionSchema.extend({
-  datasets: z.array(DatasetSchema).optional(),
+  datasets: z.array(ApiDatasetSchema).optional(),
 })
 export type VersionResponse = z.infer<typeof VersionResponseSchema>
-
-/**
- * Versions list response
- */
-export const VersionsListResponseSchema = z.object({
-  data: z.array(VersionResponseSchema),
-})
-export type VersionsListResponse = z.infer<typeof VersionsListResponseSchema>
 
 // === Dataset API ===
 
@@ -357,28 +337,12 @@ export type UpdateDatasetRequest = z.infer<typeof UpdateDatasetRequestSchema>
 /**
  * Dataset with metadata
  */
-export const DatasetWithMetadataSchema = DatasetSchema.extend({
+export const DatasetWithMetadataSchema = ApiDatasetSchema.extend({
   ownerId: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 })
 export type DatasetWithMetadata = z.infer<typeof DatasetWithMetadataSchema>
-
-/**
- * Dataset list response
- */
-export const DatasetListResponseSchema = z.object({
-  data: z.array(DatasetWithMetadataSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-    hasNext: z.boolean(),
-    hasPrev: z.boolean(),
-  }),
-})
-export type DatasetListResponse = z.infer<typeof DatasetListResponseSchema>
 
 // === Create Dataset for Research ===
 
@@ -411,75 +375,6 @@ export const CreateDatasetForResearchRequestSchema = z.object({
 export type CreateDatasetForResearchRequest = z.infer<
   typeof CreateDatasetForResearchRequestSchema
 >
-
-// === Link API (Research-Dataset relationship) ===
-
-/**
- * Linked datasets response
- */
-export const LinkedDatasetsResponseSchema = z.object({
-  data: z.array(EsDatasetDocSchema),
-})
-export type LinkedDatasetsResponse = z.infer<
-  typeof LinkedDatasetsResponseSchema
->
-
-/**
- * Linked researches response
- * Note: Uses EsResearchDetailSchema (without versionIds) for API responses
- */
-export const LinkedResearchesResponseSchema = z.object({
-  data: z.array(EsResearchDetailSchema),
-})
-export type LinkedResearchesResponse = z.infer<
-  typeof LinkedResearchesResponseSchema
->
-
-// === Status Transition API ===
-
-// === Search Result Items ===
-
-/**
- * Search result item (Research)
- */
-export const SearchResearchResultSchema = z.object({
-  type: z.literal("research"),
-  humId: z.string(),
-  title: BilingualTextSchema,
-  summary: z.string().optional(),
-  dataProvider: z.array(z.string()),
-  releaseDate: z.string().optional(),
-  score: z.number().optional(),
-  highlights: z.record(z.string(), z.array(z.string())).optional(),
-})
-export type SearchResearchResult = z.infer<typeof SearchResearchResultSchema>
-
-/**
- * Search result item (Dataset)
- */
-export const SearchDatasetResultSchema = z.object({
-  type: z.literal("dataset"),
-  datasetId: z.string(),
-  humId: z.string(), // Parent research
-  typeOfData: z
-    .object({
-      ja: z.string().nullable(),
-      en: z.string().nullable(),
-    })
-    .optional(),
-  criteria: CriteriaCanonicalSchema.optional(),
-  score: z.number().optional(),
-  highlights: z.record(z.string(), z.array(z.string())).optional(),
-})
-export type SearchDatasetResult = z.infer<typeof SearchDatasetResultSchema>
-
-/**
- * Facets response
- */
-export const FacetsResponseSchema = z.object({
-  facets: FacetsMapSchema,
-})
-export type FacetsResponse = z.infer<typeof FacetsResponseSchema>
 
 /**
  * Facet value with count
@@ -652,7 +547,7 @@ export const createSearchResponseSchema = <T extends z.ZodType>(
     facets: FacetsMapSchema.optional(),
   })
 
-// Re-export schemas for route definitions (ResearchSchema, ResearchVersionSchema only - DatasetSchema defined above)
+// Re-export schemas for route definitions
 export { ResearchSchema, ResearchVersionSchema }
 
 // === Response Schemas for /research Routes ===
@@ -691,7 +586,7 @@ export type UidsResponse = z.infer<typeof UidsResponseSchema>
  * Omits internal ES locking fields from data — they are surfaced in meta instead.
  */
 export const ResearchDetailResponseSchema = createSingleResponseSchema(
-  EsResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
+  ResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
 )
 export type ResearchDetailResponse = z.infer<
   typeof ResearchDetailResponseSchema
@@ -720,7 +615,7 @@ export type ResearchSearchResponse = z.infer<
  * Research versions list response (GET /research/{humId}/versions)
  */
 export const ResearchVersionsListResponseSchema =
-  createListResponseSchema(EsResearchVersionDocSchema)
+  createListResponseSchema(ResearchVersionSchema)
 export type ResearchVersionsListResponse = z.infer<
   typeof ResearchVersionsListResponseSchema
 >
@@ -744,7 +639,7 @@ export type VersionCreateResponse = z.infer<typeof VersionCreateResponseSchema>
  * Linked datasets list response (GET /research/{humId}/dataset)
  */
 export const LinkedDatasetsListResponseSchema =
-  createListResponseSchema(EsDatasetDocSchema)
+  createListResponseSchema(EsDatasetSchema)
 export type LinkedDatasetsListResponse = z.infer<
   typeof LinkedDatasetsListResponseSchema
 >
@@ -753,7 +648,7 @@ export type LinkedDatasetsListResponse = z.infer<
  * Dataset create response (POST /research/{humId}/dataset/new)
  */
 export const DatasetCreateResponseSchema =
-  createSingleResponseSchema(EsDatasetDocSchema)
+  createSingleResponseSchema(EsDatasetSchema)
 export type DatasetCreateResponse = z.infer<typeof DatasetCreateResponseSchema>
 
 // === Response Schemas for /dataset Routes ===
@@ -762,14 +657,14 @@ export type DatasetCreateResponse = z.infer<typeof DatasetCreateResponseSchema>
  * Dataset search/list response (GET /dataset, POST /dataset/search)
  */
 export const DatasetSearchResponseSchema =
-  createSearchResponseSchema(EsDatasetDocSchema)
+  createSearchResponseSchema(EsDatasetSchema)
 export type DatasetSearchResponse = z.infer<typeof DatasetSearchResponseSchema>
 
 /**
  * Dataset detail response (GET /dataset/{datasetId})
  */
 export const DatasetDetailResponseSchema =
-  createSingleResponseSchema(EsDatasetDocWithMergedSchema)
+  createSingleResponseSchema(DatasetDocWithMergedSchema)
 export type DatasetDetailResponse = z.infer<typeof DatasetDetailResponseSchema>
 
 /**
@@ -790,12 +685,12 @@ export type DatasetVersionsListResponse = z.infer<typeof DatasetVersionsListResp
  * Dataset version detail response, read-only (GET /dataset/{datasetId}/versions/{version})
  */
 export const DatasetVersionDetailResponseSchema =
-  createSingleReadOnlyResponseSchema(EsDatasetDocWithMergedSchema)
+  createSingleReadOnlyResponseSchema(DatasetDocWithMergedSchema)
 export type DatasetVersionDetailResponse = z.infer<typeof DatasetVersionDetailResponseSchema>
 
 /**
  * Linked researches list response (GET /dataset/{datasetId}/research)
  */
 export const LinkedResearchesListResponseSchema =
-  createListResponseSchema(EsResearchDetailSchema)
+  createListResponseSchema(ResearchDetailSchema)
 export type LinkedResearchesListResponse = z.infer<typeof LinkedResearchesListResponseSchema>
