@@ -1,32 +1,32 @@
-import { useLoaderData } from "@tanstack/react-router";
+import { useLoaderData, useRouteContext, useRouter } from "@tanstack/react-router";
 import { LucideX } from "lucide-react";
-import { useLocale } from "use-intl";
 
-// import {
-//   $saveHiddenAlertIds,
-//   ActiveAlertsItemResponse,
-// } from "@/serverFunctions/alert";
+import {
+  $saveHiddenAlertIds,
+} from "@/serverFunctions/alert";
 
 import { Link } from "./Link";
 import { Button } from "./ui/button";
 
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });
-  // const locale = useLocale();
-  // const router = useRouter();
+
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" })
+
+  const router = useRouter()
 
   async function handleHideAlert(newsId: string) {
-    // await $saveHiddenAlertIds({ data: { newsId, locale } });
-    // await router.invalidate({
-    //   filter: (r) => r.fullPath !== "/{-$lang}/admin",
-    // });
+    await $saveHiddenAlertIds({ data: { newsId, locale: lang } });
+    await router.invalidate({
+      filter: (r) => r.fullPath !== "/{-$lang}/admin",
+    });
   }
 
   if (!alerts || alerts.length === 0) return null;
   return (
     <ul className="flex flex-col gap-2">
       {alerts.map((alert) => (
-        <AlertMessage key={alert.newsId} {...alert} onHide={handleHideAlert} />
+        <AlertMessage key={alert.newsId} {...alert} onHide={(alertId) => {handleHideAlert(alertId)}} />
       ))}
     </ul>
   );
@@ -37,9 +37,12 @@ export function AlertMessage({
   title,
   onHide,
 }: {
-  onHide?: (alertId: string) => void;
+    onHide?: (alertId: string) => void;
+    newsId: string;
+    title: string;
 }) {
-  const locale = useLocale();
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" })
+
   return (
     <div className="border-secondary text-foreground-dark flex items-center justify-between gap-2 rounded-sm border bg-white px-4 py-2">
       <div>
@@ -47,7 +50,7 @@ export function AlertMessage({
           variant={"alert"}
           to="/{-$lang}/news/$newsItemId"
           params={{
-            lang: locale,
+            lang,
             newsItemId: newsId,
           }}
         >

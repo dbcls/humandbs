@@ -11,8 +11,8 @@ import { datasetsColumnHelper, datasetsColumns } from "./data-usage/datasets";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
-  loader: () => ({ crumb: "Cart" }),
   ssr: false,
+  loader: () => ({ crumb: "Cart" }),
 });
 
 const cartDatasetColumns = [
@@ -23,7 +23,12 @@ const cartDatasetColumns = [
       const { remove } = useCart();
 
       return (
-        <Button variant={"plain"} onClick={() => remove(ctx.row.original)}>
+        <Button
+          variant={"plain"}
+          onClick={() => {
+            remove(ctx.row.original);
+          }}
+        >
           <Trash2 className="text-danger size-5" />
         </Button>
       );

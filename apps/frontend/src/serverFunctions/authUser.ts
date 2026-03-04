@@ -1,4 +1,4 @@
-import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 
 import { USER_ROLES, type UserRole } from "@/config/permissions";
@@ -37,8 +37,8 @@ function getDevBypassResponse(): AuthUserResponse | null {
   };
 
   const mockSession: SessionMeta = {
-    expires_at: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
-    refresh_expires_at: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days
+    expires_at: `${Math.floor(Date.now() / 1000) + 86400}`, // 24 hours from now
+    refresh_expires_at: `${Math.floor(Date.now() / 1000) + 86400 * 7}`, // 7 days
     expires_in: 86400,
     refresh_expires_in: 86400 * 7,
   };

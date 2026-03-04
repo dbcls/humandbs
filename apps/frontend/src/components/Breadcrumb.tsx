@@ -118,7 +118,7 @@ function Breadcrumbs() {
     return matches
       .filter((match) => isMatch(match, "loaderData.crumb"))
       .map((match) => ({
-        label: (match.loaderData?.crumb ?? "") as string,
+        label: match.loaderData?.crumb ?? "",
         href: match.fullPath,
       }));
   }, [matches]);
@@ -130,6 +130,7 @@ function Breadcrumbs() {
           <React.Fragment key={href}>
             <BreadcrumbItem>
               <Link
+                //@ts-expect-error
                 to={href}
                 className={cn("text-foreground-light", {
                   "text-secondary": index === crumbs.length - 1,

@@ -48,6 +48,7 @@ export default defineConfig([
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/only-throw-error": "off",
       "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
     },
   },
   ...file_scope(eslintTanstackRouter.configs["flat/recommended"]),

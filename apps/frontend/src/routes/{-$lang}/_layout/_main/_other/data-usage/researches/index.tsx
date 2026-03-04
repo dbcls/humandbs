@@ -59,7 +59,9 @@ function RouteComponent() {
         <SearchCaption
           title={t("research-list")}
           committedQuery={search.query ?? ""}
-          onQueryChange={(query) => setFilters({ query })}
+          onQueryChange={(query) => {
+            setFilters({ query });
+          }}
           onFilterClick={onFilterClick}
         />
       )}

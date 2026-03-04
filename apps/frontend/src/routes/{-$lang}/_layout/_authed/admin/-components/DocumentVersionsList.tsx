@@ -3,18 +3,18 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { CopyIcon, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
+import type { ContentId } from "@/config/content-config";
 import { cn } from "@/lib/utils";
 import {
-  $cloneDocumentVersion,
   $createDocumentVersion,
   $deleteDocumentVersion,
   type DocVersionListItemResponse,
-  getDocumentVersionsListQueryOptions,
+  getDocumentVersionListQueryOptions,
 } from "@/serverFunctions/documentVersion";
 import useConfirmationStore from "@/stores/confirmationStore";
 
@@ -25,10 +25,10 @@ export function DocumentVersionsList({
   contentId,
   onSelect,
 }: {
-  contentId: string;
+  contentId: ContentId;
   onSelect: (documentVersionItem: DocVersionListItemResponse) => void;
 }) {
-  const documentVersionsListQO = getDocumentVersionsListQueryOptions({
+  const documentVersionsListQO = getDocumentVersionListQueryOptions({
     contentId,
   });
 
@@ -61,7 +61,7 @@ export function DocumentVersionsList({
       await queryClient.cancelQueries(documentVersionsListQO);
 
       const previousVersions = queryClient.getQueryData(
-        documentVersionsListQO.queryKey
+        documentVersionsListQO.queryKey,
       );
 
       queryClient.setQueryData(documentVersionsListQO.queryKey, (old) => {
@@ -74,7 +74,7 @@ export function DocumentVersionsList({
     onError: (_error, _versionNumber, context) => {
       queryClient.setQueryData(
         documentVersionsListQO.queryKey,
-        context?.previousVersions
+        context?.previousVersions,
       );
     },
     onSettled: () => {
@@ -87,58 +87,60 @@ export function DocumentVersionsList({
       title: "Delete Version",
       description: "Are you sure you want to delete this version?",
       actionLabel: "Delete",
-      onAction: () => deleteDocumentVersion(versionNumber),
+      onAction: () => {
+        deleteDocumentVersion(versionNumber);
+      },
     });
   }
 
-  const { mutate: cloneDocumentVersion } = useMutation({
-    mutationFn: (versionNumber: number) =>
-      $cloneDocumentVersion({ data: { versionNumber, contentId } }),
-    onMutate: async (versionNumber) => {
-      await queryClient.cancelQueries(documentVersionsListQO);
+  // const { mutate: cloneDocumentVersion } = useMutation({
+  //   mutationFn: (versionNumber: number) =>
+  //     $cloneDocumentVersion({ data: { versionNumber, contentId } }),
+  //   onMutate: async (versionNumber) => {
+  //     await queryClient.cancelQueries(documentVersionsListQO);
 
-      const previousVersions = queryClient.getQueryData(
-        documentVersionsListQO.queryKey
-      );
+  //     const previousVersions = queryClient.getQueryData(
+  //       documentVersionsListQO.queryKey
+  //     );
 
-      queryClient.setQueryData(documentVersionsListQO.queryKey, (prev) => {
-        if (!prev) return;
+  //     queryClient.setQueryData(documentVersionsListQO.queryKey, (prev) => {
+  //       if (!prev) return;
 
-        const versionToClone = prev.find(
-          (v) => v.versionNumber === versionNumber
-        );
+  //       const versionToClone = prev.find(
+  //         (v) => v.versionNumber === versionNumber
+  //       );
 
-        const newVersionNumber =
-          Math.max(...prev.map((v) => v.versionNumber)) + 1;
+  //       const newVersionNumber =
+  //         Math.max(...prev.map((v) => v.versionNumber)) + 1;
 
-        if (!versionToClone) return;
+  //       if (!versionToClone) return;
 
-        return [
-          { ...versionToClone, versionNumber: newVersionNumber },
-          ...prev,
-        ];
-      });
+  //       return [
+  //         { ...versionToClone, versionNumber: newVersionNumber },
+  //         ...prev,
+  //       ];
+  //     });
 
-      return { previousVersions };
-    },
-    onError: (_, __, context) => {
-      if (context) {
-        queryClient.setQueryData(
-          documentVersionsListQO.queryKey,
-          context.previousVersions
-        );
-      }
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries(documentVersionsListQO);
-    },
-  });
+  //     return { previousVersions };
+  //   },
+  //   onError: (_, __, context) => {
+  //     if (context) {
+  //       queryClient.setQueryData(
+  //         documentVersionsListQO.queryKey,
+  //         context.previousVersions
+  //       );
+  //     }
+  //   },
+  //   onSettled: async () => {
+  //     await queryClient.invalidateQueries(documentVersionsListQO);
+  //   },
+  // });
 
-  const canCloneVersion = (version: DocVersionListItemResponse) => {
-    return !(
-      version.statuses.includes("draft") && version.statuses.length === 1
-    );
-  };
+  // const canCloneVersion = (version: DocVersionListItemResponse) => {
+  //   return !(
+  //     version.statuses.includes("draft") && version.statuses.length === 1
+  //   );
+  // };
 
   function handleSelectVersion(version: DocVersionListItemResponse) {
     setSelectedVersion(version);
@@ -148,23 +150,31 @@ export function DocumentVersionsList({
   return (
     <ul>
       <li className="mb-5">
-        <AddNewButton onClick={handleAddNewVersion} />
+        <AddNewButton
+          onClick={() => {
+            handleAddNewVersion();
+          }}
+        />
       </li>
 
       {versions.map((v) => {
         const isActive = selectedVersion?.versionNumber === v.versionNumber;
         return (
           <ListItem
-            key={v.versionNumber + v.statuses.join()}
+            key={`${v.versionNumber} ${v.translations.map((t) => t.statuses.map((tt) => tt.status)).join()}`}
             isActive={isActive}
-            onClick={() => handleSelectVersion(v)}
+            onClick={() => {
+              handleSelectVersion(v);
+            }}
           >
             <span>{v.versionNumber}</span>
             <span className="ml-4 flex items-center gap-1">
+              {/* @ts-ignore */}
               {v.statuses.map((status) => (
+                //@ts-ignore
                 <StatusTag key={status} isActive={isActive} status={status} />
               ))}
-              <Button
+              {/*<Button
                 variant={"ghost"}
                 disabled={canCloneVersion(v)}
                 size={"slim"}
@@ -181,7 +191,7 @@ export function DocumentVersionsList({
                     }
                   )}
                 />
-              </Button>
+              </Button>*/}
               <Button
                 variant={"ghost"}
                 size={"slim"}

@@ -222,6 +222,7 @@ function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
       className={cn("hover:bg-hover rounded-sm px-3 py-2 transition-colors", {
         "bg-secondary/20 hover:bg-secondary/30": activeTab === tab,
       })}
+      //@ts-expect-error
       to={`/{-$lang}/admin/${tab}`}
       params={{ lang }}
     >

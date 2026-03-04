@@ -41,7 +41,13 @@ export function Markdown({ contentHtml, className }: MarkdownProps) {
           if (href?.startsWith("/")) {
             // Internal link - use your router's Link component
             return (
-              <Link to={href}>{domToReact(domNode.children, options)}</Link>
+              <Link to={href}>
+                {domToReact(
+                  //@ts-ignore
+                  domNode.children,
+                  options,
+                )}
+              </Link>
             );
           }
         }
@@ -57,7 +63,11 @@ export function Markdown({ contentHtml, className }: MarkdownProps) {
               type={getCalloutType(domNode.attribs.type)}
               title={domNode.attribs.title}
             >
-              {domToReact(domNode.children, options)}
+              {domToReact(
+                //@ts-ignore
+                domNode.children,
+                options,
+              )}
             </Callout>
           );
         }

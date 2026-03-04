@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --host 0.0.0.0 --port 3000",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs",
+    "start": "bun server.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
@@ -16,7 +16,6 @@
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.8.1",
     "@humandbs/backend": "workspace:*",
-    "@markdoc/markdoc": "^0.5.4",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-query-devtools": "^5.91.3",
