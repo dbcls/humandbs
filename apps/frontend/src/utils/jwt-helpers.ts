@@ -106,6 +106,7 @@ export const $$getJWT = createServerOnlyFn(() => {
     return process.env.AUTH_DEV_USER_ID ?? "dev-user-id";
   }
   const session = $$getSession();
+
   return session?.access_token ?? null;
 });
 

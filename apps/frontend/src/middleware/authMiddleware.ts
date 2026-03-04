@@ -29,11 +29,11 @@ export const hasPermissionMiddleware = createMiddleware({
           action: Permissions[Resource]["action"],
           data?: Permissions[Resource]["dataType"],
         ) => {
-          // if (!hasPermission(context.user, resource, action, data)) {
-          //   throw new Error("Forbidden", {
-          //     cause: `Trying to ${action} ${resource} for user ${context.user?.name}`,
-          //   });
-          // }
+          if (!hasPermission(context.user, resource, action, data)) {
+            throw new Error("Forbidden", {
+              cause: `Trying to ${action} ${resource} for user ${context.user?.name}`,
+            });
+          }
         },
       },
     });

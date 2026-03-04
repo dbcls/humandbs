@@ -124,31 +124,49 @@ interface APIService {
   ): Promise<ResearchSearchUnifiedResponse>;
   searchDatasets(
     query: DatasetSearchBody,
+    accessToken?: string,
   ): Promise<DatasetSearchUnifiedResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
   createResearch(
     body: CreateResearchRequest,
+    accessToken: string,
   ): Promise<ResearchWithLockResponse>;
   updateResearch(
     humId: string,
     body: UpdateResearchRequest,
+    accessToken: string,
   ): Promise<ResearchWithLockResponse>;
-  deleteResearch(humId: string): Promise<void>;
+  deleteResearch(humId: string, accessToken: string): Promise<void>;
   updateResearchUids(
     humId: string,
     body: UpdateUidsRequest,
+    accessToken: string,
   ): Promise<ResearchWithLockResponse>;
   createResearchVersion(
     humId: string,
     body: CreateVersionRequest,
+    accessToken: string,
   ): Promise<VersionCreateResponse>;
-  submitResearch(humId: string): Promise<WorkflowUnifiedResponse>;
-  approveResearch(humId: string): Promise<WorkflowUnifiedResponse>;
-  rejectResearch(humId: string): Promise<WorkflowUnifiedResponse>;
-  unpublishResearch(humId: string): Promise<WorkflowUnifiedResponse>;
+  submitResearch(
+    humId: string,
+    accessToken: string,
+  ): Promise<WorkflowUnifiedResponse>;
+  approveResearch(
+    humId: string,
+    accessToken: string,
+  ): Promise<WorkflowUnifiedResponse>;
+  rejectResearch(
+    humId: string,
+    accessToken: string,
+  ): Promise<WorkflowUnifiedResponse>;
+  unpublishResearch(
+    humId: string,
+    accessToken: string,
+  ): Promise<WorkflowUnifiedResponse>;
   createDatasetForResearch(
     humId: string,
     body: CreateDatasetForResearchRequest,
+    accessToken: string,
   ): Promise<DatasetCreateResponse>;
 }
 
@@ -245,7 +263,7 @@ const api: APIService = {
     return res.data;
   },
 
-  async createResearch(body) {
+  async createResearch(body, accessToken) {
     const res = await axiosInstance.post<ResearchWithLockResponse>(
       `/research/new`,
       body,

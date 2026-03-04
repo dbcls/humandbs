@@ -77,7 +77,7 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
       let role: UserRole = USER_ROLES.USER;
 
       const isAdminRes = await fetch(
-        `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}/users/is-admin`,
+        `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}/api/admin/is-admin`,
         {
           method: "GET",
           headers: {
@@ -92,9 +92,11 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
       }
 
       if (isAdminRes.ok) {
-        const { isAdmin } = (await isAdminRes.json()) as { isAdmin: boolean };
+        const response = (await isAdminRes.json()) as {
+          data: { isAdmin: boolean };
+        };
 
-        if (isAdmin) {
+        if (response.data.isAdmin) {
           role = USER_ROLES.ADMIN;
         }
       }
@@ -104,7 +106,7 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
         name: claims.name ?? "",
         email: claims.email ?? "",
         username: claims.preferred_username ?? "",
-        role: role,
+        role,
       };
 
       const sessionMeta: SessionMeta = {
