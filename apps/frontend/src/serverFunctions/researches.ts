@@ -4,6 +4,9 @@ import {
   LangQuerySchema,
   LangVersionQuerySchema,
   ResearchSearchBodySchema,
+  UpdateResearchRequestSchema,
+  UpdateUidsRequestSchema,
+  type ResearchDetailResponse,
   type ResearchSearchBody,
   type ResearchSearchUnifiedResponse,
   type ResearchWithLockResponse,
@@ -19,6 +22,20 @@ import { $$getJWT } from "@/utils/jwt-helpers";
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
   | { ok: false; error: string; code?: "HUMID_CONFLICT" };
+export type UpdateResearchResult =
+  | { ok: true; data: ResearchWithLockResponse }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+export type UpdateResearchUidsResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
 
 export const $createResearch = createServerFn({ method: "POST" })
   .inputValidator(CreateResearchRequestSchema)
@@ -26,7 +43,6 @@ export const $createResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
-    console.log("create research ", data);
     try {
       const result = await api.createResearch(data, accessToken);
       return { ok: true, data: result };
@@ -36,6 +52,82 @@ export const $createResearch = createServerFn({ method: "POST" })
           (error.data as { detail?: string } | undefined)?.detail ??
           "A research with this humId already exists.";
         return { ok: false, error: detail, code: "HUMID_CONFLICT" };
+      }
+      throw error;
+    }
+  });
+
+const UpdateResearchInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+  body: UpdateResearchRequestSchema,
+});
+
+export const $updateResearch = createServerFn({ method: "POST" })
+  .inputValidator(UpdateResearchInputSchema)
+  .handler<Promise<UpdateResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      const result = await api.updateResearch(
+        data.humId,
+        data.body,
+        accessToken,
+      );
+      return { ok: true, data: result };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to update research.";
+        if (error.status === 409) {
+          return { ok: false, error: detail, code: "CONFLICT" };
+        }
+        if (error.status === 403) {
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        }
+        if (error.status === 404) {
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        }
+        if (error.status === 401) {
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
+      }
+      throw error;
+    }
+  });
+
+const UpdateResearchUidsInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+  body: UpdateUidsRequestSchema,
+});
+
+export const $updateResearchUids = createServerFn({ method: "POST" })
+  .inputValidator(UpdateResearchUidsInputSchema)
+  .handler<Promise<UpdateResearchUidsResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      await api.updateResearchUids(data.humId, data.body, accessToken);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to update research uids.";
+        if (error.status === 409) {
+          return { ok: false, error: detail, code: "CONFLICT" };
+        }
+        if (error.status === 403) {
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        }
+        if (error.status === 404) {
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        }
+        if (error.status === 401) {
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
       }
       throw error;
     }
@@ -93,12 +185,14 @@ export const ResearchQuerySchema = z.object({
 export const $getResearch = createServerFn()
   .inputValidator(ResearchQuerySchema)
   .handler(({ data }) => {
+    const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
 
     return api.getResearchDetail({
       search: { ...search, includeRawHtml: false },
       params: { humId },
+      accessToken: accessToken ?? undefined,
     });
   });
 
@@ -108,5 +202,32 @@ export function getResearchQueryOptions(
   return queryOptions({
     queryKey: ["researches", "byId", query],
     queryFn: () => $getResearch({ data: query }),
+  });
+}
+
+const ResearchEditQuerySchema = z.object({
+  ...HumIdParamsSchema.shape,
+  ...LangVersionQuerySchema.shape,
+});
+
+export const $getResearchForEdit = createServerFn()
+  .inputValidator(ResearchEditQuerySchema)
+  .handler<Promise<ResearchDetailResponse>>(({ data }) => {
+    const accessToken = $$getJWT();
+    const { humId, ...search } = filterDefined(data);
+
+    return api.getResearchDetail({
+      search: { ...search, includeRawHtml: true },
+      params: { humId },
+      accessToken: accessToken ?? undefined,
+    });
+  });
+
+export function getResearchForEditQueryOptions(
+  query: z.infer<typeof ResearchEditQuerySchema>,
+) {
+  return queryOptions({
+    queryKey: ["researches", "byId", "edit", query],
+    queryFn: () => $getResearchForEdit({ data: query }),
   });
 }

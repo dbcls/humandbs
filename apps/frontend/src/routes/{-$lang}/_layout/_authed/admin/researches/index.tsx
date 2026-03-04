@@ -10,17 +10,25 @@ import {
   type Updater,
   useReactTable,
 } from "@tanstack/react-table";
-import { startTransition, Suspense, useCallback, useMemo } from "react";
+import {
+  startTransition,
+  Suspense,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
 import { Card } from "@/components/Card";
 import { Pagination } from "@/components/Pagination";
 import { SortHeader, Table } from "@/components/Table";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Locale } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 
 import { CreateResearchDialog } from "./-CreateResearchDialog";
+import { UpdateResearchDialog } from "./-UpdateResearchDialog";
 
 const searchSchema = ResearchSearchBodySchema.omit({
   lang: true,
@@ -59,6 +67,7 @@ function CardContent() {
   const { lang } = Route.useRouteContext();
   const search = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
+  const [editingHumId, setEditingHumId] = useState<string | null>(null);
 
   const sorting = useMemo(() => {
     if (!search.sort) return [];
@@ -81,6 +90,12 @@ function CardContent() {
     },
     [setFilters, search],
   );
+  const handleEdit = useCallback((humId: string) => {
+    setEditingHumId(humId);
+  }, []);
+  const handleCloseEdit = useCallback(() => {
+    setEditingHumId(null);
+  }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -90,12 +105,18 @@ function CardContent() {
             lang={lang}
             sorting={sorting}
             onSortingChange={handleSortingChange}
+            onEdit={handleEdit}
           />
         </Suspense>
       </div>
       <Suspense>
         <TablePagination lang={lang} />
       </Suspense>
+      <UpdateResearchDialog
+        lang={lang}
+        humId={editingHumId}
+        onClose={handleCloseEdit}
+      />
     </div>
   );
 }
@@ -104,15 +125,18 @@ function ResearchTable({
   lang,
   sorting,
   onSortingChange,
+  onEdit,
 }: {
   lang: Locale;
   sorting: SortingState;
   onSortingChange: (updater: Updater<SortingState>) => void;
+  onEdit: (humId: string) => void;
 }) {
   const search = Route.useSearch();
   const { data: researchesData } = useSuspenseQuery(
     getResearchesQueryOptions({ ...search, lang }),
   );
+  const columns = useMemo(() => getColumns(onEdit), [onEdit]);
 
   return (
     <Table
@@ -134,6 +158,7 @@ function TablePagination({ lang }: { lang: Locale }) {
 }
 
 function TableSkeleton() {
+  const columns = useMemo(() => getColumns(() => {}), []);
   const table = useReactTable({
     data: [],
     columns,
@@ -188,66 +213,85 @@ function TableSkeleton() {
 const columnHelper =
   createColumnHelper<ResearchSearchUnifiedResponse["data"][number]>();
 
-const columns = [
-  columnHelper.accessor("humId", {
-    id: "humId",
-    header: (ctx) => <SortHeader ctx={ctx} label="Research ID" />,
-    cell: (ctx) => <span className="font-mono">{ctx.getValue()}</span>,
-    size: 15,
-  }),
-  columnHelper.accessor("datasetIds", {
-    id: "datasets",
-    header: "Datasets",
-    cell: (ctx) => (
-      <ul>
-        {ctx.row.original.datasetIds.map((datasetId) => (
-          <li key={datasetId} className="font-mono text-xs">
-            {datasetId}
-          </li>
-        ))}
-      </ul>
-    ),
-    size: 15,
-  }),
-  columnHelper.accessor("title", {
-    id: "title",
-    header: (ctx) => <SortHeader ctx={ctx} label="Title" />,
-    cell: (ctx) => ctx.getValue(),
-  }),
-  columnHelper.accessor((row) => row.versions[0], {
-    id: "datePublished",
-    header: (ctx) => <SortHeader ctx={ctx} label="Date Published" />,
-    size: 10,
-    cell: (ctx) => {
-      const v = ctx.getValue();
-      if (!v) return null;
-      return (
-        <span>
-          {v.releaseDate}
-          <span className="text-xs text-foreground-light">({v.version})</span>
-        </span>
-      );
-    },
-  }),
-  columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
-    id: "dateModified",
-    header: (ctx) => <SortHeader ctx={ctx} label="Date Modified" />,
-    size: 10,
-    cell: (ctx) => {
-      const v = ctx.getValue();
-      if (!v) return null;
-      return (
-        <span>
-          {v.releaseDate}
-          <span className="text-xs text-foreground-light">({v.version})</span>
-        </span>
-      );
-    },
-  }),
-  columnHelper.accessor("criteria", {
-    id: "criteria",
-    header: "Criteria",
-    cell: (ctx) => <span className="text-xs">{ctx.getValue()}</span>,
-    size: 15,
-  }),
-];
+function getColumns(onEdit: (humId: string) => void) {
+  return [
+    columnHelper.accessor("humId", {
+      id: "humId",
+      header: (ctx) => <SortHeader ctx={ctx} label="Research ID" />,
+      cell: (ctx) => <span className="font-mono">{ctx.getValue()}</span>,
+      size: 15,
+    }),
+    columnHelper.accessor("datasetIds", {
+      id: "datasets",
+      header: "Datasets",
+      cell: (ctx) => (
+        <ul>
+          {ctx.row.original.datasetIds.map((datasetId) => (
+            <li key={datasetId} className="font-mono text-xs">
+              {datasetId}
+            </li>
+          ))}
+        </ul>
+      ),
+      size: 15,
+    }),
+    columnHelper.accessor("title", {
+      id: "title",
+      header: (ctx) => <SortHeader ctx={ctx} label="Title" />,
+      cell: (ctx) => ctx.getValue(),
+    }),
+    columnHelper.accessor((row) => row.versions[0], {
+      id: "datePublished",
+      header: (ctx) => <SortHeader ctx={ctx} label="Date Published" />,
+      size: 10,
+      cell: (ctx) => {
+        const v = ctx.getValue();
+        if (!v) return null;
+        return (
+          <span>
+            {v.releaseDate}
+            <span className="text-xs text-foreground-light">({v.version})</span>
+          </span>
+        );
+      },
+    }),
+    columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
+      id: "dateModified",
+      header: (ctx) => <SortHeader ctx={ctx} label="Date Modified" />,
+      size: 10,
+      cell: (ctx) => {
+        const v = ctx.getValue();
+        if (!v) return null;
+        return (
+          <span>
+            {v.releaseDate}
+            <span className="text-xs text-foreground-light">({v.version})</span>
+          </span>
+        );
+      },
+    }),
+    columnHelper.accessor("criteria", {
+      id: "criteria",
+      header: "Criteria",
+      cell: (ctx) => <span className="text-xs">{ctx.getValue()}</span>,
+      size: 15,
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: "Actions",
+      size: 8,
+      cell: (ctx) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="slim"
+          onClick={() => {
+            onEdit(ctx.row.original.humId);
+          }}
+        >
+          Edit
+        </Button>
+      ),
+    }),
+  ];
+}
