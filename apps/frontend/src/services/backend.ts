@@ -26,74 +26,93 @@ import {
   type DatasetCreateResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
-import axios, { type AxiosError } from "axios";
 import { z } from "zod";
 
-// Extend Error type to include custom properties
-declare global {
-  interface Error {
-    status?: number;
-    data?: unknown;
-  }
-}
-
 const getBackendBaseUrl = createIsomorphicFn()
-  .client(() => {
-    return `/api`;
-  })
+  .client(() => `/api`)
   .server(
     () =>
       `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}${process.env.HUMANDBS_BACKEND_URL_PREFIX}`,
   );
 
-const axiosInstance = axios.create({
-  baseURL: getBackendBaseUrl(),
-});
+export class APIError extends Error {
+  status: number;
+  data: unknown;
 
-// Add response interceptor to handle errors properly
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    // Handle Axios errors more gracefully to prevent crashes
-    const url = error.config?.url || "unknown";
-    const method = error.config?.method?.toUpperCase() || "unknown";
+  constructor(status: number, method: string, url: string, data: unknown) {
+    super(`API Error: ${status} - ${method} ${url}`);
+    this.name = "APIError";
+    this.status = status;
+    this.data = data;
+  }
+}
 
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error(`API Error: ${method} ${url} - ${error.response.status}`, {
-        status: error.response.status,
-        data: error.response.data,
-        url: url,
-      });
+async function request<T>(
+  path: string,
+  options: RequestInit & { params?: Record<string, unknown> } = {},
+): Promise<T> {
+  const { params, ...init } = options;
+  const baseUrl = getBackendBaseUrl();
+  const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+  const url = new URL(path.replace(/^\//, ""), base);
 
-      const customError = new Error(
-        `API Error: ${error.response.status} - ${method} ${url}`,
-      );
-      customError.name = "APIError";
-      customError.status = error.response.status;
-      customError.data = error.response.data;
-
-      return Promise.reject(customError);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error(`Network Error: ${method} ${url} - No response received`);
-      const customError = new Error(
-        `Network Error: No response received - ${method} ${url}`,
-      );
-      customError.name = "NetworkError";
-      return Promise.reject(customError);
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error(`Request Error: ${method} ${url} - ${error.message}`);
-      const customError = new Error(
-        `Request Error: ${error.message} - ${method} ${url}`,
-      );
-      customError.name = "RequestError";
-      return Promise.reject(customError);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) {
+        url.searchParams.set(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+      }
     }
-  },
-);
+  }
+
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = new Headers(init.headers);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(url.toString(), { ...init, headers });
+
+  if (!res.ok) {
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      data = undefined;
+    }
+    console.error(`API Error: ${method} ${path} - ${res.status}`, {
+      status: res.status,
+      data,
+      url: path,
+    });
+    throw new APIError(res.status, method, path, data);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+function get<T>(path: string, params?: Record<string, unknown>, headers?: HeadersInit) {
+  return request<T>(path, { method: "GET", params, headers });
+}
+
+function post<T>(path: string, body: unknown, headers?: HeadersInit) {
+  return request<T>(path, {
+    method: "POST",
+    body: body != null ? JSON.stringify(body) : undefined,
+    headers,
+  });
+}
+
+function put<T>(path: string, body: unknown, headers?: HeadersInit) {
+  return request<T>(path, {
+    method: "PUT",
+    body: body != null ? JSON.stringify(body) : undefined,
+    headers,
+  });
+}
+
+function authHeader(accessToken: string): HeadersInit {
+  return { Authorization: `Bearer ${accessToken}` };
+}
 
 interface APIService {
   getResearchListPaginated(query: {
@@ -177,162 +196,100 @@ export const FixedPaginationSchema =
   });
 
 const api: APIService = {
-  async getResearchListPaginated(query) {
-    const res = await axiosInstance.get<ResearchSearchUnifiedResponse>(
-      `/research`,
-      {
-        params: query.search,
-      },
-    );
-    return res.data;
+  getResearchListPaginated(query) {
+    return get<ResearchSearchUnifiedResponse>(`/research`, query.search as Record<string, unknown>);
   },
 
-  async getResearchDetail(query) {
-    const res = await axiosInstance.get<ResearchDetailResponse>(
+  getResearchDetail(query) {
+    return get<ResearchDetailResponse>(
       `/research/${query.params.humId}`,
-      {
-        params: query.search,
-      },
+      query.search as Record<string, unknown>,
     );
-
-    return res.data;
   },
-  async getResearchVersions(query) {
-    const res = await axiosInstance.get<ResearchVersionsListResponse>(
+
+  getResearchVersions(query) {
+    return get<ResearchVersionsListResponse>(
       `/research/${query.params.humId}/versions`,
-      {
-        params: query.search,
-      },
+      query.search as Record<string, unknown>,
     );
-
-    return res.data;
   },
 
-  async getDatasetsPaginated(query) {
-    const res = await axiosInstance.get(`/dataset`, {
-      params: query.search,
-    });
-    return res.data as DatasetSearchUnifiedResponse;
+  getDatasetsPaginated(query) {
+    return get<DatasetSearchUnifiedResponse>(`/dataset`, query.search as Record<string, unknown>);
   },
 
-  async getDataset(query) {
-    const res = await axiosInstance.get<DatasetDetailResponse>(
+  getDataset(query) {
+    return get<DatasetDetailResponse>(
       `/dataset/${query.params.datasetId}`,
-      {
-        params: query.search,
-      },
+      query.search as Record<string, unknown>,
     );
-    return res.data;
   },
 
-  async getDatasetVersions(query) {
-    const res = await axiosInstance.get<DatasetVersionsResponse>(
+  getDatasetVersions(query) {
+    return get<DatasetVersionsResponse>(
       `/dataset/${query.params.datasetId}/versions`,
-      {
-        params: query.search,
-      },
+      query.search as Record<string, unknown>,
     );
-
-    return res.data;
   },
 
-  async searchResearches(query, accessToken) {
-    const res = await axiosInstance<ResearchSearchUnifiedResponse>({
-      method: "POST",
-      url: `/research/search`,
-      data: query,
-      ...(accessToken
-        ? { headers: { Authorization: `Bearer ${accessToken}` } }
-        : {}),
-    });
-
-    return res.data;
-  },
-  async searchDatasets(query) {
-    const res = await axiosInstance<DatasetSearchUnifiedResponse>({
-      method: "POST",
-      url: `/dataset/search`,
-      data: query,
-    });
-
-    return res.data;
-  },
-  async getAllFacets() {
-    const res = await axiosInstance.get<{ data: AllFacetsResponse }>(`/facets`);
-
-    return res.data;
-  },
-
-  async createResearch(body, accessToken) {
-    const res = await axiosInstance.post<ResearchWithLockResponse>(
-      `/research/new`,
-      body,
+  searchResearches(query, accessToken) {
+    return post<ResearchSearchUnifiedResponse>(
+      `/research/search`,
+      query,
+      accessToken ? authHeader(accessToken) : undefined,
     );
-    return res.data;
   },
 
-  async updateResearch(humId, body) {
-    const res = await axiosInstance.put<ResearchWithLockResponse>(
-      `/research/${humId}/update`,
-      body,
+  searchDatasets(query, accessToken) {
+    return post<DatasetSearchUnifiedResponse>(
+      `/dataset/search`,
+      query,
+      accessToken ? authHeader(accessToken) : undefined,
     );
-    return res.data;
   },
 
-  async deleteResearch(humId) {
-    await axiosInstance.post(`/research/${humId}/delete`);
+  getAllFacets() {
+    return get<{ data: AllFacetsResponse }>(`/facets`);
   },
 
-  async updateResearchUids(humId, body) {
-    const res = await axiosInstance.put<ResearchWithLockResponse>(
-      `/research/${humId}/uids`,
-      body,
-    );
-    return res.data;
+  createResearch(body, accessToken) {
+    return post<ResearchWithLockResponse>(`/research/new`, body, authHeader(accessToken));
   },
 
-  async createResearchVersion(humId, body) {
-    const res = await axiosInstance.post<VersionCreateResponse>(
-      `/research/${humId}/versions/new`,
-      body,
-    );
-    return res.data;
+  updateResearch(humId, body, accessToken) {
+    return put<ResearchWithLockResponse>(`/research/${humId}/update`, body, authHeader(accessToken));
   },
 
-  async submitResearch(humId) {
-    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
-      `/research/${humId}/submit`,
-    );
-    return res.data;
+  async deleteResearch(humId, accessToken) {
+    await post<undefined>(`/research/${humId}/delete`, null, authHeader(accessToken));
   },
 
-  async approveResearch(humId) {
-    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
-      `/research/${humId}/approve`,
-    );
-    return res.data;
+  updateResearchUids(humId, body, accessToken) {
+    return put<ResearchWithLockResponse>(`/research/${humId}/uids`, body, authHeader(accessToken));
   },
 
-  async rejectResearch(humId) {
-    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
-      `/research/${humId}/reject`,
-    );
-    return res.data;
+  createResearchVersion(humId, body, accessToken) {
+    return post<VersionCreateResponse>(`/research/${humId}/versions/new`, body, authHeader(accessToken));
   },
 
-  async unpublishResearch(humId) {
-    const res = await axiosInstance.post<WorkflowUnifiedResponse>(
-      `/research/${humId}/unpublish`,
-    );
-    return res.data;
+  submitResearch(humId, accessToken) {
+    return post<WorkflowUnifiedResponse>(`/research/${humId}/submit`, null, authHeader(accessToken));
   },
 
-  async createDatasetForResearch(humId, body) {
-    const res = await axiosInstance.post<DatasetCreateResponse>(
-      `/research/${humId}/dataset/new`,
-      body,
-    );
-    return res.data;
+  approveResearch(humId, accessToken) {
+    return post<WorkflowUnifiedResponse>(`/research/${humId}/approve`, null, authHeader(accessToken));
+  },
+
+  rejectResearch(humId, accessToken) {
+    return post<WorkflowUnifiedResponse>(`/research/${humId}/reject`, null, authHeader(accessToken));
+  },
+
+  unpublishResearch(humId, accessToken) {
+    return post<WorkflowUnifiedResponse>(`/research/${humId}/unpublish`, null, authHeader(accessToken));
+  },
+
+  createDatasetForResearch(humId, body, accessToken) {
+    return post<DatasetCreateResponse>(`/research/${humId}/dataset/new`, body, authHeader(accessToken));
   },
 };
 

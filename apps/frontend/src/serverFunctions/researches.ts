@@ -1,18 +1,45 @@
 import {
+  CreateResearchRequestSchema,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   ResearchSearchBodySchema,
   type ResearchSearchBody,
   type ResearchSearchUnifiedResponse,
+  type ResearchWithLockResponse,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { api } from "@/services/backend";
+import { api, APIError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+
+export type CreateResearchResult =
+  | { ok: true; data: ResearchWithLockResponse }
+  | { ok: false; error: string; code?: "HUMID_CONFLICT" };
+
+export const $createResearch = createServerFn({ method: "POST" })
+  .inputValidator(CreateResearchRequestSchema)
+  .handler<Promise<CreateResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    console.log("create research ", data);
+    try {
+      const result = await api.createResearch(data, accessToken);
+      return { ok: true, data: result };
+    } catch (error) {
+      if (error instanceof APIError && error.status === 409) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "A research with this humId already exists.";
+        return { ok: false, error: detail, code: "HUMID_CONFLICT" };
+      }
+      throw error;
+    }
+  });
 
 export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchBodySchema)

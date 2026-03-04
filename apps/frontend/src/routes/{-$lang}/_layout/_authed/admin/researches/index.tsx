@@ -1,11 +1,7 @@
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import {
-  createFileRoute,
-  functionalUpdate,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
   createColumnHelper,
   flexRender,
@@ -19,11 +15,12 @@ import { startTransition, Suspense, useCallback, useMemo } from "react";
 import { Card } from "@/components/Card";
 import { Pagination } from "@/components/Pagination";
 import { SortHeader, Table } from "@/components/Table";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Locale } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
+
+import { CreateResearchDialog } from "./-CreateResearchDialog";
 
 const searchSchema = ResearchSearchBodySchema.omit({
   lang: true,
@@ -44,9 +41,6 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
-  const { lang } = Route.useRouteContext();
-  const navigate = useNavigate();
-
   return (
     <Card
       className="flex h-full flex-1 flex-col"
@@ -54,17 +48,7 @@ function RouteComponent() {
       containerClassName="flex flex-1 flex-col overflow-hidden"
     >
       <div className="flex justify-between pb-2">
-        <Button
-          variant={"accent"}
-          onClick={() =>
-            navigate({
-              to: "/{-$lang}/admin/researches/create",
-              params: { lang },
-            })
-          }
-        >
-          Add New
-        </Button>
+        <CreateResearchDialog />
       </div>
       <CardContent />
     </Card>
