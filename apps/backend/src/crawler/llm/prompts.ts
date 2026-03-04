@@ -36,7 +36,7 @@ Use ALL available information to extract fields. When both ja/en exist, cross-re
 - healthStatus: "affected" if disease mentioned, "healthy" if only controls, "mixed" if both.
 - diseases: ALL diseases. label in English, icd10 only if explicitly stated in text.
 - tissues: ALL specimen/tissue types mentioned (e.g. ["skin", "PBMC"]). Empty [] if none.
-- isTumor: true if tumor/cancer tissue, false if normal, null if unclear.
+- isTumor: "tumor" if tumor/cancer tissue, "normal" if normal tissue, "mixed" if both tumor and normal, null if unclear.
 - cellLine: Array of cell line names if used (e.g. ["HeLa", "HepG2"]). Empty [] if none.
 - population: Array of population/ethnicity if stated (e.g. ["Japanese", "East Asian"]). Check externalMetadata TITLE/DESCRIPTION. Empty [] if not stated.
 - sex: "male" if only male subjects, "female" if only female, "mixed" if both mentioned. null if not stated.
@@ -106,7 +106,7 @@ Output:
   "healthStatus": "mixed",
   "diseases": [{ "label": "lung cancer", "icd10": "C34" }],
   "tissues": ["tumor tissue", "peripheral blood"],
-  "isTumor": true,
+  "isTumor": "tumor",
   "cellLine": [],
   "population": ["Japanese"],
   "sex": "mixed",

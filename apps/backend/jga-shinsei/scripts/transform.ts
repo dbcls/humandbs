@@ -202,7 +202,6 @@ function buildControl(
   return {
     lang: getValue("lang") as Lang | null,
     groupId: getValue("group_id"),
-    isEditAccount: toBooleanOrNull(getValues("is_edit_account")[0] ?? null),
     isNoneCollaborator: toBooleanOrNull(getValue("is_none_collaborator")),
     privateComment: getValue("private_comment"),
     isDeclareStatement: toBooleanOrNull(getValue("is_declare_statement")),
@@ -452,7 +451,7 @@ export function transformDsApplication(
 
     statusHistory: buildStatusHistory(raw.status_history),
     submitDate: raw.submit_date,
-    createDate: raw.application.create_date,
+    createDate: raw.create_date,
   }
 }
 
@@ -547,7 +546,7 @@ export function transformDuApplication(
 
     statusHistory: buildStatusHistory(raw.status_history),
     submitDate: raw.submit_date,
-    createDate: raw.application.create_date,
+    createDate: raw.create_date,
   }
 }
 

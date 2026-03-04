@@ -29,6 +29,7 @@ import {
   PlatformInfoSchema,
   SexSchema,
   AgeGroupSchema,
+  IsTumorSchema,
   VariantCountsSchema,
   SearchableExperimentFieldsSchema as CrawlerSearchableExperimentFieldsSchema,
   // Structured schemas
@@ -66,6 +67,7 @@ export {
   PlatformInfoSchema,
   SexSchema,
   AgeGroupSchema,
+  IsTumorSchema,
   VariantCountsSchema,
   CrawlerSearchableExperimentFieldsSchema,
   // Structured schemas
@@ -107,6 +109,7 @@ export type {
   ReadType,
   DiseaseInfo,
   PlatformInfo,
+  IsTumor,
   SearchableExperimentFields,
   SearchableDataset,
 } from "../crawler/types";
@@ -152,13 +155,11 @@ export const SearchableExperimentFieldsSchema = z.object({
   tissues: z
     .array(z.string())
     .describe("Tissue types used (e.g., 'Blood', 'Liver')"),
-  isTumor: z
-    .boolean()
-    .nullable()
-    .describe("Whether samples include tumor tissue"),
-  cellLine: z.array(z.string()).describe("Cell line names if applicable"),
-  population: z
-    .array(z.string())
+  isTumor: IsTumorSchema.nullable()
+    .describe("Whether samples include tumor tissue: 'tumor', 'normal', or 'mixed'"),
+  cellLine: z.array(z.string())
+    .describe("Cell line names if applicable"),
+  population: z.array(z.string())
     .describe("Population groups (e.g., 'Japanese', 'East Asian')"),
 
   // Demographics

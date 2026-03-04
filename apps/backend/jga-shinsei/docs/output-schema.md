@@ -105,7 +105,7 @@ interface DsApplicationTransformed {
   // --- 履歴・日時 ---
   statusHistory: StatusHistoryEntry[]
   submitDate: string           // ISO 8601 datetime
-  createDate: string           // ISO 8601 datetime (application.create_date)
+  createDate: string           // ISO 8601 datetime
 }
 ```
 
@@ -332,7 +332,6 @@ interface UploadedFile {
 interface Control {
   lang: Lang | null
   groupId: string | null         // "subgrp2116"
-  isEditAccount: boolean | null
   isNoneCollaborator: boolean | null
   privateComment: string | null
   isDeclareStatement: boolean | null
@@ -387,6 +386,6 @@ interface Control {
 
 ### トップレベルフィールド
 
-- `application.create_date` → `createDate`
+- `create_date` → `createDate`
 - `submit_date` → `submitDate`
 - `status_history` → `statusHistory` (ステータスラベル付与)

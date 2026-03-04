@@ -21,6 +21,7 @@ import {
 } from "@/api/es-client/helpers"
 import {
   nestedTermsQuery,
+  nestedTermQuery,
   nestedRangeQuery,
   doubleNestedWildcardQuery,
   doubleNestedTermsQuery,
@@ -175,7 +176,7 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
 
   // isTumor
   if ("isTumor" in params && params.isTumor !== undefined) {
-    must.push(nestedBooleanTermQuery("experiments", "experiments.searchable.isTumor", params.isTumor))
+    must.push(nestedTermQuery("experiments", "experiments.searchable.isTumor", params.isTumor))
   }
 
   // hasPhenotypeData
@@ -279,9 +280,9 @@ interface TermsBucket {
   key: string | number | boolean
   doc_count: number
   dataset_count?: {
-    doc_count?: number          // reverse_nested doc_count
-    value?: number              // top-level cardinality
-    unique?: { value: number }  // nested reverse_nested + cardinality
+    doc_count?: number // reverse_nested doc_count
+    value?: number // top-level cardinality
+    unique?: { value: number } // nested reverse_nested + cardinality
   }
 }
 

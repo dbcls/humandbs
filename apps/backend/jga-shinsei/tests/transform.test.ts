@@ -370,21 +370,6 @@ describe("transformDsApplication", () => {
     jsub_ids: [] as string[],
     hum_ids: [] as string[],
     jga_ids: [] as string[],
-    application: {
-      study_title: "テスト研究題目",
-      study_title_en: "Test Study Title",
-      pi: {
-        last_name: "テスト姓",
-        first_name: "テスト名",
-        last_name_en: "Saga",
-        first_name_en: "Masakazu",
-        institution: "テスト組織",
-        institution_en: "Test Organization",
-        division: "テストラボ",
-        division_en: "Test Lab",
-      },
-      create_date: "2024-12-03T02:40:23.094+00:00",
-    },
     components: [
       { key: "submission_study_title", value: "テスト研究題目" },
       { key: "submission_study_title_en", value: "Test Study Title" },
@@ -428,6 +413,7 @@ describe("transformDsApplication", () => {
       { status: 60, date: "2024-12-03T02:29:02.957+00:00" },
     ],
     submit_date: "2024-12-03T02:24:28.274+00:00",
+    create_date: "2024-12-03T02:40:23.094+00:00",
   }
 
   it("should transform top-level IDs", () => {
@@ -494,7 +480,7 @@ describe("transformDsApplication", () => {
     })
   })
 
-  it("should set createDate from application.create_date", () => {
+  it("should set createDate from create_date", () => {
     const result = transformDsApplication(exampleDs)
     expect(result.createDate).toBe("2024-12-03T02:40:23.094+00:00")
   })
@@ -530,21 +516,6 @@ describe("transformDuApplication", () => {
     jgad_ids: ["JGAD000369"],
     jgas_ids: ["JGAS000001"],
     hum_ids: ["hum0273"],
-    application: {
-      study_title: "テスト利用研究",
-      study_title_en: "Test Data Use Study",
-      pi: {
-        last_name: "利用者姓",
-        first_name: "利用者名",
-        last_name_en: "User",
-        first_name_en: "Test",
-        institution: "利用大学",
-        institution_en: "User University",
-        division: "利用研究科",
-        division_en: "User Lab",
-      },
-      create_date: "2024-11-22T05:01:28.194+00:00",
-    },
     components: [
       { key: "use_study_title", value: "テスト利用研究" },
       { key: "use_study_title_en", value: "Test Data Use Study" },
@@ -587,6 +558,7 @@ describe("transformDuApplication", () => {
       { status: 60, date: "2024-11-28T15:00:00.000+00:00" },
     ],
     submit_date: "2024-11-22T05:30:00.000+00:00",
+    create_date: "2024-11-22T05:01:28.194+00:00",
   }
 
   it("should transform top-level IDs", () => {
@@ -678,24 +650,10 @@ describe("edge cases", () => {
       jsub_ids: [],
       hum_ids: [],
       jga_ids: [],
-      application: {
-        study_title: null,
-        study_title_en: null,
-        pi: {
-          last_name: null,
-          first_name: null,
-          last_name_en: null,
-          first_name_en: null,
-          institution: null,
-          institution_en: null,
-          division: null,
-          division_en: null,
-        },
-        create_date: "2024-01-01T00:00:00.000+00:00",
-      },
       components: [] as Component[],
       status_history: [],
       submit_date: "2024-01-01T00:00:00.000+00:00",
+      create_date: "2024-01-01T00:00:00.000+00:00",
     }
     const result = transformDsApplication(raw)
 

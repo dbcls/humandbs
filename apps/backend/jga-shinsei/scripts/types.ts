@@ -49,34 +49,16 @@ export interface RawStatusHistoryEntry {
   date: string // ISO 8601 datetime
 }
 
-/** DB 由来の申請メタデータ */
-export interface RawApplication {
-  study_title: string | null // 研究題目 (日本語)
-  study_title_en: string | null // 研究題目 (英語)
-  pi: {
-    // components にもより詳細な情報があるが、create_date 取得用に使用
-    last_name: string | null
-    first_name: string | null
-    last_name_en: string | null
-    first_name_en: string | null
-    institution: string | null
-    institution_en: string | null
-    division: string | null
-    division_en: string | null
-  }
-  create_date: string // ISO 8601。変換後 `createDate` になる
-}
-
 /** DB 由来の J-DS (データ提供申請) レコード */
 export interface RawDsApplication {
   jds_id: string // "J-DS002495"
   jsub_ids: string[]
   hum_ids: string[] // ["hum0273"]
   jga_ids: string[] // ["JGA000442"]
-  application: RawApplication
   components: Component[] // EAV コンポーネント配列。変換の主要入力
   status_history: RawStatusHistoryEntry[]
   submit_date: string // ISO 8601
+  create_date: string // ISO 8601。変換後 `createDate` になる
 }
 
 /** DB 由来の J-DU (データ利用申請) レコード */
@@ -85,10 +67,10 @@ export interface RawDuApplication {
   jgad_ids: string[] // ["JGAD000369"]
   jgas_ids: string[] // ["JGAS000001"]
   hum_ids: string[]
-  application: RawApplication
   components: Component[] // EAV コンポーネント配列。変換の主要入力
   status_history: RawStatusHistoryEntry[]
   submit_date: string // ISO 8601
+  create_date: string // ISO 8601。変換後 `createDate` になる
 }
 
 // =============================================================================
@@ -173,7 +155,6 @@ export interface UploadedFile {
 export interface Control {
   lang: Lang | null
   groupId: string | null // 例: "subgrp2116"
-  isEditAccount: boolean | null
   isNoneCollaborator: boolean | null // 研究分担者なしフラグ
   privateComment: string | null // 担当者向けコメント (非公開)
   isDeclareStatement: boolean | null // 宣言同意フラグ
@@ -238,7 +219,7 @@ export interface DsApplicationTransformed {
   control: Control
   statusHistory: StatusHistoryEntry[]
   submitDate: string // ISO 8601
-  createDate: string // ISO 8601。application.create_date 由来
+  createDate: string // ISO 8601
 }
 
 // =============================================================================
@@ -346,5 +327,5 @@ export interface DuApplicationTransformed {
   control: Control
   statusHistory: StatusHistoryEntry[]
   submitDate: string // ISO 8601
-  createDate: string // ISO 8601。application.create_date 由来
+  createDate: string // ISO 8601
 }

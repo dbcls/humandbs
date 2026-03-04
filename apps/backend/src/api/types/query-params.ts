@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { LANG_TYPES, booleanFromString } from "./common";
 import { RESEARCH_STATUS } from "./workflow";
+import { IsTumorSchema } from "../../es/types"
 
 // === Common Query Schemas ===
 
@@ -267,12 +268,14 @@ export const ResearchSearchQuerySchema = z.object({
     .string()
     .optional()
     .describe("Filter by processed data types (comma-separated for OR)"),
-  hasPhenotypeData: booleanFromString.describe(
-    "Filter by presence of phenotype data",
-  ),
-  cellLine: z.string().optional().describe("Filter by cell line (exact match)"),
-  isTumor: booleanFromString.describe("Filter by tumor sample status"),
-  policyId: z.string().optional().describe("Filter by data access policy ID"),
+  hasPhenotypeData: booleanFromString
+    .describe("Filter by presence of phenotype data"),
+  cellLine: z.string().optional()
+    .describe("Filter by cell line (exact match)"),
+  isTumor: IsTumorSchema.optional()
+    .describe("Filter by tumor sample status: tumor, normal, or mixed"),
+  policyId: z.string().optional()
+    .describe("Filter by data access policy ID"),
 
   // Range filters
   minReleaseDate: z
@@ -575,12 +578,14 @@ export const DatasetSearchQuerySchema = z.object({
     .string()
     .optional()
     .describe("Filter by processed data types (comma-separated for OR)"),
-  hasPhenotypeData: booleanFromString.describe(
-    "Filter by presence of phenotype data",
-  ),
-  cellLine: z.string().optional().describe("Filter by cell line (exact match)"),
-  isTumor: booleanFromString.describe("Filter by tumor sample status"),
-  policyId: z.string().optional().describe("Filter by data access policy ID"),
+  hasPhenotypeData: booleanFromString
+    .describe("Filter by presence of phenotype data"),
+  cellLine: z.string().optional()
+    .describe("Filter by cell line (exact match)"),
+  isTumor: IsTumorSchema.optional()
+    .describe("Filter by tumor sample status: tumor, normal, or mixed"),
+  policyId: z.string().optional()
+    .describe("Filter by data access policy ID"),
 
   // Range filters
   minReleaseDate: z
