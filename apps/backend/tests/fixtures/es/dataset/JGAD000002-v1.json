@@ -159,7 +159,7 @@
         "tissues": [
           "peripheral blood"
         ],
-        "isTumor": false,
+        "isTumor": "normal",
         "cellLine": [],
         "population": [],
         "sex": null,

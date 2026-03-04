@@ -16,10 +16,8 @@ import { researchRouter } from "@/api/routes/research/index"
 import { searchRouter } from "@/api/routes/search"
 import { statsRouter } from "@/api/routes/stats"
 
-// Environment variables
-const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
-
 export const createApp = () => {
+  const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
   const app = new OpenAPIHono()
 
   // Middleware

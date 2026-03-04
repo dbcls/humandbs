@@ -13,7 +13,7 @@ import { createApp } from "@/api/app"
  * Uses hono/testing's testClient for type-safe testing
  */
 export function createTestClient() {
-  const app = createApp()
+  const app = getTestApp()
   return testClient(app)
 }
 
@@ -21,7 +21,15 @@ export function createTestClient() {
  * Get raw Hono app instance for lower-level testing
  */
 export function getTestApp() {
-  return createApp()
+  const saved = process.env.HUMANDBS_BACKEND_URL_PREFIX
+  delete process.env.HUMANDBS_BACKEND_URL_PREFIX
+  try {
+    return createApp()
+  } finally {
+    if (saved !== undefined) {
+      process.env.HUMANDBS_BACKEND_URL_PREFIX = saved
+    }
+  }
 }
 
 export type TestClient = ReturnType<typeof createTestClient>
