@@ -7,7 +7,7 @@
     "dev": "vite dev --host 0.0.0.0 --port 3000",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs",
+    "start": "bun server.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
