@@ -35,10 +35,9 @@ export const ResearchDetailSchema = EsResearchSchema
       .describe("Bilingual release note describing changes in this version"),
     datasets: z.array(EsDatasetSchema)
       .describe("Datasets linked to this Research version"),
-    // Optimistic locking fields (optional for backwards compatibility)
-    _seq_no: z.number().nullable().optional()
+    _seq_no: z.number()
       .describe("Elasticsearch sequence number for optimistic concurrency control"),
-    _primary_term: z.number().nullable().optional()
+    _primary_term: z.number()
       .describe("Elasticsearch primary term for optimistic concurrency control"),
   })
 export type ResearchDetail = z.infer<typeof ResearchDetailSchema>

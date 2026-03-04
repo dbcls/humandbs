@@ -149,10 +149,8 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
 
     const body = c.req.valid("json")
 
-    // Use optimistic lock values from request body (per architecture.md)
-    // If not provided, fall back to values from middleware for backwards compatibility
-    const seqNo = body._seq_no ?? research.seqNo
-    const primaryTerm = body._primary_term ?? research.primaryTerm
+    const seqNo = body._seq_no
+    const primaryTerm = body._primary_term
 
     const updated = await updateResearch(humId, {
       title: body.title,

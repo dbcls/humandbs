@@ -303,13 +303,12 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const query = c.req.valid("query")
   const version = query.version ?? "v1"
 
-  // Get dataset with sequence number for optimistic locking (used as fallback)
   const result = await getDatasetWithSeqNo(datasetId, version)
   if (!result) {
     throw new NotFoundError(`Dataset ${datasetId} version ${version} not found`)
   }
 
-  const { doc, seqNo: currentSeqNo, primaryTerm: currentPrimaryTerm } = result
+  const { doc } = result
 
   // Check if user has access to parent Research
   const research = await getResearchDoc(doc.humId)
@@ -334,10 +333,8 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 
   const body = c.req.valid("json")
 
-  // Use optimistic lock values from request body (per architecture.md)
-  // If not provided, fall back to current values for backwards compatibility
-  const seqNo = body._seq_no ?? currentSeqNo
-  const primaryTerm = body._primary_term ?? currentPrimaryTerm
+  const seqNo = body._seq_no
+  const primaryTerm = body._primary_term
 
   const updated = await updateDataset(datasetId, version, {
     releaseDate: body.releaseDate,
