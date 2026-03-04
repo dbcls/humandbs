@@ -1,4 +1,4 @@
-import { DateStringRange } from "@/lib/utils";
+import type { DateStringRange } from "@/utils/dates";
 
 import { DateRangePicker } from "../DatePicker";
 import { Label } from "../ui/label";

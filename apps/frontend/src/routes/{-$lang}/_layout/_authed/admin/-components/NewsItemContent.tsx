@@ -7,12 +7,13 @@ import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
-import { cn, type DateStringRange } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   $updateNewsItem,
   getNewsItemsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
+import type { DateStringRange } from "@/utils/dates";
 
 interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
@@ -82,7 +83,7 @@ export function NewsItemContent({
       if (context?.prevNewsItems) {
         queryClient.setQueryData(
           newsItemsListQO.queryKey,
-          context.prevNewsItems
+          context.prevNewsItems,
         );
       }
     },
@@ -211,7 +212,9 @@ export function NewsItemContent({
             <Button
               disabled={isSubmitting || !isTouched || !isValid}
               size="lg"
-              onClick={() => form.handleSubmit()}
+              onClick={() => {
+                form.handleSubmit();
+              }}
             >
               Update
             </Button>

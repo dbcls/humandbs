@@ -40,7 +40,9 @@ function RouteComponent() {
         <Button
           variant={"action"}
           size={"lg"}
-          onClick={() => navigate({ to: "./researches" })}
+          onClick={() => {
+            navigate({ to: "./researches" });
+          }}
         >
           {t("data-usage-button")}
         </Button>

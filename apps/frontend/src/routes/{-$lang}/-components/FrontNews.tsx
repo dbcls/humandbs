@@ -3,7 +3,6 @@ import { LucideBell } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Link } from "@/components/Link";
-import type { Locale } from "@/config/i18n";
 import type { NewsTitleResponse } from "@/serverFunctions/news";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
@@ -28,7 +27,9 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
 }
 
 function News() {
-  const { newsTitles } = useLoaderData({ from: "/{-$lang}/_layout/_main/" });
+  const { newsTitles } = useLoaderData({
+    from: "/{-$lang}/_layout/_main/_home",
+  });
 
   const lang = useLocale();
 

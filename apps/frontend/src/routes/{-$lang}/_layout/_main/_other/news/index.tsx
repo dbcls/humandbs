@@ -21,7 +21,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/")({
     const { offset, limit } = deps;
 
     const newsTitles = await context.queryClient.ensureQueryData(
-      getNewsTitlesQueryOptions({ limit, offset, locale: context.lang })
+      getNewsTitlesQueryOptions({ limit, offset, locale: context.lang }),
     );
 
     return {
