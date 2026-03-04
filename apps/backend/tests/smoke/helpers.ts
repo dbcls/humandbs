@@ -62,6 +62,39 @@ export const expectPagination = (pagination: Record<string, unknown>) => {
   }
 }
 
+// === Error response helpers ===
+
+/**
+ * RFC 7807 Problem Details response (AppError: 404, 401, 403, 409, 500)
+ */
+export const expectProblemDetails = (body: Record<string, unknown>, expectedStatus: number) => {
+  if (typeof body.type !== "string" || body.type === "") {
+    throw new Error(`Expected non-empty type, got: ${JSON.stringify(body.type)}`)
+  }
+  if (typeof body.title !== "string" || body.title === "") {
+    throw new Error(`Expected non-empty title, got: ${JSON.stringify(body.title)}`)
+  }
+  if (body.status !== expectedStatus) {
+    throw new Error(`Expected status ${expectedStatus}, got: ${JSON.stringify(body.status)}`)
+  }
+  if (typeof body.timestamp !== "string" || body.timestamp === "") {
+    throw new Error(`Expected non-empty timestamp, got: ${JSON.stringify(body.timestamp)}`)
+  }
+}
+
+/**
+ * Zod validation error response (OpenAPIHono default hook: 400)
+ */
+export const expectValidationError = (body: Record<string, unknown>) => {
+  if (body.success !== false) {
+    throw new Error(`Expected success=false, got: ${JSON.stringify(body.success)}`)
+  }
+  const error = body.error as Record<string, unknown> | undefined
+  if (!error || typeof error !== "object") {
+    throw new Error(`Expected error object, got: ${JSON.stringify(error)}`)
+  }
+}
+
 // === Shared setup (runs once, cached) ===
 
 interface SmokeState {
