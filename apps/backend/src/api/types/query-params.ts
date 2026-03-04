@@ -713,6 +713,21 @@ export const DatasetSearchQuerySchema = z.object({
 })
 export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 
+/**
+ * Facet filter query parameters (GET /facets, GET /facets/{fieldName})
+ * DatasetSearchQuerySchema from pagination, sort, lang, includeFacets, includeRawHtml
+ */
+export const FacetFilterQuerySchema = DatasetSearchQuerySchema.omit({
+  page: true,
+  limit: true,
+  lang: true,
+  sort: true,
+  order: true,
+  includeFacets: true,
+  includeRawHtml: true,
+})
+export type FacetFilterQuery = z.infer<typeof FacetFilterQuerySchema>
+
 // === Research Summary (for list view) ===
 
 export const ResearchSummarySchema = z.object({

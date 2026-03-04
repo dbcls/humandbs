@@ -35,9 +35,8 @@ import {
 } from "@/api/types"
 import type {
   DatasetSearchQuery,
-  DatasetSearchResponse,
   ResearchSearchQuery,
-  ResearchSearchResponse,
+  FacetValue,
   FacetsMap,
   EsDatasetDoc,
   EsResearchDoc,
@@ -45,8 +44,23 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
+import type { Pagination } from "@/api/types/response"
 
 // === Types ===
+
+/** Internal search result (not the API response shape) */
+interface DatasetSearchResult {
+  data: EsDatasetDoc[]
+  pagination: Pagination
+  facets?: FacetsMap
+}
+
+/** Internal search result (not the API response shape) */
+interface ResearchSearchResult {
+  data: ResearchSummary[]
+  pagination: Pagination
+  facets?: FacetsMap
+}
 
 type QueryContainer = estypes.QueryDslQueryContainer
 type FilterParams = Record<string, unknown>
@@ -322,7 +336,7 @@ const isCompositeBucketArray = (value: unknown): value is CompositeBucket[] => {
 
 const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => {
   if (!aggs) return {}
-  const facets: FacetsMap = {}
+  const facets: Record<string, FacetValue[]> = {}
 
   // Extract count from bucket, preferring cardinality (unique datasetId count) over raw doc_count
   const extractBuckets = (buckets: TermsBucket[]) =>
@@ -416,7 +430,7 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
     }
   }
 
-  return facets
+  return facets as FacetsMap
 }
 
 // === Dataset Search ===
@@ -424,7 +438,7 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
 export const searchDatasets = async (
   params: DatasetSearchQuery,
   authUser: AuthUser | null = null,
-): Promise<DatasetSearchResponse> => {
+): Promise<DatasetSearchResult> => {
   const { page, limit, sort, order, q, includeFacets } = params
   const from = (page - 1) * limit
 
@@ -563,7 +577,7 @@ const getHumIdsByDatasetFilters = async (
 export const searchResearches = async (
   params: ResearchSearchQuery,
   authUser: AuthUser | null = null,
-): Promise<ResearchSearchResponse> => {
+): Promise<ResearchSearchResult> => {
   const {
     page, limit, lang, sort, order, q,
     releasedAfter, releasedBefore,

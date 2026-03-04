@@ -1,7 +1,7 @@
 /**
  * Response Helper Functions
  *
- * Provides unified response formatting for all API endpoints.
+ * Provides response formatting for all API endpoints.
  * These helpers ensure consistent response structure across the API.
  */
 
@@ -149,7 +149,7 @@ export function listResponse<T>(
  * @param facets - Optional facet aggregations
  * @param status - HTTP status code (default: 200)
  */
-export function searchResponse<T, F = Record<string, { value: string; count: number }[]>>(
+export function searchResponse<T, F = Record<string, { value: string; count: number }[] | undefined>>(
   c: Context,
   data: T[],
   pagination: Pagination,

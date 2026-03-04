@@ -263,7 +263,6 @@ export const requireAdmin: MiddlewareHandler = createMiddleware(async (c, next) 
   await next()
 })
 
-
 /**
  * Check if user can delete a resource
  * Returns true only for admin

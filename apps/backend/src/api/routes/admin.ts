@@ -12,12 +12,12 @@ import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
 import { requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec500, UnauthorizedError } from "@/api/routes/errors"
-import { createUnifiedSingleReadOnlyResponseSchema, IsAdminResponseSchema } from "@/api/types"
+import { createSingleReadOnlyResponseSchema, IsAdminResponseSchema } from "@/api/types"
 
-// === Unified Response Schemas ===
+// === Response Schemas ===
 
 // Admin status response (read-only)
-const IsAdminUnifiedResponseSchema = createUnifiedSingleReadOnlyResponseSchema(IsAdminResponseSchema)
+const IsAdminWrappedResponseSchema = createSingleReadOnlyResponseSchema(IsAdminResponseSchema)
 
 // === Route Definitions ===
 
@@ -29,7 +29,7 @@ const isAdminRoute = createRoute({
   description: "Check if the current user is an admin. Requires authentication.",
   responses: {
     200: {
-      content: { "application/json": { schema: IsAdminUnifiedResponseSchema } },
+      content: { "application/json": { schema: IsAdminWrappedResponseSchema } },
       description: "Admin status of current user",
     },
     401: ErrorSpec401,

@@ -1,5 +1,5 @@
 /**
- * Unified Response Type Definitions
+ * Response Type Definitions
  *
  * This module provides:
  * - Base response meta schemas (requestId, timestamp)
@@ -120,7 +120,7 @@ export interface ListResponse<T> {
 /**
  * Search response type with facets
  */
-export interface SearchResponse<T, F = Record<string, { value: string; count: number }[]>> {
+export interface SearchResponse<T, F = Record<string, { value: string; count: number }[] | undefined>> {
   data: T[]
   meta: ResponseMetaWithPagination
   facets?: F

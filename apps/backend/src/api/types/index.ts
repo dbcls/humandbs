@@ -6,7 +6,7 @@
  * Dependency flow: crawler/types → es/types → api/types
  */
 
-// === Unified Response Types ===
+// === Response Types ===
 export {
   // Pagination
   PaginationSchema,
@@ -27,7 +27,7 @@ export type {
   SingleReadOnlyResponse,
   SingleResponse,
   ListResponse,
-  SearchResponse as UnifiedSearchResponse,
+  SearchResponse,
 } from "@/api/types/response"
 
 // === Common ===
@@ -67,7 +67,6 @@ export type {
   ResearchFacetName,
   FacetValue,
   FacetsMap,
-  TypedFacetsMap,
 } from "@/api/types/facets"
 
 // === ES Documents ===
@@ -109,6 +108,7 @@ export {
   ResearchSearchQuerySchema,
   DatasetListingQuerySchema,
   DatasetSearchQuerySchema,
+  FacetFilterQuerySchema,
   ResearchSummarySchema,
   SearchQuerySchema,
   ResearchListQuerySchema,
@@ -121,6 +121,7 @@ export type {
   ResearchSearchQuery,
   DatasetListingQuery,
   DatasetSearchQuery,
+  FacetFilterQuery,
   ResearchSummary,
   SearchQuery,
   ResearchListQuery,
@@ -156,16 +157,12 @@ export {
   UpdateResearchRequestSchema,
   ResearchWithStatusSchema,
   ResearchResponseSchema,
-  ResearchListResponseSchema,
   // UIDs API
   UpdateUidsRequestSchema,
-  UpdateUidsResponseSchema,
   // Version API
   CreateVersionRequestSchema,
   VersionResponseSchema,
   VersionsListResponseSchema,
-  ResearchVersionsResponseSchema,
-  DatasetVersionsResponseSchema,
   // Dataset API
   CreateDatasetRequestSchema,
   UpdateDatasetRequestSchema,
@@ -175,14 +172,9 @@ export {
   // Link API
   LinkedDatasetsResponseSchema,
   LinkedResearchesResponseSchema,
-  // Workflow API
-  WorkflowResponseSchema,
   // Search responses
-  ResearchSearchResponseSchema,
-  DatasetSearchResponseSchema,
   SearchResearchResultSchema,
   SearchDatasetResultSchema,
-  SearchResponseSchema,
   FacetsResponseSchema,
   FacetValueWithCountSchema,
   FacetFieldResponseSchema,
@@ -201,26 +193,26 @@ export {
   // Re-exported schemas
   ResearchSchema,
   ResearchVersionSchema,
-  // Unified response schema factories
-  createUnifiedSingleResponseSchema,
-  createUnifiedSingleReadOnlyResponseSchema,
-  createUnifiedListResponseSchema,
-  createUnifiedSearchResponseSchema,
-  // Unified response schemas for /research routes
+  // Response schema factories
+  createSingleResponseSchema,
+  createSingleReadOnlyResponseSchema,
+  createListResponseSchema,
+  createSearchResponseSchema,
+  // Response schemas for /research routes
   WorkflowDataSchema,
-  WorkflowUnifiedResponseSchema,
+  WorkflowResponseSchema,
   UidsDataSchema,
-  UidsUnifiedResponseSchema,
+  UidsResponseSchema,
   ResearchDetailResponseSchema,
   ResearchWithLockResponseSchema,
-  ResearchSearchUnifiedResponseSchema,
+  ResearchSearchResponseSchema,
   ResearchVersionsListResponseSchema,
   VersionDetailResponseSchema,
   VersionCreateResponseSchema,
   LinkedDatasetsListResponseSchema,
   DatasetCreateResponseSchema,
-  // Unified response schemas for /dataset routes
-  DatasetSearchUnifiedResponseSchema,
+  // Response schemas for /dataset routes
+  DatasetSearchResponseSchema,
   DatasetDetailResponseSchema,
   DatasetUpdateResponseSchema,
   DatasetVersionsListResponseSchema,
@@ -235,14 +227,10 @@ export type {
   UpdateResearchRequest,
   ResearchWithStatus,
   ResearchResponse,
-  ResearchListResponse,
   UpdateUidsRequest,
-  UpdateUidsResponse,
   CreateVersionRequest,
   VersionResponse,
   VersionsListResponse,
-  ResearchVersionsResponse,
-  DatasetVersionsResponse,
   CreateDatasetRequest,
   UpdateDatasetRequest,
   DatasetWithMetadata,
@@ -250,12 +238,8 @@ export type {
   CreateDatasetForResearchRequest,
   LinkedDatasetsResponse,
   LinkedResearchesResponse,
-  WorkflowResponse,
-  ResearchSearchResponse,
-  DatasetSearchResponse,
   SearchResearchResult,
   SearchDatasetResult,
-  SearchResponse,
   FacetsResponse,
   FacetValueWithCount,
   FacetFieldResponse,
@@ -268,21 +252,21 @@ export type {
   IsAdminResponse,
   StatsFacetCount,
   StatsResponse,
-  // Unified response types for /research routes
+  // Response types for /research routes
   WorkflowData,
-  WorkflowUnifiedResponse,
+  WorkflowResponse,
   UidsData,
-  UidsUnifiedResponse,
+  UidsResponse,
   ResearchDetailResponse,
   ResearchWithLockResponse,
-  ResearchSearchUnifiedResponse,
+  ResearchSearchResponse,
   ResearchVersionsListResponse,
   VersionDetailResponse,
   VersionCreateResponse,
   LinkedDatasetsListResponse,
   DatasetCreateResponse,
-  // Unified response types for /dataset routes
-  DatasetSearchUnifiedResponse,
+  // Response types for /dataset routes
+  DatasetSearchResponse,
   DatasetDetailResponse,
   DatasetUpdateResponse,
   DatasetVersionsListResponse,

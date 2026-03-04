@@ -18,11 +18,13 @@ import {
 import { optionalAuth } from "@/api/middleware/auth"
 import { ErrorSpec400, ErrorSpec500 } from "@/api/routes/errors"
 import {
-  createUnifiedSearchResponseSchema,
-  createUnifiedSingleReadOnlyResponseSchema,
+  createSearchResponseSchema,
+  createSingleReadOnlyResponseSchema,
+  DATASET_FACET_NAMES,
   DatasetSearchBodySchema,
   EsDatasetDocSchema,
   FacetFieldResponseSchema,
+  FacetFilterQuerySchema,
   FacetsMapSchema,
   ResearchSearchBodySchema,
   ResearchSummarySchema,
@@ -124,19 +126,19 @@ const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearchQuery 
   } as DatasetSearchQuery
 }
 
-// === Unified Response Schemas ===
+// === Response Schemas ===
 
 // Research search response
-const ResearchSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(ResearchSummarySchema)
+const ResearchSearchResponseSchema = createSearchResponseSchema(ResearchSummarySchema)
 
 // Dataset search response
-const DatasetSearchUnifiedResponseSchema = createUnifiedSearchResponseSchema(EsDatasetDocSchema)
+const DatasetSearchResponseSchema = createSearchResponseSchema(EsDatasetDocSchema)
 
 // All facets response (read-only)
-const AllFacetsUnifiedResponseSchema = createUnifiedSingleReadOnlyResponseSchema(FacetsMapSchema)
+const AllFacetsResponseSchema = createSingleReadOnlyResponseSchema(FacetsMapSchema)
 
 // Single facet field response (read-only)
-const FacetFieldUnifiedResponseSchema = createUnifiedSingleReadOnlyResponseSchema(FacetFieldResponseSchema)
+const SingleFacetFieldResponseSchema = createSingleReadOnlyResponseSchema(FacetFieldResponseSchema)
 
 // === Route Definitions ===
 
@@ -162,7 +164,7 @@ Set includeFacets=true to get facet counts for building filter UIs.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchSearchUnifiedResponseSchema } },
+      content: { "application/json": { schema: ResearchSearchResponseSchema } },
       description: "Research search results with optional facets",
     },
     400: ErrorSpec400,
@@ -192,7 +194,7 @@ Set includeFacets=true to get facet counts for building filter UIs.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetSearchUnifiedResponseSchema } },
+      content: { "application/json": { schema: DatasetSearchResponseSchema } },
       description: "Dataset search results with optional facets",
     },
     400: ErrorSpec400,
@@ -211,12 +213,16 @@ Returns facet values grouped by field name. Use this to populate filter dropdown
 
 **Available facets:** criteria, assayType, healthStatus, sex, ageGroup, tissues, population, platform, referenceGenome, fileTypes, diseaseIcd10, etc.
 
-Counts reflect published Datasets only.`,
+Counts reflect published Datasets only. Pass filter parameters to get counts narrowed to matching Datasets.`,
+  request: {
+    query: FacetFilterQuerySchema,
+  },
   responses: {
     200: {
-      content: { "application/json": { schema: AllFacetsUnifiedResponseSchema } },
+      content: { "application/json": { schema: AllFacetsResponseSchema } },
       description: "All facet values with counts grouped by field",
     },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })
@@ -230,17 +236,19 @@ const getFacetFieldRoute = createRoute({
 
 **Example fields:** criteria, assayType, healthStatus, tissues, platform
 
-Returns an array of {value, count} pairs sorted by count descending.`,
+Returns an array of {value, count} pairs sorted by count descending. Pass filter parameters to get counts narrowed to matching Datasets.`,
   request: {
     params: z.object({
-      fieldName: z.string().describe("Facet field name (e.g., 'assayType', 'criteria')"),
+      fieldName: z.enum(DATASET_FACET_NAMES).describe("Facet field name"),
     }),
+    query: FacetFilterQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: FacetFieldUnifiedResponseSchema } },
+      content: { "application/json": { schema: SingleFacetFieldResponseSchema } },
       description: "Facet values for the specified field",
     },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })
@@ -281,10 +289,12 @@ searchRouter.openapi(postDatasetSearchRoute, async (c) => {
 
 // GET /facets
 searchRouter.openapi(getFacetsRoute, async (c) => {
+  const filters = c.req.valid("query")
   const authUser = c.get("authUser")
 
   // Fetch facets from Dataset index with includeFacets=true
   const result = await searchDatasets({
+    ...filters,
     page: 1,
     limit: 1,
     lang: "en",
@@ -299,11 +309,13 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
 
 // GET /facets/{fieldName}
 searchRouter.openapi(getFacetFieldRoute, async (c) => {
-  const { fieldName } = c.req.param()
+  const { fieldName } = c.req.valid("param")
+  const filters = c.req.valid("query")
   const authUser = c.get("authUser")
 
   // Fetch facets from Dataset index
   const result = await searchDatasets({
+    ...filters,
     page: 1,
     limit: 1,
     lang: "en",

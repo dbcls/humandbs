@@ -12,7 +12,7 @@ import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { esTotal } from "@/api/es-client/utils"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
 import { ErrorSpec500 } from "@/api/routes/errors"
-import { createUnifiedSingleReadOnlyResponseSchema, StatsResponseSchema } from "@/api/types"
+import { createSingleReadOnlyResponseSchema, StatsResponseSchema } from "@/api/types"
 import type { StatsFacetCount } from "@/api/types"
 
 // === Stats Aggregation Builders ===
@@ -263,10 +263,10 @@ const extractStatsFacets = (aggs: Record<string, unknown>): Record<string, Recor
   return facets
 }
 
-// === Unified Response Schemas ===
+// === Response Schemas ===
 
 // Stats response (read-only)
-const StatsUnifiedResponseSchema = createUnifiedSingleReadOnlyResponseSchema(StatsResponseSchema)
+const StatsWrappedResponseSchema = createSingleReadOnlyResponseSchema(StatsResponseSchema)
 
 // === Route Definitions ===
 
@@ -278,7 +278,7 @@ const getStatsRoute = createRoute({
   description: "Get statistics about published Research and Dataset resources, including counts and facets with Research/Dataset breakdown.",
   responses: {
     200: {
-      content: { "application/json": { schema: StatsUnifiedResponseSchema } },
+      content: { "application/json": { schema: StatsWrappedResponseSchema } },
       description: "Statistics about published resources",
     },
     500: ErrorSpec500,

@@ -17,16 +17,16 @@ import { requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import {
   createPagination,
-  createUnifiedListResponseSchema,
-  createUnifiedSingleReadOnlyResponseSchema,
+  createListResponseSchema,
+  createSingleReadOnlyResponseSchema,
 } from "@/api/types"
 
 // === Schemas ===
 
 const JgaShinseiDocSchema = z.record(z.string(), z.unknown())
 
-const JgaShinseiListResponseSchema = createUnifiedListResponseSchema(JgaShinseiDocSchema)
-const JgaShinseiDetailResponseSchema = createUnifiedSingleReadOnlyResponseSchema(JgaShinseiDocSchema)
+const JgaShinseiListResponseSchema = createListResponseSchema(JgaShinseiDocSchema)
+const JgaShinseiDetailResponseSchema = createSingleReadOnlyResponseSchema(JgaShinseiDocSchema)
 
 const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1)

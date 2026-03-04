@@ -2,7 +2,7 @@
  * Research Route Definitions
  *
  * OpenAPI route specifications for Research API endpoints.
- * Uses unified response schemas with data + meta structure.
+ * Uses response schemas with data + meta structure.
  */
 import { createRoute } from "@hono/zod-openapi"
 
@@ -24,16 +24,16 @@ import {
   LinkedDatasetsListResponseSchema,
   ResearchDetailResponseSchema,
   ResearchListingQuerySchema,
-  ResearchSearchUnifiedResponseSchema,
+  ResearchSearchResponseSchema,
   ResearchVersionsListResponseSchema,
   ResearchWithLockResponseSchema,
   UpdateResearchRequestSchema,
   UpdateUidsRequestSchema,
-  UidsUnifiedResponseSchema,
+  UidsResponseSchema,
   VersionCreateResponseSchema,
   VersionDetailResponseSchema,
   VersionParamsSchema,
-  WorkflowUnifiedResponseSchema,
+  WorkflowResponseSchema,
 } from "@/api/types"
 
 // === CRUD Routes ===
@@ -57,7 +57,7 @@ export const listResearchRoute = createRoute({
   responses: {
     200: {
       content: {
-        "application/json": { schema: ResearchSearchUnifiedResponseSchema },
+        "application/json": { schema: ResearchSearchResponseSchema },
       },
       description: "List of research with optional facets",
     },
@@ -354,7 +354,7 @@ Returns 409 Conflict if Research is not in draft status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowUnifiedResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema },
       },
       description: "Status changed to review",
     },
@@ -388,7 +388,7 @@ Returns 409 Conflict if Research is not in review status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowUnifiedResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema },
       },
       description: "Status changed to published",
     },
@@ -420,7 +420,7 @@ Returns 409 Conflict if Research is not in review status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowUnifiedResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema },
       },
       description: "Status changed to draft",
     },
@@ -452,7 +452,7 @@ Returns 409 Conflict if Research is not in published status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowUnifiedResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema },
       },
       description: "Status changed to draft",
     },
@@ -489,7 +489,7 @@ export const updateUidsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: UidsUnifiedResponseSchema } },
+      content: { "application/json": { schema: UidsResponseSchema } },
       description: "UIDs updated successfully",
     },
     401: ErrorSpec401,

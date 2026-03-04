@@ -21,13 +21,13 @@ export {
   FacetsMapSchema,
   DATASET_FACET_NAMES,
   RESEARCH_FACET_NAMES,
+  isValidFacetName,
 } from "../src/api/types";
 export type {
   FacetValue,
   FacetsMap,
   DatasetFacetName,
   ResearchFacetName,
-  TypedFacetsMap,
 } from "../src/api/types";
 
 // Query parameters
@@ -36,6 +36,7 @@ export {
   LangVersionQuerySchema,
   ResearchSearchQuerySchema,
   DatasetSearchQuerySchema,
+  FacetFilterQuerySchema,
   ResearchListingQuerySchema,
   DatasetListingQuerySchema,
 } from "../src/api/types";
@@ -44,6 +45,7 @@ export type {
   LangVersionQuery,
   ResearchSearchQuery,
   DatasetSearchQuery,
+  FacetFilterQuery,
   ResearchListingQuery,
   DatasetListingQuery,
 } from "../src/api/types";
@@ -62,28 +64,20 @@ export type {
   DatasetSearchBody,
 } from "../src/api/types";
 
-// Response types
+// Response data types (used inside unified response wrappers)
 export {
   ResearchSummarySchema,
-  ResearchVersionsResponseSchema,
-  DatasetVersionsResponseSchema,
   DatasetVersionItemSchema,
-  ResearchSearchResponseSchema,
-  DatasetSearchResponseSchema,
 } from "../src/api/types";
 export type {
   ResearchSummary,
-  ResearchVersionsResponse,
-  DatasetVersionsResponse,
   DatasetVersionItem,
-  ResearchSearchResponse,
-  DatasetSearchResponse,
-  ResearchListResponse,
 } from "../src/api/types";
 
 // ES document types (API response format)
 // Note: Exported with both Es-prefixed names (internal) and clean names (external API)
 export {
+  DatasetRefSchema,
   EsDatasetDocSchema,
   EsResearchDocSchema,
   EsResearchVersionDocSchema,
@@ -95,10 +89,17 @@ export {
   EsResearchDetailSchema as ResearchDetailSchema,
 } from "../src/api/types";
 export type {
+  DatasetRef,
   EsDatasetDoc,
   EsResearchDoc,
   EsResearchVersionDoc,
   EsResearchDetail,
+  // Sub-document types embedded in API responses
+  EsExperiment,
+  EsPerson,
+  EsGrant,
+  EsPublication,
+  EsSummary,
   // Clean aliases without Es prefix
   EsDatasetDoc as DatasetDoc,
   EsResearchDoc as ResearchDoc,
@@ -125,8 +126,8 @@ export { StatsResponseSchema, StatsFacetCountSchema } from "../src/api/types";
 export type { StatsResponse, StatsFacetCount } from "../src/api/types";
 
 // Error responses
-export { ProblemDetailsSchema } from "../src/api/types";
-export type { ProblemDetails } from "../src/api/types";
+export { ERROR_CODES, ProblemDetailsSchema } from "../src/api/types";
+export type { ErrorCode, ProblemDetails } from "../src/api/types";
 
 // All facets response
 export {
@@ -140,8 +141,8 @@ export { HealthResponseSchema, IsAdminResponseSchema } from "../src/api/types";
 export type { HealthResponse, IsAdminResponse } from "../src/api/types";
 
 // Workflow status
-export { ResearchStatusSchema, RESEARCH_STATUS } from "../src/api/types";
-export type { ResearchStatus } from "../src/api/types";
+export { ResearchStatusSchema, RESEARCH_STATUS, STATUS_ACTIONS, StatusTransitions } from "../src/api/types";
+export type { ResearchStatus, StatusAction } from "../src/api/types";
 
 // Response meta and pagination
 export {
@@ -160,19 +161,12 @@ export type {
   SingleReadOnlyResponse,
   SingleResponse,
   ListResponse,
-  UnifiedSearchResponse,
+  SearchResponse,
 } from "../src/api/types";
 
-// Unified response schema factories
+// Request/data schemas
 export {
-  createUnifiedSingleResponseSchema,
-  createUnifiedSingleReadOnlyResponseSchema,
-  createUnifiedListResponseSchema,
-  createUnifiedSearchResponseSchema,
-} from "../src/api/types";
-
-// Request schemas for /research routes
-export {
+  DatasetSchema,
   CreateResearchRequestSchema,
   UpdateResearchRequestSchema,
   CreateVersionRequestSchema,
@@ -193,43 +187,41 @@ export {
   ResearchResponseSchema,
   ResearchWithStatusSchema,
   VersionResponseSchema,
-  UpdateUidsResponseSchema,
 } from "../src/api/types";
 export type {
   ResearchResponse,
   ResearchWithStatus,
   VersionResponse,
-  UpdateUidsResponse,
 } from "../src/api/types";
 
-// Unified response schemas for /research routes
+// Response schemas for /research routes
 export {
   ResearchDetailResponseSchema,
   ResearchWithLockResponseSchema,
-  ResearchSearchUnifiedResponseSchema,
+  ResearchSearchResponseSchema,
   ResearchVersionsListResponseSchema,
   VersionDetailResponseSchema,
   VersionCreateResponseSchema,
   LinkedDatasetsListResponseSchema,
   DatasetCreateResponseSchema,
   WorkflowDataSchema,
-  WorkflowUnifiedResponseSchema,
+  WorkflowResponseSchema,
   UidsDataSchema,
-  UidsUnifiedResponseSchema,
+  UidsResponseSchema,
 } from "../src/api/types";
 export type {
   ResearchDetailResponse,
   ResearchWithLockResponse,
-  ResearchSearchUnifiedResponse,
+  ResearchSearchResponse,
   ResearchVersionsListResponse,
   VersionDetailResponse,
   VersionCreateResponse,
   LinkedDatasetsListResponse,
   DatasetCreateResponse,
   WorkflowData,
-  WorkflowUnifiedResponse,
+  WorkflowResponse,
   UidsData,
-  UidsUnifiedResponse,
+  UidsResponse,
 } from "../src/api/types";
 
 // Dataset document with merged searchable fields
@@ -253,9 +245,9 @@ export type { UpdateDatasetRequest } from "../src/api/types";
 export { DatasetWithMetadataSchema } from "../src/api/types";
 export type { DatasetWithMetadata } from "../src/api/types";
 
-// Unified response schemas for /dataset routes
+// Response schemas for /dataset routes
 export {
-  DatasetSearchUnifiedResponseSchema,
+  DatasetSearchResponseSchema,
   DatasetDetailResponseSchema,
   DatasetUpdateResponseSchema,
   DatasetVersionsListResponseSchema,
@@ -263,7 +255,7 @@ export {
   LinkedResearchesListResponseSchema,
 } from "../src/api/types";
 export type {
-  DatasetSearchUnifiedResponse,
+  DatasetSearchResponse,
   DatasetDetailResponse,
   DatasetUpdateResponse,
   DatasetVersionsListResponse,

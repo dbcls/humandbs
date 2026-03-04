@@ -51,16 +51,30 @@ export const FacetValueSchema = z.object({
 export type FacetValue = z.infer<typeof FacetValueSchema>
 
 /**
- * Facets map (record of facet name to array of facet values)
+ * Facets map (explicit object with all 18 facet fields)
  */
-export const FacetsMapSchema = z.record(z.string(), z.array(FacetValueSchema))
-  .describe("Map of facet field names to their available values with counts. Facet names include: criteria, assayType, healthStatus, tissues, platform, etc.")
+const facetField = z.array(FacetValueSchema).optional()
+export const FacetsMapSchema = z.object({
+  criteria: facetField,
+  assayType: facetField,
+  healthStatus: facetField,
+  subjectCountType: facetField,
+  sex: facetField,
+  ageGroup: facetField,
+  tissues: facetField,
+  population: facetField,
+  platform: facetField,
+  libraryKits: facetField,
+  readType: facetField,
+  referenceGenome: facetField,
+  fileTypes: facetField,
+  processedDataTypes: facetField,
+  disease: facetField,
+  diseaseIcd10: facetField,
+  cellLine: facetField,
+  policyId: facetField,
+}).describe("Map of facet field names to their available values with counts")
 export type FacetsMap = z.infer<typeof FacetsMapSchema>
-
-/**
- * Type-safe facets map (utility type, not Zod schema)
- */
-export type TypedFacetsMap = Partial<Record<DatasetFacetName, FacetValue[]>>
 
 /**
  * Check if a string is a valid facet name

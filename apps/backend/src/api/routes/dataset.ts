@@ -39,12 +39,11 @@ import {
   DatasetDetailResponseSchema,
   DatasetIdParamsSchema,
   DatasetListingQuerySchema,
-  DatasetSearchUnifiedResponseSchema,
+  DatasetSearchResponseSchema,
   DatasetUpdateResponseSchema,
   DatasetVersionDetailResponseSchema,
   DatasetVersionParamsSchema,
   DatasetVersionsListResponseSchema,
-  EsDatasetDocWithMergedSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   LinkedResearchesListResponseSchema,
@@ -74,7 +73,7 @@ const listDatasetsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetSearchUnifiedResponseSchema } },
+      content: { "application/json": { schema: DatasetSearchResponseSchema } },
       description: "List of datasets with optional facets",
     },
     500: ErrorSpec500,
