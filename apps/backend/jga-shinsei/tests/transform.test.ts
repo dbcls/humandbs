@@ -206,8 +206,8 @@ describe("buildDataGroup", () => {
 
   it("should handle multiple data entries", () => {
     const components: Component[] = [
-      { key: "data_access", value: "open" },
-      { key: "data_access", value: "controlled" },
+      { key: "data_access", value: "submission_open" },
+      { key: "data_access", value: "submission_type1" },
       { key: "study_type", value: "wgs" },
       { key: "study_type", value: "wes" },
       { key: "file_format", value: "CRAM" },
@@ -217,9 +217,9 @@ describe("buildDataGroup", () => {
     const result = buildDataGroup(getValues)
 
     expect(result).toHaveLength(2)
-    expect(result[0].dataAccess).toBe("open")
+    expect(result[0].dataAccess).toBe("submission_open")
     expect(result[0].studyType).toBe("wgs")
-    expect(result[1].dataAccess).toBe("controlled")
+    expect(result[1].dataAccess).toBe("submission_type1")
     expect(result[1].studyType).toBe("wes")
   })
 
