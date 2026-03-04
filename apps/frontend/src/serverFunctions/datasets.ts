@@ -1,5 +1,7 @@
 import {
+  CreateDatasetForResearchRequestSchema,
   DatasetIdParamsSchema,
+  type DatasetCreateResponse,
   type DatasetVersionsResponse,
   LangQuerySchema,
   LangVersionQuerySchema,
@@ -12,13 +14,23 @@ import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { api } from "@/services/backend";
+import { api, APIError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
+import { $$getJWT } from "@/utils/jwt-helpers";
+
+export type CreateDatasetForResearchResult =
+  | { ok: true; data: DatasetCreateResponse }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
   .inputValidator(DatasetSearchBodySchema)
   .handler<Promise<DatasetSearchUnifiedResponse>>(async ({ data }) => {
-    const paginated = await api.searchDatasets(data);
+    const accessToken = $$getJWT();
+    const paginated = await api.searchDatasets(data, accessToken ?? undefined);
 
     return paginated;
   });
@@ -88,3 +100,43 @@ export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {
     staleTime: 1000 * 60 * 60,
   });
 }
+
+const CreateDatasetForResearchInputSchema = z.object({
+  humId: z.string().min(1),
+  body: CreateDatasetForResearchRequestSchema,
+});
+
+export const $createDatasetForResearch = createServerFn({ method: "POST" })
+  .inputValidator(CreateDatasetForResearchInputSchema)
+  .handler<Promise<CreateDatasetForResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      const created = await api.createDatasetForResearch(
+        data.humId,
+        data.body,
+        accessToken,
+      );
+      return { ok: true, data: created };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to create dataset.";
+        if (error.status === 409) {
+          return { ok: false, error: detail, code: "CONFLICT" };
+        }
+        if (error.status === 403) {
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        }
+        if (error.status === 404) {
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        }
+        if (error.status === 401) {
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
+      }
+      throw error;
+    }
+  });
