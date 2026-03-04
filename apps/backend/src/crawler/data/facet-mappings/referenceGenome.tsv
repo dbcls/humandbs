@@ -33,12 +33,15 @@ dbSNP build 129	__DELETE__
 expt1	__DELETE__
 fastq	__DELETE__
 FASTQ	__DELETE__
+GENCODE v27 (GRCh37 version)	GRCh37
 GRCh36	GRCh36
 GRCh37	GRCh37
+GRCh37 - hg19	GRCh37
 GRCh37_decoy	GRCh37
 GRCh37.p13	GRCh37
 GRCh37/hg19	GRCh37
 GRCh37/hg19 (hs37d5)	GRCh37
+GRCh37/hg19, hs37d5	GRCh37
 GRCh37/hg19(hs37d5)	GRCh37
 GRCh37d5	GRCh37
 GRCh38	GRCh38
@@ -52,17 +55,24 @@ GRCh38(+HLA+decoy)	GRCh38
 GRCh38/hg38	GRCh38
 hg18	GRCh36
 hg19	GRCh37
+hg19(GRCh37)	GRCh37
+hg19/GRCh37	GRCh37
 hg38	GRCh38
+hg38-no_alt	GRCh38
 hs37d5	GRCh37
 Human GENCODE Gene Set(release 19)	Human GENCODE Gene Set(release 19)
 human genome	__DELETE__
 JAG	__DELETE__
 Japanese	__DELETE__
+KY316047.1	
 mm10	mm10
 NCBI Build 36.3	GRCh36
 population	__DELETE__
 refdata-cellranger-GRCh38-3.0.0	GRCh38
 refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0	GRCh38
+refdata-gex-GRCh38-2020-A	GRCh38
+refdata-gex-GRCh38-2020-A (GENCODE v32)	GRCh38
+refdata-gex-GRCh38-2024-A (GENCODE v44)	GRCh38
 refdata-GRCh38-1.0.0	GRCh38
 RNA-seq	__DELETE__
 RNA-Seq	__DELETE__

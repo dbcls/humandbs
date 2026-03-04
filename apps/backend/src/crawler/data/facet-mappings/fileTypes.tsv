@@ -41,10 +41,15 @@ BigWig	BigWig
 BIM	BIM
 bin	BIN
 BIN	BIN
+bnx	BNX
+BNX	
+bpm	BPM
+BPM	
 bw	BigWig
 c	__DELETE__
 CEL	CEL
 CHP	CHP
+chromosome_fasta	FASTA
 cloupe	Cloupe
 Cloupe	Cloupe
 contig_fasta	FASTA
@@ -54,6 +59,9 @@ csv	CSV
 CSV	CSV
 csv.gz	CSV.GZ
 CSV.GZ	CSV.GZ
+csv.zip	CSV.ZIP
+CSV.ZIP	
+data_dictionary	DOCUMENT
 DataSet	DATASET
 DATASET	DATASET
 document	DOCUMENT
@@ -104,6 +112,7 @@ matrix	MATRIX
 MATRIX	MATRIX
 matrix.mtx	MTX
 matrix.mtx.gz	MTX.GZ
+matrix.zarr	ZARR
 mtx	MTX
 MTX	MTX
 mtx.gz	MTX.GZ
@@ -122,6 +131,8 @@ phenotype	__DELETE__
 phenotype data	__DELETE__
 plink	PLINK
 PLINK	PLINK
+plink binary	PLINK
+plink.assoc	PLINK
 png	PNG
 PNG	PNG
 pptx	PPTX
@@ -156,14 +167,18 @@ tsv	TSV
 TSV	TSV
 tsv.gz	TSV.GZ
 TSV.GZ	TSV.GZ
+tsv.gz.tbi	TSV.GZ.TBI
 TSV.GZ.TBI	TSV.GZ.TBI
 txt	TXT
 TXT	TXT
 txt.gz	TXT.GZ
 TXT.GZ	TXT.GZ
+txt.zip	TXT.ZIP
+TXT.ZIP	
 V	__DELETE__
 vcf	VCF
 VCF	VCF
+vcf_aggregate	VCF
 vcf.gz	VCF.GZ
 VCF.GZ	VCF.GZ
 wiff	WIFF

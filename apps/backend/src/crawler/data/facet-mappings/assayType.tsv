@@ -15,6 +15,7 @@ array-CGH	Array CGH
 ATAC-...	__DELETE__
 ATAC-seq	ATAC-seq
 ATAC‑seq	ATAC-seq
+BCR repertoire	BCR-seq
 BCR repertoire analysis	BCR-seq
 BCR-seq	BCR-seq
 BD Ab-seq	CITE-seq
@@ -24,12 +25,14 @@ Bisulfite sequencing	Methyl-seq
 BS-Seq	Methyl-seq
 bulk RNA-seq	RNA-seq
 CAGE-seq	CAGE-seq
+CAGE-seq and NET-CAGE-seq	CAGE-seq
 Capture Methyl-seq	Methyl-seq
 cDNA	__DELETE__
 cDNA microarray	Microarray
 ChIP-seq	ChIP-seq
 Chorome	__DELETE__
 CITE-seq	CITE-seq
+CITE-seq and 5' single-cell RNA-seq	CITE-seq||scRNA-seq
 Clinical data	__DELETE__
 COBRA assay	Targeted DNA sequencing
 CUT&RUN-seq	CUT&RUN-seq
@@ -58,11 +61,13 @@ eQTL/pQTL summary statistics	eQTL||pQTL
 eQTL/sQTL summary statistics	eQTL||sQTL
 exome	WES
 Exome	WES
+Exome / genome wide SNPs	WES
 exome sequence	WES
 exome sequencing	WES
 Exome sequencing	WES
 experiment	__DELETE__
 expression array	Microarray
+Expression array	Microarray
 externalMetadata	__DELETE__
 genome	__DELETE__
 genome sequencing	WGS
@@ -113,6 +118,8 @@ Illumina HumanOmniExpress BeadChip	Genotyping Array
 Illumina sequencing	__DELETE__
 Illumina short‑read sequencing	__DELETE__
 Imputation	__DELETE__
+Integration of variant information detected by WGS analysis	WGS
+Integration of variant information detected by WGS analysis (variants on autosomes and X chromosome)	WGS
 Invader assay	Targeted DNA sequencing
 Iso-seq	Long-read RNA-seq
 J	__DELETE__
@@ -130,10 +137,13 @@ Mass cytometry	CyTOF
 mass spectrometry	__DELETE__
 Mass Spectrometry	__DELETE__
 metabolome	Metabolomics
+Metabolome (NMR)	Metabolomics
+metabolomics	Metabolomics
 Metabolomics	Metabolomics
 metabolomics (NMR)	Metabolomics
 metagenome	Metagenomics
 Metagenome	Metagenomics
+metagenome (16S rRNA)	16S rRNA Sequencing
 Metagenome (16S rRNA)	16S rRNA Sequencing
 metagenome sequencing	Metagenomics
 metagenome shotgun sequencing	Metagenomics
@@ -147,9 +157,12 @@ Methylation array	Methylation Array
 Methylation Array	Methylation Array
 Methylation profiling by high-throughput sequencing	Methyl-seq
 Micro-C	Micro-C
+Micro-C and Region Capture Micro-C	Micro-C
 microarray	Microarray
 Microarray	Microarray
 miRNA-seq	miRNA-seq
+mobile element polymorphism frequency information	Genotyping Array
+Multimodal assay including single-nucleus ATAC-seq, 3' and 5' single-nucleus RNA-seq, and 5' single-cell RNA-seq	ATAC-seq||scRNA-seq
 Multiplex Fluorescence Immunostaining	Histological Imaging
 nCounter (NanoString)	nCounter (NanoString)
 NET-CAGE-seq	CAGE-seq
@@ -157,6 +170,8 @@ next-generation sequencing	__DELETE__
 next-generation sequencing (NGS)	__DELETE__
 NGS	__DELETE__
 NGS(WGS)	WGS
+Olink Explore 3072	Proteomics
+Olink Target 96	Proteomics
 Oxford Nanopore sequencing	__DELETE__
 PacBio long‑read sequencing	__DELETE__
 pathological image	Pathological Imaging
@@ -222,6 +237,7 @@ snATAC-seq	ATAC-seq
 SNP array	Genotyping Array
 SNP-chip	Genotyping Array
 snRNA-seq	scRNA-seq
+Somascan	Proteomics
 Spatial transcriptomics	Spatial transcriptomics
 sQTL	sQTL
 string	__DELETE__
@@ -230,10 +246,12 @@ TaqMan analysis	Targeted DNA sequencing
 TaqMan assay	qRT-PCR
 Target bisulfite sequencing	Methyl-seq
 Target Capture	Targeted DNA sequencing
+Target Capture (CS-A, CS-B)	Targeted DNA sequencing
 target coverage	__DELETE__
 Target RNA-seq	RNA-seq
 Targeted DNA sequencing	Targeted DNA sequencing
 Targeted sequencing	Targeted DNA sequencing
+TCR repertoire	TCR-seq
 TCR-seq	TCR-seq
 TCR/BCR repertoire	TCR/BCR Repertoire
 TCR/BCR Repertoire	TCR-seq||BCR-seq

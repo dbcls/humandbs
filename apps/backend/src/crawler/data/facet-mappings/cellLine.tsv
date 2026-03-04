@@ -1,35 +1,46 @@
+__DELETE__	__DELETE__
 .	__DELETE__
 ...	__DELETE__
 0	__DELETE__
 0/1??  .... </</....</......	__DELETE__
 201B7-Ff	iPSC
+293 [HEK-293]	HEK293
 35659	__DELETE__
 35673	__DELETE__
 35677	__DELETE__
 41865	__DELETE__
 41866	__DELETE__
 A549	A549
+acute leukemia cell line	__DELETE__
 AGVT knock-in cell line	__DELETE__
+AGVT knock-in iPSC (AG: TFAP2C-EGFP; VT: hVASA-tdTomato knock-ins)	iPSC
 ATL cell line ED	__DELETE__
 B lymphocyte	__DELETE__
+blood	__DELETE__
+blood cell	__DELETE__
+bTS5	__DELETE__
+buffy coat	__DELETE__
 C	__DELETE__
 C34	__DELETE__
-CCL-220	CCL-220
-CT27	CT27
-CT29	CT29
 Caco-2	Caco-2
 Case	__DELETE__
+CCL-220	CCL-220
+cell line	__DELETE__
 Cell Type	__DELETE__
 Control	__DELETE__
 Control-ER-KRAS-G12V	__DELETE__
-Coriell Institute	__DELETE__
 Coriell cell line	Coriell cell line
+Coriell Institute	__DELETE__
+CT27	CT27
+CT29	CT29
+cultured cells established from tumor tissue	__DELETE__
 D10118	D10118
 D10118 (Takara Bio)	D10118
 DNA Bank (National Institute of Biomedical Innovation, Health and Nutrition)	__DELETE__
 ED	__DELETE__
 EVT	
 GIAB cell line	GIAB cell line
+Glioma stem cell line	Glioma stem cell line
 GM00850	Coriell cell line
 GM02342	Coriell cell line
 GM02343	Coriell cell line
@@ -40,8 +51,8 @@ GM04664	Coriell cell line
 GM04899	Coriell cell line
 GM12878	GM12878
 GM19078	Coriell cell line
-Glioma stem cell line	Glioma stem cell line
 H	__DELETE__
+HapMap-JPT	__DELETE__
 HBL	HBL
 HBL cell line	
 HBL cell lines	HBL
@@ -50,29 +61,63 @@ HCT25	HCT25
 HCT71	HCT71
 HD100AA	HD100AA
 HD100CAU	HD100CAU
+Health Science Research Resources Bank (HSRRB)	__DELETE__
 HEK293	HEK293
+HeLa	HeLa
+hepatoblastoma cell lines	__DELETE__
+HepG2	HepG2
+HepG22215	HepG2
+hESC	hESC
 HG001	GIAB cell line
 HG002	GIAB cell line
-HG002(NA24385, Coriell Institute)	GIAB cell line
 HG002-01-01	GIAB cell line
+HG002(NA24385, Coriell Institute)	GIAB cell line
 HG003	GIAB cell line
 HLA-typed cell lines	__DELETE__
 HPDE-1/E6E7	HPDE-1/E6E7
 HPDE-6/E6E7	HPDE-6/E6E7
 HPS4290	HPS4290
-HapMap-JPT	__DELETE__
-HeLa	HeLa
-HepG2	HepG2
-HepG22215	HepG2
+hPSC	stem cell
+hTSC	
+human	__DELETE__
+human iPSC	iPSC
+human peripheral blood CD4+ T cells (Lonza Catalog #: 2W-200)	__DELETE__
+human peripheral blood CD4+T cells (Lonza Catalog #: 2W-200)	__DELETE__
+human placenta stem cell line	stem cell
+human placental stem cell	stem cell
+human placental stem cell line	stem cell
+human trophoblast stem cell lines	hTSC
+human trophoblast stem cells	hTSC
 IFO50356	IFO50356
 IFO50356(JCRB)	IFO50356
 Illumina	__DELETE__
-JBIC	__DELETE__
-JBIC cell line	__DELETE__
+infant KMT2A gene rearrangement positive acute lymphoblastic leukemia cell line	__DELETE__
+iPS	iPSC
+iPS cell	iPSC
+iPS cell clone	iPSC
+iPS cell-derived alveolar organoid	
+iPS cell-derived cardiomyocytes	__DELETE__
+iPS cells	iPSC
+iPS cells derived from CB_1	iPSC
+iPS cells derived from HDFa	iPSC
+iPS-derived neurons	
+iPS-derived NSCs	
+iPSC	iPSC
+iPSC-derived cardiomyocytes	__DELETE__
+Japanese B cell DNA bank	Japanese B cell line
+Japanese B cell DNA bank (National Institutes of Biomedical Innovation, Health and Nutrition)	Japanese B cell line
 Japanese B cell line	Japanese B cell line
 Japanese B cell line (PSC cell line)	Japanese B cell line
+Japanese B cell line DNA bank (National Institutes of Biomedical Innovation, Health and Nutrition)	Japanese B cell line
+Japanese B cell line/DNA bank (NIBIOHN)	Japanese B cell line
+Japanese Collection of Research Bioresources (Japanese B cell DNA bank)	Japanese B cell line
 Japanese-derived B cell line	Japanese B cell line
+Japanese-derived B cell lines (PSC cell lines)	Japanese B cell line
 Japanese-origin B cell lines	Japanese B cell line
+JBIC	__DELETE__
+JBIC cell line	__DELETE__
+JBIC cell lines	__DELETE__
+JMPAL-1	
 Jurkat	Jurkat
 Jurkat cells	Jurkat
 K5...	__DELETE__
@@ -81,27 +126,36 @@ KF4109	KF4109
 KF4109 (Kurabo)	KF4109
 KMT2A gene rearrangement positive acute lymphoblastic leukemia cell line	__DELETE__
 KURABO (KF4109)	KF4109
-KURABO KF4109 (HDFa)	KF4109
 Kurabo KF4109	KF4109
+KURABO KF4109 (HDFa)	KF4109
 LCL	
 LCL (Coriell Institute)	LCL
 LONZA 2M-101A	__DELETE__
 LONZA 2M-101C	__DELETE__
-LU99	LU99
 Lonza normal bone marrow (2M-125C)	__DELETE__
+LU99	LU99
 Lung	__DELETE__
 MCF-7	MCF-7
 MCF7	MCF-7
+mesothelioma cell line	
 N: 	__DELETE__
 NA18943	NA18943
+National Institutes of Biomedical Innovation, Health and Nutrition (NIBIOHN)	__DELETE__
 NCL-CN	NCL-CN
+neuroblastoma cell line	
+neuroblastoma cell lines	__DELETE__
 NIH neurobiobank	__DELETE__
 NIKS18	NIKS18
+normal bone marrow (Lonza, 2M-125C)	__DELETE__
+normal duodenum organoids	__DELETE__
 NovaSeq 6000	__DELETE__
 OCUM-8	OCUM-8
 OCUM-9	OCUM-9
+organoid	__DELETE__
+osteoblasts	__DELETE__
 P	__DELETE__
 PBMC	__DELETE__
+peripheral blood	__DELETE__
 PLC/PRF/5	PLC/PRF/5
 RCB0806	RCB0806
 RIKEN BRC	__DELETE__
@@ -112,11 +166,24 @@ RSTC-7	iPSC
 SAEC	__DELETE__
 SEES3	iPSC
 ST	
+stem cell	stem cell
+subjectCount_type	__DELETE__
+TaKaRa Bio (D10118)	D10118
+Takara Bio D10118	D10118
+TaKaRa Bio D10118 (CB_1)	D10118
+Takara/Lonza cell lines	__DELETE__
+test	__DELETE__
 TF-hESC	hESC
 TGS-01	Glioma stem cell line
 TGS-04	Glioma stem cell line
+tissue	__DELETE__
+Title: 	__DELETE__
 TL-om1	TL-om1
 TL-om1 cell line	TL-om1
+trophoblast stem cells	stem cell
+trophoblast stem cells derived from a blastocyst	stem cell
+trophoblast stem cells derived from placenta after artificial abortion	stem cell
+TruSeq DNA PCR-Free Library Prep Kit	__DELETE__
 TS	
 TS (derived from female CT)	
 TS (derived from male CT)	
@@ -124,58 +191,18 @@ TS (trophoblast stem cell derived from Female CT, differentiated to EVT)	TS deri
 TS (trophoblast stem cell derived from Female CT, differentiated to ST)	TS derived from female CT (differentiated to ST)
 TS (trophoblast stem cell derived from Female CT, undifferentiated)	TS derived from female CT (undifferentiated)
 TS (trophoblast stem cell derived from Male CT, undifferentiated)	TS derived from male CT (undifferentiated)
+TS cell	stem cell
 TS cells	stem cell
 TS derived from female CT (differentiated to EVT)	
 TS derived from female CT (differentiated to ST)	
 TS derived from female CT (undifferentiated)	
 TS derived from male CT (undifferentiated)	
 TSC	stem cell
-TaKaRa Bio (D10118)	D10118
-TaKaRa Bio D10118 (CB_1)	D10118
-Takara Bio D10118	D10118
-Takara/Lonza cell lines	__DELETE__
-Title: 	__DELETE__
-TruSeq DNA PCR-Free Library Prep Kit	__DELETE__
-WS(ICD10: Q253): 6 cases	__DELETE__
-__DELETE__	__DELETE__
-acute leukemia cell line	__DELETE__
-bTS5	__DELETE__
-blood	__DELETE__
-blood cell	__DELETE__
-buffy coat	__DELETE__
-cell line	__DELETE__
-hESC	hESC
-hPSC	stem cell
-hTSC	
-hepatoblastoma cell lines	__DELETE__
-human	__DELETE__
-human peripheral blood CD4+T cells (Lonza Catalog #: 2W-200)	__DELETE__
-human placenta stem cell line	stem cell
-human placental stem cell	stem cell
-human placental stem cell line	stem cell
-human trophoblast stem cells	hTSC
-iPS	iPSC
-iPS cell clone	iPSC
-iPS cell-derived alveolar organoid	
-iPS cell-derived cardiomyocytes	__DELETE__
-iPS cells	iPSC
-iPS cells derived from CB_1	iPSC
-iPS cells derived from HDFa	iPSC
-iPS-derived NSCs	
-iPS-derived neurons	
-iPSC	iPSC
-iPSC-derived cardiomyocytes	__DELETE__
-infant KMT2A gene rearrangement positive acute lymphoblastic leukemia cell line	__DELETE__
-mesothelioma cell line	
-neuroblastoma cell line	
-neuroblastoma cell lines	__DELETE__
-peripheral blood	__DELETE__
-stem cell	stem cell
-subjectCount_type	__DELETE__
-test	__DELETE__
-tissue	__DELETE__
-trophoblast stem cells	stem cell
+tumor-derived organoid (19-024) AGR2 knockout cells	__DELETE__
+tumor-derived organoid (19-024) GFP overexpressing cells (control)	__DELETE__
+tumor-derived organoids	__DELETE__
 whole blood	__DELETE__
+WS(ICD10: Q253): 6 cases	__DELETE__
 xenograft	__DELETE__
 ヒトiPS細胞株	iPSC
 ヒト末梢血CD4+T細胞(Lonza Catalog #: 2W-200)	__DELETE__

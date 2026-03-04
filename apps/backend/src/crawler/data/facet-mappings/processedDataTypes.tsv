@@ -1,10 +1,20 @@
 ,	__DELETE__
 .... .......... ......... ....... ...-....... ...	__DELETE__
 ]	__DELETE__
+aggregate variant calls	VCF
+aggregate VCF	VCF
+aggregated variant calls	VCF
 aligned	__DELETE__
 aligned reads	__DELETE__
+aligned reads (BAM)	BAM
 aligned_reads	aligned_reads
 alignment	BAM
+alignment data	BAM
+allele frequency	
+anellovirus load	
+assembled sequence	
+autosomal variants	variant calls
+B cell receptor repertoire clonotype data	
 bai	BAI
 BAI	BAI
 bam	BAM
@@ -18,6 +28,7 @@ bed	BED
 BED	BED
 bedpe	BEDPE
 BEDPE	BEDPE
+beta value	DNA methylation data
 bigwig	BigWig
 BigWig	BigWig
 blood	__DELETE__
@@ -27,6 +38,7 @@ bw	BigWig
 called	__DELETE__
 cell_type	__DELETE__
 cfa..	__DELETE__
+ChIP-seq peaks	
 CHP	
 cloupe	Cloupe
 Cloupe	Cloupe
@@ -34,7 +46,11 @@ CLOUPE	Cloupe
 CNV	CNV
 contig_fasta	__DELETE__
 count data	__DELETE__
+count table	
 CpG methylation rate data	DNA methylation data
+CRISPR	
+CRISPR array sequences	
+CRISPR sequences	
 csv	CSV
 CSV	CSV
 csv.gz	CSV.GZ
@@ -45,6 +61,10 @@ DNA	__DELETE__
 DNA methylation data	DNA methylation data
 document	__DELETE__
 DOCUMENT	DOCUMENT
+eHHV-6 and annelovirus load data	
+eHHV-6 presence/absence	
+eQTL results	eQTL summary statistics
+eQTL summary statistics	
 exome sequencing	__DELETE__
 experiment description	__DELETE__
 expression data	__DELETE__
@@ -63,16 +83,27 @@ features.tsv.gz	TSV.GZ
 fpkm	__DELETE__
 FPKM	
 FPKM txt	FPKM
+fusion gene	
 GATK	__DELETE__
 gDNA	__DELETE__
+gene count	
 gene expression	__DELETE__
+gene expression matrix	
+gene expression matrix (tsv, mtx)	gene expression matrix
+gene expression profile	
+gene read counts	gene count
 geneName	__DELETE__
+genome wide SNVs	variant calls
+genome wide variants	variant calls
 genomic variant data	__DELETE__
 genotype	__DELETE__
+Genotype	Genotype data
 genotype call	__DELETE__
 genotype data	__DELETE__
 Genotype data	
 genotypes	__DELETE__
+germline mutation	germline variant calls
+germline variant calls	
 gff	GFF
 GFF	GFF
 GJA2	__DELETE__
@@ -82,6 +113,7 @@ gvcf	GVCF
 GVCF	GVCF
 gwas	__DELETE__
 GWAS	GWAS
+GWAS statistics	GWAS summary statistics
 GWAS summary data	GWAS summary statistics
 gwas summary statistics	__DELETE__
 GWAS summary statistics	
@@ -90,31 +122,49 @@ h5	HDF5
 H5	HDF5
 hdf5	HDF5
 HDF5	HDF5
+Hi-C loops	
+histological image	
+histological image (png)	histological image
 html	HTML
 HTML	HTML
 idat	IDAT
 IDAT	IDAT
+identified protein list	
 Illumina	__DELETE__
 image	__DELETE__
 imputation	__DELETE__
+imputation reference panel	
 imputation(1000 genomes Phase 3 v5 )	__DELETE__
+imputed genotype data	
+imputed genotype variants	imputed genotype data
 imputed genotypes	__DELETE__
+imputed variants	imputed genotype data
 intensity data	__DELETE__
+joint call vcf	VCF
+joint call VCF	VCF
 json	JSON
 JSON	JSON
 list	__DELETE__
 MAG	
 MAG (Metagenome-Assembled Genome)	MAG
+MAG sequences	
 map	MAP
 MAP	MAP
+mapped reads	BAM
 matrix	__DELETE__
 MATRIX	MATRIX
 matrix.mtx	__DELETE__
 matrix.mtx.gz	MTX
 metabolomics data	__DELETE__
+methylation	DNA methylation data
+methylation beta-value table	DNA methylation data
+methylation data	DNA methylation data
 methylation rate	DNA methylation data
 microarray	__DELETE__
 microarray data	__DELETE__
+miRNA expression counts	
+mitochondrial variant calls	variant calls
+mobile element polymorphism frequency information	
 mtx	MTX
 MTX	MTX
 Nanopore	__DELETE__
@@ -123,10 +173,12 @@ other	__DELETE__
 parquet	PARQUET
 Parquet	PARQUET
 PBMC	__DELETE__
+peak list	
 ped	PED
 PED	PED
 ped/map	PED||MAP
 phenotype	__DELETE__
+Phenotype	Phenotype data
 phenotype data	Phenotype data
 Phenotype data	Phenotype data
 Phenotype data (txt.gz)	Phenotype data
@@ -137,6 +189,9 @@ PLINK Binary	PLINK Binary
 plink.assoc	PLINK Assoc
 png	PNG
 PNG	PNG
+polygenic risk score	
+polygenic risk scores	polygenic risk score
+pQTL summary statistics	
 qc	__DELETE__
 qpcr	__DELETE__
 qptiff	QPTIFF
@@ -144,11 +199,29 @@ QPTIFF	QPTIFF
 raw	__DELETE__
 rds	RDS
 RDS	RDS
+read count	
+reference panel	
+reference panel VCF	VCF
 RNA-seq	__DELETE__
 RNA-Seq	__DELETE__
+sequence reads	FASTQ
 sequencing	__DELETE__
 skin	__DELETE__
+SNPs	variant calls
+SNV	variant calls
+SNV genotype data	Genotype data
 SNV Number	__DELETE__
+SNV/indel	variant calls
+SNV/Indel	variant calls
+somatic CNV	
+somatic copy-number alterations	somatic CNV
+somatic mutation	somatic variant calls
+somatic SNVs/indels	somatic variant calls
+somatic variant calls	
+spatial gene expression data	
+spatial gene expression data (h5)	spatial gene expression data
+sQTL summary statistics	
+SV	variant calls
 tab	TAB
 TAB	TAB
 tabix	Tabix
@@ -163,7 +236,11 @@ TIF	TIFF
 tiff	TIFF
 TIFF	TIFF
 tissue_type	__DELETE__
+TPM	
+TPM data	TPM
 tpm list	__DELETE__
+Transcripts Per Million	TPM
+transcripts per million (TPM)	TPM
 tsv	TSV
 TSV	TSV
 tsv.gz	TSV.GZ
@@ -176,13 +253,19 @@ txt.gz	TXT.GZ
 TXT.GZ	TXT.GZ
 variant	__DELETE__
 variant calls	variant calls
+variant calls (VCF)	VCF
+variant data	variant calls
 variant-called	__DELETE__
 variants	__DELETE__
 vcf	VCF
 VCF	VCF
+VCF aggregate	VCF
 vcf_aggregate	VCF
 VCF_aggregate	VCF
 vcf.gz	VCF
+virus genome	
+Virus genome	virus genome
+virus genome sequences	virus genome
 WGS	__DELETE__
 wig	WIG
 WIG	WIG
