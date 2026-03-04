@@ -3,11 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "types": "./types/shared-types.ts",
+  "types": "./dist/types/shared-types.d.ts",
   "exports": {
     "./types": {
-      "types": "./types/shared-types.ts",
-      "import": "./types/shared-types.ts"
+      "types": "./dist/types/shared-types.d.ts"
     }
   },
   "scripts": {
@@ -33,6 +32,7 @@
     "test:es": "bun test tests/unit/es",
     "test:api": "bun test tests/unit/api",
     "test:integration": "bun test --test-root ./tests/integration",
+    "build:types": "tsc -p tsconfig.build-types.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix"

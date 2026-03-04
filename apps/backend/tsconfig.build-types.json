@@ -3,16 +3,13 @@
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "outDir": "./dist/types",
+    "emitDeclarationOnly": true,
+    "outDir": "./dist",
     "rootDir": ".",
     "noEmit": false,
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": false
   },
   "include": [
-    "types/shared-types.ts",
-    "src/api/types/**/*.ts",
-    "src/es/types.ts",
-    "src/crawler/types/**/*.ts",
-  ],
+    "types/shared-types.ts"
+  ]
 }
