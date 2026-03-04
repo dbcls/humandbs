@@ -8,7 +8,7 @@ import {
   UpdateUidsRequestSchema,
   type ResearchDetailResponse,
   type ResearchSearchBody,
-  type ResearchSearchUnifiedResponse,
+  type ResearchSearchResponse,
   type ResearchWithLockResponse,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
@@ -177,7 +177,7 @@ export const $deleteResearch = createServerFn({ method: "POST" })
 
 export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchBodySchema)
-  .handler<Promise<ResearchSearchUnifiedResponse>>(({ data }) => {
+  .handler<Promise<ResearchSearchResponse>>(({ data }) => {
     const accessToken = $$getJWT();
     return api.searchResearches(data, accessToken ?? undefined);
   });

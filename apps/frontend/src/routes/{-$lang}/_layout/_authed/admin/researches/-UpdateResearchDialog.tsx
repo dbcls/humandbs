@@ -1,6 +1,6 @@
 import type {
   ResearchDetailResponse,
-  ResearchSearchUnifiedResponse,
+  ResearchSearchResponse,
   UpdateResearchRequest,
 } from "@humandbs/backend/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -213,7 +213,7 @@ type UpdateMutationResult =
 interface OptimisticContext {
   previousLists: [
     queryKey: readonly unknown[],
-    data: ResearchSearchUnifiedResponse | undefined,
+    data: ResearchSearchResponse | undefined,
   ][];
   previousById: [
     queryKey: readonly unknown[],
@@ -422,53 +422,49 @@ function UpdateResearchForm({
         queryClient.cancelQueries({ queryKey: ["researches", "byId"] }),
       ]);
 
-      const previousLists =
-        queryClient.getQueriesData<ResearchSearchUnifiedResponse>({
-          queryKey: ["researches", "list"],
-        });
+      const previousLists = queryClient.getQueriesData<ResearchSearchResponse>({
+        queryKey: ["researches", "list"],
+      });
       const previousById = queryClient.getQueriesData<ResearchDetailResponse>({
         queryKey: ["researches", "byId"],
       });
 
       previousLists.forEach(([queryKey]) => {
-        queryClient.setQueryData<ResearchSearchUnifiedResponse>(
-          queryKey,
-          (old) => {
-            if (!old) return old;
+        queryClient.setQueryData<ResearchSearchResponse>(queryKey, (old) => {
+          if (!old) return old;
 
-            const lang = getLangFromResearchListQueryKey(queryKey) ?? "ja";
-            const optimisticTitle =
-              lang === "en"
-                ? (input.body.title?.en ?? input.body.title?.ja ?? "")
-                : (input.body.title?.ja ?? input.body.title?.en ?? "");
-            const optimisticMethods =
-              lang === "en"
-                ? (input.body.summary?.methods?.en?.text ??
-                  input.body.summary?.methods?.ja?.text)
-                : (input.body.summary?.methods?.ja?.text ??
-                  input.body.summary?.methods?.en?.text);
-            const optimisticTargets =
-              lang === "en"
-                ? (input.body.summary?.targets?.en?.text ??
-                  input.body.summary?.targets?.ja?.text)
-                : (input.body.summary?.targets?.ja?.text ??
-                  input.body.summary?.targets?.en?.text);
+          const lang = getLangFromResearchListQueryKey(queryKey) ?? "ja";
+          const optimisticTitle =
+            lang === "en"
+              ? (input.body.title?.en ?? input.body.title?.ja ?? "")
+              : (input.body.title?.ja ?? input.body.title?.en ?? "");
+          const optimisticMethods =
+            lang === "en"
+              ? (input.body.summary?.methods?.en?.text ??
+                input.body.summary?.methods?.ja?.text)
+              : (input.body.summary?.methods?.ja?.text ??
+                input.body.summary?.methods?.en?.text);
+          const optimisticTargets =
+            lang === "en"
+              ? (input.body.summary?.targets?.en?.text ??
+                input.body.summary?.targets?.ja?.text)
+              : (input.body.summary?.targets?.ja?.text ??
+                input.body.summary?.targets?.en?.text);
 
-            return {
-              ...old,
-              data: old.data.map((item) =>
-                item.humId === humId
-                  ? {
-                      ...item,
-                      title: optimisticTitle || item.title,
-                      methods: optimisticMethods ?? item.methods,
-                      targets: optimisticTargets ?? item.targets,
-                    }
-                  : item,
-              ),
-            };
-          },
-        );
+          return {
+            ...old,
+            data: old.data.map((item) =>
+              item.humId === humId
+                ? {
+                    ...item,
+                    title: optimisticTitle || item.title,
+                    methods: optimisticMethods ?? item.methods,
+                    targets: optimisticTargets ?? item.targets,
+                  }
+                : item,
+            ),
+          };
+        });
       });
 
       previousById.forEach(([queryKey]) => {

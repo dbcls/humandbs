@@ -9,7 +9,7 @@
 import { z } from "zod"
 
 // Re-export from es/types for convenience
-import { ResearchStatusSchema as EsResearchStatusSchema } from "@/es/types"
+import { ResearchStatusSchema as EsResearchStatusSchema } from "../../es/types"
 
 export const ResearchStatusSchema = EsResearchStatusSchema
 export type EsResearchStatus = z.infer<typeof ResearchStatusSchema>

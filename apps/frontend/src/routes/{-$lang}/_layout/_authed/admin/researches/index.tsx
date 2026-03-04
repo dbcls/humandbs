@@ -1,5 +1,5 @@
 import { ResearchSearchBodySchema } from "@humandbs/backend/types";
-import type { ResearchSearchUnifiedResponse } from "@humandbs/backend/types";
+import type { ResearchSearchResponse } from "@humandbs/backend/types";
 import {
   type QueryKey,
   useMutation,
@@ -58,7 +58,7 @@ export const Route = createFileRoute(
 });
 
 interface DeleteOptimisticContext {
-  previousLists: [QueryKey, ResearchSearchUnifiedResponse | undefined][];
+  previousLists: [QueryKey, ResearchSearchResponse | undefined][];
 }
 
 function RouteComponent() {
@@ -127,12 +127,11 @@ function CardContent() {
     onMutate: async (humId) => {
       await queryClient.cancelQueries({ queryKey: ["researches", "list"] });
 
-      const previousLists =
-        queryClient.getQueriesData<ResearchSearchUnifiedResponse>({
-          queryKey: ["researches", "list"],
-        });
+      const previousLists = queryClient.getQueriesData<ResearchSearchResponse>({
+        queryKey: ["researches", "list"],
+      });
 
-      queryClient.setQueriesData<ResearchSearchUnifiedResponse>(
+      queryClient.setQueriesData<ResearchSearchResponse>(
         { queryKey: ["researches", "list"] },
         (oldData) => {
           if (!oldData) return oldData;
@@ -298,7 +297,7 @@ function TableSkeleton() {
 }
 
 const columnHelper =
-  createColumnHelper<ResearchSearchUnifiedResponse["data"][number]>();
+  createColumnHelper<ResearchSearchResponse["data"][number]>();
 
 function getColumns(
   onEdit: (humId: string) => void,

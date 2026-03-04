@@ -1,5 +1,5 @@
 import { DatasetSearchBodySchema } from "@humandbs/backend/types";
-import type { DatasetSearchUnifiedResponse } from "@humandbs/backend/types";
+import type { DatasetSearchResponse } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import {
@@ -200,7 +200,7 @@ function TableSkeleton() {
 }
 
 const columnHelper =
-  createColumnHelper<DatasetSearchUnifiedResponse["data"][number]>();
+  createColumnHelper<DatasetSearchResponse["data"][number]>();
 
 function getColumns(lang: Locale) {
   return [

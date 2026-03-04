@@ -9,7 +9,7 @@
  */
 import { z } from "zod"
 
-import { IsTumorSchema } from "@/es/types"
+import { IsTumorSchema } from "../../es/types"
 
 // === Range Filter ===
 

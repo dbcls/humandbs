@@ -2,10 +2,10 @@ import {
   CreateDatasetForResearchRequestSchema,
   DatasetIdParamsSchema,
   type DatasetCreateResponse,
-  type DatasetVersionsResponse,
+  type DatasetVersionsListResponse,
   LangQuerySchema,
   LangVersionQuerySchema,
-  type DatasetSearchUnifiedResponse,
+  type DatasetSearchResponse,
   type DatasetDetailResponse,
   DatasetSearchBodySchema,
   type DatasetSearchBody,
@@ -28,7 +28,7 @@ export type CreateDatasetForResearchResult =
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
   .inputValidator(DatasetSearchBodySchema)
-  .handler<Promise<DatasetSearchUnifiedResponse>>(async ({ data }) => {
+  .handler<Promise<DatasetSearchResponse>>(async ({ data }) => {
     const accessToken = $$getJWT();
     const paginated = await api.searchDatasets(data, accessToken ?? undefined);
 
@@ -86,7 +86,7 @@ export const $getDatasetVersions = createServerFn({
   method: "GET",
 })
   .inputValidator(DatasetVersionsQuerySchema)
-  .handler<Promise<DatasetVersionsResponse>>(({ data }) =>
+  .handler<Promise<DatasetVersionsListResponse>>(({ data }) =>
     api.getDatasetVersions({
       params: { datasetId: data.datasetId },
       search: { lang: data.lang },

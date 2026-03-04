@@ -6,7 +6,7 @@
   "types": "./types/generated/types/shared-types.d.ts",
   "exports": {
     "./types": {
-      "types": "./types/generated/types/shared-types.d.ts"
+      "types": "./types/shared-types.ts"
     }
   },
   "scripts": {

@@ -17,15 +17,15 @@ import {
   EsResearchDetailSchema,
   EsResearchVersionDocSchema,
   DatasetVersionItemSchema,
-} from "@/api/types/es-docs"
-import { FacetsMapSchema } from "@/api/types/facets"
-import { ResearchSummarySchema } from "@/api/types/query-params"
+} from "./es-docs"
+import { FacetsMapSchema } from "./facets"
+import { ResearchSummarySchema } from "./query-params"
 import {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
   ResponseMetaWithPaginationSchema,
-} from "@/api/types/response"
-import { RESEARCH_STATUS } from "@/api/types/workflow"
+} from "./response"
+import { RESEARCH_STATUS } from "./workflow"
 import {
   BilingualTextSchema,
   BilingualTextValueSchema,
@@ -39,7 +39,7 @@ import {
   // Crawler schemas (for API request validation)
   CrawlerResearchSchema as ResearchSchema,
   CrawlerResearchVersionSchema as ResearchVersionSchema,
-} from "@/es/types"
+} from "../../es/types"
 
 // === Response Schemas ===
 
