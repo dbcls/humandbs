@@ -28,7 +28,10 @@ COPY packages/eslint-config/package.json ./packages/eslint-config/
 # chmod: named volume inherits image permissions on first creation;
 #        make writable so arbitrary UID (Podman keep-id) can run `bun install`.
 RUN bun install --frozen-lockfile && \
-    chmod -R a+rwX node_modules apps/*/node_modules packages/*/node_modules
+    chmod -R a+rwX node_modules && \
+    [ -d apps/frontend/node_modules ] && chmod -R a+rwX apps/frontend/node_modules || true && \
+    [ -d apps/backend/node_modules ] && chmod -R a+rwX apps/backend/node_modules || true && \
+    [ -d packages/eslint-config/node_modules ] && chmod -R a+rwX packages/eslint-config/node_modules || true
 
 COPY . .
 
