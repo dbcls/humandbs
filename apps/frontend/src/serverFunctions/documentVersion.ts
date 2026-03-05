@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { type Locale } from "use-intl";
 import { z } from "zod";
 
-import { type ContentId, contentIdSchema } from "@/config/content-config";
+import { type ContentId } from "@/config/content-config";
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import { type DocVersionStatus } from "@/db/schema";
@@ -18,6 +18,7 @@ import {
   type DocVersionListItemResponseRaw,
   type DocVersionResponseRaw,
 } from "@/repositories/documentVersion";
+import { $getContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
 
@@ -235,7 +236,7 @@ export const $saveDocumentVersionDraft = createServerFn({ method: "POST" })
 // === PUBLISH DRAFT
 
 const publishDocVersionDraftRequestSchema = z.object({
-  contentId: contentIdSchema,
+  contentId: z.string(),
   versionNumber: z.number(),
   locale: localeSchema,
 });
@@ -337,6 +338,30 @@ const docPublishedVersionsRequestSchema = documentVersionSelectSchema.pick({
   contentId: true,
   locale: true,
 });
+
+export const $getLatestDocumentOrContent = createServerFn()
+  .inputValidator(z.object({ id: z.string(), lang: localeSchema }))
+  .handler(async ({ data }) => {
+    const { id, lang } = data;
+
+    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(
+      id,
+      lang,
+    );
+
+    if (docVersion) {
+      return docVersion;
+    }
+
+    try {
+      const content = await $getContentItemTranslation({
+        data: { id, lang, status: "published" },
+      });
+      return content;
+    } catch {
+      throw new Error("Page not found");
+    }
+  });
 
 export const $getLatestPublishedDocumentVersion = createServerFn({
   method: "GET",

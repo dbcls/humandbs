@@ -5,7 +5,6 @@ import {
 } from "drizzle-zod";
 import * as z from "zod";
 
-import { contentIdSchema } from "@/config/content-config";
 import { localeSchema } from "@/config/i18n";
 
 import * as schema from "./schema";
@@ -18,7 +17,7 @@ export const documentSelectSchema = createSelectSchema(schema.document).omit({
 
 export const documentVersionSelectSchema = createSelectSchema(
   schema.documentVersion,
-  { locale: localeSchema, contentId: contentIdSchema },
+  { locale: localeSchema },
 );
 
 export type DocumentSelect = z.infer<typeof documentSelectSchema>;
