@@ -63,20 +63,30 @@ function localeRewrite(): LocationRewrite {
 
       const [maybeLocale] = parts;
 
-      if (
-        maybeLocale &&
-        (maybeLocale.startsWith(".") ||
-          maybeLocale === "auth" ||
-          maybeLocale === "assets" ||
-          maybeLocale === "favicon.ico" ||
-          maybeLocale.startsWith("hum"))
+      // 1.if no pathname whatsoever, set it as default lang
+      if (!maybeLocale) {
+        url.pathname = `/${i18n.defaultLocale}/`;
+        return url;
+      } else if (
+        // if utilities, assets etc, pass them through
+        maybeLocale.startsWith(".") ||
+        maybeLocale === "auth" ||
+        maybeLocale === "assets" ||
+        maybeLocale === "favicon.ico" ||
+        maybeLocale.startsWith("hum")
       ) {
         return url;
       }
 
-      if (!i18n.locales.includes(maybeLocale as Locale)) {
+      const isFirstSegmentIsLocale = isStringIsLocale(maybeLocale);
+      //2. If pathname present, but first segment isn't a locale, add default locale at the beginning
+
+      if (!isFirstSegmentIsLocale) {
         url.pathname = `/${i18n.defaultLocale}/${parts.join("/")}`;
+        return url;
       }
+
+      //3. If pathname is present and the first segment is locale
 
       return url;
     },
@@ -89,4 +99,8 @@ function localeRewrite(): LocationRewrite {
       return url;
     },
   };
+}
+
+function isStringIsLocale(str: string): str is Locale {
+  return i18n.locales.includes(str as Locale);
 }

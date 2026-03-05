@@ -8,6 +8,7 @@ import { db } from "@/db/database";
 import { document } from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
+import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
 /** List all documents */
 export const $getDocuments = createServerFn({
@@ -29,13 +30,20 @@ export function getDocumentsQueryOptions() {
 /**
  * Create new document with given contentId (must be unique)
  */
+const documentVersionRepo = createDocumentVersionRepository(db);
+
 export const $createDocument = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(insertDocumentSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("documents", "create");
 
+    const userId =
+      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+
     const doc = await db.insert(document).values(data).returning();
+
+    await documentVersionRepo.createVersionFromPublished(data.contentId, userId);
 
     return doc;
   });

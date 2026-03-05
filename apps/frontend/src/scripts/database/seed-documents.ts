@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { copyFile, mkdir, readdir, readFile, stat } from "node:fs/promises";

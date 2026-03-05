@@ -3,8 +3,13 @@ import { z } from "zod";
 
 import { Card } from "@/components/Card";
 import { Markdown } from "@/components/Merkdown";
+import { contentIdSchema } from "@/config/content-config";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { $getContentItemTranslation } from "@/serverFunctions/contentItem";
+import {
+  $getLatestDocumentOrContent,
+  $getLatestPublishedDocumentVersion,
+} from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
@@ -13,20 +18,15 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
-    const data = await $getContentItemTranslation({
-      data: {
-        id: params._splat,
-        lang: context.lang,
-        status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-      },
+    // const parsedContentId = contentIdSchema.safeParse(params._splat);
+
+    const data = await $getLatestDocumentOrContent({
+      data: { id: params._splat, lang: context.lang },
     });
 
-    const contentHtml = await renderMarkdown(data.content);
+    const contentHtml = await renderMarkdown(data.content ?? "");
 
-    return {
-      contentHtml,
-      title: data.title,
-    };
+    return { contentHtml, title: data.title };
   },
   errorComponent: ({ error }) => (
     <div>
