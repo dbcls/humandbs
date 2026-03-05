@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@humandbs/eslint-config": "workspace:*",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/eslint-plugin-router": "^1.161.4",
     "@types/node": "^22.5.4",
