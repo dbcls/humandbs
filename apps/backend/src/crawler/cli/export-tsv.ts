@@ -183,8 +183,6 @@ const RESEARCH_SUMMARY_HEADERS = [
   "methods_en",
   "targets_ja",
   "targets_en",
-  "footers_ja",
-  "footers_en",
   "comment",
 ]
 
@@ -199,8 +197,6 @@ const researchSummaryToRow = (r: Research): unknown[] => {
     bilingualTextValueToEn(r.summary.methods),
     bilingualTextValueToJa(r.summary.targets),
     bilingualTextValueToEn(r.summary.targets),
-    JSON.stringify(r.summary.footers.ja.map(f => f.text)),
-    JSON.stringify(r.summary.footers.en.map(f => f.text)),
     "", // comment
   ]
 }

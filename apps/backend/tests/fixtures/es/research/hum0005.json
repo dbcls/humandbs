@@ -47,36 +47,6 @@
         }
       ],
       "en": []
-    },
-    "footers": {
-      "ja": [
-        {
-          "text": "リリース情報はこちら",
-          "rawHtml": "<span>※リリース情報は<a href=\"/hum0005-v8-release\">こちら</a></span>"
-        },
-        {
-          "text": "制限公開データの利用にあたっては、利用申請が必要です。申請方法はこちら。",
-          "rawHtml": "<span>※制限公開データの利用にあたっては、利用申請が必要です。申請方法は<a href=\"/data-use\">こちら</a>。</span>"
-        },
-        {
-          "text": "論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement) に記載して下さい。記載例はこちら。",
-          "rawHtml": "<span>※論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement)に記載して下さい。記載例は<a href=\"/acknowledgement\">こちら</a>。</span>"
-        }
-      ],
-      "en": [
-        {
-          "text": "Release Note",
-          "rawHtml": "<span>*<a href=\"/en/hum0005-v8-release\">Release Note</a>&nbsp;</span>"
-        },
-        {
-          "text": "Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. Learn more",
-          "rawHtml": "<span>*Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. <a href=\"/en/data-use\">Learn more</a></span>"
-        },
-        {
-          "text": "When the research results including the data which were downloaded from NHA/DRA, are published or presented somewhere, the data user must refer the papers which are related to the data, or include in the acknowledgment. Learn more",
-          "rawHtml": "<span>*When the research results including the data which were downloaded from NHA/DRA, are published or presented somewhere, the data user must refer the papers which are related to the data, or include in the acknowledgment. <a href=\"/en/acknowledgement\">Learn more</a></span>"
-        }
-      ]
     }
   },
   "dataProvider": [

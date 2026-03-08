@@ -299,7 +299,6 @@ const parseSummarySection = (
     targets: { text: "", rawHtml: "" },
     url: [],
     datasets: [],
-    footers: [],
   }
 
   if (!element) {
@@ -310,7 +309,6 @@ const parseSummarySection = (
   const children = Array.from(element.children)
   const tableIndex = children.findIndex(ch => ch.tagName.toLowerCase() === "table")
   const before = tableIndex >= 0 ? children.slice(0, tableIndex) : children
-  const after = tableIndex >= 0 ? children.slice(tableIndex + 1) : []
 
   type FieldKey = "aims" | "methods" | "targets" | "url" | null
   let currentField: FieldKey = null
@@ -372,12 +370,6 @@ const parseSummarySection = (
       }
     })
     summary.datasets = rows.filter(r => r !== null)
-  }
-
-  // Parse footer section
-  for (const el of after) {
-    if (isEmptyNode(el)) continue
-    summary.footers.push(toTextValue(el))
   }
 
   return summary

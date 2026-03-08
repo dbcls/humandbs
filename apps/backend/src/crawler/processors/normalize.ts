@@ -1260,10 +1260,6 @@ export const normalizeParseResult = async (
         criteria: normalizeCriteria(ds.criteria, { humVersionId, datasetId: ds.datasetId, onValidationError: options.onValidationError }),
         releaseDate: ds.releaseDate ? fixReleaseDate(normalizeText(ds.releaseDate, true)) : null,
       })),
-      footers: detail.summary.footers.map(f => ({
-        ...f,
-        text: normalizeFooterText(normalizeText(f.text, lang === "en", lang), lang),
-      })),
     },
     molecularData: detail.molecularData.map(md => ({
       ...md,

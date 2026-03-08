@@ -181,7 +181,6 @@ export const createResearch = async (params: {
     methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
-    footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
   }
   dataProvider?: {
     name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
@@ -221,7 +220,6 @@ export const createResearch = async (params: {
     methods: { ja: null, en: null },
     targets: { ja: null, en: null },
     url: { ja: [], en: [] },
-    footers: { ja: [], en: [] },
   }
 
   // Retry logic for auto-generated humId (race condition prevention)
@@ -346,7 +344,6 @@ export const updateResearch = async (
       methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
       targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
       url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
-      footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
     }
     dataProvider?: {
       name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }

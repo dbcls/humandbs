@@ -238,7 +238,6 @@ const buildSingleLangResearch = (
     methods: normalized.summary.methods,
     targets: normalized.summary.targets,
     url: normalized.summary.url,
-    footers: normalized.summary.footers,
   },
   dataProvider: structureDataProvider(normalized.dataProvider),
   researchProject: structureResearchProjects(normalized.dataProvider),

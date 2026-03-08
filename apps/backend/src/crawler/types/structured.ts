@@ -207,10 +207,6 @@ export const SummarySchema = z.object({
     ja: z.array(UrlValueSchema),
     en: z.array(UrlValueSchema),
   }),
-  footers: z.object({
-    ja: z.array(TextValueSchema),
-    en: z.array(TextValueSchema),
-  }),
 })
 export type Summary = z.infer<typeof SummarySchema>
 export type { UrlValue }

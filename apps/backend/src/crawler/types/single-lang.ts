@@ -76,7 +76,6 @@ export interface SingleLangSummary {
   methods: TextValue
   targets: TextValue
   url: UrlValue[]
-  footers: TextValue[]
 }
 
 /** Single-language research (before bilingual merge) */

@@ -34,7 +34,6 @@ import type {
   Sex,
   AgeGroup,
   VariantCounts,
-  TextValue,
 } from "@/crawler/types"
 import { applyLogLevel, withCommonOptions } from "@/crawler/utils/cli-utils"
 import { getResultsDir } from "@/crawler/utils/io"
@@ -180,14 +179,6 @@ export const importResearchSummaryTsv = (): void => {
       row.targets_en ?? "",
       research.summary.targets,
     )
-
-    // Parse footers (JSON array of strings)
-    const footersJa = parseJsonField<string[]>(row.footers_ja, [])
-    const footersEn = parseJsonField<string[]>(row.footers_en, [])
-    research.summary.footers = {
-      ja: footersJa.map((text): TextValue => ({ text, rawHtml: "" })),
-      en: footersEn.map((text): TextValue => ({ text, rawHtml: "" })),
-    }
 
     writeJsonFile(filePath, research)
     updated++

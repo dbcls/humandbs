@@ -18,7 +18,6 @@ export interface RawSummary {
   targets: TextValue
   url: UrlValue[]
   datasets: RawDataset[]
-  footers: TextValue[]
 }
 
 /** Molecular data table (one table per dataset) */

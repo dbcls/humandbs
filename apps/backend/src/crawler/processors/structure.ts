@@ -658,10 +658,6 @@ export const mergeSummary = (
     ja: jaSummary?.url ?? [],
     en: enSummary?.url ?? [],
   },
-  footers: {
-    ja: jaSummary?.footers ?? [],
-    en: enSummary?.footers ?? [],
-  },
 })
 
 /**

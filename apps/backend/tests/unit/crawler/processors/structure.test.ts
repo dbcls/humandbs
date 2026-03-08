@@ -378,14 +378,12 @@ describe("processors/structure.ts", () => {
         methods: createTextValue("方法"),
         targets: createTextValue("対象"),
         url: [{ text: "サイト", url: "https://example.com" }],
-        footers: [],
       }
       const enSummary: SingleLangResearch["summary"] = {
         aims: createTextValue("Aims"),
         methods: createTextValue("Methods"),
         targets: createTextValue("Targets"),
         url: [{ text: "Site", url: "https://example.com" }],
-        footers: [],
       }
 
       const result = mergeSummary(jaSummary, enSummary)
@@ -533,7 +531,6 @@ describe("processors/structure.ts", () => {
           methods: createTextValue("方法"),
           targets: createTextValue("対象"),
           url: [],
-          footers: [],
         },
         dataProvider: [],
         researchProject: [],
@@ -554,7 +551,6 @@ describe("processors/structure.ts", () => {
           methods: createTextValue("Methods"),
           targets: createTextValue("Targets"),
           url: [],
-          footers: [],
         },
         dataProvider: [],
         researchProject: [],

@@ -25,7 +25,6 @@ const validResearchRaw = {
     methods: bilingualTextValue("方法", "Methods"),
     targets: bilingualTextValue("対象", "Targets"),
     url: { ja: [], en: [] },
-    footers: { ja: [], en: [] },
   },
   dataProvider: [],
   researchProject: [],

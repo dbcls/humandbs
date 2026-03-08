@@ -42,28 +42,6 @@
     "url": {
       "ja": [],
       "en": []
-    },
-    "footers": {
-      "ja": [
-        {
-          "text": "リリース情報はこちら。",
-          "rawHtml": "<span>※リリース情報は<a href=\"/hum0001-v1-release\">こちら</a>。</span>"
-        },
-        {
-          "text": "制限公開データの利用にあたっては、利用申請が必要です。申請方法はこちら。",
-          "rawHtml": "<span> ※制限公開データの利用にあたっては、利用申請が必要です。申請方法は<a href=\"/data-use\">こちら</a>。</span>"
-        }
-      ],
-      "en": [
-        {
-          "text": "Release Note",
-          "rawHtml": "<span>*<a href=\"/en/hum0001-v1-release\">Release Note</a><br></span>"
-        },
-        {
-          "text": "Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. Learn more",
-          "rawHtml": "<span>*Data users need to apply an application for Using NBDC Human Data to reach the Controlled-access Data. <a href=\"/en/data-use\">Learn more</a></span>"
-        }
-      ]
     }
   },
   "dataProvider": [

@@ -19,7 +19,6 @@ export const createMockResearchDoc = (overrides: Partial<EsResearch> = {}): EsRe
     methods: { ja: { text: "方法", rawHtml: "<span>方法</span>" }, en: { text: "Methods", rawHtml: "<span>Methods</span>" } },
     targets: { ja: { text: "対象", rawHtml: "<span>対象</span>" }, en: { text: "Targets", rawHtml: "<span>Targets</span>" } },
     url: { ja: [], en: [] },
-    footers: { ja: [], en: [] },
   },
   dataProvider: [],
   researchProject: [],

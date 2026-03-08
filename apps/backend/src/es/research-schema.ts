@@ -49,16 +49,6 @@ export const researchSchema = {
       }),
     }),
 
-    footers: f.object({
-      ja: f.object({
-        text: f.text(),
-        rawHtml: f.noindex(),
-      }),
-      en: f.object({
-        text: f.text(),
-        rawHtml: f.noindex(),
-      }),
-    }),
   }),
 
   // Data provider (nested for independent querying)
