@@ -4,7 +4,7 @@
  * DS / DU 両方のマッピングで共有するフィールド定義。
  * `src/es/generate-mapping.ts` の `f` ヘルパーを再利用する。
  */
-import { f } from "../../src/es/generate-mapping"
+import { f } from "./generate-mapping"
 
 // === 住所 ===
 
@@ -16,7 +16,7 @@ export const addressFields = f.object({
   street: f.noindex(),
 })
 
-// === 機関長 (個人情報 → 全 noindex) ===
+// === 機関長 (個人情報 -> 全 noindex) ===
 
 export const headFields = f.object({
   name: f.noindex(),

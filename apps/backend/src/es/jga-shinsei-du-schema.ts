@@ -3,8 +3,7 @@
  *
  * `jga-shinsei-du` インデックスのマッピングを生成する。
  */
-import { f, generateMapping } from "../../src/es/generate-mapping"
-
+import { f, generateMapping } from "./generate-mapping"
 import {
   collaboratorFields,
   headFields,
@@ -12,7 +11,7 @@ import {
   statusHistoryFields,
   submitterFields,
   uploadedFileFields,
-} from "./es-common-schema"
+} from "./jga-shinsei-common-schema"
 
 export const duSchema = {
   // === IDs ===

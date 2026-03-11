@@ -11,7 +11,7 @@ import {
   toBooleanOrNull,
   transformDsApplication,
   transformDuApplication,
-} from "../scripts/transform"
+} from "@/crawler/processors/jga-shinsei/transform"
 import type {
   Collaborator,
   Component,
@@ -21,9 +21,7 @@ import type {
   UseDataset,
 } from "@/crawler/types/jga-shinsei"
 
-// =============================================================================
-// toBooleanOrNull
-// =============================================================================
+// === toBooleanOrNull ===
 
 describe("toBooleanOrNull", () => {
   it("should convert TRUE/true to true", () => {
@@ -53,9 +51,7 @@ describe("toBooleanOrNull", () => {
   })
 })
 
-// =============================================================================
-// createHelpers
-// =============================================================================
+// === createHelpers ===
 
 describe("createHelpers", () => {
   describe("getValue", () => {
@@ -118,9 +114,7 @@ describe("createHelpers", () => {
   })
 })
 
-// =============================================================================
-// buildCollaborators
-// =============================================================================
+// === buildCollaborators ===
 
 describe("buildCollaborators", () => {
   it("should pair multiValue keys by index", () => {
@@ -177,9 +171,7 @@ describe("buildCollaborators", () => {
   })
 })
 
-// =============================================================================
-// buildDataGroup
-// =============================================================================
+// === buildDataGroup ===
 
 describe("buildDataGroup", () => {
   it("should build data entries from multiValue keys", () => {
@@ -229,9 +221,7 @@ describe("buildDataGroup", () => {
   })
 })
 
-// =============================================================================
-// buildUploadedFiles
-// =============================================================================
+// === buildUploadedFiles ===
 
 describe("buildUploadedFiles", () => {
   it("should pair file and type by index", () => {
@@ -256,9 +246,7 @@ describe("buildUploadedFiles", () => {
   })
 })
 
-// =============================================================================
-// buildMembers
-// =============================================================================
+// === buildMembers ===
 
 describe("buildMembers", () => {
   it("should build member objects from multiValue keys", () => {
@@ -293,9 +281,7 @@ describe("buildMembers", () => {
   })
 })
 
-// =============================================================================
-// buildUseDatasets
-// =============================================================================
+// === buildUseDatasets ===
 
 describe("buildUseDatasets", () => {
   it("should build use dataset objects", () => {
@@ -322,9 +308,7 @@ describe("buildUseDatasets", () => {
   })
 })
 
-// =============================================================================
-// buildStatusHistory
-// =============================================================================
+// === buildStatusHistory ===
 
 describe("buildStatusHistory", () => {
   it("should add status labels", () => {
@@ -360,9 +344,7 @@ describe("buildStatusHistory", () => {
   })
 })
 
-// =============================================================================
-// transformDsApplication (integration)
-// =============================================================================
+// === transformDsApplication (integration) ===
 
 describe("transformDsApplication", () => {
   const exampleDs = {
@@ -506,9 +488,7 @@ describe("transformDsApplication", () => {
   })
 })
 
-// =============================================================================
-// transformDuApplication (integration)
-// =============================================================================
+// === transformDuApplication (integration) ===
 
 describe("transformDuApplication", () => {
   const exampleDu = {
@@ -639,9 +619,7 @@ describe("transformDuApplication", () => {
   })
 })
 
-// =============================================================================
-// Edge cases
-// =============================================================================
+// === Edge cases ===
 
 describe("edge cases", () => {
   it("should handle empty components array", () => {

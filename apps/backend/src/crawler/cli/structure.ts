@@ -405,11 +405,14 @@ const processHumId = (humId: string): ProcessResult => {
         if (ignoredDatasetIds.has(datasetId)) continue
 
         // Get ja/en molData for this dataset
+        // Use molDataList (from inverted map) to identify which headers belong to this dataset,
+        // then look up the actual objects from each language's molecularData array
+        const datasetHeaders = new Set(molDataList.map(m => m.id?.text ?? ""))
         const jaMolDataForDataset = jaData
-          ? molDataList.filter(m => jaVersionMolData.some(jm => jm.id?.text === m.id?.text))
+          ? jaVersionMolData.filter(m => datasetHeaders.has(m.id?.text ?? ""))
           : []
         const enMolDataForDataset = enData
-          ? molDataList.filter(m => enVersionMolData.some(em => em.id?.text === m.id?.text))
+          ? enVersionMolData.filter(m => datasetHeaders.has(m.id?.text ?? ""))
           : []
 
         const jaExperiments = jaMolDataForDataset.map(structureMolDataToExperiment)

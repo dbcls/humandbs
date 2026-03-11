@@ -7,6 +7,8 @@ import { Client, HttpConnection } from "@elastic/elasticsearch"
 
 import { datasetMapping } from "./dataset-schema"
 import type { EsMapping } from "./generate-mapping"
+import { dsMapping } from "./jga-shinsei-ds-schema"
+import { duMapping } from "./jga-shinsei-du-schema"
 import { researchMapping } from "./research-schema"
 import { researchVersionMapping } from "./research-version-schema"
 
@@ -18,6 +20,8 @@ const INDICES: Record<string, EsMapping> = {
   research: researchMapping,
   "research-version": researchVersionMapping,
   dataset: datasetMapping,
+  "jga-shinsei-ds": dsMapping,
+  "jga-shinsei-du": duMapping,
 }
 
 const main = async () => {

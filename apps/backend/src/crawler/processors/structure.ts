@@ -577,6 +577,9 @@ export const mergeExperiments = (
       const jaValue: TextValue | null = pair.ja?.data[key] ?? null
       const enValue: TextValue | null = pair.en?.data[key] ?? null
 
+      // Skip fields where both ja and en are null (no information)
+      if (jaValue === null && enValue === null) continue
+
       unifiedData[key] = toBilingualTextValue(jaValue, enValue)
     }
 

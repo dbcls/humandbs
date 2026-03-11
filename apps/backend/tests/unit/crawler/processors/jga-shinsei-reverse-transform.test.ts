@@ -14,11 +14,11 @@ import {
   reverseSubmitter,
   reverseUploadedFiles,
   reverseUseDatasets,
-} from "../scripts/reverse-transform"
+} from "@/crawler/processors/jga-shinsei/reverse-transform"
 import {
   transformDsApplication,
   transformDuApplication,
-} from "../scripts/transform"
+} from "@/crawler/processors/jga-shinsei/transform"
 import type {
   Collaborator,
   Component,
@@ -33,18 +33,14 @@ import type {
   UseDataset,
 } from "@/crawler/types/jga-shinsei"
 
-// =============================================================================
-// Test helpers
-// =============================================================================
+// === Test helpers ===
 
 const findComponents = (
   components: Component[],
   key: string,
 ): string[] => components.filter((c) => c.key === key).map((c) => c.value)
 
-// =============================================================================
-// fromBooleanOrNull
-// =============================================================================
+// === fromBooleanOrNull ===
 
 describe("fromBooleanOrNull", () => {
   it("should convert true to TRUE", () => {
@@ -60,9 +56,7 @@ describe("fromBooleanOrNull", () => {
   })
 })
 
-// =============================================================================
-// reverseHead
-// =============================================================================
+// === reverseHead ===
 
 describe("reverseHead", () => {
   it("should map all fields to correct keys", () => {
@@ -106,9 +100,7 @@ describe("reverseHead", () => {
   })
 })
 
-// =============================================================================
-// reversePi
-// =============================================================================
+// === reversePi ===
 
 describe("reversePi", () => {
   it("should map bilingual fields with _en suffix", () => {
@@ -170,9 +162,7 @@ describe("reversePi", () => {
   })
 })
 
-// =============================================================================
-// reverseSubmitter
-// =============================================================================
+// === reverseSubmitter ===
 
 describe("reverseSubmitter", () => {
   it("should use _en-only keys for institution, division, middleName", () => {
@@ -218,9 +208,7 @@ describe("reverseSubmitter", () => {
   })
 })
 
-// =============================================================================
-// reverseControl
-// =============================================================================
+// === reverseControl ===
 
 describe("reverseControl", () => {
   it("should serialize boolean fields as TRUE/FALSE", () => {
@@ -242,9 +230,7 @@ describe("reverseControl", () => {
   })
 })
 
-// =============================================================================
-// reverseCollaborators
-// =============================================================================
+// === reverseCollaborators ===
 
 describe("reverseCollaborators", () => {
   it("should preserve index ordering for multiValue groups", () => {
@@ -304,9 +290,7 @@ describe("reverseCollaborators", () => {
   })
 })
 
-// =============================================================================
-// reverseUploadedFiles
-// =============================================================================
+// === reverseUploadedFiles ===
 
 describe("reverseUploadedFiles", () => {
   it("should pair file and type by index", () => {
@@ -331,9 +315,7 @@ describe("reverseUploadedFiles", () => {
   })
 })
 
-// =============================================================================
-// reverseDataGroup
-// =============================================================================
+// === reverseDataGroup ===
 
 describe("reverseDataGroup", () => {
   it("should generate components for each data entry field", () => {
@@ -389,9 +371,7 @@ describe("reverseDataGroup", () => {
   })
 })
 
-// =============================================================================
-// reverseMembers
-// =============================================================================
+// === reverseMembers ===
 
 describe("reverseMembers", () => {
   it("should emit only _en keys for bilingual fields", () => {
@@ -430,9 +410,7 @@ describe("reverseMembers", () => {
   })
 })
 
-// =============================================================================
-// reverseUseDatasets
-// =============================================================================
+// === reverseUseDatasets ===
 
 describe("reverseUseDatasets", () => {
   it("should generate components for each dataset", () => {
@@ -453,9 +431,7 @@ describe("reverseUseDatasets", () => {
   })
 })
 
-// =============================================================================
-// reverseStatusHistory
-// =============================================================================
+// === reverseStatusHistory ===
 
 describe("reverseStatusHistory", () => {
   it("should strip statusLabel and keep status + date", () => {
@@ -484,9 +460,7 @@ describe("reverseStatusHistory", () => {
   })
 })
 
-// =============================================================================
-// Round-trip: DS application
-// =============================================================================
+// === Round-trip: DS application ===
 
 describe("reverseDsApplication (round-trip)", () => {
   const exampleDs = {
@@ -561,9 +535,7 @@ describe("reverseDsApplication (round-trip)", () => {
   })
 })
 
-// =============================================================================
-// Round-trip: DU application
-// =============================================================================
+// === Round-trip: DU application ===
 
 describe("reverseDuApplication (round-trip)", () => {
   const exampleDu = {
@@ -640,9 +612,7 @@ describe("reverseDuApplication (round-trip)", () => {
   })
 })
 
-// =============================================================================
-// Edge cases
-// =============================================================================
+// === Edge cases ===
 
 describe("edge cases", () => {
   const allNullDs: DsApplicationTransformed = {

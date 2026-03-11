@@ -2,7 +2,7 @@
 # Dump all JGA Shinsei data to JSON files
 #
 # Output:
-#   - $JGA_OUTPUT_DIR/relations.json       : ID マッピング + 階層関係
+#   - $JGA_OUTPUT_DIR/jga-relations.json    : ID マッピング + 階層関係
 #   - $JGA_OUTPUT_DIR/ds-applications.json : J-DS (データ提供申請) 詳細
 #   - $JGA_OUTPUT_DIR/du-applications.json : J-DU (データ利用申請) 詳細
 #
@@ -49,7 +49,7 @@ echo ""
 # ==============================================================================
 # 1. relations.json - ID マッピング + 階層関係
 # ==============================================================================
-echo "[1/3] Exporting relations.json..."
+echo "[1/3] Exporting jga-relations.json..."
 
 docker exec "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "
 WITH
@@ -143,10 +143,10 @@ SELECT json_build_object(
   'jds_to_jga', COALESCE((SELECT * FROM jds_to_jga), '[]'::json),
   'jdu_to_jgad', COALESCE((SELECT * FROM jdu_to_jgad), '[]'::json)
 );
-" | jq '.' > "$OUTPUT_DIR/relations.json"
+" | jq '.' > "$OUTPUT_DIR/jga-relations.json"
 
-echo "  -> $(jq '.jga_hierarchy | length' "$OUTPUT_DIR/relations.json") hierarchy records"
-echo "  -> $(jq '.jsub_to_jga | length' "$OUTPUT_DIR/relations.json") JSUB-JGA mappings"
+echo "  -> $(jq '.jga_hierarchy | length' "$OUTPUT_DIR/jga-relations.json") hierarchy records"
+echo "  -> $(jq '.jsub_to_jga | length' "$OUTPUT_DIR/jga-relations.json") JSUB-JGA mappings"
 
 # ==============================================================================
 # 2. ds-applications.json - J-DS (データ提供申請) 詳細
