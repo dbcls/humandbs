@@ -150,3 +150,15 @@ export const EsResearchSchema = CrawlerResearchSchema.extend({
 })
 export type EsResearch = z.infer<typeof EsResearchSchema>
 
+// === JGA Shinsei (re-export as-is, no ES-specific extensions) ===
+
+export {
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
+} from "../crawler/types"
+
+export type {
+  DsApplicationTransformed,
+  DuApplicationTransformed,
+} from "../crawler/types"
+

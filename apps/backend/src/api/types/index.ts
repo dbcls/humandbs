@@ -68,6 +68,8 @@ export {
   EsDatasetSchema,
   EsResearchSchema,
   ResearchVersionSchema,
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
 } from "./es-docs"
 export type {
   DatasetRef,
@@ -79,6 +81,8 @@ export type {
   Grant,
   Publication,
   Summary,
+  DsApplicationTransformed,
+  DuApplicationTransformed,
 } from "./es-docs"
 
 // === API View Models ===
@@ -97,6 +101,7 @@ export type {
 
 // === Query Parameters ===
 export {
+  PaginationQuerySchema,
   LangVersionQuerySchema,
   LangQuerySchema,
   ResearchListingQuerySchema,
@@ -196,6 +201,13 @@ export {
   DatasetVersionsListResponseSchema,
   DatasetVersionDetailResponseSchema,
   LinkedResearchesListResponseSchema,
+  // JGA Shinsei
+  JdsIdParamsSchema,
+  JduIdParamsSchema,
+  DsApplicationListResponseSchema,
+  DsApplicationDetailResponseSchema,
+  DuApplicationListResponseSchema,
+  DuApplicationDetailResponseSchema,
 } from "./request-response"
 export type {
   ErrorCode,
@@ -242,4 +254,11 @@ export type {
   DatasetVersionsListResponse,
   DatasetVersionDetailResponse,
   LinkedResearchesListResponse,
+  // JGA Shinsei
+  JdsIdParams,
+  JduIdParams,
+  DsApplicationListResponse,
+  DsApplicationDetailResponse,
+  DuApplicationListResponse,
+  DuApplicationDetailResponse,
 } from "./request-response"

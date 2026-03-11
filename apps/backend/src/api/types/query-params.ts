@@ -20,6 +20,8 @@ import {
   DatasetFilterQuerySchema,
 } from "./query-schemas"
 
+export { PaginationQuerySchema } from "./query-schemas"
+
 // === Common Query Schemas ===
 
 // Lang version query

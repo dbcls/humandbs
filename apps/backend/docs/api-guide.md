@@ -56,6 +56,31 @@ Dataset の新規作成は `POST /research/{humId}/dataset/new` で行う。
 | GET | `/facets` | 全ファセット値一覧 (フィルタ対応) | public |
 | GET | `/facets/{fieldName}` | 特定フィールドのファセット値 (フィルタ対応) | public |
 
+### JGA 申請管理 API
+
+JGA 申請データの read-only API。全エンドポイントに admin 認証が必要。
+
+#### DS (データ提供申請)
+
+| Method | Path | 説明 | 認可 |
+|--------|------|------|------|
+| GET | `/jga-shinsei/ds` | DS 申請一覧 | admin |
+| GET | `/jga-shinsei/ds/{jdsId}` | DS 申請詳細 | admin |
+
+`jdsId` フォーマット: `J-DS` + 数字 (例: `J-DS002494`)
+
+#### DU (データ利用申請)
+
+| Method | Path | 説明 | 認可 |
+|--------|------|------|------|
+| GET | `/jga-shinsei/du` | DU 申請一覧 | admin |
+| GET | `/jga-shinsei/du/{jduId}` | DU 申請詳細 | admin |
+
+`jduId` フォーマット: `J-DU` + 数字 (例: `J-DU006498`)
+
+ページネーション: `page` (1始まり), `limit` (最大100)。
+PII フィールド（電話番号、メールアドレス、住所等）は ES に格納されるが検索対象外（`noindex`）。
+
 ### その他
 
 | Method | Path | 説明 | 認可 |
@@ -63,10 +88,6 @@ Dataset の新規作成は `POST /research/{humId}/dataset/new` で行う。
 | GET | `/stats` | 統計情報 (カウント、ファセット集計) | public |
 | GET | `/admin/is-admin` | admin 判定 | authenticated |
 | GET | `/health` | ヘルスチェック | public |
-| GET | `/jga-shinsei/ds` | DS 申請一覧 | admin |
-| GET | `/jga-shinsei/ds/{jdsId}` | DS 申請詳細 | admin |
-| GET | `/jga-shinsei/du` | DU 申請一覧 | admin |
-| GET | `/jga-shinsei/du/{jduId}` | DU 申請詳細 | admin |
 
 ## 共通仕様
 

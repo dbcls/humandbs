@@ -145,3 +145,14 @@ export type {
   CrawlHumIdResult,
 } from "./cli"
 
+// JGA Shinsei types (EAV → API-friendly transformed output)
+export type {
+  DsApplicationTransformed,
+  DuApplicationTransformed,
+} from "./jga-shinsei"
+
+export {
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
+} from "./jga-shinsei"
+

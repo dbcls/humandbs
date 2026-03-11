@@ -4,7 +4,7 @@
  * DS (データ提供申請) / DU (データ利用申請) の read-only エンドポイント。
  * 全ルートに admin 認証が必要。
  */
-import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
+import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
 import {
   listDsApplications,
@@ -17,31 +17,14 @@ import { requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import {
   createPagination,
-  createListResponseSchema,
-  createSingleReadOnlyResponseSchema,
+  PaginationQuerySchema,
+  JdsIdParamsSchema,
+  JduIdParamsSchema,
+  DsApplicationListResponseSchema,
+  DsApplicationDetailResponseSchema,
+  DuApplicationListResponseSchema,
+  DuApplicationDetailResponseSchema,
 } from "@/api/types"
-
-// === Schemas ===
-
-const JgaShinseiDocSchema = z.record(z.string(), z.unknown())
-
-const JgaShinseiListResponseSchema = createListResponseSchema(JgaShinseiDocSchema)
-const JgaShinseiDetailResponseSchema = createSingleReadOnlyResponseSchema(JgaShinseiDocSchema)
-
-const PaginationQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1)
-    .describe("Page number (1-indexed)"),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
-    .describe("Items per page (max: 100)"),
-})
-
-const JdsIdParamsSchema = z.object({
-  jdsId: z.string().describe("DS application ID (e.g., 'J-DS002494')"),
-})
-
-const JduIdParamsSchema = z.object({
-  jduId: z.string().describe("DU application ID (e.g., 'J-DU006498')"),
-})
 
 // === Route Definitions ===
 
@@ -50,13 +33,13 @@ const listDsRoute = createRoute({
   path: "/ds",
   tags: ["JGA Shinsei"],
   summary: "List DS Applications",
-  description: "List all DS (データ提供) applications. Requires admin authentication.",
+  description: "List all DS (data submission) applications. Requires admin authentication.",
   request: {
     query: PaginationQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: JgaShinseiListResponseSchema } },
+      content: { "application/json": { schema: DsApplicationListResponseSchema } },
       description: "List of DS applications",
     },
     401: ErrorSpec401,
@@ -76,7 +59,7 @@ const getDsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: JgaShinseiDetailResponseSchema } },
+      content: { "application/json": { schema: DsApplicationDetailResponseSchema } },
       description: "DS application detail",
     },
     401: ErrorSpec401,
@@ -91,13 +74,13 @@ const listDuRoute = createRoute({
   path: "/du",
   tags: ["JGA Shinsei"],
   summary: "List DU Applications",
-  description: "List all DU (データ利用) applications. Requires admin authentication.",
+  description: "List all DU (data use) applications. Requires admin authentication.",
   request: {
     query: PaginationQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: JgaShinseiListResponseSchema } },
+      content: { "application/json": { schema: DuApplicationListResponseSchema } },
       description: "List of DU applications",
     },
     401: ErrorSpec401,
@@ -117,7 +100,7 @@ const getDuRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: JgaShinseiDetailResponseSchema } },
+      content: { "application/json": { schema: DuApplicationDetailResponseSchema } },
       description: "DU application detail",
     },
     401: ErrorSpec401,

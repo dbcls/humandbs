@@ -25,7 +25,11 @@ import {
   ResearchVersionSchema,
 } from "../../es/types"
 
-import { EsDatasetSchema } from "./es-docs"
+import {
+  EsDatasetSchema,
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
+} from "./es-docs"
 import { FacetsMapSchema } from "./facets"
 import { ResearchSummarySchema } from "./query-params"
 import {
@@ -689,3 +693,35 @@ export type DatasetVersionDetailResponse = z.infer<typeof DatasetVersionDetailRe
 export const LinkedResearchesListResponseSchema =
   createListResponseSchema(ResearchDetailSchema)
 export type LinkedResearchesListResponse = z.infer<typeof LinkedResearchesListResponseSchema>
+
+export const JdsIdParamsSchema = z.object({
+  jdsId: z.string()
+    .regex(/^J-DS\d+$/)
+    .describe("DS application ID (e.g., 'J-DS002494')"),
+})
+export type JdsIdParams = z.infer<typeof JdsIdParamsSchema>
+
+export const JduIdParamsSchema = z.object({
+  jduId: z.string()
+    .regex(/^J-DU\d+$/)
+    .describe("DU application ID (e.g., 'J-DU006498')"),
+})
+export type JduIdParams = z.infer<typeof JduIdParamsSchema>
+
+// DS
+export const DsApplicationListResponseSchema =
+  createListResponseSchema(DsApplicationTransformedSchema)
+export type DsApplicationListResponse = z.infer<typeof DsApplicationListResponseSchema>
+
+export const DsApplicationDetailResponseSchema =
+  createSingleReadOnlyResponseSchema(DsApplicationTransformedSchema)
+export type DsApplicationDetailResponse = z.infer<typeof DsApplicationDetailResponseSchema>
+
+// DU
+export const DuApplicationListResponseSchema =
+  createListResponseSchema(DuApplicationTransformedSchema)
+export type DuApplicationListResponse = z.infer<typeof DuApplicationListResponseSchema>
+
+export const DuApplicationDetailResponseSchema =
+  createSingleReadOnlyResponseSchema(DuApplicationTransformedSchema)
+export type DuApplicationDetailResponse = z.infer<typeof DuApplicationDetailResponseSchema>

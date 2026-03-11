@@ -26,4 +26,12 @@ export type {
   Grant,
   Publication,
   Summary,
+  DsApplicationTransformed,
+  DuApplicationTransformed,
+} from "../../es/types"
+
+// Re-export JGA Shinsei schemas
+export {
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
 } from "../../es/types"
