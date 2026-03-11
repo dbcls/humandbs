@@ -40,6 +40,7 @@ import {
 import {
   DatasetDocWithMergedSchema,
   ResearchDetailSchema,
+  ResearchDetailPublicSchema,
   DatasetVersionItemSchema,
 } from "./views"
 import { RESEARCH_STATUS } from "./workflow"
@@ -66,7 +67,7 @@ export const ApiDatasetSchema = z.object({
   humId: z.string().describe("Parent Research identifier (e.g., 'hum0001')"),
   humVersionId: z
     .string()
-    .describe("Parent Research version identifier (e.g., 'hum0001.v1')"),
+    .describe("Parent Research version identifier (e.g., 'hum0001-v1')"),
   releaseDate: z
     .string()
     .describe("ISO 8601 date when the dataset was first released"),
@@ -581,7 +582,7 @@ export const UidsResponseSchema =
 export type UidsResponse = z.infer<typeof UidsResponseSchema>
 
 /**
- * Research detail response (GET /research/{humId})
+ * Research detail response for authenticated users (GET /research/{humId})
  * Omits internal ES locking fields from data — they are surfaced in meta instead.
  */
 export const ResearchDetailResponseSchema = createSingleResponseSchema(
@@ -589,6 +590,17 @@ export const ResearchDetailResponseSchema = createSingleResponseSchema(
 )
 export type ResearchDetailResponse = z.infer<
   typeof ResearchDetailResponseSchema
+>
+
+/**
+ * Research detail response for public users (GET /research/{humId})
+ * Excludes status, uids, draftVersion. Read-only (no optimistic locking).
+ */
+export const ResearchDetailPublicResponseSchema = createSingleReadOnlyResponseSchema(
+  ResearchDetailPublicSchema,
+)
+export type ResearchDetailPublicResponse = z.infer<
+  typeof ResearchDetailPublicResponseSchema
 >
 
 /**

@@ -54,6 +54,7 @@ import type {
   ResearchSummary,
   AuthUser,
 } from "@/api/types"
+import { isOwnerOrAdmin, parseVersionNum } from "@/api/utils/version"
 
 // === Types ===
 
@@ -671,7 +672,7 @@ export const searchResearches = async (
     size: limit,
     query: researchQuery,
     sort: sortSpec,
-    _source: ["humId", "title", "versionIds", "dataProvider", "summary"],
+    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "uids"],
     track_total_hits: true,
     // Aggregate all matching humIds for facet query (only when facets requested and no humIdFilter)
     ...(includeFacets && !humIdFilter ? {
@@ -683,7 +684,7 @@ export const searchResearches = async (
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
-      humId: true, title: true, versionIds: true, dataProvider: true, summary: true,
+      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true,
     }).parse(doc))
 
   // Fetch version and dataset details
@@ -708,7 +709,16 @@ export const searchResearches = async (
   }
 
   const data: ResearchSummary[] = base.map(d => {
-    const rvs = d.versionIds.map(id => rvMap.get(id)).filter((x): x is ResearchVersion => !!x)
+    // For non-owner users, only include versions up to latestVersion
+    let effectiveVersionIds = d.versionIds
+    if (!isOwnerOrAdmin(authUser, d.uids ?? []) && d.latestVersion) {
+      const publishedNum = parseVersionNum(d.latestVersion)
+      effectiveVersionIds = d.versionIds.filter(id => {
+        const version = id.split("-").pop() ?? ""
+        return parseVersionNum(version) <= publishedNum
+      })
+    }
+    const rvs = effectiveVersionIds.map(id => rvMap.get(id)).filter((x): x is ResearchVersion => !!x)
     const datasetRefs = rvs.flatMap(rv => rv.datasets)
     const datasets = datasetRefs.map(ref => dsMap.get(`${ref.datasetId}-${ref.version}`)).filter((x): x is EsDataset => !!x)
 

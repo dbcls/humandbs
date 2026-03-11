@@ -239,8 +239,8 @@ export const createDataset = async (params: {
   // Auto-link to ResearchVersion if requested
   if (autoLinkToResearch) {
     try {
-      // Extract humId from humVersionId (e.g., "hum0001.v1" -> "hum0001")
-      const humId = params.humVersionId.split(".")[0]
+      // Extract humId from humVersionId (e.g., "hum0001-v1" -> "hum0001")
+      const humId = params.humVersionId.replace(/-v\d+$/, "")
       await linkDatasetToResearch(humId, datasetId, version)
     } catch (error) {
       // Log warning but don't fail the dataset creation

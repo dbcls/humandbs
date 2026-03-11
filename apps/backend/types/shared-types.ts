@@ -84,6 +84,7 @@ export {
   EsResearchSchema as ResearchDocSchema,
   ResearchVersionSchema as ResearchVersionDocSchema,
   ResearchDetailSchema,
+  ResearchDetailPublicSchema,
 } from "../src/api/types";
 export type {
   DatasetRef,
@@ -91,6 +92,7 @@ export type {
   EsResearch as ResearchDoc,
   ResearchVersion as ResearchVersionDoc,
   ResearchDetail,
+  ResearchDetailPublic,
   // Sub-document types embedded in API responses - clean names
   Experiment,
   Person,
@@ -177,6 +179,7 @@ export type {
 // Response schemas for /research routes
 export {
   ResearchDetailResponseSchema,
+  ResearchDetailPublicResponseSchema,
   ResearchWithLockResponseSchema,
   ResearchSearchResponseSchema,
   ResearchVersionsListResponseSchema,
@@ -191,6 +194,7 @@ export {
 } from "../src/api/types";
 export type {
   ResearchDetailResponse,
+  ResearchDetailPublicResponse,
   ResearchWithLockResponse,
   ResearchSearchResponse,
   ResearchVersionsListResponse,

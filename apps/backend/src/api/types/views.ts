@@ -17,24 +17,38 @@ import { EsDatasetSchema, EsResearchSchema } from "./es-docs"
 
 // === Research Detail (Research + ResearchVersion info + Datasets) ===
 
+/** Common version + datasets fields shared between public and auth detail views */
+const researchVersionFields = {
+  humVersionId: z.string()
+    .describe("Research version identifier (e.g., 'hum0001-v1')"),
+  version: z.string()
+    .describe("Version number (e.g., 'v1', 'v2')"),
+  versionReleaseDate: z.string()
+    .describe("ISO 8601 date when this version was released"),
+  releaseNote: BilingualTextValueSchema
+    .describe("Bilingual release note describing changes in this version"),
+  datasets: z.array(EsDatasetSchema)
+    .describe("Datasets linked to this Research version"),
+}
+
 /**
- * Research detail view model
- * Combines Research doc with version info and embedded datasets.
- * Includes _seq_no and _primary_term for optimistic locking.
+ * Public research detail view model
+ * Excludes internal fields: status, uids, draftVersion, versionIds
+ * No optimistic locking fields (read-only for public)
+ */
+export const ResearchDetailPublicSchema = EsResearchSchema
+  .omit({ versionIds: true, status: true, uids: true, draftVersion: true })
+  .extend(researchVersionFields)
+export type ResearchDetailPublic = z.infer<typeof ResearchDetailPublicSchema>
+
+/**
+ * Auth research detail view model
+ * All fields + optimistic locking fields
  */
 export const ResearchDetailSchema = EsResearchSchema
   .omit({ versionIds: true })
   .extend({
-    humVersionId: z.string()
-      .describe("Research version identifier (e.g., 'hum0001.v1')"),
-    version: z.string()
-      .describe("Version number (e.g., 'v1', 'v2')"),
-    versionReleaseDate: z.string()
-      .describe("ISO 8601 date when this version was released"),
-    releaseNote: BilingualTextValueSchema
-      .describe("Bilingual release note describing changes in this version"),
-    datasets: z.array(EsDatasetSchema)
-      .describe("Datasets linked to this Research version"),
+    ...researchVersionFields,
     _seq_no: z.number()
       .describe("Elasticsearch sequence number for optimistic concurrency control"),
     _primary_term: z.number()

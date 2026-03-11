@@ -143,7 +143,7 @@ const researchToRow = (r: Research): unknown[] => {
     r.url.ja ?? "",
     r.url.en ?? "",
     JSON.stringify(r.versionIds),
-    r.latestVersion,
+    r.latestVersion ?? "",
     r.datePublished,
     r.dateModified,
     // Editable fields
@@ -812,7 +812,7 @@ export const exportDatasetLatestTsv = (options: ExportOptions): void => {
   const researches = readJsonFiles<Research>(researchDir)
   const latestVersionMap = new Map<string, string>()
   for (const r of researches) {
-    latestVersionMap.set(r.humId, r.latestVersion)
+    if (r.latestVersion) latestVersionMap.set(r.humId, r.latestVersion)
   }
 
   const dir = getStructuredDir("dataset")
@@ -841,7 +841,7 @@ export const exportExperimentLatestTsv = (options: ExportOptions): void => {
   const researches = readJsonFiles<Research>(researchDir)
   const latestVersionMap = new Map<string, string>()
   for (const r of researches) {
-    latestVersionMap.set(r.humId, r.latestVersion)
+    if (r.latestVersion) latestVersionMap.set(r.humId, r.latestVersion)
   }
 
   const dir = getStructuredDir("dataset")

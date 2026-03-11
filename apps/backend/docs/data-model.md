@@ -49,7 +49,9 @@ Crawler (structured.ts)  →  ES (es/types.ts)  →  API (api/types/)  →  Fron
 
 - **Crawler → ES**: `es/types.ts` は crawler スキーマを `.extend()` で合成し、差分のみ定義する。同一構造のスキーマ（`PersonSchema`, `SummarySchema`, `ResearchVersionSchema` 等）は直接 re-export する
   - `EsDatasetSchema`: `originalMetadata` を `.extend()` で追加
-  - `EsResearchSchema`: `status` と `uids` を `.extend()` で追加
+  - `EsResearchSchema`: `status`, `uids`, `draftVersion` を `.extend()` で追加
+  - Crawler の `latestVersion` は `z.string()` だが、ES では nullable（未公開時 null）
+  - `draftVersion`: 編集中のバージョン（null = 編集なし）。ES 固有フィールド
   - `.describe()` は crawler スキーマ（SSOT）に定義されているため、ES スキーマが継承する
 - **ES → API**: `api/types/es-docs.ts` で re-export。`api/types/views.ts` で API ビューモデル（`ResearchDetail`, `MergedSearchable` 等）を定義
 - **API → Frontend**: `types/shared-types.ts` で clean name（`Es` prefix なし）のみを re-export

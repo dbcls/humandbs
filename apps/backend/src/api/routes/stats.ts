@@ -7,7 +7,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { getPublishedHumIds } from "@/api/es-client/auth"
+import { buildStatusFilter, getPublishedHumIds } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { esTotal } from "@/api/es-client/utils"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
@@ -307,10 +307,11 @@ statsRouter.openapi(getStatsRoute, async (c) => {
     must.push({ terms: { humId: publishedHumIds } })
   }
 
-  // Count published Research directly
+  // Count public Research (latestVersion exists AND not deleted)
+  const publicFilter = buildStatusFilter(null)
   const researchCount = await esClient.count({
     index: ES_INDEX.research,
-    query: { term: { status: "published" } },
+    query: publicFilter ?? { match_all: {} },
   })
 
   // Single Dataset query for all facets with research/dataset cardinality

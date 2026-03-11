@@ -147,6 +147,8 @@ export const EsResearchSchema = CrawlerResearchSchema.extend({
     .describe("Publication status: 'draft', 'review', 'published', or 'deleted'"),
   uids: z.array(z.string())
     .describe("Keycloak user IDs (sub) who can edit this Research"),
+  draftVersion: z.string().nullable()
+    .describe("Version being edited (e.g., 'v2'). Null if no editing in progress."),
 })
 export type EsResearch = z.infer<typeof EsResearchSchema>
 

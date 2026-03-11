@@ -142,7 +142,7 @@ export const createResearchVersion = async (
   // Calculate new version number
   const currentVersionNum = research.versionIds.length
   const newVersion = `v${currentVersionNum + 1}`
-  const newHumVersionId = `${humId}.${newVersion}`
+  const newHumVersionId = `${humId}-${newVersion}`
 
   // If datasets not provided, copy from latest version
   let datasetsToUse = datasets
@@ -178,7 +178,8 @@ export const createResearchVersion = async (
     throw new Error(`Failed to create ResearchVersion: ${error}`)
   }
 
-  // Update Research to add new version to versionIds and update latestVersion
+  // Update Research to add new version to versionIds, set draftVersion, and change status to draft
+  // latestVersion is NOT changed here (keeps the published version visible)
   try {
     await esClient.update({
       index: ES_INDEX.research,
@@ -188,7 +189,8 @@ export const createResearchVersion = async (
       body: {
         doc: {
           versionIds: [...research.versionIds, newHumVersionId],
-          latestVersion: newVersion,
+          draftVersion: newVersion,
+          status: "draft",
           dateModified: now,
         },
       },

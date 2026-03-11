@@ -30,6 +30,7 @@ export const researchSchema = {
   // Status and ownership
   status: f.keyword(),
   uids: f.keyword(),
+  draftVersion: f.keyword(),
 
   // Summary section
   summary: f.object({

@@ -17,6 +17,7 @@ import {
 } from "@/api/helpers/response"
 import { ConflictError, NotFoundError } from "@/api/routes/errors"
 import { createPagination } from "@/api/types/response"
+import { isOwnerOrAdmin, parseVersionNum } from "@/api/utils/version"
 
 import {
   listVersionsRoute,
@@ -38,10 +39,18 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
       throw NotFoundError.forResource("Research", humId)
     }
 
-    // Versions list has no pagination (returns all versions)
-    const pagination = createPagination(versions.length, 1, versions.length || 1)
+    // For non-owner users, filter to only show versions up to latestVersion
+    let filteredVersions = versions
+    const research = await getResearchWithSeqNo(humId)
+    if (research && !isOwnerOrAdmin(authUser, research.doc.uids) && research.doc.latestVersion) {
+      const publishedNum = parseVersionNum(research.doc.latestVersion)
+      filteredVersions = versions.filter(v => parseVersionNum(v.version) <= publishedNum)
+    }
 
-    return listResponse(c, versions, pagination)
+    // Versions list has no pagination (returns all versions)
+    const pagination = createPagination(filteredVersions.length, 1, filteredVersions.length || 1)
+
+    return listResponse(c, filteredVersions, pagination)
   })
 
   // GET /research/{humId}/versions/{version}
@@ -74,6 +83,13 @@ export function registerVersionHandlers(router: OpenAPIHono): void {
     // Research is preloaded by middleware with auth/ownership checks
     const research = c.get("research")
     const { humId, seqNo, primaryTerm } = research
+
+    // Only allow new version creation when Research is published
+    if (research.status !== "published") {
+      throw new ConflictError(
+        `Cannot create new version: Research is in '${research.status}' status, expected 'published'`,
+      )
+    }
 
     const body = c.req.valid("json")
 

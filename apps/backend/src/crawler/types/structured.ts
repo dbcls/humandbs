@@ -177,7 +177,7 @@ export const DatasetSchema = z.object({
   humId: z.string()
     .describe("Parent Research identifier (e.g., 'hum0001')"),
   humVersionId: z.string()
-    .describe("Parent Research version identifier (e.g., 'hum0001.v1')"),
+    .describe("Parent Research version identifier (e.g., 'hum0001-v1')"),
   releaseDate: z.string()
     .describe("ISO 8601 date when the dataset was first released"),
   criteria: CriteriaCanonicalSchema
@@ -288,9 +288,9 @@ export const ResearchSchema = z.object({
 
   // Version references
   versionIds: z.array(z.string())
-    .describe("List of version identifiers (e.g., ['hum0001.v1', 'hum0001.v2'])"),
-  latestVersion: z.string()
-    .describe("Latest version number (e.g., 'v2')"),
+    .describe("List of version identifiers (e.g., ['hum0001-v1', 'hum0001-v2'])"),
+  latestVersion: z.string().nullable()
+    .describe("Published version number (e.g., 'v2'). Null if never published."),
 
   // Timestamps
   datePublished: z.string()
@@ -313,7 +313,7 @@ export const ResearchVersionSchema = z.object({
   humId: z.string()
     .describe("Research identifier (e.g., 'hum0001')"),
   humVersionId: z.string()
-    .describe("Research version identifier (e.g., 'hum0001.v1')"),
+    .describe("Research version identifier (e.g., 'hum0001-v1')"),
   version: z.string()
     .describe("Version number (e.g., 'v1', 'v2')"),
   versionReleaseDate: z.string()

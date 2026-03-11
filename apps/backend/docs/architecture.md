@@ -22,12 +22,13 @@ ResearchVersion N:M Dataset (datasets で参照)
 
 ### Dataset の status 依存
 
-Dataset 自体は status フィールドを持たない。親 Research の status に完全依存する。
+Dataset 自体は status フィールドを持たない。親 Research の可視性に依存する。公開判定は `latestVersion != null AND status != "deleted"` で行う。
 
-| 親 Research の status | Dataset の可視性 | Dataset の操作 |
-|----------------------|-----------------|---------------|
-| draft | 非公開（authenticated/admin のみ） | 作成・更新・削除 可能 |
-| review | 非公開（authenticated/admin のみ） | 作成・更新・削除 不可 |
+| 親 Research の状態 | Dataset の可視性 | Dataset の操作 |
+|-------------------|-----------------|---------------|
+| draft (latestVersion=null) | 非公開（authenticated/admin のみ） | 作成・更新・削除 可能 |
+| draft (latestVersion!=null) | 公開版は public 可視、draft 版は非公開 | 作成・更新・削除 可能 |
+| review | draft と同じ可視性 | 作成・更新・削除 不可 |
 | published | 公開 | 作成・更新・削除 不可 |
 | deleted | 非公開（アクセス不可） | N/A |
 
@@ -57,7 +58,7 @@ interface JwtClaims {
 
 | レベル | 説明 | アクセス範囲 |
 |--------|------|-------------|
-| **public** | 認証なし | `status=published` のリソースのみ |
+| **public** | 認証なし | [公開条件](#公開条件)を満たすリソースのみ |
 | **authenticated** | 認証あり | public + 自分が `uids` に含まれる Research とその Dataset |
 | **admin** | 認証あり + admin リスト | 全リソースアクセス可能、lifecycle 操作可能 |
 
@@ -65,7 +66,7 @@ interface JwtClaims {
 
 | ユーザー種別 | 指定可能な status | 範囲外を指定した場合 |
 |-------------|------------------|---------------------|
-| public | `published` のみ | 403 Forbidden |
+| public | `published` のみ（互換性維持、内部では `latestVersion exists AND not deleted` に変換） | 403 Forbidden |
 | authenticated | `draft`, `review`, `published`（自分の） | 403 Forbidden |
 | admin | `draft`, `review`, `published`, `deleted` | - |
 
@@ -75,8 +76,9 @@ interface JwtClaims {
 
 | 操作 | public | owner | other auth | admin |
 |------|--------|-------|------------|-------|
-| Read (published) | o | o | o | o |
+| Read (latestVersion!=null) | o | o | o | o |
 | Read (draft/review) | x | o | x | o |
+| Read detail (レスポンス) | status/uids/draftVersion 除外 | 全フィールド | 全フィールド | 全フィールド |
 | Create | x | x | x | o |
 | Update | x | o | x | o |
 | Delete | x | x | x | o |
@@ -87,7 +89,7 @@ interface JwtClaims {
 
 | 操作 | public | owner | other auth | admin |
 |------|--------|-------|------------|-------|
-| Read (親が published) | o | o | o | o |
+| Read (親が latestVersion!=null) | o | o | o | o |
 | Read (親が draft/review) | x | o | x | o |
 | Create | x | o | x | o |
 | Update | x | o | x | o |
@@ -111,36 +113,40 @@ Research のライフサイクル状態遷移を管理する。
 
 ### 状態遷移図
 
+#### 初回フロー
+
 ```plaintext
-POST /research/new (admin)
-         |
-         v
-         +----------+
-         |  draft   |<-----------------+
-         +----+-----+                  |
-              | POST /submit           | POST /reject
-              | (authenticated/admin)  | (admin)
-              v                        |
-         +----------+                  |
-         |  review  |------------------+
-         +----+-----+                  |
-              | POST /approve          |
-              | (admin)                |
-              v                        |
-         +----------+                  |
-         |published |------------------+
-         +----------+    POST /unpublish (admin)
+[create] -----> draft     (latest=null, draft=v1)
+-> [submit]  -> review    (latest=null, draft=v1)
+-> [approve] -> published (latest=v1, draft=null)
+-> [reject]  -> draft     (latest=null, draft=v1)
+```
+
+#### 新バージョン追加フロー
+
+```plaintext
+[versions/new] -> draft     (latest=v1, draft=v2)
+-> [submit]    -> review    (latest=v1, draft=v2)
+-> [approve]   -> published (latest=v2, draft=null)
+-> [reject]    -> draft     (latest=v1, draft=v2)
+```
+
+#### 非公開化
+
+```plaintext
+[unpublish] → draft (latest=null, draft=<元の latest>)
 ```
 
 ### 状態遷移テーブル
 
-| Action | From | To | 実行者 | 追加処理 |
-|--------|------|-----|--------|---------|
-| create | - | draft | admin | humId 自動採番（または指定）、`datePublished`/`dateModified` 設定 |
-| submit | draft | review | authenticated/admin | `dateModified` 更新 |
-| approve | review | published | admin | `dateModified` 更新 |
-| reject | review | draft | admin | `dateModified` 更新 |
-| unpublish | published | draft | admin | `dateModified` 更新 |
+| Action | From | To | latestVersion | draftVersion | 実行者 | 追加処理 |
+|--------|------|-----|---------------|--------------|--------|---------|
+| create | - | draft | null | v1 | admin | humId 自動採番（または指定）、`datePublished`/`dateModified` 設定 |
+| submit | draft | review | 変更なし | 変更なし | authenticated/admin | `dateModified` 更新 |
+| approve | review | published | = draftVersion | null | admin | `dateModified` 更新 |
+| reject | review | draft | 変更なし | 変更なし | admin | `dateModified` 更新 |
+| unpublish | published | draft | null | = 元の latestVersion | admin | `dateModified` 更新 |
+| versions/new | published | draft | 変更なし | 新バージョン | owner/admin | `dateModified` 更新 |
 
 **日付フィールドの意味**:
 
@@ -153,15 +159,95 @@ POST /research/new (admin)
 - API は 404 を返す
 - 物理削除ではなく論理削除
 
+## 公開判定（Public Visibility）
+
+Research が public API（認証なし）で見えるかどうかと、どのバージョンが返るかを定めるルール。
+
+### 公開条件
+
+```
+latestVersion != null AND status != "deleted"
+```
+
+この条件を満たす Research とその Dataset が、認証なしの public API で閲覧できる。
+
+### 状態・バージョンと公開の関係
+
+| status | latestVersion | draftVersion | public に見える？ | 見えるバージョン |
+|--------|---------------|--------------|-------------------|------------------|
+| draft | null | v1 | No | - |
+| review | null | v1 | No | - |
+| published | v1 | null | Yes | v1 |
+| draft | v1 | v2 | Yes | v1 |
+| review | v1 | v2 | Yes | v1 |
+| published | v2 | null | Yes | v2 |
+| deleted | - | - | No | - |
+
+v2 を編集中（draft/review）でも、`latestVersion` が v1 なら public API には v1 が返り続ける。
+
+### バージョン解決ルール
+
+#### 詳細取得（`GET /research/{humId}`）
+
+version 未指定時:
+
+| ユーザー種別 | 解決ルール |
+|-------------|-----------|
+| public | `latestVersion`（公開版） |
+| authenticated (非オーナー) | `latestVersion`（公開版） |
+| owner/admin | `draftVersion ?? latestVersion`（編集版優先） |
+
+`?version=vN` でバージョン直接指定時:
+
+| ユーザー種別 | 制約 |
+|-------------|------|
+| public | `latestVersion` の番号以下のみ許可（範囲外は 404） |
+| authenticated (非オーナー) | `latestVersion` の番号以下のみ許可（範囲外は 404） |
+| owner/admin | 全バージョンアクセス可能 |
+
+#### バージョン一覧（`GET /research/{humId}/versions`）
+
+| ユーザー種別 | 返却範囲 |
+|-------------|---------|
+| public | `latestVersion` 以下のバージョンのみ |
+| authenticated (非オーナー) | `latestVersion` 以下のバージョンのみ |
+| owner/admin | 全バージョン |
+
+#### 検索・一覧（`GET /research`, `POST /research/search`）
+
+ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
+
+| ユーザー種別 | 使用するバージョン |
+|-------------|-------------------|
+| public | `latestVersion` 以下のバージョンのみ |
+| authenticated (非オーナー) | `latestVersion` 以下のバージョンのみ |
+| owner/admin | 全バージョン |
+
+`versions`, `datasetIds`, `typeOfData`, `platforms` 等は、上記で許可されたバージョンに紐づくデータのみ集計する。
+
+### public レスポンスのフィールド除外
+
+public ユーザーへの Research 詳細レスポンスからは以下のフィールドが除外される:
+
+| 除外フィールド | 理由 |
+|---------------|------|
+| `status` | 内部ワークフロー状態 |
+| `uids` | オーナー情報 |
+| `draftVersion` | 編集中バージョン |
+| `versionIds` | 全バージョン ID リスト |
+| `_seq_no`, `_primary_term` | 楽観的ロックフィールド |
+
 ## バージョニング
 
 ### Research のバージョン
 
 - `versionIds` 配列で過去バージョン ID を保持
+- `latestVersion`: 公開中のバージョン（null = 未公開）
+- `draftVersion`: 編集中のバージョン（null = 編集なし）
 - 最新版は `GET /research/{humId}` で取得
 - 特定バージョンは `GET /research/{humId}/versions/{version}` で取得
 - バージョン一覧は `GET /research/{humId}/versions` で取得
-- 新バージョン作成は `POST /research/{humId}/versions/new`
+- 新バージョン作成は `POST /research/{humId}/versions/new`（published 状態のみ）
 
 ### Dataset のバージョン
 

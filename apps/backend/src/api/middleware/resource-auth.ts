@@ -9,7 +9,6 @@ import type { MiddlewareHandler } from "hono"
 import { createMiddleware } from "hono/factory"
 
 import { ERROR_MESSAGES } from "@/api/constants"
-import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { getResearchWithSeqNo } from "@/api/es-client/research"
 import {
   ForbiddenError,
@@ -86,9 +85,9 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
       throw new NotFoundError(ERROR_MESSAGES.NOT_FOUND("Research", humId))
     }
 
-    // Check ownership permission
+    // Check ownership permission (admin or owner via uids)
     if (options.requireOwnership && !authUser?.isAdmin) {
-      if (!canAccessResearchDoc(authUser, doc)) {
+      if (!canModifyResource(authUser, doc)) {
         throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN)
       }
     }

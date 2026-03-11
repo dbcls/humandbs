@@ -27,6 +27,7 @@ export const createMockResearchDoc = (overrides: Partial<EsResearch> = {}): EsRe
   controlledAccessUser: [],
   versionIds: ["hum0001-v1"],
   latestVersion: "v1",
+  draftVersion: null,
   datePublished: "2024-01-01",
   dateModified: "2024-01-01",
   status: "published",

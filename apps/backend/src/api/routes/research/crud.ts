@@ -17,6 +17,7 @@ import { searchResearches } from "@/api/es-client/search"
 import {
   createdResponse,
   searchResponse,
+  singleReadOnlyResponse,
   singleResponse,
 } from "@/api/helpers/response"
 import {
@@ -25,6 +26,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from "@/api/routes/errors"
+import { ResearchDetailPublicSchema } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 
@@ -128,7 +130,15 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       throw NotFoundError.forResource("Research", humId)
     }
 
-    // Extract seqNo and primaryTerm from detail
+    if (!authUser) {
+      // Public: strip internal fields via schema validation (status, uids, draftVersion, versionIds excluded)
+      const publicData = ResearchDetailPublicSchema.parse(detail)
+      const strippedDetail = maybeStripRawHtml(publicData, query.includeRawHtml ?? false)
+
+      return singleReadOnlyResponse(c, strippedDetail)
+    }
+
+    // Auth/admin: return full response with optimistic locking
     const { _seq_no, _primary_term, ...detailData } = detail
     const strippedDetail = maybeStripRawHtml(detailData, query.includeRawHtml ?? false)
 
@@ -146,6 +156,13 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     // Research is preloaded by middleware with auth/ownership checks
     const research = c.get("research")
     const { humId } = research
+
+    // Only draft Research can be edited (review/published require workflow actions)
+    if (research.status !== "draft") {
+      throw new ConflictError(
+        `Cannot update: Research is in '${research.status}' status, expected 'draft'`,
+      )
+    }
 
     const body = c.req.valid("json")
 

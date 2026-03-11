@@ -47,6 +47,7 @@ describe("es/real-data-validation", () => {
           ...(data as Record<string, unknown>),
           status: (data as Record<string, unknown>).status ?? "published",
           uids: (data as Record<string, unknown>).uids ?? [],
+          draftVersion: (data as Record<string, unknown>).draftVersion ?? null,
         }
 
         const result = EsResearchSchema.safeParse(esData)
@@ -189,7 +190,8 @@ describe("es/real-data-validation", () => {
         relatedPublication: [],
         controlledAccessUser: [],
         versionIds: [],
-        latestVersion: "hum9999-v1",
+        latestVersion: "v1",
+        draftVersion: null,
         datePublished: "2024-01-01",
         dateModified: "2024-01-01",
         status: "published",
@@ -217,7 +219,8 @@ describe("es/real-data-validation", () => {
         relatedPublication: [],
         controlledAccessUser: [],
         versionIds: [],
-        latestVersion: "hum9999-v1",
+        latestVersion: "v1",
+        draftVersion: null,
         datePublished: "2024-01-01",
         dateModified: "2024-01-01",
         status: "published",

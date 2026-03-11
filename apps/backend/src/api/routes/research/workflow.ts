@@ -23,14 +23,40 @@ import {
 type ResearchWithSeqNo = EsResearch & { seqNo: number; primaryTerm: number }
 
 /**
+ * Compute version updates (latestVersion/draftVersion) for a status transition
+ */
+export const computeVersionUpdates = (
+  action: StatusAction,
+  research: EsResearch,
+): { latestVersion?: string | null; draftVersion?: string | null } | undefined => {
+  switch (action) {
+    case "approve":
+      if (!research.draftVersion) {
+        throw new Error("Cannot approve: draftVersion is null")
+      }
+
+      return { latestVersion: research.draftVersion, draftVersion: null }
+    case "unpublish":
+      if (!research.latestVersion) {
+        throw new Error("Cannot unpublish: latestVersion is null")
+      }
+
+      return { latestVersion: null, draftVersion: research.latestVersion }
+    default:
+      // submit, reject: no version changes
+      return undefined
+  }
+}
+
+/**
  * Create a status transition handler
  *
  * This factory function reduces duplication across workflow handlers.
  */
-function createStatusTransitionHandler(
+const createStatusTransitionHandler = (
   action: StatusAction,
   targetStatus: ResearchStatus,
-) {
+) => {
   return async (c: Context) => {
     // Research is preloaded by middleware
     const research = c.get("research") as ResearchWithSeqNo
@@ -42,8 +68,11 @@ function createStatusTransitionHandler(
       throw new ConflictError(validationError)
     }
 
-    // Update status
-    const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm)
+    // Compute version updates for this action
+    const versionUpdates = computeVersionUpdates(action, research)
+
+    // Update status (and optionally latestVersion/draftVersion)
+    const updated = await updateResearchStatus(humId, targetStatus, seqNo, primaryTerm, versionUpdates)
     if (!updated) {
       throw new ConflictError()
     }

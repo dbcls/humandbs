@@ -26,6 +26,7 @@ import type {
   ResearchDetail,
   ResearchStatus,
 } from "@/api/types"
+import { resolveVersionForUser } from "@/api/utils/version"
 
 // === Elasticsearch Error Helpers ===
 
@@ -101,11 +102,9 @@ export const getResearchDetail = async (
   { version }: { version?: string },
   authUser: AuthUser | null = null,
 ): Promise<ResearchDetail | null> => {
-  const [researchWithSeqNo, researchVersionDoc] = await Promise.all([
-    getResearchWithSeqNo(humId),
-    getResearchVersion(humId, { version }),
-  ])
-  if (!researchWithSeqNo || !researchVersionDoc) return null
+  // Fetch Research first (version resolution depends on Research fields)
+  const researchWithSeqNo = await getResearchWithSeqNo(humId)
+  if (!researchWithSeqNo) return null
 
   const { doc: researchDoc, seqNo, primaryTerm } = researchWithSeqNo
 
@@ -113,6 +112,13 @@ export const getResearchDetail = async (
   if (!canAccessResearchDoc(authUser, researchDoc)) {
     return null // Return null to hide existence from unauthorized users
   }
+
+  // Version resolution (owner/admin gets draft, others get published only)
+  const resolvedVersion = resolveVersionForUser(authUser, researchDoc, version) ?? undefined
+  if (!resolvedVersion) return null
+
+  const researchVersionDoc = await getResearchVersion(humId, { version: resolvedVersion })
+  if (!researchVersionDoc) return null
 
   // datasets is now { datasetId, version }[]
   const dsRefs = researchVersionDoc.datasets
@@ -230,7 +236,7 @@ export const createResearch = async (params: {
     // Generate humId if not provided
     const humId = params.humId ?? await generateNextHumId()
     const version = "v1"
-    const humVersionId = `${humId}.${version}`
+    const humVersionId = `${humId}-${version}`
 
     // Create Research document with defaults for optional fields
     const researchDoc: EsResearch = {
@@ -244,7 +250,8 @@ export const createResearch = async (params: {
       relatedPublication: params.relatedPublication ?? [],
       controlledAccessUser: [],
       versionIds: [humVersionId],
-      latestVersion: version,
+      latestVersion: null, // Not published yet
+      draftVersion: version, // v1 being edited
       datePublished: now,
       dateModified: now,
       status: "draft",
@@ -413,6 +420,7 @@ export const updateResearch = async (
 
 /**
  * Update Research status with optimistic locking
+ * Optionally updates latestVersion/draftVersion alongside status
  * Returns updated document with sequence info on success, null on conflict
  */
 export const updateResearchStatus = async (
@@ -420,9 +428,21 @@ export const updateResearchStatus = async (
   newStatus: ResearchStatus,
   seqNo: number,
   primaryTerm: number,
+  versionUpdates?: { latestVersion?: string | null; draftVersion?: string | null },
 ): Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null> => {
   try {
     const now = new Date().toISOString().split("T")[0]
+
+    const updateDoc: Record<string, unknown> = {
+      status: newStatus,
+      dateModified: now,
+    }
+    if (versionUpdates?.latestVersion !== undefined) {
+      updateDoc.latestVersion = versionUpdates.latestVersion
+    }
+    if (versionUpdates?.draftVersion !== undefined) {
+      updateDoc.draftVersion = versionUpdates.draftVersion
+    }
 
     await esClient.update({
       index: ES_INDEX.research,
@@ -430,10 +450,7 @@ export const updateResearchStatus = async (
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
       body: {
-        doc: {
-          status: newStatus,
-          dateModified: now,
-        },
+        doc: updateDoc,
       },
       refresh: "wait_for",
     })
@@ -516,6 +533,7 @@ export const deleteResearch = async (
       body: {
         doc: {
           status: "deleted",
+          draftVersion: null,
           dateModified: now,
         },
       },

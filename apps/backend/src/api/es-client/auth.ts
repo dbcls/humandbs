@@ -17,8 +17,8 @@ import { StatusTransitions } from "@/api/types"
 /**
  * Build Elasticsearch filter based on user authorization level
  *
- * - public (authUser=null): Only `status=published`
- * - auth (authUser!=null, !isAdmin): `status=published` OR `uids` contains userId
+ * - public (authUser=null): `latestVersion exists AND status != "deleted"`
+ * - auth (authUser!=null, !isAdmin): above OR `uids` contains userId
  * - admin: No filter (can see all)
  */
 export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQueryContainer | null => {
@@ -27,12 +27,20 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
     return null
   }
 
+  // Public visibility: latestVersion exists AND not deleted
+  const publicFilter: estypes.QueryDslQueryContainer = {
+    bool: {
+      must: [{ exists: { field: "latestVersion" } }],
+      must_not: [{ term: { status: "deleted" } }],
+    },
+  }
+
   if (authUser) {
-    // Authenticated user: published OR own resources (userId in uids)
+    // Authenticated user: public visible OR own resources (userId in uids)
     return {
       bool: {
         should: [
-          { term: { status: "published" } },
+          publicFilter,
           { term: { uids: authUser.userId } },
         ],
         minimum_should_match: 1,
@@ -40,20 +48,21 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
     }
   }
 
-  // Public: only published
-  return { term: { status: "published" } }
+  // Public: latestVersion exists AND not deleted
+  return publicFilter
 }
 
 /**
- * Check if user can access a specific Research based on status and uids
+ * Check if user can access a specific Research based on latestVersion, status and uids
  */
 export const canAccessResearchDoc = (
   authUser: AuthUser | null,
   researchDoc: EsResearch,
 ): boolean => {
   if (authUser?.isAdmin) return true
-  if (researchDoc.status === "published") return true
+  if (researchDoc.latestVersion !== null && researchDoc.status !== "deleted") return true
   if (authUser && researchDoc.uids.includes(authUser.userId)) return true
+
   return false
 }
 
