@@ -1,8 +1,8 @@
 #!/bin/bash
-# Dump all JGA Shinsei data to JSON files via direct PostgreSQL connection
+# Dump all JGA Shinsei data to JSON files
 #
 # Output:
-#   - $JGA_OUTPUT_DIR/jga-relations.json  : ID マッピング + 階層関係
+#   - $JGA_OUTPUT_DIR/jga-relations.json    : ID マッピング + 階層関係
 #   - $JGA_OUTPUT_DIR/ds-applications.json : J-DS (データ提供申請) 詳細
 #   - $JGA_OUTPUT_DIR/du-applications.json : J-DU (データ利用申請) 詳細
 #
@@ -10,12 +10,10 @@
 #   ./scripts/dump-all-data.sh
 #
 # Environment (see env.template):
-#   JGA_DB_HOST     - PostgreSQL host (required)
-#   JGA_DB_PORT     - PostgreSQL port (default: 5432)
-#   JGA_DB_USER     - PostgreSQL user (required)
-#   JGA_DB_PASSWORD  - PostgreSQL password (required)
-#   JGA_DB_NAME     - PostgreSQL database name (default: jgadb)
-#   JGA_OUTPUT_DIR  - JSON output directory (default: ./json-data)
+#   JGA_CONTAINER_NAME - Docker container name
+#   JGA_DB_USER        - PostgreSQL user
+#   JGA_DB_NAME        - PostgreSQL database name
+#   JGA_OUTPUT_DIR     - JSON output directory
 
 set -euo pipefail
 
@@ -28,26 +26,10 @@ if [[ -f "$BASE_DIR/.env" ]]; then
   source "$BASE_DIR/.env"
 fi
 
-# Validate required variables
-if [[ -z "${JGA_DB_HOST:-}" ]]; then
-  echo "Error: JGA_DB_HOST is required" >&2
-  exit 1
-fi
-if [[ -z "${JGA_DB_USER:-}" ]]; then
-  echo "Error: JGA_DB_USER is required" >&2
-  exit 1
-fi
-if [[ -z "${JGA_DB_PASSWORD:-}" ]]; then
-  echo "Error: JGA_DB_PASSWORD is required" >&2
-  exit 1
-fi
-
 # Set defaults
-DB_HOST="${JGA_DB_HOST}"
-DB_PORT="${JGA_DB_PORT:-5432}"
-DB_USER="${JGA_DB_USER}"
+CONTAINER_NAME="${JGA_CONTAINER_NAME:-humandbs-jga-shinsei-db}"
+DB_USER="${JGA_DB_USER:-postgres}"
 DB_NAME="${JGA_DB_NAME:-jgadb}"
-export PGPASSWORD="${JGA_DB_PASSWORD}"
 
 # Resolve output dir (relative to BASE_DIR or absolute)
 if [[ "${JGA_OUTPUT_DIR:-}" == /* ]]; then
@@ -58,23 +40,18 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
-# Helper: run psql with connection params
-run_psql() {
-  psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "$1"
-}
-
 echo "=== JGA Shinsei Data Dump ==="
-echo "Host:     $DB_HOST:$DB_PORT"
-echo "Database: $DB_NAME (user: $DB_USER)"
-echo "Output:   $OUTPUT_DIR"
+echo "Container: $CONTAINER_NAME"
+echo "Database:  $DB_NAME (user: $DB_USER)"
+echo "Output:    $OUTPUT_DIR"
 echo ""
 
 # ==============================================================================
-# 1. jga-relations.json - ID マッピング + 階層関係
+# 1. relations.json - ID マッピング + 階層関係
 # ==============================================================================
 echo "[1/3] Exporting jga-relations.json..."
 
-run_psql "
+docker exec "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "
 WITH
 -- JGA ID 親子関係
 jga_hierarchy AS (
@@ -176,7 +153,7 @@ echo "  -> $(jq '.jsub_to_jga | length' "$OUTPUT_DIR/jga-relations.json") JSUB-J
 # ==============================================================================
 echo "[2/3] Exporting ds-applications.json..."
 
-run_psql "
+docker exec "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "
 WITH jds_base AS (
   SELECT DISTINCT
     nam.ds_du_id as jds_id,
@@ -316,7 +293,7 @@ echo "  -> $(jq 'length' "$OUTPUT_DIR/ds-applications.json") J-DS records"
 # ==============================================================================
 echo "[3/3] Exporting du-applications.json..."
 
-run_psql "
+docker exec "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "
 WITH jdu_base AS (
   SELECT DISTINCT
     na.ds_du_id as jdu_id,
