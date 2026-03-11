@@ -9,7 +9,6 @@
 import { z } from "zod"
 
 import {
-  TextValueSchema,
   BilingualTextSchema,
   BilingualTextValueSchema,
   BilingualUrlValueSchema,
@@ -162,10 +161,6 @@ export type SearchableExperimentFields = z.infer<
 export const ExperimentSchema = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
-  footers: z.object({
-    ja: z.array(TextValueSchema),
-    en: z.array(TextValueSchema),
-  }),
   searchable: SearchableExperimentFieldsSchema.optional(),
 })
 export type Experiment = z.infer<typeof ExperimentSchema>

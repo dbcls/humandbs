@@ -22,7 +22,7 @@ import {
 
 export interface ValidationError {
   fileName: string
-  issues: z.ZodIssue[]
+  issues: z.core.$ZodIssue[]
 }
 
 export interface ValidationResult {

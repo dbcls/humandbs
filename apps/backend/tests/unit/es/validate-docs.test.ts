@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
+import { transformResearch } from "@/es/load-docs"
+import { EsResearchSchema, EsDatasetSchema, ResearchVersionSchema } from "@/es/types"
 import { validateDocs, printReport } from "@/es/validate-docs"
 import type { ValidationResult } from "@/es/validate-docs"
-import { EsResearchSchema, EsDatasetSchema, ResearchVersionSchema } from "@/es/types"
-import { transformResearch } from "@/es/load-docs"
 
 // === Fixtures ===
 

@@ -230,12 +230,10 @@ interface BilingualExperimentInput {
   en: {
     header: string | null
     data: Record<string, string | null>
-    footers: string[]
   } | null
   ja: {
     header: string | null
     data: Record<string, string | null>
-    footers: string[]
   } | null
   externalMetadata: Record<string, unknown> | null
 }
@@ -265,12 +263,10 @@ const convertUnifiedToLlmInput = (
     en: experiment.header.en ? {
       header: experiment.header.en.text,
       data: enData,
-      footers: experiment.footers.en.map(f => f.text),
     } : null,
     ja: experiment.header.ja ? {
       header: experiment.header.ja.text,
       data: jaData,
-      footers: experiment.footers.ja.map(f => f.text),
     } : null,
     externalMetadata: originalMetadata,
   }

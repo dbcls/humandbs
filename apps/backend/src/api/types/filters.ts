@@ -256,7 +256,7 @@ export const DatasetSearchBodySchema = z.object({
     .string()
     .optional()
     .describe(
-      "Full-text search query. Searches experiments (header, data, footers)",
+      "Full-text search query. Searches experiments (header, data)",
     ),
 
   // Parent Research filter

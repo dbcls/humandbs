@@ -32,18 +32,6 @@ export const datasetSchema = {
     // Dynamic key-value data
     data: f.flattened(),
 
-    // Footers (text only, rawHtml stored but not indexed)
-    footers: f.object({
-      ja: f.object({
-        text: f.text(),
-        rawHtml: f.noindex(),
-      }),
-      en: f.object({
-        text: f.text(),
-        rawHtml: f.noindex(),
-      }),
-    }),
-
     // Searchable fields (LLM-extracted + rule-based)
     searchable: f.object({
       // Subject/sample info

@@ -136,10 +136,6 @@
           }
         }
       },
-      "footers": {
-        "ja": [],
-        "en": []
-      },
       "searchable": {
         "subjectCount": null,
         "subjectCountType": null,

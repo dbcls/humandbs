@@ -33,7 +33,7 @@ describe("processors/merge.ts", () => {
       const exp: SingleLangExperiment = {
         header: createTextValue("JGAD000123 - Exome sequencing"),
         data: {},
-        footers: [],
+
       }
       expect(extractAccessionId(exp)).toBe("JGAD000123")
     })
@@ -42,7 +42,7 @@ describe("processors/merge.ts", () => {
       const exp: SingleLangExperiment = {
         header: createTextValue("JGAS000456 study data"),
         data: {},
-        footers: [],
+
       }
       expect(extractAccessionId(exp)).toBe("JGAS000456")
     })
@@ -51,7 +51,7 @@ describe("processors/merge.ts", () => {
       const exp: SingleLangExperiment = {
         header: createTextValue("DRA001234"),
         data: {},
-        footers: [],
+
       }
       expect(extractAccessionId(exp)).toBe("DRA001234")
     })
@@ -60,7 +60,7 @@ describe("processors/merge.ts", () => {
       const exp: SingleLangExperiment = {
         header: createTextValue("BioProject PRJDB12345"),
         data: {},
-        footers: [],
+
       }
       expect(extractAccessionId(exp)).toBe("PRJDB12345")
     })
@@ -69,7 +69,7 @@ describe("processors/merge.ts", () => {
       const exp: SingleLangExperiment = {
         header: createTextValue("Exome sequencing data"),
         data: {},
-        footers: [],
+
       }
       expect(extractAccessionId(exp)).toBeNull()
     })
@@ -78,7 +78,7 @@ describe("processors/merge.ts", () => {
       const exp: SingleLangExperiment = {
         header: createTextValue(""),
         data: {},
-        footers: [],
+
       }
       expect(extractAccessionId(exp)).toBeNull()
     })
@@ -156,12 +156,12 @@ describe("processors/merge.ts", () => {
     describe("Strategy 1: exact match by accession ID", () => {
       it("should match experiments with same accession ID", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("JGAD000001 - Exome"), data: {}, footers: [] },
-          { header: createTextValue("JGAD000002 - WGS"), data: {}, footers: [] },
+          { header: createTextValue("JGAD000001 - Exome"), data: {} },
+          { header: createTextValue("JGAD000002 - WGS"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("JGAD000002 - Whole genome"), data: {}, footers: [] },
-          { header: createTextValue("JGAD000001 - Exome sequencing"), data: {}, footers: [] },
+          { header: createTextValue("JGAD000002 - Whole genome"), data: {} },
+          { header: createTextValue("JGAD000001 - Exome sequencing"), data: {} },
         ]
 
         const result = matchExperiments(jaExps, enExps)
@@ -177,10 +177,10 @@ describe("processors/merge.ts", () => {
     describe("Strategy 2: fuzzy match by header similarity", () => {
       it("should match experiments with similar headers", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("RNA-seq analysis"), data: {}, footers: [] },
+          { header: createTextValue("RNA-seq analysis"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("Gene expression RNA-seq"), data: {}, footers: [] },
+          { header: createTextValue("Gene expression RNA-seq"), data: {} },
         ]
 
         const result = matchExperiments(jaExps, enExps)
@@ -195,12 +195,12 @@ describe("processors/merge.ts", () => {
     describe("Strategy 3: position-based match", () => {
       it("should match experiments by position when no other match", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("Data type A"), data: {}, footers: [] },
-          { header: createTextValue("Data type B"), data: {}, footers: [] },
+          { header: createTextValue("Data type A"), data: {} },
+          { header: createTextValue("Data type B"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("Type X data"), data: {}, footers: [] },
-          { header: createTextValue("Type Y data"), data: {}, footers: [] },
+          { header: createTextValue("Type X data"), data: {} },
+          { header: createTextValue("Type Y data"), data: {} },
         ]
 
         const result = matchExperiments(jaExps, enExps)
@@ -213,7 +213,7 @@ describe("processors/merge.ts", () => {
     describe("Unmatched handling", () => {
       it("should mark unmatched ja experiments", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("Unique JA data"), data: {}, footers: [] },
+          { header: createTextValue("Unique JA data"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = []
 
@@ -228,7 +228,7 @@ describe("processors/merge.ts", () => {
       it("should mark unmatched en experiments", () => {
         const jaExps: SingleLangExperiment[] = []
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("Unique EN data"), data: {}, footers: [] },
+          { header: createTextValue("Unique EN data"), data: {} },
         ]
 
         const result = matchExperiments(jaExps, enExps)
@@ -241,12 +241,12 @@ describe("processors/merge.ts", () => {
 
       it("should handle mixed matched and unmatched", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("JGAD000001 - Shared"), data: {}, footers: [] },
-          { header: createTextValue("JA only data"), data: {}, footers: [] },
+          { header: createTextValue("JGAD000001 - Shared"), data: {} },
+          { header: createTextValue("JA only data"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("JGAD000001 - Shared EN"), data: {}, footers: [] },
-          { header: createTextValue("EN only data"), data: {}, footers: [] },
+          { header: createTextValue("JGAD000001 - Shared EN"), data: {} },
+          { header: createTextValue("EN only data"), data: {} },
         ]
 
         const result = matchExperiments(jaExps, enExps)

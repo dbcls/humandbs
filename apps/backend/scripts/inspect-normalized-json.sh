@@ -44,9 +44,8 @@ for lang in ja en; do
   extract_field "$lang" '.summary.datasets[].typeOfData' "summary-datasets-typeOfData"
   extract_field "$lang" '.summary.datasets[].criteria[]' "summary-datasets-criteria"
   extract_field "$lang" '.summary.datasets[].releaseDate[]' "summary-datasets-releaseDate"
-  # Molecular Data (id, footers, and extractedDatasetIds)
+  # Molecular Data (id and extractedDatasetIds)
   extract_field "$lang" '.molecularData[].id.text' "molecularData-id-text"
-  extract_field "$lang" '.molecularData[].footers[].text' "molecularData-footers-text"
   extract_field "$lang" '.molecularData[].extractedDatasetIds.datasetIds[]' "molecularData-extractedDatasetIds-datasetIds"
   extract_field "$lang" '.molecularData[].extractedDatasetIds.originalJgasIds[]' "molecularData-extractedDatasetIds-originalJgasIds"
 

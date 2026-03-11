@@ -142,10 +142,6 @@
           }
         }
       },
-      "footers": {
-        "ja": [],
-        "en": []
-      },
       "searchable": {
         "subjectCount": 1,
         "subjectCountType": "individual",

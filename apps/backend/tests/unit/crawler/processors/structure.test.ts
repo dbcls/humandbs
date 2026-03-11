@@ -199,14 +199,14 @@ describe("processors/structure.ts", () => {
         {
           header: createTextValue("JGAD000001"),
           data: { "サンプル数": createTextValue("100") },
-          footers: [],
+
         },
       ]
       const enExps: SingleLangExperiment[] = [
         {
           header: createTextValue("JGAD000001"),
           data: { "Sample Size": createTextValue("100") },
-          footers: [],
+
         },
       ]
 
@@ -226,7 +226,7 @@ describe("processors/structure.ts", () => {
 
     it("should handle unmatched experiments", () => {
       const jaExps: SingleLangExperiment[] = [
-        { header: createTextValue("JA only"), data: {}, footers: [] },
+        { header: createTextValue("JA only"), data: {} },
       ]
       const enExps: SingleLangExperiment[] = []
 
@@ -242,7 +242,7 @@ describe("processors/structure.ts", () => {
       it("should handle only en experiments (ja is empty)", () => {
         const jaExps: SingleLangExperiment[] = []
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("EN only"), data: {}, footers: [] },
+          { header: createTextValue("EN only"), data: {} },
         ]
 
         const result = mergeExperiments(jaExps, enExps)
@@ -254,10 +254,10 @@ describe("processors/structure.ts", () => {
 
       it("should handle experiments with empty data objects", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("JGAD000001"), data: {}, footers: [] },
+          { header: createTextValue("JGAD000001"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("JGAD000001"), data: {}, footers: [] },
+          { header: createTextValue("JGAD000001"), data: {} },
         ]
 
         const result = mergeExperiments(jaExps, enExps)
@@ -270,8 +270,8 @@ describe("processors/structure.ts", () => {
         const enExps: SingleLangExperiment[] = []
         for (let i = 1; i <= 50; i++) {
           const id = `JGAD${i.toString().padStart(6, "0")}`
-          jaExps.push({ header: createTextValue(id), data: {}, footers: [] })
-          enExps.push({ header: createTextValue(id), data: {}, footers: [] })
+          jaExps.push({ header: createTextValue(id), data: {} })
+          enExps.push({ header: createTextValue(id), data: {} })
         }
 
         const result = mergeExperiments(jaExps, enExps)
@@ -280,12 +280,12 @@ describe("processors/structure.ts", () => {
 
       it("should handle different number of ja and en experiments", () => {
         const jaExps: SingleLangExperiment[] = [
-          { header: createTextValue("A"), data: {}, footers: [] },
-          { header: createTextValue("B"), data: {}, footers: [] },
-          { header: createTextValue("C"), data: {}, footers: [] },
+          { header: createTextValue("A"), data: {} },
+          { header: createTextValue("B"), data: {} },
+          { header: createTextValue("C"), data: {} },
         ]
         const enExps: SingleLangExperiment[] = [
-          { header: createTextValue("A"), data: {}, footers: [] },
+          { header: createTextValue("A"), data: {} },
         ]
 
         const result = mergeExperiments(jaExps, enExps)

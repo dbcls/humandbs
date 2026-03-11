@@ -142,20 +142,6 @@
           }
         }
       },
-      "footers": {
-        "ja": [
-          {
-            "text": "論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement) に記載して下さい。記載例はこちら。",
-            "rawHtml": "<span>※論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement)に記載して下さい。記載例は<a href=\"/acknowledgement\">こちら</a>。</span>"
-          }
-        ],
-        "en": [
-          {
-            "text": "論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement) に記載して下さい。記載例はこちら。",
-            "rawHtml": "<span>※論文等でデータベースからダウンロードしたデータを含む結果を公表する際には、NBDCヒトデータベースに登録されたデータを利用した旨について謝辞 (Acknowledgement)に記載して下さい。記載例は<a href=\"/acknowledgement\">こちら</a>。</span>"
-          }
-        ]
-      },
       "searchable": {
         "subjectCount": null,
         "subjectCountType": null,

@@ -90,8 +90,7 @@ Input:
       "Reference Sequence": { "text": "GRCh38" },
       "SNV Number": { "text": "5,000,000" },
       "Total Data Volume": { "text": "VCF: 1.5 TB" }
-    },
-    "footers": []
+    }
   },
   "ja": null,
   "externalMetadata": {

@@ -194,7 +194,6 @@ export const createDataset = async (params: {
   experiments: {
     header: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
     data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
-    footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
   }[]
 }, autoLinkToResearch = true): Promise<EsDataset> => {
   const now = new Date().toISOString().split("T")[0]
@@ -275,7 +274,6 @@ export const updateDataset = async (
     experiments?: {
       header: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
       data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
-      footers: { ja: { text: string; rawHtml: string }[]; en: { text: string; rawHtml: string }[] }
     }[]
     humId?: string
     humVersionId?: string

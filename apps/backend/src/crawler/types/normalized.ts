@@ -40,7 +40,6 @@ export interface NormalizedDataset extends Omit<RawDataset, "datasetId" | "crite
 export interface NormalizedMolecularData {
   id: TextValue
   data: Record<string, TextValue | TextValue[] | null>
-  footers: TextValue[]
   /** Dataset IDs extracted from this row (JGAS expanded to JGAD) */
   extractedDatasetIds?: ExtractedDatasetIds
 }

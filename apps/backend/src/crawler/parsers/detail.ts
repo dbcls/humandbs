@@ -385,18 +385,6 @@ const findNearestIdIndex = (children: Element[], tableIndex: number): number | n
   return null
 }
 
-const collectFooters = (children: Element[], startIndex: number, endIndex: number): TextValue[] => {
-  const footers: TextValue[] = []
-
-  for (let i = startIndex; i < endIndex; i++) {
-    const el = children[i]
-    if (isEmptyNode(el)) continue
-    footers.push(toTextValue(el))
-  }
-
-  return footers
-}
-
 interface ActiveRowspan {
   el: Element
   remaining: number
@@ -457,8 +445,7 @@ const parseMolecularDataSection = (
     .map(({ el, idx }) => ({ table: el as HTMLTableElement, index: idx }))
 
   const results: RawMolecularData[] = []
-  for (let i = 0; i < tables.length; i++) {
-    const { table, index: tableIndex } = tables[i]
+  for (const { table, index: tableIndex } of tables) {
 
     const idIndex = findNearestIdIndex(children, tableIndex)
     if (idIndex === null) {
@@ -506,15 +493,7 @@ const parseMolecularDataSection = (
       }
     }
 
-    const nextTable = tables[i + 1]
-    const nextIdIndex = nextTable
-      ? findNearestIdIndex(children, nextTable.index)
-      : children.length
-    const footerStart = tableIndex + 1
-    const footerEnd = nextIdIndex ?? children.length
-
-    const footers = collectFooters(children, footerStart, footerEnd)
-    results.push({ id, data, footers })
+    results.push({ id, data })
   }
 
   return results

@@ -10,7 +10,6 @@ import type { TextValue, UrlValue, CriteriaCanonical, PeriodOfDataUse } from "./
 export interface SingleLangExperiment {
   header: TextValue
   data: Record<string, TextValue | null>
-  footers: TextValue[]
 }
 
 /** Single-language dataset (before bilingual merge) */

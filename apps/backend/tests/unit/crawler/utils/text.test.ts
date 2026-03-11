@@ -7,7 +7,6 @@
  * - isTextValue: type guard
  * - normalizeText: text normalization
  * - httpToHttps: URL conversion
- * - normalizeFooterText: footer text cleanup
  */
 
 import { describe, expect, it } from "bun:test"
@@ -17,7 +16,6 @@ import type { TextValue } from "@/crawler/types"
 import {
   httpToHttps,
   isTextValue,
-  normalizeFooterText,
   normalizeKey,
   normalizeText,
   splitValue,
@@ -408,73 +406,3 @@ describe("httpToHttps", () => {
   })
 })
 
-// ===========================================================================
-// normalizeFooterText
-// ===========================================================================
-describe("normalizeFooterText", () => {
-  describe("Japanese (ja)", () => {
-    it("should remove ※ marker", () => {
-      expect(normalizeFooterText("※注釈", "ja")).toBe("注釈")
-    })
-
-    it("should remove ※n marker", () => {
-      expect(normalizeFooterText("※1 注釈", "ja")).toBe("注釈")
-    })
-
-    it("should remove * marker", () => {
-      expect(normalizeFooterText("*注釈", "ja")).toBe("注釈")
-    })
-
-    it("should remove numbered parentheses 1)", () => {
-      expect(normalizeFooterText("1) 注釈文", "ja")).toBe("注釈文")
-    })
-
-    it("should remove leading colon :", () => {
-      expect(normalizeFooterText(": 説明文", "ja")).toBe("説明文")
-    })
-
-    it("should remove leading full-width colon ：", () => {
-      expect(normalizeFooterText("：説明文", "ja")).toBe("説明文")
-    })
-  })
-
-  describe("English (en)", () => {
-    it("should remove * marker", () => {
-      expect(normalizeFooterText("*note", "en")).toBe("note")
-    })
-
-    it("should remove *n marker", () => {
-      expect(normalizeFooterText("*1 note", "en")).toBe("note")
-    })
-
-    it("should remove numbered parentheses 1)", () => {
-      expect(normalizeFooterText("1) note text", "en")).toBe("note text")
-    })
-
-    it("should remove leading colon :", () => {
-      expect(normalizeFooterText(": description", "en")).toBe("description")
-    })
-
-    it("should not remove ※ marker in English", () => {
-      expect(normalizeFooterText("※note", "en")).toBe("※note")
-    })
-  })
-
-  describe("boundary cases", () => {
-    it.each([
-      // Multiple markers (only first is removed)
-      ["※※text", "※text", "ja", "double ※"],
-      ["**text", "*text", "en", "double *"],
-
-      // Marker at end (not removed)
-      ["text※", "text※", "ja", "※ at end"],
-      ["text*", "text*", "en", "* at end"],
-
-      // Multi-digit numbers
-      ["※12 text", "text", "ja", "double digit marker"],
-      ["123) text", "text", "ja", "triple digit parenthesis"],
-    ] as const)("%s -> %s (%s, %s)", (input, expected, lang, _desc) => {
-      expect(normalizeFooterText(input, lang)).toBe(expected)
-    })
-  })
-})

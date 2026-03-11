@@ -142,28 +142,6 @@
           }
         }
       },
-      "footers": {
-        "ja": [
-          {
-            "text": "下記関連論文1参照",
-            "rawHtml": "<span>※1：下記関連論文1参照</span>"
-          },
-          {
-            "text": "Miura, F., Enomoto, Y., Dairiki, R. & Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照",
-            "rawHtml": "<span>※2：Miura, F., Enomoto, Y., Dairiki, R. &amp; Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照</span>"
-          }
-        ],
-        "en": [
-          {
-            "text": "下記関連論文1参照",
-            "rawHtml": "<span>※1：下記関連論文1参照</span>"
-          },
-          {
-            "text": "Miura, F., Enomoto, Y., Dairiki, R. & Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照",
-            "rawHtml": "<span>※2：Miura, F., Enomoto, Y., Dairiki, R. &amp; Ito, T. (2012) Amplification-free whole genome bisulfite sequencing by post-bisulfite adaptor tagging. Nucleic Acids Res. 40, e136参照</span>"
-          }
-        ]
-      },
       "searchable": {
         "subjectCount": null,
         "subjectCountType": null,

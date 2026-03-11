@@ -21,7 +21,6 @@ import {
   EsDatasetSchema,
   ResearchVersionSchema,
 } from "./types"
-import type { EsResearch, EsDataset, ResearchVersion } from "./types"
 
 // === Constants ===
 

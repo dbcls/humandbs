@@ -590,10 +590,6 @@ export const mergeExperiments = (
     return {
       header: toBilingualTextValue(pair.ja?.header ?? null, pair.en?.header ?? null),
       data: unifiedData,
-      footers: {
-        ja: pair.ja?.footers ?? [],
-        en: pair.en?.footers ?? [],
-      },
       searchable: createSearchableWithPolicies(jaPolicies, enPolicies),
     }
   })

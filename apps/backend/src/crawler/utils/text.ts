@@ -106,25 +106,3 @@ export const httpToHttps = (url: string): string => {
   return trimmed.replace(/^http:\/\//i, "https://")
 }
 
-/**
- * Normalize footer text (remove leading markers)
- */
-export const normalizeFooterText = (text: string, lang: "ja" | "en"): string => {
-  let result = text
-
-  // Remove ※/※n, */*, etc. (existing pattern)
-  if (lang === "ja") {
-    result = result.replace(/^[※*]\d*\s*/, "")
-  } else {
-    result = result.replace(/^\*\d*\s*/, "")
-  }
-
-  // Remove numbered parentheses: 1), 2), 3), etc.
-  result = result.replace(/^\d+\)\s*/, "")
-
-  // Remove leading colons (half-width and full-width)
-  result = result.replace(/^[:：]\s*/, "")
-
-  return result.trim()
-}
-

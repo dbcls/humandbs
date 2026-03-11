@@ -64,7 +64,6 @@ import {
   normalizeKey,
   splitValue,
   normalizeText,
-  normalizeFooterText,
   httpToHttps,
 } from "@/crawler/utils/text"
 
@@ -1270,10 +1269,6 @@ export const normalizeParseResult = async (
           val === null ? null : normalizeText(val, true),
         ]),
       ),
-      footers: md.footers.map(f => ({
-        ...f,
-        text: normalizeFooterText(normalizeText(f.text, lang === "en", lang), lang),
-      })),
     })),
     dataProvider: {
       ...detail.dataProvider,

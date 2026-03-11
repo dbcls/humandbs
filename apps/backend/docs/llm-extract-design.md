@@ -81,8 +81,7 @@ experiments[].searchable に格納
       "Materials and Participants": { "text": "..." },
       "Experimental Method": { "text": "..." },
       ...
-    },
-    "footers": []
+    }
   },
   "ja": { ... },
   "externalMetadata": {

@@ -165,7 +165,6 @@ const structureMolDataToExperiment = (
   return {
     header: molData.id,
     data: normalizedData,
-    footers: molData.footers,
   }
 }
 

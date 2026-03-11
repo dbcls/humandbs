@@ -26,7 +26,6 @@ export interface RawMolecularData {
   id: TextValue
   /** Key-value map of table rows; value is normalized HTML or null for absent "-" */
   data: Record<string, TextValue | null>
-  footers: TextValue[]
 }
 
 /** Grant information from data provider section */

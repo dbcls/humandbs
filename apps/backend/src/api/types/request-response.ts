@@ -20,7 +20,6 @@ import {
   GrantSchema,
   PublicationSchema,
   SummarySchema,
-  TextValueSchema,
   // Crawler schemas (for API request validation)
   CrawlerResearchSchema as ResearchSchema,
   ResearchVersionSchema,
@@ -49,10 +48,6 @@ import { RESEARCH_STATUS } from "./workflow"
 export const ExperimentSchemaBase = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
-  footers: z.object({
-    ja: z.array(TextValueSchema),
-    en: z.array(TextValueSchema),
-  }),
 })
 
 // Dataset schema for API requests
