@@ -2,7 +2,7 @@
 
 EAV (Entity-Attribute-Value) パターンの `components` 配列を API フレンドリーな構造に変換した後のスキーマ定義。
 
-型定義の SSOT は [`scripts/types.ts`](../scripts/types.ts)。
+型定義の SSOT は [`src/crawler/types/jga-shinsei.ts`](../../src/crawler/types/jga-shinsei.ts)。
 
 ## Union types
 

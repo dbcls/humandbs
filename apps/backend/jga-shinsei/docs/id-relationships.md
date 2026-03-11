@@ -166,7 +166,7 @@ J-DS --[appl_id]--> submission_permission --[submission_id]--> submission
 
 ## relations.json の構造
 
-`dump-all-data.sh` で出力される `relations.json` は、直接的なリレーションのみを保持する 5 テーブル構成。導出可能な関係は `fetch-relation.sh` で計算する。
+`dump-all-data.sh` で出力される `relations.json` は、直接的なリレーションのみを保持する 5 テーブル構成。導出可能な関係は crawler 側で計算する。
 
 ### 5 テーブル
 
@@ -204,7 +204,7 @@ J-DS --[appl_id]--> submission_permission --[submission_id]--> submission
 
 ### 導出ロジック
 
-以下の関係は直接テーブルに保持せず、`fetch-relation.sh` で JGA ID を経由して計算する：
+以下の関係は直接テーブルに保持せず、crawler 側で JGA ID を経由して計算する：
 
 | 取得したい関係 | 導出方法 |
 |----------------|----------|
