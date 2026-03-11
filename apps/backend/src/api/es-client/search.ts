@@ -727,7 +727,7 @@ export const searchResearches = async (
     const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
     const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
 
-    return { humId: d.humId, lang, title: extractStr(d.title), versions, methods, datasetIds, typeOfData, platforms, targets, dataProvider, criteria }
+    return { humId: d.humId, lang, title: d.title, versions, methods, datasetIds, typeOfData, platforms, targets, dataProvider, criteria }
   })
 
   const total = esTotal(res.hits.total)

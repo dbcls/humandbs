@@ -87,6 +87,7 @@ const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQue
     humId: "humId",
     datePublished: "datePublished",
     dateModified: "dateModified",
+    relevance: "relevance",
   }
 
   return {

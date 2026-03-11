@@ -9,8 +9,8 @@ import { z } from "zod"
 
 // === Language Types (re-exported from es/types, SSOT is crawler/types) ===
 
-export { LANG_TYPES } from "../../es/types"
-export type { LangType } from "../../es/types"
+export { LANG_TYPES, BilingualTextSchema } from "../../es/types"
+export type { LangType, BilingualText } from "../../es/types"
 
 // === Zod Preprocessing Helpers ===
 

@@ -10,7 +10,7 @@
  */
 import { z } from "zod"
 
-import { LANG_TYPES } from "./common"
+import { LANG_TYPES, BilingualTextSchema } from "./common"
 import {
   PaginationQuerySchema,
   LangQueryBase,
@@ -161,7 +161,7 @@ export const ResearchSummarySchema = z.object({
   lang: z
     .enum(LANG_TYPES)
     .describe("Language of text fields in this response ('ja' or 'en')"),
-  title: z.string().describe("Research title in the requested language"),
+  title: BilingualTextSchema.describe("Research title in Japanese and English"),
   versions: z
     .array(
       z.object({
