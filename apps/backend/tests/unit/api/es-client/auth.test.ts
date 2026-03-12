@@ -1,12 +1,18 @@
 /**
  * Authorization filter tests
  *
- * Tests buildStatusFilter and canAccessResearchDoc
- * for all authorization levels and Research states.
+ * Tests buildStatusFilter, canAccessResearchDoc, validateStatusTransition,
+ * and canPerformTransition for all authorization levels and Research states.
  */
 import { describe, expect, it } from "bun:test"
+import fc from "fast-check"
 
-import { buildStatusFilter, canAccessResearchDoc } from "@/api/es-client/auth"
+import {
+  buildStatusFilter,
+  canAccessResearchDoc,
+  canPerformTransition,
+  validateStatusTransition,
+} from "@/api/es-client/auth"
 import type { AuthUser, EsResearch } from "@/api/types"
 
 import { createMockResearchDoc, createMockAuthUser } from "../helpers/mock-es"
@@ -136,5 +142,90 @@ describe("canAccessResearchDoc", () => {
   })
   it("other user can access draft with latestVersion (public visible)", () => {
     expect(canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
+  })
+})
+
+// === validateStatusTransition ===
+
+describe("validateStatusTransition", () => {
+  it.each([
+    ["draft", "submit", null],
+    ["review", "approve", null],
+    ["review", "reject", null],
+    ["published", "unpublish", null],
+  ] as const)("valid: %s + %s -> null", (status, action, expected) => {
+    expect(validateStatusTransition(status, action)).toBe(expected)
+  })
+
+  it.each([
+    ["review", "submit"],
+    ["published", "submit"],
+    ["deleted", "submit"],
+    ["draft", "approve"],
+    ["published", "approve"],
+    ["deleted", "approve"],
+    ["draft", "reject"],
+    ["published", "reject"],
+    ["deleted", "reject"],
+    ["draft", "unpublish"],
+    ["review", "unpublish"],
+    ["deleted", "unpublish"],
+  ] as const)("invalid: %s + %s -> error message", (status, action) => {
+    const result = validateStatusTransition(status, action)
+    expect(result).toBeString()
+    expect(result).toContain(`Cannot ${action}`)
+    expect(result).toContain(status)
+  })
+
+  it("PBT: valid actions return null or non-empty string", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("draft", "review", "published", "deleted"),
+        fc.constantFrom("submit" as const, "approve" as const, "reject" as const, "unpublish" as const),
+        (status, action) => {
+          const result = validateStatusTransition(status, action)
+          return result === null || (typeof result === "string" && result.length > 0)
+        },
+      ),
+    )
+  })
+})
+
+// === canPerformTransition ===
+
+describe("canPerformTransition", () => {
+  const ownerResearch = createMockResearchDoc({ uids: ["owner-id"] })
+
+  it("null authUser -> false", () => {
+    expect(canPerformTransition(null, "submit", ownerResearch)).toBe(false)
+  })
+
+  it.each([
+    "submit" as const,
+    "approve" as const,
+    "reject" as const,
+    "unpublish" as const,
+  ])("admin -> true for %s", (action) => {
+    const adminUser = createMockAuthUser({ isAdmin: true, userId: "admin-id" })
+    expect(canPerformTransition(adminUser, action, ownerResearch)).toBe(true)
+  })
+
+  it("owner + submit -> true", () => {
+    const ownerUser = createMockAuthUser({ userId: "owner-id" })
+    expect(canPerformTransition(ownerUser, "submit", ownerResearch)).toBe(true)
+  })
+
+  it.each([
+    "approve" as const,
+    "reject" as const,
+    "unpublish" as const,
+  ])("owner + %s -> false", (action) => {
+    const ownerUser = createMockAuthUser({ userId: "owner-id" })
+    expect(canPerformTransition(ownerUser, action, ownerResearch)).toBe(false)
+  })
+
+  it("non-owner + submit -> false", () => {
+    const nonOwner = createMockAuthUser({ userId: "other-id" })
+    expect(canPerformTransition(nonOwner, "submit", ownerResearch)).toBe(false)
   })
 })

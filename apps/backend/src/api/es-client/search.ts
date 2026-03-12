@@ -78,7 +78,7 @@ type FilterParams = Record<string, unknown>
 
 // === Filter Clause Builders ===
 
-const buildNestedTermsFilters = (params: FilterParams): QueryContainer[] => {
+export const buildNestedTermsFilters = (params: FilterParams): QueryContainer[] => {
   const clauses: QueryContainer[] = []
   for (const { param, field } of NESTED_TERMS_FILTERS) {
     const value = params[param]
@@ -92,7 +92,7 @@ const buildNestedTermsFilters = (params: FilterParams): QueryContainer[] => {
   return clauses
 }
 
-const buildNestedRangeFilters = (params: FilterParams): QueryContainer[] => {
+export const buildNestedRangeFilters = (params: FilterParams): QueryContainer[] => {
   const clauses: QueryContainer[] = []
   for (const { minParam, maxParam, field } of NESTED_RANGE_FILTERS) {
     const minVal = params[minParam]
@@ -107,7 +107,7 @@ const buildNestedRangeFilters = (params: FilterParams): QueryContainer[] => {
   return clauses
 }
 
-const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQuery): QueryContainer[] => {
+export const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQuery): QueryContainer[] => {
   const must: QueryContainer[] = []
   const p = params as FilterParams
 

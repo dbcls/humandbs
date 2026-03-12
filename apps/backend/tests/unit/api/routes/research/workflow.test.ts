@@ -2,6 +2,7 @@
  * Tests for computeVersionUpdates (workflow state transitions)
  */
 import { describe, expect, it } from "bun:test"
+import fc from "fast-check"
 
 import { computeVersionUpdates } from "@/api/routes/research/workflow"
 
@@ -74,5 +75,80 @@ describe("computeVersionUpdates", () => {
     const result = computeVersionUpdates("unpublish", research)
 
     expect(result).toEqual({ latestVersion: null, draftVersion: "v1" })
+  })
+
+  it("unpublish throws when latestVersion is null", () => {
+    const research = createMockResearchDoc({
+      status: "published",
+      latestVersion: null,
+      draftVersion: null,
+    })
+
+    expect(() => computeVersionUpdates("unpublish", research)).toThrow(
+      "Cannot unpublish: latestVersion is null",
+    )
+  })
+
+  // PBT: submit/reject always return undefined
+  it("PBT: submit/reject -> always undefined", () => {
+    const arbVersion = fc.stringMatching(/^v\d+$/)
+
+    fc.assert(
+      fc.property(
+        fc.constantFrom("submit" as const, "reject" as const),
+        fc.option(arbVersion, { nil: null }),
+        fc.option(arbVersion, { nil: null }),
+        (action, latest, draft) => {
+          const research = createMockResearchDoc({
+            latestVersion: latest,
+            draftVersion: draft,
+          })
+          return computeVersionUpdates(action, research) === undefined
+        },
+      ),
+    )
+  })
+
+  // PBT: approve with draftVersion and existing datePublished -> no datePublished in result
+  it("PBT: approve + datePublished exists -> no datePublished in result", () => {
+    const arbVersion = fc.stringMatching(/^v\d+$/)
+
+    fc.assert(
+      fc.property(
+        arbVersion,
+        fc.date({ min: new Date("2020-01-01"), max: new Date("2030-12-31") }).map(d => d.toISOString().split("T")[0]),
+        (draftVersion, datePublished) => {
+          const research = createMockResearchDoc({
+            draftVersion,
+            datePublished,
+          })
+          const result = computeVersionUpdates("approve", research)
+          return result !== undefined && result.datePublished === undefined
+        },
+      ),
+    )
+  })
+
+  // PBT: approve + draftVersion + no datePublished -> datePublished is YYYY-MM-DD
+  it("PBT: approve + no datePublished -> datePublished is YYYY-MM-DD", () => {
+    const arbVersion = fc.stringMatching(/^v\d+$/)
+
+    fc.assert(
+      fc.property(
+        arbVersion,
+        (draftVersion) => {
+          const research = createMockResearchDoc({
+            draftVersion,
+            datePublished: null,
+          })
+          const result = computeVersionUpdates("approve", research)
+          return (
+            result !== undefined &&
+            typeof result.datePublished === "string" &&
+            /^\d{4}-\d{2}-\d{2}$/.test(result.datePublished)
+          )
+        },
+      ),
+    )
   })
 })

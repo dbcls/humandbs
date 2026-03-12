@@ -4,6 +4,7 @@
  * Tests for parseVersionNum, isOwnerOrAdmin, and resolveVersionForUser.
  */
 import { describe, expect, it } from "bun:test"
+import fc from "fast-check"
 
 import { isOwnerOrAdmin, parseVersionNum, resolveVersionForUser } from "@/api/utils/version"
 
@@ -97,5 +98,103 @@ describe("resolveVersionForUser", () => {
   it.each(cases)("%s", (_desc, authUser, latest, draft, requested, expected) => {
     const result = resolveVersionForUser(authUser, research(latest, draft), requested)
     expect(result).toBe(expected)
+  })
+
+  // PBT: admin always gets requested version back
+  it("PBT: admin + requestedVersion -> always returns it", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100 }).map(n => `v${n}`),
+        fc.option(fc.integer({ min: 1, max: 100 }).map(n => `v${n}`), { nil: null }),
+        fc.option(fc.integer({ min: 1, max: 100 }).map(n => `v${n}`), { nil: null }),
+        (requested, latest, draft) => {
+          const result = resolveVersionForUser(adminUser, research(latest, draft), requested)
+          return result === requested
+        },
+      ),
+    )
+  })
+
+  // PBT: owner + requestedVersion -> always returns it
+  it("PBT: owner + requestedVersion -> always returns it", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100 }).map(n => `v${n}`),
+        fc.option(fc.integer({ min: 1, max: 100 }).map(n => `v${n}`), { nil: null }),
+        fc.option(fc.integer({ min: 1, max: 100 }).map(n => `v${n}`), { nil: null }),
+        (requested, latest, draft) => {
+          const result = resolveVersionForUser(ownerUser, research(latest, draft), requested)
+          return result === requested
+        },
+      ),
+    )
+  })
+
+  // PBT: public, requestedVersion > latestVersion -> null
+  it("PBT: public + requested > latestVersion -> null", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 50 }),
+        (latestNum) => {
+          const requestedNum = latestNum + 1
+          const result = resolveVersionForUser(null, research(`v${latestNum}`, `v${requestedNum}`), `v${requestedNum}`)
+          return result === null
+        },
+      ),
+    )
+  })
+})
+
+// === PBT additions for parseVersionNum ===
+
+describe("parseVersionNum (PBT)", () => {
+  it("v0 -> 0", () => {
+    expect(parseVersionNum("v0")).toBe(0)
+  })
+
+  it("PBT: vN -> N for valid integers", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 99999 }),
+        (n) => {
+          return parseVersionNum(`v${n}`) === n
+        },
+      ),
+    )
+  })
+
+  it("PBT: invalid formats throw", () => {
+    fc.assert(
+      fc.property(
+        fc.stringMatching(/^[^v]|^v[^0-9]|^v\d+\./),
+        (s) => {
+          try {
+            parseVersionNum(s)
+            return false
+          } catch {
+            return true
+          }
+        },
+      ),
+    )
+  })
+})
+
+// === PBT additions for isOwnerOrAdmin ===
+
+describe("isOwnerOrAdmin (edge cases)", () => {
+  it("empty uids -> non-admin is false", () => {
+    const user = createMockAuthUser({ userId: "user-1" })
+    expect(isOwnerOrAdmin(user, [])).toBe(false)
+  })
+
+  it("userId appears multiple times -> still true", () => {
+    const user = createMockAuthUser({ userId: "user-1" })
+    expect(isOwnerOrAdmin(user, ["user-1", "user-1", "user-1"])).toBe(true)
+  })
+
+  it("admin with empty uids -> true", () => {
+    const admin = createMockAuthUser({ isAdmin: true, userId: "admin-1" })
+    expect(isOwnerOrAdmin(admin, [])).toBe(true)
   })
 })

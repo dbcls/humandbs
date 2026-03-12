@@ -225,12 +225,13 @@ const buildSingleLangResearch = (
   normalized: NormalizedParseResult,
   lang: LangType,
   versionIds: string[],
+  latestHumVersionId: string,
   latestVersion: string,
   datePublished: string,
   dateModified: string,
 ): SingleLangResearch => ({
   humId,
-  url: genDetailUrl(latestVersion, lang),
+  url: genDetailUrl(latestHumVersionId, lang),
   title: normalized.title,
   summary: {
     aims: normalized.summary.aims,
@@ -316,8 +317,9 @@ const processHumId = (humId: string): ProcessResult => {
       return vA - vB
     })
 
-    const latestVersion = sortedVersions[sortedVersions.length - 1]
-    const latestFiles = filesMap.get(latestVersion)!
+    const latestHumVersionId = sortedVersions[sortedVersions.length - 1]
+    const latestVersion = latestHumVersionId.replace(/^.*-(v\d+)$/, "$1")
+    const latestFiles = filesMap.get(latestHumVersionId)!
 
     // Get latest normalized data for each language
     const jaLatest = latestFiles.get("ja")?.data ?? null
@@ -484,10 +486,10 @@ const processHumId = (humId: string): ProcessResult => {
     // Build research
     const versionIds = sortedVersions
     const jaLatestResearch = jaLatest
-      ? buildSingleLangResearch(humId, jaLatest, "ja", versionIds, latestVersion, datePublished, dateModified)
+      ? buildSingleLangResearch(humId, jaLatest, "ja", versionIds, latestHumVersionId, latestVersion, datePublished, dateModified)
       : null
     const enLatestResearch = enLatest
-      ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestVersion, datePublished, dateModified)
+      ? buildSingleLangResearch(humId, enLatest, "en", versionIds, latestHumVersionId, latestVersion, datePublished, dateModified)
       : null
 
     const research = mergeResearch(humId, jaLatestResearch, enLatestResearch)

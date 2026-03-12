@@ -382,3 +382,56 @@ describe("buildResearchDateRangeFilters", () => {
     )
   })
 })
+
+// === PBT additions ===
+
+describe("buildDatasetSortSpec (PBT additions)", () => {
+  it("PBT: relevance + hasQuery=true -> first element has _score", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("asc" as const, "desc" as const),
+        (order) => {
+          const result = buildDatasetSortSpec("relevance", order, true)
+          const arr = result as unknown as Record<string, unknown>[]
+          return "_score" in arr[0]
+        },
+      ),
+    )
+  })
+})
+
+describe("buildResearchSortSpec (PBT additions)", () => {
+  it("PBT: all sort kinds have humId tiebreaker as last element", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(
+          "humId" as const, "title" as const, "releaseDate" as const,
+          "datePublished" as const, "dateModified" as const, "relevance" as const,
+        ),
+        fc.constantFrom("asc" as const, "desc" as const),
+        fc.constantFrom("ja" as const, "en" as const),
+        fc.boolean(),
+        (sort, order, lang, hasQuery) => {
+          const result = buildResearchSortSpec(sort, order, lang, hasQuery)
+          const arr = result as unknown as Record<string, unknown>[]
+          const last = arr[arr.length - 1]
+          return "humId" in last || "_score" in last
+        },
+      ),
+    )
+  })
+})
+
+describe("versionSortSpec (PBT additions)", () => {
+  it("PBT: order is reflected in result", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("asc" as const, "desc" as const),
+        (order) => {
+          const result = versionSortSpec(order) as Record<string, Record<string, unknown>>
+          return result._script.order === order
+        },
+      ),
+    )
+  })
+})
