@@ -73,24 +73,29 @@ const statsDoubleNestedAgg = (
   },
 })
 
-/** Platform composite agg with both research and dataset cardinality */
+/** Platform composite agg with both research and dataset cardinality (double-nested) */
 const statsPlatformAgg = (size = 50): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
-    vendorModel: {
-      composite: {
-        size,
-        sources: [
-          { vendor: { terms: { field: "experiments.searchable.platformVendor", missing_bucket: true } } },
-          { model: { terms: { field: "experiments.searchable.platformModel", missing_bucket: true } } },
-        ],
-      },
+    inner: {
+      nested: { path: "experiments.searchable.platforms" },
       aggs: {
-        counts: {
-          reverse_nested: {},
+        vendorModel: {
+          composite: {
+            size,
+            sources: [
+              { vendor: { terms: { field: "experiments.searchable.platforms.vendor", missing_bucket: true } } },
+              { model: { terms: { field: "experiments.searchable.platforms.model", missing_bucket: true } } },
+            ],
+          },
           aggs: {
-            research_count: { cardinality: { field: "humId" } },
-            dataset_count: { cardinality: { field: "datasetId" } },
+            counts: {
+              reverse_nested: {},
+              aggs: {
+                research_count: { cardinality: { field: "humId" } },
+                dataset_count: { cardinality: { field: "datasetId" } },
+              },
+            },
           },
         },
       },

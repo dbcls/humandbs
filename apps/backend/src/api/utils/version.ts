@@ -45,7 +45,8 @@ export const resolveVersionForUser = (
   }
 
   // Explicit version: non-owner can only access published versions
-  if (!isOwnerOrAdmin(authUser, research.uids) && research.latestVersion) {
+  if (!isOwnerOrAdmin(authUser, research.uids)) {
+    if (!research.latestVersion) return null
     const requestedNum = parseVersionNum(requestedVersion)
     const publishedNum = parseVersionNum(research.latestVersion)
     if (requestedNum > publishedNum) return null

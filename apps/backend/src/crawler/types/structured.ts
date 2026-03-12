@@ -293,8 +293,8 @@ export const ResearchSchema = z.object({
     .describe("Published version number (e.g., 'v2'). Null if never published."),
 
   // Timestamps
-  datePublished: z.string()
-    .describe("ISO 8601 timestamp when the Research was first published"),
+  datePublished: z.string().nullable()
+    .describe("ISO 8601 timestamp when the Research was first published. Null until first approve."),
   dateModified: z.string()
     .describe("ISO 8601 timestamp when the Research was last modified"),
 })

@@ -9,6 +9,7 @@
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
+import { versionSortSpec } from "@/api/es-client/query-builders"
 import { mgetMap } from "@/api/es-client/utils"
 import {
   EsResearchSchema,
@@ -41,7 +42,7 @@ export const getResearchVersion = async (
     size: 1,
     query: { term: { humId } },
     sort: [
-      { version: { order: "desc" } },
+      versionSortSpec("desc"),
       { versionReleaseDate: { order: "desc" } },
     ],
     _source: true,

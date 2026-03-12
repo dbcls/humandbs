@@ -180,7 +180,7 @@ const postDatasetSearchRoute = createRoute({
   summary: "Search Dataset (POST)",
   description: `Search Dataset resources with advanced filters and facets.
 
-**Full-text search targets:** typeOfData, experiments.header, experiments.searchable.targets
+**Full-text search targets:** typeOfData, experiments.searchable.targets
 
 **Filter modes:**
 - Array filters use OR logic (e.g., assayType: ["WGS", "WES"] matches either)

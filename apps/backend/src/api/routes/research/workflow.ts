@@ -28,14 +28,22 @@ type ResearchWithSeqNo = EsResearch & { seqNo: number; primaryTerm: number }
 export const computeVersionUpdates = (
   action: StatusAction,
   research: EsResearch,
-): { latestVersion?: string | null; draftVersion?: string | null } | undefined => {
+): { latestVersion?: string | null; draftVersion?: string | null; datePublished?: string | null } | undefined => {
   switch (action) {
-    case "approve":
+    case "approve": {
       if (!research.draftVersion) {
         throw new Error("Cannot approve: draftVersion is null")
       }
+      const updates: { latestVersion: string; draftVersion: null; datePublished?: string } = {
+        latestVersion: research.draftVersion,
+        draftVersion: null,
+      }
+      if (!research.datePublished) {
+        updates.datePublished = new Date().toISOString().split("T")[0]
+      }
 
-      return { latestVersion: research.draftVersion, draftVersion: null }
+      return updates
+    }
     case "unpublish":
       if (!research.latestVersion) {
         throw new Error("Cannot unpublish: latestVersion is null")

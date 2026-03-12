@@ -83,23 +83,28 @@ export const doubleNestedFacetAgg = (
   },
 })
 
-/** Helper to create platform composite aggregation (vendor + model) */
+/** Helper to create platform composite aggregation (vendor + model, double-nested) */
 export const platformFacetAgg = (size = 50): estypes.AggregationsAggregationContainer => ({
   nested: { path: "experiments" },
   aggs: {
-    vendorModel: {
-      composite: {
-        size,
-        sources: [
-          { vendor: { terms: { field: "experiments.searchable.platformVendor", missing_bucket: true } } },
-          { model: { terms: { field: "experiments.searchable.platformModel", missing_bucket: true } } },
-        ],
-      },
+    inner: {
+      nested: { path: "experiments.searchable.platforms" },
       aggs: {
-        dataset_count: {
-          reverse_nested: {},
+        vendorModel: {
+          composite: {
+            size,
+            sources: [
+              { vendor: { terms: { field: "experiments.searchable.platforms.vendor", missing_bucket: true } } },
+              { model: { terms: { field: "experiments.searchable.platforms.model", missing_bucket: true } } },
+            ],
+          },
           aggs: {
-            unique: { cardinality: { field: "datasetId" } },
+            dataset_count: {
+              reverse_nested: {},
+              aggs: {
+                unique: { cardinality: { field: "datasetId" } },
+              },
+            },
           },
         },
       },

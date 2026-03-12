@@ -12,6 +12,15 @@ import type { LangType } from "@/api/types/common"
 
 type QueryContainer = estypes.QueryDslQueryContainer
 
+/** Script-based sort for version fields (v1, v2, ..., v10, ...) to avoid lexicographic ordering */
+export const versionSortSpec = (order: "asc" | "desc"): estypes.SortCombinations => ({
+  _script: {
+    type: "number" as const,
+    script: { source: "Integer.parseInt(doc['version'].value.substring(1))" },
+    order,
+  },
+})
+
 // === Sort Spec Builders ===
 
 export const buildDatasetSortSpec = (
@@ -64,8 +73,6 @@ export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
     fields: [
       "typeOfData.ja^2",
       "typeOfData.en^2",
-      "experiments.header.ja.text",
-      "experiments.header.en.text",
       "experiments.searchable.targets",
     ],
     type: "best_fields",

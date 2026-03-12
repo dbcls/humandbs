@@ -6,7 +6,6 @@
  */
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
 
-import { canAccessResearchDoc } from "@/api/es-client/auth"
 import {
   deleteDataset,
   getDataset,
@@ -24,6 +23,7 @@ import {
   singleResponse,
 } from "@/api/helpers/response"
 import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
+import { canModifyResource } from "@/api/middleware/resource-auth"
 import {
   ErrorSpec401,
   ErrorSpec403,
@@ -322,7 +322,7 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   }
 
   // Check permission (owner or admin can update)
-  if (!canAccessResearchDoc(authUser, research)) {
+  if (!canModifyResource(authUser, research)) {
     throw new ForbiddenError("Not authorized to update this dataset")
   }
 

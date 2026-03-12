@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, spyOn } from "bun:test"
 
 import { transformResearch } from "@/es/load-docs"
 import { EsResearchSchema, EsDatasetSchema, ResearchVersionSchema } from "@/es/types"
@@ -169,6 +169,31 @@ describe("es/validate-docs.ts", () => {
       ]
 
       expect(printReport(results)).toBe(true)
+    })
+
+    it("should display FAILED for results with errors", () => {
+      const parsed = EsDatasetSchema.safeParse({ datasetId: 123 })
+      const issues = parsed.success ? [] : parsed.error.issues
+
+      const results: ValidationResult[] = [
+        {
+          label: "Dataset",
+          total: 3,
+          passed: 2,
+          errors: [{ fileName: "bad.json", issues }],
+        },
+      ]
+
+      const logs: string[] = []
+      const spy = spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+        logs.push(args.map(String).join(" "))
+      })
+
+      printReport(results)
+
+      spy.mockRestore()
+
+      expect(logs.some((l) => l.includes("FAILED"))).toBe(true)
     })
 
     it("should return false when any result has errors", () => {

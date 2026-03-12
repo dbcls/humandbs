@@ -141,17 +141,17 @@ Research のライフサイクル状態遷移を管理する。
 
 | Action | From | To | latestVersion | draftVersion | 実行者 | 追加処理 |
 |--------|------|-----|---------------|--------------|--------|---------|
-| create | - | draft | null | v1 | admin | humId 自動採番（または指定）、`datePublished`/`dateModified` 設定 |
-| submit | draft | review | 変更なし | 変更なし | authenticated/admin | `dateModified` 更新 |
-| approve | review | published | = draftVersion | null | admin | `dateModified` 更新 |
+| create | - | draft | null | v1 | admin | humId 自動採番（または指定）、`dateModified` 設定 |
+| submit | draft | review | 変更なし | 変更なし | owner/admin | `dateModified` 更新 |
+| approve | review | published | = draftVersion | null | admin | `dateModified` 更新、`datePublished` が null なら設定 |
 | reject | review | draft | 変更なし | 変更なし | admin | `dateModified` 更新 |
 | unpublish | published | draft | null | = 元の latestVersion | admin | `dateModified` 更新 |
 | versions/new | published | draft | 変更なし | 新バージョン | owner/admin | `dateModified` 更新 |
 
 **日付フィールドの意味**:
 
-- `datePublished`: v1 作成時（Research 作成時）に設定され、以後変更されない
-- `dateModified`: 状態変更のたびに更新される
+- `datePublished`: 初回 approve 時に設定され、以後変更されない。作成時は null
+- `dateModified`: 状態変更および通常の更新（`PUT /research/{humId}/update`）のたびに更新される
 
 ### deleted 状態
 
@@ -225,17 +225,23 @@ ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
 
 `versions`, `datasetIds`, `typeOfData`, `platforms` 等は、上記で許可されたバージョンに紐づくデータのみ集計する。
 
-### public レスポンスのフィールド除外
+### レスポンスのフィールド除外
 
-public ユーザーへの Research 詳細レスポンスからは以下のフィールドが除外される:
+#### 全ユーザー共通
+
+| 除外フィールド | 理由 |
+|---------------|------|
+| `versionIds` | 内部メタデータ。API では `versions` エンドポイントで取得する |
+
+#### public ユーザーのみ追加で除外
 
 | 除外フィールド | 理由 |
 |---------------|------|
 | `status` | 内部ワークフロー状態 |
 | `uids` | オーナー情報 |
 | `draftVersion` | 編集中バージョン |
-| `versionIds` | 全バージョン ID リスト |
-| `_seq_no`, `_primary_term` | 楽観的ロックフィールド |
+
+全ユーザーに `_seq_no`/`_primary_term` を返す（Dataset と統一）。
 
 ## バージョニング
 

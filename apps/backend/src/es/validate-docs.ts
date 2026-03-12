@@ -73,7 +73,7 @@ export const printReport = (results: ValidationResult[]): boolean => {
   console.log("Validating structured-json documents...\n")
 
   for (const r of results) {
-    const status = r.errors.length === 0 ? "passed" : "passed"
+    const status = r.errors.length === 0 ? "passed" : "FAILED"
     console.log(`  ${r.label}: ${r.passed}/${r.total} ${status}`)
   }
 

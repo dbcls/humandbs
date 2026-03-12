@@ -26,6 +26,7 @@ import {
   buildResearchDateRangeFilters,
   buildResearchMultiMatchQuery,
   buildResearchSortSpec,
+  versionSortSpec,
 } from "@/api/es-client/query-builders"
 import {
   nestedTermsQuery,
@@ -150,9 +151,9 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
   // === Nested range filters (table-driven) ===
   must.push(...buildNestedRangeFilters(p))
 
-  // === Platform filter (vendor + model matching) ===
+  // === Platform filter (vendor + model matching, double-nested) ===
   // Platform values are in format "Vendor||Model" (e.g., "Illumina||NovaSeq 6000")
-  // We split by "||" and match against both platformVendor and platformModel fields
+  // experiments.searchable.platforms is nested inside experiments (double-nested)
   if ("platform" in params && params.platform) {
     const platformValues = splitComma(params.platform)
     if (platformValues.length > 0) {
@@ -166,11 +167,16 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
             nested: {
               path: "experiments",
               query: {
-                bool: {
-                  must: [
-                    { term: { "experiments.searchable.platformVendor": vendor } },
-                    { term: { "experiments.searchable.platformModel": model } },
-                  ],
+                nested: {
+                  path: "experiments.searchable.platforms",
+                  query: {
+                    bool: {
+                      must: [
+                        { term: { "experiments.searchable.platforms.vendor": vendor } },
+                        { term: { "experiments.searchable.platforms.model": model } },
+                      ],
+                    },
+                  },
                 },
               },
             },
@@ -181,12 +187,17 @@ const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchSearchQu
           nested: {
             path: "experiments",
             query: {
-              bool: {
-                should: [
-                  { term: { "experiments.searchable.platformVendor": platform } },
-                  { term: { "experiments.searchable.platformModel": platform } },
-                ],
-                minimum_should_match: 1,
+              nested: {
+                path: "experiments.searchable.platforms",
+                query: {
+                  bool: {
+                    should: [
+                      { term: { "experiments.searchable.platforms.vendor": platform } },
+                      { term: { "experiments.searchable.platforms.model": platform } },
+                    ],
+                    minimum_should_match: 1,
+                  },
+                },
               },
             },
           },
@@ -515,7 +526,7 @@ export const searchDatasets = async (
         name: "latest",
         size: 1,
         sort: [
-          { version: { order: "desc" as const } },
+          versionSortSpec("desc"),
           { releaseDate: { order: "desc" as const } },
         ],
         _source: true,

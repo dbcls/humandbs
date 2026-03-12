@@ -10,9 +10,9 @@
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
+import { versionSortSpec } from "@/api/es-client/query-builders"
 import { getResearchDoc } from "@/api/es-client/research"
 import {
-  getResearchVersion,
   getResearchVersionWithSeqNo,
   linkDatasetToResearch,
   unlinkDatasetFromResearch,
@@ -60,7 +60,7 @@ export const getDataset = async (
       size: 1,
       query: { term: { datasetId } },
       sort: [
-        { version: { order: "desc" } },
+        versionSortSpec("desc"),
         { releaseDate: { order: "desc" } },
       ],
       _source: true,
@@ -110,7 +110,7 @@ export const listDatasetVersions = async (
     size: 500,
     query: { term: { datasetId } },
     sort: [
-      { version: { order: "desc" } },
+      versionSortSpec("desc"),
       { releaseDate: { order: "desc" } },
     ],
     _source: ["version", "typeOfData", "criteria", "releaseDate", "humId"],
@@ -362,12 +362,10 @@ export const replaceDatasetId = async (
     throw new Error(`Failed to create new Dataset with ID ${newDatasetId}: ${error}`)
   }
 
-  // Update ResearchVersion.datasets references
-  const humId = oldDoc.humId
+  // Update ResearchVersion.datasets references (use the exact version the dataset belongs to)
   try {
-    const latestVersion = await getResearchVersion(humId, {})
-    if (latestVersion) {
-      const versionWithSeq = await getResearchVersionWithSeqNo(latestVersion.humVersionId)
+    const versionWithSeq = await getResearchVersionWithSeqNo(oldDoc.humVersionId)
+    {
       if (versionWithSeq) {
         const { doc: versionDoc, seqNo, primaryTerm } = versionWithSeq
         const newDatasets = versionDoc.datasets.map(d =>
@@ -378,7 +376,7 @@ export const replaceDatasetId = async (
 
         await esClient.update({
           index: ES_INDEX.researchVersion,
-          id: latestVersion.humVersionId,
+          id: oldDoc.humVersionId,
           if_seq_no: seqNo,
           if_primary_term: primaryTerm,
           body: {

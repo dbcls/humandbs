@@ -5,7 +5,6 @@
  */
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
-import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { createDataset, getDatasetWithSeqNo } from "@/api/es-client/dataset"
 import {
   getResearchDetail,
@@ -16,6 +15,7 @@ import {
   createdResponse,
   listResponse,
 } from "@/api/helpers/response"
+import { canModifyResource } from "@/api/middleware/resource-auth"
 import {
   ForbiddenError,
   InternalError,
@@ -72,7 +72,7 @@ export function registerDatasetHandlers(router: OpenAPIHono): void {
     }
 
     // Check permission (owner or admin can create datasets)
-    if (!canAccessResearchDoc(authUser, research)) {
+    if (!canModifyResource(authUser, research)) {
       throw new ForbiddenError("Not authorized to create datasets for this research")
     }
 

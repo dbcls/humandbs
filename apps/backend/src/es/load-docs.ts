@@ -42,8 +42,8 @@ const INDEX = {
 export const normVersion = (v: string | number): string => {
   if (typeof v === "number") return `v${v}`
   const s = v.trim()
-  if (/^v\d+/.test(s)) return s
-  if (/^\d+/.test(s)) return `v${s}`
+  if (/^v\d+$/.test(s)) return s
+  if (/^\d+$/.test(s)) return `v${s}`
   throw new Error(`Invalid version format: ${v}`)
 }
 

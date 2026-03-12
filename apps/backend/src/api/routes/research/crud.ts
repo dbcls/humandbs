@@ -17,7 +17,6 @@ import { searchResearches } from "@/api/es-client/search"
 import {
   createdResponse,
   searchResponse,
-  singleReadOnlyResponse,
   singleResponse,
 } from "@/api/helpers/response"
 import {
@@ -130,22 +129,21 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       throw NotFoundError.forResource("Research", humId)
     }
 
+    // Extract lock fields (present for all users, consistent with Dataset)
+    const { _seq_no, _primary_term, ...detailData } = detail
+    const seqNo = _seq_no ?? 0
+    const primaryTerm = _primary_term ?? 1
+
     if (!authUser) {
       // Public: strip internal fields via schema validation (status, uids, draftVersion, versionIds excluded)
-      const publicData = ResearchDetailPublicSchema.parse(detail)
+      const publicData = ResearchDetailPublicSchema.parse(detailData)
       const strippedDetail = maybeStripRawHtml(publicData, query.includeRawHtml ?? false)
 
-      return singleReadOnlyResponse(c, strippedDetail)
+      return singleResponse(c, strippedDetail, seqNo, primaryTerm)
     }
 
     // Auth/admin: return full response with optimistic locking
-    const { _seq_no, _primary_term, ...detailData } = detail
     const strippedDetail = maybeStripRawHtml(detailData, query.includeRawHtml ?? false)
-
-    // _seq_no and _primary_term should always be present from ES
-    // Use 0/1 as fallback for type safety (should never happen in practice)
-    const seqNo = _seq_no ?? 0
-    const primaryTerm = _primary_term ?? 1
 
     return singleResponse(c, strippedDetail, seqNo, primaryTerm)
   })

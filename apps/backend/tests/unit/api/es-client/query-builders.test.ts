@@ -10,7 +10,36 @@ import {
   buildResearchDateRangeFilters,
   buildResearchMultiMatchQuery,
   buildResearchSortSpec,
+  versionSortSpec,
 } from "@/api/es-client/query-builders"
+
+// === versionSortSpec ===
+
+describe("versionSortSpec", () => {
+  it("returns a _script sort with numeric type for desc", () => {
+    const result = versionSortSpec("desc")
+
+    expect(result).toEqual({
+      _script: {
+        type: "number",
+        script: { source: "Integer.parseInt(doc['version'].value.substring(1))" },
+        order: "desc",
+      },
+    })
+  })
+
+  it("returns a _script sort with numeric type for asc", () => {
+    const result = versionSortSpec("asc")
+
+    expect(result).toEqual({
+      _script: {
+        type: "number",
+        script: { source: "Integer.parseInt(doc['version'].value.substring(1))" },
+        order: "asc",
+      },
+    })
+  })
+})
 
 // === buildDatasetSortSpec ===
 
@@ -209,8 +238,6 @@ describe("buildDatasetMultiMatchQuery", () => {
         fields: [
           "typeOfData.ja^2",
           "typeOfData.en^2",
-          "experiments.header.ja.text",
-          "experiments.header.en.text",
           "experiments.searchable.targets",
         ],
         type: "best_fields",

@@ -252,7 +252,7 @@ export const createResearch = async (params: {
       versionIds: [humVersionId],
       latestVersion: null, // Not published yet
       draftVersion: version, // v1 being edited
-      datePublished: now,
+      datePublished: null,
       dateModified: now,
       status: "draft",
       uids: params.uids ?? [],
@@ -428,7 +428,7 @@ export const updateResearchStatus = async (
   newStatus: ResearchStatus,
   seqNo: number,
   primaryTerm: number,
-  versionUpdates?: { latestVersion?: string | null; draftVersion?: string | null },
+  versionUpdates?: { latestVersion?: string | null; draftVersion?: string | null; datePublished?: string | null },
 ): Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null> => {
   try {
     const now = new Date().toISOString().split("T")[0]
@@ -442,6 +442,9 @@ export const updateResearchStatus = async (
     }
     if (versionUpdates?.draftVersion !== undefined) {
       updateDoc.draftVersion = versionUpdates.draftVersion
+    }
+    if (versionUpdates?.datePublished !== undefined) {
+      updateDoc.datePublished = versionUpdates.datePublished
     }
 
     await esClient.update({

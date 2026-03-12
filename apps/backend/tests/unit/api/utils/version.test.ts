@@ -82,6 +82,12 @@ describe("resolveVersionForUser", () => {
     ["other auth, request v2 (draft) -> null", otherUser, "v1", "v2", "v2", null],
     ["other auth, request v1 -> v1", otherUser, "v1", "v2", "v1", "v1"],
 
+    // Other authenticated user (latestVersion=null)
+    ["other auth, latestVersion=null, request v1 -> null", otherUser, null, "v1", "v1", null],
+
+    // Public (latestVersion=null)
+    ["public, latestVersion=null, request v1 -> null", null, null, "v1", "v1", null],
+
     // Admin
     ["admin, no request -> draftVersion", adminUser, "v1", "v2", undefined, "v2"],
     ["admin, no latestVersion -> draftVersion", adminUser, null, "v1", undefined, "v1"],

@@ -42,9 +42,10 @@ describe("es/load-docs.ts", () => {
       expect(() => normVersion("")).toThrow("Invalid version format")
     })
 
-    it("should handle version with additional suffix", () => {
-      // v1.2 should be treated as v1 (starts with v followed by digit)
-      expect(normVersion("v1.2")).toBe("v1.2")
+    it("should throw for version with additional suffix", () => {
+      expect(() => normVersion("v1.2")).toThrow("Invalid version format")
+      expect(() => normVersion("v1abc")).toThrow("Invalid version format")
+      expect(() => normVersion("1abc")).toThrow("Invalid version format")
     })
   })
 
