@@ -11,7 +11,11 @@ import {
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
 } from "@humandbs/backend/types";
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  queryOptions,
+} from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -193,6 +197,31 @@ export function getResearchesQueryOptions(
   });
 }
 
+export function getResearchesInfiniteQueryOptions(
+  data: Partial<Omit<ResearchSearchBody, "includeFacets" | "page">> &
+    Pick<ResearchSearchBody, "lang">,
+) {
+  return infiniteQueryOptions({
+    queryKey: ["researches", "list", "infinite", data] as const,
+    queryFn: ({ pageParam }) =>
+      $getResearches({
+        data: {
+          ...data,
+          page: pageParam,
+          limit: data.limit ?? 20,
+          order: data.order ?? "asc",
+          includeFacets: false,
+        },
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.pagination.hasNext
+        ? lastPage.meta.pagination.page + 1
+        : undefined,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export const ResearchVersionsQuerySchema = z.object({
   ...HumIdParamsSchema.shape,
   ...LangQuerySchema.shape,
@@ -230,6 +259,8 @@ export const $getResearch = createServerFn()
     const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
+
+    console.log("$getResearch params", filterDefined(data));
 
     return api.getResearchDetail({
       search: { ...search, includeRawHtml: false },

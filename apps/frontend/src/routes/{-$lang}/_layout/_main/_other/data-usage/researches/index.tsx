@@ -219,7 +219,10 @@ const columns = [
   columnHelper.accessor("title", {
     id: "title",
     header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
-    cell: (ctx) => ctx.getValue(),
+    cell: function Cell(ctx) {
+      const { lang } = Route.useRouteContext();
+      return ctx.renderValue()?.[lang];
+    },
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
