@@ -4,18 +4,13 @@ version: 7.0
 updated_at: 2024-4-1
 ---
 
-{% version
-    version=$frontmatter.version
-    updatedAt=$frontmatter.updated_at
-/%}
-
 ## はじめに
 
 [大学共同利用機関法人 情報・システム研究機構 データサイエンス共同利用基盤施設 ライフサイエンス統合データベースセンター（以下、DBCLS）](https://dbcls.rois.ac.jp/)は、[NBDCヒトデータ共有ガイドライン（以下、共有ガイドライン）](/guidelines/data-sharing-guidelines)に則ってNBDCヒトデータベースを運営している。このガイドラインは、共有ガイドラインで定義する登録者公開データならびに制限公開データを、外部に漏えいすることなく安全に研究活動に利用するために最低限遵守すべき内容を示したものである。
 
 制限公開データには、他の情報と照合されることによって個人識別が可能になるデータが含まれている場合もあり、データごとにデータ提供者が指定したセキュリティレベル（標準レベル【TypeⅠ】又はハイレベル【TypeⅡ】）の対策を講じることが求められる。
 
-なお、データ利用者をとりまくIT環境は千差万別で、日々変化しているため、このガイドラインを遵守するだけでセキュリティが十分に保証されるとは限らない。データ利用者は、制限公開データの保存や計算処理で利用するIT環境をよく理解し、各IT環境の管理者が定めるセキュリティ規則や他のガイドライン[[\[1\]](#1) [\[2\]](#2)](#NCBI)も参考にしながら、必要に応じて追加のセキュリティ対策を講じることが求められる。
+なお、データ利用者をとりまくIT環境は千差万別で、日々変化しているため、このガイドラインを遵守するだけでセキュリティが十分に保証されるとは限らない。データ利用者は、制限公開データの保存や計算処理で利用するIT環境をよく理解し、各IT環境の管理者が定めるセキュリティ規則や他のガイドライン[^1][^2] (#NCBI)も参考にしながら、必要に応じて追加のセキュリティ対策を講じることが求められる。
 このガイドラインについては、IT環境の進展に応じ、適宜見直しを行うものとする。
 
 ## １. 用語定義
@@ -54,7 +49,7 @@ updated_at: 2024-4-1
     - データ移動時に一時的に作成する場合。
     - ソフトウェアによって一時的に作成される場合。
 4.  制限公開データへのアクセスはデータ利用者に限定し、データサーバまたはデータアクセス端末からのみ行うこと。
-5.  データ利用者をとりまくIT環境は千差万別で、日々変化しているため、このガイドラインを遵守するだけでセキュリティが十分に保証されるとは限らない。データ利用者はデータの保存やデータの計算処理で利用するIT環境をよく理解し、各IT環境の管理者が定めるセキュリティ規則や他のガイドライン[\[1\] \[2\]](#NCBI)も参考にしながら、必要に応じて追加のセキュリティ対策を講じること。
+5.  データ利用者をとりまくIT環境は千差万別で、日々変化しているため、このガイドラインを遵守するだけでセキュリティが十分に保証されるとは限らない。データ利用者はデータの保存やデータの計算処理で利用するIT環境をよく理解し、各IT環境の管理者が定めるセキュリティ規則や他のガイドライン [^1] [^2] (#NCBI)も参考にしながら、必要に応じて追加のセキュリティ対策を講じること。
 
 ### ２－２. 研究代表者が遵守すべきこと
 
@@ -96,7 +91,6 @@ updated_at: 2024-4-1
 8.  データ利用者は、データアクセス端末から、データサーバ設置LAN外の通信経路を介してデータサーバにログインする場合は、データアクセス端末とデータサーバ間のデータ伝送の都度、全ての通信経路を十分な強度で暗号化する、またはデータ自体を暗号化した上で伝送すること。データサーバ設置LAN内からデータサーバにログインする場合も、同様の暗号化を行うことが望ましい。
 9.  データ利用者は、データアクセス端末画面上のデータをコピーしてローカルディスクに保存しないこと。データアクセス端末画面上に表示されたデータをコピーしてローカルディスクに保存できないデータアクセス端末の利用が望ましい。
 10. データ利用者は、データのバックアップ取得の際は、以下のいずれかの条件を満たすこと。
-
     - データサーバに保存すること。
     - 移動可能機器（例：テープ、USBメモリ、CD-ROM、ノートPC）に保存する場合は、データを暗号化し、使用後はデータを復元不可能な方法で消去すること。また、移動可能機器はデータ利用者のみがアクセス可能な電子ファイル等で台帳管理し、盗難や紛失の可能性を最小限にするとともに、当該事実が発生した場合の早期発見を可能にすること。
 
@@ -124,10 +118,12 @@ updated_at: 2024-4-1
 
 ## 参考文献
 
-[1] {% id="1" %}. **NCBI**. NIH Security Best Practices for Controlled-Access Data Subject to the NIH Genomic Data Sharing (GDS) Policy. (オンライン) 2021年11月29日.
-[https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf](https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf)
+[^1]:
+    **NCBI**. NIH Security Best Practices for Controlled-Access Data Subject to the NIH Genomic Data Sharing (GDS) Policy. (オンライン) 2021年11月29日.
+    [https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf](https://sharing.nih.gov/sites/default/files/flmngr/NIH_Best_Practices_for_Controlled-Access_Data_Subject_to_the_NIH_GDS_Policy.pdf)
 
-[2] {% id="2" %}. **厚生労働省.** 医療情報システムの安全管理に関するガイドライン第5版 2017年5月.
-[https://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf](https://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf)
+[^2]:
+    **厚生労働省.** 医療情報システムの安全管理に関するガイドライン第5版 2017年5月.
+    [https://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf](https://www.mhlw.go.jp/file/05-Shingikai-12601000-Seisakutoukatsukan-Sanjikanshitsu_Shakaihoshoutantou/0000166260.pdf)
 
 以上

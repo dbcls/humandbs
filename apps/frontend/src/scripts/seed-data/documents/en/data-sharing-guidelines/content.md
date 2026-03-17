@@ -4,11 +4,6 @@ version: 8.0
 updated_at: 2024-04-01
 ---
 
-{% version
-    version=$frontmatter.version
-    updatedAt=$frontmatter.updated_at
-/%}
-
 ## Introduction
 
 An enormous amount of human data is being generated as advancements are made in analytical techniques such as next-generation sequencing. Rules and systems are therefore needed for storing such data in an organized manner and for effectively utilizing them to make progress in life sciences and to improve public health.
@@ -65,19 +60,15 @@ Human Data Review Board Office
 9.  Controlled-access data
     - Data available only to investigators for use for research purposes. The access-granted investigators must have research experience in related studies and can use the data for their studies, after clarifying information such as the purpose of data use and data users. For use, approval is required at the review by the Human Data Review Board. Controlled-access data include individual data like nucleotide sequence data containing output from next-generation sequencer, genome-wide variant data, image information, answers to a questionnaire, and so on.
 10. Data for future release
-
     - Data that are planned to be released as unrestricted-access data or controlled-access data after the data submitter makes the results public, e.g., by publication of a paper, acquisition of intellectual property rights, and so on.
 
 11. Secondary data
-
     - Data that are processed not to be able to restore primary data (controlled-access data shared via NBDC Human Database).
 
 12. Available server outside of affiliated organization (“Off-premise-server”)
-
     - A server that is not owned by data users’ affiliated organization and that is available to the data users to store and/or process controlled-access data, which “off-premise-server” has a computing environment for analyzing human data. The computing environment is owned by an organization that has concluded with ROIS or DS a memorandum concerning operation including the compliance with the NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers). In addition, and measures necessary for high level (Type II) security are being implemented in the “off-premise-server.”
 
 13. Entrustee
-
     - An entity or person who is entrusted by a data user to perform only a part of the work related to a research, such as storage of data or data processing, under the supervision of the data user. When entrusting the work to an entrustee located overseas (outside Japan), the PI at the time of application for data use must implement ethical procedures such as receiving appropriate consent from the research participants and others.
 
 ## 3. Acceptable Data
@@ -108,9 +99,9 @@ The NBDC Human Database accepts: 1) unrestricted-access data, 3) controlled-acce
 
 1.  The data submitter must obtain permission from the head of his/her affiliated organization after taking the following steps: (1) Explain the required descriptions in the “Examples of Content for Informed Consent Forms” (shown below) to a research subject from whom the human data are collected; (2) Obtain written consent from the research subject regarding submission of the data to databases and sharing of the data by domestic and/or foreign investigators; and (3) Obtain approval regarding such data submission and data sharing from the Ethical Review Committee of the affiliated or an equivalent organization. However, if the data submission and data sharing were approved for the entire research project after an ethical review conducted at the start point of the project, then another review is not required.
 2.  When the data submitter provides data to the NBDC Human Database collected from specimens, e.g., human biological specimens, diagnostic specimens, that were obtained without prior intention to submit such data to databases (e.g., in cases where the informed consent form does not refer to data submission or data sharing), the data submitter must follow procedures that conform to the ethical guidelines that must be complied with in conducting the research (for example, the data submitter obtain re-consent. Alternatively, if it is difficult to do re-consent, he/she must ensure information disclosure and opportunities of rejections (opt-out), and obtain permission from the head of his/her affiliated organization after obtaining approval of the Ethical Review Committee of the affiliated or an equivalent organization).
-3.  When the data submitter provides data that is clearly not the subject of "Ethical Guidelines for Medical and Biological Research Involving Human Subjects" <sup>\*[1]</sup> to the NBDC Human Database, the data submitter must submit a "statement requesting a simplified review of an application for data submission" (in an arbitrary format) signed by the PI. Submission of this statement can be a substitute for submission of documents concerning ethics review of the affiliated organization (e.g., research protocol, informed consent form, and notice of approval).
+3.  When the data submitter provides data that is clearly not the subject of "Ethical Guidelines for Medical and Biological Research Involving Human Subjects" [^1] to the NBDC Human Database, the data submitter must submit a "statement requesting a simplified review of an application for data submission" (in an arbitrary format) signed by the PI. Submission of this statement can be a substitute for submission of documents concerning ethics review of the affiliated organization (e.g., research protocol, informed consent form, and notice of approval).
 
-    \*[1]: In "Ethical Guidelines for Medical and Biological Research Involving Human Subjects", specimens and information, the value of which has already been established academically, widely utilized in research and generally available.
+    [^1]: In "Ethical Guidelines for Medical and Biological Research Involving Human Subjects", specimens and information, the value of which has already been established academically, widely utilized in research and generally available.
 
 4.  While the Human Data Review Board reviews the descriptions of the informed consent form submitted at the time of application for data submission in terms of the consistency with the restrictions on data use, the data submitter is responsible for ensuring that the data are provided in accordance with the conditions of the consent.
 5.  The data submitter must provide data according to the content of the "application form for submitting data" to the DBCLS.
@@ -122,13 +113,13 @@ The NBDC Human Database accepts: 1) unrestricted-access data, 3) controlled-acce
 
 In case the data submitter provided human data in violation of the NBDC Human Data Sharing Guidelines etc., or provided human data that contain a defect (including hidden defects) intentionally or with negligence, the DBCLS may take one or more further actions such as reporting of the fact to the head of the organization to which the data submitter belongs, announcing of the fact on the website etc., and so on. Besides, the DBCLS may seek compensation from the data submitter, if the DBCLS determines that due to these reasons it has suffered damages such as inability of operation of “the NBDC Human Database” as stated in the section “1. Principles.”
 
-{% callout type="tip" %}
+::: callout type="tip"
 For the description of the security levels (Type I and Type II), see [the NBDC Security Guidelines for Human Data.](/en/guidelines/security-for-users)
-{% /callout %}
+:::
 
 ---
 
-{% callout type="info" %}
+:::callout
 
 ### Examples of Content for Informed Consent Forms
 
@@ -151,7 +142,7 @@ For the description of the security levels (Type I and Type II), see [the NBDC S
 * Impossibility to remove data
 * Sample statement: When research results have been published in a paper or at an academic conference, even if the consent is withdrawn, the content published in the paper or the conference cannot be withdrawn. In addition, even when data for each individual are published from the public database, your data may not be deleted if your data cannot be identified.
 
-{% /callout %}
+:::
 
 ### 4.3 Procedure for Data Submission to NBDC Human Database
 
@@ -205,71 +196,72 @@ An investigator can apply for data use as the PI if he/she satisfies the data us
 
 #### 5.3.1 Unrestricted-access data
 
-1.  In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
-2.  The data user must comply with the following rules for the data obtained from the NBDC Human Database as well as any data derived therefrom.
+1. In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
+2. The data user must comply with the following rules for the data obtained from the NBDC Human Database as well as any data derived therefrom.
 
-    {% callout type="info" %}
-    Basic rules to be complied with in using data
+   :::callout
+   Basic rules to be complied with in using data
+   - The use of data is limited to research and/or development purposes only.
+   - The use of data for weapons development or military applications is prohibited. \* Identification of individuals is prohibited. \* The latest data should be downloaded and used.
 
-    - The use of data is limited to research and/or development purposes only.
-    - The use of data for weapons development or military applications is prohibited. \* Identification of individuals is prohibited. \* The latest data should be downloaded and used.
+   :::
 
-    {% /callout %}
+3. When the research results including data downloaded from the NBDC Human Databases (the DDBJ Sequence Read Archive, the NBDC Human data Archive, the Genomic Expression Archive, and so on) are made public in a publication or a presentation, the data user must state the accession number of the data set used. In addition, a statement such as the following\*\* must be included as references to the paper in which the data set was originally reported, or as acknowledgments.
 
-3.  When the research results including data downloaded from the NBDC Human Databases (the DDBJ Sequence Read Archive, the NBDC Human data Archive, the Genomic Expression Archive, and so on) are made public in a publication or a presentation, the data user must state the accession number of the data set used. In addition, a statement such as the following\*\* must be included as references to the paper in which the data set was originally reported, or as acknowledgments.
+   :::callout
+   **Example of acknowledgment**
 
-    {% callout type="info" %}
-    \*\*Example of acknowledgment
+   (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS).
 
-    (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS).
-    {% /callout %}
+   :::
 
 #### 5.3.2 Registered-access Data
 
-1.  In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
-2.  When conducting research that uses registered-access data, it is necessary to apply for the use of the original data and receive approval from the Human Data Review Board.
-3.  The data user must ensure that no one other than the person who has completed the registration to use the registered-access data may view the registered-access data.
-4.  When citing registered-access data in a publication or the like, the data user must state the accession number of the data set being cited.
+1. In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
+2. When conducting research that uses registered-access data, it is necessary to apply for the use of the original data and receive approval from the Human Data Review Board.
+3. The data user must ensure that no one other than the person who has completed the registration to use the registered-access data may view the registered-access data.
+4. When citing registered-access data in a publication or the like, the data user must state the accession number of the data set being cited.
 
 #### 5.3.3 Controlled-access Data
 
-1.  In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
-2.  The data user must take full responsibility (including responsibilities to entrustees) for using data. The data user should understand that his/her responsibility will be extended to the head of his/her affiliated organization in case any problem occurs in data management and handling.
-3.  When using controlled-access data contained in the NBDC Human Database, the data user must comply with the “Ethical Guidelines for Medical and Biological Research Involving Human Subjects” in Japan. That is, among others, before carrying out any medical or biological research involving human subjects using data obtained from the NBDC Human Database, the data user must prepare the research protocol, go through a review by an Ethical Review Committee of his/her affiliated or an equivalent organization, and obtain approval therefrom and authorization from the head of his/her affiliated organization.
-4.  The data user must comply with the following rules for the data obtained from the NBDC Human Database as well as any data derived therefrom.
+1. In using data, the data user must utilize the data with his/her own responsibility and evaluation of the quality, content, and scientific validity of the data.
+2. The data user must take full responsibility (including responsibilities to entrustees) for using data. The data user should understand that his/her responsibility will be extended to the head of his/her affiliated organization in case any problem occurs in data management and handling.
+3. When using controlled-access data contained in the NBDC Human Database, the data user must comply with the “Ethical Guidelines for Medical and Biological Research Involving Human Subjects” in Japan. That is, among others, before carrying out any medical or biological research involving human subjects using data obtained from the NBDC Human Database, the data user must prepare the research protocol, go through a review by an Ethical Review Committee of his/her affiliated or an equivalent organization, and obtain approval therefrom and authorization from the head of his/her affiliated organization.
+4. The data user must comply with the following rules for the data obtained from the NBDC Human Database as well as any data derived therefrom.
 
-    {% callout type="info" %}
-    Basic rules to be complied with in using data
+   :::callout
+   Basic rules to be complied with in using data
+   - The data users must be limited. (Access is granted only to the PI and his/her research collaborators who belong to the same organization as the PI.)
+   - The purpose of data use must be explicitly stated.
+   - The use of data for purposes other than those stated in the application is prohibited.
+   - The use of data is limited to research and/or development purposes only.
+   - The use of data for weapons development or military applications is prohibited.
+   - Identification of individuals is prohibited.
+   - Redistribution of data is prohibited. (Distribution of processed data with no or very low personal identifiability or primary data recoverability does not constitute redistribution subject to prohibition. However, in principle, an application for retention of secondary data or distribution of processed data is required.)
 
-    - The data users must be limited. (Access is granted only to the PI and his/her research collaborators who belong to the same organization as the PI.)
-    - The purpose of data use must be explicitly stated.
-    - The use of data for purposes other than those stated in the application is prohibited.
-    - The use of data is limited to research and/or development purposes only.
-    - The use of data for weapons development or military applications is prohibited.
-    - Identification of individuals is prohibited.
-    - Redistribution of data is prohibited. (Distribution of processed data with no or very low personal identifiability or primary data recoverability does not constitute redistribution subject to prohibition. However, in principle, an application for retention of secondary data or distribution of processed data is required.)
+   :::
 
-    {% /callout %}
+5. The data user must securely handle data, complying with the NBDC Security Guidelines for Human Data (for Data Users). Attention should be paid to the fact that the security level to be maintained varies for different data.\* The data user must accept an inspection conducted by the Human Data Review Board or a third party commissioned by the DBCLS with regard to the state of implementation of security measures.
 
-5.  The data user must securely handle data, complying with the NBDC Security Guidelines for Human Data (for Data Users). Attention should be paid to the fact that the security level to be maintained varies for different data.\* The data user must accept an inspection conducted by the Human Data Review Board or a third party commissioned by the DBCLS with regard to the state of implementation of security measures.
+   :::callout
 
-    {% callout type="info" %}
+   Security levels: Standard-level (Type I) security is required in principle, but high-level (Type II) security may be required based on consultation between the data submitter and the Human Data Review Board. For details on Type I and Type II security, see [the NBDC Security Guidelines for Human Data (for Data Users)](/en/guidelines/security-for-users).
 
-    Security levels: Standard-level (Type I) security is required in principle, but high-level (Type II) security may be required based on consultation between the data submitter and the Human Data Review Board. For details on Type I and Type II security, see [the NBDC Security Guidelines for Human Data (for Data Users)](/en/guidelines/security-for-users).
-    {% /callout %}
+   :::
 
-6.  The data user must establish a security control system depending on the security level (Type I, Type II) and submit "Checklist for the NBDC Security Guidelines for Human Data" to the Human Data Review Board Office in order to demonstrate that the system conforms to the standards set forth by the DBCLS.
-7.  The data user must follow the terms of each ”off-premise-server” use in addition to the NBDC Human Data Sharing Guidelines and the NBDC Human Data Security Guidelines when using the ”off-premise-server” for his/her data use.
-8.  Should a security incident such as data breach occur, the data user must immediately disconnect relevant devices from the network and report the incident to the DBCLS. The data user must promptly implement post-incident measures, following instructions from the DBCLS. When the “off-premise-server” is used, the data user must immediately take measures according to the terms of use etc.
-9.  When the data user is informed of withdrawal of consent, rejection by opt-out in relation to the data that he/she downloaded from the NBDC Human Database and is using, the data user must not use the relevant data thereafter.
+6. The data user must establish a security control system depending on the security level (Type I, Type II) and submit "Checklist for the NBDC Security Guidelines for Human Data" to the Human Data Review Board Office in order to demonstrate that the system conforms to the standards set forth by the DBCLS.
+7. The data user must follow the terms of each ”off-premise-server” use in addition to the NBDC Human Data Sharing Guidelines and the NBDC Human Data Security Guidelines when using the ”off-premise-server” for his/her data use.
+8. Should a security incident such as data breach occur, the data user must immediately disconnect relevant devices from the network and report the incident to the DBCLS. The data user must promptly implement post-incident measures, following instructions from the DBCLS. When the “off-premise-server” is used, the data user must immediately take measures according to the terms of use etc.
+9. When the data user is informed of withdrawal of consent, rejection by opt-out in relation to the data that he/she downloaded from the NBDC Human Database and is using, the data user must not use the relevant data thereafter.
 10. When finished with using data, the data user must delete all data obtained from the NBDC Human Database (whole data, or any part of the data stored. When the off-premise-server is used, all the data stored on the off-premise-server, including backup data on the off-premise-server.) and all the data that can restore the data in accordance with the NBDC Security Guidelines for Human Data (for backup data on the off-premise-server, confirm when the data will be deleted), and report on the use (and deletion) of the data, using "Reporting on the completion of the data use". With regard to keeping secondary data (e.g., results of calculations or statistical analyses based on controlled-access data) or distribution of processed data with no or very low personal identifiability or primary data recoverability, see the section on the procedure for using controlled-access data (“5.4 Procedure for Data Use”; Subsection “5.4.3 Controlled-access Data”). When the secondary data contains genetic data, the data must be properly managed as personal information and redistribution of the secondary data is prohibited.
 11. When the research results including data downloaded from the NBDC Human Databases (the Japanese Genotype-phenotype Archive, the NBDC Human data Archive, and so on) are made public in a publication or a presentation, the data user must state the accession number of the data set used. In addition, a statement such as the following\*\* must be included as a reference to the paper in which the data set was originally reported, or as acknowledgment.
 
-    {% callout type="info" %}
-    \*\*Example of acknowledgment
+    :::callout
+    **Example of acknowledgment\***
 
     (A part of) The data used for this research was originally obtained by AAAA research project/group led by Prof. /Dr. BBBB and available at the website of the NBDC Human Database of the Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS).
-    {% /callout %}
+
+    :::
 
     When the service of JGA was used, it is desirable to refer to the following paper: [Nucleic Acids Res. 2015, 43 Database issue: D18-22.](http://nar.oxfordjournals.org/content/43/D1/D18)
 
@@ -286,20 +278,20 @@ The data user can freely use unrestricted-access data available from the website
 
 #### 5.4.2 Registered-access Data
 
-1.  Among investigators who have been approved by the Human Data Review Board and are during the data use period, those who wish to use the registered-access data register their investigator information as designated by the DBCLS.
-2.  The information necessary to access the data is provided, and the data user can access the data.
+1. Among investigators who have been approved by the Human Data Review Board and are during the data use period, those who wish to use the registered-access data register their investigator information as designated by the DBCLS.
+2. The information necessary to access the data is provided, and the data user can access the data.
 
 #### 5.4.3 Controlled-access Data
 
-1.  The data user applies for data use in accordance with the procedure of application for data use. If multiple investigators from different organizations conduct a collaborative study, an application for data use must be submitted for each organization.
-2.  After going through a review by the Ethical Review Committee of his/her affiliated or an equivalent organization with regard to the use of the NBDC Human Database and obtaining approval from the Ethical Review Committee, the data user submits, at the time of application for data use, a copy of a notification of permission obtained from the head of his/her affiliated organization. However, if the Ethical Review Committee decided to waive the review, the data user submits a document such as a notification of the fact.
-3.  At the time of application for data use, the data user submits "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)" as well as other information and documents required by the Human Data Review Board.
-4.  The Human Data Review Board decides whether access to the controlled-access data may be granted.
-5.  After the Human Data Review Board approves the application for data use, the data user is granted access to the data and can access the data.
-6.  In principle, the data user reports on data use status every year, using "Reporting on the Use of Controlled-access Data". In addition, at the time of reporting, the data user resubmits "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)".
-7.  When the data user plans to distribute processed data with no or very low personal identifiability or primary data recoverability, the data user must apply to the Human Data Review Board Office using the "application for reporting on the completion of data use".
-8.  When the data user needs to use the data set beyond the term originally stated in the application for data use, the data user may file an application with the Human Data Review Board Office, at least a month before the original expiration date, with a document such as the approval notification by the Ethical Review Committee of the affiliated organization or an equivalent organization (by which document the term approved can be confirmed) and a statement of desired term to be extended.
-9.  When the data use is finished, the data user must promptly delete all data (whole data, or any part of the data stored. When the off-premise-server is used, all the data stored on the off-premise-server, including backup data on the off-premise-server.) and all data that can restore the data according to the NBDC Human Data Security Guidelines (for backup data on the off-premise-server, confirm when the data will be deleted) and report his/her data use (and deletion) to the Human Data Review Board Office, using the "application for reporting on the completion of data use". At the same time, the data user may apply for retention of secondary data (e.g., results of calculations based on controlled-access data) or distribution of processed data with no or very low personal identifiability or primary data recoverability by submitting "keep secondary data derived from controlled-access data" or "distributing processed data" in the "application for reporting on the completion of data use" to the Human Data Review Board Office, and may retain the secondary data. Depending on the degree of data processing and the storage period, however, the application may be rejected.
+1. The data user applies for data use in accordance with the procedure of application for data use. If multiple investigators from different organizations conduct a collaborative study, an application for data use must be submitted for each organization.
+2. After going through a review by the Ethical Review Committee of his/her affiliated or an equivalent organization with regard to the use of the NBDC Human Database and obtaining approval from the Ethical Review Committee, the data user submits, at the time of application for data use, a copy of a notification of permission obtained from the head of his/her affiliated organization. However, if the Ethical Review Committee decided to waive the review, the data user submits a document such as a notification of the fact.
+3. At the time of application for data use, the data user submits "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)" as well as other information and documents required by the Human Data Review Board.
+4. The Human Data Review Board decides whether access to the controlled-access data may be granted.
+5. After the Human Data Review Board approves the application for data use, the data user is granted access to the data and can access the data.
+6. In principle, the data user reports on data use status every year, using "Reporting on the Use of Controlled-access Data". In addition, at the time of reporting, the data user resubmits "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)".
+7. When the data user plans to distribute processed data with no or very low personal identifiability or primary data recoverability, the data user must apply to the Human Data Review Board Office using the "application for reporting on the completion of data use".
+8. When the data user needs to use the data set beyond the term originally stated in the application for data use, the data user may file an application with the Human Data Review Board Office, at least a month before the original expiration date, with a document such as the approval notification by the Ethical Review Committee of the affiliated organization or an equivalent organization (by which document the term approved can be confirmed) and a statement of desired term to be extended.
+9. When the data use is finished, the data user must promptly delete all data (whole data, or any part of the data stored. When the off-premise-server is used, all the data stored on the off-premise-server, including backup data on the off-premise-server.) and all data that can restore the data according to the NBDC Human Data Security Guidelines (for backup data on the off-premise-server, confirm when the data will be deleted) and report his/her data use (and deletion) to the Human Data Review Board Office, using the "application for reporting on the completion of data use". At the same time, the data user may apply for retention of secondary data (e.g., results of calculations based on controlled-access data) or distribution of processed data with no or very low personal identifiability or primary data recoverability by submitting "keep secondary data derived from controlled-access data" or "distributing processed data" in the "application for reporting on the completion of data use" to the Human Data Review Board Office, and may retain the secondary data. Depending on the degree of data processing and the storage period, however, the application may be rejected.
 
 ### 5.5 Cost of Data Use
 
@@ -307,11 +299,11 @@ The data user bears costs incurred in connection with data use, if any (e.g., in
 
 ### 5.6 Termination of Data Use
 
-1.  If the data user is suspected of a breach of any of the responsibilities listed in the section “5.3 Responsibilities of Data Users” or the NBDC Security Guidelines for Human Data, the DBCLS investigates the matter. The Human Data Review Board makes a judgement on whether there was any misconduct, based on the result of the investigation, and if it is determined that misconduct occurred, the DBCLS:
-    - Orders the data user to stop using the data and revokes the permission to access the data set being used.
-    - Do not accept, for a certain period, a new application for data use from the data user who committed the misconduct. This period is determined by the Human Data Review Board.
-    - Report the misconduct to the head of the data user's affiliated organization, if necessary.Depending on the situation, termination of data use may be ordered at the stage when suspicion is raised. Upon receiving an order to terminate data use, the data user must immediately delete all data that have been obtained and all secondary data. In addition, the data user must promptly report the state of data deletion to the Human Data Review Board Office, using "Report on the Use (and Deletion) of Controlled-access Data".
-2.  In case the data in use are made unavailable due to a breach of the responsibilities of the data submitter, the data users may be requested to stop using the data. In that case, the data users are requested to follow the same procedure as those at the time of data use termination. Regardless of the reason, the DBCLS shall not bear any responsibility for any damage or the like caused by the breach of responsibility of the data submitter.
+1. If the data user is suspected of a breach of any of the responsibilities listed in the section “5.3 Responsibilities of Data Users” or the NBDC Security Guidelines for Human Data, the DBCLS investigates the matter. The Human Data Review Board makes a judgement on whether there was any misconduct, based on the result of the investigation, and if it is determined that misconduct occurred, the DBCLS:
+   - Orders the data user to stop using the data and revokes the permission to access the data set being used.
+   - Do not accept, for a certain period, a new application for data use from the data user who committed the misconduct. This period is determined by the Human Data Review Board.
+   - Report the misconduct to the head of the data user's affiliated organization, if necessary.Depending on the situation, termination of data use may be ordered at the stage when suspicion is raised. Upon receiving an order to terminate data use, the data user must immediately delete all data that have been obtained and all secondary data. In addition, the data user must promptly report the state of data deletion to the Human Data Review Board Office, using "Report on the Use (and Deletion) of Controlled-access Data".
+2. In case the data in use are made unavailable due to a breach of the responsibilities of the data submitter, the data users may be requested to stop using the data. In that case, the data users are requested to follow the same procedure as those at the time of data use termination. Regardless of the reason, the DBCLS shall not bear any responsibility for any damage or the like caused by the breach of responsibility of the data submitter.
 
 ## 6. Procedure for Revising the Guidelines
 
@@ -343,10 +335,10 @@ Contact information: the Human Data Review Board Office
 
 ### 7.3 Investigation concerning Research Fraud by Fabrication or Falsification etc.
 
-1.  The DBCLS may cooperate on an investigation of research fraud regarding data stored in the NBDC Human Database, when requested.
-2.  The head of the fraud investigation committee etc. should inform the DBCLS of the Dataset ID of data necessary for conducting the verification and the necessity for verification, and report the security status of the server for storing the data using "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)".
-3.  The Data should be used under full responsibility of the head of the fraud investigation committee etc.
-4.  The head of the fraud investigation committee etc. should comply with rules under “Basic rules to be complied with in using data,” item (4) of “5.3.3 Controlled-access Data” in “5.3 Responsibilities of Data Users.”
+1. The DBCLS may cooperate on an investigation of research fraud regarding data stored in the NBDC Human Database, when requested.
+2. The head of the fraud investigation committee etc. should inform the DBCLS of the Dataset ID of data necessary for conducting the verification and the necessity for verification, and report the security status of the server for storing the data using "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)".
+3. The Data should be used under full responsibility of the head of the fraud investigation committee etc.
+4. The head of the fraud investigation committee etc. should comply with rules under “Basic rules to be complied with in using data,” item (4) of “5.3.3 Controlled-access Data” in “5.3 Responsibilities of Data Users.”
 
 ## See also:
 

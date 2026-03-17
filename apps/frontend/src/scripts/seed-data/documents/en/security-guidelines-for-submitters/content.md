@@ -4,11 +4,6 @@ version: 3.0
 updated_at: 2024-4-1
 ---
 
-{% version
-    version=$frontmatter.version
-    updatedAt=$frontmatter.updated_at
-/%}
-
 ## Introduction
 
 [The Database Center for Life Science (DBCLS) / the Joint Support-Center for Data Science Research (DS) of the Research Organization of Information and Systems (ROIS)](https://dbcls.rois.ac.jp/index-en.html) operates the NBDC Human Database in accordance with [the NBDC Guidelines for Human Data Sharing](/en/guidelines/data-sharing-guidelines) (hereinafter, the Data Sharing Guidelines). For data users, we have [the NBDC Security Guidelines for Human Data (for Data Users)](/en/guidelines/security-guidelines-for-users) (hereinafter, the Data User Security Guidelines). For data submitters, security measures that are stronger than those taken by data users are required because data submitters handle not only controlled-access data, which are defined in the Data Sharing Guidelines, but also data for future release (data held prior to publication of a paper or acquisition of a patent). Based on the Data User Security Guidelines, the “NBDC Security Guidelines for Human Data (for Data Submitters)” set forth the security measures to be taken by the data submitters.

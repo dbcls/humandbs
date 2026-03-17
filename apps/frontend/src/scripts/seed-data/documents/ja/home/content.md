@@ -8,6 +8,6 @@
 
 なお、本データベースの目的・意義、扱うデータの種類、データ利用者の範囲、責任者については[こちら](https://humandbs.dbcls.jp/aim)をご覧ください。
 
-<div class="content-callout">
-データ利用終了報告未提出のガイドライン違反者は<a href="https://humandbs.dbcls.jp/en/violation">こちら</a>に公表されることになります。
-</div>
+:::callout
+データ利用終了報告未提出のガイドライン違反者は[こちら](https://humandbs.dbcls.jp/en/violation)に公表されることになります。
+:::
