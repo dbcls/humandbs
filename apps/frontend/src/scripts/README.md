@@ -136,9 +136,6 @@ bun run crawl:sitemap                    # Crawl all pages
 bun crawler/crawl-page.ts -u "https://source.com/page" -o temp/en
 # Output: crawler/output/temp/en/page/content.md
 
-# Option D: Manual creation
-mkdir -p seed-data/documents/en/new-document
-echo "---\ntitle: New Document\n---\n\n# Content" > seed-data/documents/en/new-document/content.md
 ```
 
 ### 2. Content Organization

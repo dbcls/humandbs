@@ -1,0 +1,37 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-keycloak
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME_PORT=8180
+      - KC_HOSTNAME_STRICT=false
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    command: start-dev --import-realm
+    volumes:
+      - ./realm.dev.json:/opt/keycloak/data/import/realm.json
+    ports:
+      - "8180:8080"
+    networks:
+      - humandbs-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:8080/health/ready"]
+      interval: 10s
+      retries: 10
+      start_period: 60s
+      timeout: 10s
+
+  frontend:
+    extra_hosts:
+      - "localhost:host-gateway"
+
+  backend:
+    extra_hosts:
+      - "localhost:host-gateway"
+
+networks:
+  humandbs-network:
+    name: ${HUMANDBS_NETWORK_NAME}
