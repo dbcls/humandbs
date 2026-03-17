@@ -255,6 +255,33 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           className="flex flex-1 flex-col gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
+          <div className="flex items-center justify-end gap-4 pb-2">
+            <Button
+              variant={"outline"}
+              size={"lg"}
+              disabled={!isDraftChanged}
+              onClick={() => {
+                form.handleSubmit({ submitAction: "resetDraft" });
+              }}
+            >
+              Reset
+            </Button>
+
+            <Button
+              type="submit"
+              onClick={() => {
+                form.handleSubmit({ submitAction: "publish" });
+              }}
+              className="gap-1 self-end"
+              size={"lg"}
+              variant={"accent"}
+              disabled={!isDraftChanged}
+            >
+              <Save className="size-5" />
+              Publish
+            </Button>
+          </div>
+
           <form.Subscribe selector={(state) => state.values.lang}>
             {(lang) => {
               return (
@@ -291,32 +318,6 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
               );
             }}
           </form.Subscribe>
-
-          <div className="flex items-center justify-between">
-            <Button
-              variant={"outline"}
-              disabled={!isDraftChanged}
-              onClick={() => {
-                form.handleSubmit({ submitAction: "resetDraft" });
-              }}
-            >
-              Reset
-            </Button>
-
-            <Button
-              type="submit"
-              onClick={() => {
-                form.handleSubmit({ submitAction: "publish" });
-              }}
-              className="gap-1 self-end"
-              size={"lg"}
-              variant={"accent"}
-              disabled={!isDraftChanged}
-            >
-              <Save className="size-5" />
-              Publish
-            </Button>
-          </div>
         </TabsContent>
         <TabsContent
           className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
@@ -330,10 +331,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
 
               return (
                 <>
-                  <MarkdownClientPreview
-                    source={data.translations[lang]?.published?.content}
-                  />
-                  <div className="border-t border-foreground-light pt-2">
+                  <div className="border-b flex justify-end border-foreground-light pb-2">
                     <Button
                       variant={"outline"}
                       size={"lg"}
@@ -345,6 +343,10 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                       Unpublish
                     </Button>
                   </div>
+
+                  <MarkdownClientPreview
+                    source={data.translations[lang]?.published?.content}
+                  />
                 </>
               );
             }}

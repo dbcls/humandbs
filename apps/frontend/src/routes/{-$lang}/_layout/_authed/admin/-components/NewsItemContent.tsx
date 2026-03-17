@@ -121,6 +121,28 @@ export function NewsItemContent({
       className={cn("flex h-full flex-1 flex-col", className)}
       containerClassName="flex flex-col flex-1 gap-4"
     >
+      <div className="flex items-center justify-end">
+        <form.Subscribe
+          selector={(state) => [
+            state.isSubmitting,
+            state.isTouched,
+            state.isValid,
+          ]}
+        >
+          {([isSubmitting, isTouched, isValid]) => (
+            <Button
+              disabled={isSubmitting || !isTouched || !isValid}
+              size="lg"
+              onClick={() => {
+                form.handleSubmit();
+              }}
+            >
+              Update
+            </Button>
+          )}
+        </form.Subscribe>
+      </div>
+
       <div className="flex items-start gap-6">
         <form.AppField name="publishedAt">
           {(field) => (
@@ -199,28 +221,6 @@ export function NewsItemContent({
           </>
         )}
       </form.Subscribe>
-
-      <div className="flex items-center justify-end">
-        <form.Subscribe
-          selector={(state) => [
-            state.isSubmitting,
-            state.isTouched,
-            state.isValid,
-          ]}
-        >
-          {([isSubmitting, isTouched, isValid]) => (
-            <Button
-              disabled={isSubmitting || !isTouched || !isValid}
-              size="lg"
-              onClick={() => {
-                form.handleSubmit();
-              }}
-            >
-              Update
-            </Button>
-          )}
-        </form.Subscribe>
-      </div>
     </Card>
   );
 }
