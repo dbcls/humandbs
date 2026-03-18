@@ -160,7 +160,7 @@ export const $$verifyAccessToken = createServerOnlyFn(
     try {
       const { payload } = await jose.jwtVerify(token, JWKS, {
         issuer: process.env.HUMANDBS_AUTH_ISSUER_URL!,
-        audience: "account",
+        audience: process.env.HUMANDBS_AUTH_CLIENT_ID!,
         clockTolerance: clockToleranceSec,
       });
 

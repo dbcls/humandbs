@@ -34,7 +34,7 @@ export const Route = createFileRoute("/auth/login")({
         const stash = { code_verifier, state, redirect_to };
         const cookie = serialize("oidc_pkce", JSON.stringify(stash), {
           httpOnly: true,
-          secure: true,
+          secure: process.env.NODE_ENV !== "development",
           sameSite: "lax",
           path: "/",
           maxAge: 5 * 60,

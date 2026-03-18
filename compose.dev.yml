@@ -5,7 +5,7 @@ services:
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
       - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
-      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME=humandbs-dev-keycloak
       - KC_HOSTNAME_PORT=8180
       - KC_HOSTNAME_STRICT=false
       - KC_HTTP_ENABLED=true
@@ -33,19 +33,26 @@ services:
     entrypoint: >
       /bin/bash -c "
         /opt/keycloak/bin/kcadm.sh config credentials --server http://${HUMANDBS_CONTAINER_PREFIX}-keycloak:8080 --realm master --user admin --password admin &&
-        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE &&
+        /opt/keycloak/bin/kcadm.sh update realms/humandbs-dev -s sslRequired=NONE
       "
     networks:
       - humandbs-network
     restart: "no"
 
   frontend:
-    extra_hosts:
-      - "localhost:host-gateway"
+    environment:
+      - HUMANDBS_AUTH_ISSUER_URL=http://${HUMANDBS_CONTAINER_PREFIX}-keycloak:8080/realms/humandbs-dev
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   backend:
-    extra_hosts:
-      - "localhost:host-gateway"
+    environment:
+      - HUMANDBS_AUTH_ISSUER_URL=http://${HUMANDBS_CONTAINER_PREFIX}-keycloak:8080/realms/humandbs-dev
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
 networks:
   humandbs-network:

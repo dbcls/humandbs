@@ -3,6 +3,8 @@ import { parse, serialize } from "cookie";
 import * as jose from "jose";
 import * as oidc from "openid-client";
 
+import { and, eq, ne } from "drizzle-orm";
+
 import { db } from "@/db/database";
 import { user } from "@/db/schema";
 import { $$getOIDCConfig } from "@/lib/oidc";
@@ -58,6 +60,13 @@ export const Route = createFileRoute("/auth/callback")({
         const claims = jose.decodeJwt(
           session.access_token,
         ) as AccessTokenClaims;
+
+        // Remove stale rows with the same email but a different id (e.g. after Keycloak reset)
+        if (claims.email) {
+          await db
+            .delete(user)
+            .where(and(eq(user.email, claims.email), ne(user.id, claims.sub)));
+        }
 
         await db
           .insert(user)
