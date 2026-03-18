@@ -116,7 +116,9 @@ export function CreateResearchDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="accent">Add New</Button>
+        <Button variant="accent" className="text-center">
+          Add New
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
@@ -159,12 +161,10 @@ export function CreateResearchDialog() {
                   Grants <TabModifiedTag fieldName="grant" />
                 </TabsTrigger>
                 <TabsTrigger value="publications" className="gap-1">
-                  Publications{" "}
-                  <TabModifiedTag fieldName="relatedPublication" />
+                  Publications <TabModifiedTag fieldName="relatedPublication" />
                 </TabsTrigger>
                 <TabsTrigger value="releaseNote" className="gap-1">
-                  Release Note{" "}
-                  <TabModifiedTag fieldName="initialReleaseNote" />
+                  Release Note <TabModifiedTag fieldName="initialReleaseNote" />
                 </TabsTrigger>
               </TabsList>
 
@@ -174,10 +174,7 @@ export function CreateResearchDialog() {
                 <form.AppField name="humId">
                   {(field) => (
                     <div className="flex flex-col gap-1">
-                      <field.TextField
-                        type="col"
-                        label="Research ID (humId)"
-                      />
+                      <field.TextField type="col" label="Research ID (humId)" />
                       {field.state.meta.errors.length > 0 && (
                         <em role="alert" className="text-danger text-xs">
                           {field.state.meta.errors.map((e, i) => (
@@ -384,10 +381,7 @@ export function CreateResearchDialog() {
               </TabsContent>
 
               {/* Release Note Tab */}
-              <TabsContent
-                value="releaseNote"
-                className="flex flex-col gap-2"
-              >
+              <TabsContent value="releaseNote" className="flex flex-col gap-2">
                 <BilingualTextValueField
                   form={form}
                   baseName="initialReleaseNote"

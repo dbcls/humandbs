@@ -129,8 +129,11 @@ export function ResearchesList({
 
   return (
     <>
-      <ResearchFilters />
-      <CreateResearchDialog />
+      <div className="flex flex-col gap-3">
+        <ResearchFilters />
+
+        <CreateResearchDialog />
+      </div>
 
       <ul className="mt-3">
         {allResearches.map((research) => {
@@ -198,7 +201,7 @@ function ResearchFilters() {
   }, [setFilters]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <ToggleGroup
         type="single"
         value={filters.status ?? "all"}

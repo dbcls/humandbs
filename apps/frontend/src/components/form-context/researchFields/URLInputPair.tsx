@@ -38,12 +38,14 @@ export function URLInputPair({
   );
 }
 
+const emptyUrl: UrlItem = { text: "", url: "" };
+
 export default function URLField() {
-  const field = useFieldContext<UrlItem>();
+  const field = useFieldContext<UrlItem | null>();
 
   return (
     <URLInputPair
-      value={field.state.value}
+      value={field.state.value ?? emptyUrl}
       onChange={(next) => field.handleChange(next)}
     />
   );
