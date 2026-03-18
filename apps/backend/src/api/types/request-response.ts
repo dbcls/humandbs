@@ -145,6 +145,29 @@ export const ProblemDetailsSchema = z.object({
 })
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
 
+// === API-specific Person / Publication schemas ===
+// Crawler-only fields (datasetIds, researchTitle, periodOfDataUse) are omitted
+// from API request bodies. The original schemas in crawler/types/structured.ts
+// remain unchanged.
+
+/** dataProvider: omit all crawler-only fields */
+const ApiDataProviderPersonSchema = PersonSchema.omit({
+  datasetIds: true,
+  researchTitle: true,
+  periodOfDataUse: true,
+})
+
+/** controlledAccessUser: keep periodOfDataUse, omit the rest */
+const ApiControlledAccessUserPersonSchema = PersonSchema.omit({
+  datasetIds: true,
+  researchTitle: true,
+})
+
+/** Publication: omit crawler-only datasetIds */
+const ApiPublicationSchema = PublicationSchema.omit({
+  datasetIds: true,
+})
+
 // === Research API ===
 
 /**
@@ -168,7 +191,7 @@ export const CreateResearchRequestSchema = z.object({
     "Research summary including aims, methods, and targets",
   ),
   dataProvider: z
-    .array(PersonSchema)
+    .array(ApiDataProviderPersonSchema)
     .optional()
     .describe("Data providers (researchers providing the data)"),
   researchProject: z
@@ -177,7 +200,7 @@ export const CreateResearchRequestSchema = z.object({
     .describe("Related research projects"),
   grant: z.array(GrantSchema).optional().describe("Funding grants"),
   relatedPublication: z
-    .array(PublicationSchema)
+    .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
 
@@ -210,7 +233,7 @@ export const UpdateResearchRequestSchema = z.object({
     "Research summary including aims, methods, and targets",
   ),
   dataProvider: z
-    .array(PersonSchema)
+    .array(ApiDataProviderPersonSchema)
     .optional()
     .describe("Data providers (researchers providing the data)"),
   researchProject: z
@@ -219,11 +242,11 @@ export const UpdateResearchRequestSchema = z.object({
     .describe("Related research projects"),
   grant: z.array(GrantSchema).optional().describe("Funding grants"),
   relatedPublication: z
-    .array(PublicationSchema)
+    .array(ApiPublicationSchema)
     .optional()
     .describe("Related publications (papers, preprints)"),
   controlledAccessUser: z
-    .array(PersonSchema)
+    .array(ApiControlledAccessUserPersonSchema)
     .optional()
     .describe("Users with controlled access to the data"),
   _seq_no: z
