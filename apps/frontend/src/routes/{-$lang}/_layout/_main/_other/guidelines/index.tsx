@@ -36,10 +36,9 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { contentHtml, title, versions } = Route.useLoaderData();
 
-  console.log("contentHtml.headings", contentHtml.headings);
   const t = useTranslations("Navbar");
   return (
-    <Card caption={title} captionSize={"lg"}>
+    <Card caption={title} captionSize={"lg"} className="w-[700px] mx-auto">
       <TOC headings={contentHtml.headings} />
       <Markdown className="mx-auto" contentHtml={contentHtml} />
       <PreviousVersionsList

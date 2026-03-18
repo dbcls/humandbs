@@ -37,7 +37,7 @@ function RouteComponent() {
   const tCommon = useTranslations("common");
 
   return (
-    <Card caption={title} captionSize={"lg"}>
+    <Card caption={title} captionSize={"lg"} className="min-w-[400px] max-w-[700px] mx-auto">
       <Markdown className="mx-auto" contentHtml={contentHtml} />
       <PreviousVersionsList
         documentName={t("data-submission")}

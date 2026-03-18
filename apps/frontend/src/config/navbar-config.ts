@@ -109,24 +109,45 @@ export const getNavConfig = (lang: Locale): NavConfig => {
       ],
     },
     {
-      id: "about-data",
+      id: "data-processing",
       linkOptions: {
-        to: "/{-$lang}/$contentId",
-        params: { lang, contentId: "about-data" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "data-processing" },
       },
     },
     {
-      id: "achievements",
+      id: "off-premise-server",
       linkOptions: {
-        to: "/{-$lang}/$contentId",
-        params: { lang, contentId: "achievements" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "off-premise-server" },
       },
     },
     {
-      id: "contact",
+      id: "dac",
       linkOptions: {
-        to: "/{-$lang}/$contentId",
-        params: { lang, contentId: "contact" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "dac" },
+      },
+    },
+    {
+      id: "publications",
+      linkOptions: {
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "publications" },
+      },
+    },
+    {
+      id: "violation",
+      linkOptions: {
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "violation" },
+      },
+    },
+    {
+      id: "privacy-policy",
+      linkOptions: {
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "privacy-policy" },
       },
     },
   ];

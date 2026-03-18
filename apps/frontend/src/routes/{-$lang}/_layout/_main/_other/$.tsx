@@ -26,7 +26,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     const contentHtml = await renderMarkdown(data.content ?? "");
 
-    return { contentHtml, title: data.title };
+    return { contentHtml, title: data.title, crumb: data.title };
   },
   errorComponent: ({ error }) => (
     <div>
@@ -40,7 +40,7 @@ function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
   return (
-    <Card caption={title} captionSize={"lg"}>
+    <Card caption={title} captionSize={"lg"} className="mx-auto w-[800px]">
       <Markdown className="mx-auto" contentHtml={contentHtml} />
     </Card>
   );

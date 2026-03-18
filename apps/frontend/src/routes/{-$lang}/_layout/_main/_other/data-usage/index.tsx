@@ -34,7 +34,7 @@ function RouteComponent() {
   const navigate = Route.useNavigate();
   const t = useTranslations("Front");
   return (
-    <Card caption={title} captionSize={"lg"}>
+    <Card caption={title} captionSize={"lg"} className="w-[700px] mx-auto">
       <Markdown className="mx-auto" contentHtml={contentHtml} />
       <div className="flex justify-center">
         <Button

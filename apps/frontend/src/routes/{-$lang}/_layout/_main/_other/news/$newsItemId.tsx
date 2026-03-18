@@ -28,7 +28,7 @@ function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
   return (
-    <Card caption={title}>
+    <Card caption={title} className="mx-auto w-[800px]">
       <Markdown contentHtml={contentHtml} />
     </Card>
   );

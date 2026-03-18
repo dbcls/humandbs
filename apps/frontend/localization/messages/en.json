@@ -16,7 +16,7 @@
     "data-privision-committee": "Human Data Review Committee",
     "contact": "Contact Us",
     "data-usage": "Data Usage",
-    "achievements": "Achievements",
+    "publications": "Publications",
     "supported-browsers": "Supported Browsers"
   },
   "DeleteDialog": {
@@ -27,22 +27,27 @@
   },
   "Navbar": {
     "data-submission": "Data submission",
-    "data-submission-application": "Data submission application",
     "navigation": "Navigation",
     "before-application": "Before application system",
     "application": "Application",
     "data-usage": "Data Usage",
-    "about-data": "About Data",
-    "achievements": "Achievements",
-    "contact": "Contact Us",
     "guidelines": "Guidelines",
-    "data-sharing-guidelines": "NBDC Guidelines for Human Data Sharing ",
+    "data-sharing-guidelines": "NBDC Guidelines for Human Data Sharing",
     "security-guidelines-for-users": "NBDC Security Guidelines for Human Data (for Data Users)",
     "security-guidelines-for-submitters": "NBDC Security Guidelines for Human Data (for Data Submitters)",
-    "security-guidelines-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)",
+    "security-guidelines-for-dbcenters": "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and Off-Premise-Server Operation Managers)",
     "home": "Home",
     "all-news": "All News",
+    "publications": "Publications",
     "privacy-policy": "Privacy Policy",
+    "data-use": "Data Use",
+    "data-processing": "Data Processing",
+    "dac": "Human Data Review Committee",
+    "off-premise-server": "Off-premise Server",
+    "violation": "Guideline Violation",
+    "supported-browsers": "Supported Browsers",
+    "committee-1": "Committee",
+    "faq": "FAQ",
     "research-list": "Research List",
     "dataset-list": "Dataset List"
   },
@@ -73,10 +78,8 @@
     "type-of-data": "Type of data",
     "criteria": "Access type"
   },
-
   "Data-submission": {
     "data-submission": "Data submission",
-
     "before-application": "Before application system"
   }
 }

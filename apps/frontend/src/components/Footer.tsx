@@ -35,7 +35,7 @@ export function Footer() {
           <ul className="flex flex-col gap-2">
             <li>{t("data-usage")}</li>
 
-            <li>{t("achievements")}</li>
+            <li>{t("publications")}</li>
 
             <li>{t("supported-browsers")}</li>
           </ul>

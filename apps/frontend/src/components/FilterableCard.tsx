@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 export function FilterableCard({
   caption,
   captionSize,
+  className,
   children,
   renderPanel,
 }: {
   caption: (props: { onFilterClick: () => void }) => React.ReactNode;
   captionSize?: "lg";
+  className?: string;
   children: React.ReactNode;
   renderPanel: (props: { onClose: () => void }) => React.ReactNode;
 }) {
@@ -19,6 +21,7 @@ export function FilterableCard({
 
   return (
     <Card
+      className={className}
       caption={caption({
         onFilterClick: () => {
           setPanelOpen((v) => !v);

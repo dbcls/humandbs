@@ -33,7 +33,7 @@ function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
   return (
-    <Card caption={title} captionSize={"lg"}>
+    <Card caption={title} captionSize={"lg"} className="mx-auto w-[800px]">
       <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
         <TOC headings={contentHtml.headings} />
         <Markdown contentHtml={contentHtml} />

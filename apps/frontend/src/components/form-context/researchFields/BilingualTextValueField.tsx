@@ -13,16 +13,18 @@ export type BilingualTextValue = z.infer<
 export default function BilingualTextValueField({
   label,
   variant = "textarea",
+  inputsClassName,
 }: {
   label?: React.ReactNode;
   variant?: "text" | "textarea";
+  inputsClassName?: string;
 }) {
   const field = useFieldContext<BilingualTextValue>();
 
   return (
     <div className="flex flex-col items-start gap-2">
       <span>{label ?? "Text Value"}</span>
-      <div className="flex gap-2">
+      <div className={inputsClassName ?? "flex gap-2"}>
         {variant === "textarea" ? (
           <TextareaAutosize
             minRows={5}

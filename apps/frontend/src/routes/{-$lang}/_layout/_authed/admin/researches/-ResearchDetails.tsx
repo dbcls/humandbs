@@ -1,4 +1,5 @@
 import { Card } from "@/components/Card";
+import { PersonField } from "@/components/form-context/fields/PersonField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { getResearchQueryOptions } from "@/serverFunctions/researches";
@@ -62,9 +63,9 @@ export function ResearchDetails({
             <TabsTrigger value="title">Title</TabsTrigger>
 
             <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="">Summary</TabsTrigger>
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="datasets">Datasets</TabsTrigger>
+            <TabsTrigger value="dataProvider">Data Provider</TabsTrigger>
+            <TabsTrigger value="researchProject">Research Project</TabsTrigger>
           </TabsList>
           <TabsContent value="title">
             <form.AppField name="title">
@@ -74,6 +75,22 @@ export function ResearchDetails({
           <TabsContent value="summary">
             <div>Summary </div>
             <SummaryForm form={form} fields="summary" />
+          </TabsContent>
+          <TabsContent value="dataProvider">
+            <DataProviderForm form={form} fields="dataProvider" />
+            {/*<ArrayField
+              form={form}
+              name="dataProvider"
+              defaultItem={() => ({
+                name: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
+                email: null,
+                orcid: null,
+                organization: null,
+              })}
+              getItemTitle={(item) => item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+              label="Data Providers"
+              renderItem={(i) => <DataProviderItemFields form={form} index={i} />}
+            />*/}
           </TabsContent>
         </Tabs>
       </Card>
@@ -103,6 +120,66 @@ const SummaryForm = withFieldGroup({
           {(field) => <field.BilingualURLArrayField label={"URLs"} />}
         </group.AppField>
       </div>
+    );
+  },
+});
+
+const dataProviderSchema = z.object({
+  ...ResearchDetailSchema.shape.dataProvider.element.shape,
+});
+
+type Person = z.infer<typeof dataProviderSchema>;
+
+const DataProviderForm = withFieldGroup({
+  defaultValues: [] as Person[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  render: function Render({ group, form }) {
+    return (
+      <form.AppField name="dataProvider" mode="array">
+        {(field: any) => {
+          const items: Person[] = field.state.value ?? [];
+          return (
+            <fieldset className="flex flex-col gap-3">
+              <legend className="text-sm font-semibold">Data Providers</legend>
+              {items.map((_item, i) => (
+                <div key={i} className="rounded border bg-white p-3 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      #{i + 1}{" "}
+                      {_item?.name?.en?.text ?? _item?.name?.ja?.text ?? ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => field.removeValue(i)}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <PersonField form={group} baseName={`[${i}]`} />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  field.pushValue({
+                    name: {
+                      ja: { text: "", rawHtml: "" },
+                      en: { text: "", rawHtml: "" },
+                    },
+                    email: null,
+                    orcid: null,
+                    organization: null,
+                  })
+                }
+                className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+              >
+                + Add
+              </button>
+            </fieldset>
+          );
+        }}
+      </form.AppField>
     );
   },
 });
