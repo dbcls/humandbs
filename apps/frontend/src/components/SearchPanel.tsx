@@ -567,7 +567,7 @@ function TextFacetItem({
           onUpdate(id, e.target.value);
         }}
         placeholder={`Search ${id}...`}
-        className={cn("h-7 text-sm")}
+        className="h-7 text-sm"
       />
     </FacetItemWrapper>
   );

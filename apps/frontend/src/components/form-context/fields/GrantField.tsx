@@ -1,0 +1,55 @@
+import { Label } from "@/components/ui/label";
+
+import { withForm } from "../FormContext";
+
+import { BilingualTextField } from "./BilingualTextField";
+import { TagInput } from "./TagInput";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyName = any;
+
+/**
+ * Grant card subform.
+ *
+ * Props:
+ * - `baseName`: e.g. "grant[0]"
+ */
+export const GrantField = withForm({
+  defaultValues: {} as Record<string, unknown>,
+  props: {} as { baseName: string },
+  render({ form, baseName }) {
+    return (
+      <div className="flex flex-col gap-3">
+        {/* Title */}
+        <BilingualTextField
+          form={form}
+          baseName={`${baseName}.title`}
+          label="Title"
+        />
+
+        {/* IDs — TagInput */}
+        <form.AppField name={`${baseName}.id` as AnyName} mode="array">
+          {(field: AnyName) => (
+            <TagInput
+              label="IDs"
+              value={field.state.value ?? []}
+              onChange={(newValue) => field.setValue(newValue)}
+            />
+          )}
+        </form.AppField>
+
+        {/* Agency */}
+        <fieldset className="flex flex-col gap-2">
+          <Label className="text-sm font-medium">Agency</Label>
+          <div className="rounded border p-3">
+            <BilingualTextField
+              form={form}
+              baseName={`${baseName}.agency.name`}
+              label="Name"
+            />
+          </div>
+        </fieldset>
+      </div>
+    );
+  },
+});

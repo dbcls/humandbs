@@ -18,11 +18,26 @@ services:
     networks:
       - humandbs-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsSL http://localhost:8080/health/ready"]
+      test: ["CMD-SHELL", "/opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin --password admin 2>/dev/null"]
       interval: 10s
       retries: 10
       start_period: 60s
       timeout: 10s
+
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: ${HUMANDBS_CONTAINER_PREFIX}-keycloak-init
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    entrypoint: >
+      /bin/bash -c "
+        /opt/keycloak/bin/kcadm.sh config credentials --server http://${HUMANDBS_CONTAINER_PREFIX}-keycloak:8080 --realm master --user admin --password admin &&
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+      "
+    networks:
+      - humandbs-network
+    restart: "no"
 
   frontend:
     extra_hosts:

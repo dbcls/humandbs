@@ -86,7 +86,7 @@ Data are classified into the following four types according to the state of data
 
 The NBDC Human Database accepts: 1) unrestricted-access data, 3) controlled-access data, and 4) data for future release. The NBDC Human Database accepts only these data that have been pseudonymized by the data submitter by replacing a part or all of personal information which enable identification of a specific individual (including a specific deceased individual) with descriptions, e.g., a code or number which is unrelated to the specific individual, and then by assigning another code or number again. Registered-access data (2.) are data created by the database center from the controlled-access data through processing for the purpose of promoting data use.
 
-![dataClassification](dataClassification_e6.png)
+![dataClassification](/files/data-sharing-guidelines/dataClassification_e6.png)
 
 ## 4. Data Submission to the NBDC Human Database
 
@@ -285,7 +285,7 @@ The data user can freely use unrestricted-access data available from the website
 
 1. The data user applies for data use in accordance with the procedure of application for data use. If multiple investigators from different organizations conduct a collaborative study, an application for data use must be submitted for each organization.
 2. After going through a review by the Ethical Review Committee of his/her affiliated or an equivalent organization with regard to the use of the NBDC Human Database and obtaining approval from the Ethical Review Committee, the data user submits, at the time of application for data use, a copy of a notification of permission obtained from the head of his/her affiliated organization. However, if the Ethical Review Committee decided to waive the review, the data user submits a document such as a notification of the fact.
-3. At the time of application for data use, the data user submits "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)" as well as other information and documents required by the Human Data Review Board.
+3. At the time of application for data use, the data user submits "[Checklist for the NBDC Security Guidelines for Human Data](/files/data-sharing-guidelines/security_checklist_for_users_e.xlsx)" as well as other information and documents required by the Human Data Review Board.
 4. The Human Data Review Board decides whether access to the controlled-access data may be granted.
 5. After the Human Data Review Board approves the application for data use, the data user is granted access to the data and can access the data.
 6. In principle, the data user reports on data use status every year, using "Reporting on the Use of Controlled-access Data". In addition, at the time of reporting, the data user resubmits "[Checklist for the NBDC Security Guidelines for Human Data](/files/security_checklist_for_users_e.xlsx)".

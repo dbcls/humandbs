@@ -1,18 +1,52 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { cva } from "class-variance-authority";
 
-interface InputProps extends React.ComponentProps<"input"> {
+const variants = cva(
+  "bg-primary flex items-center gap-1 rounded-full p-1 text-base transition-colors focus-visible:ring-1",
+  {
+    variants: {
+      hasBeforeIcon: {
+        true: "pl-2",
+        false: "",
+      },
+      hasAfterIcon: {
+        true: "pr-2",
+        false: "",
+      },
+      variant: {
+        form: "text-sm rounded-lg",
+        search: "text-sm",
+      },
+    },
+    defaultVariants: {
+      hasBeforeIcon: false,
+      hasAfterIcon: false,
+      variant: "search",
+    },
+  },
+);
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   beforeIcon?: React.ReactNode;
   afterIcon?: React.ReactNode;
+  variant?: "form" | "search";
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, beforeIcon, afterIcon, ...props }, ref) => {
+  ({ className, type, beforeIcon, variant, afterIcon, ...props }, ref) => {
     return (
       <div
         role="textbox"
-        className="bg-primary flex items-center gap-1 rounded-full p-1 text-base transition-colors focus-visible:ring-1"
+        className={cn(
+          variants({
+            hasBeforeIcon: !!beforeIcon,
+            hasAfterIcon: !!afterIcon,
+            variant,
+          }),
+          className,
+        )}
       >
         {beforeIcon ? (
           <div className="pointer-events-none flex items-center pl-2">
@@ -24,7 +58,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           className={cn(
             "file:text-foreground placeholder:text-muted-foreground block w-full file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-            className,
+
             {
               "pl-2": !beforeIcon,
               "pr-2": !afterIcon,

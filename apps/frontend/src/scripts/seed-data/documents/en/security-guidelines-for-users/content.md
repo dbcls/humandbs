@@ -33,7 +33,7 @@ The User Security Guidelines will be updated appropriately in response to IT dev
 6. Data access terminal (see Figure 1)
    - A device that is for data users to access data in the data server and that does not permanently save the data locally. When transmitting data between the data access terminal and the data server, via a communication path outside the data server-installed LAN, it is necessary that all communication paths are encrypted with sufficient strength or that the data themselves are encrypted before being transmitted.
 
-![org LAN](org_LAN_e2.png)
+![org LAN](/files/security-guidelines-for-users/org_LAN_e2.png)
 
 **Figure 1 Data server-installed LAN, off-premise-server, data server and data access terminal**
 

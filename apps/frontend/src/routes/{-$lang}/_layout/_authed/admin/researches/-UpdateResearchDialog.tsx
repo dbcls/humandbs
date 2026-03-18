@@ -7,7 +7,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { useAppForm, withForm } from "@/components/form-context/FormContext";
+import { useAppForm } from "@/components/form-context/FormContext";
+import {
+  ArrayField,
+  BilingualTextValueField,
+  GrantField,
+  ModifiedTag,
+  PersonField,
+  PublicationField,
+  ResearchProjectField,
+  TextValueArrayField,
+  UrlArrayField,
+  useFieldModified,
+} from "@/components/form-context/fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import {
   $updateResearch,
@@ -25,37 +38,47 @@ import {
   getResearchForEditQueryOptions,
   type UpdateResearchUidsResult,
 } from "@/serverFunctions/researches";
+import { z } from "zod";
 
-interface UpdateResearchFormValues {
-  title: { ja: string; en: string };
-  summary: {
-    aims: {
-      ja: { text: string; rawHtml: string };
-      en: { text: string; rawHtml: string };
-    };
-    methods: {
-      ja: { text: string; rawHtml: string };
-      en: { text: string; rawHtml: string };
-    };
-    targets: {
-      ja: { text: string; rawHtml: string };
-      en: { text: string; rawHtml: string };
-    };
-    url: {
-      ja: { text: string; url: string }[];
-      en: { text: string; url: string }[];
-    };
-    footers: {
-      ja: { text: string; rawHtml: string }[];
-      en: { text: string; rawHtml: string }[];
-    };
-  };
-  dataProvider: NonNullable<UpdateResearchRequest["dataProvider"]>;
-  researchProject: NonNullable<UpdateResearchRequest["researchProject"]>;
-  grant: NonNullable<UpdateResearchRequest["grant"]>;
-  relatedPublication: NonNullable<UpdateResearchRequest["relatedPublication"]>;
-  uids: string[];
-}
+import { UpdateResearchRequestSchema } from "@humandbs/backend/types";
+
+const formSchema = UpdateResearchRequestSchema;
+
+type UpdateResearchFormValues = z.infer<typeof UpdateResearchRequestSchema>;
+
+// interface UpdateResearchFormValues {
+//   title: { ja: string; en: string };
+//   summary: {
+//     aims: {
+//       ja: { text: string; rawHtml: string };
+//       en: { text: string; rawHtml: string };
+//     };
+//     methods: {
+//       ja: { text: string; rawHtml: string };
+//       en: { text: string; rawHtml: string };
+//     };
+//     targets: {
+//       ja: { text: string; rawHtml: string };
+//       en: { text: string; rawHtml: string };
+//     };
+//     url: {
+//       ja: { text: string; url: string }[];
+//       en: { text: string; url: string }[];
+//     };
+//     footers: {
+//       ja: { text: string; rawHtml: string }[];
+//       en: { text: string; rawHtml: string }[];
+//     };
+//   };
+//   dataProvider: NonNullable<UpdateResearchRequest["dataProvider"]>;
+//   researchProject: NonNullable<UpdateResearchRequest["researchProject"]>;
+//   grant: NonNullable<UpdateResearchRequest["grant"]>;
+//   relatedPublication: NonNullable<UpdateResearchRequest["relatedPublication"]>;
+//   controlledAccessUser: NonNullable<
+//     UpdateResearchRequest["controlledAccessUser"]
+//   >;
+//   uids: string[];
+// }
 
 const defaultValues: UpdateResearchFormValues = {
   title: { ja: "", en: "" },
@@ -70,12 +93,12 @@ const defaultValues: UpdateResearchFormValues = {
       en: { text: "", rawHtml: "" },
     },
     url: { ja: [], en: [] },
-    footers: { ja: [], en: [] },
   },
   dataProvider: [],
   researchProject: [],
   grant: [],
   relatedPublication: [],
+  controlledAccessUser: [],
   uids: [],
 };
 
@@ -134,14 +157,6 @@ function toFormValues(
         ja: (detail.summary?.url?.ja ?? []).map((item) => toUrlValue(item)),
         en: (detail.summary?.url?.en ?? []).map((item) => toUrlValue(item)),
       },
-      footers: {
-        ja: (detail.summary?.footers?.ja ?? []).map((item) =>
-          toTextValue(item),
-        ),
-        en: (detail.summary?.footers?.en ?? []).map((item) =>
-          toTextValue(item),
-        ),
-      },
     },
     dataProvider: (detail.dataProvider ?? []).map((person) => ({
       ...person,
@@ -183,6 +198,42 @@ function toFormValues(
         datasetIds: publication.datasetIds ?? [],
       }),
     ),
+    controlledAccessUser:
+      (
+        (detail as Record<string, unknown>).controlledAccessUser as
+          | Array<Record<string, unknown>>
+          | undefined
+          | null
+      )?.map((person) => ({
+        name: toBilingualTextValue(
+          person.name as {
+            ja?: { text?: string | null; rawHtml?: string | null } | null;
+            en?: { text?: string | null; rawHtml?: string | null } | null;
+          },
+        ),
+        email: (person.email as string) ?? "",
+        orcid: (person.orcid as string) ?? "",
+        organization: {
+          name: toBilingualTextValue(
+            (person.organization as Record<string, unknown> | null)?.name as {
+              ja?: { text?: string | null; rawHtml?: string | null } | null;
+              en?: { text?: string | null; rawHtml?: string | null } | null;
+            },
+          ),
+          address: {
+            country:
+              (
+                (person.organization as Record<string, unknown> | null)
+                  ?.address as { country?: string | null } | null
+              )?.country ?? "",
+          },
+        },
+        periodOfDataUse:
+          (person.periodOfDataUse as {
+            startDate: string | null;
+            endDate: string | null;
+          } | null) ?? null,
+      })) ?? [],
     uids: detail.uids ?? [],
   };
 }
@@ -327,6 +378,41 @@ export function UpdateResearchDialog({
   );
 }
 
+// --- Tab Modified Tag helpers ---
+
+function TabModifiedTag({
+  fieldName,
+  initialValues,
+}: {
+  fieldName: string;
+  initialValues: UpdateResearchFormValues;
+}) {
+  const { isModified } = useFieldModified(
+    fieldName,
+    initialValues as unknown as Record<string, unknown>,
+  );
+  return <ModifiedTag isModified={isModified} />;
+}
+
+function MultiFieldModifiedTag({
+  fieldNames,
+  initialValues,
+}: {
+  fieldNames: string[];
+  initialValues: UpdateResearchFormValues;
+}) {
+  // Check if any of the listed fields are modified
+  const anyModified = fieldNames.some((name) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { isModified } = useFieldModified(
+      name,
+      initialValues as unknown as Record<string, unknown>,
+    );
+    return isModified;
+  });
+  return <ModifiedTag isModified={anyModified} />;
+}
+
 function UpdateResearchForm({
   humId,
   initialValues,
@@ -361,6 +447,7 @@ function UpdateResearchForm({
           researchProject: value.researchProject,
           grant: value.grant,
           relatedPublication: value.relatedPublication,
+          controlledAccessUser: value.controlledAccessUser,
           _seq_no: seqNo,
           _primary_term: primaryTerm,
         },
@@ -566,300 +653,286 @@ function UpdateResearchForm({
           </div>
         )}
 
-        {/* Title */}
-        <fieldset className="flex flex-col gap-2">
-          <Label className="font-semibold">Title</Label>
-          <div className="nested-form flex flex-col gap-2">
-            <form.AppField name="title.ja">
-              {(field) => <field.TextField type="col" label="Japanese" />}
-            </form.AppField>
-            <form.AppField name="title.en">
-              {(field) => <field.TextField type="col" label="English" />}
-            </form.AppField>
-          </div>
-        </fieldset>
+        <Tabs defaultValue="general" className="flex-1">
+          <TabsList className="w-full flex-wrap">
+            <TabsTrigger value="general" className="gap-1">
+              General
+              <TabModifiedTag fieldName="title" initialValues={initialValues} />
+            </TabsTrigger>
+            <TabsTrigger value="summary" className="gap-1">
+              Summary
+              <TabModifiedTag
+                fieldName="summary"
+                initialValues={initialValues}
+              />
+            </TabsTrigger>
+            <TabsTrigger value="dataProvider" className="gap-1">
+              Data Provider
+              <TabModifiedTag
+                fieldName="dataProvider"
+                initialValues={initialValues}
+              />
+            </TabsTrigger>
+            <TabsTrigger value="researchProject" className="gap-1">
+              Research Project
+              <TabModifiedTag
+                fieldName="researchProject"
+                initialValues={initialValues}
+              />
+            </TabsTrigger>
+            <TabsTrigger value="grants" className="gap-1">
+              Grants
+              <TabModifiedTag fieldName="grant" initialValues={initialValues} />
+            </TabsTrigger>
+            <TabsTrigger value="publications" className="gap-1">
+              Publications
+              <TabModifiedTag
+                fieldName="relatedPublication"
+                initialValues={initialValues}
+              />
+            </TabsTrigger>
+            <TabsTrigger value="controlledAccess" className="gap-1">
+              Controlled Access
+              <TabModifiedTag
+                fieldName="controlledAccessUser"
+                initialValues={initialValues}
+              />
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Summary */}
-        <fieldset className="flex flex-col gap-3">
-          <Label className="font-semibold">Summary</Label>
-          <div className="nested-form flex flex-col gap-3">
-            <BilingualTextValueFields
+          {/* General Tab */}
+          <TabsContent value="general" className="flex flex-col gap-4">
+            <fieldset className="flex flex-col gap-2">
+              <Label className="font-semibold">Title</Label>
+              <div className="nested-form flex flex-col gap-2">
+                <form.AppField name="title.ja">
+                  {(field) => <field.TextField type="col" label="Japanese" />}
+                </form.AppField>
+                <form.AppField name="title.en">
+                  {(field) => <field.TextField type="col" label="English" />}
+                </form.AppField>
+              </div>
+            </fieldset>
+
+            {/* UIDs */}
+            <form.AppField name="uids" mode="array">
+              {(field) => (
+                <fieldset className="flex flex-col gap-2">
+                  <Label className="font-semibold">User IDs (uids)</Label>
+                  <div className="nested-form flex flex-col gap-1">
+                    {field.state.value?.map((_: string, i: number) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <form.AppField name={`uids[${i}]`}>
+                          {(f) => <f.TextField />}
+                        </form.AppField>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            field.removeValue(i);
+                          }}
+                        >
+                          <Trash2 className="text-danger size-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="slim"
+                      className="self-start"
+                      onClick={() => {
+                        field.pushValue("");
+                      }}
+                    >
+                      Add UID
+                    </Button>
+                  </div>
+                </fieldset>
+              )}
+            </form.AppField>
+          </TabsContent>
+
+          {/* Summary Tab */}
+          <TabsContent value="summary" className="flex flex-col gap-3">
+            <BilingualTextValueField
               form={form}
               baseName="summary.aims"
               label="Aims"
             />
-            <BilingualTextValueFields
+            <BilingualTextValueField
               form={form}
               baseName="summary.methods"
               label="Methods"
             />
-            <BilingualTextValueFields
+            <BilingualTextValueField
               form={form}
               baseName="summary.targets"
               label="Targets"
             />
-
-            <UrlArrayFields form={form} baseName="summary.url" label="URLs" />
-
-            <TextValueArrayFields
+            <UrlArrayField form={form} baseName="summary.url" label="URLs" />
+            <TextValueArrayField
               form={form}
               baseName="summary.footers"
               label="Footers"
             />
-          </div>
-        </fieldset>
+          </TabsContent>
 
-        {/* Data Providers */}
-        <ArraySection
-          form={form}
-          name="dataProvider"
-          label="Data Providers"
-          renderItem={(i) => <DataProviderFields form={form} index={i} />}
-          emptyItem={{
-            name: {
-              ja: { text: "", rawHtml: "" },
-              en: { text: "", rawHtml: "" },
-            },
-            email: "",
-            orcid: "",
-            organization: {
-              name: {
-                ja: { text: "", rawHtml: "" },
-                en: { text: "", rawHtml: "" },
-              },
-              address: { country: "" },
-            },
-            datasetIds: [],
-            researchTitle: { ja: "", en: "" },
-            periodOfDataUse: null,
-          }}
-        />
+          {/* Data Provider Tab */}
+          <TabsContent value="dataProvider" className="flex flex-col gap-3">
+            <ArrayField
+              form={form}
+              name="dataProvider"
+              icon="👤"
+              getItemTitle={(item: Record<string, unknown>) => {
+                const name = item.name as {
+                  en?: { text?: string };
+                  ja?: { text?: string };
+                };
+                return name?.en?.text || name?.ja?.text || "Unnamed";
+              }}
+              defaultItem={() => ({
+                name: {
+                  ja: { text: "", rawHtml: "" },
+                  en: { text: "", rawHtml: "" },
+                },
+                email: "",
+                orcid: "",
+                organization: {
+                  name: {
+                    ja: { text: "", rawHtml: "" },
+                    en: { text: "", rawHtml: "" },
+                  },
+                  address: { country: "" },
+                },
+                datasetIds: [],
+                researchTitle: { ja: "", en: "" },
+                periodOfDataUse: null,
+              })}
+              renderItem={(i) => (
+                <PersonField
+                  form={form}
+                  baseName={`dataProvider[${i}]`}
+                  withDatasetIds
+                />
+              )}
+            />
+          </TabsContent>
 
-        {/* Research Projects */}
-        <ArraySection
-          form={form}
-          name="researchProject"
-          label="Research Projects"
-          renderItem={(i) => (
-            <div className="nested-form flex flex-col gap-2">
-              <BilingualTextValueFields
-                form={form}
-                baseName={`researchProject[${i}].name`}
-                label="Name"
-              />
-              <fieldset className="flex flex-col gap-1">
-                <Label className="text-sm">URL</Label>
-                <div className="nested-form flex gap-2">
-                  <div className="flex-1 flex flex-col gap-1">
-                    <form.AppField name={`researchProject[${i}].url.ja.text`}>
-                      {(f) => <f.TextField type="col" label="JA Text" />}
-                    </form.AppField>
-                    <form.AppField name={`researchProject[${i}].url.ja.url`}>
-                      {(f) => <f.TextField type="col" label="JA URL" />}
-                    </form.AppField>
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <form.AppField name={`researchProject[${i}].url.en.text`}>
-                      {(f) => <f.TextField type="col" label="EN Text" />}
-                    </form.AppField>
-                    <form.AppField name={`researchProject[${i}].url.en.url`}>
-                      {(f) => <f.TextField type="col" label="EN URL" />}
-                    </form.AppField>
-                  </div>
-                </div>
-              </fieldset>
-            </div>
-          )}
-          emptyItem={{
-            name: {
-              ja: { text: "", rawHtml: "" },
-              en: { text: "", rawHtml: "" },
-            },
-            url: {
-              ja: { text: "", url: "" },
-              en: { text: "", url: "" },
-            },
-          }}
-        />
+          {/* Research Project Tab */}
+          <TabsContent value="researchProject" className="flex flex-col gap-3">
+            <ArrayField
+              form={form}
+              name="researchProject"
+              icon="📁"
+              getItemTitle={(item: Record<string, unknown>) => {
+                const name = item.name as {
+                  en?: { text?: string };
+                  ja?: { text?: string };
+                };
+                return name?.en?.text || name?.ja?.text || "Unnamed";
+              }}
+              defaultItem={() => ({
+                name: {
+                  ja: { text: "", rawHtml: "" },
+                  en: { text: "", rawHtml: "" },
+                },
+                url: {
+                  ja: { text: "", url: "" },
+                  en: { text: "", url: "" },
+                },
+              })}
+              renderItem={(i) => (
+                <ResearchProjectField
+                  form={form}
+                  baseName={`researchProject[${i}]`}
+                />
+              )}
+            />
+          </TabsContent>
 
-        {/* Grants */}
-        <ArraySection
-          form={form}
-          name="grant"
-          label="Grants"
-          renderItem={(i) => (
-            <div className="nested-form flex flex-col gap-2">
-              <form.AppField name={`grant[${i}].id`} mode="array">
-                {(field) => (
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-sm">Grant IDs</Label>
-                    {field.state.value?.map((_: string, j: number) => (
-                      <div key={j} className="flex items-center gap-1">
-                        <form.AppField name={`grant[${i}].id[${j}]`}>
-                          {(f) => <f.TextField />}
-                        </form.AppField>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            field.removeValue(j);
-                          }}
-                        >
-                          <Trash2 className="text-danger size-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="slim"
-                      className="self-start"
-                      onClick={() => {
-                        field.pushValue("");
-                      }}
-                    >
-                      Add ID
-                    </Button>
-                  </div>
-                )}
-              </form.AppField>
-              <fieldset className="flex gap-2">
-                <div className="flex-1">
-                  <form.AppField name={`grant[${i}].title.ja`}>
-                    {(f) => <f.TextField type="col" label="Title (JA)" />}
-                  </form.AppField>
-                </div>
-                <div className="flex-1">
-                  <form.AppField name={`grant[${i}].title.en`}>
-                    {(f) => <f.TextField type="col" label="Title (EN)" />}
-                  </form.AppField>
-                </div>
-              </fieldset>
-              <fieldset className="flex gap-2">
-                <div className="flex-1">
-                  <form.AppField name={`grant[${i}].agency.name.ja`}>
-                    {(f) => <f.TextField type="col" label="Agency (JA)" />}
-                  </form.AppField>
-                </div>
-                <div className="flex-1">
-                  <form.AppField name={`grant[${i}].agency.name.en`}>
-                    {(f) => <f.TextField type="col" label="Agency (EN)" />}
-                  </form.AppField>
-                </div>
-              </fieldset>
-            </div>
-          )}
-          emptyItem={{
-            id: [],
-            title: { ja: "", en: "" },
-            agency: { name: { ja: "", en: "" } },
-          }}
-        />
+          {/* Grants Tab */}
+          <TabsContent value="grants" className="flex flex-col gap-3">
+            <ArrayField
+              form={form}
+              name="grant"
+              icon="🎓"
+              getItemTitle={(item: Record<string, unknown>) => {
+                const title = item.title as { en?: string; ja?: string };
+                return title?.en || title?.ja || "Unnamed";
+              }}
+              defaultItem={() => ({
+                id: [],
+                title: { ja: "", en: "" },
+                agency: { name: { ja: "", en: "" } },
+              })}
+              renderItem={(i) => (
+                <GrantField form={form} baseName={`grant[${i}]`} />
+              )}
+            />
+          </TabsContent>
 
-        {/* Related Publications */}
-        <ArraySection
-          form={form}
-          name="relatedPublication"
-          label="Related Publications"
-          renderItem={(i) => (
-            <div className="nested-form flex flex-col gap-2">
-              <fieldset className="flex gap-2">
-                <div className="flex-1">
-                  <form.AppField name={`relatedPublication[${i}].title.ja`}>
-                    {(f) => <f.TextField type="col" label="Title (JA)" />}
-                  </form.AppField>
-                </div>
-                <div className="flex-1">
-                  <form.AppField name={`relatedPublication[${i}].title.en`}>
-                    {(f) => <f.TextField type="col" label="Title (EN)" />}
-                  </form.AppField>
-                </div>
-              </fieldset>
-              <form.AppField name={`relatedPublication[${i}].doi`}>
-                {(f) => <f.TextField type="col" label="DOI" />}
-              </form.AppField>
-              <form.AppField
-                name={`relatedPublication[${i}].datasetIds`}
-                mode="array"
-              >
-                {(field) => (
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-sm">Dataset IDs</Label>
-                    {field.state.value?.map((_: string, j: number) => (
-                      <div key={j} className="flex items-center gap-1">
-                        <form.AppField
-                          name={`relatedPublication[${i}].datasetIds[${j}]`}
-                        >
-                          {(f) => <f.TextField />}
-                        </form.AppField>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            field.removeValue(j);
-                          }}
-                        >
-                          <Trash2 className="text-danger size-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="slim"
-                      className="self-start"
-                      onClick={() => {
-                        field.pushValue("");
-                      }}
-                    >
-                      Add Dataset ID
-                    </Button>
-                  </div>
-                )}
-              </form.AppField>
-            </div>
-          )}
-          emptyItem={{
-            title: { ja: "", en: "" },
-            doi: "",
-            datasetIds: [],
-          }}
-        />
+          {/* Publications Tab */}
+          <TabsContent value="publications" className="flex flex-col gap-3">
+            <ArrayField
+              form={form}
+              name="relatedPublication"
+              icon="📄"
+              getItemTitle={(item: Record<string, unknown>) => {
+                const title = item.title as { en?: string; ja?: string };
+                return title?.en || title?.ja || "Unnamed";
+              }}
+              defaultItem={() => ({
+                title: { ja: "", en: "" },
+                doi: "",
+              })}
+              renderItem={(i) => (
+                <PublicationField
+                  form={form}
+                  baseName={`relatedPublication[${i}]`}
+                />
+              )}
+            />
+          </TabsContent>
 
-        {/* UIDs */}
-        <form.AppField name="uids" mode="array">
-          {(field) => (
-            <fieldset className="flex flex-col gap-2">
-              <Label className="font-semibold">User IDs (uids)</Label>
-              <div className="nested-form flex flex-col gap-1">
-                {field.state.value?.map((_: string, i: number) => (
-                  <div key={i} className="flex items-center gap-1">
-                    <form.AppField name={`uids[${i}]`}>
-                      {(f) => <f.TextField />}
-                    </form.AppField>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        field.removeValue(i);
-                      }}
-                    >
-                      <Trash2 className="text-danger size-4" />
-                    </button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="slim"
-                  className="self-start"
-                  onClick={() => {
-                    field.pushValue("");
-                  }}
-                >
-                  Add UID
-                </Button>
-              </div>
-            </fieldset>
-          )}
-        </form.AppField>
+          {/* Controlled Access Tab */}
+          <TabsContent value="controlledAccess" className="flex flex-col gap-3">
+            <ArrayField
+              form={form}
+              name="controlledAccessUser"
+              icon="🔒"
+              getItemTitle={(item: Record<string, unknown>) => {
+                const name = item.name as {
+                  en?: { text?: string };
+                  ja?: { text?: string };
+                };
+                return name?.en?.text || name?.ja?.text || "Unnamed";
+              }}
+              defaultItem={() => ({
+                name: {
+                  ja: { text: "", rawHtml: "" },
+                  en: { text: "", rawHtml: "" },
+                },
+                email: "",
+                orcid: "",
+                organization: {
+                  name: {
+                    ja: { text: "", rawHtml: "" },
+                    en: { text: "", rawHtml: "" },
+                  },
+                  address: { country: "" },
+                },
+                periodOfDataUse: null,
+              })}
+              renderItem={(i) => (
+                <PersonField
+                  form={form}
+                  baseName={`controlledAccessUser[${i}]`}
+                  withPeriodOfDataUse
+                />
+              )}
+            />
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter className="sticky bottom-0 bg-white pt-4 border-t">
           <form.Subscribe selector={(s) => s.canSubmit}>
@@ -878,292 +951,3 @@ function UpdateResearchForm({
     </form.AppForm>
   );
 }
-
-// --- Helper sub-components ---
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyName = any;
-type ArraySectionName =
-  | "dataProvider"
-  | "researchProject"
-  | "grant"
-  | "relatedPublication";
-type ArraySectionItem =
-  | NonNullable<UpdateResearchFormValues["dataProvider"]>[number]
-  | NonNullable<UpdateResearchFormValues["researchProject"]>[number]
-  | NonNullable<UpdateResearchFormValues["grant"]>[number]
-  | NonNullable<UpdateResearchFormValues["relatedPublication"]>[number];
-
-const BilingualTextValueFields = withForm({
-  defaultValues,
-  props: {} as { baseName: string; label: string },
-  render({ form, baseName, label }) {
-    return (
-      <fieldset className="flex flex-col gap-1">
-        <Label className="text-sm">{label}</Label>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <form.AppField name={`${baseName}.ja.text` as AnyName}>
-              {(f) => <f.TextField type="col" label="JA" />}
-            </form.AppField>
-          </div>
-          <div className="flex-1">
-            <form.AppField name={`${baseName}.en.text` as AnyName}>
-              {(f) => <f.TextField type="col" label="EN" />}
-            </form.AppField>
-          </div>
-        </div>
-      </fieldset>
-    );
-  },
-});
-
-const DataProviderFields = withForm({
-  defaultValues,
-  props: {} as { index: number },
-  render({ form, index: i }) {
-    return (
-      <div className="nested-form flex flex-col gap-2">
-        <BilingualTextValueFields
-          form={form}
-          baseName={`dataProvider[${i}].name`}
-          label="Name"
-        />
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <form.AppField name={`dataProvider[${i}].email` as AnyName}>
-              {(f) => <f.TextField type="col" label="Email" />}
-            </form.AppField>
-          </div>
-          <div className="flex-1">
-            <form.AppField name={`dataProvider[${i}].orcid` as AnyName}>
-              {(f) => <f.TextField type="col" label="ORCID" />}
-            </form.AppField>
-          </div>
-        </div>
-        <fieldset className="flex flex-col gap-1">
-          <Label className="text-sm">Organization</Label>
-          <div className="nested-form flex flex-col gap-2">
-            <BilingualTextValueFields
-              form={form}
-              baseName={`dataProvider[${i}].organization.name`}
-              label="Organization Name"
-            />
-            <form.AppField
-              name={
-                `dataProvider[${i}].organization.address.country` as AnyName
-              }
-            >
-              {(f) => <f.TextField type="col" label="Country" />}
-            </form.AppField>
-          </div>
-        </fieldset>
-        <fieldset className="flex gap-2">
-          <div className="flex-1">
-            <form.AppField
-              name={`dataProvider[${i}].researchTitle.ja` as AnyName}
-            >
-              {(f) => <f.TextField type="col" label="Research Title (JA)" />}
-            </form.AppField>
-          </div>
-          <div className="flex-1">
-            <form.AppField
-              name={`dataProvider[${i}].researchTitle.en` as AnyName}
-            >
-              {(f) => <f.TextField type="col" label="Research Title (EN)" />}
-            </form.AppField>
-          </div>
-        </fieldset>
-        <form.AppField
-          name={`dataProvider[${i}].datasetIds` as AnyName}
-          mode="array"
-        >
-          {(field) => (
-            <div className="flex flex-col gap-1">
-              <Label className="text-sm">Dataset IDs</Label>
-              {field.state.value?.map((_: string, j: number) => (
-                <div key={j} className="flex items-center gap-1">
-                  <form.AppField
-                    name={`dataProvider[${i}].datasetIds[${j}]` as AnyName}
-                  >
-                    {(f) => <f.TextField />}
-                  </form.AppField>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      field.removeValue(j);
-                    }}
-                  >
-                    <Trash2 className="text-danger size-4" />
-                  </button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="slim"
-                className="self-start"
-                onClick={() => {
-                  field.pushValue("");
-                }}
-              >
-                Add Dataset ID
-              </Button>
-            </div>
-          )}
-        </form.AppField>
-      </div>
-    );
-  },
-});
-
-const UrlArrayFields = withForm({
-  defaultValues,
-  props: {} as { baseName: "summary.url"; label: string },
-  render({ form, baseName, label }) {
-    return (
-      <fieldset className="flex flex-col gap-2">
-        <Label className="text-sm">{label}</Label>
-        {(["ja", "en"] as const).map((lang) => (
-          <form.AppField key={lang} name={`${baseName}.${lang}`} mode="array">
-            {(field) => (
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs uppercase">{lang}</Label>
-                {field.state.value?.map((_: unknown, j: number) => (
-                  <div key={j} className="flex items-center gap-1">
-                    <form.AppField
-                      name={`${baseName}.${lang}[${j}].text` as AnyName}
-                    >
-                      {(f) => <f.TextField label="Text" />}
-                    </form.AppField>
-                    <form.AppField
-                      name={`${baseName}.${lang}[${j}].url` as AnyName}
-                    >
-                      {(f) => <f.TextField label="URL" />}
-                    </form.AppField>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        field.removeValue(j);
-                      }}
-                    >
-                      <Trash2 className="text-danger size-4" />
-                    </button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="slim"
-                  className="self-start"
-                  onClick={() => {
-                    field.pushValue({ text: "", url: "" });
-                  }}
-                >
-                  Add {lang.toUpperCase()}
-                </Button>
-              </div>
-            )}
-          </form.AppField>
-        ))}
-      </fieldset>
-    );
-  },
-});
-
-const TextValueArrayFields = withForm({
-  defaultValues,
-  props: {} as { baseName: "summary.footers"; label: string },
-  render({ form, baseName, label }) {
-    return (
-      <fieldset className="flex flex-col gap-2">
-        <Label className="text-sm">{label}</Label>
-        {(["ja", "en"] as const).map((lang) => (
-          <form.AppField key={lang} name={`${baseName}.${lang}`} mode="array">
-            {(field) => (
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs uppercase">{lang}</Label>
-                {field.state.value?.map((_: unknown, j: number) => (
-                  <div key={j} className="flex items-center gap-1">
-                    <form.AppField
-                      name={`${baseName}.${lang}[${j}].text` as AnyName}
-                    >
-                      {(f) => <f.TextField label="Text" />}
-                    </form.AppField>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        field.removeValue(j);
-                      }}
-                    >
-                      <Trash2 className="text-danger size-4" />
-                    </button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="slim"
-                  className="self-start"
-                  onClick={() => {
-                    field.pushValue({ text: "", rawHtml: "" });
-                  }}
-                >
-                  Add {lang.toUpperCase()}
-                </Button>
-              </div>
-            )}
-          </form.AppField>
-        ))}
-      </fieldset>
-    );
-  },
-});
-
-const ArraySection = withForm({
-  defaultValues,
-  props: {} as {
-    name: ArraySectionName;
-    label: string;
-    renderItem: (index: number) => React.ReactNode;
-    emptyItem: ArraySectionItem;
-  },
-  render({ form, name, label, renderItem, emptyItem }) {
-    return (
-      <form.AppField name={name} mode="array">
-        {(field) => (
-          <fieldset className="flex flex-col gap-2">
-            <Label className="font-semibold">{label}</Label>
-            <div className="flex flex-col gap-3">
-              {field.state.value?.map((_: unknown, i: number) => (
-                <div key={i} className="relative rounded border p-3 pr-10">
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 z-10"
-                    onClick={() => {
-                      field.removeValue(i);
-                    }}
-                  >
-                    <Trash2 className="text-danger size-4" />
-                  </button>
-                  {renderItem(i)}
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="slim"
-                className="self-start"
-                onClick={() => {
-                  field.pushValue(emptyItem);
-                }}
-              >
-                Add {label.replace(/s$/, "")}
-              </Button>
-            </div>
-          </fieldset>
-        )}
-      </form.AppField>
-    );
-  },
-});

@@ -297,11 +297,11 @@ async function convertToMarkdown(
         `
       <div class="spacing-wrapper">
         <p></p>
-        {% callout type="info" %}
+        ::: callout type="info"
 
 ${innerContent}
 
-        {% /callout %}
+        :::
         <p></p>
       </div>
     `.trim(),
@@ -333,11 +333,11 @@ ${innerContent}
         `
       <div class="spacing-wrapper">
         <p></p>
-        {% callout type="${type}" %}
+        ::: callout type="${type}"
 
 ${innerContent}
 
-        {% /callout %}
+        :::
         <p></p>
       </div>
     `.trim(),
