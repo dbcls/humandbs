@@ -96,6 +96,32 @@ describe("ResearchSummarySchema", () => {
     })
   })
 
+  describe("status field", () => {
+    const withTitle = { ...validBase, title: { ja: "タイトル", en: "Title" } }
+
+    it("is optional (omitting status succeeds)", () => {
+      const result = ResearchSummarySchema.safeParse(withTitle)
+
+      expect(result.success).toBe(true)
+      expect(result.data?.status).toBeUndefined()
+    })
+
+    it("accepts valid status values", () => {
+      for (const status of ["draft", "review", "published", "deleted"] as const) {
+        const result = ResearchSummarySchema.safeParse({ ...withTitle, status })
+
+        expect(result.success).toBe(true)
+        expect(result.data?.status).toBe(status)
+      }
+    })
+
+    it("rejects invalid status values", () => {
+      const result = ResearchSummarySchema.safeParse({ ...withTitle, status: "archived" })
+
+      expect(result.success).toBe(false)
+    })
+  })
+
   // PBT: any BilingualText with nullable strings is accepted
   it("accepts arbitrary BilingualText values", () => {
     const bilingualText = fc.record({

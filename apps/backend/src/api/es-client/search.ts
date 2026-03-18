@@ -683,7 +683,7 @@ export const searchResearches = async (
     size: limit,
     query: researchQuery,
     sort: sortSpec,
-    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "uids"],
+    _source: ["humId", "title", "versionIds", "latestVersion", "dataProvider", "summary", "uids", "status"],
     track_total_hits: true,
     // Aggregate all matching humIds for facet query (only when facets requested and no humIdFilter)
     ...(includeFacets && !humIdFilter ? {
@@ -695,7 +695,7 @@ export const searchResearches = async (
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
-      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true,
+      humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true, status: true,
     }).parse(doc))
 
   // Fetch version and dataset details
@@ -748,7 +748,20 @@ export const searchResearches = async (
     const dataProvider = uniq((d.dataProvider ?? []).map(p => extractText(p.name)).filter(x => !!x))
     const criteria = datasets.map(ds => ds.criteria).find(x => !!x) ?? ""
 
-    return { humId: d.humId, lang, title: d.title, versions, methods, datasetIds, typeOfData, platforms, targets, dataProvider, criteria }
+    return {
+      humId: d.humId,
+      lang,
+      title: d.title,
+      versions,
+      methods,
+      datasetIds,
+      typeOfData,
+      platforms,
+      targets,
+      dataProvider,
+      criteria,
+      ...(authUser ? { status: d.status } : {}),
+    }
   })
 
   const total = esTotal(res.hits.total)

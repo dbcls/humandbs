@@ -235,11 +235,13 @@ ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
 
 #### public ユーザーのみ追加で除外
 
-| 除外フィールド | 理由 |
-|---------------|------|
-| `status` | 内部ワークフロー状態 |
-| `uids` | オーナー情報 |
-| `draftVersion` | 編集中バージョン |
+| 除外フィールド | 対象 | 理由 |
+|---------------|------|------|
+| `status` | 詳細・一覧 | 内部ワークフロー状態 |
+| `uids` | 詳細 | オーナー情報 |
+| `draftVersion` | 詳細 | 編集中バージョン |
+
+一覧レスポンス（`GET /research`, `POST /research/search`）でも、認証ユーザーには `status` を返し、public ユーザーには含めない。
 
 全ユーザーに `_seq_no`/`_primary_term` を返す（Dataset と統一）。
 

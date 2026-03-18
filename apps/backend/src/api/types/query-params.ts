@@ -19,6 +19,7 @@ import {
   ResearchDateFilterQuerySchema,
   DatasetFilterQuerySchema,
 } from "./query-schemas"
+import { RESEARCH_STATUS } from "./workflow"
 
 export { PaginationQuerySchema } from "./query-schemas"
 
@@ -187,5 +188,7 @@ export const ResearchSummarySchema = z.object({
   criteria: z
     .string()
     .describe("Data access criteria summary (e.g., 'Controlled-access')"),
+  status: z.enum(RESEARCH_STATUS).optional()
+    .describe("Publication status. Only included for authenticated users."),
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>

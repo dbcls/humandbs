@@ -203,6 +203,12 @@ export const ResearchSearchBodySchema = z.object({
     "Filter Research by attributes of linked Datasets. Returns Research that has at least one Dataset matching the filters.",
   ),
 
+  // Status filter
+  status: z
+    .enum(["draft", "review", "published", "deleted"])
+    .optional()
+    .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+
   // Options
   includeFacets: z
     .boolean()

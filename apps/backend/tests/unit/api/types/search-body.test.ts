@@ -33,6 +33,30 @@ describe("ResearchSearchBodySchema", () => {
     })
   })
 
+  describe("status filter", () => {
+    it("accepts valid status values", () => {
+      for (const status of ["draft", "review", "published", "deleted"] as const) {
+        const result = ResearchSearchBodySchema.safeParse({ status })
+
+        expect(result.success).toBe(true)
+        expect(result.data?.status).toBe(status)
+      }
+    })
+
+    it("rejects invalid status values", () => {
+      const result = ResearchSearchBodySchema.safeParse({ status: "archived" })
+
+      expect(result.success).toBe(false)
+    })
+
+    it("defaults to undefined when omitted", () => {
+      const result = ResearchSearchBodySchema.safeParse({})
+
+      expect(result.success).toBe(true)
+      expect(result.data?.status).toBeUndefined()
+    })
+  })
+
   describe("defaults", () => {
     it("applies default values for optional fields", () => {
       const result = ResearchSearchBodySchema.parse({})

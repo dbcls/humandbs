@@ -16,7 +16,7 @@ import {
   singleReadOnlyResponse,
 } from "@/api/helpers/response"
 import { optionalAuth } from "@/api/middleware/auth"
-import { ErrorSpec400, ErrorSpec500 } from "@/api/routes/errors"
+import { ErrorSpec400, ErrorSpec403, ErrorSpec500, ForbiddenError } from "@/api/routes/errors"
 import {
   createSearchResponseSchema,
   createSingleReadOnlyResponseSchema,
@@ -103,6 +103,7 @@ const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQue
     // dateModified range (last update date)
     minDateModified: body.dateModified?.min ? String(body.dateModified.min) : undefined,
     maxDateModified: body.dateModified?.max ? String(body.dateModified.max) : undefined,
+    status: body.status,
     includeFacets: body.includeFacets,
     ...datasetFilters,
   } as ResearchSearchQuery
@@ -169,6 +170,7 @@ Set includeFacets=true to get facet counts for building filter UIs.`,
       description: "Research search results with optional facets",
     },
     400: ErrorSpec400,
+    403: ErrorSpec403,
     500: ErrorSpec500,
   },
 })
@@ -264,6 +266,16 @@ searchRouter.use("*", optionalAuth)
 searchRouter.openapi(postResearchSearchRoute, async (c) => {
   const body = c.req.valid("json")
   const authUser = c.get("authUser")
+
+  // Validate status filter permissions (same logic as GET /research)
+  if (body.status) {
+    if (!authUser && body.status !== "published") {
+      throw new ForbiddenError("Public users can only access published resources")
+    }
+    if (authUser && !authUser.isAdmin && body.status === "deleted") {
+      throw new ForbiddenError("Only admin can access deleted resources")
+    }
+  }
 
   // Convert POST body to GET query format for existing searchResearches function
   const query = convertResearchBodyToQuery(body)
