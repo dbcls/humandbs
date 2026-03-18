@@ -3,18 +3,22 @@ import { Suspense, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getResearchesInfiniteQueryOptions } from "@/serverFunctions/researches";
+import { getAuthedResearchesInfiniteQueryOptions } from "@/serverFunctions/researches";
 
 import { ResearchDetails } from "./-ResearchDetails";
 import { ResearchesList } from "./-ResearchesList";
+import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
 )({
+  validateSearch: authedResearchesListSearchParamsSchema,
+  loaderDeps: ({ search }) => search,
+  ssr: false,
   component: RouteComponent,
-  loader: ({ context }) => {
+  loader: ({ context, deps }) => {
     context.queryClient.ensureInfiniteQueryData(
-      getResearchesInfiniteQueryOptions({ lang: context.lang }),
+      getAuthedResearchesInfiniteQueryOptions({ lang: context.lang, ...deps }),
     );
   },
 });

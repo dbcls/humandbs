@@ -1,4 +1,3 @@
-import { ResearchSearchBodySchema } from "@humandbs/backend/types";
 import type { ResearchSearchResponse } from "@humandbs/backend/types";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
@@ -21,11 +20,7 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
-
-export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
-  lang: true,
-  includeFacets: true,
-});
+import { researchesSearchParamsSchema } from "@/utils/queryParams";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-usage/researches/",

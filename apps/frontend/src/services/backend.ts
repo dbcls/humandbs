@@ -122,9 +122,12 @@ function authHeader(accessToken: string): HeadersInit {
 }
 
 interface APIService {
-  getResearchListPaginated(query: {
-    search: ResearchListingQuery;
-  }): Promise<ResearchSearchResponse>;
+  getResearchListPaginated(
+    query: {
+      search: ResearchListingQuery;
+    },
+    accessToken?: string,
+  ): Promise<ResearchSearchResponse>;
   getResearchDetail(query: {
     params: HumIdParams;
     search: LangVersionQuery;
@@ -198,10 +201,11 @@ export const FixedPaginationSchema =
   });
 
 const api: APIService = {
-  getResearchListPaginated(query) {
+  getResearchListPaginated(query, accessToken) {
     return get<ResearchSearchResponse>(
       `/research`,
       query.search as Record<string, unknown>,
+      accessToken ? authHeader(accessToken) : undefined,
     );
   },
 

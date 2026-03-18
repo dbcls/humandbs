@@ -1,0 +1,34 @@
+import {
+  ResearchSearchBodySchema,
+  ResearchListingQuerySchema,
+} from "@humandbs/backend/types";
+import { z } from "zod";
+
+export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
+  lang: true,
+  includeFacets: true,
+});
+
+/** Filter params for the authed researches list page search params,
+ *  where text could be humId of free-text query
+ * lang not needed because use context
+ * pagination also not needed because infinite scroll
+ */
+export const authedResearchesListSearchParamsSchema =
+  ResearchListingQuerySchema.extend(ResearchSearchBodySchema.shape)
+    .pick({
+      sort: true,
+      order: true,
+      status: true,
+      page: true,
+      limit: true,
+    })
+    .extend(
+      z.object({
+        q: z.string().optional(),
+      }).shape,
+    );
+
+export type AuthedResearchesListSearchParams = z.infer<
+  typeof authedResearchesListSearchParamsSchema
+>;

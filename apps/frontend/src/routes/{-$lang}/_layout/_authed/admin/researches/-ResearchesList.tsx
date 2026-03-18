@@ -1,4 +1,7 @@
-import type { ResearchSearchResponse } from "@humandbs/backend/types";
+import {
+  ResearchStatusSchema,
+  type ResearchSearchResponse,
+} from "@humandbs/backend/types";
 import {
   type QueryKey,
   useMutation,
@@ -6,18 +9,22 @@ import {
   useSuspenseInfiniteQuery,
 } from "@tanstack/react-query";
 import { Trash2Icon } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/config/i18n";
 import {
   $deleteResearch,
-  getResearchesInfiniteQueryOptions,
+  getAuthedResearchesInfiniteQueryOptions,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { CreateResearchDialog } from "./-CreateResearchDialog";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useNavigate } from "@tanstack/react-router";
+import { useFilters } from "@/hooks/useFilters";
+import { Input } from "@/components/Input";
 
 export function ResearchesList({
   lang,
@@ -31,12 +38,19 @@ export function ResearchesList({
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
 
-  const infiniteOpts = getResearchesInfiniteQueryOptions({ lang });
+  const { filters } = useFilters("/{-$lang}/_layout/_authed/admin/researches/");
+
+  const infiniteOpts = getAuthedResearchesInfiniteQueryOptions({
+    lang,
+    ...filters,
+  });
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(infiniteOpts);
 
   const allResearches = data.pages.flatMap((page) => page.data);
 
+  console.log("allResearches", allResearches);
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -71,10 +85,9 @@ export function ResearchesList({
     onMutate: async (humId) => {
       await queryClient.cancelQueries({ queryKey: ["researches", "list"] });
 
-      const previousLists =
-        queryClient.getQueriesData<ResearchSearchResponse>({
-          queryKey: ["researches", "list"],
-        });
+      const previousLists = queryClient.getQueriesData<ResearchSearchResponse>({
+        queryKey: ["researches", "list"],
+      });
 
       queryClient.setQueriesData<ResearchSearchResponse>(
         { queryKey: ["researches", "list"] },
@@ -122,7 +135,8 @@ export function ResearchesList({
       <ul className="mt-3">
         {allResearches.map((research) => {
           const isActive = research.humId === selectedHumId;
-          const title = research.title[lang] || research.title.ja || research.title.en;
+          const title =
+            research.title[lang] || research.title.ja || research.title.en;
 
           return (
             <ListItem
@@ -165,7 +179,59 @@ export function ResearchesList({
   );
 }
 
+const statuses = [...ResearchStatusSchema.options, "all"] as const;
 
+/** Research filters on top of the Researches Card */
 function ResearchFilters() {
-  
+  const { filters, setFilters } = useFilters(
+    "/{-$lang}/_layout/_authed/admin/researches/",
+  );
+
+  const debouncedSetQuery = useMemo(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    return (value: string) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setFilters({ q: value ?? undefined });
+      }, 300);
+    };
+  }, [setFilters]);
+
+  return (
+    <div>
+      <ToggleGroup
+        type="single"
+        value={filters.status ?? "all"}
+        onValueChange={(value) => {
+          if (!value) return;
+
+          if (value === "all") {
+            setFilters({ status: undefined });
+          } else {
+            setFilters({ status: value });
+          }
+        }}
+      >
+        {statuses.map((status) => (
+          <ToggleGroupItem
+            className="cursor-pointer capitalize"
+            key={status}
+            value={status}
+          >
+            {status}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+
+      <Input
+        type="text"
+        placeholder="Search…"
+        defaultValue={filters.q ?? ""}
+        onChange={(e) => {
+          if (e.target.value !== "" || e.target.value.length <= 3) return;
+          debouncedSetQuery(e.target.value);
+        }}
+      />
+    </div>
+  );
 }

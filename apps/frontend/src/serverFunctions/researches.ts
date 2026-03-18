@@ -3,10 +3,13 @@ import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
+  PaginationSchema,
+  ResearchListingQuerySchema,
   ResearchSearchBodySchema,
   UpdateResearchRequestSchema,
   UpdateUidsRequestSchema,
   type ResearchDetailResponse,
+  type ResearchListingQuery,
   type ResearchSearchBody,
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
@@ -22,6 +25,11 @@ import { z } from "zod";
 import { api, APIError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import {
+  authedResearchesListSearchParamsSchema,
+  type AuthedResearchesListSearchParams,
+} from "@/utils/queryParams";
+import { localeSchema } from "@/config/i18n";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -183,7 +191,59 @@ export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchBodySchema)
   .handler<Promise<ResearchSearchResponse>>(({ data }) => {
     const accessToken = $$getJWT();
+
+    console.log("$getResearches calling api with ", data);
     return api.searchResearches(data, accessToken ?? undefined);
+  });
+
+const authedResearchesListSearchParamsInnerSchema =
+  authedResearchesListSearchParamsSchema.extend(
+    z.object({
+      lang: localeSchema,
+    }).shape,
+  );
+
+type AuthedResearchesListSearchParamsInner = z.infer<
+  typeof authedResearchesListSearchParamsInnerSchema
+>;
+
+/** Authed get list of researches with filters
+ * If q begins with hum... , uses endpoint that supports searching with humId,
+ * Uses the free text search endpoint otherwise
+ */
+export const $listResearches = createServerFn()
+  .inputValidator(authedResearchesListSearchParamsInnerSchema)
+  .handler(async ({ data }) => {
+    const accessToken = $$getJWT();
+
+    const { q, ...rest } = data;
+
+    // if query is humIdm then use search with humId
+    if (q && /^hum\d+/i.test(q)) {
+      console.log("searching by humId ", q);
+      return api.getResearchListPaginated(
+        {
+          search: {
+            ...rest,
+            humId: q,
+            includeRawHtml: false,
+            sort: "humId",
+          },
+        },
+        accessToken ?? undefined,
+      );
+    } else {
+      console.log("searching by text query ", q);
+      return api.searchResearches(
+        {
+          query: q,
+          includeFacets: false,
+          sort: "humId",
+          ...rest,
+        },
+        accessToken ?? undefined,
+      );
+    }
   });
 
 export function getResearchesQueryOptions(
@@ -197,20 +257,18 @@ export function getResearchesQueryOptions(
   });
 }
 
-export function getResearchesInfiniteQueryOptions(
-  data: Partial<Omit<ResearchSearchBody, "includeFacets" | "page">> &
-    Pick<ResearchSearchBody, "lang">,
+export function getAuthedResearchesInfiniteQueryOptions(
+  data: AuthedResearchesListSearchParamsInner,
 ) {
   return infiniteQueryOptions({
     queryKey: ["researches", "list", "infinite", data] as const,
     queryFn: ({ pageParam }) =>
-      $getResearches({
+      $listResearches({
         data: {
           ...data,
           page: pageParam,
-          limit: data.limit ?? 20,
+          limit: 20,
           order: data.order ?? "asc",
-          includeFacets: false,
         },
       }),
     initialPageParam: 1,
@@ -259,8 +317,6 @@ export const $getResearch = createServerFn()
     const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
-
-    console.log("$getResearch params", filterDefined(data));
 
     return api.getResearchDetail({
       search: { ...search, includeRawHtml: false },
