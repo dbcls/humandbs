@@ -15,14 +15,14 @@ export default function BilingualTextField({
 }) {
   const field = useFieldContext<BilingualText>();
 
-  console.log("field.state", field.state);
   return (
-    <Label className="flex w-fit flex-col items-start gap-2">
+    <Label className="flex w-full flex-col items-stretch gap-2">
       <span>{label ?? "Text"}</span>
-      <div className="flex gap-2">
+      <div className="flex w-full gap-2">
         <Input
           type="text"
           variant="form"
+          className="flex-1"
           value={field.state.value.en ?? ""}
           onChange={(e) =>
             field.handleChange((prev) => ({ ...prev, en: e.target.value }))
@@ -32,6 +32,7 @@ export default function BilingualTextField({
         <Input
           type="text"
           variant="form"
+          className="flex-1"
           value={field.state.value.ja ?? ""}
           onChange={(e) =>
             field.setValue((prev) => ({ ...prev, ja: e.target.value }))

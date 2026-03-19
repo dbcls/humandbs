@@ -270,12 +270,13 @@ export function SearchPanel({
   };
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full w-96 min-w-96 max-w-96 flex-col overflow-x-hidden">
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onResetAll={handleResetAll}
         onClose={onClose}
       />
+      <PanelFooter onSearch={handleSearch} onReset={handleResetAndApply} />
 
       <Accordion
         className="px-3 pb-2"
@@ -368,7 +369,6 @@ export function SearchPanel({
           }
         })}
       </Accordion>
-      <PanelFooter onSearch={handleSearch} onReset={handleResetAndApply} />
     </div>
   );
 }

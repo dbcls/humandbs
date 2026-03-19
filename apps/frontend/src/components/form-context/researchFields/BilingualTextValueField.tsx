@@ -29,7 +29,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className="resize-none"
+            className="flex-1 resize-none"
             value={field.state.value?.en?.text ?? ""}
             onChange={(e) =>
               field.handleChange((prev) => ({
@@ -58,7 +58,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className="resize-none"
+            className="flex-1 resize-none"
             value={field.state.value?.ja?.text ?? ""}
             onChange={(e) =>
               field.setValue((prev) => ({

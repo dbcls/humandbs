@@ -71,14 +71,14 @@ export const PersonField = withForm({
               <form.AppField
                 name={`${baseName}.periodOfDataUse.startDate` as AnyName}
               >
-                {(f: AnyName) => <f.TextField type="col" label="Start Date" />}
+                {(f: AnyName) => <f.DateField label="Start Date" />}
               </form.AppField>
             </div>
             <div className="flex-1">
               <form.AppField
                 name={`${baseName}.periodOfDataUse.endDate` as AnyName}
               >
-                {(f: AnyName) => <f.TextField type="col" label="End Date" />}
+                {(f: AnyName) => <f.DateField label="End Date" />}
               </form.AppField>
             </div>
           </div>

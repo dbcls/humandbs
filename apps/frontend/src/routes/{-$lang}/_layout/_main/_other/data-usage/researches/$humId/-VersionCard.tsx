@@ -2,7 +2,7 @@ import {
   type DatasetDoc,
   type ResearchDetailResponse,
 } from "@humandbs/backend/types";
-import { getRouteApi, useRouteContext } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useTranslations } from "use-intl";
 
@@ -29,11 +29,7 @@ export function VersionCard({
 }: {
   versionData: ResearchDetailResponse["data"];
 }) {
-  const Route = getRouteApi(
-    "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId",
-  );
-
-  const { lang } = Route.useRouteContext();
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const { t } = useTranslations("Research-detail");
 
   return (
@@ -44,7 +40,14 @@ export function VersionCard({
         <CardCaption
           title="NBDC Research ID:"
           icon="books"
-          badge={<Route.Link to="versions">リリース情報</Route.Link>}
+          badge={
+            <Link
+              to="/{-$lang}/data-usage/researches/$humId/versions"
+              params={{ humId: versionData.humId }}
+            >
+              リリース情報
+            </Link>
+          }
         >
           {versionData.humVersionId}
         </CardCaption>
@@ -184,8 +187,7 @@ function DatasetCaption({
   typeOfData,
 }: DatasetCaptionProps) {
   console.log("dataset caption props", { datasetId, criteria, typeOfData });
-  const Route = getRouteApi("/{-$lang}/_layout/_main/_other/data-usage");
-  const { lang } = Route.useRouteContext();
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
   return (
     <div className="flex justify-between px-3">
       <div className="flex items-center gap-5">
@@ -194,14 +196,14 @@ function DatasetCaption({
         <span className="text-xs">{typeOfData[lang]}</span>
       </div>
 
-      <Route.Link
+      <Link
         to={"/{-$lang}/data-usage/datasets/$datasetId"}
         params={{ datasetId }}
         className="link-button"
       >
         <span>Details</span>
         <ArrowIcon className="block" />
-      </Route.Link>
+      </Link>
     </div>
   );
 }
