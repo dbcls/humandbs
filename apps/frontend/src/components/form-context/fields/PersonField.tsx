@@ -26,7 +26,12 @@ export const PersonField = withForm({
     withPeriodOfDataUse?: boolean;
     withDatasetIds?: boolean;
   },
-  render({ form, baseName, withPeriodOfDataUse = false, withDatasetIds = false }) {
+  render({
+    form,
+    baseName,
+    withPeriodOfDataUse = false,
+    withDatasetIds = false,
+  }) {
     return (
       <div className="flex flex-col gap-3">
         {/* ORCID search placeholder */}
@@ -51,18 +56,14 @@ export const PersonField = withForm({
         />
 
         {/* Email + ORCID */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <form.AppField name={`${baseName}.email` as AnyName}>
-              {(f: AnyName) => <f.TextField type="col" label="Email" />}
-            </form.AppField>
-          </div>
-          <div className="flex-1">
-            <form.AppField name={`${baseName}.orcid` as AnyName}>
-              {(f: AnyName) => <f.TextField type="col" label="ORCID" />}
-            </form.AppField>
-          </div>
-        </div>
+
+        <form.AppField name={`${baseName}.email` as AnyName}>
+          {(f: AnyName) => <f.TextField type="col" label="Email" />}
+        </form.AppField>
+
+        <form.AppField name={`${baseName}.orcid` as AnyName}>
+          {(f: AnyName) => <f.TextField type="col" label="ORCID" />}
+        </form.AppField>
 
         {/* Period of data usage (conditional) */}
         {withPeriodOfDataUse && (
@@ -97,9 +98,7 @@ export const PersonField = withForm({
               <form.AppField
                 name={`${baseName}.organization.address.country` as AnyName}
               >
-                {(f: AnyName) => (
-                  <f.TextField type="col" label="Country" />
-                )}
+                {(f: AnyName) => <f.TextField type="col" label="Country" />}
               </form.AppField>
             </div>
           </div>
@@ -121,10 +120,7 @@ export const PersonField = withForm({
                     >
                       {(f: AnyName) => <f.TextField />}
                     </form.AppField>
-                    <button
-                      type="button"
-                      onClick={() => field.removeValue(j)}
-                    >
+                    <button type="button" onClick={() => field.removeValue(j)}>
                       <Trash2 className="text-danger size-4" />
                     </button>
                   </div>

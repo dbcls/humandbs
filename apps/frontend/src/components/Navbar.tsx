@@ -3,7 +3,7 @@ import {
   useNavigate,
   useRouteContext,
 } from "@tanstack/react-router";
-import { ShoppingCart } from "lucide-react";
+import { LucideLogIn, LucideLogOut, ShoppingCart } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import Logo from "@/assets/Logo.png";
@@ -23,6 +23,7 @@ import { LangSwitcher } from "./LanguageSwitcher";
 import { Link } from "./Link";
 import { MobileNav } from "./MobileNav";
 import { Search } from "./Search";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 export function Navbar() {
   const t = useTranslations("Navbar");
@@ -32,20 +33,6 @@ export function Navbar() {
   const tCommon = useTranslations("common");
 
   const { user } = useRouteContext({ from: "__root__" });
-
-  const navigate = useNavigate();
-
-  const currentLocation = useLocation();
-
-  async function login() {
-    await navigate({
-      to: "/auth/login",
-      search: {
-        redirect: currentLocation.href,
-      },
-      reloadDocument: true,
-    });
-  }
 
   return (
     <header className="flex items-center justify-between gap-4 rounded-md bg-white p-4 md:gap-8">
@@ -108,21 +95,82 @@ export function Navbar() {
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
-
-        {user ? (
-          <div className="flex items-center gap-1 md:gap-2">
-            <ShoppingCartButton />
-
-            <span className="mx-4 hidden text-xs sm:inline">{user.name}</span>
-            <form method="post" action={"/auth/logout"}>
-              <Button type="submit">Logout</Button>
-            </form>
-          </div>
-        ) : (
-          <Button onClick={login}> Login </Button>
-        )}
+        {user && <ShoppingCartButton />}
+        <UserMenu />
       </div>
     </header>
+  );
+}
+
+function UserMenu() {
+  const { user } = useRouteContext({ from: "__root__" });
+
+  const navigate = useNavigate();
+
+  const currentLocation = useLocation();
+
+  async function login() {
+    await navigate({
+      to: "/auth/login",
+      search: {
+        redirect: currentLocation.href,
+      },
+      reloadDocument: true,
+    });
+  }
+
+  if (!user)
+    return (
+      <Button
+        className="rounded-full flex justify-center w-14 h-14 text-center"
+        size={"icon"}
+        variant={"action"}
+        onClick={login}
+      >
+        <LucideLogIn className="size-8" />
+      </Button>
+    );
+
+  const userInitials = user.name
+    ? user.name
+        .split(/\s+/)
+        .map((part) => part[0]?.toUpperCase())
+        .join("")
+    : "U";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          size={"icon"}
+          variant={"outline"}
+          className="rounded-full flex justify-center w-14 h-14 text-center"
+        >
+          <span>{userInitials}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={10}
+        className="bg-white flex flex-col gap-2"
+      >
+        <div>{user.name}</div>
+
+        <form method="post" action={"/auth/logout"}>
+          <Button
+            variant={"plain"}
+            type="button"
+            className="block text-inherit hover:bg-hover w-full text-left"
+            onClick={() => navigate({ to: "/{-$lang}/admin" })}
+          >
+            My Page
+          </Button>
+          <Button type="submit" className="justify-self-end">
+            Logout<LucideLogOut className="size-8 ml-2"></LucideLogOut>
+          </Button>
+        </form>
+      </PopoverContent>
+    </Popover>
   );
 }
 

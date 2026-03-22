@@ -32,7 +32,7 @@ function RouteComponent() {
       <Card
         className="w-cms-list-panel flex h-full flex-col"
         caption="Researches"
-        containerClassName="overflow-auto flex-1 max-h-full"
+        containerClassName="flex flex-1 min-h-0 max-h-full overflow-hidden"
       >
         <Suspense fallback={<Skeleton />}>
           <ResearchesList

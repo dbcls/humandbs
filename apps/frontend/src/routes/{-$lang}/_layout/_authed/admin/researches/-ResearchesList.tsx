@@ -22,9 +22,9 @@ import useConfirmationStore from "@/stores/confirmationStore";
 
 import { CreateResearchDialog } from "./-CreateResearchDialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useNavigate } from "@tanstack/react-router";
 import { useFilters } from "@/hooks/useFilters";
 import { Input } from "@/components/Input";
+import { Tag } from "../-components/StatusTag";
 
 export function ResearchesList({
   lang,
@@ -128,57 +128,73 @@ export function ResearchesList({
   );
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex flex-col gap-3">
         <ResearchFilters />
 
         <CreateResearchDialog />
       </div>
 
-      <ul className="mt-3">
-        {allResearches.map((research) => {
-          const isActive = research.humId === selectedHumId;
-          const title =
-            research.title[lang] || research.title.ja || research.title.en;
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <ul>
+          {allResearches.map((research) => {
+            const isActive = research.humId === selectedHumId;
+            const title =
+              research.title[lang] || research.title.ja || research.title.en;
+            const englishTitle = research.title.en;
 
-          return (
-            <ListItem
-              key={research.humId}
-              role="menuitem"
-              onClick={() => onSelectResearch(research.humId)}
-              isActive={isActive}
-            >
-              <div className="min-w-0 flex-1">
-                <span className="block font-mono text-xs">
-                  {research.humId}
-                </span>
-                <span className="block truncate text-xs opacity-70">
-                  {title}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="slim"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(research.humId);
-                }}
+            return (
+              <ListItem
+                key={research.humId}
+                role="menuitem"
+                onClick={() => onSelectResearch(research.humId)}
+                isActive={isActive}
               >
-                <Trash2Icon className="text-danger size-4 transition-colors group-data-[active=true]:text-white" />
-              </Button>
-            </ListItem>
-          );
-        })}
-      </ul>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="block font-mono text-xs">
+                      {research.humId}
+                    </span>
+                    {research.status ? (
+                      <Tag
+                        tag={research.status}
+                        className="h-5 w-auto min-w-fit whitespace-nowrap px-2"
+                      />
+                    ) : null}
+                  </div>
+                  <span className="block truncate text-xs opacity-70">
+                    {title}
+                  </span>
+                  {englishTitle && englishTitle !== title ? (
+                    <span className="block truncate text-xs opacity-70">
+                      {englishTitle}
+                    </span>
+                  ) : null}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="slim"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(research.humId);
+                  }}
+                >
+                  <Trash2Icon className="text-danger size-4 transition-colors group-data-[active=true]:text-white" />
+                </Button>
+              </ListItem>
+            );
+          })}
+        </ul>
 
-      <div ref={sentinelRef} className="h-4 shrink-0">
-        {isFetchingNextPage && (
-          <span className="text-foreground-light block py-2 text-center text-xs">
-            Loading more…
-          </span>
-        )}
+        <div ref={sentinelRef} className="h-4 shrink-0">
+          {isFetchingNextPage && (
+            <span className="text-foreground-light block py-2 text-center text-xs">
+              Loading more…
+            </span>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 

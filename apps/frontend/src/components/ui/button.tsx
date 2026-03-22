@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  " cursor-pointer whitespace-nowrap flex items-center rounded font-semibold text-white disabled:opacity-30 disabled:cursor-default",
+  " cursor-pointer whitespace-nowrap flex text-foreground items-center rounded font-semibold disabled:opacity-30 disabled:cursor-default",
   {
     variants: {
       size: {
@@ -17,17 +17,17 @@ export const buttonVariants = cva(
       },
       variant: {
         accent:
-          "bg-linear-to-r from-accent to-accent-light enabled:hover:from-accent/80 enabled:hover:saturate-150 active:bg-accent/90",
-        action: " bg-linear-to-r from-secondary to-secondary-light",
+          "bg-linear-to-r  text-white  from-accent to-accent-light enabled:hover:from-accent/80 enabled:hover:saturate-150 active:bg-accent/90",
+        action: " bg-linear-to-r text-white  from-secondary to-secondary-light",
         outline:
-          "border border-tetriary bg-transparent text-black enabled:hover:bg-white/50",
-        tableAction: "bg-secondary-light rounded-full ",
+          "border border-tetriary bg-transparent enabled:hover:bg-white/50",
+        tableAction: "bg-secondary-light  text-white  rounded-full ",
         plain: "bg-none",
         "cms-table-action":
           "bg-none rounded-xs enabled:hover:bg-hover active:bg-foreground-light/30",
         toggle:
-          " bg-none text-foreground rounded-md whitespace-normal w-full text-left enabled:hover:bg-hover",
-        ghost: "bg-none text-black",
+          " bg-none rounded-md whitespace-normal w-full text-left enabled:hover:bg-hover",
+        ghost: "bg-none",
       },
     },
     defaultVariants: {
