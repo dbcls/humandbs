@@ -86,11 +86,6 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
         },
       );
 
-      if (isAdminRes.status === 401 || isAdminRes.status === 403) {
-        setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
-        throw new Error("Unauthorized");
-      }
-
       if (isAdminRes.ok) {
         const response = (await isAdminRes.json()) as {
           data: { isAdmin: boolean };
