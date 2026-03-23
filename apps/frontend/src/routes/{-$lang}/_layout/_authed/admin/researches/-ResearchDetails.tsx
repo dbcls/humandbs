@@ -1,10 +1,12 @@
 import { Card } from "@/components/Card";
+import { Button } from "@/components/ui/button";
 import { GrantField } from "@/components/form-context/fields/GrantField";
 import { PersonField } from "@/components/form-context/fields/PersonField";
 import { PublicationField } from "@/components/form-context/fields/PublicationField";
 import { ResearchProjectField } from "@/components/form-context/fields/ResearchProjectField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
+import { useCan } from "@/hooks/useCan";
 import { getResearchQueryOptions } from "@/serverFunctions/researches";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
@@ -49,6 +51,41 @@ export function ResearchDetails({
 
   console.log("researchValues", researchValues);
   const { _seq_no, _primary_term } = data.meta;
+
+  const { can: canUpdate } = useCan({
+    resource: "researches",
+    action: "update",
+    params: { research: researchValues },
+  });
+  const { can: canDelete } = useCan({
+    resource: "researches",
+    action: "delete",
+  });
+  const { can: canSubmit } = useCan({
+    resource: "researches",
+    action: "submit",
+    params: { research: researchValues },
+  });
+  const { can: canApprove } = useCan({
+    resource: "researches",
+    action: "approve",
+    params: { research: researchValues },
+  });
+  const { can: canReject } = useCan({
+    resource: "researches",
+    action: "reject",
+    params: { research: researchValues },
+  });
+  const { can: canUnpublish } = useCan({
+    resource: "researches",
+    action: "unpublish",
+    params: { research: researchValues },
+  });
+  const { can: canNewVersion } = useCan({
+    resource: "researches",
+    action: "versions/new",
+    params: { research: researchValues },
+  });
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
@@ -145,6 +182,40 @@ export function ResearchDetails({
             />
           </TabsContent>
         </Tabs>
+
+        {(canUpdate ||
+          canSubmit ||
+          canApprove ||
+          canReject ||
+          canUnpublish ||
+          canNewVersion ||
+          canDelete) && (
+          <div className="flex items-center gap-2 border-t px-5 py-3">
+            {canUpdate && (
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button
+                    type="submit"
+                    onClick={() => form.handleSubmit()}
+                    disabled={isSubmitting}
+                  >
+                    Save draft
+                  </Button>
+                )}
+              </form.Subscribe>
+            )}
+            {canSubmit && <Button variant="outline">Submit for review</Button>}
+            {canApprove && <Button variant="outline">Approve</Button>}
+            {canReject && <Button variant="outline">Reject</Button>}
+            {canUnpublish && <Button variant="outline">Unpublish</Button>}
+            {canNewVersion && <Button variant="outline">New version</Button>}
+            {canDelete && (
+              <Button variant="action" className="ml-auto">
+                Delete
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
     </>
   );

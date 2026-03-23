@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/config/i18n";
+import { useCan } from "@/hooks/useCan";
 import {
   $deleteResearch,
   getAuthedResearchesInfiniteQueryOptions,
@@ -37,6 +38,8 @@ export function ResearchesList({
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const { can: canCreate } = useCan({ resource: "researches", action: "create" });
+  const { can: canDelete } = useCan({ resource: "researches", action: "delete" });
 
   const { filters } = useFilters("/{-$lang}/_layout/_authed/admin/researches/");
 
@@ -132,7 +135,7 @@ export function ResearchesList({
       <div className="flex flex-col gap-3">
         <ResearchFilters />
 
-        <CreateResearchDialog />
+        {canCreate && <CreateResearchDialog />}
       </div>
 
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
@@ -171,16 +174,18 @@ export function ResearchesList({
                     </span>
                   ) : null}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="slim"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(research.humId);
-                  }}
-                >
-                  <Trash2Icon className="text-danger size-4 transition-colors group-data-[active=true]:text-white" />
-                </Button>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="slim"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(research.humId);
+                    }}
+                  >
+                    <Trash2Icon className="text-danger size-4 transition-colors group-data-[active=true]:text-white" />
+                  </Button>
+                )}
               </ListItem>
             );
           })}

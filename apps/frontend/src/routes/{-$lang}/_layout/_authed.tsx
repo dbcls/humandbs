@@ -17,6 +17,7 @@ import { z } from "zod";
 
 import { Navbar } from "@/components/Navbar";
 import { USER_ROLES } from "@/config/permissions";
+import { useCan } from "@/hooks/useCan";
 import { cn } from "@/lib/utils";
 
 export const tabParamSchema = z.enum([
@@ -100,7 +101,7 @@ function buildRedirectTarget(
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
   beforeLoad: ({ context, matches, location }) => {
-    if (context.user?.role !== USER_ROLES.ADMIN) {
+    if (!context.user) {
       const fallback =
         typeof context.lang === "string" && context.lang.length > 0
           ? `/${context.lang}`
@@ -139,49 +140,53 @@ function RouteComponent() {
 }
 
 function NavPanel() {
+  const { can: canViewCms } = useCan({ resource: "admin-panel", action: "view-cms" });
+
   return (
     <aside className="flex flex-col gap-5 rounded-md bg-white px-4 py-3">
-      <section className="flex flex-col gap-5">
-        <p>Static Pages</p>
-        <div className="flex flex-col gap-5 pl-5">
-          <PanelItem
-            title={
-              <span>
-                <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
-                Content
-              </span>
-            }
-            tab="content"
-          />
-          <PanelItem
-            title={
-              <span>
-                <Files className="mr-2 inline size-5 align-middle leading-normal" />
-                Documents
-              </span>
-            }
-            tab="documents"
-          />
-          <PanelItem
-            title={
-              <span>
-                <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
-                News
-              </span>
-            }
-            tab="news"
-          />
-          <PanelItem
-            title={
-              <span>
-                <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
-                Assets
-              </span>
-            }
-            tab="assets"
-          />
-        </div>
-      </section>
+      {canViewCms && (
+        <section className="flex flex-col gap-5">
+          <p>Static Pages</p>
+          <div className="flex flex-col gap-5 pl-5">
+            <PanelItem
+              title={
+                <span>
+                  <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
+                  Content
+                </span>
+              }
+              tab="content"
+            />
+            <PanelItem
+              title={
+                <span>
+                  <Files className="mr-2 inline size-5 align-middle leading-normal" />
+                  Documents
+                </span>
+              }
+              tab="documents"
+            />
+            <PanelItem
+              title={
+                <span>
+                  <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
+                  News
+                </span>
+              }
+              tab="news"
+            />
+            <PanelItem
+              title={
+                <span>
+                  <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
+                  Assets
+                </span>
+              }
+              tab="assets"
+            />
+          </div>
+        </section>
+      )}
 
       <PanelItem
         title={
@@ -192,24 +197,28 @@ function NavPanel() {
         }
         tab="researches"
       />
-      <PanelItem
-        title={
-          <span>
-            <Database className="mr-2 inline size-5 align-middle leading-normal" />
-            Datasets
-          </span>
-        }
-        tab="datasets"
-      />
-      <PanelItem
-        title={
-          <span>
-            <User2 className="mr-2 inline size-5 align-middle leading-normal" />
-            Users
-          </span>
-        }
-        tab="users"
-      />
+      {canViewCms && (
+        <PanelItem
+          title={
+            <span>
+              <Database className="mr-2 inline size-5 align-middle leading-normal" />
+              Datasets
+            </span>
+          }
+          tab="datasets"
+        />
+      )}
+      {canViewCms && (
+        <PanelItem
+          title={
+            <span>
+              <User2 className="mr-2 inline size-5 align-middle leading-normal" />
+              Users
+            </span>
+          }
+          tab="users"
+        />
+      )}
     </aside>
   );
 }
