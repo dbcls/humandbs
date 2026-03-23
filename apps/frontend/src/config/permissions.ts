@@ -4,7 +4,6 @@ import { type SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {
   ADMIN: "admin",
-  EDITOR: "editor",
   USER: "user",
 } as const;
 
@@ -76,47 +75,6 @@ const ROLES = {
       list: true,
     },
 
-    contents: {
-      list: true,
-      view: true,
-      create: true,
-      update: true,
-      delete: true,
-    },
-    assets: {
-      view: true,
-      create: true,
-      delete: true,
-      list: true,
-    },
-    news: {
-      view: true,
-      update: true,
-      create: true,
-      delete: true,
-    },
-    alerts: {
-      list: true,
-      update: true,
-      create: true,
-      delete: true,
-    },
-  },
-  editor: {
-    documents: {
-      view: true,
-      create: true,
-      update: true,
-      delete: true,
-    },
-    documentVersions: {
-      view: true,
-      create: true,
-      publish: true,
-      update: true,
-      delete: false,
-      list: true,
-    },
     contents: {
       list: true,
       view: true,
