@@ -214,7 +214,7 @@ export function ResearchDetails({
               <Switch
                 checked={preview}
                 onCheckedChange={setPreview}
-                className="data-[state=unchecked]:bg-secondary data-[state=checked]:bg-secondary"
+                className="data-[state=checked]:bg-secondary data-[state=unchecked]:bg-muted"
               />
             </label>
           </>
