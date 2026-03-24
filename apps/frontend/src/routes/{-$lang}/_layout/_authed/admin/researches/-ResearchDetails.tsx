@@ -208,9 +208,14 @@ export function ResearchDetails({
         caption={
           <>
             <span>{researchValues.humId}</span>
+            <Tag tag={researchValues.status} size="md" className="ml-3" />
             <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
               Preview
-              <Switch checked={preview} onCheckedChange={setPreview} />
+              <Switch
+                checked={preview}
+                onCheckedChange={setPreview}
+                className="data-[state=unchecked]:bg-secondary data-[state=checked]:bg-secondary"
+              />
             </label>
           </>
         }
@@ -245,9 +250,8 @@ export function ResearchDetails({
           </div>
         ) : (
         <>
-        {/* Status + workflow action row */}
+        {/* Workflow action row */}
         <div className="mx-5 mt-5 flex items-center gap-2">
-          <Tag tag={researchValues.status} size="md" />
           <div className="ml-auto flex items-center gap-2">
             {canUpdate && (
               <Button size="slim" onClick={() => form.handleSubmit()} disabled={isSaving}>
