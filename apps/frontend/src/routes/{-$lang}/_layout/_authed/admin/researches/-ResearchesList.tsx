@@ -1,6 +1,7 @@
 import {
   ResearchStatusSchema,
   type ResearchSearchResponse,
+  type ResearchSummary,
 } from "@humandbs/backend/types";
 import {
   type QueryKey,
@@ -21,7 +22,11 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { CreateResearchDialog } from "./-CreateResearchDialog";
+import {
+  createDummyResearch,
+  DUMMY_HUM_ID,
+  isDummyResearch,
+} from "./-dummyResearch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useFilters } from "@/hooks/useFilters";
 import { Input } from "@/components/Input";
@@ -51,9 +56,26 @@ export function ResearchesList({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(infiniteOpts);
 
-  const allResearches = data.pages.flatMap((page) => page.data);
+  const allResearches = data.pages.flatMap((page) => page.data) as ResearchSummary[];
+  const hasDummy = allResearches.some((r) => isDummyResearch(r.humId));
 
-  console.log("allResearches", allResearches);
+  function handleAddNew() {
+    if (hasDummy) return;
+    const dummy = createDummyResearch(lang);
+    queryClient.setQueriesData<{
+      pages: Array<{ data: ResearchSummary[] }>;
+      pageParams: unknown[];
+    }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page, i) =>
+          i === 0 ? { ...page, data: [dummy, ...page.data] } : page,
+        ),
+      };
+    });
+    onSelectResearch(DUMMY_HUM_ID);
+  }
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -135,13 +157,23 @@ export function ResearchesList({
       <div className="flex flex-col gap-3">
         <ResearchFilters />
 
-        {canCreate && <CreateResearchDialog />}
+        {canCreate && (
+          <Button
+            variant="accent"
+            className="text-center"
+            disabled={hasDummy}
+            onClick={handleAddNew}
+          >
+            Add New
+          </Button>
+        )}
       </div>
 
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <ul>
           {allResearches.map((research) => {
             const isActive = research.humId === selectedHumId;
+            const isDummy = isDummyResearch(research.humId);
             const title =
               research.title[lang] || research.title.ja || research.title.en;
             const englishTitle = research.title.en;
@@ -152,6 +184,7 @@ export function ResearchesList({
                 role="menuitem"
                 onClick={() => onSelectResearch(research.humId)}
                 isActive={isActive}
+                className={isDummy ? "border border-dashed" : undefined}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -174,7 +207,7 @@ export function ResearchesList({
                     </span>
                   ) : null}
                 </div>
-                {canDelete && (
+                {canDelete && !isDummy && (
                   <Button
                     variant="ghost"
                     size="slim"

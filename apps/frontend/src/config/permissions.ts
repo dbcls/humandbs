@@ -119,7 +119,8 @@ export interface AccessResources {
       | "approve"       // POST /research/{humId}/approve      — admin only (review → published)
       | "reject"        // POST /research/{humId}/reject       — admin only (review → draft)
       | "unpublish"     // POST /research/{humId}/unpublish    — admin only (published → draft)
-      | "versions/new"; // POST /research/{humId}/versions/new — owner or admin (published → draft)
+      | "versions/new"  // POST /research/{humId}/versions/new — owner or admin (published → draft)
+      | "update-uids";  // PUT  /research/{humId}/uids          — admin only
     params?: { research?: Pick<ResearchDetail, "uids" | "status"> };
   };
   datasets: {
@@ -167,6 +168,7 @@ export function can<R extends keyof AccessResources>(
       case "reject":       return { can: isAdmin && status === "review" };
       case "unpublish":    return { can: isAdmin && status === "published" };
       case "versions/new": return { can: (isAdmin || isOwner) && status === "published" };
+      case "update-uids":  return { can: isAdmin };
     }
   }
 

@@ -1,12 +1,10 @@
 import {
-  CreateResearchRequestSchema,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   PaginationSchema,
   ResearchListingQuerySchema,
   ResearchSearchBodySchema,
-  UpdateResearchRequestSchema,
   UpdateUidsRequestSchema,
   type ResearchDetailResponse,
   type ResearchListingQuery,
@@ -14,6 +12,10 @@ import {
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
 } from "@humandbs/backend/types";
+import {
+  FrontendCreateResearchRequestSchema,
+  FrontendUpdateResearchRequestSchema,
+} from "@/utils/researchSchemas";
 import {
   infiniteQueryOptions,
   keepPreviousData,
@@ -57,7 +59,7 @@ export type DeleteResearchResult =
     };
 
 export const $createResearch = createServerFn({ method: "POST" })
-  .inputValidator(CreateResearchRequestSchema)
+  .inputValidator(FrontendCreateResearchRequestSchema)
   .handler<Promise<CreateResearchResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
@@ -78,7 +80,7 @@ export const $createResearch = createServerFn({ method: "POST" })
 
 const UpdateResearchInputSchema = z.object({
   humId: HumIdParamsSchema.shape.humId,
-  body: UpdateResearchRequestSchema,
+  body: FrontendUpdateResearchRequestSchema,
 });
 
 export const $updateResearch = createServerFn({ method: "POST" })
