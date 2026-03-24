@@ -1,5 +1,6 @@
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { useCan } from "@/hooks/useCan";
@@ -13,7 +14,10 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 import { JsonImportExport } from "./-JsonImportExport";
 import { Tag } from "@/components/StatusTag";
+import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
+import type { ResearchDetailResponse } from "@humandbs/backend/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useStore } from "@tanstack/react-form";
 import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -178,11 +182,23 @@ export function ResearchDetails({
       await updateResearch(value);
     },
   });
+  const previewValues = useStore(form.store, (state) => state.values);
+  const [preview, setPreview] = useState(false);
+
   return (
     <>
       <Card
         className="flex h-full flex-1 flex-col"
-        caption={researchValues.humId}
+        caption={
+          <>
+            <span>{researchValues.humId}</span>
+            <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+              Preview
+              <Switch checked={preview} onCheckedChange={setPreview} />
+            </label>
+          </>
+        }
+        captionClassName="flex items-center"
         containerClassName="flex flex-1 flex-col overflow-auto"
       >
         {error && (
@@ -207,6 +223,12 @@ export function ResearchDetails({
             </Button>
           </div>
         )}
+        {preview ? (
+          <div className="px-5 pt-5 pb-5">
+            <VersionCard versionData={previewValues as ResearchDetailResponse["data"]} />
+          </div>
+        ) : (
+        <>
         {/* Status + workflow action row */}
         <div className="mx-5 mt-5 flex items-center gap-2">
           <Tag tag={researchValues.status} className="h-5 w-auto min-w-fit whitespace-nowrap px-2" />
@@ -328,6 +350,8 @@ export function ResearchDetails({
             }}
           />
         </div>
+        </>
+        )}
       </Card>
     </>
   );
