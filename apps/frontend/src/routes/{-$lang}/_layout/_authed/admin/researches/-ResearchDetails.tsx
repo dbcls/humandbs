@@ -215,7 +215,7 @@ export function ResearchDetails({
           </>
         }
         captionClassName="flex items-center"
-        containerClassName="flex flex-1 flex-col overflow-auto"
+        containerClassName="flex flex-1 flex-col min-h-0"
       >
         {error && (
           <div className="mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
@@ -306,8 +306,8 @@ export function ResearchDetails({
           </div>
         )}
 
-        <Tabs defaultValue="title" className="mt-5 flex-1 min-h-0">
-          <div className="overflow-x-auto px-5">
+        <Tabs defaultValue="title" className="mt-5 flex flex-col flex-1 min-h-0">
+          <div className="overflow-x-auto px-5 shrink-0">
             <TabsList variant="line">
               <TabsTrigger variant="line" value="title"><TabLabel dirty={dirtyFields.title}>Title</TabLabel></TabsTrigger>
               <TabsTrigger variant="line" value="summary"><TabLabel dirty={dirtyFields.summary}>Summary</TabLabel></TabsTrigger>
@@ -319,7 +319,7 @@ export function ResearchDetails({
               <TabsTrigger variant="line" value="controlledAccessUser"><TabLabel dirty={dirtyFields.controlledAccessUser}>Controlled access user</TabLabel></TabsTrigger>
             </TabsList>
           </div>
-          <div className="px-5 pt-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
             <TabsContent value="title">
               <form.AppField name="title">
                 {(field) => <field.BilingualTextField label="Title" />}
