@@ -12,11 +12,9 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { JsonImportExport } from "./-JsonImportExport";
-import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
-import type { ResearchDetailResponse } from "@humandbs/backend/types";
+import { Tag } from "@/routes/{-$lang}/_layout/_authed/admin/-components/StatusTag";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { useStore } from "@tanstack/react-form";
 import { Label } from "@/components/ui/label";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -180,8 +178,6 @@ export function ResearchDetails({
       await updateResearch(value);
     },
   });
-  const previewValues = useStore(form.store, (state) => state.values);
-
   return (
     <>
       <Card
@@ -211,151 +207,127 @@ export function ResearchDetails({
             </Button>
           </div>
         )}
-        <Tabs defaultValue="edit" className="flex-1">
-          <TabsList className="mx-5 mt-5 w-fit" variant="pill">
-            <TabsTrigger value="edit" variant="pill">Edit</TabsTrigger>
-            <TabsTrigger value="preview" variant="pill">Preview</TabsTrigger>
-          </TabsList>
-
-          <TabsContent
-            value="edit"
-            className="mt-0 flex h-full min-h-0 flex-col"
-          >
-            {canUpdateUids && (
-              <div className="px-5 pt-5">
-                <form.AppField name="uids" mode="array">
-                  {(field) => (
-                    <fieldset className="flex flex-col gap-2">
-                      <Label className="font-semibold">User IDs (uids)</Label>
-                      <div className="nested-form flex flex-col gap-1">
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {(field.state.value as any[])?.map(
-                          (_: string, i: number) => (
-                            <div key={i} className="flex items-center gap-1">
-                              <form.AppField name={`uids[${i}]` as "uids"}>
-                                {(f) => <f.TextField />}
-                              </form.AppField>
-                              <button
-                                type="button"
-                                onClick={() => field.removeValue(i)}
-                              >
-                                <Trash2 className="text-danger size-4" />
-                              </button>
-                            </div>
-                          ),
-                        )}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="slim"
-                          className="self-start"
-                          onClick={() => field.pushValue("")}
-                        >
-                          Add UID
-                        </Button>
-                      </div>
-                    </fieldset>
-                  )}
-                </form.AppField>
-              </div>
-            )}
-            <Tabs defaultValue="title" className="flex-1 min-h-0">
-              <div className="overflow-x-auto px-5 pt-5">
-                <TabsList variant="line">
-                  <TabsTrigger variant="line" value="title">Title</TabsTrigger>
-                  <TabsTrigger variant="line" value="summary">Summary</TabsTrigger>
-                  <TabsTrigger variant="line" value="datasets">Datasets</TabsTrigger>
-                  <TabsTrigger variant="line" value="dataProvider">Data providers</TabsTrigger>
-                  <TabsTrigger variant="line" value="researchProject">
-                    Research project
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="grant">Grant</TabsTrigger>
-                  <TabsTrigger variant="line" value="relatedPublication">
-                    Related publication
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="controlledAccessUser">
-                    Controlled access user
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="px-5 pt-5">
-                <TabsContent value="title">
-                  <form.AppField name="title">
-                    {(field) => <field.BilingualTextField label="Title" />}
-                  </form.AppField>
-                </TabsContent>
-                <TabsContent value="summary">
-                  <SummaryForm form={form} fields="summary" />
-                </TabsContent>
-                <TabsContent value="dataProvider">
-                  <DataProviderArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="researchProject">
-                  <ResearchProjectArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="grant">
-                  <GrantArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="relatedPublication">
-                  <RelatedPublicationArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="controlledAccessUser">
-                  <ControlledAccessUserArrayField form={form} />
-                </TabsContent>
-              </div>
-            </Tabs>
-          </TabsContent>
-
-          <TabsContent value="preview" className="mt-0 px-5 pb-5">
-            <VersionCard
-              versionData={previewValues as ResearchDetailResponse["data"]}
-            />
-          </TabsContent>
-        </Tabs>
-
-        {(canUpdate ||
-          canSubmit ||
-          canApprove ||
-          canReject ||
-          canUnpublish ||
-          canNewVersion ||
-          canDelete) && (
-          <div className="flex items-center gap-2 border-t px-5 py-3">
-            {canUpdate && (
-              <Button
-                type="submit"
-                onClick={() => form.handleSubmit()}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving…" : "Save draft"}
-              </Button>
-            )}
-            <JsonImportExport
-              filename={humId}
-              getValues={() => form.store.state.values}
-              onImport={(values) => form.reset(values as typeof researchValues)}
-              hasData={() => {
-                const v = form.store.state.values;
-                return !!(v.title?.ja || v.title?.en);
-              }}
-            />
-            {canSubmit && <Button variant="outline">Submit for review</Button>}
-            {canApprove && <Button variant="outline">Approve</Button>}
-            {canReject && <Button variant="outline">Reject</Button>}
-            {canUnpublish && <Button variant="outline">Unpublish</Button>}
-            {canNewVersion && <Button variant="outline">New version</Button>}
+        {/* Status + workflow action row */}
+        <div className="mx-5 mt-5 flex items-center gap-2">
+          <Tag tag={researchValues.status} className="h-5 w-auto min-w-fit whitespace-nowrap px-2" />
+          <div className="ml-auto flex items-center gap-2">
+            {canSubmit && <Button variant="outline" size="slim">Submit for review</Button>}
+            {canReject && <Button variant="outline" size="slim">Reject</Button>}
+            {canApprove && <Button size="slim">Approve</Button>}
+            {canUnpublish && <Button variant="outline" size="slim">Unpublish</Button>}
+            {canNewVersion && <Button variant="outline" size="slim">New version</Button>}
             {canDelete && (
               <Button
                 type="button"
                 variant="action"
-                className="ml-auto"
+                size="slim"
                 onClick={handleDelete}
               >
                 Delete
               </Button>
             )}
           </div>
+        </div>
+
+        {canUpdateUids && (
+          <div className="px-5 pt-5">
+            <form.AppField name="uids" mode="array">
+              {(field) => (
+                <fieldset className="flex flex-col gap-2">
+                  <Label className="font-semibold">User IDs (uids)</Label>
+                  <div className="nested-form flex flex-col gap-1">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(field.state.value as any[])?.map(
+                      (_: string, i: number) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <form.AppField name={`uids[${i}]` as "uids"}>
+                            {(f) => <f.TextField />}
+                          </form.AppField>
+                          <button
+                            type="button"
+                            onClick={() => field.removeValue(i)}
+                          >
+                            <Trash2 className="text-danger size-4" />
+                          </button>
+                        </div>
+                      ),
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="slim"
+                      className="self-start"
+                      onClick={() => field.pushValue("")}
+                    >
+                      Add UID
+                    </Button>
+                  </div>
+                </fieldset>
+              )}
+            </form.AppField>
+          </div>
         )}
+
+        <Tabs defaultValue="title" className="mt-5 flex-1 min-h-0">
+          <div className="overflow-x-auto px-5">
+            <TabsList variant="line">
+              <TabsTrigger variant="line" value="title">Title</TabsTrigger>
+              <TabsTrigger variant="line" value="summary">Summary</TabsTrigger>
+              <TabsTrigger variant="line" value="datasets">Datasets</TabsTrigger>
+              <TabsTrigger variant="line" value="dataProvider">Data providers</TabsTrigger>
+              <TabsTrigger variant="line" value="researchProject">Research project</TabsTrigger>
+              <TabsTrigger variant="line" value="grant">Grant</TabsTrigger>
+              <TabsTrigger variant="line" value="relatedPublication">Related publication</TabsTrigger>
+              <TabsTrigger variant="line" value="controlledAccessUser">Controlled access user</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="px-5 pt-5">
+            <TabsContent value="title">
+              <form.AppField name="title">
+                {(field) => <field.BilingualTextField label="Title" />}
+              </form.AppField>
+            </TabsContent>
+            <TabsContent value="summary">
+              <SummaryForm form={form} fields="summary" />
+            </TabsContent>
+            <TabsContent value="dataProvider">
+              <DataProviderArrayField form={form} />
+            </TabsContent>
+            <TabsContent value="researchProject">
+              <ResearchProjectArrayField form={form} />
+            </TabsContent>
+            <TabsContent value="grant">
+              <GrantArrayField form={form} />
+            </TabsContent>
+            <TabsContent value="relatedPublication">
+              <RelatedPublicationArrayField form={form} />
+            </TabsContent>
+            <TabsContent value="controlledAccessUser">
+              <ControlledAccessUserArrayField form={form} />
+            </TabsContent>
+          </div>
+        </Tabs>
+
+        <div className="flex items-center gap-2 border-t px-5 py-3">
+          {canUpdate && (
+            <Button
+              type="submit"
+              onClick={() => form.handleSubmit()}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving…" : "Save draft"}
+            </Button>
+          )}
+          <JsonImportExport
+            filename={humId}
+            getValues={() => form.store.state.values}
+            onImport={(values) => form.reset(values as typeof researchValues)}
+            hasData={() => {
+              const v = form.store.state.values;
+              return !!(v.title?.ja || v.title?.en);
+            }}
+          />
+        </div>
       </Card>
     </>
   );
