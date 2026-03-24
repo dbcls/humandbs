@@ -18,6 +18,7 @@ import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/r
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -185,6 +186,21 @@ export function ResearchDetails({
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
 
+  // Per-tab dirty state: compare current value of each top-level field to initial
+  const dirtyFields = useStore(form.store, (state) => {
+    const v = state.values;
+    const i = researchValues;
+    return {
+      title: !deepEqual(v.title, i.title),
+      summary: !deepEqual(v.summary, i.summary),
+      dataProvider: !deepEqual(v.dataProvider, i.dataProvider),
+      researchProject: !deepEqual(v.researchProject, i.researchProject),
+      grant: !deepEqual(v.grant, i.grant),
+      relatedPublication: !deepEqual(v.relatedPublication, i.relatedPublication),
+      controlledAccessUser: !deepEqual(v.controlledAccessUser, i.controlledAccessUser),
+    };
+  });
+
   return (
     <>
       <Card
@@ -293,14 +309,14 @@ export function ResearchDetails({
         <Tabs defaultValue="title" className="mt-5 flex-1 min-h-0">
           <div className="overflow-x-auto px-5">
             <TabsList variant="line">
-              <TabsTrigger variant="line" value="title">Title</TabsTrigger>
-              <TabsTrigger variant="line" value="summary">Summary</TabsTrigger>
+              <TabsTrigger variant="line" value="title"><TabLabel dirty={dirtyFields.title}>Title</TabLabel></TabsTrigger>
+              <TabsTrigger variant="line" value="summary"><TabLabel dirty={dirtyFields.summary}>Summary</TabLabel></TabsTrigger>
               <TabsTrigger variant="line" value="datasets">Datasets</TabsTrigger>
-              <TabsTrigger variant="line" value="dataProvider">Data providers</TabsTrigger>
-              <TabsTrigger variant="line" value="researchProject">Research project</TabsTrigger>
-              <TabsTrigger variant="line" value="grant">Grant</TabsTrigger>
-              <TabsTrigger variant="line" value="relatedPublication">Related publication</TabsTrigger>
-              <TabsTrigger variant="line" value="controlledAccessUser">Controlled access user</TabsTrigger>
+              <TabsTrigger variant="line" value="dataProvider"><TabLabel dirty={dirtyFields.dataProvider}>Data providers</TabLabel></TabsTrigger>
+              <TabsTrigger variant="line" value="researchProject"><TabLabel dirty={dirtyFields.researchProject}>Research project</TabLabel></TabsTrigger>
+              <TabsTrigger variant="line" value="grant"><TabLabel dirty={dirtyFields.grant}>Grant</TabLabel></TabsTrigger>
+              <TabsTrigger variant="line" value="relatedPublication"><TabLabel dirty={dirtyFields.relatedPublication}>Related publication</TabLabel></TabsTrigger>
+              <TabsTrigger variant="line" value="controlledAccessUser"><TabLabel dirty={dirtyFields.controlledAccessUser}>Controlled access user</TabLabel></TabsTrigger>
             </TabsList>
           </div>
           <div className="px-5 pt-5">
@@ -354,6 +370,19 @@ export function ResearchDetails({
         )}
       </Card>
     </>
+  );
+}
+
+function TabLabel({ dirty, children }: { dirty: boolean; children: React.ReactNode }) {
+  return (
+    <span className="flex items-center gap-1">
+      {children}
+      {dirty && (
+        <span className="inline-block rounded bg-yellow-400 px-1 py-0 text-2xs font-semibold text-yellow-900">
+          Modified
+        </span>
+      )}
+    </span>
   );
 }
 
