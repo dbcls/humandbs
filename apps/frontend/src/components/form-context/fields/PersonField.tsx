@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { withForm } from "../FormContext";
 
 import { BilingualTextValueField } from "./BilingualTextValueField";
+import { BilingualColumnHeader } from "../researchFields/BilingualColumnHeader";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyName = any;
@@ -41,14 +42,14 @@ export const PersonField = withForm({
           className="bg-gray-50 text-gray-400"
         />
 
-        {/* Name */}
+        {/* Name + Title share a column header */}
+        <BilingualColumnHeader />
         <BilingualTextValueField
           form={form}
           baseName={`${baseName}.name`}
           label="Name *"
         />
 
-        {/* Title */}
         <BilingualTextValueField
           form={form}
           baseName={`${baseName}.researchTitle`}

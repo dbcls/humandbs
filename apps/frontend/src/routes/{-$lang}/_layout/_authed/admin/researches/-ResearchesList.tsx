@@ -30,7 +30,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useFilters } from "@/hooks/useFilters";
 import { Input } from "@/components/Input";
-import { Tag } from "../-components/StatusTag";
+import { Tag } from "@/components/StatusTag";
 
 export function ResearchesList({
   lang,

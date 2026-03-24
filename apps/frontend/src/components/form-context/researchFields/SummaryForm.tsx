@@ -2,6 +2,7 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
+import { BilingualColumnHeader } from "./BilingualColumnHeader";
 
 const summarySchema = z.object({ ...ResearchDetailSchema.shape.summary.shape });
 
@@ -12,6 +13,7 @@ export const SummaryForm = withFieldGroup({
   render: function Render({ group }) {
     return (
       <div className="flex flex-col gap-4">
+        <BilingualColumnHeader />
         <group.AppField name="aims">
           {(field) => (
             <field.BilingualTextValueField
