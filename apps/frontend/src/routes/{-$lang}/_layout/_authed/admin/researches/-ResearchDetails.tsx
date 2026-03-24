@@ -247,7 +247,7 @@ export function ResearchDetails({
         <>
         {/* Status + workflow action row */}
         <div className="mx-5 mt-5 flex items-center gap-2">
-          <Tag tag={researchValues.status} className="h-5 w-auto min-w-fit whitespace-nowrap px-2" />
+          <Tag tag={researchValues.status} size="md" />
           <div className="ml-auto flex items-center gap-2">
             {canUpdate && (
               <Button size="slim" onClick={() => form.handleSubmit()} disabled={isSaving}>

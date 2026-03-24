@@ -194,7 +194,6 @@ export function ResearchesList({
                     {research.status ? (
                       <Tag
                         tag={research.status}
-                        className="h-5 w-auto min-w-fit whitespace-nowrap px-2"
                       />
                     ) : null}
                   </div>

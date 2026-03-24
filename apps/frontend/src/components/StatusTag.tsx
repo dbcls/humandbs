@@ -41,16 +41,39 @@ export function StatusTag({ className, ...props }: StatusProps) {
   );
 }
 
-export function Tag({ tag, className }: { tag: string; className?: string }) {
+// Research-specific statuses
+const researchTagVariants = cva(
+  "rounded-sm border capitalize inline-flex items-center font-medium transition-colors group-data-[active=true]:border-white group-data-[active=true]:text-white group-data-[active=true]:bg-transparent",
+  {
+    variants: {
+      status: {
+        draft:     "text-gray-500 border-gray-400 bg-gray-50",
+        review:    "text-yellow-700 border-yellow-400 bg-yellow-50",
+        published: "text-secondary border-secondary bg-blue-50",
+        deleted:   "text-gray-400 border-gray-300 bg-gray-50",
+      },
+      size: {
+        sm: "px-2 py-0 text-2xs",
+        md: "px-3 py-0.5 text-sm",
+      },
+    },
+    defaultVariants: {
+      status: "draft",
+      size: "sm",
+    },
+  }
+);
+
+type ResearchTagProps = {
+  tag: string;
+  size?: "sm" | "md";
+  className?: string;
+};
+
+export function Tag({ tag, size = "sm", className }: ResearchTagProps) {
+  const status = tag as "draft" | "review" | "published" | "deleted";
   return (
-    <div
-      className={cn(
-        statusTagVariants({ status: "current" }),
-        "w-10 text-center",
-        "group-data-[active=true]:border-white group-data-[active=true]:text-white",
-        className
-      )}
-    >
+    <div className={cn(researchTagVariants({ status, size }), className)}>
       {tag}
     </div>
   );
