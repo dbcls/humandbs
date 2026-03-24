@@ -249,18 +249,27 @@ export function ResearchDetails({
         <div className="mx-5 mt-5 flex items-center gap-2">
           <Tag tag={researchValues.status} className="h-5 w-auto min-w-fit whitespace-nowrap px-2" />
           <div className="ml-auto flex items-center gap-2">
+            {canUpdate && (
+              <Button size="slim" onClick={() => form.handleSubmit()} disabled={isSaving}>
+                {isSaving ? "Saving…" : "Save draft"}
+              </Button>
+            )}
+            <JsonImportExport
+              filename={humId}
+              getValues={() => form.store.state.values}
+              onImport={(values) => form.reset(values as typeof researchValues)}
+              hasData={() => {
+                const v = form.store.state.values;
+                return !!(v.title?.ja || v.title?.en);
+              }}
+            />
             {canSubmit && <Button variant="outline" size="slim">Submit for review</Button>}
             {canReject && <Button variant="outline" size="slim">Reject</Button>}
             {canApprove && <Button size="slim">Approve</Button>}
             {canUnpublish && <Button variant="outline" size="slim">Unpublish</Button>}
             {canNewVersion && <Button variant="outline" size="slim">New version</Button>}
             {canDelete && (
-              <Button
-                type="button"
-                variant="action"
-                size="slim"
-                onClick={handleDelete}
-              >
+              <Button type="button" variant="action" size="slim" onClick={handleDelete}>
                 Delete
               </Button>
             )}
@@ -346,26 +355,6 @@ export function ResearchDetails({
           </div>
         </Tabs>
 
-        <div className="flex items-center gap-2 border-t px-5 py-3">
-          {canUpdate && (
-            <Button
-              type="submit"
-              onClick={() => form.handleSubmit()}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving…" : "Save draft"}
-            </Button>
-          )}
-          <JsonImportExport
-            filename={humId}
-            getValues={() => form.store.state.values}
-            onImport={(values) => form.reset(values as typeof researchValues)}
-            hasData={() => {
-              const v = form.store.state.values;
-              return !!(v.title?.ja || v.title?.en);
-            }}
-          />
-        </div>
         </>
         )}
       </Card>
