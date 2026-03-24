@@ -23,13 +23,13 @@ export default function BilingualTextValueField({
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <span>{label ?? "Text Value"}</span>
+      <span className="text-sm font-medium">{label ?? "Text Value"}</span>
       <div className={inputsClassName ?? "flex gap-2"}>
         {variant === "textarea" ? (
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className="flex-1 resize-none"
+            className="flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm"
             value={field.state.value?.en?.text ?? ""}
             onChange={(e) =>
               field.handleChange((prev) => ({
@@ -58,7 +58,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className="flex-1 resize-none"
+            className="flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm"
             value={field.state.value?.ja?.text ?? ""}
             onChange={(e) =>
               field.setValue((prev) => ({

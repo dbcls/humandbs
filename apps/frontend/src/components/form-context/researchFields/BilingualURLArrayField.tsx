@@ -34,7 +34,7 @@ export default function BilingualURLArrayField({
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <Label className="text-sm">{label}</Label>
+      <Label>{label}</Label>
 
       {enItems.length > 0 && (
         <div className="flex gap-2">

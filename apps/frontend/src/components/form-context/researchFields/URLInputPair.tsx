@@ -1,7 +1,7 @@
 import { ResearchDetailSchema } from "@humandbs/backend/types";
 import { z } from "zod";
 import { useFieldContext } from "../FormContext";
-import { Input } from "@/components/Input";
+import { Input } from "@/components/ui/input";
 
 const urlSchema = z.object({
   ...ResearchDetailSchema.shape.summary.shape.url.shape.en.element.shape,
@@ -21,17 +21,15 @@ export function URLInputPair({
       <Input
         type="text"
         placeholder="Title"
-        variant="form"
         value={value.text}
-        className="rounded-b-none rounded-t-lg"
+        className="rounded-b-none rounded-t-lg h-9"
         onChange={(e) => onChange({ ...value, text: e.target.value })}
       />
       <Input
         type="text"
         placeholder="URL"
         value={value.url}
-        variant="form"
-        className="rounded-t-none text-xs rounded-b-lg"
+        className="rounded-t-none rounded-b-lg h-9 text-xs"
         onChange={(e) => onChange({ ...value, url: e.target.value })}
       />
     </div>

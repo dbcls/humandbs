@@ -285,7 +285,7 @@ export function ResearchDetails({
             <form.AppField name="uids" mode="array">
               {(field) => (
                 <fieldset className="flex flex-col gap-2">
-                  <Label className="font-semibold">User IDs (uids)</Label>
+                  <Label>User IDs (uids)</Label>
                   <div className="nested-form flex flex-col gap-1">
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {(field.state.value as any[])?.map(
