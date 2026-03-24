@@ -110,7 +110,7 @@ export function NewResearchForm({
             e.preventDefault();
             form.handleSubmit();
           }}
-          className="flex flex-1 flex-col"
+          className="flex flex-1 flex-col min-h-0"
         >
           {error && (
             <div className="mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
@@ -139,7 +139,7 @@ export function NewResearchForm({
             />
           </div>
 
-          <div className="flex flex-col gap-4 px-5 pt-5">
+          <div className="flex flex-col gap-4 px-5 pt-5 shrink-0">
             <form.AppField name="humId">
               {(field) => (
                 <div className="flex flex-col gap-1">
