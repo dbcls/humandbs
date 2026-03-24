@@ -118,6 +118,27 @@ export function NewResearchForm({
             </div>
           )}
 
+          <div className="mx-5 mt-5 flex items-center gap-2">
+            <Button type="submit" variant="accent" disabled={isPending} size="slim">
+              {isPending ? "Creating…" : "Create"}
+            </Button>
+            <JsonImportExport
+              filename={DUMMY_HUM_ID}
+              getValues={() => form.store.state.values}
+              onImport={(values) => form.reset(values as typeof defaultValues)}
+              hasData={() => {
+                const v = form.store.state.values;
+                return !!(
+                  v.humId ||
+                  v.title?.ja ||
+                  v.title?.en ||
+                  v.dataProvider?.length > 0 ||
+                  v.uids?.length > 0
+                );
+              }}
+            />
+          </div>
+
           <div className="flex flex-col gap-4 px-5 pt-5">
             <form.AppField name="humId">
               {(field) => (
@@ -245,26 +266,6 @@ export function NewResearchForm({
             </div>
           </Tabs>
 
-          <div className="flex items-center gap-2 border-t px-5 py-3">
-            <Button type="submit" variant="accent" disabled={isPending}>
-              {isPending ? "Creating…" : "Create"}
-            </Button>
-            <JsonImportExport
-              filename={DUMMY_HUM_ID}
-              getValues={() => form.store.state.values}
-              onImport={(values) => form.reset(values as typeof defaultValues)}
-              hasData={() => {
-                const v = form.store.state.values;
-                return !!(
-                  v.humId ||
-                  v.title?.ja ||
-                  v.title?.en ||
-                  v.dataProvider?.length > 0 ||
-                  v.uids?.length > 0
-                );
-              }}
-            />
-          </div>
         </form>
       </form.AppForm>
     </Card>
