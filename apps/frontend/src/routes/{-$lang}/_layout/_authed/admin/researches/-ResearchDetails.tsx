@@ -245,7 +245,7 @@ export function ResearchDetails({
           </div>
         )}
         {preview ? (
-          <div className="px-5 pt-5 pb-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
             <VersionCard versionData={previewValues as ResearchDetailResponse["data"]} />
           </div>
         ) : (
