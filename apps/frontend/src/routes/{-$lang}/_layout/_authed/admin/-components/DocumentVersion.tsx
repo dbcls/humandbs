@@ -38,7 +38,7 @@ import {
 } from "@/serverFunctions/documentVersion";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
-import { StatusTag, Tag } from "./StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { UnpublishedDot } from "./UnpublishedDot";
 
 interface FormMeta {

@@ -13,7 +13,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
-import { Tag } from "./StatusTag";
+import { Tag } from "@/components/StatusTag";
 
 export function NewsItemsList({
   onClickAdd,

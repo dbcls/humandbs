@@ -12,7 +12,7 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { JsonImportExport } from "./-JsonImportExport";
-import { Tag } from "@/routes/{-$lang}/_layout/_authed/admin/-components/StatusTag";
+import { Tag } from "@/components/StatusTag";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";

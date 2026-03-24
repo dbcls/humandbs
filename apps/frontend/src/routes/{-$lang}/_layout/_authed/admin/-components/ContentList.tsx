@@ -30,7 +30,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
-import { StatusTag, Tag } from "./StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 
 export function ContentList({
   selectedContentId,
