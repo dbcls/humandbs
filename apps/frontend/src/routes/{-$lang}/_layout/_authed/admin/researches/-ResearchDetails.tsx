@@ -204,7 +204,7 @@ export function ResearchDetails({
   return (
     <>
       <Card
-        className="flex h-full flex-1 flex-col"
+        className="flex h-full flex-1 flex-col min-w-0"
         caption={
           <>
             <span>{researchValues.humId}</span>
