@@ -7,8 +7,10 @@ import {
   LangVersionQuerySchema,
   type DatasetSearchResponse,
   type DatasetDetailResponse,
+  type DatasetUpdateResponse,
   DatasetSearchBodySchema,
   type DatasetSearchBody,
+  UpdateDatasetRequestSchema,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -24,6 +26,22 @@ export type CreateDatasetForResearchResult =
       ok: false;
       error: string;
       code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+
+export type UpdateDatasetResult =
+  | { ok: true; data: DatasetUpdateResponse }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+
+export type DeleteDatasetResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
     };
 
 export const $getDatasetsPaginated = createServerFn({ method: "GET" })
@@ -60,10 +78,12 @@ type DatasetQuery = z.infer<typeof DatasetQuerySchema>;
 export const $getDataset = createServerFn({ method: "GET" })
   .inputValidator(DatasetQuerySchema)
   .handler<Promise<DatasetDetailResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
     const { datasetId, ...search } = filterDefined(data);
     return await api.getDataset({
       params: { datasetId },
       search,
+      accessToken: accessToken ?? undefined,
     });
   });
 
@@ -127,6 +147,78 @@ export const $createDatasetForResearch = createServerFn({ method: "POST" })
         if (error.status === 409) {
           return { ok: false, error: detail, code: "CONFLICT" };
         }
+        if (error.status === 403) {
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        }
+        if (error.status === 404) {
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        }
+        if (error.status === 401) {
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
+      }
+      throw error;
+    }
+  });
+
+const UpdateDatasetInputSchema = z.object({
+  datasetId: z.string().min(1),
+  body: UpdateDatasetRequestSchema,
+});
+
+export const $updateDataset = createServerFn({ method: "POST" })
+  .inputValidator(UpdateDatasetInputSchema)
+  .handler<Promise<UpdateDatasetResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      const updated = await api.updateDataset(
+        data.datasetId,
+        data.body,
+        accessToken,
+      );
+      return { ok: true, data: updated };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to update dataset.";
+        if (error.status === 409) {
+          return { ok: false, error: detail, code: "CONFLICT" };
+        }
+        if (error.status === 403) {
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        }
+        if (error.status === 404) {
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        }
+        if (error.status === 401) {
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
+      }
+      throw error;
+    }
+  });
+
+const DeleteDatasetInputSchema = z.object({
+  datasetId: z.string().min(1),
+});
+
+export const $deleteDataset = createServerFn({ method: "POST" })
+  .inputValidator(DeleteDatasetInputSchema)
+  .handler<Promise<DeleteDatasetResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+
+    try {
+      await api.deleteDataset(data.datasetId, accessToken);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to delete dataset.";
         if (error.status === 403) {
           return { ok: false, error: detail, code: "FORBIDDEN" };
         }

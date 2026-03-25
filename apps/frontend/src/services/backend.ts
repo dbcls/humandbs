@@ -17,6 +17,8 @@ import {
   type DatasetSearchBody,
   type CreateResearchRequest,
   type UpdateResearchRequest,
+  type UpdateDatasetRequest,
+  type DatasetUpdateResponse,
   type UpdateUidsRequest,
   type CreateVersionRequest,
   type CreateDatasetForResearchRequest,
@@ -144,6 +146,7 @@ interface APIService {
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
+    accessToken?: string;
   }): Promise<DatasetDetailResponse>;
   getDatasetVersions(query: {
     params: DatasetIdParams;
@@ -193,6 +196,15 @@ interface APIService {
     body: CreateDatasetForResearchRequest,
     accessToken: string,
   ): Promise<DatasetCreateResponse>;
+  updateDataset(
+    datasetId: string,
+    body: UpdateDatasetRequest,
+    accessToken: string,
+  ): Promise<DatasetUpdateResponse>;
+  deleteDataset(
+    datasetId: string,
+    accessToken: string,
+  ): Promise<void>;
 }
 
 export const FixedPaginationSchema =
@@ -237,6 +249,7 @@ const api: APIService = {
     return get<DatasetDetailResponse>(
       `/dataset/${query.params.datasetId}`,
       query.search as Record<string, unknown>,
+      query.accessToken ? authHeader(query.accessToken) : undefined,
     );
   },
 
@@ -343,6 +356,22 @@ const api: APIService = {
     return post<DatasetCreateResponse>(
       `/research/${humId}/dataset/new`,
       body,
+      authHeader(accessToken),
+    );
+  },
+
+  updateDataset(datasetId, body, accessToken) {
+    return put<DatasetUpdateResponse>(
+      `/dataset/${datasetId}/update`,
+      body,
+      authHeader(accessToken),
+    );
+  },
+
+  deleteDataset(datasetId, accessToken) {
+    return post<void>(
+      `/dataset/${datasetId}/delete`,
+      null,
       authHeader(accessToken),
     );
   },
