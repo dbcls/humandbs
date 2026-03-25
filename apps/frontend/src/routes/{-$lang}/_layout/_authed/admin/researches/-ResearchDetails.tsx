@@ -192,26 +192,29 @@ export function ResearchDetails({
       (old) => old ? { ...old, data: { ...old.data, status: targetStatus } } : old,
     );
 
-    // Patch list (infinite) cache
+    // Patch list (infinite) cache — filter-aware
+    // Query key shape: ["researches", "list", "infinite", { status?, ... }]
     type InfiniteData = { pages: Array<{ data: Array<{ humId: string; status?: ResearchStatus }> }>; pageParams: unknown[] };
     const previousList = queryClient.getQueriesData<InfiniteData>({
       queryKey: ["researches", "list"],
     });
-    queryClient.setQueriesData<InfiniteData>(
-      { queryKey: ["researches", "list"] },
-      (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            data: page.data.map((r) =>
-              r.humId === humId ? { ...r, status: targetStatus } : r,
-            ),
-          })),
-        };
-      },
-    );
+    previousList.forEach(([key, old]) => {
+      if (!old) return;
+      const params = (key as unknown[])[3] as { status?: ResearchStatus } | undefined;
+      const filterStatus = params?.status; // undefined = "all"
+      const matchesFilter = filterStatus === undefined || filterStatus === targetStatus;
+      queryClient.setQueryData<InfiniteData>(key, {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          data: matchesFilter
+            ? page.data.map((r) =>
+                r.humId === humId ? { ...r, status: targetStatus } : r,
+              )
+            : page.data.filter((r) => r.humId !== humId),
+        })),
+      });
+    });
 
     return { previousById, previousList };
   }
