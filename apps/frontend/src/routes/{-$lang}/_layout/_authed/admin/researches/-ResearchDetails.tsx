@@ -330,8 +330,10 @@ export function ResearchDetails({
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
 
-  // True only when the selected version is the current draft being edited
-  const isViewingDraft = selectedVersion === researchValues.draftVersion;
+  // True only when the selected version is the current draft being edited.
+  // Use initialData (no version param) as the authoritative source for draftVersion,
+  // because the version-specific query response may not include it.
+  const isViewingDraft = selectedVersion === initialData.data.draftVersion;
 
   // Per-tab dirty state: compare current value of each top-level field to initial
   const dirtyFields = useStore(form.store, (state) => {
@@ -366,8 +368,8 @@ export function ResearchDetails({
               humId={humId}
               lang={lang}
               selectedVersion={selectedVersion}
-              draftVersion={researchValues.draftVersion}
-              latestVersion={researchValues.latestVersion}
+              draftVersion={initialData.data.draftVersion}
+              latestVersion={initialData.data.latestVersion}
               canNewVersion={canNewVersion}
               onVersionChange={setSelectedVersion}
             />
