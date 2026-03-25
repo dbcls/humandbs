@@ -86,6 +86,16 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 fields={`relatedPublication[${i}]` as any}
               />
+              {item?.datasetIds && item.datasetIds.length > 0 && (
+                <div className="mt-3 flex flex-col gap-1">
+                  <span className="text-xs font-medium text-gray-500">Dataset IDs</span>
+                  <div className="flex flex-wrap gap-1">
+                    {item.datasetIds.map((id) => (
+                      <span key={id} className="font-mono text-xs text-gray-700">{id}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </SortableItem>
           ))}
         </SortableContext>
