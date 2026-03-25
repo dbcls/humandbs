@@ -26,6 +26,7 @@ interface DatasetEditViewProps {
   onBack: () => void;
   /** Called with the real datasetId after a new dataset is created */
   onCreated?: (datasetId: string) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function DatasetEditViewInner({
@@ -33,6 +34,7 @@ function DatasetEditViewInner({
   lang,
   research,
   onBack,
+  onDirtyChange,
 }: DatasetEditViewProps) {
   const queryClient = useQueryClient();
   const { data: datasetResponse } = useSuspenseQuery(
@@ -100,6 +102,7 @@ function DatasetEditViewInner({
           error={error}
           conflictError={conflictError}
           onReload={handleReload}
+          onDirtyChange={onDirtyChange}
         />
       </div>
     </>

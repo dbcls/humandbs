@@ -1,12 +1,18 @@
-import { Label } from "@/components/ui/label";
+import { useStore } from "@tanstack/react-form";
+import { useEffect } from "react";
+
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { Label } from "@/components/ui/label";
+import type { UpdateDatasetRequest } from "@humandbs/backend/types";
+
 import {
   ExperimentsArrayField,
   experimentDataToEntries,
   entriesToExperimentData,
   type ExperimentItem,
 } from "./ExperimentsArrayField";
-import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
 const CRITERIA_OPTIONS = [
   "Controlled-access (Type I)",
@@ -93,6 +99,7 @@ interface DatasetFormProps {
   conflictError?: boolean;
   onReload?: () => void;
   saveLabel?: string;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function DatasetForm({
@@ -104,6 +111,7 @@ export function DatasetForm({
   conflictError,
   onReload,
   saveLabel = "Save",
+  onDirtyChange,
 }: DatasetFormProps) {
   const form = useAppForm({
     defaultValues,
@@ -111,6 +119,17 @@ export function DatasetForm({
       await onSubmit(value);
     },
   });
+
+  // Notify parent when dirty state changes
+  const isDirty = useStore(form.store, (state) => !deepEqual(state.values, defaultValues));
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  const isExperimentsModified = useStore(
+    form.store,
+    (state) => !deepEqual(state.values.experiments, defaultValues.experiments),
+  );
 
   return (
     <form
@@ -177,8 +196,11 @@ export function DatasetForm({
 
         {/* Experiments */}
         <div className="flex flex-col gap-2">
-          <Label>Experiments</Label>
-          <ExperimentsArrayField form={form} />
+          <div className="flex items-center gap-2">
+            <Label>Experiments</Label>
+            <ModifiedTag isModified={isExperimentsModified} />
+          </div>
+          <ExperimentsArrayField form={form} initialItems={defaultValues.experiments} />
         </div>
       </fieldset>
 

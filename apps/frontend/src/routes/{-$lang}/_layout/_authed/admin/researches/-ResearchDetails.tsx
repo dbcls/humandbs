@@ -43,6 +43,7 @@ import { ResearchProjectArrayField } from "@/components/form-context/researchFie
 import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
 import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
 import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
+import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
 import { DatasetCreateView } from "./-DatasetCreateView";
@@ -121,6 +122,7 @@ export function ResearchDetails({
 
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
+  const [datasetDirty, setDatasetDirty] = useState(false);
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
@@ -485,6 +487,7 @@ export function ResearchDetails({
                 )}
                 {isViewingDraft && canApprove && (
                   <Button
+                    variant="action"
                     size="slim"
                     onClick={handleApprove}
                     disabled={isApproving}
@@ -500,7 +503,6 @@ export function ResearchDetails({
                 {canDelete && (
                   <Button
                     type="button"
-                    variant="action"
                     size="slim"
                     onClick={handleDelete}
                   >
@@ -516,8 +518,9 @@ export function ResearchDetails({
                   <TabsTrigger variant="line" value="metadata">
                     Research Metadata
                   </TabsTrigger>
-                  <TabsTrigger variant="line" value="datasets">
+                  <TabsTrigger variant="line" value="datasets" className="flex items-center gap-1.5">
                     Datasets
+                    <ModifiedTag isModified={datasetDirty} />
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -643,7 +646,8 @@ export function ResearchDetails({
                     datasetId={datasetView}
                     lang={lang}
                     research={researchValues}
-                    onBack={() => setDatasetView(null)}
+                    onBack={() => { setDatasetView(null); setDatasetDirty(false); }}
+                    onDirtyChange={setDatasetDirty}
                   />
                 ) : (
                   <DatasetCreateView

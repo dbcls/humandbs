@@ -13,9 +13,12 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useStore } from "@tanstack/react-form";
 import { Trash2 } from "lucide-react";
 import { useId, useMemo, useRef } from "react";
 
+import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -73,10 +76,12 @@ function DataEntriesTable({
   form,
   experimentIndex,
   dataField,
+  initialEntries,
 }: {
   form: AnyForm;
   experimentIndex: number;
   dataField: AnyForm;
+  initialEntries: ExperimentDataEntry[];
 }) {
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
   const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
@@ -103,6 +108,10 @@ function DataEntriesTable({
           <tbody>
             {entries.map((entry, di) => {
               const isKnown = (ALLOWED_EXPERIMENT_KEYS as readonly string[]).includes(entry.key);
+              const initialEntry = initialEntries.find((e) => e.key === entry.key);
+              const isEnModified = !deepEqual(entry.en?.text ?? null, initialEntry?.en?.text ?? null);
+              const isJaModified = !deepEqual(entry.ja?.text ?? null, initialEntry?.ja?.text ?? null);
+
               return (
                 <tr key={`${experimentIndex}-${di}`} className="border-b border-gray-100 last:border-0">
                   <td className="py-2 pr-3 align-middle">
@@ -123,7 +132,7 @@ function DataEntriesTable({
                           onChange={(e) => f.handleChange(e.target.value)}
                           onBlur={() => f.handleBlur()}
                           placeholder="En"
-                          className="h-8"
+                          className={`h-8 ${isEnModified ? "bg-yellow-50" : ""}`}
                         />
                       )}
                     </form.AppField>
@@ -136,7 +145,7 @@ function DataEntriesTable({
                           onChange={(e) => f.handleChange(e.target.value)}
                           onBlur={() => f.handleBlur()}
                           placeholder="Ja"
-                          className="h-8"
+                          className={`h-8 ${isJaModified ? "bg-yellow-50" : ""}`}
                         />
                       )}
                     </form.AppField>
@@ -183,10 +192,26 @@ function DataEntriesTable({
 function ExperimentItemForm({
   form,
   index,
+  initialItem,
 }: {
   form: AnyForm;
   index: number;
+  initialItem: ExperimentItem | undefined;
 }) {
+  const initialEntries = initialItem?.data ?? [];
+
+  // Track current header values to highlight modified inputs
+  const currentEnText = useStore(
+    form.store,
+    (state: AnyForm) => state.values?.experiments?.[index]?.header?.en?.text ?? "",
+  );
+  const currentJaText = useStore(
+    form.store,
+    (state: AnyForm) => state.values?.experiments?.[index]?.header?.ja?.text ?? "",
+  );
+  const isHeaderEnModified = !deepEqual(currentEnText || null, initialItem?.header?.en?.text ?? null);
+  const isHeaderJaModified = !deepEqual(currentJaText || null, initialItem?.header?.ja?.text ?? null);
+
   return (
     <div className="flex flex-col gap-3">
       {/* Header — bilingual, binding to .text subfields */}
@@ -200,7 +225,7 @@ function ExperimentItemForm({
                 onChange={(e) => f.handleChange(e.target.value)}
                 onBlur={() => f.handleBlur()}
                 placeholder="En"
-                className="h-8 flex-1 text-sm"
+                className={`h-8 flex-1 text-sm ${isHeaderEnModified ? "bg-yellow-50" : ""}`}
               />
             )}
           </form.AppField>
@@ -211,7 +236,7 @@ function ExperimentItemForm({
                 onChange={(e) => f.handleChange(e.target.value)}
                 onBlur={() => f.handleBlur()}
                 placeholder="Ja"
-                className="h-8 flex-1 text-sm"
+                className={`h-8 flex-1 text-sm ${isHeaderJaModified ? "bg-yellow-50" : ""}`}
               />
             )}
           </form.AppField>
@@ -225,6 +250,7 @@ function ExperimentItemForm({
             form={form}
             experimentIndex={index}
             dataField={dataField}
+            initialEntries={initialEntries}
           />
         )}
       </form.Field>
@@ -233,7 +259,15 @@ function ExperimentItemForm({
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ExperimentsSortableList({ form, field }: { form: AnyForm; field: AnyForm }) {
+function ExperimentsSortableList({
+  form,
+  field,
+  initialItems,
+}: {
+  form: AnyForm;
+  field: AnyForm;
+  initialItems: ExperimentItem[];
+}) {
   const dndId = useId();
   const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
@@ -269,21 +303,26 @@ function ExperimentsSortableList({ form, field }: { form: AnyForm; field: AnyFor
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          {items.map((item, i) => (
-            <SortableItem
-              key={itemIds[i]}
-              id={itemIds[i]!}
-              index={i}
-              title={
-                item?.header?.en?.text ??
-                item?.header?.ja?.text ??
-                ""
-              }
-              onRemove={() => field.removeValue(i)}
-            >
-              <ExperimentItemForm form={form} index={i} />
-            </SortableItem>
-          ))}
+          {items.map((item, i) => {
+            const initialItem = initialItems[i];
+            const isModified = i >= initialItems.length || !deepEqual(item, initialItem);
+            return (
+              <SortableItem
+                key={itemIds[i]}
+                id={itemIds[i]!}
+                index={i}
+                title={
+                  item?.header?.en?.text ??
+                  item?.header?.ja?.text ??
+                  ""
+                }
+                isModified={isModified}
+                onRemove={() => field.removeValue(i)}
+              >
+                <ExperimentItemForm form={form} index={i} initialItem={initialItem} />
+              </SortableItem>
+            );
+          })}
         </SortableContext>
       </DndContext>
       <button
@@ -298,11 +337,11 @@ function ExperimentsSortableList({ form, field }: { form: AnyForm; field: AnyFor
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ExperimentsArrayField({ form }: { form: AnyForm }) {
+export function ExperimentsArrayField({ form, initialItems }: { form: AnyForm; initialItems: ExperimentItem[] }) {
   return (
     <form.Field name="experiments" mode="array">
       {(field: AnyForm) => (
-        <ExperimentsSortableList form={form} field={field} />
+        <ExperimentsSortableList form={form} field={field} initialItems={initialItems} />
       )}
     </form.Field>
   );
