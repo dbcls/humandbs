@@ -43,7 +43,7 @@ import { ResearchProjectArrayField } from "@/components/form-context/researchFie
 import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
 import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
 import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
 import { DatasetCreateView } from "./-DatasetCreateView";
@@ -518,9 +518,8 @@ export function ResearchDetails({
                   <TabsTrigger variant="line" value="metadata">
                     Research Metadata
                   </TabsTrigger>
-                  <TabsTrigger variant="line" value="datasets" className="flex items-center gap-1.5">
-                    Datasets
-                    <ModifiedTag isModified={datasetDirty} />
+                  <TabsTrigger variant="line" value="datasets">
+                    <TabLabel dirty={datasetDirty}>Datasets</TabLabel>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -699,21 +698,3 @@ function ReleaseNoteDisplay({
   );
 }
 
-function TabLabel({
-  dirty,
-  children,
-}: {
-  dirty: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="flex items-center gap-1">
-      {children}
-      {dirty && (
-        <span className="inline-block rounded bg-yellow-400 px-1 py-0 text-2xs font-semibold text-yellow-900">
-          Modified
-        </span>
-      )}
-    </span>
-  );
-}

@@ -20,6 +20,7 @@ import {
   UrlArrayField,
   useFieldModified,
 } from "@/components/form-context/fields";
+import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -378,39 +379,20 @@ export function UpdateResearchDialog({
   );
 }
 
-// --- Tab Modified Tag helpers ---
-
-function TabModifiedTag({
+function FieldTabLabel({
   fieldName,
   initialValues,
+  children,
 }: {
   fieldName: string;
   initialValues: UpdateResearchFormValues;
+  children: React.ReactNode;
 }) {
   const { isModified } = useFieldModified(
     fieldName,
     initialValues as unknown as Record<string, unknown>,
   );
-  return <ModifiedTag isModified={isModified} />;
-}
-
-function MultiFieldModifiedTag({
-  fieldNames,
-  initialValues,
-}: {
-  fieldNames: string[];
-  initialValues: UpdateResearchFormValues;
-}) {
-  // Check if any of the listed fields are modified
-  const anyModified = fieldNames.some((name) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { isModified } = useFieldModified(
-      name,
-      initialValues as unknown as Record<string, unknown>,
-    );
-    return isModified;
-  });
-  return <ModifiedTag isModified={anyModified} />;
+  return <TabLabel dirty={isModified}>{children}</TabLabel>;
 }
 
 function UpdateResearchForm({
@@ -655,48 +637,26 @@ function UpdateResearchForm({
 
         <Tabs defaultValue="general" className="flex-1">
           <TabsList className="w-full flex-wrap">
-            <TabsTrigger value="general" className="gap-1">
-              General
-              <TabModifiedTag fieldName="title" initialValues={initialValues} />
+            <TabsTrigger value="general">
+              <FieldTabLabel fieldName="title" initialValues={initialValues}>General</FieldTabLabel>
             </TabsTrigger>
-            <TabsTrigger value="summary" className="gap-1">
-              Summary
-              <TabModifiedTag
-                fieldName="summary"
-                initialValues={initialValues}
-              />
+            <TabsTrigger value="summary">
+              <FieldTabLabel fieldName="summary" initialValues={initialValues}>Summary</FieldTabLabel>
             </TabsTrigger>
-            <TabsTrigger value="dataProvider" className="gap-1">
-              Data Provider
-              <TabModifiedTag
-                fieldName="dataProvider"
-                initialValues={initialValues}
-              />
+            <TabsTrigger value="dataProvider">
+              <FieldTabLabel fieldName="dataProvider" initialValues={initialValues}>Data Provider</FieldTabLabel>
             </TabsTrigger>
-            <TabsTrigger value="researchProject" className="gap-1">
-              Research Project
-              <TabModifiedTag
-                fieldName="researchProject"
-                initialValues={initialValues}
-              />
+            <TabsTrigger value="researchProject">
+              <FieldTabLabel fieldName="researchProject" initialValues={initialValues}>Research Project</FieldTabLabel>
             </TabsTrigger>
-            <TabsTrigger value="grants" className="gap-1">
-              Grants
-              <TabModifiedTag fieldName="grant" initialValues={initialValues} />
+            <TabsTrigger value="grants">
+              <FieldTabLabel fieldName="grant" initialValues={initialValues}>Grants</FieldTabLabel>
             </TabsTrigger>
-            <TabsTrigger value="publications" className="gap-1">
-              Publications
-              <TabModifiedTag
-                fieldName="relatedPublication"
-                initialValues={initialValues}
-              />
+            <TabsTrigger value="publications">
+              <FieldTabLabel fieldName="relatedPublication" initialValues={initialValues}>Publications</FieldTabLabel>
             </TabsTrigger>
-            <TabsTrigger value="controlledAccess" className="gap-1">
-              Controlled Access
-              <TabModifiedTag
-                fieldName="controlledAccessUser"
-                initialValues={initialValues}
-              />
+            <TabsTrigger value="controlledAccess">
+              <FieldTabLabel fieldName="controlledAccessUser" initialValues={initialValues}>Controlled Access</FieldTabLabel>
             </TabsTrigger>
           </TabsList>
 
