@@ -1,6 +1,11 @@
 import { Label } from "@/components/ui/label";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { ExperimentsArrayField, experimentDataToEntries, entriesToExperimentData, type ExperimentItem } from "./ExperimentsArrayField";
+import {
+  ExperimentsArrayField,
+  experimentDataToEntries,
+  entriesToExperimentData,
+  type ExperimentItem,
+} from "./ExperimentsArrayField";
 import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
 const CRITERIA_OPTIONS = [
@@ -21,7 +26,12 @@ export type DatasetFormValues = {
 export function datasetToFormValues(
   dataset: Pick<
     UpdateDatasetRequest,
-    "humId" | "humVersionId" | "releaseDate" | "criteria" | "typeOfData" | "experiments"
+    | "humId"
+    | "humVersionId"
+    | "releaseDate"
+    | "criteria"
+    | "typeOfData"
+    | "experiments"
   >,
 ): DatasetFormValues {
   return {
@@ -130,16 +140,17 @@ export function DatasetForm({
         </div>
       )}
 
-      <fieldset disabled={readOnly} className="flex flex-col gap-5 disabled:opacity-60">
+      <fieldset
+        disabled={readOnly}
+        className="flex flex-col gap-5 disabled:opacity-60"
+      >
         {/* Read-only fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs text-gray-500">Research ID</Label>
-            <span className="font-mono text-sm">{defaultValues.humId}</span>
-          </div>
-          <div className="flex flex-col gap-1">
             <Label className="text-xs text-gray-500">Research Version</Label>
-            <span className="font-mono text-sm">{defaultValues.humVersionId || "—"}</span>
+            <span className="font-mono text-sm">
+              {defaultValues.humVersionId || "—"}
+            </span>
           </div>
         </div>
 
@@ -160,17 +171,9 @@ export function DatasetForm({
         </form.AppField>
 
         {/* Type of Data */}
-        <div className="flex flex-col gap-1">
-          <Label>Type of Data</Label>
-          <div className="nested-form grid grid-cols-2 gap-2">
-            <form.AppField name="typeOfData.ja">
-              {(field) => <field.TextField label="JA" />}
-            </form.AppField>
-            <form.AppField name="typeOfData.en">
-              {(field) => <field.TextField label="EN" />}
-            </form.AppField>
-          </div>
-        </div>
+        <form.AppField name="typeOfData">
+          {(field) => <field.BilingualTextField label="Type of Data" />}
+        </form.AppField>
 
         {/* Experiments */}
         <div className="flex flex-col gap-2">

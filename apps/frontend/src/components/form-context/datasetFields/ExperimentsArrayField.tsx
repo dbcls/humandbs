@@ -13,12 +13,34 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { Trash2 } from "lucide-react";
 import { useId, useMemo, useRef } from "react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { SortableItem } from "../researchFields/SortableItem";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyForm = any;
+
+export const ALLOWED_EXPERIMENT_KEYS = [
+  "Materials and Participants",
+  "Experimental Method",
+  "Platform",
+  "Sample Description",
+  "Library Construction",
+  "Fragmentation",
+  "Read Type",
+] as const;
 
 /**
  * Experiment data entry: a key-value pair where value is bilingual.
@@ -43,7 +65,120 @@ const EMPTY_EXPERIMENT: ExperimentItem = {
   data: [],
 };
 
-const EMPTY_DATA_ENTRY: ExperimentDataEntry = { key: "", ja: null, en: null };
+function newDataEntry(key: string): ExperimentDataEntry {
+  return { key, ja: null, en: null };
+}
+
+function DataEntriesTable({
+  form,
+  experimentIndex,
+  dataField,
+}: {
+  form: AnyForm;
+  experimentIndex: number;
+  dataField: AnyForm;
+}) {
+  const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
+  const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
+  const availableKeys = ALLOWED_EXPERIMENT_KEYS.filter((k) => !usedKeys.has(k));
+
+  function handleAddKey(key: string) {
+    dataField.pushValue(newDataEntry(key));
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs font-medium text-gray-500">Data entries</span>
+
+      {entries.length > 0 && (
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b text-left text-gray-500">
+              <th className="pb-1 pr-2 font-medium w-48">Key</th>
+              <th className="pb-1 pr-2 font-medium">En</th>
+              <th className="pb-1 pr-2 font-medium">Ja</th>
+              <th className="pb-1 w-6" />
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry, di) => {
+              const isKnown = (ALLOWED_EXPERIMENT_KEYS as readonly string[]).includes(entry.key);
+              return (
+                <tr key={`${experimentIndex}-${di}`} className="border-b last:border-0">
+                  <td className="py-1 pr-2 align-middle">
+                    {isKnown ? (
+                      <span className="font-medium text-gray-700">{entry.key}</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="font-medium text-gray-700">{entry.key}</span>
+                        <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-1 pr-2 align-middle">
+                    <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
+                      {(f: AnyForm) => (
+                        <input
+                          className="h-7 w-full rounded border bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          value={f.state.value ?? ""}
+                          onChange={(e) => f.handleChange(e.target.value)}
+                          onBlur={() => f.handleBlur()}
+                          placeholder="En"
+                        />
+                      )}
+                    </form.AppField>
+                  </td>
+                  <td className="py-1 pr-2 align-middle">
+                    <form.AppField name={`experiments[${experimentIndex}].data[${di}].ja.text`}>
+                      {(f: AnyForm) => (
+                        <input
+                          className="h-7 w-full rounded border bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          value={f.state.value ?? ""}
+                          onChange={(e) => f.handleChange(e.target.value)}
+                          onBlur={() => f.handleBlur()}
+                          placeholder="Ja"
+                        />
+                      )}
+                    </form.AppField>
+                  </td>
+                  <td className="py-1 align-middle">
+                    <button
+                      type="button"
+                      onClick={() => dataField.removeValue(di)}
+                      className="text-gray-400 hover:text-red-500 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {availableKeys.length > 0 && (
+        <Select
+          value=""
+          onValueChange={(key) => { if (key) handleAddKey(key); }}
+        >
+          <SelectTrigger className="h-7 w-48 text-xs text-gray-500">
+            <SelectValue placeholder="+ Add row…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {availableKeys.map((key) => (
+                <SelectItem key={key} value={key} className="text-xs">
+                  {key}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
 
 function ExperimentItemForm({
   form,
@@ -54,69 +189,43 @@ function ExperimentItemForm({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
+      {/* Header — bilingual, binding to .text subfields */}
+      <Label className="flex flex-col gap-2">
         <span className="text-xs font-medium text-gray-500">Header</span>
-        <div className="grid grid-cols-2 gap-2">
-          <form.AppField name={`experiments[${index}].header.ja.text`}>
-            {(f: AnyForm) => <f.TextField label="Header (JA)" />}
-          </form.AppField>
+        <div className="flex gap-2">
           <form.AppField name={`experiments[${index}].header.en.text`}>
-            {(f: AnyForm) => <f.TextField label="Header (EN)" />}
+            {(f: AnyForm) => (
+              <Input
+                value={f.state.value ?? ""}
+                onChange={(e) => f.handleChange(e.target.value)}
+                onBlur={() => f.handleBlur()}
+                placeholder="En"
+                className="h-8 flex-1 text-sm"
+              />
+            )}
+          </form.AppField>
+          <form.AppField name={`experiments[${index}].header.ja.text`}>
+            {(f: AnyForm) => (
+              <Input
+                value={f.state.value ?? ""}
+                onChange={(e) => f.handleChange(e.target.value)}
+                onBlur={() => f.handleBlur()}
+                placeholder="Ja"
+                className="h-8 flex-1 text-sm"
+              />
+            )}
           </form.AppField>
         </div>
-      </div>
+      </Label>
 
-      {/* Data entries */}
+      {/* Data entries table */}
       <form.Field name={`experiments[${index}].data`} mode="array">
         {(dataField: AnyForm) => (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-gray-500">
-              Data entries
-            </span>
-            {(dataField.state.value as ExperimentDataEntry[])?.map(
-              (_entry, di) => (
-                <div
-                  key={di}
-                  className="flex items-start gap-2 rounded border p-2 text-xs"
-                >
-                  <div className="flex flex-1 flex-col gap-1">
-                    <form.AppField
-                      name={`experiments[${index}].data[${di}].key`}
-                    >
-                      {(f: AnyForm) => <f.TextField label="Key" />}
-                    </form.AppField>
-                    <div className="grid grid-cols-2 gap-2">
-                      <form.AppField
-                        name={`experiments[${index}].data[${di}].ja.text`}
-                      >
-                        {(f: AnyForm) => <f.TextField label="Value (JA)" />}
-                      </form.AppField>
-                      <form.AppField
-                        name={`experiments[${index}].data[${di}].en.text`}
-                      >
-                        {(f: AnyForm) => <f.TextField label="Value (EN)" />}
-                      </form.AppField>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="mt-5 text-gray-400 hover:text-red-500"
-                    onClick={() => dataField.removeValue(di)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ),
-            )}
-            <button
-              type="button"
-              onClick={() => dataField.pushValue({ ...EMPTY_DATA_ENTRY })}
-              className="w-full rounded border border-dashed py-1.5 text-xs text-gray-500 hover:bg-gray-50"
-            >
-              + Add data entry
-            </button>
-          </div>
+          <DataEntriesTable
+            form={form}
+            experimentIndex={index}
+            dataField={dataField}
+          />
         )}
       </form.Field>
     </div>
