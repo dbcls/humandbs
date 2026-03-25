@@ -17,16 +17,9 @@ import {
 import type { AssetHierarchyFile } from "@/serverFunctions/assets";
 
 import { MarkdownClientPreview } from "../markdown/MarkdownClientPreview";
+import { buildAssetMarkdown } from "./content-area-asset-utils";
 
 import { useFieldContext } from "./FormContext";
-
-function buildAssetMarkdown(asset: AssetHierarchyFile) {
-  if (asset.mimeType.startsWith("image/")) {
-    return `![${asset.name}](${asset.url})`;
-  }
-
-  return `[${asset.name}](${asset.url})`;
-}
 
 export default function ContentAreaField({
   label,

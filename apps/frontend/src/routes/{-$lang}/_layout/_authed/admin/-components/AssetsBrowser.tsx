@@ -130,7 +130,30 @@ export function AssetsBrowser({
 
   const { mutate: uploadAsset, isPending: isUploadingAsset } = useMutation({
     mutationFn: $uploadAsset,
-    onSuccess: async () => {
+    onSuccess: async (_result, variables) => {
+      const file = variables.data.get("file");
+      const folderPath = String(variables.data.get("folderPath") ?? "");
+
+      if (file instanceof File) {
+        const nextPath = folderPath
+          ? `${folderPath}/${file.name}`
+          : file.name;
+
+        setSelectedFolderPath(folderPath);
+        setSelectedItemPath(nextPath);
+
+        if (mode === "pick") {
+          onSelectedFileChange?.({
+            type: "file",
+            name: file.name,
+            path: nextPath,
+            url: `/files/${nextPath}`,
+            mimeType: file.type || "application/octet-stream",
+            size: file.size,
+          });
+        }
+      }
+
       setUploadFile(null);
       await invalidateHierarchy();
     },

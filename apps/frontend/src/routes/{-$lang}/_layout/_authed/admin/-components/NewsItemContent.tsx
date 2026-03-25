@@ -214,7 +214,10 @@ export function NewsItemContent({
             <form.AppField name={`translations.${locale}.content`}>
               {(field) => (
                 <Suspense fallback={<div>Loading...</div>}>
-                  <field.ContentAreaField label="Content" />
+                  <field.ContentAreaField
+                    label="Content"
+                    assetFolder={newsItem.id ? `news/${newsItem.id}` : "news"}
+                  />
                 </Suspense>
               )}
             </form.AppField>
