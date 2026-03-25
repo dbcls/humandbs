@@ -44,6 +44,7 @@ import { GrantArrayField } from "@/components/form-context/researchFields/GrantA
 import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
 import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
+import { DatasetEditView } from "./-DatasetEditView";
 
 export function ResearchDetails({
   humId,
@@ -636,18 +637,25 @@ export function ResearchDetails({
                     onSelectDataset={(id) => setDatasetView(id)}
                     onAddNew={() => setDatasetView("new")}
                   />
+                ) : datasetView !== "new" ? (
+                  <DatasetEditView
+                    datasetId={datasetView}
+                    lang={lang}
+                    research={researchValues}
+                    onBack={() => setDatasetView(null)}
+                  />
                 ) : (
                   <div>
-                    {/* Phase 6 & 7: dataset edit/create view */}
+                    {/* Phase 7: create view — coming soon */}
                     <button
                       type="button"
                       className="text-sm text-blue-600 hover:underline"
                       onClick={() => setDatasetView(null)}
                     >
-                      ← Back to Datasets
+                      ← Datasets
                     </button>
                     <p className="mt-2 text-sm text-gray-500">
-                      {datasetView === "new" ? "New Dataset" : datasetView} — coming soon
+                      New Dataset — coming soon
                     </p>
                   </div>
                 )}
