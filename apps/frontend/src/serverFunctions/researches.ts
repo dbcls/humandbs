@@ -11,6 +11,7 @@ import {
   type ResearchSearchBody,
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
+  type WorkflowResponse,
 } from "@humandbs/backend/types";
 import {
   FrontendCreateResearchRequestSchema,
@@ -188,6 +189,55 @@ export const $deleteResearch = createServerFn({ method: "POST" })
       throw error;
     }
   });
+
+export type WorkflowActionResult =
+  | { ok: true; data: WorkflowResponse }
+  | {
+      ok: false;
+      error: string;
+      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT";
+    };
+
+const WorkflowActionInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+});
+
+function makeWorkflowFn(
+  apiMethod: (humId: string, accessToken: string) => Promise<WorkflowResponse>,
+) {
+  return createServerFn({ method: "POST" })
+    .inputValidator(WorkflowActionInputSchema)
+    .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
+      const accessToken = $$getJWT();
+      if (!accessToken) throw new Error("Unauthorized");
+
+      try {
+        const result = await apiMethod(data.humId, accessToken);
+        return { ok: true, data: result };
+      } catch (error) {
+        if (error instanceof APIError) {
+          const detail =
+            (error.data as { detail?: string } | undefined)?.detail ??
+            "Action failed.";
+          if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
+          if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
+          if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
+          if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        }
+        throw error;
+      }
+    });
+}
+
+export const $submitResearch = makeWorkflowFn((humId, token) =>
+  api.submitResearch(humId, token),
+);
+export const $approveResearch = makeWorkflowFn((humId, token) =>
+  api.approveResearch(humId, token),
+);
+export const $rejectResearch = makeWorkflowFn((humId, token) =>
+  api.rejectResearch(humId, token),
+);
 
 export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchBodySchema)
