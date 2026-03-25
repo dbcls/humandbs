@@ -1,9 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { $getLatestDocumentOrContent } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
+
+const humIdPathSchema = z.string().regex(/^hum\d+$/i);
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
@@ -11,6 +13,18 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
+    const parsedHumId = humIdPathSchema.safeParse(params._splat);
+
+    if (parsedHumId.success) {
+      throw redirect({
+        to: "/{-$lang}/data-usage/researches/$humId",
+        params: {
+          lang: context.lang,
+          humId: parsedHumId.data,
+        },
+      });
+    }
+
     // const parsedContentId = contentIdSchema.safeParse(params._splat);
 
     const data = await $getLatestDocumentOrContent({
