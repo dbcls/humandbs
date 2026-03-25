@@ -14,11 +14,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useMemo, useRef } from "react";
+import { useId, useRef } from "react";
 import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { PersonField } from "@/components/form-context/fields/PersonField";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
@@ -53,10 +54,9 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
   const items: ControlledAccessUser[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const initialItems: ControlledAccessUser[] = (field.form.options.defaultValues as any)?.controlledAccessUser ?? [];
-  const itemIds = useMemo(
-    () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items.length, dndId],
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
+    items.length,
+    dndId,
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -65,6 +65,8 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
     if (over && active.id !== over.id) {
       const oldIndex = itemIds.indexOf(String(active.id));
       const newIndex = itemIds.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      moveItemId(oldIndex, newIndex);
       field.setValue(arrayMove([...items], oldIndex, newIndex));
     }
   }
@@ -85,7 +87,10 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
               isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
-              onRemove={() => field.removeValue(i)}
+              onRemove={() => {
+                removeItemId(i);
+                field.removeValue(i);
+              }}
             >
               <ControlledAccessUserItemForm
                 form={form}

@@ -16,11 +16,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
-import { useId, useMemo } from "react";
+import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
 
 import { ModifiedTag } from "./ModifiedTag";
+import { useStableSortableIds } from "./useStableSortableIds";
 import { deepEqual } from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,11 +126,9 @@ export function ArrayField<T>({
     <form.AppField name={name} mode="array">
       {(field: AnyForm) => {
         const items: T[] = field.state.value ?? [];
-        // Stable IDs for sortable items — use index-based keys since items don't have IDs
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const itemIds = useMemo(
-          () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
-          [items.length, dndId],
+        const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
+          items.length,
+          dndId,
         );
 
         function handleDragEnd(event: DragEndEvent) {
@@ -137,7 +136,9 @@ export function ArrayField<T>({
           if (over && active.id !== over.id) {
             const oldIndex = itemIds.indexOf(String(active.id));
             const newIndex = itemIds.indexOf(String(over.id));
+            if (oldIndex < 0 || newIndex < 0) return;
             const reordered = arrayMove([...items], oldIndex, newIndex);
+            moveItemId(oldIndex, newIndex);
             // Replace entire array with reordered version
             field.setValue(reordered);
           }
@@ -176,7 +177,10 @@ export function ArrayField<T>({
                           : `Item ${i + 1}`
                       }
                       isModified={isItemModified}
-                      onRemove={() => field.removeValue(i)}
+                      onRemove={() => {
+                        removeItemId(i);
+                        field.removeValue(i);
+                      }}
                     >
                       {renderItem(i)}
                     </SortableItem>

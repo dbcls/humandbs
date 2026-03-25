@@ -188,8 +188,8 @@ export function groupDocVersion(
     if (!translation) {
       translation = {
         [verStatusLang.status]: {
-          title: verStatusLang.title,
-          content: verStatusLang.content,
+          title: verStatusLang.title ?? "",
+          content: verStatusLang.content ?? "",
         },
       };
     } else {

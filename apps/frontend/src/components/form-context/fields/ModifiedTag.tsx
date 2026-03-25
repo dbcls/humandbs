@@ -4,7 +4,7 @@ export function ModifiedTag({ isModified }: { isModified: boolean }) {
   if (!isModified) return null;
 
   return (
-    <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400">
+    <Badge className="border-amber-700 bg-amber-100 text-amber-950">
       Modified
     </Badge>
   );

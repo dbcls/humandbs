@@ -15,9 +15,10 @@ import {
 } from "@dnd-kit/sortable";
 import { useStore } from "@tanstack/react-form";
 import { Trash2 } from "lucide-react";
-import { useId, useMemo, useRef } from "react";
+import { useId, useRef } from "react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -311,10 +312,9 @@ function ExperimentsSortableList({
   );
 
   const items: ExperimentItem[] = field.state.value ?? [];
-  const itemIds = useMemo(
-    () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items.length, dndId],
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
+    items.length,
+    dndId,
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -323,6 +323,8 @@ function ExperimentsSortableList({
     if (over && active.id !== over.id) {
       const oldIndex = itemIds.indexOf(String(active.id));
       const newIndex = itemIds.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      moveItemId(oldIndex, newIndex);
       field.setValue(arrayMove([...items], oldIndex, newIndex));
     }
   }
@@ -347,7 +349,10 @@ function ExperimentsSortableList({
                 index={i}
                 title={item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
                 isModified={isModified}
-                onRemove={() => field.removeValue(i)}
+                onRemove={() => {
+                  removeItemId(i);
+                  field.removeValue(i);
+                }}
               >
                 <ExperimentItemForm
                   form={form}
