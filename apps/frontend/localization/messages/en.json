@@ -75,6 +75,26 @@
     "date-published": "Date published",
     "date-modified": "Date modified"
   },
+  "VersionCard": {
+    "releaseInfo": "Release info",
+    "researchOverview": "Research overview",
+    "aims": "Aims:",
+    "methods": "Methods:",
+    "targets": "Targets:",
+    "datasets": "Datasets",
+    "dataProvider": "Data provider",
+    "representative": "Representative",
+    "organization": "Organization",
+    "researchTitle": "Project / research group name",
+    "relatedPublication": "Related publications",
+    "publicationTitle": "Title",
+    "publicationDatasets": "Datasets",
+    "controlledAccessUser": "Controlled access users",
+    "datasetId": "Dataset ID",
+    "criteria": "Criteria",
+    "typeOfData": "Type of data",
+    "details": "Details"
+  },
   "Dataset-list": {
     "dataset-list": "Dataset List",
     "dataset-id": "Dataset ID",

@@ -75,6 +75,26 @@
     "date-published": "公開日付",
     "date-modified": "更新日付"
   },
+  "VersionCard": {
+    "releaseInfo": "リリース情報",
+    "researchOverview": "研究概要",
+    "aims": "目的:",
+    "methods": "方法:",
+    "targets": "対象:",
+    "datasets": "データセット",
+    "dataProvider": "提供者情報",
+    "representative": "代表者",
+    "organization": "所属機関",
+    "researchTitle": "プロジェクト/研究グループ名",
+    "relatedPublication": "関連論文",
+    "publicationTitle": "タイトル",
+    "publicationDatasets": "データセット",
+    "controlledAccessUser": "制限公開データの利用者一覧",
+    "datasetId": "データセット ID",
+    "criteria": "アクセス制限",
+    "typeOfData": "データの種類",
+    "details": "詳細"
+  },
   "Dataset-list": {
     "dataset-list": "データセット一覧",
     "dataset-id": "データセット ID",
