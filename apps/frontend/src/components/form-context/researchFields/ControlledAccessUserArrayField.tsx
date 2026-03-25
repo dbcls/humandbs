@@ -14,7 +14,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useRef } from "react";
 import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
@@ -41,6 +41,7 @@ const ControlledAccessUserItemForm = withFieldGroup({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ControlledAccessUserSortableList({ form, field }: { form: any; field: any }) {
   const dndId = useId();
+  const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -56,6 +57,7 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
   );
 
   function handleDragEnd(event: DragEndEvent) {
+    if (fieldsetRef.current?.disabled) return;
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = itemIds.indexOf(String(active.id));
@@ -65,7 +67,7 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
   }
 
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset ref={fieldsetRef} className="flex flex-col gap-3">
       <DndContext
         id={dndId}
         sensors={sensors}
@@ -80,6 +82,7 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
               onRemove={() => field.removeValue(i)}
+              disabled={fieldsetRef.current?.disabled}
             >
               <ControlledAccessUserItemForm
                 form={form}

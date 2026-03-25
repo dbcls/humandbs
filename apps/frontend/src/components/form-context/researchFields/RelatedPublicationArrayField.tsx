@@ -14,7 +14,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useRef } from "react";
 import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
@@ -39,6 +39,7 @@ const RelatedPublicationItemForm = withFieldGroup({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RelatedPublicationSortableList({ form, field }: { form: any; field: any }) {
   const dndId = useId();
+  const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -54,6 +55,7 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
   );
 
   function handleDragEnd(event: DragEndEvent) {
+    if (fieldsetRef.current?.disabled) return;
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = itemIds.indexOf(String(active.id));
@@ -63,7 +65,7 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
   }
 
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset ref={fieldsetRef} className="flex flex-col gap-3">
       <DndContext
         id={dndId}
         sensors={sensors}
@@ -78,6 +80,7 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
               onRemove={() => field.removeValue(i)}
+              disabled={fieldsetRef.current?.disabled}
             >
               <RelatedPublicationItemForm
                 form={form}
