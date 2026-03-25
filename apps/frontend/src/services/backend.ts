@@ -136,6 +136,7 @@ interface APIService {
   getResearchVersions(query: {
     params: HumIdParams;
     search: LangQuery;
+    accessToken?: string;
   }): Promise<ResearchVersionsListResponse>;
   getDatasetsPaginated(query: {
     search: DatasetListingQuery;
@@ -221,6 +222,7 @@ const api: APIService = {
     return get<ResearchVersionsListResponse>(
       `/research/${query.params.humId}/versions`,
       query.search as Record<string, unknown>,
+      query.accessToken ? authHeader(query.accessToken) : undefined,
     );
   },
 

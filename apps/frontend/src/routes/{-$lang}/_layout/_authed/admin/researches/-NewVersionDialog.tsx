@@ -48,9 +48,6 @@ export function NewVersionDialog({
         return;
       }
       const newVersionDoc = result.data.data;
-      // Remove the cached version list so useSuspenseQuery re-suspends and
-      // fetches fresh data (invalidateQueries only does a background refetch
-      // and returns stale data while in-flight).
       queryClient.removeQueries({ queryKey: ["researches", "versions"] });
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
       queryClient.invalidateQueries({ queryKey: ["researches", "list"] });

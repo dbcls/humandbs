@@ -397,12 +397,14 @@ export const ResearchVersionsQuerySchema = z.object({
 
 export const $getResearchVersions = createServerFn()
   .inputValidator(ResearchVersionsQuerySchema)
-  .handler(({ data }) =>
-    api.getResearchVersions({
+  .handler(({ data }) => {
+    const accessToken = $$getJWT();
+    return api.getResearchVersions({
       params: { humId: data.humId },
       search: { lang: data.lang, includeRawHtml: false },
-    }),
-  );
+      accessToken: accessToken ?? undefined,
+    });
+  });
 
 export function getResearchVersionsQueryOptions(
   query: z.infer<typeof ResearchVersionsQuerySchema>,
