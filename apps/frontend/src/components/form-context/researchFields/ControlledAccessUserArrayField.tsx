@@ -82,7 +82,6 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
               onRemove={() => field.removeValue(i)}
-              disabled={fieldsetRef.current?.disabled}
             >
               <ControlledAccessUserItemForm
                 form={form}

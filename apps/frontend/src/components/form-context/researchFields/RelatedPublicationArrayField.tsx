@@ -80,7 +80,6 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
               onRemove={() => field.removeValue(i)}
-              disabled={fieldsetRef.current?.disabled}
             >
               <RelatedPublicationItemForm
                 form={form}

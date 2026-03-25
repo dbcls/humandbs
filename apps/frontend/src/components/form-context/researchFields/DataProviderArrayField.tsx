@@ -80,7 +80,6 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
               onRemove={() => field.removeValue(i)}
-              disabled={fieldsetRef.current?.disabled}
             >
               <DataProviderItemForm
                 form={form}
