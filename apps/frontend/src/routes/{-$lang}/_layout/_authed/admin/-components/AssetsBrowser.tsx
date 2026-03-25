@@ -1,13 +1,28 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { ChevronRight, FileText, Folder, ImageIcon } from "lucide-react";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  ChevronRight,
+  CopyIcon,
+  FilePlus2,
+  FileText,
+  Folder,
+  FolderPlus,
+  ImageIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 import {
   assetHierarchyQueryOptions,
+  $createAssetFolder,
+  $deleteAssetByPath,
+  $deleteAssetFolder,
+  $uploadAsset,
   type AssetHierarchyFolder,
   type AssetHierarchyItem,
 } from "@/serverFunctions/assets";
@@ -67,9 +82,51 @@ function getFolderColumns(
 }
 
 export function AssetsBrowser() {
+  const queryClient = useQueryClient();
   const { data: root } = useSuspenseQuery(assetHierarchyQueryOptions());
   const [selectedFolderPath, setSelectedFolderPath] = useState("");
   const [selectedItemPath, setSelectedItemPath] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [, copy] = useCopyToClipboard();
+
+  const invalidateHierarchy = async () => {
+    await queryClient.invalidateQueries(assetHierarchyQueryOptions());
+  };
+
+  const { mutate: createFolder, isPending: isCreatingFolder } = useMutation({
+    mutationFn: $createAssetFolder,
+    onSuccess: async () => {
+      setNewFolderName("");
+      await invalidateHierarchy();
+    },
+  });
+
+  const { mutate: uploadAsset, isPending: isUploadingAsset } = useMutation({
+    mutationFn: $uploadAsset,
+    onSuccess: async () => {
+      setUploadFile(null);
+      await invalidateHierarchy();
+    },
+  });
+
+  const { mutate: deleteAssetByPath, isPending: isDeletingAsset } = useMutation({
+    mutationFn: $deleteAssetByPath,
+    onSuccess: invalidateHierarchy,
+  });
+
+  const { mutate: deleteFolder, isPending: isDeletingFolder } = useMutation({
+    mutationFn: $deleteAssetFolder,
+    onSuccess: async () => {
+      setSelectedItemPath(null);
+      setSelectedFolderPath((currentPath) => {
+        const parentSegments = getFolderSegments(currentPath);
+        parentSegments.pop();
+        return parentSegments.join("/");
+      });
+      await invalidateHierarchy();
+    },
+  });
 
   const columns = useMemo(
     () => getFolderColumns(root, selectedFolderPath),
@@ -83,7 +140,74 @@ export function AssetsBrowser() {
     null;
 
   return (
-    <section className="flex min-h-0 flex-1 gap-4">
+    <section className="flex min-h-0 flex-1 flex-col gap-4">
+      <Card className="p-4" caption="Actions" captionSize="sm">
+        <div className="grid gap-4 md:grid-cols-2">
+          <form
+            className="space-y-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!newFolderName.trim()) return;
+
+              createFolder({
+                data: {
+                  parentPath: selectedFolderPath,
+                  folderName: newFolderName,
+                },
+              });
+            }}
+          >
+            <div className="text-sm font-medium">
+              Create folder in <span className="text-secondary">{selectedFolderPath || "files"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newFolderName}
+                onChange={(event) => setNewFolderName(event.target.value)}
+                placeholder="Folder name"
+                variant="form"
+              />
+              <Button disabled={!newFolderName.trim() || isCreatingFolder} type="submit">
+                <FolderPlus className="mr-2 size-4" />
+                Create
+              </Button>
+            </div>
+          </form>
+
+          <form
+            className="space-y-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!uploadFile) return;
+
+              const formData = new FormData();
+              formData.set("file", uploadFile);
+              formData.set("folderPath", selectedFolderPath);
+
+              uploadAsset({ data: formData });
+            }}
+          >
+            <div className="text-sm font-medium">
+              Upload to <span className="text-secondary">{selectedFolderPath || "files"}</span>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="file"
+                variant="form"
+                onChange={(event) => {
+                  setUploadFile(event.target.files?.[0] ?? null);
+                }}
+              />
+              <Button disabled={!uploadFile || isUploadingAsset} type="submit">
+                <FilePlus2 className="mr-2 size-4" />
+                Upload
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Card>
+
+      <div className="flex min-h-0 flex-1 gap-4">
       <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {columns.map((folder) => (
           <Card
@@ -165,6 +289,16 @@ export function AssetsBrowser() {
                   <dd>{selectedItem.children.length}</dd>
                 </div>
               </dl>
+              <Button
+                disabled={selectedItem.children.length > 0 || isDeletingFolder}
+                variant="outline"
+                onClick={() =>
+                  deleteFolder({ data: { folderPath: selectedItem.path } })
+                }
+              >
+                <Trash2Icon className="mr-2 size-4" />
+                Delete empty folder
+              </Button>
             </div>
           ) : (
             <div className="space-y-4 text-sm">
@@ -202,6 +336,25 @@ export function AssetsBrowser() {
                     <dd>{Intl.NumberFormat().format(selectedItem.size)} bytes</dd>
                   </div>
                 </dl>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => copy(selectedItem.url)}
+                  >
+                    <CopyIcon className="mr-2 size-4" />
+                    Copy URL
+                  </Button>
+                  <Button
+                    disabled={isDeletingAsset}
+                    variant="outline"
+                    onClick={() =>
+                      deleteAssetByPath({ data: { assetPath: selectedItem.path } })
+                    }
+                  >
+                    <Trash2Icon className="mr-2 size-4" />
+                    Delete file
+                  </Button>
+                </div>
               </div>
             </div>
           )
@@ -211,6 +364,7 @@ export function AssetsBrowser() {
           </div>
         )}
       </Card>
+      </div>
     </section>
   );
 }

@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { write } from "bun";
 import { eq, or } from "drizzle-orm";
-import { readdir } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -14,6 +14,27 @@ const PUBLIC_DIR = "./public";
 const ASSETS_SUBDIR = `files`;
 const ASSET_DIR = `${PUBLIC_DIR}/${ASSETS_SUBDIR}`;
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
+
+function normalizeRelativeAssetPath(input: string) {
+  const normalized = path.posix
+    .normalize(input.trim().replace(/^\/+|\/+$/g, ""))
+    .replace(/^\/+/, "");
+
+  if (
+    normalized === "." ||
+    normalized.startsWith("../") ||
+    normalized.includes("/../") ||
+    normalized === ".."
+  ) {
+    throw new Error("Invalid asset path.");
+  }
+
+  return normalized;
+}
+
+function getAbsoluteAssetPath(relativePath: string) {
+  return path.join(ASSET_DIR, relativePath);
+}
 
 export interface AssetHierarchyFile {
   type: "file";
@@ -34,7 +55,7 @@ export interface AssetHierarchyFolder {
 export type AssetHierarchyItem = AssetHierarchyFolder | AssetHierarchyFile;
 
 async function readAssetFolder(relativePath = ""): Promise<AssetHierarchyFolder> {
-  const folderPath = path.join(ASSET_DIR, relativePath);
+  const folderPath = getAbsoluteAssetPath(relativePath);
   const entries = await readdir(folderPath, { withFileTypes: true });
 
   const children = await Promise.all(
@@ -121,17 +142,54 @@ export const $searchAssets = createServerFn({ method: "GET" })
     }),
   );
 
-async function uploadAssetFile(file: File) {
-  await write(`${ASSET_DIR}/${file.name}`, file);
-  return file.name;
-}
+const assetPathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (value) => {
+      try {
+        normalizeRelativeAssetPath(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Invalid asset path." },
+  );
 
-async function deleteAssetFile(id: string | undefined) {
-  const path = `${ASSET_DIR}/${id}`;
+const assetFolderPathSchema = z
+  .string()
+  .trim()
+  .default("")
+  .refine(
+    (value) => {
+      try {
+        if (!value) return true;
+        normalizeRelativeAssetPath(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Invalid folder path." },
+  );
 
-  const file = Bun.file(path);
+async function uploadAssetFileToFolder(file: File, folderPath: string) {
+  const safeName = path.posix.basename(file.name);
+  const relativePath = folderPath
+    ? path.posix.join(folderPath, safeName)
+    : safeName;
 
-  return file.delete();
+  await mkdir(path.dirname(getAbsoluteAssetPath(relativePath)), {
+    recursive: true,
+  });
+  await write(getAbsoluteAssetPath(relativePath), file);
+
+  return {
+    safeName,
+    relativePath,
+  };
 }
 
 export const $uploadAsset = createServerFn({ method: "POST" })
@@ -146,15 +204,17 @@ export const $uploadAsset = createServerFn({ method: "POST" })
       throw new Error(`File size exceeds limit of ${MAX_FILE_SIZE} MB`);
     }
 
-    const name = data.get("name") as string;
-
-    const description = data.get("description") as string;
-
     if (!(file instanceof File)) {
       throw new Error("Invalid file");
     }
 
-    const key = await uploadAssetFile(file);
+    const folderPath = normalizeRelativeAssetPath(
+      assetFolderPathSchema.parse((data.get("folderPath") as string) ?? ""),
+    );
+    const name = ((data.get("name") as string) || file.name).trim();
+    const description = ((data.get("description") as string) || "").trim();
+
+    const { relativePath } = await uploadAssetFileToFolder(file, folderPath);
 
     const result = await db
       .insert(asset)
@@ -162,11 +222,39 @@ export const $uploadAsset = createServerFn({ method: "POST" })
         mimeType: file.type,
         name,
         description,
-        url: `/${ASSETS_SUBDIR}/${key}`,
+        url: `/${ASSETS_SUBDIR}/${relativePath}`,
       })
       .returning();
 
     return result[0];
+  });
+
+export const $createAssetFolder = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(
+    z.object({
+      parentPath: assetFolderPathSchema,
+      folderName: z.string().trim().min(1),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    context.checkPermission("assets", "create");
+
+    const parentPath = data.parentPath
+      ? normalizeRelativeAssetPath(data.parentPath)
+      : "";
+    const folderName = path.posix.basename(data.folderName.trim());
+    const folderPath = parentPath
+      ? path.posix.join(parentPath, folderName)
+      : folderName;
+
+    const normalizedFolderPath = normalizeRelativeAssetPath(folderPath);
+
+    await mkdir(getAbsoluteAssetPath(normalizedFolderPath), {
+      recursive: false,
+    });
+
+    return { path: normalizedFolderPath };
   });
 
 export const $deleteAsset = createServerFn({ method: "POST" })
@@ -184,6 +272,42 @@ export const $deleteAsset = createServerFn({ method: "POST" })
     await deleteAssetFile(key);
 
     return result;
+  });
+
+export const $deleteAssetByPath = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(
+    z.object({
+      assetPath: assetPathSchema,
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    context.checkPermission("assets", "delete");
+
+    const assetPath = normalizeRelativeAssetPath(data.assetPath);
+    const assetUrl = `/${ASSETS_SUBDIR}/${assetPath}`;
+
+    await rm(getAbsoluteAssetPath(assetPath));
+
+    const deleted = await db.delete(asset).where(eq(asset.url, assetUrl)).returning();
+
+    return deleted;
+  });
+
+export const $deleteAssetFolder = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(
+    z.object({
+      folderPath: assetPathSchema,
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    context.checkPermission("assets", "delete");
+
+    const folderPath = normalizeRelativeAssetPath(data.folderPath);
+    await rm(getAbsoluteAssetPath(folderPath), { recursive: false });
+
+    return { path: folderPath };
   });
 
 export function getAssetQueryOptions({ id }: { id: string }) {
