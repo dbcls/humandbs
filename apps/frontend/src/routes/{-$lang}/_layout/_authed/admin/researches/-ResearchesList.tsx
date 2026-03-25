@@ -31,6 +31,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useFilters } from "@/hooks/useFilters";
 import { Input } from "@/components/Input";
 import { Tag } from "@/components/StatusTag";
+import { cn } from "@/lib/utils";
 
 export function ResearchesList({
   lang,
@@ -43,8 +44,14 @@ export function ResearchesList({
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
-  const { can: canCreate } = useCan({ resource: "researches", action: "create" });
-  const { can: canDelete } = useCan({ resource: "researches", action: "delete" });
+  const { can: canCreate } = useCan({
+    resource: "researches",
+    action: "create",
+  });
+  const { can: canDelete } = useCan({
+    resource: "researches",
+    action: "delete",
+  });
 
   const { filters } = useFilters("/{-$lang}/_layout/_authed/admin/researches/");
 
@@ -56,7 +63,9 @@ export function ResearchesList({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(infiniteOpts);
 
-  const allResearches = data.pages.flatMap((page) => page.data) as ResearchSummary[];
+  const allResearches = data.pages.flatMap(
+    (page) => page.data,
+  ) as ResearchSummary[];
   const hasDummy = allResearches.some((r) => isDummyResearch(r.humId));
 
   function handleAddNew() {
@@ -184,40 +193,24 @@ export function ResearchesList({
                 role="menuitem"
                 onClick={() => onSelectResearch(research.humId)}
                 isActive={isActive}
-                className={isDummy ? "border border-dashed" : undefined}
+                className={cn("flex-1 flex-col gap-1 items-start", {
+                  "border border-dashed": isDummy,
+                })}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="block font-mono text-xs">
-                      {research.humId}
-                    </span>
-                    {research.status ? (
-                      <Tag
-                        tag={research.status}
-                      />
-                    ) : null}
-                  </div>
-                  <span className="block truncate text-xs opacity-70">
-                    {title}
+                <div className="flex items-center gap-2">
+                  <span className="block font-mono text-xs">
+                    {research.humId}
                   </span>
-                  {englishTitle && englishTitle !== title ? (
-                    <span className="block truncate text-xs opacity-70">
-                      {englishTitle}
-                    </span>
-                  ) : null}
+                  {research.status ? <Tag tag={research.status} /> : null}
                 </div>
-                {canDelete && !isDummy && (
-                  <Button
-                    variant="ghost"
-                    size="slim"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(research.humId);
-                    }}
-                  >
-                    <Trash2Icon className="text-danger size-4 transition-colors group-data-[active=true]:text-white" />
-                  </Button>
-                )}
+                <span className="block truncate text-xs opacity-70">
+                  {title}
+                </span>
+                {englishTitle && englishTitle !== title ? (
+                  <span className="block truncate text-xs opacity-70">
+                    {englishTitle}
+                  </span>
+                ) : null}
               </ListItem>
             );
           })}
