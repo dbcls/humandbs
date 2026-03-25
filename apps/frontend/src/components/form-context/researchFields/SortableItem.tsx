@@ -40,7 +40,7 @@ export function SortableItem({
       style={style}
       className="rounded border border-gray-300 bg-white"
     >
-      <div className="flex items-center gap-2 border-b border-gray-300 bg-gray-200 px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-gray-400 bg-gray-300 px-3 py-2">
         <button
           type="button"
           className="cursor-grab touch-none text-gray-400 hover:text-gray-600 in-disabled:hidden"

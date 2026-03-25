@@ -14,11 +14,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useMemo, useRef } from "react";
+import { useId, useRef } from "react";
 import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { GrantField } from "@/components/form-context/fields/GrantField";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
@@ -51,10 +52,9 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
   const items: Grant[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const initialItems: Grant[] = (field.form.options.defaultValues as any)?.grant ?? [];
-  const itemIds = useMemo(
-    () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items.length, dndId],
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
+    items.length,
+    dndId,
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -63,6 +63,8 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
     if (over && active.id !== over.id) {
       const oldIndex = itemIds.indexOf(String(active.id));
       const newIndex = itemIds.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      moveItemId(oldIndex, newIndex);
       field.setValue(arrayMove([...items], oldIndex, newIndex));
     }
   }
@@ -83,7 +85,10 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
               isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
-              onRemove={() => field.removeValue(i)}
+              onRemove={() => {
+                removeItemId(i);
+                field.removeValue(i);
+              }}
             >
               <GrantItemForm
                 form={form}
