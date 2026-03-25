@@ -14,7 +14,7 @@ export function toDateString(date: Date | undefined): string | undefined {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
 
-  return `${date.getFullYear()}/${month}/${day}`;
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 export function toDate(

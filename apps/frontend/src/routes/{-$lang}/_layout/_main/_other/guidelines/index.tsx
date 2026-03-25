@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
-import { PreviousVersionsList } from "@/components/PreviousVersionsList";
-import { TOC } from "@/components/TOC";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import {
   $getLatestPublishedDocumentVersion,
   $getPublishedDocumentVersionList,
@@ -36,17 +33,13 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { contentHtml, title, versions } = Route.useLoaderData();
 
-  console.log("contentHtml.headings", contentHtml.headings);
   const t = useTranslations("Navbar");
+
   return (
-    <Card caption={title} captionSize={"lg"}>
-      <TOC headings={contentHtml.headings} />
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
-      <PreviousVersionsList
-        versions={versions}
-        slug="/{-$lang}/guidelines"
-        documentName={t("guidelines")}
-      />
-    </Card>
+    <MarkdownWithTOC
+      title={title}
+      markdownResult={contentHtml}
+      previousVersions={versions}
+    />
   );
 }

@@ -5,6 +5,7 @@ import { Markdown } from "@/components/Merkdown";
 import { TOC } from "@/components/TOC";
 import { $getPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-submission/revision/$revision",
@@ -24,7 +25,7 @@ export const Route = createFileRoute(
 
     return {
       contentHtml,
-      title: data?.title,
+      title: data?.title ?? null,
       crumb: `Revision ${params.revision}`,
     };
   },
@@ -33,10 +34,5 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
-  return (
-    <Card caption={title}>
-      <TOC headings={contentHtml.headings} />
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
-    </Card>
-  );
+  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
 }

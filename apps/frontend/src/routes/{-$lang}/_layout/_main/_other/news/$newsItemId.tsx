@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
 import { renderMarkdown } from "@/utils/markdown";
 
@@ -27,9 +26,5 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
-  return (
-    <Card caption={title}>
-      <Markdown contentHtml={contentHtml} />
-    </Card>
-  );
+  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
 }

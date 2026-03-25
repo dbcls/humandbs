@@ -31,7 +31,7 @@ export function DatasetVersionCard({
     (item) => item.datasetId === versionData.datasetId,
   );
 
-  const { user, lang } = Route.useRouteContext();
+  const { user } = Route.useRouteContext();
 
   return (
     <CardWithCaption
@@ -66,29 +66,6 @@ export function DatasetVersionCard({
       <section>
         <ContentHeader>Info</ContentHeader>
         <ListOfKeyValues keyValues={infoKeyValues} />
-      </section>
-
-      <section>
-        <ContentHeader>Experiments</ContentHeader>
-        <ul className="space-y-5">
-          {versionData.experiments.map((ex, i) => (
-            <li key={i}>
-              <ContentHeader variant={"block"}>
-                {ex.header[lang ?? i18n.defaultLocale]?.text}
-              </ContentHeader>
-              <ListOfKeyValues keyValues={ex.data} />
-
-              {ex.footers[lang ?? i18n.defaultLocale].length > 0 && (
-                <>
-                  <Separator />
-                  {ex.footers[lang ?? i18n.defaultLocale].map((footer, i) => (
-                    <p key={i}>{footer.text}</p>
-                  ))}
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
       </section>
     </CardWithCaption>
   );

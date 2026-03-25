@@ -18,7 +18,7 @@ interface AuthUserResponse {
 }
 
 // Dev bypass: return mock user without hitting Keycloak or backend
-// Set AUTH_DEV_ROLE to "admin" or "editor" (defaults to "admin")
+// Set AUTH_DEV_ROLE to "admin" or "user" (defaults to "admin")
 function getDevBypassResponse(): AuthUserResponse | null {
   if (process.env.AUTH_DEV_BYPASS !== "true") {
     return null;
@@ -26,7 +26,7 @@ function getDevBypassResponse(): AuthUserResponse | null {
 
   const roleEnv = process.env.AUTH_DEV_ROLE?.toLowerCase();
   const role: UserRole =
-    roleEnv === "editor" ? USER_ROLES.EDITOR : USER_ROLES.ADMIN;
+    roleEnv === "user" ? USER_ROLES.USER : USER_ROLES.ADMIN;
 
   const mockUser: SessionUser = {
     id: process.env.AUTH_DEV_USER_ID ?? "dev-user-id",
@@ -85,11 +85,6 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
           },
         },
       );
-
-      if (isAdminRes.status === 401 || isAdminRes.status === 403) {
-        setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
-        throw new Error("Unauthorized");
-      }
 
       if (isAdminRes.ok) {
         const response = (await isAdminRes.json()) as {

@@ -8,6 +8,6 @@ Through this website, you can access and provide human-related data.
 
 For information about the purpose and significance of this database, types of data handled, scope of data users, and responsible parties, please see [here](https://humandbs.dbcls.jp/aim).
 
-<div class="content-callout">
-Violators of the guidelines who have not submitted a report on the deletion of Controlled-access data shall be disclosed <a href="https://humandbs.dbcls.jp/en/violation"> here </a>.
-</div>
+:::callout
+Violators of the guidelines who have not submitted a report on the deletion of Controlled-access data shall be disclosed [here](https://humandbs.dbcls.jp/en/violation).
+:::

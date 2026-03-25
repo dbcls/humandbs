@@ -1,16 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
-import { contentIdSchema } from "@/config/content-config";
-import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import { $getContentItemTranslation } from "@/serverFunctions/contentItem";
-import {
-  $getLatestDocumentOrContent,
-  $getLatestPublishedDocumentVersion,
-} from "@/serverFunctions/documentVersion";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
+import { $getLatestDocumentOrContent } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
+
+const humIdPathSchema = z.string().regex(/^hum\d+$/i);
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
@@ -18,6 +13,18 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
+    const parsedHumId = humIdPathSchema.safeParse(params._splat);
+
+    if (parsedHumId.success) {
+      throw redirect({
+        to: "/{-$lang}/data-usage/researches/$humId",
+        params: {
+          lang: context.lang,
+          humId: parsedHumId.data,
+        },
+      });
+    }
+
     // const parsedContentId = contentIdSchema.safeParse(params._splat);
 
     const data = await $getLatestDocumentOrContent({
@@ -26,7 +33,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     const contentHtml = await renderMarkdown(data.content ?? "");
 
-    return { contentHtml, title: data.title };
+    return { contentHtml, title: data.title, crumb: data.title };
   },
   errorComponent: ({ error }) => (
     <div>
@@ -39,9 +46,5 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
-  return (
-    <Card caption={title} captionSize={"lg"}>
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
-    </Card>
-  );
+  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
 }

@@ -36,7 +36,7 @@ function RouteComponent() {
   const t = useTranslations("Navbar");
 
   return (
-    <Card caption={t("all-news")}>
+    <Card caption={t("all-news")} className="w-full">
       <ul>
         {newsTitles.map((item) => (
           <li key={item.id}>

@@ -11,13 +11,18 @@ export const CONTENT_IDS = {
     "security-guidelines-for-users",
   ],
   others: [
-    "about-data",
     "home",
     "data-submission",
-    "data-submission-application",
-    "data-usage",
-    "achievements",
-    "contact",
+    "data-use",
+    "data-processing",
+    "dac",
+    "off-premise-server",
+    "privacy-policy",
+    "publications",
+    "supported-browsers",
+    "violation",
+    "committee-1",
+    "faq",
   ],
 } as const;
 

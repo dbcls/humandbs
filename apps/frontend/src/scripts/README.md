@@ -34,7 +34,10 @@ scripts/
 bun run db:reset
 
 # Seed documents and assets
-bun run seed:documents
+bun run db:seed-documents
+
+# Seed and overwrite existing documents
+bun run db:seed-documents --overwrite
 ```
 
 ### Web Crawling
@@ -75,7 +78,8 @@ Manages database operations including seeding, resetting, and content management
 **Common Commands:**
 
 - `bun run db:reset` - Reset database (dev only)
-- `bun run seed:documents` - Seed documents, content and assets
+- `bun run db:seed-documents` - Seed documents, content and assets
+- `bun run db:seed-documents --overwrite` - Seed and overwrite existing documents
 
 ### 🕷️ Crawler Scripts (`crawler/`)
 
@@ -132,9 +136,6 @@ bun run crawl:sitemap                    # Crawl all pages
 bun crawler/crawl-page.ts -u "https://source.com/page" -o temp/en
 # Output: crawler/output/temp/en/page/content.md
 
-# Option D: Manual creation
-mkdir -p seed-data/documents/en/new-document
-echo "---\ntitle: New Document\n---\n\n# Content" > seed-data/documents/en/new-document/content.md
 ```
 
 ### 2. Content Organization
@@ -156,7 +157,7 @@ mv crawler/output/temp/en/page seed-data/documents/en/
 
 ```bash
 # Seed into database
-bun run seed:documents
+bun run db:seed-documents
 
 # Verify in application
 bun run dev

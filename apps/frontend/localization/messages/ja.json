@@ -6,6 +6,11 @@
   },
   "Footer": {
     "sitemap": "サイトマップ",
+    "group-overview": "概要",
+    "group-guidelines": "ガイドライン",
+    "group-submission": "提供",
+    "group-usage": "利用",
+    "group-policy": "ポリシー",
     "home": "ホーム",
     "process-data": "加工データ",
     "guideline-violation": "ガイドライン違反",
@@ -16,7 +21,7 @@
     "data-privision-committee": "ヒトデータ審査委員会",
     "contact": "お問い合わせ",
     "data-usage": "データの利用",
-    "achievements": "成果発表",
+    "publications": "成果発表",
     "supported-browsers": "対応ブラウザ"
   },
   "DeleteDialog": {
@@ -27,24 +32,29 @@
   },
   "Navbar": {
     "data-submission": "データの提供",
-    "data-submission-application": "データ提供申請",
     "navigation": "ナビゲーション",
     "before-application": "申請システムの前に",
     "application": "申請",
     "data-usage": "データの利用",
-    "about-data": "データについて",
-    "achievements": "実績",
-    "contact": "お問い合わせ",
     "guidelines": "ガイドライン",
     "data-sharing-guidelines": "NBDCヒトデータ共有ガイドライン",
     "security-guidelines-for-users": "NBDCヒトデータ取扱いセキュリティガイドライン（データ利用者向け）",
     "security-guidelines-for-submitters": "NBDCヒトデータ取扱いセキュリティガイドライン（データ提供者向け）",
-    "security-guidelines-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに「機関外サーバ」運用責任者向け）",
+    "security-guidelines-for-dbcenters": "NBDCヒトデータ取扱いセキュリティガイドライン（データベースセンター運用責任者ならびに機関外サーバ運用責任者向け）",
     "home": "ホーム",
     "all-news": "ニュース一覧",
+    "publications": "成果発表",
     "privacy-policy": "プライバシーポリシー",
+    "data-use": "データの利用",
+    "data-processing": "加工データ",
+    "dac": "ヒトデータ審査委員会",
+    "off-premise-server": "機関外サーバ",
+    "violation": "ガイドライン違反",
+    "supported-browsers": "対応ブラウザ",
+    "committee-1": "委員会",
+    "faq": "FAQ",
     "research-list": "研究一覧",
-    "dataset-list": "デーセット一覧"
+    "dataset-list": "データセット一覧"
   },
   "Markdoc": {
     "version": "Ver.",
@@ -66,8 +76,8 @@
     "date-modified": "更新日付"
   },
   "Dataset-list": {
-    "dataset-list": "デーセット一覧",
-    "dataset-id": "デーセット ID",
+    "dataset-list": "データセット一覧",
+    "dataset-id": "データセット ID",
     "version": "バージョン",
     "release-date": "公開日付",
     "type-of-data": "データの種類",

@@ -19,7 +19,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
-import { StatusTag } from "./StatusTag";
+import { StatusTag } from "@/components/StatusTag";
 
 export function DocumentVersionsList({
   contentId,

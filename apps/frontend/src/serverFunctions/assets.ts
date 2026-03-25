@@ -2,7 +2,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { write } from "bun";
 import { eq, or } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 import { db } from "@/db/database";
@@ -10,7 +9,7 @@ import { asset } from "@/db/schema";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 const PUBLIC_DIR = "./public";
-const ASSETS_SUBDIR = `assets`;
+const ASSETS_SUBDIR = `files`;
 const ASSET_DIR = `${PUBLIC_DIR}/${ASSETS_SUBDIR}`;
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
@@ -52,12 +51,8 @@ export const $searchAssets = createServerFn({ method: "GET" })
   );
 
 async function uploadAssetFile(file: File) {
-  const ext = file.name.split(".").pop();
-  const asssetKey = `${uuidv4()}.${ext}`;
-
-  await write(`${ASSET_DIR}/${asssetKey}`, file);
-
-  return asssetKey;
+  await write(`${ASSET_DIR}/${file.name}`, file);
+  return file.name;
 }
 
 async function deleteAssetFile(id: string | undefined) {

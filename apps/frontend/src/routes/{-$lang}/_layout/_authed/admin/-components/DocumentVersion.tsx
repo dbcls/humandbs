@@ -38,7 +38,7 @@ import {
 } from "@/serverFunctions/documentVersion";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
-import { StatusTag, Tag } from "./StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { UnpublishedDot } from "./UnpublishedDot";
 
 interface FormMeta {
@@ -157,6 +157,34 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
           className="flex flex-1 flex-col gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
+          <div className="flex items-center justify-end gap-4 pb-2">
+            <Button
+              variant={"outline"}
+              size={"lg"}
+              disabled={!isDraftChanged}
+              onClick={() => {
+                form.handleSubmit({ submitAction: "resetDraft" });
+              }}
+            >
+              Reset
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                onClick={() => {
+                  form.handleSubmit({ submitAction: "publish" });
+                }}
+                className="gap-1 self-end"
+                size={"lg"}
+                variant={"accent"}
+                disabled={!isDraftChanged}
+              >
+                <Save className="size-5" />
+                Publish
+              </Button>
+            </div>
+          </div>
+
           <form.Subscribe selector={(state) => state.values.lang}>
             {(lang) => (
               <>
@@ -191,34 +219,6 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
               </>
             )}
           </form.Subscribe>
-
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              variant={"outline"}
-              size={"lg"}
-              disabled={!isDraftChanged}
-              onClick={() => {
-                form.handleSubmit({ submitAction: "resetDraft" });
-              }}
-            >
-              Reset
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                onClick={() => {
-                  form.handleSubmit({ submitAction: "publish" });
-                }}
-                className="gap-1 self-end"
-                size={"lg"}
-                variant={"accent"}
-                disabled={!isDraftChanged}
-              >
-                <Save className="size-5" />
-                Publish
-              </Button>
-            </div>
-          </div>
         </TabsContent>
         <TabsContent
           className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
@@ -234,14 +234,7 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
 
               return (
                 <>
-                  <MarkdownClientPreview
-                    source={
-                      selectedVersionContent.translations[lang]?.published
-                        ?.content ?? ""
-                    }
-                  />
-
-                  <div className="border-t border-foreground-light pt-2">
+                  <div className="border-b flex justify-end border-foreground-light pb-2">
                     <Button
                       variant={"outline"}
                       size={"lg"}
@@ -253,6 +246,13 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
                       Unpublish
                     </Button>
                   </div>
+
+                  <MarkdownClientPreview
+                    source={
+                      selectedVersionContent.translations[lang]?.published
+                        ?.content ?? ""
+                    }
+                  />
                 </>
               );
             }}

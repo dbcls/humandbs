@@ -26,6 +26,15 @@ const PUBLIC_ASSETS_DIR = path.join(
   "assets",
 );
 
+const PUBLIC_FILES_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "public",
+  "files",
+);
+
 const SUPPORTED_LOCALES = i18n.locales;
 
 const VALID_DOCUMENT_IDS = new Set(Object.values(CONTENT_IDS).flat());
@@ -488,7 +497,49 @@ async function seedAssets(
   }
 }
 
-async function seedDocuments() {
+/**
+ * Copies non-content.md files from each document folder to public/files/<documentId>/.
+ * Only copies from the first locale that has the file (files are shared across locales).
+ */
+async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<void> {
+  const copiedByDocumentId = new Map<string, Set<string>>();
+
+  for (const [documentId, localeMap] of documents) {
+    for (const [locale, { dir }] of localeMap) {
+      let entries;
+      try {
+        entries = await readdir(dir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+
+      const filesToCopy = entries.filter(
+        (e) => e.isFile() && e.name !== "content.md",
+      );
+
+      if (filesToCopy.length === 0) continue;
+
+      const destDir = path.join(PUBLIC_FILES_DIR, documentId);
+      await mkdir(destDir, { recursive: true });
+
+      if (!copiedByDocumentId.has(documentId)) {
+        copiedByDocumentId.set(documentId, new Set());
+      }
+      const copied = copiedByDocumentId.get(documentId)!;
+
+      for (const entry of filesToCopy) {
+        if (copied.has(entry.name)) continue;
+        const src = path.join(dir, entry.name);
+        const dest = path.join(destDir, entry.name);
+        await copyFile(src, dest);
+        copied.add(entry.name);
+        console.log(`Copied file: ${locale}/${documentId}/${entry.name} → public/files/${documentId}/${entry.name}`);
+      }
+    }
+  }
+}
+
+async function seedDocuments(overwrite = false) {
   console.log("Starting document seed...");
 
   const pool = new Pool({ connectionString: buildDatabaseUrl() });
@@ -508,6 +559,9 @@ async function seedDocuments() {
     const copiedAssets = await copyAssets(documents);
     console.log(`Copied ${copiedAssets.size} asset(s)`);
 
+    console.log("\nCopying document files...");
+    await copyDocumentFiles(documents);
+
     console.log("\nSeeding asset records...");
     await seedAssets(db, copiedAssets, documents);
 
@@ -517,7 +571,6 @@ async function seedDocuments() {
 
     console.log("\nSeeding documents...");
     let createdCount = 0;
-    let skippedCount = 0;
 
     for (const [documentId, localeMap] of documents) {
       // Ensure document record exists
@@ -552,32 +605,6 @@ async function seedDocuments() {
 
       // Process each locale
       for (const [locale, { content }] of localeMap) {
-        // Check if this version already exists (published)
-        const [existingPublished] = await db
-          .select({ contentId: schema.documentVersion.contentId })
-          .from(schema.documentVersion)
-          .where(
-            and(
-              eq(schema.documentVersion.contentId, documentId),
-              eq(schema.documentVersion.versionNumber, versionNumber),
-              eq(schema.documentVersion.locale, locale),
-              eq(
-                schema.documentVersion.status,
-                DOCUMENT_VERSION_STATUS.PUBLISHED,
-              ),
-            ),
-          )
-          .limit(1)
-          .execute();
-
-        if (existingPublished) {
-          console.log(
-            `Skipping ${locale}/${documentId} v${versionNumber} (already published)`,
-          );
-          skippedCount++;
-          continue;
-        }
-
         // Extract title from content
         const { title, content: contentWithoutTitle } = extractTitle(content);
 
@@ -591,20 +618,38 @@ async function seedDocuments() {
           copiedAssets,
         );
 
-        // Insert as published version
-        await db
-          .insert(schema.documentVersion)
-          .values({
-            contentId: documentId,
-            versionNumber,
-            locale,
-            status: DOCUMENT_VERSION_STATUS.PUBLISHED,
-            title: title ?? documentId,
-            content: processedContent,
-            translatedBy: authorId,
-          })
-          .onConflictDoNothing()
-          .execute();
+        const values = {
+          contentId: documentId,
+          versionNumber,
+          locale,
+          status: DOCUMENT_VERSION_STATUS.PUBLISHED,
+          title: title ?? documentId,
+          content: processedContent,
+          translatedBy: authorId,
+        };
+
+        const query = db.insert(schema.documentVersion).values(values);
+
+        if (overwrite) {
+          await query
+            .onConflictDoUpdate({
+              target: [
+                schema.documentVersion.contentId,
+                schema.documentVersion.versionNumber,
+                schema.documentVersion.locale,
+                schema.documentVersion.status,
+              ],
+              set: {
+                title: values.title,
+                content: values.content,
+                translatedBy: values.translatedBy,
+                updatedAt: new Date(),
+              },
+            })
+            .execute();
+        } else {
+          await query.onConflictDoNothing().execute();
+        }
 
         console.log(`Seeded ${locale}/${documentId} v${versionNumber}`);
         createdCount++;
@@ -612,8 +657,7 @@ async function seedDocuments() {
     }
 
     console.log(`\nSeeding complete!`);
-    console.log(`  Created: ${createdCount} version(s)`);
-    console.log(`  Skipped: ${skippedCount} version(s)`);
+    console.log(`  Upserted: ${createdCount} version(s)`);
   } catch (error) {
     console.error("Seeding failed:", error);
     throw error;
@@ -623,7 +667,8 @@ async function seedDocuments() {
 }
 
 if (import.meta.main) {
-  seedDocuments()
+  const overwrite = process.argv.includes("--overwrite");
+  seedDocuments(overwrite)
     .then(() => {
       console.log("\nDone!");
       process.exit(0);

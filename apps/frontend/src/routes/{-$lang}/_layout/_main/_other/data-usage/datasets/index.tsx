@@ -197,7 +197,8 @@ export const datasetsColumns = [
       return <p>{ctx.table.options.meta?.t?.("type-of-data")}</p>;
     },
     cell: (ctx) =>
-      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
+      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ??
+      "",
   }),
   datasetsColumnHelper.accessor("experiments", {
     id: "experiments",
@@ -206,7 +207,10 @@ export const datasetsColumns = [
       <ul className="space-y-4">
         {ctx.getValue().map((e, i) => (
           <li key={i}>
-            {e.header[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}
+            {
+              e.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
+                ?.text
+            }
           </li>
         ))}
       </ul>

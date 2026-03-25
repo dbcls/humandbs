@@ -24,9 +24,14 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
 
     //
     if (!parseLang.success) {
+      const normalizedPath = location.pathname.replace(/^\/+/, "");
+
       throw redirect({
         to: "/{-$lang}/$",
-        params: { _splat: location.pathname, lang: undefined },
+        params: {
+          _splat: normalizedPath,
+          lang: i18n.defaultLocale,
+        },
       });
     }
 

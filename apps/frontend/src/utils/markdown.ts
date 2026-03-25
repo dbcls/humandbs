@@ -1,5 +1,6 @@
 // src/utils/markdown.ts
-import type { Element, ElementContent, Root, RootContent } from "hast";
+import type { Element, Root } from "hast";
+import type { Node, Parent } from "mdast";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
@@ -36,76 +37,6 @@ function parseTagAttributes(rawAttributes: string): Record<string, string> {
   }
 
   return attributes;
-}
-
-function getParagraphText(node: Element): string {
-  if (node.tagName !== "p") {
-    return "";
-  }
-  return getNodeText(node).trim();
-}
-
-function isElementContent(node: RootContent): node is ElementContent {
-  return node.type !== "doctype";
-}
-
-function transformCustomContainers() {
-  return (tree: Root) => {
-    const nextChildren: Root["children"] = [];
-    const children = tree.children;
-    let index = 0;
-
-    while (index < children.length) {
-      const current = children[index];
-
-      if (
-        current.type !== "element" ||
-        current.tagName !== "p" ||
-        !/^:::\s*callout(?:\s+.*)?$/i.test(getParagraphText(current))
-      ) {
-        nextChildren.push(current);
-        index += 1;
-        continue;
-      }
-
-      const markerText = getParagraphText(current);
-      const markerMatch = /^:::\s*callout(?:\s+(.*))?$/i.exec(markerText);
-      const attributes = parseTagAttributes(markerMatch?.[1] ?? "");
-
-      let closingIndex = index + 1;
-      while (closingIndex < children.length) {
-        const candidate = children[closingIndex];
-        if (
-          candidate.type === "element" &&
-          candidate.tagName === "p" &&
-          /^:::\s*$/.test(getParagraphText(candidate))
-        ) {
-          break;
-        }
-        closingIndex += 1;
-      }
-
-      if (closingIndex >= children.length) {
-        nextChildren.push(current);
-        index += 1;
-        continue;
-      }
-
-      const innerChildren = children
-        .slice(index + 1, closingIndex)
-        .filter(isElementContent);
-      nextChildren.push({
-        type: "element",
-        tagName: "callout",
-        properties: attributes,
-        children: innerChildren,
-      });
-
-      index = closingIndex + 1;
-    }
-
-    tree.children = nextChildren;
-  };
 }
 
 function getNodeText(node: {
@@ -149,15 +80,117 @@ function collectHeadings(headings: MarkdownHeading[]) {
   };
 }
 
+// Ensure blank lines around ::: markers so remark parses them as separate paragraphs.
+function normalizeCalloutFences(content: string): string {
+  return content
+    .replace(/^([ \t]*:::(?:\s*callout.*)?)\s*$/gim, "\n$1\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+function getMdastText(node: Node): string {
+  if (node.type === "text") return (node as unknown as { value: string }).value ?? "";
+  const parent = node as Parent;
+  if (!parent.children) return "";
+  return parent.children.map(getMdastText).join("");
+}
+
+function isClosingMarker(node: Node): boolean {
+  return (
+    node.type === "paragraph" &&
+    /^:::\s*$/.test(getMdastText(node).trim())
+  );
+}
+
+function hasClosingMarker(node: Node): boolean {
+  if (isClosingMarker(node)) return true;
+  const parent = node as Parent;
+  if (!parent.children) return false;
+  return parent.children.some(hasClosingMarker);
+}
+
+// Find and remove the first closing ::: paragraph anywhere in the subtree.
+function removeClosingMarker(node: Node): boolean {
+  const parent = node as Parent;
+  if (!parent.children) return false;
+  for (let i = 0; i < parent.children.length; i++) {
+    if (isClosingMarker(parent.children[i])) {
+      parent.children.splice(i, 1);
+      return true;
+    }
+    if (removeClosingMarker(parent.children[i])) return true;
+  }
+  return false;
+}
+
+function processCalloutChildren(children: Node[]): void {
+  // Recurse into container nodes first
+  for (const node of children) {
+    const parent = node as Parent;
+    if (parent.children && node.type !== "paragraph") {
+      processCalloutChildren(parent.children);
+    }
+  }
+
+  let i = 0;
+  while (i < children.length) {
+    const node = children[i];
+    if (node.type !== "paragraph") { i++; continue; }
+
+    const paraText = getMdastText(node).trim();
+    const openMatch = /^:::\s*callout\s*(.*)$/i.exec(paraText);
+    if (!openMatch) { i++; continue; }
+
+    const attrStr = openMatch[1].trim();
+
+    // Remove opening marker and collect remaining siblings
+    const remaining = children.splice(i + 1);
+    children.splice(i, 1);
+
+    // Search for closing ::: first as a direct sibling, then as a descendant
+    const closingSiblingIdx = remaining.findIndex(isClosingMarker);
+    let inner: Node[];
+
+    if (closingSiblingIdx !== -1) {
+      inner = remaining.splice(0, closingSiblingIdx);
+      remaining.splice(0, 1); // remove closing :::
+    } else {
+      const closingDescIdx = remaining.findIndex(hasClosingMarker);
+      if (closingDescIdx === -1) {
+        // No closing marker found — restore and skip
+        children.splice(i, 0, node, ...remaining);
+        i++;
+        continue;
+      }
+      inner = remaining.splice(0, closingDescIdx + 1);
+      removeClosingMarker(inner[inner.length - 1]);
+    }
+
+    children.splice(i, 0,
+      {
+        type: "callout",
+        data: { hName: "callout", hProperties: parseTagAttributes(attrStr) },
+        children: inner,
+      } as unknown as Node,
+      ...remaining,
+    );
+    i++;
+  }
+}
+
+function remarkCallouts() {
+  return (tree: Parent) => processCalloutChildren(tree.children);
+}
+
 export async function renderMarkdown(content: string): Promise<MarkdownResult> {
   const headings: MarkdownHeading[] = [];
+  content = normalizeCalloutFences(content);
 
   const result = await unified()
     .use(remarkParse) // Parse markdown
     .use(remarkGfm) // Support GitHub Flavored Markdown
+    .use(remarkCallouts) // Convert :::callout blocks to <callout> elements
     .use(remarkRehype, { allowDangerousHtml: true }) // Convert to HTML AST
-    .use(rehypeRaw) // Process raw HTML in markdown
-    .use(transformCustomContainers) // Convert :::callout blocks to elements
+    .use(rehypeRaw) // Process raw HTML
     .use(rehypeSlug) // Add IDs to headings
     .use(collectHeadings(headings)) // Collect headings with generated IDs
     .use(rehypeAutolinkHeadings, {

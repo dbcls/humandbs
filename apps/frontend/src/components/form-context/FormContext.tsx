@@ -8,6 +8,9 @@ import SwitchField from "./SwitchField";
 import TextAreaField from "./TextAreaField";
 import TextField from "./TextField";
 import UpdateButton from "./UpdateButton";
+import BilingualTextField from "./researchFields/BilingualTextField";
+import BilingualTextValueField from "./researchFields/BilingualTextValueField";
+import BilingualURLArrayField from "./researchFields/BilingualURLArrayField";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
@@ -30,6 +33,9 @@ export const { useAppForm, withForm, withFieldGroup } = createFormHook({
     SwitchField,
     LocaleSwitchField,
     SelectField,
+    BilingualTextField,
+    BilingualTextValueField,
+    BilingualURLArrayField,
   },
   formComponents: {
     UpdateButton,

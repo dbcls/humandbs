@@ -78,7 +78,7 @@ export function Markdown({ contentHtml, className }: MarkdownProps) {
   return (
     <div
       className={cn(
-        "prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base prose-headings:[&_a]:no-underline",
+        "prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base prose-headings:[&_a]:no-underline break-words",
         className,
       )}
     >

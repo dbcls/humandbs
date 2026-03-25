@@ -12,13 +12,17 @@ type LinksWithVersionLists = keyof Pick<
 export function PreviousVersionsList({
   slug,
   versions,
-  documentName,
 }: {
   slug: LinksWithVersionLists;
   versions: DocPublishedVersionListItemResponse[];
-  documentName: string;
 }) {
   const tCommon = useTranslations("common");
+  const docId = slug.split("/").at(-1)!;
+
+  const tNav = useTranslations("Navbar");
+
+  const documentName = tNav(docId ?? "");
+
   const lang = useLocale();
 
   return (

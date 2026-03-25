@@ -1,23 +1,39 @@
 import {
-  CreateResearchRequestSchema,
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
+  PaginationSchema,
+  ResearchListingQuerySchema,
   ResearchSearchBodySchema,
-  UpdateResearchRequestSchema,
   UpdateUidsRequestSchema,
   type ResearchDetailResponse,
+  type ResearchListingQuery,
   type ResearchSearchBody,
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
+  type VersionCreateResponse,
+  type WorkflowResponse,
 } from "@humandbs/backend/types";
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import {
+  FrontendCreateResearchRequestSchema,
+  FrontendUpdateResearchRequestSchema,
+} from "@/utils/researchSchemas";
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  queryOptions,
+} from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { api, APIError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import {
+  authedResearchesListSearchParamsSchema,
+  type AuthedResearchesListSearchParams,
+} from "@/utils/queryParams";
+import { localeSchema } from "@/config/i18n";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -45,7 +61,7 @@ export type DeleteResearchResult =
     };
 
 export const $createResearch = createServerFn({ method: "POST" })
-  .inputValidator(CreateResearchRequestSchema)
+  .inputValidator(FrontendCreateResearchRequestSchema)
   .handler<Promise<CreateResearchResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
@@ -66,7 +82,7 @@ export const $createResearch = createServerFn({ method: "POST" })
 
 const UpdateResearchInputSchema = z.object({
   humId: HumIdParamsSchema.shape.humId,
-  body: UpdateResearchRequestSchema,
+  body: FrontendUpdateResearchRequestSchema,
 });
 
 export const $updateResearch = createServerFn({ method: "POST" })
@@ -175,11 +191,169 @@ export const $deleteResearch = createServerFn({ method: "POST" })
     }
   });
 
+export type WorkflowActionResult =
+  | { ok: true; data: WorkflowResponse }
+  | {
+      ok: false;
+      error: string;
+      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT";
+    };
+
+const WorkflowActionInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+});
+
+async function handleWorkflowError(
+  error: unknown,
+  fallback: string,
+): Promise<WorkflowActionResult> {
+  if (error instanceof APIError) {
+    const detail =
+      (error.data as { detail?: string } | undefined)?.detail ?? fallback;
+    if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
+    if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
+    if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
+    if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+  }
+  throw error;
+}
+
+export const $submitResearch = createServerFn({ method: "POST" })
+  .inputValidator(WorkflowActionInputSchema)
+  .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.submitResearch(data.humId, accessToken);
+      return { ok: true, data: result };
+    } catch (error) {
+      return handleWorkflowError(error, "Failed to submit research.");
+    }
+  });
+
+export const $approveResearch = createServerFn({ method: "POST" })
+  .inputValidator(WorkflowActionInputSchema)
+  .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.approveResearch(data.humId, accessToken);
+      return { ok: true, data: result };
+    } catch (error) {
+      return handleWorkflowError(error, "Failed to approve research.");
+    }
+  });
+
+export const $rejectResearch = createServerFn({ method: "POST" })
+  .inputValidator(WorkflowActionInputSchema)
+  .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.rejectResearch(data.humId, accessToken);
+      return { ok: true, data: result };
+    } catch (error) {
+      return handleWorkflowError(error, "Failed to reject research.");
+    }
+  });
+
+export type CreateVersionResult =
+  | { ok: true; data: VersionCreateResponse }
+  | { ok: false; error: string; code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT" };
+
+const CreateVersionInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+  releaseNote: z
+    .object({
+      en: z.object({ text: z.string(), rawHtml: z.string() }).nullable(),
+      ja: z.object({ text: z.string(), rawHtml: z.string() }).nullable(),
+    })
+    .optional(),
+});
+
+export const $createResearchVersion = createServerFn({ method: "POST" })
+  .inputValidator(CreateVersionInputSchema)
+  .handler<Promise<CreateVersionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.createResearchVersion(
+        data.humId,
+        { releaseNote: data.releaseNote ?? undefined },
+        accessToken,
+      );
+      return { ok: true, data: result };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to create version.";
+        if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
+        if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
+        if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
+        if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+      }
+      throw error;
+    }
+  });
+
 export const $getResearches = createServerFn()
   .inputValidator(ResearchSearchBodySchema)
   .handler<Promise<ResearchSearchResponse>>(({ data }) => {
     const accessToken = $$getJWT();
+
+    console.log("$getResearches calling api with ", data);
     return api.searchResearches(data, accessToken ?? undefined);
+  });
+
+const authedResearchesListSearchParamsInnerSchema =
+  authedResearchesListSearchParamsSchema.extend(
+    z.object({
+      lang: localeSchema,
+    }).shape,
+  );
+
+type AuthedResearchesListSearchParamsInner = z.infer<
+  typeof authedResearchesListSearchParamsInnerSchema
+>;
+
+/** Authed get list of researches with filters
+ * If q begins with hum... , uses endpoint that supports searching with humId,
+ * Uses the free text search endpoint otherwise
+ */
+export const $listResearches = createServerFn()
+  .inputValidator(authedResearchesListSearchParamsInnerSchema)
+  .handler(async ({ data }) => {
+    const accessToken = $$getJWT();
+
+    const { q, ...rest } = data;
+
+    // if query is humIdm then use search with humId
+    if (q && /^hum\d+/i.test(q)) {
+      console.log("searching by humId ", q);
+      return api.getResearchListPaginated(
+        {
+          search: {
+            ...rest,
+            humId: q,
+            includeRawHtml: false,
+            sort: "humId",
+          },
+        },
+        accessToken ?? undefined,
+      );
+    } else {
+      console.log("searching by text query ", q);
+      return api.searchResearches(
+        {
+          query: q,
+          includeFacets: false,
+          sort: "humId",
+          ...rest,
+        },
+        accessToken ?? undefined,
+      );
+    }
   });
 
 export function getResearchesQueryOptions(
@@ -193,6 +367,29 @@ export function getResearchesQueryOptions(
   });
 }
 
+export function getAuthedResearchesInfiniteQueryOptions(
+  data: AuthedResearchesListSearchParamsInner,
+) {
+  return infiniteQueryOptions({
+    queryKey: ["researches", "list", "infinite", data] as const,
+    queryFn: ({ pageParam }) =>
+      $listResearches({
+        data: {
+          ...data,
+          page: pageParam,
+          limit: 20,
+          order: data.order ?? "asc",
+        },
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.pagination.hasNext
+        ? lastPage.meta.pagination.page + 1
+        : undefined,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export const ResearchVersionsQuerySchema = z.object({
   ...HumIdParamsSchema.shape,
   ...LangQuerySchema.shape,
@@ -200,12 +397,14 @@ export const ResearchVersionsQuerySchema = z.object({
 
 export const $getResearchVersions = createServerFn()
   .inputValidator(ResearchVersionsQuerySchema)
-  .handler(({ data }) =>
-    api.getResearchVersions({
+  .handler(({ data }) => {
+    const accessToken = $$getJWT();
+    return api.getResearchVersions({
       params: { humId: data.humId },
       search: { lang: data.lang, includeRawHtml: false },
-    }),
-  );
+      accessToken: accessToken ?? undefined,
+    });
+  });
 
 export function getResearchVersionsQueryOptions(
   query: z.infer<typeof ResearchVersionsQuerySchema>,
