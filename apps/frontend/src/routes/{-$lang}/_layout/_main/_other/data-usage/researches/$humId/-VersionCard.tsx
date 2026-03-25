@@ -24,27 +24,6 @@ import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
 import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
-type VersionCardLabels = {
-  releaseInfo: string;
-  researchOverview: string;
-  aims: string;
-  methods: string;
-  targets: string;
-  datasets: string;
-  dataProvider: string;
-  representative: string;
-  organization: string;
-  researchTitle: string;
-  relatedPublication: string;
-  publicationTitle: string;
-  publicationDatasets: string;
-  controlledAccessUser: string;
-  datasetId: string;
-  criteria: string;
-  typeOfData: string;
-  details: string;
-};
-
 export function VersionCard({
   versionData,
   lang: langOverride,
@@ -56,26 +35,6 @@ export function VersionCard({
   const tableT = useTranslations();
   const t = useTranslations("VersionCard");
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
-  const labels = {
-    releaseInfo: t("releaseInfo"),
-    researchOverview: t("researchOverview"),
-    aims: t("aims"),
-    methods: t("methods"),
-    targets: t("targets"),
-    datasets: t("datasets"),
-    dataProvider: t("dataProvider"),
-    representative: t("representative"),
-    organization: t("organization"),
-    researchTitle: t("researchTitle"),
-    relatedPublication: t("relatedPublication"),
-    publicationTitle: t("publicationTitle"),
-    publicationDatasets: t("publicationDatasets"),
-    controlledAccessUser: t("controlledAccessUser"),
-    datasetId: t("datasetId"),
-    criteria: t("criteria"),
-    typeOfData: t("typeOfData"),
-    details: t("details"),
-  };
   const tableMeta = {
     lang,
     t: tableT,
@@ -94,7 +53,7 @@ export function VersionCard({
               to="/{-$lang}/data-usage/researches/$humId/versions"
               params={{ humId: versionData.humId }}
             >
-              {labels.releaseInfo}
+              {t("releaseInfo")}
             </Link>
           }
         >
@@ -103,31 +62,31 @@ export function VersionCard({
       }
     >
       <article>
-        <ContentHeader>{labels.researchOverview}</ContentHeader>
+        <ContentHeader>{t("researchOverview")}</ContentHeader>
         <div className="columns-2 [&>p]:mb-2 [&>p>span]:font-bold">
           <p>
-            <span>{labels.aims}</span>
+            <span>{t("aims")}</span>
             {versionData.summary.aims[lang]?.text}
           </p>
           <p>
-            <span>{labels.methods}</span>
+            <span>{t("methods")}</span>
             {versionData.summary.methods[lang]?.text}
           </p>
           <p>
-            <span>{labels.targets}</span>
+            <span>{t("targets")}</span>
             {versionData.summary.targets[lang]?.text}
           </p>
         </div>
       </article>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{labels.datasets}</ContentHeader>
+        <ContentHeader>{t("datasets")}</ContentHeader>
         {versionData?.datasets.length === 0 && (
           <div className="bg-foreground-light/10 rounded-sm p-3"> No data</div>
         )}
         {versionData?.datasets.length > 0 && (
           <Table
-            columns={makeDatasetColumns(labels)}
+            columns={makeDatasetColumns(t)}
             data={versionData.datasets}
             className="mt-4"
             meta={tableMeta}
@@ -137,21 +96,21 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{labels.dataProvider}</ContentHeader>
+        <ContentHeader>{t("dataProvider")}</ContentHeader>
         <ul>
           {versionData?.dataProvider.map((p, i) => {
             return (
               <dl key={i} className="columns-2">
                 <KeyValueCard
-                  title={labels.representative}
+                  title={t("representative")}
                   value={p.name[lang]?.text ?? ""}
                 />
                 <KeyValueCard
-                  title={labels.organization}
+                  title={t("organization")}
                   value={p.organization?.name[lang]?.text ?? ""}
                 />
                 <KeyValueCard
-                  title={labels.researchTitle}
+                  title={t("researchTitle")}
                   value={p.researchTitle?.[lang] ?? ""}
                 />
                 <KeyValueCard title="ORCID" value={p.orcid} />
@@ -166,9 +125,9 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{labels.relatedPublication}</ContentHeader>
+        <ContentHeader>{t("relatedPublication")}</ContentHeader>
         <Table
-          columns={makePublicationColumns(labels)}
+          columns={makePublicationColumns(t)}
           data={versionData?.relatedPublication || []}
           className="mt-4"
           meta={tableMeta}
@@ -176,7 +135,7 @@ export function VersionCard({
       </section>
       <Separator className="-mx-4" />
       <section>
-        <ContentHeader>{labels.controlledAccessUser}</ContentHeader>
+        <ContentHeader>{t("controlledAccessUser")}</ContentHeader>
         <Table
           columns={dataUsedByColumns}
           data={versionData?.controlledAccessUser || []}
@@ -269,11 +228,13 @@ function DatasetCaption({
 const datasetColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["datasets"][number]>();
 
-function makeDatasetColumns(labels: VersionCardLabels) {
+function makeDatasetColumns(
+  t: ReturnType<typeof useTranslations<"VersionCard">>,
+) {
   return [
     datasetColumnHelper.accessor("datasetId", {
       id: "datasetId",
-      header: labels.datasetId,
+      header: t("datasetId"),
       cell: (ctx) => (
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
           {ctx.getValue()}
@@ -283,13 +244,13 @@ function makeDatasetColumns(labels: VersionCardLabels) {
     }),
     datasetColumnHelper.accessor("criteria", {
       id: "criteria",
-      header: labels.criteria,
+      header: t("criteria"),
       cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
       maxSize: 10,
     }),
     datasetColumnHelper.accessor("typeOfData", {
       id: "typeOfData",
-      header: labels.typeOfData,
+      header: t("typeOfData"),
       cell: (ctx) => (
         <span className="text-sm">
           {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
@@ -307,7 +268,7 @@ function makeDatasetColumns(labels: VersionCardLabels) {
             params={{ datasetId: ctx.row.original.datasetId }}
             className="link-button"
           >
-            <span>{labels.details}</span>
+            <span>{t("details")}</span>
             <ArrowIcon className="block" />
           </Link>
         </div>
@@ -322,11 +283,13 @@ const publicationsColumnHelper =
     ResearchDetailResponse["data"]["relatedPublication"][number]
   >();
 
-function makePublicationColumns(labels: VersionCardLabels) {
+function makePublicationColumns(
+  t: ReturnType<typeof useTranslations<"VersionCard">>,
+) {
   return [
     publicationsColumnHelper.accessor("title", {
       id: "title",
-      header: labels.publicationTitle,
+      header: t("publicationTitle"),
       cell: (ctx) => (
         <span className="text-sm">
           {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
@@ -342,7 +305,7 @@ function makePublicationColumns(labels: VersionCardLabels) {
     }),
     publicationsColumnHelper.accessor("datasetIds", {
       id: "datasetIDs",
-      header: labels.publicationDatasets,
+      header: t("publicationDatasets"),
       cell: (info) => (
         <ul>
           {info.getValue()?.map((datasetId) => (
