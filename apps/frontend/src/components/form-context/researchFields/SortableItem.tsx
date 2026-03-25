@@ -1,6 +1,6 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 
@@ -38,9 +38,9 @@ export function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded border bg-white shadow-sm"
+      className="rounded border border-gray-300 bg-white"
     >
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-gray-300 bg-gray-200 px-3 py-2">
         <button
           type="button"
           className="cursor-grab touch-none text-gray-400 hover:text-gray-600 in-disabled:hidden"
@@ -56,9 +56,9 @@ export function SortableItem({
         <button
           type="button"
           onClick={onRemove}
-          className="text-gray-400 hover:text-red-500"
+          className="text-gray-400 hover:text-red-500 in-disabled:hidden"
         >
-          ✕
+          <Trash2 className="size-4" />
         </button>
       </div>
       <div className="p-3">{children}</div>

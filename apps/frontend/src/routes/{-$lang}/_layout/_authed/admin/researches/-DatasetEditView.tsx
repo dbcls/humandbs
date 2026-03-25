@@ -12,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/Breadcrumb";
+import { Button } from "@/components/ui/button";
 import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 import { useMutation, useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
@@ -100,7 +101,7 @@ function DatasetEditViewInner({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-5 pt-5">
+      <div className="shrink-0 px-5 pt-5 flex items-center justify-between">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -114,6 +115,19 @@ function DatasetEditViewInner({
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+        {isDraft && (
+          <Button
+            type="button"
+            disabled={isSaving}
+            onClick={() => {
+              document.getElementById("dataset-edit-form")?.dispatchEvent(
+                new Event("submit", { bubbles: true, cancelable: true }),
+              );
+            }}
+          >
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5">
         <DatasetForm
@@ -125,6 +139,7 @@ function DatasetEditViewInner({
           conflictError={conflictError}
           onReload={handleReload}
           onDirtyChange={onDirtyChange}
+          hideSaveButton
         />
       </div>
     </div>

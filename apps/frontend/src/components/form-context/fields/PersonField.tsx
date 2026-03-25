@@ -89,7 +89,7 @@ export const PersonField = withForm({
         {/* Organization */}
         <fieldset className="flex flex-col gap-2">
           <Label className="text-sm font-medium">Organization</Label>
-          <div className="rounded border p-3">
+          <div className="rounded border border-gray-300 p-3">
             <div className="flex flex-col gap-2">
               <BilingualTextValueField
                 form={form}

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
@@ -21,6 +22,7 @@ const CRITERIA_OPTIONS = [
 ] as const;
 
 export type DatasetFormValues = {
+  datasetId: string;
   humId: string;
   humVersionId: string;
   releaseDate: string;
@@ -41,6 +43,7 @@ export function datasetToFormValues(
   >,
 ): DatasetFormValues {
   return {
+    datasetId: "",
     humId: dataset.humId,
     humVersionId: dataset.humVersionId,
     releaseDate: dataset.releaseDate,
@@ -81,6 +84,7 @@ export function formValuesToDatasetUpdate(
 
 export function getDefaultDatasetFormValues(humId: string): DatasetFormValues {
   return {
+    datasetId: "",
     humId,
     humVersionId: "",
     releaseDate: "",
@@ -99,6 +103,8 @@ interface DatasetFormProps {
   conflictError?: boolean;
   onReload?: () => void;
   saveLabel?: string;
+  hideSaveButton?: boolean;
+  showDatasetIdField?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }
 
@@ -111,6 +117,8 @@ export function DatasetForm({
   conflictError,
   onReload,
   saveLabel = "Save",
+  hideSaveButton = false,
+  showDatasetIdField = false,
   onDirtyChange,
 }: DatasetFormProps) {
   const form = useAppForm({
@@ -133,6 +141,7 @@ export function DatasetForm({
 
   return (
     <form
+      id="dataset-edit-form"
       onSubmit={(e) => {
         e.preventDefault();
         form.handleSubmit();
@@ -173,6 +182,13 @@ export function DatasetForm({
           </div>
         </div>
 
+        {/* Dataset ID (create only) */}
+        {showDatasetIdField && (
+          <form.AppField name="datasetId">
+            {(field) => <field.TextField type="col" label="Dataset ID (optional)" />}
+          </form.AppField>
+        )}
+
         {/* Release Date */}
         <form.AppField name="releaseDate">
           {(field) => <field.DateField label="Release Date" />}
@@ -204,15 +220,11 @@ export function DatasetForm({
         </div>
       </fieldset>
 
-      {!readOnly && (
+      {!readOnly && !hideSaveButton && (
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="rounded bg-primary px-4 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={isSaving}>
             {isSaving ? "Saving…" : saveLabel}
-          </button>
+          </Button>
         </div>
       )}
     </form>

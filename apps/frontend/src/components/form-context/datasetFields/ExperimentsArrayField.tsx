@@ -92,7 +92,7 @@ function DataEntriesTable({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex w-full flex-col gap-2">
       <span className="text-xs font-medium text-gray-500">Data entries</span>
 
       {entries.length > 0 && (
@@ -107,25 +107,46 @@ function DataEntriesTable({
           </thead>
           <tbody>
             {entries.map((entry, di) => {
-              const isKnown = (ALLOWED_EXPERIMENT_KEYS as readonly string[]).includes(entry.key);
-              const initialEntry = initialEntries.find((e) => e.key === entry.key);
-              const isEnModified = !deepEqual(entry.en?.text ?? null, initialEntry?.en?.text ?? null);
-              const isJaModified = !deepEqual(entry.ja?.text ?? null, initialEntry?.ja?.text ?? null);
+              const isKnown = (
+                ALLOWED_EXPERIMENT_KEYS as readonly string[]
+              ).includes(entry.key);
+              const initialEntry = initialEntries.find(
+                (e) => e.key === entry.key,
+              );
+              const isEnModified = !deepEqual(
+                entry.en?.text ?? null,
+                initialEntry?.en?.text ?? null,
+              );
+              const isJaModified = !deepEqual(
+                entry.ja?.text ?? null,
+                initialEntry?.ja?.text ?? null,
+              );
 
               return (
-                <tr key={`${experimentIndex}-${di}`} className="border-b border-gray-100 last:border-0">
+                <tr
+                  key={`${experimentIndex}-${di}`}
+                  className="border-b border-gray-100 last:border-0"
+                >
                   <td className="py-2 pr-3 align-middle">
                     {isKnown ? (
-                      <span className="font-medium text-gray-700">{entry.key}</span>
+                      <span className="font-medium text-gray-700">
+                        {entry.key}
+                      </span>
                     ) : (
                       <span className="inline-flex items-center gap-1">
-                        <span className="font-medium text-gray-700">{entry.key}</span>
-                        <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
+                        <span className="font-medium text-gray-700">
+                          {entry.key}
+                        </span>
+                        <span className="rounded bg-amber-100 px-1 text-amber-700">
+                          unknown
+                        </span>
                       </span>
                     )}
                   </td>
                   <td className="py-2 pr-3 align-middle">
-                    <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
+                    <form.AppField
+                      name={`experiments[${experimentIndex}].data[${di}].en.text`}
+                    >
                       {(f: AnyForm) => (
                         <Input
                           value={f.state.value ?? ""}
@@ -138,7 +159,9 @@ function DataEntriesTable({
                     </form.AppField>
                   </td>
                   <td className="py-2 pr-3 align-middle">
-                    <form.AppField name={`experiments[${experimentIndex}].data[${di}].ja.text`}>
+                    <form.AppField
+                      name={`experiments[${experimentIndex}].data[${di}].ja.text`}
+                    >
                       {(f: AnyForm) => (
                         <Input
                           value={f.state.value ?? ""}
@@ -169,7 +192,9 @@ function DataEntriesTable({
       {availableKeys.length > 0 && (
         <Select
           value=""
-          onValueChange={(key) => { if (key) handleAddKey(key); }}
+          onValueChange={(key) => {
+            if (key) handleAddKey(key);
+          }}
         >
           <SelectTrigger size="sm" className="w-52">
             <SelectValue placeholder="+ Add row…" />
@@ -203,21 +228,29 @@ function ExperimentItemForm({
   // Track current header values to highlight modified inputs
   const currentEnText = useStore(
     form.store,
-    (state: AnyForm) => state.values?.experiments?.[index]?.header?.en?.text ?? "",
+    (state: AnyForm) =>
+      state.values?.experiments?.[index]?.header?.en?.text ?? "",
   );
   const currentJaText = useStore(
     form.store,
-    (state: AnyForm) => state.values?.experiments?.[index]?.header?.ja?.text ?? "",
+    (state: AnyForm) =>
+      state.values?.experiments?.[index]?.header?.ja?.text ?? "",
   );
-  const isHeaderEnModified = !deepEqual(currentEnText || null, initialItem?.header?.en?.text ?? null);
-  const isHeaderJaModified = !deepEqual(currentJaText || null, initialItem?.header?.ja?.text ?? null);
+  const isHeaderEnModified = !deepEqual(
+    currentEnText || null,
+    initialItem?.header?.en?.text ?? null,
+  );
+  const isHeaderJaModified = !deepEqual(
+    currentJaText || null,
+    initialItem?.header?.ja?.text ?? null,
+  );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 items-start">
       {/* Header — bilingual, binding to .text subfields */}
-      <Label className="flex flex-col gap-2">
+      <Label className="flex flex-col w-full items-start gap-2">
         <span className="text-xs font-medium text-gray-500">Header</span>
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2">
           <form.AppField name={`experiments[${index}].header.en.text`}>
             {(f: AnyForm) => (
               <Input
@@ -305,21 +338,22 @@ function ExperimentsSortableList({
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           {items.map((item, i) => {
             const initialItem = initialItems[i];
-            const isModified = i >= initialItems.length || !deepEqual(item, initialItem);
+            const isModified =
+              i >= initialItems.length || !deepEqual(item, initialItem);
             return (
               <SortableItem
                 key={itemIds[i]}
                 id={itemIds[i]!}
                 index={i}
-                title={
-                  item?.header?.en?.text ??
-                  item?.header?.ja?.text ??
-                  ""
-                }
+                title={item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
                 isModified={isModified}
                 onRemove={() => field.removeValue(i)}
               >
-                <ExperimentItemForm form={form} index={i} initialItem={initialItem} />
+                <ExperimentItemForm
+                  form={form}
+                  index={i}
+                  initialItem={initialItem}
+                />
               </SortableItem>
             );
           })}
@@ -337,11 +371,21 @@ function ExperimentsSortableList({
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ExperimentsArrayField({ form, initialItems }: { form: AnyForm; initialItems: ExperimentItem[] }) {
+export function ExperimentsArrayField({
+  form,
+  initialItems,
+}: {
+  form: AnyForm;
+  initialItems: ExperimentItem[];
+}) {
   return (
     <form.Field name="experiments" mode="array">
       {(field: AnyForm) => (
-        <ExperimentsSortableList form={form} field={field} initialItems={initialItems} />
+        <ExperimentsSortableList
+          form={form}
+          field={field}
+          initialItems={initialItems}
+        />
       )}
     </form.Field>
   );
@@ -351,7 +395,13 @@ export function ExperimentsArrayField({ form, initialItems }: { form: AnyForm; i
  * Convert the API `data` Record format to an array of ExperimentDataEntry for form editing.
  */
 export function experimentDataToEntries(
-  data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>,
+  data: Record<
+    string,
+    {
+      ja: { text: string; rawHtml: string } | null;
+      en: { text: string; rawHtml: string } | null;
+    } | null
+  >,
 ): ExperimentDataEntry[] {
   return Object.entries(data).map(([key, value]) => ({
     key,
@@ -363,9 +413,13 @@ export function experimentDataToEntries(
 /**
  * Convert an array of ExperimentDataEntry back to the API Record format.
  */
-export function entriesToExperimentData(
-  entries: ExperimentDataEntry[],
-): Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null> {
+export function entriesToExperimentData(entries: ExperimentDataEntry[]): Record<
+  string,
+  {
+    ja: { text: string; rawHtml: string } | null;
+    en: { text: string; rawHtml: string } | null;
+  } | null
+> {
   return Object.fromEntries(
     entries.map((e) => [
       e.key,

@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { Button } from "@/components/ui/button";
 import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
@@ -34,19 +33,22 @@ function RouteComponent() {
   const navigate = Route.useNavigate();
   const t = useTranslations("Front");
   return (
-    <Card caption={title} captionSize={"lg"} className="w-[700px] mx-auto">
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
-      <div className="flex justify-center">
-        <Button
-          variant={"action"}
-          size={"lg"}
-          onClick={() => {
-            navigate({ to: "./researches" });
-          }}
-        >
-          {t("data-usage-button")}
-        </Button>
-      </div>
-    </Card>
+    <MarkdownWithTOC
+      title={title}
+      markdownResult={contentHtml}
+      afterContent={
+        <div className="mt-5 flex justify-center">
+          <Button
+            variant={"action"}
+            size={"lg"}
+            onClick={() => {
+              navigate({ to: "./researches" });
+            }}
+          >
+            {t("data-usage-button")}
+          </Button>
+        </div>
+      }
+    />
   );
 }

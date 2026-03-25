@@ -150,5 +150,12 @@ export const getNavConfig = (lang: Locale): NavConfig => {
         params: { lang, _splat: "privacy-policy" },
       },
     },
+    {
+      id: "faq",
+      linkOptions: {
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "faq" },
+      },
+    },
   ];
 };

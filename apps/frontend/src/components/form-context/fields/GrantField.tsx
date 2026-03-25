@@ -41,7 +41,7 @@ export const GrantField = withForm({
         {/* Agency */}
         <fieldset className="flex flex-col gap-2">
           <Label className="text-sm font-medium">Agency</Label>
-          <div className="rounded border p-3">
+          <div className="rounded border border-gray-300 p-3">
             <BilingualTextField
               form={form}
               baseName={`${baseName}.agency.name`}

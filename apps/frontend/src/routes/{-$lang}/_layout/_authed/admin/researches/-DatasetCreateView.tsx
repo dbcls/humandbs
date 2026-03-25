@@ -38,7 +38,7 @@ export function DatasetCreateView({
         data: {
           humId,
           body: {
-            datasetId: undefined,
+            datasetId: values.datasetId || undefined,
             releaseDate: values.releaseDate || undefined,
             criteria: values.criteria as any || undefined,
             typeOfData: values.typeOfData.ja || values.typeOfData.en
@@ -90,6 +90,7 @@ export function DatasetCreateView({
           isSaving={isSaving}
           error={error}
           saveLabel="Create dataset"
+          showDatasetIdField
         />
       </div>
     </div>
