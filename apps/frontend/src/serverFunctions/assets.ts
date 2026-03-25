@@ -2,6 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { write } from "bun";
 import { eq, or } from "drizzle-orm";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
 
 import { db } from "@/db/database";
@@ -12,6 +14,67 @@ const PUBLIC_DIR = "./public";
 const ASSETS_SUBDIR = `files`;
 const ASSET_DIR = `${PUBLIC_DIR}/${ASSETS_SUBDIR}`;
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
+
+export interface AssetHierarchyFile {
+  type: "file";
+  name: string;
+  path: string;
+  url: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface AssetHierarchyFolder {
+  type: "folder";
+  name: string;
+  path: string;
+  children: AssetHierarchyItem[];
+}
+
+export type AssetHierarchyItem = AssetHierarchyFolder | AssetHierarchyFile;
+
+async function readAssetFolder(relativePath = ""): Promise<AssetHierarchyFolder> {
+  const folderPath = path.join(ASSET_DIR, relativePath);
+  const entries = await readdir(folderPath, { withFileTypes: true });
+
+  const children = await Promise.all(
+    entries
+      .sort((a, b) => {
+        if (a.isDirectory() !== b.isDirectory()) {
+          return a.isDirectory() ? -1 : 1;
+        }
+
+        return a.name.localeCompare(b.name);
+      })
+      .map(async (entry): Promise<AssetHierarchyItem> => {
+        const entryRelativePath = relativePath
+          ? path.posix.join(relativePath, entry.name)
+          : entry.name;
+
+        if (entry.isDirectory()) {
+          return readAssetFolder(entryRelativePath);
+        }
+
+        const file = Bun.file(path.join(folderPath, entry.name));
+
+        return {
+          type: "file",
+          name: entry.name,
+          path: entryRelativePath,
+          url: `/${ASSETS_SUBDIR}/${entryRelativePath}`,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+        };
+      }),
+  );
+
+  return {
+    type: "folder",
+    name: relativePath ? path.posix.basename(relativePath) : "files",
+    path: relativePath,
+    children,
+  };
+}
 
 export const $getAsset = createServerFn({ method: "GET" })
   .inputValidator(
@@ -32,6 +95,14 @@ export const $listAssets = createServerFn({ method: "GET" })
     context.checkPermission("assets", "list");
 
     return db.query.asset.findMany();
+  });
+
+export const $getAssetHierarchy = createServerFn({ method: "GET" })
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ context }) => {
+    context.checkPermission("assets", "list");
+
+    return readAssetFolder();
   });
 
 export const $searchAssets = createServerFn({ method: "GET" })
@@ -126,6 +197,13 @@ export function listAssetsQueryOptions() {
   return queryOptions({
     queryKey: ["assets", "list"],
     queryFn: () => $listAssets(),
+  });
+}
+
+export function assetHierarchyQueryOptions() {
+  return queryOptions({
+    queryKey: ["assets", "hierarchy"],
+    queryFn: () => $getAssetHierarchy(),
   });
 }
 
