@@ -11,6 +11,7 @@ import {
   type ResearchSearchBody,
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
+  type VersionCreateResponse,
   type WorkflowResponse,
 } from "@humandbs/backend/types";
 import {
@@ -253,6 +254,46 @@ export const $rejectResearch = createServerFn({ method: "POST" })
       return { ok: true, data: result };
     } catch (error) {
       return handleWorkflowError(error, "Failed to reject research.");
+    }
+  });
+
+export type CreateVersionResult =
+  | { ok: true; data: VersionCreateResponse }
+  | { ok: false; error: string; code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT" };
+
+const CreateVersionInputSchema = z.object({
+  humId: HumIdParamsSchema.shape.humId,
+  releaseNote: z
+    .object({
+      en: z.object({ text: z.string(), rawHtml: z.string() }).nullable(),
+      ja: z.object({ text: z.string(), rawHtml: z.string() }).nullable(),
+    })
+    .optional(),
+});
+
+export const $createResearchVersion = createServerFn({ method: "POST" })
+  .inputValidator(CreateVersionInputSchema)
+  .handler<Promise<CreateVersionResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.createResearchVersion(
+        data.humId,
+        { releaseNote: data.releaseNote ?? undefined },
+        accessToken,
+      );
+      return { ok: true, data: result };
+    } catch (error) {
+      if (error instanceof APIError) {
+        const detail =
+          (error.data as { detail?: string } | undefined)?.detail ??
+          "Failed to create version.";
+        if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
+        if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
+        if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
+        if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+      }
+      throw error;
     }
   });
 

@@ -17,6 +17,7 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { JsonImportExport } from "./-JsonImportExport";
+import { ResearchVersionSelector } from "./-ResearchVersionSelector";
 import { Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
 import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
@@ -46,7 +47,20 @@ export function ResearchDetails({
   onDeselect?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { data } = useSuspenseQuery(getResearchQueryOptions({ humId, lang }));
+
+  // Initial load — no version param to get the default (draftVersion ?? latestVersion)
+  const { data: initialData } = useSuspenseQuery(
+    getResearchQueryOptions({ humId, lang }),
+  );
+
+  const [selectedVersion, setSelectedVersion] = useState(
+    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version,
+  );
+
+  // Re-fetch when selectedVersion changes
+  const { data } = useSuspenseQuery(
+    getResearchQueryOptions({ humId, lang, version: selectedVersion }),
+  );
   const researchValues = data.data;
 
   const [seqNo, setSeqNo] = useState(data.meta._seq_no);
@@ -316,6 +330,9 @@ export function ResearchDetails({
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
 
+  // True only when the selected version is the current draft being edited
+  const isViewingDraft = selectedVersion === researchValues.draftVersion;
+
   // Per-tab dirty state: compare current value of each top-level field to initial
   const dirtyFields = useStore(form.store, (state) => {
     const v = state.values;
@@ -345,6 +362,15 @@ export function ResearchDetails({
           <>
             <span>{researchValues.humId}</span>
             <Tag tag={researchValues.status} size="md" className="ml-3" />
+            <ResearchVersionSelector
+              humId={humId}
+              lang={lang}
+              selectedVersion={selectedVersion}
+              draftVersion={researchValues.draftVersion}
+              latestVersion={researchValues.latestVersion}
+              canNewVersion={canNewVersion}
+              onVersionChange={setSelectedVersion}
+            />
             <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
               Preview
               <Switch
@@ -391,7 +417,7 @@ export function ResearchDetails({
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex items-center gap-2">
               <div className="ml-auto flex items-center gap-2">
-                {canUpdate && (
+                {isViewingDraft && canUpdate && (
                   <Button
                     size="slim"
                     onClick={() => form.handleSubmit()}
@@ -411,17 +437,17 @@ export function ResearchDetails({
                     return !!(v.title?.ja || v.title?.en);
                   }}
                 />
-                {canSubmit && (
+                {isViewingDraft && canSubmit && (
                   <Button variant="outline" size="slim" onClick={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting ? "Submitting…" : "Submit for review"}
                   </Button>
                 )}
-                {canReject && (
+                {isViewingDraft && canReject && (
                   <Button variant="outline" size="slim" onClick={handleReject} disabled={isRejecting}>
                     {isRejecting ? "Rejecting…" : "Reject"}
                   </Button>
                 )}
-                {canApprove && (
+                {isViewingDraft && canApprove && (
                   <Button size="slim" onClick={handleApprove} disabled={isApproving}>
                     {isApproving ? "Approving…" : "Approve"}
                   </Button>
@@ -429,11 +455,6 @@ export function ResearchDetails({
                 {canUnpublish && (
                   <Button variant="outline" size="slim">
                     Unpublish
-                  </Button>
-                )}
-                {canNewVersion && (
-                  <Button variant="outline" size="slim">
-                    New version
                   </Button>
                 )}
                 {canDelete && (
@@ -449,9 +470,11 @@ export function ResearchDetails({
               </div>
             </div>
 
+            <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
+
             {canUpdateUids && (
               <div className="px-5 pt-5">
-                <form.AppField name="uids" mode="array">
+                <form.AppField name="uids" mode="array" disabled={!isViewingDraft}>
                   {(field) => (
                     <fieldset className="flex flex-col gap-2">
                       <Label>User IDs (uids)</Label>
@@ -525,7 +548,10 @@ export function ResearchDetails({
                   </TabsTrigger>
                 </TabsList>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+              <fieldset
+                disabled={!isViewingDraft}
+                className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5 disabled:opacity-60"
+              >
                 <TabsContent value="title">
                   <form.AppField name="title">
                     {(field) => <field.BilingualTextField label="Title" />}
@@ -549,12 +575,39 @@ export function ResearchDetails({
                 <TabsContent value="controlledAccessUser">
                   <ControlledAccessUserArrayField form={form} />
                 </TabsContent>
-              </div>
+              </fieldset>
             </Tabs>
           </>
         )}
       </Card>
     </>
+  );
+}
+
+function ReleaseNoteDisplay({
+  releaseNote,
+}: {
+  releaseNote: { en: { text: string } | null; ja: { text: string } | null } | null | undefined;
+}) {
+  const en = releaseNote?.en?.text;
+  const ja = releaseNote?.ja?.text;
+  if (!en && !ja) return null;
+
+  return (
+    <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
+      {en && (
+        <div className="flex-1">
+          <p className="mb-1 text-xs font-medium uppercase text-gray-400">Release note (En)</p>
+          <p className="whitespace-pre-wrap text-gray-700">{en}</p>
+        </div>
+      )}
+      {ja && (
+        <div className="flex-1">
+          <p className="mb-1 text-xs font-medium uppercase text-gray-400">Release note (Ja)</p>
+          <p className="whitespace-pre-wrap text-gray-700">{ja}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
