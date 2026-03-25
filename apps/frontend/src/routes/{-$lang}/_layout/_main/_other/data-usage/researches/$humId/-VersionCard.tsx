@@ -4,6 +4,7 @@ import {
 } from "@humandbs/backend/types";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
+import { useTranslations } from "use-intl";
 
 import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
@@ -39,6 +40,10 @@ const versionCardLabels = {
     publicationTitle: "タイトル",
     publicationDatasets: "データセット",
     controlledAccessUser: "制限公開データの利用者一覧",
+    datasetId: "Dataset ID",
+    criteria: "Criteria",
+    typeOfData: "Type of data",
+    details: "Details",
   },
   en: {
     releaseInfo: "Release info",
@@ -55,8 +60,15 @@ const versionCardLabels = {
     publicationTitle: "Title",
     publicationDatasets: "Datasets",
     controlledAccessUser: "Controlled access users",
+    datasetId: "Dataset ID",
+    criteria: "Criteria",
+    typeOfData: "Type of data",
+    details: "Details",
   },
 } as const;
+
+type VersionCardLabels =
+  (typeof versionCardLabels)[keyof typeof versionCardLabels];
 
 export function VersionCard({
   versionData,
@@ -66,8 +78,14 @@ export function VersionCard({
   lang?: "ja" | "en";
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
+  const t = useTranslations();
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
-  const labels = versionCardLabels[lang] ?? versionCardLabels[i18n.defaultLocale];
+  const labels =
+    versionCardLabels[lang] ?? versionCardLabels[i18n.defaultLocale];
+  const tableMeta = {
+    lang,
+    t,
+  };
 
   return (
     <CardWithCaption
@@ -113,13 +131,15 @@ export function VersionCard({
         {versionData?.datasets.length === 0 && (
           <div className="bg-foreground-light/10 rounded-sm p-3"> No data</div>
         )}
-        <ul>
-          {versionData?.datasets.map((dataset) => (
-            <li key={dataset.datasetId} className="mb-2">
-              <DatasetInfo dataset={dataset} lang={lang} />
-            </li>
-          ))}
-        </ul>
+        {versionData?.datasets.length > 0 && (
+          <Table
+            columns={makeDatasetColumns(labels)}
+            data={versionData.datasets}
+            className="mt-4"
+            meta={tableMeta}
+            variant="darker"
+          />
+        )}
       </section>
       <Separator className="-mx-4" />
       <section>
@@ -128,7 +148,10 @@ export function VersionCard({
           {versionData?.dataProvider.map((p, i) => {
             return (
               <dl key={i} className="columns-2">
-                <KeyValueCard title={labels.representative} value={p.name[lang]?.text ?? ""} />
+                <KeyValueCard
+                  title={labels.representative}
+                  value={p.name[lang]?.text ?? ""}
+                />
                 <KeyValueCard
                   title={labels.organization}
                   value={p.organization?.name[lang]?.text ?? ""}
@@ -154,7 +177,7 @@ export function VersionCard({
           columns={makePublicationColumns(labels)}
           data={versionData?.relatedPublication || []}
           className="mt-4"
-          meta={{ lang }}
+          meta={tableMeta}
         />
       </section>
       <Separator className="-mx-4" />
@@ -163,14 +186,20 @@ export function VersionCard({
         <Table
           columns={dataUsedByColumns}
           data={versionData?.controlledAccessUser || []}
-          meta={{ lang }}
+          meta={tableMeta}
         />
       </section>
     </CardWithCaption>
   );
 }
 
-function DatasetInfo({ dataset, lang }: { dataset: DatasetDoc; lang: "ja" | "en" | undefined }) {
+function DatasetInfo({
+  dataset,
+  lang,
+}: {
+  dataset: DatasetDoc;
+  lang: "ja" | "en" | undefined;
+}) {
   return (
     <CardWithCaption
       caption={
@@ -222,11 +251,13 @@ function DatasetCaption({
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const resolvedLang = lang ?? routeLang;
   return (
-    <div className="flex justify-between px-3">
+    <div className="flex justify-between px-3 py-2 from bg-linear-to-r rounded-md text-white from-secondary to-secondary-light">
       <div className="flex items-center gap-5">
         <TextWithIcon icon={FA_ICONS.dataset}> {datasetId} </TextWithIcon>
         <span className="text-xs">{criteria}</span>
-        <span className="text-xs">{typeOfData[resolvedLang ?? i18n.defaultLocale]}</span>
+        <span className="text-xs">
+          {typeOfData[resolvedLang ?? i18n.defaultLocale]}
+        </span>
       </div>
 
       <Link
@@ -241,12 +272,63 @@ function DatasetCaption({
   );
 }
 
+const datasetColumnHelper =
+  createColumnHelper<ResearchDetailResponse["data"]["datasets"][number]>();
+
+function makeDatasetColumns(labels: VersionCardLabels) {
+  return [
+    datasetColumnHelper.accessor("datasetId", {
+      id: "datasetId",
+      header: labels.datasetId,
+      cell: (ctx) => (
+        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+          {ctx.getValue()}
+        </TextWithIcon>
+      ),
+      maxSize: 12,
+    }),
+    datasetColumnHelper.accessor("criteria", {
+      id: "criteria",
+      header: labels.criteria,
+      cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
+      maxSize: 10,
+    }),
+    datasetColumnHelper.accessor("typeOfData", {
+      id: "typeOfData",
+      header: labels.typeOfData,
+      cell: (ctx) => (
+        <span className="text-sm">
+          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+        </span>
+      ),
+      maxSize: 14,
+    }),
+    datasetColumnHelper.display({
+      id: "details",
+      header: "",
+      cell: (ctx) => (
+        <div className="flex justify-end">
+          <Link
+            to={"/{-$lang}/data-usage/datasets/$datasetId"}
+            params={{ datasetId: ctx.row.original.datasetId }}
+            className="link-button"
+          >
+            <span>{labels.details}</span>
+            <ArrowIcon className="block" />
+          </Link>
+        </div>
+      ),
+      maxSize: 10,
+    }),
+  ];
+}
+
 const publicationsColumnHelper =
   createColumnHelper<
     ResearchDetailResponse["data"]["relatedPublication"][number]
   >();
 
-function makePublicationColumns(labels: typeof versionCardLabels["ja"]) {
+function makePublicationColumns(labels: VersionCardLabels) {
   return [
     publicationsColumnHelper.accessor("title", {
       id: "title",
@@ -260,7 +342,9 @@ function makePublicationColumns(labels: typeof versionCardLabels["ja"]) {
     publicationsColumnHelper.accessor("doi", {
       id: "DOI",
       header: "DOI",
-      cell: (info) => info.getValue(),
+      cell: (info) => (
+        <span className="break-all text-sm">{info.getValue()}</span>
+      ),
     }),
     publicationsColumnHelper.accessor("datasetIds", {
       id: "datasetIDs",

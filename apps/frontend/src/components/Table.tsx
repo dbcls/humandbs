@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import {
   type ColumnDef,
   type DeepValue,
@@ -17,6 +18,18 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
 
+const tableHeaderRowVariants = cva("rounded bg-linear-to-r text-left text-white", {
+  variants: {
+    variant: {
+      default: "from-secondary-light to-secondary-lighter",
+      darker: "from-secondary to-secondary-light",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
 function Table<T extends Record<string, unknown>>({
   className,
   columns,
@@ -25,6 +38,7 @@ function Table<T extends Record<string, unknown>>({
   onSortingChange,
   onRowClick,
   meta,
+  variant,
 }: {
   className?: string;
   columns: ColumnDef<T, any>[];
@@ -33,6 +47,7 @@ function Table<T extends Record<string, unknown>>({
   onSortingChange?: OnChangeFn<SortingState>;
   onRowClick?: (row: T) => void;
   meta?: TableMeta<T>;
+  variant?: VariantProps<typeof tableHeaderRowVariants>["variant"];
 }) {
   const table = useReactTable({
     data,
@@ -63,7 +78,7 @@ function Table<T extends Record<string, unknown>>({
           return (
             <tr
               key={headerGroup.id}
-              className="from-secondary-light to-secondary-lighter rounded bg-linear-to-r text-left"
+              className={tableHeaderRowVariants({ variant })}
             >
               {headerGroup.headers.map((header) => (
                 <th
