@@ -93,19 +93,19 @@ function DataEntriesTable({
       {entries.length > 0 && (
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b text-left text-gray-500">
-              <th className="pb-1 pr-2 font-medium w-48">Key</th>
-              <th className="pb-1 pr-2 font-medium">En</th>
-              <th className="pb-1 pr-2 font-medium">Ja</th>
-              <th className="pb-1 w-6" />
+            <tr className="border-b border-gray-100 text-left text-gray-400">
+              <th className="pb-2 pr-3 font-medium w-48">Key</th>
+              <th className="pb-2 pr-3 font-medium">En</th>
+              <th className="pb-2 pr-3 font-medium">Ja</th>
+              <th className="pb-2 w-6" />
             </tr>
           </thead>
           <tbody>
             {entries.map((entry, di) => {
               const isKnown = (ALLOWED_EXPERIMENT_KEYS as readonly string[]).includes(entry.key);
               return (
-                <tr key={`${experimentIndex}-${di}`} className="border-b last:border-0">
-                  <td className="py-1 pr-2 align-middle">
+                <tr key={`${experimentIndex}-${di}`} className="border-b border-gray-100 last:border-0">
+                  <td className="py-2 pr-3 align-middle">
                     {isKnown ? (
                       <span className="font-medium text-gray-700">{entry.key}</span>
                     ) : (
@@ -115,33 +115,33 @@ function DataEntriesTable({
                       </span>
                     )}
                   </td>
-                  <td className="py-1 pr-2 align-middle">
+                  <td className="py-2 pr-3 align-middle">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
                       {(f: AnyForm) => (
-                        <input
-                          className="h-7 w-full rounded border bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                        <Input
                           value={f.state.value ?? ""}
                           onChange={(e) => f.handleChange(e.target.value)}
                           onBlur={() => f.handleBlur()}
                           placeholder="En"
+                          className="h-8"
                         />
                       )}
                     </form.AppField>
                   </td>
-                  <td className="py-1 pr-2 align-middle">
+                  <td className="py-2 pr-3 align-middle">
                     <form.AppField name={`experiments[${experimentIndex}].data[${di}].ja.text`}>
                       {(f: AnyForm) => (
-                        <input
-                          className="h-7 w-full rounded border bg-white px-2 text-xs outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                        <Input
                           value={f.state.value ?? ""}
                           onChange={(e) => f.handleChange(e.target.value)}
                           onBlur={() => f.handleBlur()}
                           placeholder="Ja"
+                          className="h-8"
                         />
                       )}
                     </form.AppField>
                   </td>
-                  <td className="py-1 align-middle">
+                  <td className="py-2 align-middle">
                     <button
                       type="button"
                       onClick={() => dataField.removeValue(di)}
@@ -162,13 +162,13 @@ function DataEntriesTable({
           value=""
           onValueChange={(key) => { if (key) handleAddKey(key); }}
         >
-          <SelectTrigger className="h-7 w-48 text-xs text-gray-500">
+          <SelectTrigger size="sm" className="w-52">
             <SelectValue placeholder="+ Add row…" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {availableKeys.map((key) => (
-                <SelectItem key={key} value={key} className="text-xs">
+                <SelectItem key={key} value={key}>
                   {key}
                 </SelectItem>
               ))}
