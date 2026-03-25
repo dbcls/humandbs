@@ -516,7 +516,9 @@ export function ResearchDetails({
               <div className="px-5 pt-5 shrink-0">
                 <TabsList variant="line">
                   <TabsTrigger variant="line" value="metadata">
-                    Research Metadata
+                    <TabLabel dirty={Object.values(dirtyFields).some(Boolean)}>
+                      Research Metadata
+                    </TabLabel>
                   </TabsTrigger>
                   <TabsTrigger variant="line" value="datasets">
                     <TabLabel dirty={datasetDirty}>Datasets</TabLabel>

@@ -29,7 +29,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className="flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm"
+            className={`flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm ${field.state.meta.isDirty ? "bg-yellow-50" : ""}`}
             value={field.state.value?.en?.text ?? ""}
             onChange={(e) =>
               field.handleChange((prev) => ({
@@ -51,6 +51,7 @@ export default function BilingualTextValueField({
             }
             placeholder="En"
             variant="form"
+            className={field.state.meta.isDirty ? "bg-yellow-50" : undefined}
           />
         )}
 
@@ -58,7 +59,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className="flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm"
+            className={`flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm ${field.state.meta.isDirty ? "bg-yellow-50" : ""}`}
             value={field.state.value?.ja?.text ?? ""}
             onChange={(e) =>
               field.setValue((prev) => ({
@@ -80,6 +81,7 @@ export default function BilingualTextValueField({
             }
             placeholder="Ja"
             variant="form"
+            className={field.state.meta.isDirty ? "bg-yellow-50" : undefined}
           />
         )}
       </div>

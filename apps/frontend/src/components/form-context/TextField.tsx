@@ -30,6 +30,7 @@ export default function TextField({
           value={field.state.value ?? ""}
           onChange={(e) => field.handleChange(e.target.value)}
           onBlur={() => field.handleBlur()}
+          className={field.state.meta.isDirty ? "bg-yellow-50" : undefined}
         />
         {afterField}
       </div>

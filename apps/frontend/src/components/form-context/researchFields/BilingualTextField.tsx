@@ -22,7 +22,7 @@ export default function BilingualTextField({
         <Input
           type="text"
           variant="form"
-          className="flex-1"
+          className={`flex-1 ${field.state.meta.isDirty ? "bg-yellow-50" : ""}`}
           value={field.state.value.en ?? ""}
           onChange={(e) =>
             field.handleChange((prev) => ({ ...prev, en: e.target.value }))
@@ -32,7 +32,7 @@ export default function BilingualTextField({
         <Input
           type="text"
           variant="form"
-          className="flex-1"
+          className={`flex-1 ${field.state.meta.isDirty ? "bg-yellow-50" : ""}`}
           value={field.state.value.ja ?? ""}
           onChange={(e) =>
             field.setValue((prev) => ({ ...prev, ja: e.target.value }))
