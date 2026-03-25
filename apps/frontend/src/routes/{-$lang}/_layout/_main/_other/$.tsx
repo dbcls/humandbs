@@ -40,8 +40,13 @@ function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
   return (
-    <Card caption={title} captionSize={"lg"} className="mx-auto w-[800px]">
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
+    <Card className="w-full">
+      <div className="max-w-[800px] mx-auto">
+        <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
+          <h1>{title}</h1>
+        </div>
+        <Markdown contentHtml={contentHtml} />
+      </div>
     </Card>
   );
 }
