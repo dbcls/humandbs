@@ -632,7 +632,7 @@ export function ResearchDetails({
                 </Tabs>
               </TabsContent>
 
-              <TabsContent value="datasets" className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+              <TabsContent forceMount value="datasets" className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
                 {datasetView === null ? (
                   <ResearchDatasetsTab
                     humId={humId}
