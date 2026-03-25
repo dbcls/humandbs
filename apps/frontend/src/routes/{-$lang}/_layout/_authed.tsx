@@ -138,7 +138,10 @@ function RouteComponent() {
 }
 
 function NavPanel() {
-  const { can: canViewCms } = useCan({ resource: "admin-panel", action: "view-cms" });
+  const { can: canViewCms } = useCan({
+    resource: "admin-panel",
+    action: "view-cms",
+  });
 
   return (
     <aside className="flex flex-col gap-5 rounded-md bg-white px-4 py-3">
@@ -195,17 +198,6 @@ function NavPanel() {
         }
         tab="researches"
       />
-      {canViewCms && (
-        <PanelItem
-          title={
-            <span>
-              <User2 className="mr-2 inline size-5 align-middle leading-normal" />
-              Users
-            </span>
-          }
-          tab="users"
-        />
-      )}
     </aside>
   );
 }
