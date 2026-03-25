@@ -23,6 +23,7 @@ function Table<T extends Record<string, unknown>>({
   data,
   sorting,
   onSortingChange,
+  onRowClick,
   meta,
 }: {
   className?: string;
@@ -30,6 +31,7 @@ function Table<T extends Record<string, unknown>>({
   data: T[];
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
+  onRowClick?: (row: T) => void;
   meta?: TableMeta<T>;
 }) {
   const table = useReactTable({
@@ -85,7 +87,11 @@ function Table<T extends Record<string, unknown>>({
       </thead>
       <tbody>
         {table.getRowModel().rows.map((row) => (
-          <tr key={row.id}>
+          <tr
+            key={row.id}
+            onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+            className={onRowClick ? "cursor-pointer hover:bg-gray-50" : undefined}
+          >
             {row.getVisibleCells().map((cell) => (
               <td
                 key={cell.id}

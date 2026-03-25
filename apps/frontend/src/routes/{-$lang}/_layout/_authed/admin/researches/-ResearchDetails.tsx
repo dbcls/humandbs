@@ -43,6 +43,7 @@ import { ResearchProjectArrayField } from "@/components/form-context/researchFie
 import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
 import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
 import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
+import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 
 export function ResearchDetails({
   humId,
@@ -115,6 +116,9 @@ export function ResearchDetails({
   });
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
+
+  // Datasets tab view: null = table, string = editing existing, "new" = creating
+  const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
@@ -625,7 +629,28 @@ export function ResearchDetails({
               </TabsContent>
 
               <TabsContent value="datasets" className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
-                {/* Phase 4: Datasets tab content will be added here */}
+                {datasetView === null ? (
+                  <ResearchDatasetsTab
+                    humId={humId}
+                    research={researchValues}
+                    onSelectDataset={(id) => setDatasetView(id)}
+                    onAddNew={() => setDatasetView("new")}
+                  />
+                ) : (
+                  <div>
+                    {/* Phase 6 & 7: dataset edit/create view */}
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() => setDatasetView(null)}
+                    >
+                      ← Back to Datasets
+                    </button>
+                    <p className="mt-2 text-sm text-gray-500">
+                      {datasetView === "new" ? "New Dataset" : datasetView} — coming soon
+                    </p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </>
