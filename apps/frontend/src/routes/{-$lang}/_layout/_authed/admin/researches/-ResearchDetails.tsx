@@ -45,6 +45,7 @@ import { RelatedPublicationArrayField } from "@/components/form-context/research
 import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
+import { DatasetCreateView } from "./-DatasetCreateView";
 
 export function ResearchDetails({
   humId,
@@ -645,19 +646,11 @@ export function ResearchDetails({
                     onBack={() => setDatasetView(null)}
                   />
                 ) : (
-                  <div>
-                    {/* Phase 7: create view — coming soon */}
-                    <button
-                      type="button"
-                      className="text-sm text-blue-600 hover:underline"
-                      onClick={() => setDatasetView(null)}
-                    >
-                      ← Datasets
-                    </button>
-                    <p className="mt-2 text-sm text-gray-500">
-                      New Dataset — coming soon
-                    </p>
-                  </div>
+                  <DatasetCreateView
+                    humId={humId}
+                    onBack={() => setDatasetView(null)}
+                    onCreated={(id) => setDatasetView(id)}
+                  />
                 )}
               </TabsContent>
             </Tabs>
