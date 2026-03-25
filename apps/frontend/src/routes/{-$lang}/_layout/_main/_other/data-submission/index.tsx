@@ -37,24 +37,28 @@ function RouteComponent() {
   const tCommon = useTranslations("common");
 
   return (
-    <Card caption={title} captionSize={"lg"} className="min-w-[400px] max-w-[700px] mx-auto">
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
-      <PreviousVersionsList
-        documentName={t("data-submission")}
-        slug="/{-$lang}/data-submission"
-        versions={versions}
-      />
-
-      <div className="mx-auto my-5 flex justify-center">
-        <Button
-          className="text-3xl"
-          size="lg"
-          onClick={() => {
-            navigate({ to: "./navigation" });
-          }}
-        >
-          {tCommon("to-", { place: t("data-submission").toLowerCase() })}
-        </Button>
+    <Card className="w-full">
+      <div className="max-w-[800px] mx-auto">
+        <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
+          <h1>{title}</h1>
+        </div>
+        <Markdown contentHtml={contentHtml} />
+        <PreviousVersionsList
+          documentName={t("data-submission")}
+          slug="/{-$lang}/data-submission"
+          versions={versions}
+        />
+        <div className="my-5 flex justify-center">
+          <Button
+            className="text-3xl"
+            size="lg"
+            onClick={() => {
+              navigate({ to: "./navigation" });
+            }}
+          >
+            {tCommon("to-", { place: t("data-submission").toLowerCase() })}
+          </Button>
+        </div>
       </div>
     </Card>
   );
