@@ -2,6 +2,7 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
+import { FrontStatsVisualization } from "@/components/FrontStatsVisualization";
 import { Button } from "@/components/ui/button";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
@@ -57,7 +58,9 @@ function RouteComponent() {
           <News />
         </Card>
       </section>
-      <Card className="overflow-hidden p-0">{/*<Infographics />*/}</Card>
+      <Card className="overflow-hidden p-0">
+        <FrontStatsVisualization />
+      </Card>
     </section>
   );
 }
