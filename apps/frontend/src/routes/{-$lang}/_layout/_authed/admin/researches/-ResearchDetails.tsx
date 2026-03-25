@@ -1,4 +1,5 @@
 import { Card } from "@/components/Card";
+import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -354,6 +355,7 @@ export function ResearchDetails({
   });
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
+  const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
 
   // True only when the selected version is the current draft being edited.
   // researchValues.draftVersion always reflects the current research state —
@@ -435,83 +437,19 @@ export function ResearchDetails({
           </div>
         )}
         {preview ? (
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
-            <VersionCard
-              versionData={previewValues as ResearchDetailResponse["data"]}
-            />
+          <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
+            <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
+              <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+              <VersionCard
+                versionData={previewValues as ResearchDetailResponse["data"]}
+                lang={previewLang}
+              />
+            </div>
           </div>
         ) : (
           <>
-            {/* Workflow action row */}
-            <div className="mx-5 mt-5 flex items-center gap-2">
-              <div className="ml-auto flex items-center gap-2">
-                {isViewingDraft && canUpdate && (
-                  <Button
-                    size="slim"
-                    onClick={() => form.handleSubmit()}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "Saving…" : "Save draft"}
-                  </Button>
-                )}
-                <JsonImportExport
-                  filename={humId}
-                  getValues={() => form.store.state.values}
-                  onImport={(values) =>
-                    form.reset(values as typeof researchValues)
-                  }
-                  hasData={() => {
-                    const v = form.store.state.values;
-                    return !!(v.title?.ja || v.title?.en);
-                  }}
-                />
-                {isViewingDraft && canSubmit && (
-                  <Button
-                    variant="outline"
-                    size="slim"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Submitting…" : "Submit for review"}
-                  </Button>
-                )}
-                {isViewingDraft && canReject && (
-                  <Button
-                    variant="outline"
-                    size="slim"
-                    onClick={handleReject}
-                    disabled={isRejecting}
-                  >
-                    {isRejecting ? "Rejecting…" : "Reject"}
-                  </Button>
-                )}
-                {isViewingDraft && canApprove && (
-                  <Button
-                    variant="action"
-                    size="slim"
-                    onClick={handleApprove}
-                    disabled={isApproving}
-                  >
-                    {isApproving ? "Approving…" : "Approve"}
-                  </Button>
-                )}
-                {canUnpublish && (
-                  <Button variant="outline" size="slim">
-                    Unpublish
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button
-                    type="button"
-                    size="slim"
-                    onClick={handleDelete}
-                  >
-                    Delete
-                  </Button>
-                )}
-              </div>
-            </div>
-
             <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
               <div className="px-5 pt-5 shrink-0">
                 <TabsList variant="line">
@@ -526,7 +464,78 @@ export function ResearchDetails({
                 </TabsList>
               </div>
 
-              <TabsContent value="metadata" className="min-h-0 flex-1 flex flex-col overflow-y-auto">
+              <TabsContent value="metadata" className="min-h-0 flex-1 flex flex-col">
+                {/* Workflow action row */}
+                <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
+                  <div className="ml-auto flex items-center gap-2">
+                    {isViewingDraft && canUpdate && (
+                      <Button
+                        size="slim"
+                        onClick={() => form.handleSubmit()}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? "Saving…" : "Save draft"}
+                      </Button>
+                    )}
+                    <JsonImportExport
+                      filename={humId}
+                      getValues={() => form.store.state.values}
+                      onImport={(values) =>
+                        form.reset(values as typeof researchValues)
+                      }
+                      hasData={() => {
+                        const v = form.store.state.values;
+                        return !!(v.title?.ja || v.title?.en);
+                      }}
+                    />
+                    {isViewingDraft && canSubmit && (
+                      <Button
+                        variant="outline"
+                        size="slim"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Submitting…" : "Submit for review"}
+                      </Button>
+                    )}
+                    {isViewingDraft && canReject && (
+                      <Button
+                        variant="outline"
+                        size="slim"
+                        onClick={handleReject}
+                        disabled={isRejecting}
+                      >
+                        {isRejecting ? "Rejecting…" : "Reject"}
+                      </Button>
+                    )}
+                    {isViewingDraft && canApprove && (
+                      <Button
+                        variant="action"
+                        size="slim"
+                        onClick={handleApprove}
+                        disabled={isApproving}
+                      >
+                        {isApproving ? "Approving…" : "Approve"}
+                      </Button>
+                    )}
+                    {canUnpublish && (
+                      <Button variant="outline" size="slim">
+                        Unpublish
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        type="button"
+                        size="slim"
+                        onClick={handleDelete}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto">
                 <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
 
                 {canUpdateUids && (
@@ -609,7 +618,7 @@ export function ResearchDetails({
                   >
                     <TabsContent value="title">
                       <form.AppField name="title">
-                        {(field) => <field.BilingualTextField />}
+                        {(field) => <field.BilingualTextField variant="textarea" />}
                       </form.AppField>
                     </TabsContent>
                     <TabsContent value="summary">
@@ -632,16 +641,19 @@ export function ResearchDetails({
                     </TabsContent>
                   </fieldset>
                 </Tabs>
+                </div>
               </TabsContent>
 
-              <TabsContent forceMount value="datasets" className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+              <TabsContent forceMount value="datasets" className="min-h-0 flex-1 flex flex-col">
                 {datasetView === null ? (
+                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
                   <ResearchDatasetsTab
                     humId={humId}
                     research={researchValues}
                     onSelectDataset={(id) => setDatasetView(id)}
                     onAddNew={() => setDatasetView("new")}
                   />
+                  </div>
                 ) : datasetView !== "new" ? (
                   <DatasetEditView
                     datasetId={datasetView}

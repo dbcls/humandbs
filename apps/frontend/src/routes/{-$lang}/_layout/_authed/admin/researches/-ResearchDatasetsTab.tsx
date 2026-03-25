@@ -1,4 +1,10 @@
 import { Table, SortHeader } from "@/components/Table";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import { useCan } from "@/hooks/useCan";
 import { $deleteDataset } from "@/serverFunctions/datasets";
@@ -139,9 +145,13 @@ export function ResearchDatasetsTab({
       )}
 
       <div className="flex items-center justify-between">
-        <nav className="text-sm text-gray-500">
-          <span className="font-medium text-gray-800">Datasets</span>
-        </nav>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>Datasets</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <Button
           type="button"
           size="slim"

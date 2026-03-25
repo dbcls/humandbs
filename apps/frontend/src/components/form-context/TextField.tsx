@@ -4,7 +4,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
 import { useFieldContext } from "./FormContext";
-import { deepEqual } from "./fields/useFieldModified";
+import { deepEqual, getFieldDefaultValue } from "./fields/useFieldModified";
 
 export default function TextField({
   label,
@@ -18,7 +18,7 @@ export default function TextField({
   afterField?: React.ReactNode;
 }) {
   const field = useFieldContext<string>();
-  const isModified = !deepEqual(field.state.value, field.options.defaultValue);
+  const isModified = !deepEqual(field.state.value, getFieldDefaultValue(field));
 
   return (
     <Label

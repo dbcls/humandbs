@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { ResearchProjectField } from "@/components/form-context/fields/ResearchProjectField";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
 
@@ -48,6 +49,8 @@ function ResearchProjectSortableList({ form, field }: { form: any; field: any })
   );
 
   const items: ResearchProject[] = field.state.value ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialItems: ResearchProject[] = (field.form.options.defaultValues as any)?.researchProject ?? [];
   const itemIds = useMemo(
     () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +82,7 @@ function ResearchProjectSortableList({ form, field }: { form: any; field: any })
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => field.removeValue(i)}
             >
               <ResearchProjectItemForm

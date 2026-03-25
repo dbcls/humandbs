@@ -4,6 +4,14 @@ import {
   formValuesToDatasetUpdate,
   type DatasetFormValues,
 } from "@/components/form-context/datasetFields/DatasetForm";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/Breadcrumb";
 import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 import { useMutation, useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
@@ -91,9 +99,23 @@ function DatasetEditViewInner({
   });
 
   return (
-    <>
-      <Breadcrumb datasetId={datasetId} onBack={onBack} />
-      <div className="mt-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-5 pt-5">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <button type="button" onClick={onBack}>Datasets</button>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="font-mono">{datasetId}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5">
         <DatasetForm
           defaultValues={defaultValues}
           readOnly={!isDraft}
@@ -105,42 +127,23 @@ function DatasetEditViewInner({
           onDirtyChange={onDirtyChange}
         />
       </div>
-    </>
+    </div>
   );
 }
 
 export function DatasetEditView(props: DatasetEditViewProps) {
   return (
+    <div className="flex min-h-0 flex-1 flex-col">
     <Suspense
       fallback={
-        <div className="text-sm text-gray-400 animate-pulse">
+        <div className="px-5 pt-5 text-sm text-gray-400 animate-pulse">
           Loading dataset…
         </div>
       }
     >
       <DatasetEditViewInner {...props} />
     </Suspense>
+    </div>
   );
 }
 
-function Breadcrumb({
-  datasetId,
-  onBack,
-}: {
-  datasetId: string;
-  onBack: () => void;
-}) {
-  return (
-    <nav className="flex items-center gap-1 text-sm text-gray-500">
-      <button
-        type="button"
-        onClick={onBack}
-        className="hover:text-gray-800 hover:underline"
-      >
-        Datasets
-      </button>
-      <span>/</span>
-      <span className="font-mono font-medium text-gray-800">{datasetId}</span>
-    </nav>
-  );
-}

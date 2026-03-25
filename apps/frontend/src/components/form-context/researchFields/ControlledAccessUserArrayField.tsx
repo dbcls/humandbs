@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { PersonField } from "@/components/form-context/fields/PersonField";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
 
@@ -50,6 +51,8 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
   );
 
   const items: ControlledAccessUser[] = field.state.value ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialItems: ControlledAccessUser[] = (field.form.options.defaultValues as any)?.controlledAccessUser ?? [];
   const itemIds = useMemo(
     () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,6 +84,7 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => field.removeValue(i)}
             >
               <ControlledAccessUserItemForm

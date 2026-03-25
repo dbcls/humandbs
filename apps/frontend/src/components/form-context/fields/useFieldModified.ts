@@ -2,6 +2,30 @@ import { useStore } from "@tanstack/react-form";
 
 import { useFormContext } from "../FormContext";
 
+/**
+ * Navigate an object by a TanStack Form field name path.
+ * Handles both dot notation ("a.b") and bracket notation ("a[0].b").
+ */
+export function getByPath(obj: unknown, path: string): unknown {
+  const parts = path.split(/\.|\[(\d+)\]\.?/).filter(Boolean);
+  let value = obj;
+  for (const part of parts) {
+    if (value === null || value === undefined) return undefined;
+    value = (value as Record<string, unknown>)[part];
+  }
+  return value;
+}
+
+/**
+ * Get the initial (default) value for a field from its form's defaultValues.
+ * Use this instead of field.options.defaultValue, which is only set when
+ * a `defaultValue` prop is explicitly passed to the field component.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getFieldDefaultValue(field: any): unknown {
+  return getByPath(field.form.options.defaultValues, field.name);
+}
+
 // Treat null and undefined as equivalent (optional fields may be absent in
 // server responses but present as null in form state, or vice versa).
 function normalize(v: unknown): unknown {

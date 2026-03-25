@@ -1,5 +1,5 @@
 import { useFieldContext } from "@/components/form-context/FormContext";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { deepEqual, getFieldDefaultValue } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/Input";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
@@ -21,7 +21,7 @@ export default function BilingualTextValueField({
   inputsClassName?: string;
 }) {
   const field = useFieldContext<BilingualTextValue>();
-  const initial = field.options.defaultValue;
+  const initial = getFieldDefaultValue(field) as BilingualTextValue | undefined;
   const isEnModified = !deepEqual(field.state.value?.en?.text, initial?.en?.text);
   const isJaModified = !deepEqual(field.state.value?.ja?.text, initial?.ja?.text);
 

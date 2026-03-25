@@ -4,6 +4,14 @@ import {
   type DatasetFormValues,
 } from "@/components/form-context/datasetFields/DatasetForm";
 import { entriesToExperimentData } from "@/components/form-context/datasetFields/ExperimentsArrayField";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/Breadcrumb";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -58,20 +66,23 @@ export function DatasetCreateView({
   });
 
   return (
-    <>
-      <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <button
-          type="button"
-          onClick={onBack}
-          className="hover:text-gray-800 hover:underline"
-        >
-          Datasets
-        </button>
-        <span>/</span>
-        <span className="font-medium text-gray-800">New Dataset</span>
-      </nav>
-
-      <div className="mt-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-5 pt-5">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <button type="button" onClick={onBack}>Datasets</button>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>New Dataset</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5">
         <DatasetForm
           defaultValues={defaultValues}
           readOnly={false}
@@ -81,6 +92,6 @@ export function DatasetCreateView({
           saveLabel="Create dataset"
         />
       </div>
-    </>
+    </div>
   );
 }

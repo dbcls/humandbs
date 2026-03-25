@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { PublicationField } from "@/components/form-context/fields/PublicationField";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
 
@@ -48,6 +49,8 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
   );
 
   const items: RelatedPublication[] = field.state.value ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialItems: RelatedPublication[] = (field.form.options.defaultValues as any)?.relatedPublication ?? [];
   const itemIds = useMemo(
     () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +82,7 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               id={itemIds[i]!}
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => field.removeValue(i)}
             >
               <RelatedPublicationItemForm

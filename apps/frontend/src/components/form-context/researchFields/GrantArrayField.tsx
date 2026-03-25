@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { GrantField } from "@/components/form-context/fields/GrantField";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
 
@@ -48,6 +49,8 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
   );
 
   const items: Grant[] = field.state.value ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialItems: Grant[] = (field.form.options.defaultValues as any)?.grant ?? [];
   const itemIds = useMemo(
     () => items.map((_: unknown, i: number) => `${dndId}-${i}`),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +82,7 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
               id={itemIds[i]!}
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => field.removeValue(i)}
             >
               <GrantItemForm
