@@ -54,6 +54,10 @@ interface FormData {
   translations: DocVersionResponse["translations"];
 }
 
+function normalizeDocTextValue(value: string | undefined) {
+  return value ?? "";
+}
+
 export function DocumentVersion({ contentId }: { contentId: ContentId }) {
   const {
     selectedVersionContent,
@@ -96,12 +100,20 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
 
   const isDraftChanged = useStore(
     form.store,
-    (state) =>
-      state.isValid &&
-      (state.values.translations[state.values.lang]?.draft?.content !==
-        state.values.translations[state.values.lang]?.published?.content ||
-        state.values.translations[state.values.lang]?.draft?.title !==
-          state.values.translations[state.values.lang]?.published?.title),
+    (state) => {
+      const draft =
+        state.values.translations[state.values.lang]?.draft;
+      const published =
+        state.values.translations[state.values.lang]?.published;
+
+      return (
+        state.isValid &&
+        (normalizeDocTextValue(draft?.content) !==
+          normalizeDocTextValue(published?.content) ||
+          normalizeDocTextValue(draft?.title) !==
+            normalizeDocTextValue(published?.title))
+      );
+    },
   );
 
   return (
