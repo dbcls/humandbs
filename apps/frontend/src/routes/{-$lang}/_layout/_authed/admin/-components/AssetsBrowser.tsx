@@ -24,6 +24,7 @@ import {
   $deleteAssetFolder,
   $uploadAsset,
   type AssetHierarchyFolder,
+  type AssetHierarchyFile,
   type AssetHierarchyItem,
 } from "@/serverFunctions/assets";
 
@@ -81,10 +82,35 @@ function getFolderColumns(
   return columns;
 }
 
-export function AssetsBrowser() {
+function splitFolderPath(path: string) {
+  return path ? path.split("/") : [];
+}
+
+function getParentFolderPath(path: string) {
+  const segments = splitFolderPath(path);
+  segments.pop();
+  return segments.join("/");
+}
+
+function getFolderBaseName(path: string) {
+  const segments = splitFolderPath(path);
+  return segments[segments.length - 1] ?? "";
+}
+
+interface AssetsBrowserProps {
+  mode?: "manage" | "pick";
+  initialFolderPath?: string;
+  onSelectedFileChange?: (file: AssetHierarchyFile | null) => void;
+}
+
+export function AssetsBrowser({
+  mode = "manage",
+  initialFolderPath = "",
+  onSelectedFileChange,
+}: AssetsBrowserProps) {
   const queryClient = useQueryClient();
   const { data: root } = useSuspenseQuery(assetHierarchyQueryOptions());
-  const [selectedFolderPath, setSelectedFolderPath] = useState("");
+  const [selectedFolderPath, setSelectedFolderPath] = useState(initialFolderPath);
   const [selectedItemPath, setSelectedItemPath] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -134,10 +160,28 @@ export function AssetsBrowser() {
   );
 
   const currentFolder = columns[columns.length - 1] ?? root;
+  const selectedFolderExists =
+    selectedFolderPath === "" || currentFolder.path === selectedFolderPath;
 
   const selectedItem =
     currentFolder.children.find((item) => item.path === selectedItemPath) ??
     null;
+
+  const canManageDeletes = mode === "manage";
+
+  const displayFolderPath = selectedFolderPath || "files";
+
+  function handleSelectItem(item: AssetHierarchyItem) {
+    setSelectedItemPath(item.path);
+
+    if (item.type === "folder") {
+      setSelectedFolderPath(item.path);
+      onSelectedFileChange?.(null);
+      return;
+    }
+
+    onSelectedFileChange?.(item);
+  }
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-4">
@@ -158,7 +202,7 @@ export function AssetsBrowser() {
             }}
           >
             <div className="text-sm font-medium">
-              Create folder in <span className="text-secondary">{selectedFolderPath || "files"}</span>
+              Create folder in <span className="text-secondary">{displayFolderPath}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -188,7 +232,7 @@ export function AssetsBrowser() {
             }}
           >
             <div className="text-sm font-medium">
-              Upload to <span className="text-secondary">{selectedFolderPath || "files"}</span>
+              Upload to <span className="text-secondary">{displayFolderPath}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -205,6 +249,29 @@ export function AssetsBrowser() {
             </div>
           </form>
         </div>
+
+        {!selectedFolderExists && selectedFolderPath ? (
+          <div className="mt-4 flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
+            <div>
+              Folder <span className="font-medium">{selectedFolderPath}</span> does not exist yet.
+            </div>
+            <Button
+              disabled={isCreatingFolder}
+              variant="outline"
+              onClick={() =>
+                createFolder({
+                  data: {
+                    parentPath: getParentFolderPath(selectedFolderPath),
+                    folderName: getFolderBaseName(selectedFolderPath),
+                  },
+                })
+              }
+            >
+              <FolderPlus className="mr-2 size-4" />
+              Create this folder
+            </Button>
+          </div>
+        ) : null}
       </Card>
 
       <div className="flex min-h-0 flex-1 gap-4">
@@ -235,11 +302,7 @@ export function AssetsBrowser() {
                             isActive ? "bg-secondary-light text-white" : "hover:bg-hover",
                           )}
                           onClick={() => {
-                            setSelectedItemPath(item.path);
-
-                            if (item.type === "folder") {
-                              setSelectedFolderPath(item.path);
-                            }
+                            handleSelectItem(item);
                           }}
                         >
                           {item.type === "folder" ? (
@@ -344,16 +407,18 @@ export function AssetsBrowser() {
                     <CopyIcon className="mr-2 size-4" />
                     Copy URL
                   </Button>
-                  <Button
-                    disabled={isDeletingAsset}
-                    variant="outline"
-                    onClick={() =>
-                      deleteAssetByPath({ data: { assetPath: selectedItem.path } })
-                    }
-                  >
-                    <Trash2Icon className="mr-2 size-4" />
-                    Delete file
-                  </Button>
+                  {canManageDeletes ? (
+                    <Button
+                      disabled={isDeletingAsset}
+                      variant="outline"
+                      onClick={() =>
+                        deleteAssetByPath({ data: { assetPath: selectedItem.path } })
+                      }
+                    >
+                      <Trash2Icon className="mr-2 size-4" />
+                      Delete file
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </div>
