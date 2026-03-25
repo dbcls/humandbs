@@ -58,11 +58,15 @@ export function NewVersionDialog({
             ? { ...old, data: [...old.data, newVersionDoc] }
             : old,
       );
-      // Invalidate in the background to sync with server truth
-      queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
-      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
-      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
       onVersionCreated(newVersionDoc.version);
+      // Defer invalidations so they don't race against the optimistic patch above.
+      // The selector re-renders with the new version selected first, then the
+      // background refetches sync with the server.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
+        queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+        queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+      }, 0);
       onOpenChange(false);
       setEnText("");
       setJaText("");
