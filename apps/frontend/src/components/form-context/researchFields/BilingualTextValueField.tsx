@@ -1,4 +1,5 @@
 import { useFieldContext } from "@/components/form-context/FormContext";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/Input";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
@@ -20,6 +21,9 @@ export default function BilingualTextValueField({
   inputsClassName?: string;
 }) {
   const field = useFieldContext<BilingualTextValue>();
+  const initial = field.options.defaultValue;
+  const isEnModified = !deepEqual(field.state.value?.en?.text, initial?.en?.text);
+  const isJaModified = !deepEqual(field.state.value?.ja?.text, initial?.ja?.text);
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -29,7 +33,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className={`flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm ${field.state.meta.isDirty ? "bg-yellow-50" : ""}`}
+            className={`flex-1 resize-none rounded-lg px-3 py-2 text-sm ${isEnModified ? "bg-yellow-50" : "bg-primary"}`}
             value={field.state.value?.en?.text ?? ""}
             onChange={(e) =>
               field.handleChange((prev) => ({
@@ -51,7 +55,7 @@ export default function BilingualTextValueField({
             }
             placeholder="En"
             variant="form"
-            className={field.state.meta.isDirty ? "bg-yellow-50" : undefined}
+            className={isEnModified ? "bg-yellow-50" : undefined}
           />
         )}
 
@@ -59,7 +63,7 @@ export default function BilingualTextValueField({
           <TextareaAutosize
             minRows={5}
             maxRows={5}
-            className={`flex-1 resize-none rounded-lg bg-primary px-3 py-2 text-sm ${field.state.meta.isDirty ? "bg-yellow-50" : ""}`}
+            className={`flex-1 resize-none rounded-lg px-3 py-2 text-sm ${isJaModified ? "bg-yellow-50" : "bg-primary"}`}
             value={field.state.value?.ja?.text ?? ""}
             onChange={(e) =>
               field.setValue((prev) => ({
@@ -81,7 +85,7 @@ export default function BilingualTextValueField({
             }
             placeholder="Ja"
             variant="form"
-            className={field.state.meta.isDirty ? "bg-yellow-50" : undefined}
+            className={isJaModified ? "bg-yellow-50" : undefined}
           />
         )}
       </div>
