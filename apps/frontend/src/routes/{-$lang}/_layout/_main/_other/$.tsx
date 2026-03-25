@@ -1,15 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
-import { contentIdSchema } from "@/config/content-config";
-import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import { $getContentItemTranslation } from "@/serverFunctions/contentItem";
-import {
-  $getLatestDocumentOrContent,
-  $getLatestPublishedDocumentVersion,
-} from "@/serverFunctions/documentVersion";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
+import { $getLatestDocumentOrContent } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
@@ -39,14 +32,5 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
-  return (
-    <Card className="w-full">
-      <div className="max-w-[800px] mx-auto">
-        <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
-          <h1>{title}</h1>
-        </div>
-        <Markdown contentHtml={contentHtml} />
-      </div>
-    </Card>
-  );
+  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
 }

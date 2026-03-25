@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
-import { TOC } from "@/components/TOC";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { CONTENT_IDS } from "@/config/content-config";
 import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
@@ -23,7 +21,7 @@ export const Route = createFileRoute(
 
     return {
       contentHtml,
-      title: context.messages?.Navbar?.[params.slug],
+      title: context.messages?.Navbar?.[params.slug] ?? null,
       crumb: data?.title,
     };
   },
@@ -32,17 +30,5 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
 
-  return (
-    <Card className="w-full">
-      <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
-        <TOC headings={contentHtml.headings} />
-        <div className="flex-1 min-w-0">
-          <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
-            <h1>{title}</h1>
-          </div>
-          <Markdown contentHtml={contentHtml} />
-        </div>
-      </div>
-    </Card>
-  );
+  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
 }

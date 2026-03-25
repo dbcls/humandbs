@@ -1,16 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
-import { Card } from "@/components/Card";
-import { Markdown } from "@/components/Merkdown";
-import { PreviousVersionsList } from "@/components/PreviousVersionsList";
-import { TOC } from "@/components/TOC";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import {
   $getLatestPublishedDocumentVersion,
   $getPublishedDocumentVersionList,
 } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
-import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/guidelines/",

@@ -44,7 +44,6 @@ function RouteComponent() {
         </div>
         <Markdown contentHtml={contentHtml} />
         <PreviousVersionsList
-          documentName={t("data-submission")}
           slug="/{-$lang}/data-submission"
           versions={versions}
         />

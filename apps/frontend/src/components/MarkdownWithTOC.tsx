@@ -15,7 +15,7 @@ export function MarkdownWithTOC({
   previousVersions?: DocPublishedVersionListItemResponse[];
 }) {
   return (
-    <Card className="w-full" containerClassName="py-8">
+    <Card className="w-full py-6">
       <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
         <TOC headings={markdownResult.headings} />
         <div className="flex-1 min-w-0">

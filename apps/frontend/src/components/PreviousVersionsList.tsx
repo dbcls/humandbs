@@ -19,7 +19,7 @@ export function PreviousVersionsList({
   const tCommon = useTranslations("common");
   const docId = slug.split("/").at(-1)!;
 
-  const tNav = useTranslations("docId");
+  const tNav = useTranslations("Navbar");
 
   const documentName = tNav(docId ?? "");
 
