@@ -42,15 +42,17 @@ export function NewVersionDialog({
               : undefined,
         },
       }),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
+      const newVersion = result.data.data.version;
+      // Await versions refetch so the selector has the new entry before we select it
+      await queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
       queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      onVersionCreated(result.data.data.version);
+      onVersionCreated(newVersion);
       onOpenChange(false);
       setEnText("");
       setJaText("");
