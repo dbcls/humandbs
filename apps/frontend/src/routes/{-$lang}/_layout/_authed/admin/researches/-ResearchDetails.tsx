@@ -20,8 +20,15 @@ import { JsonImportExport } from "./-JsonImportExport";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
 import { Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
-import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
-import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import type {
+  ResearchDetailResponse,
+  ResearchStatus,
+} from "@humandbs/backend/types";
+import {
+  useMutation,
+  useQueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Trash2 } from "lucide-react";
@@ -54,7 +61,9 @@ export function ResearchDetails({
   );
 
   const [selectedVersion, setSelectedVersion] = useState(
-    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version,
+    initialData.data.draftVersion ??
+      initialData.data.latestVersion ??
+      initialData.data.version,
   );
 
   // Re-fetch when selectedVersion changes
@@ -203,20 +212,27 @@ export function ResearchDetails({
     });
     queryClient.setQueriesData<ResearchDetailResponse>(
       { queryKey: ["researches", "byId"] },
-      (old) => old ? { ...old, data: { ...old.data, status: targetStatus } } : old,
+      (old) =>
+        old ? { ...old, data: { ...old.data, status: targetStatus } } : old,
     );
 
     // Patch list (infinite) cache — filter-aware
     // Query key shape: ["researches", "list", "infinite", { status?, ... }]
-    type InfiniteData = { pages: Array<{ data: Array<{ humId: string; status?: ResearchStatus }> }>; pageParams: unknown[] };
+    type InfiniteData = {
+      pages: Array<{ data: Array<{ humId: string; status?: ResearchStatus }> }>;
+      pageParams: unknown[];
+    };
     const previousList = queryClient.getQueriesData<InfiniteData>({
       queryKey: ["researches", "list"],
     });
     previousList.forEach(([key, old]) => {
       if (!old) return;
-      const params = (key as unknown[])[3] as { status?: ResearchStatus } | undefined;
+      const params = (key as unknown[])[3] as
+        | { status?: ResearchStatus }
+        | undefined;
       const filterStatus = params?.status; // undefined = "all"
-      const matchesFilter = filterStatus === undefined || filterStatus === targetStatus;
+      const matchesFilter =
+        filterStatus === undefined || filterStatus === targetStatus;
       queryClient.setQueryData<InfiniteData>(key, {
         ...old,
         pages: old.pages.map((page) => ({
@@ -304,7 +320,8 @@ export function ResearchDetails({
   function handleApprove() {
     openConfirmation({
       title: "Approve research?",
-      description: "This will publish the research and make it publicly visible.",
+      description:
+        "This will publish the research and make it publicly visible.",
       actionLabel: "Approve",
       onAction: () => approveResearch(),
     });
@@ -441,17 +458,31 @@ export function ResearchDetails({
                   }}
                 />
                 {isViewingDraft && canSubmit && (
-                  <Button variant="outline" size="slim" onClick={handleSubmit} disabled={isSubmitting}>
+                  <Button
+                    variant="outline"
+                    size="slim"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Submitting…" : "Submit for review"}
                   </Button>
                 )}
                 {isViewingDraft && canReject && (
-                  <Button variant="outline" size="slim" onClick={handleReject} disabled={isRejecting}>
+                  <Button
+                    variant="outline"
+                    size="slim"
+                    onClick={handleReject}
+                    disabled={isRejecting}
+                  >
                     {isRejecting ? "Rejecting…" : "Reject"}
                   </Button>
                 )}
                 {isViewingDraft && canApprove && (
-                  <Button size="slim" onClick={handleApprove} disabled={isApproving}>
+                  <Button
+                    size="slim"
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                  >
                     {isApproving ? "Approving…" : "Approve"}
                   </Button>
                 )}
@@ -473,11 +504,16 @@ export function ResearchDetails({
               </div>
             </div>
 
+            <div className="min-h-0 flex-1 overflow-y-auto flex flex-col">
             <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
 
             {canUpdateUids && (
               <div className="px-5 pt-5">
-                <form.AppField name="uids" mode="array" disabled={!isViewingDraft}>
+                <form.AppField
+                  name="uids"
+                  mode="array"
+                  disabled={!isViewingDraft}
+                >
                   {(field) => (
                     <fieldset className="flex flex-col gap-2">
                       <Label>User IDs (uids)</Label>
@@ -513,7 +549,7 @@ export function ResearchDetails({
 
             <Tabs
               defaultValue="title"
-              className="mt-5 flex flex-col flex-1 min-h-0"
+              className="mt-5 flex flex-col"
             >
               <div className="overflow-x-auto px-5 shrink-0">
                 <TabsList variant="line">
@@ -553,11 +589,11 @@ export function ResearchDetails({
               </div>
               <fieldset
                 disabled={!isViewingDraft}
-                className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5 disabled:opacity-60"
+                className="px-5 pt-5 pb-5 disabled:opacity-60"
               >
                 <TabsContent value="title">
                   <form.AppField name="title">
-                    {(field) => <field.BilingualTextField label="Title" />}
+                    {(field) => <field.BilingualTextField />}
                   </form.AppField>
                 </TabsContent>
                 <TabsContent value="summary">
@@ -580,6 +616,7 @@ export function ResearchDetails({
                 </TabsContent>
               </fieldset>
             </Tabs>
+            </div>
           </>
         )}
       </Card>
@@ -590,7 +627,10 @@ export function ResearchDetails({
 function ReleaseNoteDisplay({
   releaseNote,
 }: {
-  releaseNote: { en: { text: string } | null; ja: { text: string } | null } | null | undefined;
+  releaseNote:
+    | { en: { text: string } | null; ja: { text: string } | null }
+    | null
+    | undefined;
 }) {
   const en = releaseNote?.en?.text;
   const ja = releaseNote?.ja?.text;
@@ -600,13 +640,17 @@ function ReleaseNoteDisplay({
     <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
       {en && (
         <div className="flex-1">
-          <p className="mb-1 text-xs font-medium uppercase text-gray-400">Release note (En)</p>
+          <p className="mb-1 text-xs font-medium uppercase text-gray-400">
+            Release note (En)
+          </p>
           <p className="whitespace-pre-wrap text-gray-700">{en}</p>
         </div>
       )}
       {ja && (
         <div className="flex-1">
-          <p className="mb-1 text-xs font-medium uppercase text-gray-400">Release note (Ja)</p>
+          <p className="mb-1 text-xs font-medium uppercase text-gray-400">
+            Release note (Ja)
+          </p>
           <p className="whitespace-pre-wrap text-gray-700">{ja}</p>
         </div>
       )}
