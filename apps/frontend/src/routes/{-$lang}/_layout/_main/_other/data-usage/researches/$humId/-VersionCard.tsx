@@ -24,51 +24,26 @@ import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
 import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
-const versionCardLabels = {
-  ja: {
-    releaseInfo: "リリース情報",
-    researchOverview: "研究概要",
-    aims: "目的:",
-    methods: "方法:",
-    targets: "対象:",
-    datasets: "データセット",
-    dataProvider: "提供者情報",
-    representative: "代表者",
-    organization: "所属機関",
-    researchTitle: "プロジェクト/研究グループ名",
-    relatedPublication: "関連論文",
-    publicationTitle: "タイトル",
-    publicationDatasets: "データセット",
-    controlledAccessUser: "制限公開データの利用者一覧",
-    datasetId: "Dataset ID",
-    criteria: "Criteria",
-    typeOfData: "Type of data",
-    details: "Details",
-  },
-  en: {
-    releaseInfo: "Release info",
-    researchOverview: "Research overview",
-    aims: "Aims:",
-    methods: "Methods:",
-    targets: "Targets:",
-    datasets: "Datasets",
-    dataProvider: "Data provider",
-    representative: "Representative",
-    organization: "Organization",
-    researchTitle: "Project / research group name",
-    relatedPublication: "Related publications",
-    publicationTitle: "Title",
-    publicationDatasets: "Datasets",
-    controlledAccessUser: "Controlled access users",
-    datasetId: "Dataset ID",
-    criteria: "Criteria",
-    typeOfData: "Type of data",
-    details: "Details",
-  },
-} as const;
-
-type VersionCardLabels =
-  (typeof versionCardLabels)[keyof typeof versionCardLabels];
+type VersionCardLabels = {
+  releaseInfo: string;
+  researchOverview: string;
+  aims: string;
+  methods: string;
+  targets: string;
+  datasets: string;
+  dataProvider: string;
+  representative: string;
+  organization: string;
+  researchTitle: string;
+  relatedPublication: string;
+  publicationTitle: string;
+  publicationDatasets: string;
+  controlledAccessUser: string;
+  datasetId: string;
+  criteria: string;
+  typeOfData: string;
+  details: string;
+};
 
 export function VersionCard({
   versionData,
@@ -78,13 +53,32 @@ export function VersionCard({
   lang?: "ja" | "en";
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const t = useTranslations();
+  const tableT = useTranslations();
+  const t = useTranslations("VersionCard");
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
-  const labels =
-    versionCardLabels[lang] ?? versionCardLabels[i18n.defaultLocale];
+  const labels = {
+    releaseInfo: t("releaseInfo"),
+    researchOverview: t("researchOverview"),
+    aims: t("aims"),
+    methods: t("methods"),
+    targets: t("targets"),
+    datasets: t("datasets"),
+    dataProvider: t("dataProvider"),
+    representative: t("representative"),
+    organization: t("organization"),
+    researchTitle: t("researchTitle"),
+    relatedPublication: t("relatedPublication"),
+    publicationTitle: t("publicationTitle"),
+    publicationDatasets: t("publicationDatasets"),
+    controlledAccessUser: t("controlledAccessUser"),
+    datasetId: t("datasetId"),
+    criteria: t("criteria"),
+    typeOfData: t("typeOfData"),
+    details: t("details"),
+  };
   const tableMeta = {
     lang,
-    t,
+    t: tableT,
   };
 
   return (
