@@ -19,8 +19,8 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { JsonImportExport } from "./-JsonImportExport";
 import { Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
-import type { ResearchDetailResponse } from "@humandbs/backend/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
+import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Trash2 } from "lucide-react";
@@ -179,39 +179,101 @@ export function ResearchDetails({
     });
   }
 
-  function makeWorkflowMutation(
-    fn: (args: { data: { humId: string } }) => Promise<WorkflowActionResult>,
-    errorMessage: string,
-  ) {
-    return useMutation({
-      mutationFn: () => fn({ data: { humId } }),
-      onSuccess: (result: WorkflowActionResult) => {
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
-        setError(null);
-        queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
-        queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      },
-      onError: (err: Error) => {
-        setError(err.message ?? errorMessage);
-      },
+  async function optimisticallySetStatus(targetStatus: ResearchStatus) {
+    await queryClient.cancelQueries({ queryKey: ["researches", "byId"] });
+    await queryClient.cancelQueries({ queryKey: ["researches", "list"] });
+
+    // Patch byId cache
+    const previousById = queryClient.getQueriesData<ResearchDetailResponse>({
+      queryKey: ["researches", "byId"],
     });
+    queryClient.setQueriesData<ResearchDetailResponse>(
+      { queryKey: ["researches", "byId"] },
+      (old) => old ? { ...old, data: { ...old.data, status: targetStatus } } : old,
+    );
+
+    // Patch list (infinite) cache
+    type InfiniteData = { pages: Array<{ data: Array<{ humId: string; status?: ResearchStatus }> }>; pageParams: unknown[] };
+    const previousList = queryClient.getQueriesData<InfiniteData>({
+      queryKey: ["researches", "list"],
+    });
+    queryClient.setQueriesData<InfiniteData>(
+      { queryKey: ["researches", "list"] },
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            data: page.data.map((r) =>
+              r.humId === humId ? { ...r, status: targetStatus } : r,
+            ),
+          })),
+        };
+      },
+    );
+
+    return { previousById, previousList };
   }
 
-  const { mutate: submitResearch, isPending: isSubmitting } = makeWorkflowMutation(
-    $submitResearch,
-    "Failed to submit research.",
-  );
-  const { mutate: approveResearch, isPending: isApproving } = makeWorkflowMutation(
-    $approveResearch,
-    "Failed to approve research.",
-  );
-  const { mutate: rejectResearch, isPending: isRejecting } = makeWorkflowMutation(
-    $rejectResearch,
-    "Failed to reject research.",
-  );
+  function rollbackStatus(
+    previousById: [QueryKey, ResearchDetailResponse | undefined][],
+    previousList: [QueryKey, unknown][],
+  ) {
+    previousById.forEach(([key, data]) => queryClient.setQueryData(key, data));
+    previousList.forEach(([key, data]) => queryClient.setQueryData(key, data));
+  }
+
+  const { mutate: submitResearch, isPending: isSubmitting } = useMutation({
+    mutationFn: () => $submitResearch({ data: { humId } }),
+    onMutate: () => optimisticallySetStatus("review"),
+    onSuccess: (result) => {
+      if (!result.ok) setError(result.error);
+      else setError(null);
+    },
+    onError: (err: Error, _v, context) => {
+      if (context) rollbackStatus(context.previousById, context.previousList);
+      setError(err.message ?? "Failed to submit research.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+    },
+  });
+
+  const { mutate: approveResearch, isPending: isApproving } = useMutation({
+    mutationFn: () => $approveResearch({ data: { humId } }),
+    onMutate: () => optimisticallySetStatus("published"),
+    onSuccess: (result) => {
+      if (!result.ok) setError(result.error);
+      else setError(null);
+    },
+    onError: (err: Error, _v, context) => {
+      if (context) rollbackStatus(context.previousById, context.previousList);
+      setError(err.message ?? "Failed to approve research.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+    },
+  });
+
+  const { mutate: rejectResearch, isPending: isRejecting } = useMutation({
+    mutationFn: () => $rejectResearch({ data: { humId } }),
+    onMutate: () => optimisticallySetStatus("draft"),
+    onSuccess: (result) => {
+      if (!result.ok) setError(result.error);
+      else setError(null);
+    },
+    onError: (err: Error, _v, context) => {
+      if (context) rollbackStatus(context.previousById, context.previousList);
+      setError(err.message ?? "Failed to reject research.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
+    },
+  });
 
   function handleSubmit() {
     openConfirmation({
