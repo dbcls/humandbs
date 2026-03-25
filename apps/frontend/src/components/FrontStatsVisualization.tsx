@@ -700,9 +700,35 @@ export function FrontStatsVisualization() {
 
   return (
     <section className="front-stats">
-      {loading && <p className="front-stats__message">Loading stats...</p>}
+      {loading ? <StatsLoader /> : null}
       {error && <p className="front-stats__message front-stats__message--error">{error}</p>}
       {stats ? <PlanetChart stats={stats} /> : null}
     </section>
+  );
+}
+
+function StatsLoader() {
+  return (
+    <div className="front-stats__loader" aria-label="Loading stats visualization">
+      <div className="front-stats__loader-space">
+        <div className="front-stats__loader-core">
+          <span className="front-stats__loader-core-count">...</span>
+          <span className="front-stats__loader-core-label">Loading</span>
+        </div>
+
+        <div className="front-stats__loader-orbit front-stats__loader-orbit--1">
+          <span className="front-stats__loader-planet front-stats__loader-planet--1" />
+        </div>
+        <div className="front-stats__loader-orbit front-stats__loader-orbit--2">
+          <span className="front-stats__loader-planet front-stats__loader-planet--2" />
+        </div>
+        <div className="front-stats__loader-orbit front-stats__loader-orbit--3">
+          <span className="front-stats__loader-planet front-stats__loader-planet--3" />
+        </div>
+        <div className="front-stats__loader-orbit front-stats__loader-orbit--4">
+          <span className="front-stats__loader-planet front-stats__loader-planet--4" />
+        </div>
+      </div>
+    </div>
   );
 }
