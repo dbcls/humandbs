@@ -29,7 +29,9 @@ import {
 } from "@/serverFunctions/assets";
 
 function isImageFile(item: Extract<AssetHierarchyItem, { type: "file" }>) {
-  return item.mimeType.startsWith("image/");
+  if (item.mimeType.startsWith("image/")) return true;
+
+  return /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(item.name);
 }
 
 function getFolderSegments(path: string) {
@@ -297,67 +299,80 @@ export function AssetsBrowser({
         ) : null}
       </Card>
 
-      <div className="flex min-h-0 flex-1 gap-4">
-      <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-        {columns.map((folder) => (
-          <Card
-            key={folder.path || "__root__"}
-            className="flex min-h-0 flex-col p-3"
-            caption={folder.path || "files"}
-            captionSize="sm"
-          >
-            <div className="min-h-0 overflow-y-auto">
-              <ul className="space-y-1">
-                {folder.children.length === 0 ? (
-                  <li className="rounded-sm border border-dashed p-3 text-sm text-gray-500">
-                    Empty folder
-                  </li>
-                ) : (
-                  folder.children.map((item) => {
-                    const isActive = item.path === selectedItemPath;
-
-                    return (
-                      <li key={item.path}>
-                        <Button
-                          variant="plain"
-                          className={cn(
-                            "flex w-full items-center justify-start gap-2 rounded-sm px-3 py-2 text-left",
-                            isActive ? "bg-secondary-light text-white" : "hover:bg-hover",
-                          )}
-                          onClick={() => {
-                            handleSelectItem(item);
-                          }}
-                        >
-                          {item.type === "folder" ? (
-                            <>
-                              <Folder className="size-4 shrink-0" />
-                              <span className="min-w-0 flex-1 truncate">
-                                {item.name}
-                              </span>
-                              <ChevronRight className="size-4 shrink-0" />
-                            </>
-                          ) : (
-                            <>
-                              {isImageFile(item) ? (
-                                <ImageIcon className="size-4 shrink-0" />
-                              ) : (
-                                <FileText className="size-4 shrink-0" />
-                              )}
-                              <span className="min-w-0 truncate">{item.name}</span>
-                            </>
-                          )}
-                        </Button>
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="flex min-h-0 h-full gap-3">
+            {columns.map((folder) => (
+              <Card
+                key={folder.path || "__root__"}
+                className="flex min-h-0 w-[260px] shrink-0 flex-col p-3"
+                caption={folder.path || "files"}
+                captionSize="sm"
+              >
+                <div className="min-h-0 overflow-y-auto">
+                  <ul className="space-y-1">
+                    {folder.children.length === 0 ? (
+                      <li className="rounded-sm border border-dashed p-3 text-sm text-gray-500">
+                        Empty folder
                       </li>
-                    );
-                  })
-                )}
-              </ul>
-            </div>
-          </Card>
-        ))}
-      </div>
+                    ) : (
+                      folder.children.map((item) => {
+                        const isActive = item.path === selectedItemPath;
 
-      <Card className="flex w-[320px] shrink-0 flex-col p-4" caption="Details">
+                        return (
+                          <li key={item.path}>
+                            <Button
+                              variant="plain"
+                              className={cn(
+                                "flex w-full items-center justify-start gap-2 rounded-sm px-3 py-2 text-left",
+                                isActive
+                                  ? "bg-secondary-light text-white"
+                                  : "hover:bg-hover",
+                              )}
+                              onClick={() => {
+                                handleSelectItem(item);
+                              }}
+                            >
+                              {item.type === "folder" ? (
+                                <>
+                                  <Folder className="size-4 shrink-0" />
+                                  <span className="min-w-0 flex-1 truncate">
+                                    {item.name}
+                                  </span>
+                                  <ChevronRight className="size-4 shrink-0" />
+                                </>
+                              ) : (
+                                <>
+                                  {isImageFile(item) ? (
+                                    <span className="bg-primary flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border">
+                                      <img
+                                        src={item.url}
+                                        alt={item.name}
+                                        className="size-full object-cover"
+                                      />
+                                    </span>
+                                  ) : (
+                                    <FileText className="size-4 shrink-0" />
+                                  )}
+                                  <span className="min-w-0 truncate">{item.name}</span>
+                                </>
+                              )}
+                            </Button>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ul>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        <Card
+          className="flex min-h-0 w-[300px] shrink-0 flex-col p-4 xl:w-[340px]"
+          caption="Details"
+        >
         {selectedItem ? (
           selectedItem.type === "folder" ? (
             <div className="space-y-3 text-sm">
@@ -451,7 +466,7 @@ export function AssetsBrowser({
             Select a folder or file
           </div>
         )}
-      </Card>
+        </Card>
       </div>
     </section>
   );

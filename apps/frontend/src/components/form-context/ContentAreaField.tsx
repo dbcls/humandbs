@@ -94,12 +94,12 @@ export default function ContentAreaField({
           }
         }}
       >
-        <DialogContent className="max-w-[1200px]">
+        <DialogContent className="flex h-[90vh] max-h-[90vh] w-[calc(100vw-2rem)] max-w-[1400px] flex-col overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:max-w-[1400px] sm:p-6">
           <DialogHeader>
             <DialogTitle>Attach asset</DialogTitle>
           </DialogHeader>
 
-          <div className="h-[70vh] min-h-0">
+          <div className="min-h-0 flex-1 overflow-hidden">
             <Suspense fallback={<AssetsBrowserFallback />}>
               <AssetsBrowser
                 mode="pick"
