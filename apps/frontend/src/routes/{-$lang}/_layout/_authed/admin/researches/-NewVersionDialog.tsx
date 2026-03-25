@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { $createResearchVersion } from "@/serverFunctions/researches";
+import type { ResearchVersionsListResponse } from "@humandbs/backend/types";
 
 export function NewVersionDialog({
   humId,
@@ -42,17 +43,26 @@ export function NewVersionDialog({
               : undefined,
         },
       }),
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      const newVersion = result.data.data.version;
-      // Await versions refetch so the selector has the new entry before we select it
-      await queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
+      const newVersionDoc = result.data.data;
+      // Optimistically append the new version to all cached version lists so the
+      // selector has it immediately when we call onVersionCreated below.
+      queryClient.setQueriesData<ResearchVersionsListResponse>(
+        { queryKey: ["researches", "versions"] },
+        (old) =>
+          old
+            ? { ...old, data: [...old.data, newVersionDoc] }
+            : old,
+      );
+      // Invalidate in the background to sync with server truth
+      queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
       queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      onVersionCreated(newVersion);
+      onVersionCreated(newVersionDoc.version);
       onOpenChange(false);
       setEnText("");
       setJaText("");
