@@ -2,33 +2,31 @@ import { useStore } from "@tanstack/react-form";
 
 import { useFormContext } from "../FormContext";
 
-export function deepEqual(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) return true;
-  if (
-    a === null ||
-    b === null ||
-    typeof a !== "object" ||
-    typeof b !== "object"
-  )
-    return false;
+// Treat null and undefined as equivalent (optional fields may be absent in
+// server responses but present as null in form state, or vice versa).
+function normalize(v: unknown): unknown {
+  return v == null ? undefined : v;
+}
 
-  if (Array.isArray(a)) {
-    if (!Array.isArray(b) || a.length !== b.length) return false;
-    return a.every((val, i) => deepEqual(val, b[i]));
+export function deepEqual(a: unknown, b: unknown): boolean {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (Object.is(na, nb)) return true;
+  if (na === undefined || nb === undefined) return false;
+  if (typeof na !== "object" || typeof nb !== "object") return false;
+
+  if (Array.isArray(na)) {
+    if (!Array.isArray(nb) || na.length !== nb.length) return false;
+    return na.every((val, i) => deepEqual(val, (nb as unknown[])[i]));
   }
 
-  if (Array.isArray(b)) return false;
+  if (Array.isArray(nb)) return false;
 
-  const keysA = Object.keys(a as Record<string, unknown>);
-  const keysB = Object.keys(b as Record<string, unknown>);
-  if (keysA.length !== keysB.length) return false;
+  const objA = na as Record<string, unknown>;
+  const objB = nb as Record<string, unknown>;
+  const keys = new Set([...Object.keys(objA), ...Object.keys(objB)]);
 
-  return keysA.every((key) =>
-    deepEqual(
-      (a as Record<string, unknown>)[key],
-      (b as Record<string, unknown>)[key],
-    ),
-  );
+  return [...keys].every((key) => deepEqual(objA[key], objB[key]));
 }
 
 /**
