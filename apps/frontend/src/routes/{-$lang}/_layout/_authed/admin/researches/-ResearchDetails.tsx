@@ -512,7 +512,7 @@ export function ResearchDetails({
                 <form.AppField
                   name="uids"
                   mode="array"
-                  disabled={!isViewingDraft}
+                  disabled={!isViewingDraft || !canUpdate}
                 >
                   {(field) => (
                     <fieldset className="flex flex-col gap-2">
@@ -588,7 +588,7 @@ export function ResearchDetails({
                 </TabsList>
               </div>
               <fieldset
-                disabled={!isViewingDraft}
+                disabled={!isViewingDraft || !canUpdate}
                 className="px-5 pt-5 pb-5 disabled:opacity-60"
               >
                 <TabsContent value="title">
