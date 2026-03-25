@@ -10,6 +10,7 @@ import {
   $getPublishedDocumentVersionList,
 } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/guidelines/",
@@ -37,22 +38,12 @@ function RouteComponent() {
   const { contentHtml, title, versions } = Route.useLoaderData();
 
   const t = useTranslations("Navbar");
+
   return (
-    <Card className="w-full">
-      <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
-        <TOC headings={contentHtml.headings} />
-        <div className="flex-1 min-w-0">
-          <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
-            <h1>{title}</h1>
-          </div>
-          <Markdown contentHtml={contentHtml} />
-          <PreviousVersionsList
-            versions={versions}
-            slug="/{-$lang}/guidelines"
-            documentName={t("guidelines")}
-          />
-        </div>
-      </div>
-    </Card>
+    <MarkdownWithTOC
+      title={title}
+      markdownResult={contentHtml}
+      previousVersions={versions}
+    />
   );
 }
