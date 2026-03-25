@@ -504,119 +504,130 @@ export function ResearchDetails({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto flex flex-col">
-            <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
-
-            {canUpdateUids && (
-              <div className="px-5 pt-5">
-                <form.AppField
-                  name="uids"
-                  mode="array"
-                  disabled={!isViewingDraft || !canUpdate}
-                >
-                  {(field) => (
-                    <fieldset className="flex flex-col gap-2">
-                      <Label>User IDs (uids)</Label>
-                      <div className="nested-form flex flex-col gap-1">
-                        {field.state.value?.map((_: string, i: number) => (
-                          <div key={i} className="flex items-center gap-1">
-                            <form.AppField name={`uids[${i}]` as "uids"}>
-                              {(f) => <f.TextField />}
-                            </form.AppField>
-                            <button
-                              type="button"
-                              onClick={() => field.removeValue(i)}
-                            >
-                              <Trash2 className="text-danger size-4" />
-                            </button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="slim"
-                          className="self-start"
-                          onClick={() => field.pushValue("")}
-                        >
-                          Add UID
-                        </Button>
-                      </div>
-                    </fieldset>
-                  )}
-                </form.AppField>
-              </div>
-            )}
-
-            <Tabs
-              defaultValue="title"
-              className="mt-5 flex flex-col"
-            >
-              <div className="overflow-x-auto px-5 shrink-0">
+            <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
+              <div className="px-5 pt-5 shrink-0">
                 <TabsList variant="line">
-                  <TabsTrigger variant="line" value="title">
-                    <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="summary">
-                    <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
+                  <TabsTrigger variant="line" value="metadata">
+                    Research Metadata
                   </TabsTrigger>
                   <TabsTrigger variant="line" value="datasets">
                     Datasets
                   </TabsTrigger>
-                  <TabsTrigger variant="line" value="dataProvider">
-                    <TabLabel dirty={dirtyFields.dataProvider}>
-                      Data providers
-                    </TabLabel>
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="researchProject">
-                    <TabLabel dirty={dirtyFields.researchProject}>
-                      Research project
-                    </TabLabel>
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="grant">
-                    <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="relatedPublication">
-                    <TabLabel dirty={dirtyFields.relatedPublication}>
-                      Related publication
-                    </TabLabel>
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="controlledAccessUser">
-                    <TabLabel dirty={dirtyFields.controlledAccessUser}>
-                      Controlled access user
-                    </TabLabel>
-                  </TabsTrigger>
                 </TabsList>
               </div>
-              <fieldset
-                disabled={!isViewingDraft || !canUpdate}
-                className="px-5 pt-5 pb-5 disabled:opacity-60"
-              >
-                <TabsContent value="title">
-                  <form.AppField name="title">
-                    {(field) => <field.BilingualTextField />}
-                  </form.AppField>
-                </TabsContent>
-                <TabsContent value="summary">
-                  <SummaryForm form={form} fields="summary" />
-                </TabsContent>
-                <TabsContent value="dataProvider">
-                  <DataProviderArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="researchProject">
-                  <ResearchProjectArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="grant">
-                  <GrantArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="relatedPublication">
-                  <RelatedPublicationArrayField form={form} />
-                </TabsContent>
-                <TabsContent value="controlledAccessUser">
-                  <ControlledAccessUserArrayField form={form} />
-                </TabsContent>
-              </fieldset>
+
+              <TabsContent value="metadata" className="min-h-0 flex-1 flex flex-col overflow-y-auto">
+                <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
+
+                {canUpdateUids && (
+                  <div className="px-5 pt-5">
+                    <form.AppField
+                      name="uids"
+                      mode="array"
+                      disabled={!isViewingDraft || !canUpdate}
+                    >
+                      {(field) => (
+                        <fieldset className="flex flex-col gap-2">
+                          <Label>User IDs (uids)</Label>
+                          <div className="nested-form flex flex-col gap-1">
+                            {field.state.value?.map((_: string, i: number) => (
+                              <div key={i} className="flex items-center gap-1">
+                                <form.AppField name={`uids[${i}]` as "uids"}>
+                                  {(f) => <f.TextField />}
+                                </form.AppField>
+                                <button
+                                  type="button"
+                                  onClick={() => field.removeValue(i)}
+                                >
+                                  <Trash2 className="text-danger size-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="slim"
+                              className="self-start"
+                              onClick={() => field.pushValue("")}
+                            >
+                              Add UID
+                            </Button>
+                          </div>
+                        </fieldset>
+                      )}
+                    </form.AppField>
+                  </div>
+                )}
+
+                <Tabs defaultValue="title" className="mt-5 flex flex-col">
+                  <div className="overflow-x-auto px-5 shrink-0">
+                    <TabsList variant="line">
+                      <TabsTrigger variant="line" value="title">
+                        <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
+                      </TabsTrigger>
+                      <TabsTrigger variant="line" value="summary">
+                        <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
+                      </TabsTrigger>
+                      <TabsTrigger variant="line" value="dataProvider">
+                        <TabLabel dirty={dirtyFields.dataProvider}>
+                          Data providers
+                        </TabLabel>
+                      </TabsTrigger>
+                      <TabsTrigger variant="line" value="researchProject">
+                        <TabLabel dirty={dirtyFields.researchProject}>
+                          Research project
+                        </TabLabel>
+                      </TabsTrigger>
+                      <TabsTrigger variant="line" value="grant">
+                        <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
+                      </TabsTrigger>
+                      <TabsTrigger variant="line" value="relatedPublication">
+                        <TabLabel dirty={dirtyFields.relatedPublication}>
+                          Related publication
+                        </TabLabel>
+                      </TabsTrigger>
+                      <TabsTrigger variant="line" value="controlledAccessUser">
+                        <TabLabel dirty={dirtyFields.controlledAccessUser}>
+                          Controlled access user
+                        </TabLabel>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <fieldset
+                    disabled={!isViewingDraft || !canUpdate}
+                    className="px-5 pt-5 pb-5 disabled:opacity-60"
+                  >
+                    <TabsContent value="title">
+                      <form.AppField name="title">
+                        {(field) => <field.BilingualTextField />}
+                      </form.AppField>
+                    </TabsContent>
+                    <TabsContent value="summary">
+                      <SummaryForm form={form} fields="summary" />
+                    </TabsContent>
+                    <TabsContent value="dataProvider">
+                      <DataProviderArrayField form={form} />
+                    </TabsContent>
+                    <TabsContent value="researchProject">
+                      <ResearchProjectArrayField form={form} />
+                    </TabsContent>
+                    <TabsContent value="grant">
+                      <GrantArrayField form={form} />
+                    </TabsContent>
+                    <TabsContent value="relatedPublication">
+                      <RelatedPublicationArrayField form={form} />
+                    </TabsContent>
+                    <TabsContent value="controlledAccessUser">
+                      <ControlledAccessUserArrayField form={form} />
+                    </TabsContent>
+                  </fieldset>
+                </Tabs>
+              </TabsContent>
+
+              <TabsContent value="datasets" className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+                {/* Phase 4: Datasets tab content will be added here */}
+              </TabsContent>
             </Tabs>
-            </div>
           </>
         )}
       </Card>
