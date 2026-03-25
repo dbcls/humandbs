@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { $createResearchVersion } from "@/serverFunctions/researches";
-import type { ResearchVersionsListResponse } from "@humandbs/backend/types";
 
 export function NewVersionDialog({
   humId,
@@ -49,24 +48,13 @@ export function NewVersionDialog({
         return;
       }
       const newVersionDoc = result.data.data;
-      // Optimistically append the new version to all cached version lists so the
-      // selector has it immediately when we call onVersionCreated below.
-      queryClient.setQueriesData<ResearchVersionsListResponse>(
-        { queryKey: ["researches", "versions"] },
-        (old) =>
-          old
-            ? { ...old, data: [...old.data, newVersionDoc] }
-            : old,
-      );
+      // Remove the cached version list so useSuspenseQuery re-suspends and
+      // fetches fresh data (invalidateQueries only does a background refetch
+      // and returns stale data while in-flight).
+      queryClient.removeQueries({ queryKey: ["researches", "versions"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
+      queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
       onVersionCreated(newVersionDoc.version);
-      // Defer invalidations so they don't race against the optimistic patch above.
-      // The selector re-renders with the new version selected first, then the
-      // background refetches sync with the server.
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["researches", "versions"] });
-        queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
-        queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      }, 0);
       onOpenChange(false);
       setEnText("");
       setJaText("");
