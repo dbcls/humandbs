@@ -38,14 +38,21 @@ function RouteComponent() {
 
   const t = useTranslations("Navbar");
   return (
-    <Card caption={title} captionSize={"lg"} className="w-[700px] mx-auto">
-      <TOC headings={contentHtml.headings} />
-      <Markdown className="mx-auto" contentHtml={contentHtml} />
-      <PreviousVersionsList
-        versions={versions}
-        slug="/{-$lang}/guidelines"
-        documentName={t("guidelines")}
-      />
+    <Card className="w-full">
+      <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
+        <TOC headings={contentHtml.headings} />
+        <div className="flex-1 min-w-0">
+          <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
+            <h1>{title}</h1>
+          </div>
+          <Markdown contentHtml={contentHtml} />
+          <PreviousVersionsList
+            versions={versions}
+            slug="/{-$lang}/guidelines"
+            documentName={t("guidelines")}
+          />
+        </div>
+      </div>
     </Card>
   );
 }
