@@ -213,7 +213,12 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
                       onChangeDebounceMs: 800,
                     }}
                   >
-                    {(field) => <field.ContentAreaField label="Content" />}
+                    {(field) => (
+                      <field.ContentAreaField
+                        label="Content"
+                        assetFolder={contentId}
+                      />
+                    )}
                   </form.AppField>
                 </Suspense>
               </>

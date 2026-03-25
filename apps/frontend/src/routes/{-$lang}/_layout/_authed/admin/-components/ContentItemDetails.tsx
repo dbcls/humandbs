@@ -311,7 +311,9 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                         onChangeDebounceMs: 800,
                       }}
                     >
-                      {(field) => <field.ContentAreaField label="Content" />}
+                      {(field) => (
+                        <field.ContentAreaField label="Content" assetFolder={id} />
+                      )}
                     </form.AppField>
                   </Suspense>
                 </>
