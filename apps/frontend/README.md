@@ -1,4 +1,10 @@
-# Troubleshooting
+# 起動手順
+
+- DBのマイグレーション（必要に応じて）、 `bun run db:push`
+- `bun run build`
+- `bun run serve`
+
+# Development
 
 ## 1. Acidentally importing stuff from the server-side
 

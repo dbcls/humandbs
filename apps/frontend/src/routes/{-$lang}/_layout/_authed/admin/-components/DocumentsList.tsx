@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-query";
 import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { useTranslations } from "use-intl";
 
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
@@ -38,8 +37,6 @@ export function DocumentsList({
 }) {
   const documentsListQO = getDocumentsQueryOptions();
   const { data: documents } = useSuspenseQuery(documentsListQO);
-
-  const t = useTranslations("Navbar");
 
   const queryClient = useQueryClient();
 
@@ -203,7 +200,7 @@ export function DocumentsList({
               }}
               isActive={isActive}
             >
-              <span>{t(doc.contentId)} </span>
+              <span>{doc.contentId}</span>
               <Button
                 variant={"ghost"}
                 size={"slim"}
