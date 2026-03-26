@@ -3,9 +3,6 @@ import { Suspense, useEffect, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  getAuthedResearchesInfiniteQueryOptions,
-} from "@/serverFunctions/researches";
 
 import { ResearchDetails } from "./-ResearchDetails";
 import { ResearchesList } from "./-ResearchesList";
@@ -17,14 +14,8 @@ export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
 )({
   validateSearch: authedResearchesListSearchParamsSchema,
-  loaderDeps: ({ search }) => search,
   ssr: false,
   component: RouteComponent,
-  loader: ({ context, deps }) => {
-    context.queryClient.ensureInfiniteQueryData(
-      getAuthedResearchesInfiniteQueryOptions({ lang: context.lang, ...deps }),
-    );
-  },
 });
 
 function RouteComponent() {
@@ -57,13 +48,11 @@ function RouteComponent() {
         caption="Researches"
         containerClassName="flex flex-1 min-h-0 max-h-full overflow-hidden"
       >
-        <Suspense fallback={<Skeleton />}>
-          <ResearchesList
-            lang={lang}
-            selectedHumId={selectedHumId}
-            onSelectResearch={setSelectedHumId}
-          />
-        </Suspense>
+        <ResearchesList
+          lang={lang}
+          selectedHumId={selectedHumId}
+          onSelectResearch={setSelectedHumId}
+        />
       </Card>
 
       {selectedHumId && isDummyResearch(selectedHumId) ? (

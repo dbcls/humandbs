@@ -1,23 +1,20 @@
 import {
+  FrontendCreateResearchRequestSchema,
+  FrontendUpdateResearchRequestSchema,
+} from "@/utils/researchSchemas";
+import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
-  PaginationSchema,
-  ResearchListingQuerySchema,
   ResearchSearchBodySchema,
   UpdateUidsRequestSchema,
   type ResearchDetailResponse,
-  type ResearchListingQuery,
   type ResearchSearchBody,
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
   type VersionCreateResponse,
   type WorkflowResponse,
 } from "@humandbs/backend/types";
-import {
-  FrontendCreateResearchRequestSchema,
-  FrontendUpdateResearchRequestSchema,
-} from "@/utils/researchSchemas";
 import {
   infiniteQueryOptions,
   keepPreviousData,
@@ -26,14 +23,11 @@ import {
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { localeSchema } from "@/config/i18n";
 import { api, APIError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
-import {
-  authedResearchesListSearchParamsSchema,
-  type AuthedResearchesListSearchParams,
-} from "@/utils/queryParams";
-import { localeSchema } from "@/config/i18n";
+import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -210,10 +204,14 @@ async function handleWorkflowError(
   if (error instanceof APIError) {
     const detail =
       (error.data as { detail?: string } | undefined)?.detail ?? fallback;
-    if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
-    if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
-    if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
-    if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+    if (error.status === 409)
+      return { ok: false, error: detail, code: "CONFLICT" };
+    if (error.status === 403)
+      return { ok: false, error: detail, code: "FORBIDDEN" };
+    if (error.status === 404)
+      return { ok: false, error: detail, code: "NOT_FOUND" };
+    if (error.status === 401)
+      return { ok: false, error: detail, code: "UNAUTHORIZED" };
   }
   throw error;
 }
@@ -259,7 +257,11 @@ export const $rejectResearch = createServerFn({ method: "POST" })
 
 export type CreateVersionResult =
   | { ok: true; data: VersionCreateResponse }
-  | { ok: false; error: string; code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT" };
+  | {
+      ok: false;
+      error: string;
+      code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT";
+    };
 
 const CreateVersionInputSchema = z.object({
   humId: HumIdParamsSchema.shape.humId,
@@ -288,10 +290,14 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
         const detail =
           (error.data as { detail?: string } | undefined)?.detail ??
           "Failed to create version.";
-        if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
-        if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
-        if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
-        if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+        if (error.status === 409)
+          return { ok: false, error: detail, code: "CONFLICT" };
+        if (error.status === 403)
+          return { ok: false, error: detail, code: "FORBIDDEN" };
+        if (error.status === 404)
+          return { ok: false, error: detail, code: "NOT_FOUND" };
+        if (error.status === 401)
+          return { ok: false, error: detail, code: "UNAUTHORIZED" };
       }
       throw error;
     }
@@ -387,6 +393,7 @@ export function getAuthedResearchesInfiniteQueryOptions(
         ? lastPage.meta.pagination.page + 1
         : undefined,
     staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
   });
 }
 

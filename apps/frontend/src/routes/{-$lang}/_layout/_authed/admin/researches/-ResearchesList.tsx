@@ -4,12 +4,11 @@ import {
   type ResearchSummary,
 } from "@humandbs/backend/types";
 import {
-  type QueryKey,
+  useInfiniteQuery,
   useMutation,
   useQueryClient,
-  useSuspenseInfiniteQuery,
+  type QueryKey,
 } from "@tanstack/react-query";
-import { Trash2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { ListItem } from "@/components/ListItem";
@@ -22,16 +21,17 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 
+import { Input } from "@/components/Input";
+import { Tag } from "@/components/StatusTag";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useFilters } from "@/hooks/useFilters";
+import { cn } from "@/lib/utils";
 import {
   createDummyResearch,
   DUMMY_HUM_ID,
   isDummyResearch,
 } from "./-dummyResearch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useFilters } from "@/hooks/useFilters";
-import { Input } from "@/components/Input";
-import { Tag } from "@/components/StatusTag";
-import { cn } from "@/lib/utils";
 
 export function ResearchesList({
   lang,
@@ -60,12 +60,19 @@ export function ResearchesList({
     ...filters,
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useSuspenseInfiniteQuery(infiniteOpts);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+  } = useInfiniteQuery(infiniteOpts);
 
-  const allResearches = data.pages.flatMap(
-    (page) => page.data,
-  ) as ResearchSummary[];
+  const allResearches =
+    (data?.pages.flatMap((page) => page.data) as
+      | ResearchSummary[]
+      | undefined) ?? [];
   const hasDummy = allResearches.some((r) => isDummyResearch(r.humId));
 
   function handleAddNew() {
@@ -178,51 +185,82 @@ export function ResearchesList({
         )}
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <ul>
-          {allResearches.map((research) => {
-            const isActive = research.humId === selectedHumId;
-            const isDummy = isDummyResearch(research.humId);
-            const title =
-              research.title[lang] || research.title.ja || research.title.en;
-            const englishTitle = research.title.en;
+      <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">
+        {isPending && !data ? (
+          <div className="flex h-full flex-col gap-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "h-full overflow-y-auto overflow-x-hidden transition-opacity",
+              isFetching && !isFetchingNextPage && "opacity-60",
+            )}
+          >
+            <ul>
+              {allResearches.map((research) => {
+                const isActive = research.humId === selectedHumId;
+                const isDummy = isDummyResearch(research.humId);
+                const title =
+                  research.title[lang] ||
+                  research.title.ja ||
+                  research.title.en;
+                const englishTitle = research.title.en;
 
-            return (
-              <ListItem
-                key={research.humId}
-                role="menuitem"
-                onClick={() => onSelectResearch(research.humId)}
-                isActive={isActive}
-                className={cn("flex-1 flex-col gap-1 items-start", {
-                  "border border-dashed": isDummy,
-                })}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="block font-mono text-xs">
-                    {research.humId}
-                  </span>
-                  {research.status ? <Tag tag={research.status} /> : null}
-                </div>
-                <span className="block truncate text-xs opacity-70">
-                  {title}
+                return (
+                  <ListItem
+                    key={research.humId}
+                    role="menuitem"
+                    onClick={() => onSelectResearch(research.humId)}
+                    isActive={isActive}
+                    className={cn("flex-1 flex-col gap-1 items-start", {
+                      "border border-dashed": isDummy,
+                    })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="block font-mono text-xs">
+                        {research.humId}
+                      </span>
+                      {research.status ? <Tag tag={research.status} /> : null}
+                    </div>
+                    <span className="block truncate text-xs opacity-70">
+                      {title}
+                    </span>
+                    {englishTitle && englishTitle !== title ? (
+                      <span className="block truncate text-xs opacity-70">
+                        {englishTitle}
+                      </span>
+                    ) : null}
+                  </ListItem>
+                );
+              })}
+            </ul>
+
+            <div ref={sentinelRef} className="h-4 shrink-0">
+              {isFetchingNextPage && (
+                <span className="text-foreground-light block py-2 text-center text-xs">
+                  Loading more…
                 </span>
-                {englishTitle && englishTitle !== title ? (
-                  <span className="block truncate text-xs opacity-70">
-                    {englishTitle}
-                  </span>
-                ) : null}
-              </ListItem>
-            );
-          })}
-        </ul>
+              )}
+            </div>
+          </div>
+        )}
 
-        <div ref={sentinelRef} className="h-4 shrink-0">
-          {isFetchingNextPage && (
-            <span className="text-foreground-light block py-2 text-center text-xs">
-              Loading more…
-            </span>
-          )}
-        </div>
+        {isFetching && !isFetchingNextPage && data ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+            <div className="mx-2 h-1 rounded-full bg-primary/20">
+              <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
+            </div>
+          </div>
+        ) : null}
+
+        {!isPending && data && allResearches.length === 0 ? (
+          <div className="text-foreground-light flex h-full items-center justify-center text-sm">
+            No researches found
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -277,8 +315,9 @@ function ResearchFilters() {
         placeholder="Search…"
         defaultValue={filters.q ?? ""}
         onChange={(e) => {
-          if (e.target.value !== "" || e.target.value.length <= 3) return;
-          debouncedSetQuery(e.target.value);
+          const value = e.target.value;
+          if (value !== "" && value.length < 3) return;
+          debouncedSetQuery(value);
         }}
       />
     </div>
