@@ -6,7 +6,7 @@ import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { UpdateDatasetRequest } from "@humandbs/backend/types";
+import type { DatasetDoc, UpdateDatasetRequest } from "@humandbs/backend/types";
 
 import {
   ExperimentsArrayField,
@@ -82,6 +82,25 @@ export function formValuesToDatasetUpdate(
   };
 }
 
+export function datasetFormValuesToPreviewDataset(
+  values: DatasetFormValues,
+  options?: {
+    datasetId?: string;
+    version?: string;
+  },
+): Pick<DatasetDoc, "criteria" | "datasetId" | "releaseDate" | "typeOfData" | "version"> {
+  return {
+    criteria: values.criteria,
+    datasetId: values.datasetId || options?.datasetId || "",
+    releaseDate: values.releaseDate,
+    typeOfData: {
+      ja: values.typeOfData.ja ?? null,
+      en: values.typeOfData.en ?? null,
+    },
+    version: options?.version || "",
+  };
+}
+
 export function getDefaultDatasetFormValues(humId: string): DatasetFormValues {
   return {
     datasetId: "",
@@ -106,6 +125,7 @@ interface DatasetFormProps {
   hideSaveButton?: boolean;
   showDatasetIdField?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
+  onValuesChange?: (values: DatasetFormValues) => void;
 }
 
 export function DatasetForm({
@@ -120,6 +140,7 @@ export function DatasetForm({
   hideSaveButton = false,
   showDatasetIdField = false,
   onDirtyChange,
+  onValuesChange,
 }: DatasetFormProps) {
   const form = useAppForm({
     defaultValues,
@@ -128,11 +149,17 @@ export function DatasetForm({
     },
   });
 
+  const values = useStore(form.store, (state) => state.values);
+
   // Notify parent when dirty state changes
-  const isDirty = useStore(form.store, (state) => !deepEqual(state.values, defaultValues));
+  const isDirty = !deepEqual(values, defaultValues);
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    onValuesChange?.(values);
+  }, [onValuesChange, values]);
 
   const isExperimentsModified = useStore(
     form.store,

@@ -103,6 +103,15 @@
     "type-of-data": "データの種類",
     "criteria": "アクセス制限"
   },
+  "DatasetVersionCard": {
+    "releaseInfo": "リリース情報",
+    "alreadyInCart": "カートに追加済み",
+    "addToCart": "カートに追加",
+    "info": "情報",
+    "releaseDate": "公開日付",
+    "typeOfData": "データの種類",
+    "criteria": "アクセス制限"
+  },
   "Data-submission": {
     "data-submission": "データの提供",
     "before-application": "申請システムの前に"

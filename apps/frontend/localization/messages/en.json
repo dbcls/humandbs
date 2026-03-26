@@ -103,6 +103,15 @@
     "type-of-data": "Type of data",
     "criteria": "Access type"
   },
+  "DatasetVersionCard": {
+    "releaseInfo": "Release info",
+    "alreadyInCart": "Already in cart",
+    "addToCart": "Add to cart",
+    "info": "Info",
+    "releaseDate": "Release date",
+    "typeOfData": "Type of data",
+    "criteria": "Criteria"
+  },
   "Data-submission": {
     "data-submission": "Data submission",
     "before-application": "Before application system"

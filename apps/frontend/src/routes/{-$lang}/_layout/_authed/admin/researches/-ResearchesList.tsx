@@ -225,11 +225,11 @@ export function ResearchesList({
                       </span>
                       {research.status ? <Tag tag={research.status} /> : null}
                     </div>
-                    <span className="block truncate text-xs opacity-70">
+                    <span className="block max-w-full truncate text-xs opacity-70">
                       {title}
                     </span>
                     {englishTitle && englishTitle !== title ? (
-                      <span className="block truncate text-xs opacity-70">
+                      <span className="block max-w-full truncate text-xs opacity-70">
                         {englishTitle}
                       </span>
                     ) : null}

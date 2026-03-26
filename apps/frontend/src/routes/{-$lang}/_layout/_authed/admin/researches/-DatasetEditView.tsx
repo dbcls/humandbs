@@ -1,5 +1,6 @@
 import {
   DatasetForm,
+  datasetFormValuesToPreviewDataset,
   datasetToFormValues,
   formValuesToDatasetUpdate,
   type DatasetFormValues,
@@ -12,11 +13,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/Breadcrumb";
+import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 import { useMutation, useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useState, Suspense } from "react";
+import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/-DatasetVersionCard";
+import { cn } from "@/lib/utils";
+import { IntlProvider } from "use-intl";
+import enMessages from "../../../../../../../localization/messages/en.json";
+import jaMessages from "../../../../../../../localization/messages/ja.json";
 
 type ResearchData = ResearchDetailResponse["data"];
 
@@ -98,6 +106,9 @@ function DatasetEditViewInner({
     typeOfData: dataset.typeOfData,
     experiments: dataset.experiments,
   });
+  const [preview, setPreview] = useState(false);
+  const [previewLang, setPreviewLang] = useState<"ja" | "en">(lang);
+  const [previewValues, setPreviewValues] = useState(defaultValues);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -106,7 +117,9 @@ function DatasetEditViewInner({
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <button type="button" onClick={onBack}>Datasets</button>
+                <button type="button" onClick={onBack}>
+                  Datasets
+                </button>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -115,30 +128,75 @@ function DatasetEditViewInner({
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        {isDraft && (
-          <Button
-            type="button"
-            disabled={isSaving}
-            onClick={() => {
-              document.getElementById("dataset-edit-form")?.dispatchEvent(
-                new Event("submit", { bubbles: true, cancelable: true }),
-              );
-            }}
-          >
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {isDraft && (
+            <Button
+              type="button"
+              disabled={isSaving}
+              onClick={() => {
+                document.getElementById("dataset-edit-form")?.dispatchEvent(
+                  new Event("submit", { bubbles: true, cancelable: true }),
+                );
+              }}
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </Button>
+          )}
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+            Preview
+            <Switch
+              checked={preview}
+              onCheckedChange={setPreview}
+              className="data-[state=checked]:bg-secondary"
+            />
+          </label>
+        </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5">
+
+      <div
+        className={cn(
+          "min-h-0 flex-1 flex-col overflow-hidden",
+          preview ? "flex" : "hidden",
+        )}
+      >
+        <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
+          <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+          <IntlProvider
+            locale={previewLang}
+            messages={previewLang === "ja" ? jaMessages : enMessages}
+          >
+            <DatasetVersionCard
+              versionData={datasetFormValuesToPreviewDataset(previewValues, {
+                datasetId: dataset.datasetId,
+                version: dataset.version,
+              })}
+              lang={previewLang}
+              showPublicActions={false}
+            />
+          </IntlProvider>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5",
+          preview && "hidden",
+        )}
+      >
         <DatasetForm
           defaultValues={defaultValues}
           readOnly={!isDraft}
-          onSubmit={async (values) => { await save(values); }}
+          onSubmit={async (values) => {
+            await save(values);
+          }}
           isSaving={isSaving}
           error={error}
           conflictError={conflictError}
           onReload={handleReload}
           onDirtyChange={onDirtyChange}
+          onValuesChange={setPreviewValues}
           hideSaveButton
         />
       </div>
@@ -161,4 +219,3 @@ export function DatasetEditView(props: DatasetEditViewProps) {
     </div>
   );
 }
-
