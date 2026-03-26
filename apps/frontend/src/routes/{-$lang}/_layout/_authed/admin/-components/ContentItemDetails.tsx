@@ -28,6 +28,7 @@ import {
 } from "@/serverFunctions/contentItem";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
+import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
 
 type ContentItem = NonNullable<ContentItemResponse>;
@@ -184,18 +185,6 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
   });
 
   const isDraftChanged = useStore(form.store, (state) => {
-    console.table({
-      draft: {
-        content: state.values.translation[state.values.lang]?.draft?.content,
-        title: state.values.translation[state.values.lang]?.draft?.title,
-      },
-      published: {
-        content:
-          state.values.translation[state.values.lang]?.published?.content,
-        title: state.values.translation[state.values.lang]?.published?.title,
-      },
-    });
-
     return (
       state.isValid &&
       (state.values.translation[state.values.lang]?.draft?.content !==
@@ -204,8 +193,6 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           state.values.translation[state.values.lang]?.published?.title)
     );
   });
-
-  console.log("isDraftChanged", isDraftChanged);
 
   return (
     <Card
@@ -255,32 +242,56 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           className="flex flex-1 flex-col gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
-          <div className="flex items-center justify-end gap-4 pb-2">
-            <Button
-              variant={"outline"}
-              size={"lg"}
-              disabled={!isDraftChanged}
-              onClick={() => {
-                form.handleSubmit({ submitAction: "resetDraft" });
-              }}
-            >
-              Reset
-            </Button>
-
-            <Button
-              type="submit"
-              onClick={() => {
-                form.handleSubmit({ submitAction: "publish" });
-              }}
-              className="gap-1 self-end"
-              size={"lg"}
-              variant={"accent"}
-              disabled={!isDraftChanged}
-            >
-              <Save className="size-5" />
-              Publish
-            </Button>
-          </div>
+          <form.Subscribe selector={(state) => state.values.lang}>
+            {(lang) => (
+              <div className="flex items-center justify-between gap-4 pb-2">
+                <form.Subscribe
+                  selector={(state) =>
+                    state.values.translation[lang]?.draft?.content ?? ""
+                  }
+                >
+                  {(draftContent) => (
+                    <MarkdownFileActions
+                      filename={`${id}-${lang}`}
+                      content={draftContent}
+                      onUpload={(text) => {
+                        form.setFieldValue(
+                          `translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
+                          text,
+                        );
+                        form.handleSubmit({ submitAction: "saveDraft" });
+                      }}
+                    />
+                  )}
+                </form.Subscribe>
+                <div className="flex gap-2">
+                  <Button
+                    variant={"outline"}
+                    size={"lg"}
+                    disabled={!isDraftChanged}
+                    onClick={() => {
+                      form.handleSubmit({ submitAction: "resetDraft" });
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={() => {
+                      form.handleSubmit({ submitAction: "publish" });
+                    }}
+                    className="gap-1 self-end"
+                    size={"lg"}
+                    variant={"accent"}
+                    disabled={!isDraftChanged}
+                  >
+                    <Save className="size-5" />
+                    Publish
+                  </Button>
+                </div>
+              </div>
+            )}
+          </form.Subscribe>
 
           <form.Subscribe selector={(state) => state.values.lang}>
             {(lang) => {
