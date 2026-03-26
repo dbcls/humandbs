@@ -8,6 +8,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db/database";
 import { user } from "@/db/schema";
 import { $$getOIDCConfig } from "@/lib/oidc";
+import { $$resolveUserRole } from "@/serverFunctions/authUser";
 import {
   type AccessTokenClaims,
   $$buildSessionFromTokenResponse,
@@ -55,6 +56,8 @@ export const Route = createFileRoute("/auth/callback")({
         if (!session) {
           return new Response("Missing access token", { status: 400 });
         }
+
+        session.role = await $$resolveUserRole(session.access_token);
 
         // Decode token to get user claims and upsert user to local DB
         const claims = jose.decodeJwt(

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { parse } from "cookie";
 
+import { $$resolveUserRole } from "@/serverFunctions/authUser";
 import {
   createClearSessionCookie,
   $$createSessionCookie,
@@ -40,6 +41,11 @@ export const Route = createFileRoute("/auth/refresh")({
         });
 
         if (refreshed) {
+          session.role =
+            session.role ??
+            (existingSession?.role
+              ? existingSession.role
+              : await $$resolveUserRole(session.access_token));
           headers.append("Set-Cookie", $$createSessionCookie(session));
         }
 
