@@ -117,7 +117,7 @@ function DatasetEditViewInner({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className=" px-5 pt-5">
+      <div className=" px-5 pt-5 flex flex-col">
         <div className="shrink-0 flex items-center justify-between">
           <Breadcrumb>
             <BreadcrumbList>
@@ -151,6 +151,7 @@ function DatasetEditViewInner({
           <Button
             type="button"
             disabled={isSaving}
+            className="self-end"
             onClick={() => {
               document
                 .getElementById("dataset-edit-form")
