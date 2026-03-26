@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 
 import { USER_ROLES, type UserRole } from "@/config/permissions";
@@ -16,6 +16,30 @@ interface AuthUserResponse {
   user: SessionUser | null;
   session: SessionMeta | null;
 }
+
+export const $$resolveUserRole = createServerOnlyFn(
+  async (accessToken: string): Promise<UserRole> => {
+    const isAdminRes = await fetch(
+      `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}/api/admin/is-admin`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!isAdminRes.ok) {
+      return USER_ROLES.USER;
+    }
+
+    const response = (await isAdminRes.json()) as {
+      data: { isAdmin: boolean };
+    };
+
+    return response.data.isAdmin ? USER_ROLES.ADMIN : USER_ROLES.USER;
+  },
+);
 
 // Dev bypass: return mock user without hitting Keycloak or backend
 // Set AUTH_DEV_ROLE to "admin" or "user" (defaults to "admin")
@@ -74,26 +98,22 @@ export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
         );
       }
 
-      let role: UserRole = USER_ROLES.USER;
+      let role = session.role;
 
-      const isAdminRes = await fetch(
-        `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}/api/admin/is-admin`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        },
-      );
+      if (!role) {
+        role = await $$resolveUserRole(session.access_token);
 
-      if (isAdminRes.ok) {
-        const response = (await isAdminRes.json()) as {
-          data: { isAdmin: boolean };
-        };
-
-        if (response.data.isAdmin) {
-          role = USER_ROLES.ADMIN;
-        }
+        setCookie(
+          SESSION_COOKIE_NAME,
+          $$stringifySession({
+            ...session,
+            role,
+          }),
+          $$getSessionCookieOptions({
+            ...session,
+            role,
+          }),
+        );
       }
 
       const user: SessionUser = {

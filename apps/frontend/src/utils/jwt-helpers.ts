@@ -22,6 +22,7 @@ export interface Session {
   refresh_expires_at?: string;
   scope?: string;
   token_type?: string;
+  role?: UserRole;
 }
 
 export type SessionMeta = Pick<
