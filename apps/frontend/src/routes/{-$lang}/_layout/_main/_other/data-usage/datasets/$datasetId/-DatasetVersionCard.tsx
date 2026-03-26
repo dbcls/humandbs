@@ -1,6 +1,6 @@
 import { type DatasetDoc } from "@humandbs/backend/types";
-import { Separator } from "@radix-ui/react-select";
-import { getRouteApi, useRouteContext } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
@@ -12,17 +12,25 @@ import { useCart } from "@/hooks/useCart";
 
 export function DatasetVersionCard({
   versionData,
+  lang: langOverride,
+  showPublicActions = true,
 }: {
-  versionData: DatasetDoc;
+  versionData: Pick<
+    DatasetDoc,
+    "criteria" | "datasetId" | "releaseDate" | "typeOfData" | "version"
+  >;
+  lang?: "ja" | "en";
+  showPublicActions?: boolean;
 }) {
-  const Route = getRouteApi(
-    "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId",
-  );
+  const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
+  const { user } = useRouteContext({ from: "__root__" });
+  const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
+  const t = useTranslations("DatasetVersionCard");
 
   const infoKeyValues = {
-    "Release date": versionData.releaseDate,
-    "Type of data": versionData.typeOfData,
-    Criteria: versionData.criteria,
+    [t("releaseDate")]: versionData.releaseDate,
+    [t("typeOfData")]: versionData.typeOfData?.[lang] ?? "—",
+    [t("criteria")]: versionData.criteria,
   };
 
   const { add, cart } = useCart();
@@ -31,7 +39,9 @@ export function DatasetVersionCard({
     (item) => item.datasetId === versionData.datasetId,
   );
 
-  const { user } = Route.useRouteContext();
+  const identifier = [versionData.datasetId, versionData.version]
+    .filter(Boolean)
+    .join(".") || "Preview";
 
   return (
     <CardWithCaption
@@ -41,30 +51,39 @@ export function DatasetVersionCard({
         <CardCaption
           title="NBDC Dataset ID:"
           icon="dataset"
-          badge={<Route.Link to="versions">リリース情報</Route.Link>}
+          badge={
+            showPublicActions ? (
+              <Link
+                to="/{-$lang}/data-usage/datasets/$datasetId/versions"
+                params={{ datasetId: versionData.datasetId }}
+              >
+                {t("releaseInfo")}
+              </Link>
+            ) : null
+          }
           right={
-            user ? (
+            showPublicActions && user ? (
               <div className="flex gap-5">
                 <Button
                   variant={"accent"}
                   className="rounded-full"
                   disabled={isInCart}
                   onClick={() => {
-                    add(versionData);
+                    add(versionData as DatasetDoc);
                   }}
                 >
-                  {isInCart ? "Already in cart" : " Add to cart"}
+                  {isInCart ? t("alreadyInCart") : t("addToCart")}
                 </Button>
               </div>
             ) : null
           }
         >
-          {versionData.datasetId}.{versionData.version}
+          {identifier}
         </CardCaption>
       }
     >
       <section>
-        <ContentHeader>Info</ContentHeader>
+        <ContentHeader>{t("info")}</ContentHeader>
         <ListOfKeyValues keyValues={infoKeyValues} />
       </section>
     </CardWithCaption>

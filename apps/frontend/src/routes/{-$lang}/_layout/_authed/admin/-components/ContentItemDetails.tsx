@@ -246,19 +246,30 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
             {(lang) => (
               <div className="flex items-center justify-between gap-4 pb-2">
                 <form.Subscribe
-                  selector={(state) =>
-                    state.values.translation[lang]?.draft?.content ?? ""
-                  }
+                  selector={(state) => ({
+                    draftContent:
+                      state.values.translation[lang]?.draft?.content ?? "",
+                    draftTitle:
+                      state.values.translation[lang]?.draft?.title ?? "",
+                  })}
                 >
-                  {(draftContent) => (
+                  {({ draftContent, draftTitle }) => (
                     <MarkdownFileActions
                       filename={`${id}-${lang}`}
                       content={draftContent}
-                      onUpload={(text) => {
+                      title={draftTitle}
+                      lang={lang}
+                      onUpload={(text, uploadedTitle) => {
                         form.setFieldValue(
                           `translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
                           text,
                         );
+                        if (uploadedTitle !== undefined) {
+                          form.setFieldValue(
+                            `translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
+                            uploadedTitle,
+                          );
+                        }
                         form.handleSubmit({ submitAction: "saveDraft" });
                       }}
                     />
