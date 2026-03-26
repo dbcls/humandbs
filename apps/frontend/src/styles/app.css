@@ -95,18 +95,6 @@
   overflow: hidden;
   border: 1px solid #d0d4d8;
   border-radius: 14px;
-  background:
-    radial-gradient(
-      circle at 24% 28%,
-      rgb(255 255 255 / 55%),
-      transparent 0 18%
-    ),
-    radial-gradient(
-      circle at 78% 68%,
-      rgb(155 168 177 / 20%),
-      transparent 0 14%
-    ),
-    linear-gradient(180deg, #eceef0 0%, #e3e5e8 100%);
 }
 
 .front-stats__loader-space {
