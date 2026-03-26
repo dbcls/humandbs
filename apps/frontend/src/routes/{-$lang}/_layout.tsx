@@ -5,10 +5,10 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { IntlProvider } from "use-intl";
-import { z } from "zod";
 
 import { i18n, localeSchema } from "@/config/i18n";
 import { $getMessages } from "@/serverFunctions/i18n";
+import { $getSiteNavigation } from "@/serverFunctions/siteNavigation";
 
 // import { getMessagesFn } from "@/serverFunctions/locale";
 
@@ -41,10 +41,14 @@ export const Route = createFileRoute("/{-$lang}/_layout")({
     const messages = await $getMessages({
       data: lang,
     });
+    const siteNavigation = await $getSiteNavigation({
+      data: lang,
+    });
 
     return {
       messages,
       lang,
+      siteNavigation,
     };
   },
   loader: ({ context }) => {

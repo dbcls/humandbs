@@ -4,7 +4,7 @@ import {
   useRouteContext,
 } from "@tanstack/react-router";
 import { LucideLogIn, LucideLogOut, ShoppingCart } from "lucide-react";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import Logo from "@/assets/Logo.png";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { getNavConfig } from "@/config/navbar-config";
 import { useCart } from "@/hooks/useCart";
 
 import { LangSwitcher } from "./LanguageSwitcher";
@@ -28,11 +27,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 export function Navbar() {
   const t = useTranslations("Navbar");
 
-  const lang = useLocale();
-
   const tCommon = useTranslations("common");
 
   const { user } = useRouteContext({ from: "__root__" });
+  const { lang, siteNavigation } = useRouteContext({
+    from: "/{-$lang}/_layout",
+  });
 
   return (
     <header className="flex items-center justify-between gap-4 rounded-md bg-white p-4 md:gap-8">
@@ -58,7 +58,7 @@ export function Navbar() {
 
         <NavigationMenu viewport={false}>
           <NavigationMenuList className="flex flex-wrap items-center gap-8">
-            {getNavConfig(lang).map((item) => (
+            {siteNavigation.navbar.map((item) => (
               <NavigationMenuItem key={item.id}>
                 {item.children ? (
                   <>
