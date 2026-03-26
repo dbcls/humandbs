@@ -48,6 +48,7 @@ import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
 import { DatasetCreateView } from "./-DatasetCreateView";
+import { cn } from "@/lib/utils";
 
 export function ResearchDetails({
   humId,
@@ -436,106 +437,110 @@ export function ResearchDetails({
             </Button>
           </div>
         )}
-        {preview ? (
-          <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
-            <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
-              <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-              <VersionCard
-                versionData={previewValues as ResearchDetailResponse["data"]}
-                lang={previewLang}
-              />
-            </div>
+        <div
+          className={cn(
+            "min-h-0 flex-1 flex-col overflow-hidden",
+            preview ? "flex" : "hidden",
+          )}
+        >
+          <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
+            <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
           </div>
-        ) : (
-          <>
-            <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
-              <div className="px-5 pt-5 shrink-0">
-                <TabsList variant="line">
-                  <TabsTrigger variant="line" value="metadata">
-                    <TabLabel dirty={Object.values(dirtyFields).some(Boolean)}>
-                      Research Metadata
-                    </TabLabel>
-                  </TabsTrigger>
-                  <TabsTrigger variant="line" value="datasets">
-                    <TabLabel dirty={datasetDirty}>Datasets</TabLabel>
-                  </TabsTrigger>
-                </TabsList>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+            <VersionCard
+              versionData={previewValues as ResearchDetailResponse["data"]}
+              lang={previewLang}
+            />
+          </div>
+        </div>
+
+        <div className={cn("min-h-0 flex-1", preview && "hidden")}>
+          <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
+            <div className="px-5 pt-5 shrink-0">
+              <TabsList variant="line">
+                <TabsTrigger variant="line" value="metadata">
+                  <TabLabel dirty={Object.values(dirtyFields).some(Boolean)}>
+                    Research Metadata
+                  </TabLabel>
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="datasets">
+                  <TabLabel dirty={datasetDirty}>Datasets</TabLabel>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="metadata" className="min-h-0 flex-1 flex flex-col">
+              {/* Workflow action row */}
+              <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
+                <div className="ml-auto flex items-center gap-2">
+                  {isViewingDraft && canUpdate && (
+                    <Button
+                      size="slim"
+                      onClick={() => form.handleSubmit()}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "Saving…" : "Save draft"}
+                    </Button>
+                  )}
+                  <JsonImportExport
+                    filename={humId}
+                    getValues={() => form.store.state.values}
+                    onImport={(values) =>
+                      form.reset(values as typeof researchValues)
+                    }
+                    hasData={() => {
+                      const v = form.store.state.values;
+                      return !!(v.title?.ja || v.title?.en);
+                    }}
+                  />
+                  {isViewingDraft && canSubmit && (
+                    <Button
+                      variant="outline"
+                      size="slim"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting…" : "Submit for review"}
+                    </Button>
+                  )}
+                  {isViewingDraft && canReject && (
+                    <Button
+                      variant="outline"
+                      size="slim"
+                      onClick={handleReject}
+                      disabled={isRejecting}
+                    >
+                      {isRejecting ? "Rejecting…" : "Reject"}
+                    </Button>
+                  )}
+                  {isViewingDraft && canApprove && (
+                    <Button
+                      variant="action"
+                      size="slim"
+                      onClick={handleApprove}
+                      disabled={isApproving}
+                    >
+                      {isApproving ? "Approving…" : "Approve"}
+                    </Button>
+                  )}
+                  {canUnpublish && (
+                    <Button variant="outline" size="slim">
+                      Unpublish
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      type="button"
+                      size="slim"
+                      onClick={handleDelete}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              <TabsContent value="metadata" className="min-h-0 flex-1 flex flex-col">
-                {/* Workflow action row */}
-                <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
-                  <div className="ml-auto flex items-center gap-2">
-                    {isViewingDraft && canUpdate && (
-                      <Button
-                        size="slim"
-                        onClick={() => form.handleSubmit()}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? "Saving…" : "Save draft"}
-                      </Button>
-                    )}
-                    <JsonImportExport
-                      filename={humId}
-                      getValues={() => form.store.state.values}
-                      onImport={(values) =>
-                        form.reset(values as typeof researchValues)
-                      }
-                      hasData={() => {
-                        const v = form.store.state.values;
-                        return !!(v.title?.ja || v.title?.en);
-                      }}
-                    />
-                    {isViewingDraft && canSubmit && (
-                      <Button
-                        variant="outline"
-                        size="slim"
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Submitting…" : "Submit for review"}
-                      </Button>
-                    )}
-                    {isViewingDraft && canReject && (
-                      <Button
-                        variant="outline"
-                        size="slim"
-                        onClick={handleReject}
-                        disabled={isRejecting}
-                      >
-                        {isRejecting ? "Rejecting…" : "Reject"}
-                      </Button>
-                    )}
-                    {isViewingDraft && canApprove && (
-                      <Button
-                        variant="action"
-                        size="slim"
-                        onClick={handleApprove}
-                        disabled={isApproving}
-                      >
-                        {isApproving ? "Approving…" : "Approve"}
-                      </Button>
-                    )}
-                    {canUnpublish && (
-                      <Button variant="outline" size="slim">
-                        Unpublish
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        type="button"
-                        size="slim"
-                        onClick={handleDelete}
-                      >
-                        Delete
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
 
                 {canUpdateUids && (
@@ -641,38 +646,37 @@ export function ResearchDetails({
                     </TabsContent>
                   </fieldset>
                 </Tabs>
-                </div>
-              </TabsContent>
+              </div>
+            </TabsContent>
 
-              <TabsContent forceMount value="datasets" className="min-h-0 flex-1 flex flex-col">
-                {datasetView === null ? (
-                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+            <TabsContent forceMount value="datasets" className="min-h-0 flex-1 flex flex-col">
+              {datasetView === null ? (
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
                   <ResearchDatasetsTab
                     humId={humId}
                     research={researchValues}
                     onSelectDataset={(id) => setDatasetView(id)}
                     onAddNew={() => setDatasetView("new")}
                   />
-                  </div>
-                ) : datasetView !== "new" ? (
-                  <DatasetEditView
-                    datasetId={datasetView}
-                    lang={lang}
-                    research={researchValues}
-                    onBack={() => { setDatasetView(null); setDatasetDirty(false); }}
-                    onDirtyChange={setDatasetDirty}
-                  />
-                ) : (
-                  <DatasetCreateView
-                    humId={humId}
-                    onBack={() => setDatasetView(null)}
-                    onCreated={(id) => setDatasetView(id)}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+                </div>
+              ) : datasetView !== "new" ? (
+                <DatasetEditView
+                  datasetId={datasetView}
+                  lang={lang}
+                  research={researchValues}
+                  onBack={() => { setDatasetView(null); setDatasetDirty(false); }}
+                  onDirtyChange={setDatasetDirty}
+                />
+              ) : (
+                <DatasetCreateView
+                  humId={humId}
+                  onBack={() => setDatasetView(null)}
+                  onCreated={(id) => setDatasetView(id)}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </Card>
     </>
   );
@@ -711,4 +715,3 @@ function ReleaseNoteDisplay({
     </div>
   );
 }
-
