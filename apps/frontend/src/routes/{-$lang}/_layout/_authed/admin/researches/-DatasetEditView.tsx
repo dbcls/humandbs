@@ -18,7 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
-import { useMutation, useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+  queryOptions,
+} from "@tanstack/react-query";
 import { useState, Suspense } from "react";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/-DatasetVersionCard";
 import { cn } from "@/lib/utils";
@@ -112,45 +117,51 @@ function DatasetEditViewInner({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-5 pt-5 flex items-center justify-between">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <button type="button" onClick={onBack}>
-                  Datasets
-                </button>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-mono">{datasetId}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-        <div className="flex items-center gap-3">
-          {isDraft && (
-            <Button
-              type="button"
-              disabled={isSaving}
-              onClick={() => {
-                document.getElementById("dataset-edit-form")?.dispatchEvent(
+      <div className=" px-5 pt-5">
+        <div className="shrink-0 flex items-center justify-between">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button type="button" onClick={onBack}>
+                    Datasets
+                  </button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="font-mono">
+                  {datasetId}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <div className="flex items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+              Preview
+              <Switch
+                checked={preview}
+                onCheckedChange={setPreview}
+                className="data-[state=checked]:bg-secondary"
+              />
+            </label>
+          </div>
+        </div>
+        {isDraft && (
+          <Button
+            type="button"
+            disabled={isSaving}
+            onClick={() => {
+              document
+                .getElementById("dataset-edit-form")
+                ?.dispatchEvent(
                   new Event("submit", { bubbles: true, cancelable: true }),
                 );
-              }}
-            >
-              {isSaving ? "Saving…" : "Save"}
-            </Button>
-          )}
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
-            Preview
-            <Switch
-              checked={preview}
-              onCheckedChange={setPreview}
-              className="data-[state=checked]:bg-secondary"
-            />
-          </label>
-        </div>
+            }}
+          >
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
+        )}
       </div>
 
       <div
@@ -207,15 +218,15 @@ function DatasetEditViewInner({
 export function DatasetEditView(props: DatasetEditViewProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-    <Suspense
-      fallback={
-        <div className="px-5 pt-5 text-sm text-gray-400 animate-pulse">
-          Loading dataset…
-        </div>
-      }
-    >
-      <DatasetEditViewInner {...props} />
-    </Suspense>
+      <Suspense
+        fallback={
+          <div className="px-5 pt-5 text-sm text-gray-400 animate-pulse">
+            Loading dataset…
+          </div>
+        }
+      >
+        <DatasetEditViewInner {...props} />
+      </Suspense>
     </div>
   );
 }
