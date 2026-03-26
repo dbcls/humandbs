@@ -5,7 +5,6 @@
  * Uses response schemas with data + meta structure.
  */
 import { createRoute } from "@hono/zod-openapi"
-import { z } from "zod"
 
 import {
   ErrorSpec401,
@@ -23,7 +22,6 @@ import {
   LangQuerySchema,
   LangVersionQuerySchema,
   LinkedDatasetsListResponseSchema,
-  ResearchDetailPublicResponseSchema,
   ResearchDetailResponseSchema,
   ResearchListingQuerySchema,
   ResearchSearchResponseSchema,
@@ -121,7 +119,7 @@ Returns the latest version by default. Use GET /research/{humId}/versions/{versi
     200: {
       content: {
         "application/json": {
-          schema: z.union([ResearchDetailResponseSchema, ResearchDetailPublicResponseSchema]),
+          schema: ResearchDetailResponseSchema,
         },
       },
       description: "Research detail (authenticated: full fields with lock, public: read-only)",

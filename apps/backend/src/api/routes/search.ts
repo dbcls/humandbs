@@ -272,9 +272,7 @@ searchRouter.openapi(postResearchSearchRoute, async (c) => {
     if (!authUser && body.status !== "published") {
       throw new ForbiddenError("Public users can only access published resources")
     }
-    if (authUser && !authUser.isAdmin && body.status === "deleted") {
-      throw new ForbiddenError("Only admin can access deleted resources")
-    }
+    // authenticated (non-admin): can request any status (own resources only for non-published)
   }
 
   // Convert POST body to GET query format for existing searchResearches function

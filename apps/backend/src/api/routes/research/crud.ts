@@ -25,9 +25,9 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from "@/api/routes/errors"
-import { ResearchDetailPublicSchema } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
+import { isOwnerOrAdmin } from "@/api/utils/version"
 
 import {
   listResearchRoute,
@@ -53,11 +53,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       if (!authUser && query.status !== "published") {
         throw new ForbiddenError("Public users can only access published resources")
       }
-      // authenticated (non-admin): can request "draft", "review", "published" (own resources only)
-      // "deleted" is admin-only
-      if (authUser && !authUser.isAdmin && query.status === "deleted") {
-        throw new ForbiddenError("Only admin can access deleted resources")
-      }
+      // authenticated (non-admin): can request any status (own resources only for non-published)
     }
 
     // Convert listing query to search query format
@@ -134,16 +130,18 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const seqNo = _seq_no ?? 0
     const primaryTerm = _primary_term ?? 1
 
-    if (!authUser) {
-      // Public: strip internal fields via schema validation (status, uids, draftVersion, versionIds excluded)
-      const publicData = ResearchDetailPublicSchema.parse(detailData)
-      const strippedDetail = maybeStripRawHtml(publicData, query.includeRawHtml ?? false)
+    // Value-based access control: owner/admin sees actual values, others see sanitized values
+    const isOwner = isOwnerOrAdmin(authUser, detailData.uids)
+    const responseData = isOwner
+      ? detailData
+      : {
+        ...detailData,
+        status: "published" as const,
+        uids: [],
+        draftVersion: null,
+      }
 
-      return singleResponse(c, strippedDetail, seqNo, primaryTerm)
-    }
-
-    // Auth/admin: return full response with optimistic locking
-    const strippedDetail = maybeStripRawHtml(detailData, query.includeRawHtml ?? false)
+    const strippedDetail = maybeStripRawHtml(responseData, query.includeRawHtml ?? false)
 
     return singleResponse(c, strippedDetail, seqNo, primaryTerm)
   })

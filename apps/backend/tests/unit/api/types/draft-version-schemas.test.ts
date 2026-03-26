@@ -2,11 +2,11 @@
  * draftVersion schema validation tests
  *
  * Tests EsResearchSchema draftVersion field and
- * ResearchDetailPublicSchema field exclusion.
+ * ResearchDetailSchema unified response.
  */
 import { describe, expect, it } from "bun:test"
 
-import { ResearchDetailPublicSchema, ResearchDetailSchema } from "@/api/types/views"
+import { ResearchDetailSchema } from "@/api/types/views"
 import { EsResearchSchema } from "@/es/types"
 
 import { createMockResearchDoc } from "../helpers/mock-es"
@@ -46,7 +46,7 @@ describe("EsResearchSchema draftVersion", () => {
   })
 })
 
-describe("ResearchDetailPublicSchema", () => {
+describe("ResearchDetailSchema (unified)", () => {
   const baseDetail = {
     humId: "hum0001",
     url: { ja: "https://example.com", en: "https://example.com/en" },
@@ -70,44 +70,46 @@ describe("ResearchDetailPublicSchema", () => {
     versionReleaseDate: "2024-01-01",
     releaseNote: { ja: null, en: null },
     datasets: [],
+    _seq_no: 1,
+    _primary_term: 1,
   }
 
-  it("does not include status field", () => {
-    const result = ResearchDetailPublicSchema.safeParse({
+  it("always includes status, uids, draftVersion", () => {
+    const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
-      status: "published",
-    })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect("status" in result.data).toBe(false)
-    }
-  })
-
-  it("does not include uids field", () => {
-    const result = ResearchDetailPublicSchema.safeParse({
-      ...baseDetail,
+      status: "draft",
       uids: ["user-1"],
-    })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect("uids" in result.data).toBe(false)
-    }
-  })
-
-  it("does not include draftVersion field", () => {
-    const result = ResearchDetailPublicSchema.safeParse({
-      ...baseDetail,
       draftVersion: "v2",
     })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect("draftVersion" in result.data).toBe(false)
+      expect(result.data.status).toBe("draft")
+      expect(result.data.uids).toEqual(["user-1"])
+      expect(result.data.draftVersion).toBe("v2")
     }
   })
 
-  it("does not include versionIds field", () => {
-    const result = ResearchDetailPublicSchema.safeParse({
+  it("accepts published status with null draftVersion", () => {
+    const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
+      status: "published",
+      uids: [],
+      draftVersion: null,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.status).toBe("published")
+      expect(result.data.uids).toEqual([])
+      expect(result.data.draftVersion).toBeNull()
+    }
+  })
+
+  it("excludes versionIds (internal field)", () => {
+    const result = ResearchDetailSchema.safeParse({
+      ...baseDetail,
+      status: "published",
+      uids: [],
+      draftVersion: null,
       versionIds: ["hum0001.v1"],
     })
     expect(result.success).toBe(true)
@@ -115,47 +117,18 @@ describe("ResearchDetailPublicSchema", () => {
       expect("versionIds" in result.data).toBe(false)
     }
   })
-})
 
-describe("ResearchDetailSchema (auth)", () => {
-  it("includes status, uids, draftVersion", () => {
-    const detail = {
-      humId: "hum0001",
-      url: { ja: "https://example.com", en: "https://example.com/en" },
-      title: { ja: "Test", en: "Test" },
-      summary: {
-        aims: { ja: { text: "a", rawHtml: "a" }, en: { text: "a", rawHtml: "a" } },
-        methods: { ja: { text: "m", rawHtml: "m" }, en: { text: "m", rawHtml: "m" } },
-        targets: { ja: { text: "t", rawHtml: "t" }, en: { text: "t", rawHtml: "t" } },
-        url: { ja: [], en: [] },
-      },
-      dataProvider: [],
-      researchProject: [],
-      grant: [],
-      relatedPublication: [],
-      controlledAccessUser: [],
-      latestVersion: "v1",
-      draftVersion: "v2",
-      datePublished: "2024-01-01",
-      dateModified: "2024-01-01",
-      status: "draft",
-      uids: ["user-1"],
-      humVersionId: "hum0001.v2",
-      version: "v2",
-      versionReleaseDate: "2024-01-01",
-      releaseNote: { ja: null, en: null },
-      datasets: [],
-      _seq_no: 1,
-      _primary_term: 1,
-    }
-
-    const result = ResearchDetailSchema.safeParse(detail)
+  it("includes optimistic locking fields", () => {
+    const result = ResearchDetailSchema.safeParse({
+      ...baseDetail,
+      status: "published",
+      uids: [],
+      draftVersion: null,
+    })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.status).toBe("draft")
-      expect(result.data.uids).toEqual(["user-1"])
-      expect(result.data.draftVersion).toBe("v2")
       expect(result.data._seq_no).toBe(1)
+      expect(result.data._primary_term).toBe(1)
     }
   })
 })

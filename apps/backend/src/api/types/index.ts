@@ -88,14 +88,12 @@ export type {
 // === API View Models ===
 export {
   ResearchDetailSchema,
-  ResearchDetailPublicSchema,
   DatasetVersionItemSchema,
   MergedSearchableSchema,
   DatasetDocWithMergedSchema,
 } from "./views"
 export type {
   ResearchDetail,
-  ResearchDetailPublic,
   DatasetVersionItem,
   MergedSearchable,
   DatasetDocWithMerged,
@@ -189,7 +187,6 @@ export {
   UidsDataSchema,
   UidsResponseSchema,
   ResearchDetailResponseSchema,
-  ResearchDetailPublicResponseSchema,
   ResearchWithLockResponseSchema,
   ResearchSearchResponseSchema,
   ResearchVersionsListResponseSchema,
@@ -243,7 +240,6 @@ export type {
   UidsData,
   UidsResponse,
   ResearchDetailResponse,
-  ResearchDetailPublicResponse,
   ResearchWithLockResponse,
   ResearchSearchResponse,
   ResearchVersionsListResponse,

@@ -229,3 +229,78 @@ describe("canPerformTransition", () => {
     expect(canPerformTransition(nonOwner, "submit", ownerResearch)).toBe(false)
   })
 })
+
+// === canAccessResearchDoc as post-filter (defense-in-depth) ===
+
+describe("canAccessResearchDoc as post-filter", () => {
+  const admin: AuthUser = createMockAuthUser({ isAdmin: true })
+  const owner: AuthUser = createMockAuthUser({ userId: "owner-1" })
+  const otherUser: AuthUser = createMockAuthUser({ userId: "other-1" })
+
+  // Minimal Pick type (simulating post-filter usage with partial fields)
+  const draftNeverPublished = { latestVersion: null, status: "draft" as const, uids: ["owner-1"] }
+  const draftWithPublished = { latestVersion: "v1", status: "draft" as const, uids: ["owner-1"] }
+  const reviewNeverPublished = { latestVersion: null, status: "review" as const, uids: ["owner-1"] }
+  const reviewWithPublished = { latestVersion: "v1", status: "review" as const, uids: ["owner-1"] }
+  const published = { latestVersion: "v1", status: "published" as const, uids: ["owner-1"] }
+  const deleted = { latestVersion: "v1", status: "deleted" as const, uids: ["owner-1"] }
+
+  it("admin passes all", () => {
+    expect(canAccessResearchDoc(admin, draftNeverPublished)).toBe(true)
+    expect(canAccessResearchDoc(admin, deleted)).toBe(true)
+  })
+
+  it("public excludes latestVersion=null", () => {
+    expect(canAccessResearchDoc(null, draftNeverPublished)).toBe(false)
+  })
+
+  it("public excludes deleted", () => {
+    expect(canAccessResearchDoc(null, deleted)).toBe(false)
+  })
+
+  it("public includes published", () => {
+    expect(canAccessResearchDoc(null, published)).toBe(true)
+  })
+
+  it("non-owner excludes draft with latestVersion=null", () => {
+    expect(canAccessResearchDoc(otherUser, draftNeverPublished)).toBe(false)
+  })
+
+  it("owner includes own draft with latestVersion=null", () => {
+    expect(canAccessResearchDoc(owner, draftNeverPublished)).toBe(true)
+  })
+
+  it("non-owner includes draft with latestVersion (public visible)", () => {
+    expect(canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
+  })
+
+  it("public excludes review with latestVersion=null", () => {
+    expect(canAccessResearchDoc(null, reviewNeverPublished)).toBe(false)
+  })
+
+  it("non-owner excludes review with latestVersion=null", () => {
+    expect(canAccessResearchDoc(otherUser, reviewNeverPublished)).toBe(false)
+  })
+
+  it("owner includes own review with latestVersion=null", () => {
+    expect(canAccessResearchDoc(owner, reviewNeverPublished)).toBe(true)
+  })
+
+  it("non-owner includes review with latestVersion (public visible)", () => {
+    expect(canAccessResearchDoc(otherUser, reviewWithPublished)).toBe(true)
+  })
+
+  it("PBT: post-filter never allows deleted for non-owner non-admin", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(null, otherUser),
+        fc.constantFrom("v1", "v2", null),
+        (user, latestVersion) => {
+          const doc = { latestVersion, status: "deleted" as const, uids: ["owner-1"] }
+
+          return !canAccessResearchDoc(user, doc)
+        },
+      ),
+    )
+  })
+})

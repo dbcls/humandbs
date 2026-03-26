@@ -188,7 +188,7 @@ export const ResearchSummarySchema = z.object({
   criteria: z
     .string()
     .describe("Data access criteria summary (e.g., 'Controlled-access')"),
-  status: z.enum(RESEARCH_STATUS).optional()
-    .describe("Publication status. Only included for authenticated users."),
+  status: z.enum(RESEARCH_STATUS)
+    .describe("Publication status. Owner/admin sees actual status, others see 'published'."),
 })
 export type ResearchSummary = z.infer<typeof ResearchSummarySchema>

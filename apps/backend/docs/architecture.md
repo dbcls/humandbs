@@ -67,7 +67,7 @@ interface JwtClaims {
 | ユーザー種別 | 指定可能な status | 範囲外を指定した場合 |
 |-------------|------------------|---------------------|
 | public | `published` のみ（互換性維持、内部では `latestVersion exists AND not deleted` に変換） | 403 Forbidden |
-| authenticated | `draft`, `review`, `published`（自分の） | 403 Forbidden |
+| authenticated | `draft`, `review`, `published`, `deleted`（自分のリソースのみ） | 403 Forbidden |
 | admin | `draft`, `review`, `published`, `deleted` | - |
 
 ### 認可マトリクス
@@ -78,7 +78,7 @@ interface JwtClaims {
 |------|--------|-------|------------|-------|
 | Read (latestVersion!=null) | o | o | o | o |
 | Read (draft/review) | x | o | x | o |
-| Read detail (レスポンス) | status/uids/draftVersion 除外 | 全フィールド | 全フィールド | 全フィールド |
+| Read detail (レスポンス) | status/uids/draftVersion は値ベース制御 | 全フィールド | status/uids/draftVersion は値ベース制御 | 全フィールド |
 | Create | x | x | x | o |
 | Update | x | o | x | o |
 | Delete | x | x | x | o |
@@ -155,9 +155,10 @@ Research のライフサイクル状態遷移を管理する。
 
 ### deleted 状態
 
-- `status=deleted` の Research は全ての操作対象外
-- API は 404 を返す
+- `status=deleted` の Research は更新・状態遷移の操作対象外
+- owner/admin は閲覧可能（一覧・詳細・バージョン一覧）。それ以外のユーザーには 404 を返す
 - 物理削除ではなく論理削除
+- 紐づく Dataset は `deleteResearch` 時に物理削除される
 
 ## 公開判定（Public Visibility）
 
@@ -225,23 +226,23 @@ ResearchSummary に含まれるバージョン情報と Dataset メタデータ:
 
 `versions`, `datasetIds`, `typeOfData`, `platforms` 等は、上記で許可されたバージョンに紐づくデータのみ集計する。
 
-### レスポンスのフィールド除外
+### レスポンスのフィールド制御
 
-#### 全ユーザー共通
+#### 全ユーザー共通で除外
 
 | 除外フィールド | 理由 |
 |---------------|------|
 | `versionIds` | 内部メタデータ。API では `versions` エンドポイントで取得する |
 
-#### public ユーザーのみ追加で除外
+#### 値ベースの制御（全ユーザーにフィールドは返すが、値を制御する）
 
-| 除外フィールド | 対象 | 理由 |
-|---------------|------|------|
-| `status` | 詳細・一覧 | 内部ワークフロー状態 |
-| `uids` | 詳細 | オーナー情報 |
-| `draftVersion` | 詳細 | 編集中バージョン |
+全レスポンス（一覧・詳細）で `status`, `uids`, `draftVersion` を常に含める。型を統一し、ユーザー種別に応じて値を制御する:
 
-一覧レスポンス（`GET /research`, `POST /research/search`）でも、認証ユーザーには `status` を返し、public ユーザーには含めない。
+| フィールド | owner/admin | その他（public 含む） |
+|-----------|-------------|---------------------|
+| `status` | 実際の値 | `"published"` |
+| `uids` | 実際の値 | `[]` |
+| `draftVersion` | 実際の値 | `null` |
 
 全ユーザーに `_seq_no`/`_primary_term` を返す（Dataset と統一）。
 

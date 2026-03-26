@@ -20,6 +20,7 @@ const validBase = {
   targets: "targets text",
   dataProvider: ["Provider A"],
   criteria: "Controlled-access (Type I)",
+  status: "published" as const,
 }
 
 describe("ResearchSummarySchema", () => {
@@ -99,11 +100,11 @@ describe("ResearchSummarySchema", () => {
   describe("status field", () => {
     const withTitle = { ...validBase, title: { ja: "タイトル", en: "Title" } }
 
-    it("is optional (omitting status succeeds)", () => {
-      const result = ResearchSummarySchema.safeParse(withTitle)
+    it("is required (omitting status fails)", () => {
+      const { status, ...withoutStatus } = withTitle
+      const result = ResearchSummarySchema.safeParse(withoutStatus)
 
-      expect(result.success).toBe(true)
-      expect(result.data?.status).toBeUndefined()
+      expect(result.success).toBe(false)
     })
 
     it("accepts valid status values", () => {

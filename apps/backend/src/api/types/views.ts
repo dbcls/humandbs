@@ -32,18 +32,8 @@ const researchVersionFields = {
 }
 
 /**
- * Public research detail view model
- * Excludes internal fields: status, uids, draftVersion, versionIds
- * No optimistic locking fields (read-only for public)
- */
-export const ResearchDetailPublicSchema = EsResearchSchema
-  .omit({ versionIds: true, status: true, uids: true, draftVersion: true })
-  .extend(researchVersionFields)
-export type ResearchDetailPublic = z.infer<typeof ResearchDetailPublicSchema>
-
-/**
- * Auth research detail view model
- * All fields + optimistic locking fields
+ * Research detail view model (unified for all users)
+ * All fields included; values are controlled per-user in the route handler.
  */
 export const ResearchDetailSchema = EsResearchSchema
   .omit({ versionIds: true })

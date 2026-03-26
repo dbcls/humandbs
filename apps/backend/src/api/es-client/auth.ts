@@ -57,7 +57,7 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
  */
 export const canAccessResearchDoc = (
   authUser: AuthUser | null,
-  researchDoc: EsResearch,
+  researchDoc: Pick<EsResearch, "latestVersion" | "status" | "uids">,
 ): boolean => {
   if (authUser?.isAdmin) return true
   if (researchDoc.latestVersion !== null && researchDoc.status !== "deleted") return true

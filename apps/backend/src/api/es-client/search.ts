@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildStatusFilter, getPublishedHumIds } from "@/api/es-client/auth"
+import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -37,6 +37,7 @@ import {
   nestedBooleanTermQuery,
 } from "@/api/es-client/query-helpers"
 import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
+import { logger } from "@/api/logger"
 import {
   EsDatasetSchema,
   EsResearchSchema,
@@ -631,15 +632,6 @@ export const searchResearches = async (
         facets: includeFacets ? {} : undefined,
       }
     }
-    if (authUser && !authUser.isAdmin && requestedStatus === "deleted") {
-      // Non-admin requesting deleted - return empty
-      return {
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
-        facets: includeFacets ? {} : undefined,
-      }
-    }
-
     // Apply status filter
     must.push({ term: { status: requestedStatus } })
 
@@ -691,12 +683,19 @@ export const searchResearches = async (
     } : {}),
   })
 
-  const base = res.hits.hits
+  const baseAll = res.hits.hits
     .map(hit => hit._source)
     .filter((doc): doc is EsResearch => !!doc)
     .map(doc => EsResearchSchema.pick({
       humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true, status: true,
     }).parse(doc))
+
+  // Defense-in-depth: post-filter results that ES query should have excluded
+  const base = baseAll.filter(doc => canAccessResearchDoc(authUser, doc))
+  const postFilterExcluded = baseAll.length - base.length
+  if (postFilterExcluded > 0) {
+    logger.error(`searchResearches post-filter excluded ${postFilterExcluded} documents that should have been filtered by ES query. Check ES index mapping for latestVersion field.`)
+  }
 
   // Fetch version and dataset details
   const rvIds = base.flatMap(doc => doc.versionIds)
@@ -760,11 +759,11 @@ export const searchResearches = async (
       targets,
       dataProvider,
       criteria,
-      ...(authUser ? { status: d.status } : {}),
+      status: isOwnerOrAdmin(authUser, d.uids ?? []) ? d.status : "published" as const,
     }
   })
 
-  const total = esTotal(res.hits.total)
+  const total = esTotal(res.hits.total) - postFilterExcluded
 
   // Get facets from Dataset index if requested (lang filter removed)
   let facets: FacetsMap | undefined

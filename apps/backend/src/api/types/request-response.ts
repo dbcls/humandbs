@@ -40,7 +40,6 @@ import {
 import {
   DatasetDocWithMergedSchema,
   ResearchDetailSchema,
-  ResearchDetailPublicSchema,
   DatasetVersionItemSchema,
 } from "./views"
 import { RESEARCH_STATUS } from "./workflow"
@@ -613,17 +612,6 @@ export const ResearchDetailResponseSchema = createSingleResponseSchema(
 )
 export type ResearchDetailResponse = z.infer<
   typeof ResearchDetailResponseSchema
->
-
-/**
- * Research detail response for public users (GET /research/{humId})
- * Excludes status, uids, draftVersion. Read-only (no optimistic locking).
- */
-export const ResearchDetailPublicResponseSchema = createSingleReadOnlyResponseSchema(
-  ResearchDetailPublicSchema,
-)
-export type ResearchDetailPublicResponse = z.infer<
-  typeof ResearchDetailPublicResponseSchema
 >
 
 /**
