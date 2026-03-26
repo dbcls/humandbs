@@ -145,27 +145,23 @@ export const ProblemDetailsSchema = z.object({
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
 
 // === API-specific Person / Publication schemas ===
-// Crawler-only fields (datasetIds, researchTitle, periodOfDataUse) are omitted
-// from API request bodies. The original schemas in crawler/types/structured.ts
-// remain unchanged.
+// Person/Publication sub-fields are selectively included based on context:
+// - dataProvider: omit datasetIds, researchTitle, periodOfDataUse (no real data)
+// - controlledAccessUser: all fields included
+// - relatedPublication: all fields included
 
-/** dataProvider: omit all crawler-only fields */
+/** dataProvider: 実データのない 3 フィールドを除外 */
 const ApiDataProviderPersonSchema = PersonSchema.omit({
   datasetIds: true,
   researchTitle: true,
   periodOfDataUse: true,
 })
 
-/** controlledAccessUser: keep periodOfDataUse, omit the rest */
-const ApiControlledAccessUserPersonSchema = PersonSchema.omit({
-  datasetIds: true,
-  researchTitle: true,
-})
+/** controlledAccessUser: 全フィールド必要 */
+const ApiControlledAccessUserPersonSchema = PersonSchema
 
-/** Publication: omit crawler-only datasetIds */
-const ApiPublicationSchema = PublicationSchema.omit({
-  datasetIds: true,
-})
+/** relatedPublication: datasetIds で論文とデータセットを紐付ける */
+const ApiPublicationSchema = PublicationSchema
 
 // === Research API ===
 

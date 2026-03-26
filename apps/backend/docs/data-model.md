@@ -54,7 +54,10 @@ Crawler (structured.ts)  →  ES (es/types.ts)  →  API (api/types/)  →  Fron
   - `draftVersion`: 編集中のバージョン（null = 編集なし）。ES 固有フィールド
   - `.describe()` は crawler スキーマ（SSOT）に定義されているため、ES スキーマが継承する
 - **ES → API**: `api/types/es-docs.ts` で re-export。`api/types/views.ts` で API ビューモデル（`ResearchDetail`, `MergedSearchable` 等）を定義
-  - API リクエスト用スキーマでは、クローラー専用フィールド（`datasetIds`, `researchTitle`, `periodOfDataUse`）を `.omit()` で除外している（`request-response.ts`）。レスポンスにはクローラーが設定した値をそのまま返すため、除外しない
+  - API リクエスト用スキーマでは、コンテキストに応じてフィールドを選択的に除外している（`request-response.ts`）:
+    - `dataProvider`: `datasetIds`, `researchTitle`, `periodOfDataUse` を除外（実データなし）
+    - `controlledAccessUser`: 全フィールドを含む（`datasetIds`, `researchTitle`, `periodOfDataUse`）
+    - `relatedPublication`: 全フィールドを含む（`datasetIds` で論文とデータセットを紐付け）
 - **API → Frontend**: `types/shared-types.ts` で clean name（`Es` prefix なし）のみを re-export
 
 依存の方向: `crawler/types → es/types → api/types/` を維持すること。
