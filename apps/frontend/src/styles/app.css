@@ -5,7 +5,7 @@
 .front-stats {
   padding: 22px 16px 30px;
   color: #172133;
-  background: #e7e8ea;
+  background: transparent;
 }
 
 .front-stats__chart-wrap {
@@ -13,7 +13,7 @@
   overflow: hidden;
   border: 1px solid #d0d4d8;
   border-radius: 14px;
-  background: #e5e6e8;
+  background: transparent;
 }
 
 .front-stats__chart-wrap::before {
@@ -21,9 +21,19 @@
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at 14% 25%, rgb(156 168 176 / 20%) 0 1.1px, transparent 1.1px),
-    radial-gradient(circle at 82% 70%, rgb(156 168 176 / 16%) 0 1.2px, transparent 1.2px);
-  background-size: 230px 230px, 200px 200px;
+    radial-gradient(
+      circle at 14% 25%,
+      rgb(156 168 176 / 20%) 0 1.1px,
+      transparent 1.1px
+    ),
+    radial-gradient(
+      circle at 82% 70%,
+      rgb(156 168 176 / 16%) 0 1.2px,
+      transparent 1.2px
+    );
+  background-size:
+    230px 230px,
+    200px 200px;
   pointer-events: none;
 }
 
@@ -86,8 +96,16 @@
   border: 1px solid #d0d4d8;
   border-radius: 14px;
   background:
-    radial-gradient(circle at 24% 28%, rgb(255 255 255 / 55%), transparent 0 18%),
-    radial-gradient(circle at 78% 68%, rgb(155 168 177 / 20%), transparent 0 14%),
+    radial-gradient(
+      circle at 24% 28%,
+      rgb(255 255 255 / 55%),
+      transparent 0 18%
+    ),
+    radial-gradient(
+      circle at 78% 68%,
+      rgb(155 168 177 / 20%),
+      transparent 0 14%
+    ),
     linear-gradient(180deg, #eceef0 0%, #e3e5e8 100%);
 }
 
@@ -108,7 +126,12 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: radial-gradient(circle at 34% 30%, #f3dfdc 0%, #d8bcc0 52%, #b69cae 100%);
+  background: radial-gradient(
+    circle at 34% 30%,
+    #f3dfdc 0%,
+    #d8bcc0 52%,
+    #b69cae 100%
+  );
   box-shadow:
     inset -14px -16px 24px rgb(96 68 86 / 18%),
     0 12px 28px rgb(92 103 110 / 18%);
@@ -185,25 +208,45 @@
 .front-stats__loader-planet--1 {
   width: 44px;
   height: 44px;
-  background: radial-gradient(circle at 34% 28%, #e9e3c6 0%, #d8cfb3 56%, #b8bebe 100%);
+  background: radial-gradient(
+    circle at 34% 28%,
+    #e9e3c6 0%,
+    #d8cfb3 56%,
+    #b8bebe 100%
+  );
 }
 
 .front-stats__loader-planet--2 {
   width: 54px;
   height: 54px;
-  background: radial-gradient(circle at 35% 28%, #d5f0ca 0%, #add9c1 56%, #92c8b8 100%);
+  background: radial-gradient(
+    circle at 35% 28%,
+    #d5f0ca 0%,
+    #add9c1 56%,
+    #92c8b8 100%
+  );
 }
 
 .front-stats__loader-planet--3 {
   width: 62px;
   height: 62px;
-  background: radial-gradient(circle at 34% 28%, #d2ebf5 0%, #a6d7e7 54%, #89c4dc 100%);
+  background: radial-gradient(
+    circle at 34% 28%,
+    #d2ebf5 0%,
+    #a6d7e7 54%,
+    #89c4dc 100%
+  );
 }
 
 .front-stats__loader-planet--4 {
   width: 50px;
   height: 50px;
-  background: radial-gradient(circle at 34% 28%, #e7dcef 0%, #c9badf 54%, #afa3cd 100%);
+  background: radial-gradient(
+    circle at 34% 28%,
+    #e7dcef 0%,
+    #c9badf 54%,
+    #afa3cd 100%
+  );
 }
 
 @keyframes front-stats-orbit-spin {

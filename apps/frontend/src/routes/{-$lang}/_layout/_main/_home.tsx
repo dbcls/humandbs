@@ -58,7 +58,7 @@ function RouteComponent() {
           <News />
         </Card>
       </section>
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden p-0 bg-transparent">
         <FrontStatsVisualization />
       </Card>
     </section>
