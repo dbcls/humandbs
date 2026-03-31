@@ -52,6 +52,7 @@ export interface NavbarItem {
   id: NavigationItemId;
   labelKey: NavigationItemId;
   linkOptions: LinkOptions;
+  priority: NavPriority;
   children?: Array<{
     id: NavigationItemId;
     labelKey: NavigationItemId;
@@ -420,6 +421,7 @@ function buildNavbarItems(
         id: registryItem.id,
         labelKey: registryItem.labelKey,
         linkOptions: registryItem.getLinkOptions(lang),
+        priority: item.navbar?.priority ?? "important",
         ...(children.length > 0 ? { children } : {}),
       };
     });

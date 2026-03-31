@@ -631,7 +631,10 @@ function NavbarColumnCard({
         <Select
           value={priority}
           onValueChange={(value) =>
-            onChangePriority(col.parent.id as NavigationItemId, value as NavPriority)
+            onChangePriority(
+              col.parent.id as NavigationItemId,
+              value as NavPriority,
+            )
           }
         >
           <SelectTrigger className="h-7 w-full text-xs">
@@ -695,7 +698,7 @@ function NavbarChildItem({
     <li
       ref={ref as React.Ref<HTMLLIElement>}
       className={[
-        "flex items-center gap-1 rounded px-1 py-1 hover:bg-gray-50",
+        "flex items-start gap-1 rounded px-1 py-1 hover:bg-gray-50",
         isDragSource ? "opacity-40" : "",
         !enabled ? "opacity-50" : "",
       ].join(" ")}
@@ -707,7 +710,7 @@ function NavbarChildItem({
       >
         <GripVertical className="size-3 shrink-0" />
       </button>
-      <span className="min-w-0 truncate text-xs">
+      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
         {tNav(item.id as NavigationItemId)}
       </span>
       <Switch
@@ -757,10 +760,10 @@ function NavbarColumnOverlay({
         {col.children.map((child) => (
           <li
             key={child.id}
-            className="flex items-center gap-1 rounded px-1 py-1"
+            className="flex items-start gap-1 rounded px-1 py-1"
           >
             <GripVertical className="size-3 shrink-0 text-gray-400" />
-            <span className="min-w-0 truncate text-xs">
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
               {tNav(child.id as NavigationItemId)}
             </span>
           </li>
@@ -786,12 +789,12 @@ function NavbarItemOverlay({
   return (
     <li
       className={[
-        "flex items-center gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
+        "flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
         !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
       <GripVertical className="size-3 shrink-0 text-gray-400" />
-      <span className="min-w-0 truncate text-xs">
+      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
         {tNav(item.id as NavigationItemId)}
       </span>
     </li>
@@ -1044,7 +1047,7 @@ function FooterItemRow({
     <li
       ref={ref as React.Ref<HTMLLIElement>}
       className={[
-        "flex items-center gap-1 rounded px-1 py-1 hover:bg-gray-50",
+        "flex items-start gap-1 rounded px-1 py-1 hover:bg-gray-50",
         isDragSource ? "opacity-40" : "",
         !enabled ? "opacity-50" : "",
       ].join(" ")}
@@ -1056,7 +1059,7 @@ function FooterItemRow({
       >
         <GripVertical className="size-3 shrink-0" />
       </button>
-      <span className="flex-1 truncate text-xs">
+      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
         {tNav(item.id as NavigationItemId)}
       </span>
       <Switch
@@ -1101,10 +1104,10 @@ function FooterGroupOverlay({
         {g.items.map((item) => (
           <li
             key={item.id}
-            className="flex items-center gap-1 rounded px-1 py-1"
+            className="flex items-start gap-1 rounded px-1 py-1"
           >
             <GripVertical className="size-3 shrink-0 text-gray-400" />
-            <span className="flex-1 truncate text-xs">
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
               {tNav(item.id as NavigationItemId)}
             </span>
           </li>
@@ -1128,12 +1131,12 @@ function FooterItemOverlay({
   return (
     <li
       className={[
-        "flex items-center gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
+        "flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
         !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
       <GripVertical className="size-3 shrink-0 text-gray-400" />
-      <span className="flex-1 truncate text-xs">
+      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
         {tNav(item.id as NavigationItemId)}
       </span>
     </li>
