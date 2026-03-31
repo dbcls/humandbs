@@ -1,29 +1,16 @@
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { move } from "@dnd-kit/helpers";
+import { CollisionPriority } from "@dnd-kit/abstract";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
 
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -31,11 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import {
-  FOOTER_GROUP_IDS,
   type FooterGroupId,
+  type NavPriority,
   type NavigationItemId,
   type SiteNavigationConfig,
 } from "@/config/site-navigation";
@@ -52,6 +37,27 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
 });
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type NavbarColumn = {
+  parent: SiteNavigationConfig["items"][number];
+  children: SiteNavigationConfig["items"];
+};
+
+type FooterGroupWithItems = {
+  group: SiteNavigationConfig["footerGroups"][number];
+  items: SiteNavigationConfig["items"];
+};
+
+// Record<groupId, itemIds[]> shape expected by move() for multi-list
+type ItemsRecord = Record<string, string[]>;
+
+// ---------------------------------------------------------------------------
+// Route component
+// ---------------------------------------------------------------------------
 
 function RouteComponent() {
   const tNav = useTranslations("Navbar");
@@ -79,20 +85,13 @@ function RouteComponent() {
   const { mutateAsync: saveConfig, isPending: isSaving } = useMutation({
     mutationFn: async (config: SiteNavigationConfig) =>
       $saveSiteNavigationConfig({
-        data: {
-          config,
-          expectedRevision: revision,
-        },
+        data: { config, expectedRevision: revision },
       }),
   });
 
   const { mutateAsync: resetConfig, isPending: isResetting } = useMutation({
     mutationFn: async () =>
-      $resetSiteNavigationConfig({
-        data: {
-          expectedRevision: revision,
-        },
-      }),
+      $resetSiteNavigationConfig({ data: { expectedRevision: revision } }),
   });
 
   if (isPending) {
@@ -152,16 +151,13 @@ function RouteComponent() {
 
   async function handleSave() {
     if (!draft) return;
-
     setMessage(null);
     setError(null);
     const result = await saveConfig(draft);
-
     if (!result.ok) {
       setError(result.error);
       return;
     }
-
     setDraft(result.data.config);
     setRevision(result.data.revision);
     setMessage("Navigation saved.");
@@ -172,12 +168,10 @@ function RouteComponent() {
     setMessage(null);
     setError(null);
     const result = await resetConfig();
-
     if (!result.ok) {
       setError(result.error);
       return;
     }
-
     setDraft(result.data.config);
     setRevision(result.data.revision);
     setMessage("Navigation reset to default.");
@@ -190,139 +184,131 @@ function RouteComponent() {
     setDraft((current) => (current ? updater(current) : current));
   }
 
-  function updateOrder(value: string, onValidNumber: (order: number) => void) {
-    const parsed = Number(value);
+  // ---------------------------------------------------------------------------
+  // Navbar commit handlers — called from NavbarPreview with final state
+  // ---------------------------------------------------------------------------
 
-    if (!Number.isInteger(parsed)) return;
-
-    onValidNumber(parsed);
-  }
-
-  function handleFooterGroupDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) return;
-
+  function commitNavbarColumns(columns: NavbarColumn[]) {
     updateDraft((current) => {
-      const groups = current.footerGroups
-        .slice()
-        .sort((a, b) => a.order - b.order);
-      const oldIndex = groups.findIndex((group) => group.id === active.id);
-      const newIndex = groups.findIndex((group) => group.id === over.id);
+      // Build new parentId and order for every navbar item from the local columns state
+      const newItems = current.items.map((item) => {
+        if (!item.navbar) return item;
 
-      if (oldIndex < 0 || newIndex < 0) return current;
+        // Is this a top-level column?
+        const colIndex = columns.findIndex((c) => c.parent.id === item.id);
+        if (colIndex >= 0) {
+          return {
+            ...item,
+            parentId: undefined,
+            navbar: { ...item.navbar, order: (colIndex + 1) * 10 },
+          };
+        }
 
-      return {
-        ...current,
-        footerGroups: arrayMove(groups, oldIndex, newIndex).map(
-          (group, index) => ({
-            ...group,
-            order: (index + 1) * 10,
-          }),
-        ),
-      };
+        // Is this a child?
+        for (const col of columns) {
+          const childIndex = col.children.findIndex((ch) => ch.id === item.id);
+          if (childIndex >= 0) {
+            return {
+              ...item,
+              parentId: col.parent.id as NavigationItemId,
+              navbar: { ...item.navbar, order: (childIndex + 1) * 10 },
+            };
+          }
+        }
+
+        return item;
+      });
+      return { ...current, items: newItems };
     });
   }
 
-  function reorderNavbarItems(ids: NavigationItemId[]) {
-    updateDraft((current) => {
-      const orderMap = new Map(
-        ids.map((id, index) => [id, (index + 1) * 10] as const),
-      );
+  // ---------------------------------------------------------------------------
+  // Footer commit handlers — called from FooterPreview with final state
+  // ---------------------------------------------------------------------------
 
-      return {
-        ...current,
-        items: current.items.map((item) =>
-          item.navbar && orderMap.has(item.id)
-            ? {
-                ...item,
-                navbar: {
-                  ...item.navbar,
-                  order: orderMap.get(item.id) ?? item.navbar.order,
-                },
-              }
-            : item,
-        ),
-      };
+  function commitFooterGroups(groups: FooterGroupWithItems[]) {
+    updateDraft((current) => {
+      const newFooterGroups = current.footerGroups.map((fg) => {
+        const idx = groups.findIndex((g) => g.group.id === fg.id);
+        return idx >= 0 ? { ...fg, order: (idx + 1) * 10 } : fg;
+      });
+
+      const newItems = current.items.map((item) => {
+        if (!item.footer) return item;
+        for (const { group, items } of groups) {
+          const itemIndex = items.findIndex((i) => i.id === item.id);
+          if (itemIndex >= 0) {
+            return {
+              ...item,
+              footer: {
+                ...item.footer,
+                groupId: group.id as FooterGroupId,
+                order: (itemIndex + 1) * 10,
+              },
+            };
+          }
+        }
+        return item;
+      });
+
+      return { ...current, footerGroups: newFooterGroups, items: newItems };
     });
   }
 
-  function handleNavbarScopeDragEnd(
-    event: DragEndEvent,
-    ids: NavigationItemId[],
+  function updateNavbarItemEnabled(id: NavigationItemId, enabled: boolean) {
+    updateDraft((current) => ({
+      ...current,
+      items: current.items.map((entry) =>
+        entry.id === id && entry.navbar
+          ? { ...entry, navbar: { ...entry.navbar, enabled } }
+          : entry,
+      ),
+    }));
+  }
+
+  function updateNavbarItemPriority(
+    id: NavigationItemId,
+    priority: NavPriority,
   ) {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = ids.findIndex((id) => id === active.id);
-    const newIndex = ids.findIndex((id) => id === over.id);
-
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    reorderNavbarItems(arrayMove(ids, oldIndex, newIndex));
+    updateDraft((current) => ({
+      ...current,
+      items: current.items.map((entry) =>
+        entry.id === id && entry.navbar
+          ? { ...entry, navbar: { ...entry.navbar, priority } }
+          : entry,
+      ),
+    }));
   }
 
-  function reorderFooterItems(ids: NavigationItemId[]) {
-    updateDraft((current) => {
-      const orderMap = new Map(
-        ids.map((id, index) => [id, (index + 1) * 10] as const),
-      );
-
-      return {
-        ...current,
-        items: current.items.map((item) =>
-          item.footer && orderMap.has(item.id)
-            ? {
-                ...item,
-                footer: {
-                  ...item.footer,
-                  order: orderMap.get(item.id) ?? item.footer.order,
-                },
-              }
-            : item,
-        ),
-      };
-    });
-  }
-
-  function handleFooterScopeDragEnd(
-    event: DragEndEvent,
-    ids: NavigationItemId[],
-  ) {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = ids.findIndex((id) => id === active.id);
-    const newIndex = ids.findIndex((id) => id === over.id);
-
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    reorderFooterItems(arrayMove(ids, oldIndex, newIndex));
-  }
-
+  // ---------------------------------------------------------------------------
+  // Derived data
+  // ---------------------------------------------------------------------------
   const sortedFooterGroups = draft.footerGroups
     .slice()
     .sort((a, b) => a.order - b.order);
+
   const topLevelNavbarItems = draft.items
     .filter((item) => item.navbar && !item.parentId)
     .slice()
     .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0));
-  const navbarChildrenByParent = topLevelNavbarItems.map((parent) => ({
+
+  const navbarColumns: NavbarColumn[] = topLevelNavbarItems.map((parent) => ({
     parent,
     children: draft.items
       .filter((item) => item.parentId === parent.id && item.navbar)
       .slice()
       .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0)),
   }));
-  const footerItemsByGroup = sortedFooterGroups.map((group) => ({
-    group,
-    items: draft.items
-      .filter((item) => item.footer?.groupId === group.id)
-      .slice()
-      .sort((a, b) => (a.footer?.order ?? 0) - (b.footer?.order ?? 0)),
-  }));
+
+  const footerGroups: FooterGroupWithItems[] = sortedFooterGroups.map(
+    (group) => ({
+      group,
+      items: draft.items
+        .filter((item) => item.footer?.groupId === group.id)
+        .slice()
+        .sort((a, b) => (a.footer?.order ?? 0) - (b.footer?.order ?? 0)),
+    }),
+  );
 
   return (
     <Card
@@ -332,10 +318,12 @@ function RouteComponent() {
     >
       <div className="flex items-center justify-between px-5 pt-5">
         <div>
-          <p className="text-sm font-medium">Shared structure for both locales</p>
+          <p className="text-sm font-medium">
+            Shared structure for both locales
+          </p>
           <p className="text-foreground-light text-sm">
-            Labels still come from translation keys. This editor changes
-            ordering, visibility, navbar grouping, and footer grouping.
+            Labels come from translation keys. This editor changes ordering,
+            visibility, priority, and footer grouping.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -371,507 +359,783 @@ function RouteComponent() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-5 px-5 pt-5 pb-5">
-          <div className="grid gap-5 xl:grid-cols-2">
-            <section className="rounded-md border border-gray-200 p-4">
-              <h2 className="text-base font-medium">Quick Reorder: Navbar</h2>
-              <p className="text-foreground-light mt-1 text-sm">
-                Drag top-level items and each child group to update navbar order.
-              </p>
-
-              <div className="mt-4 flex flex-col gap-4">
-                <SortableNavigationList
-                  items={topLevelNavbarItems.map((item) => ({
-                    id: item.id,
-                    label: tNav(item.id),
-                    meta: item.navbar?.enabled ? "Shown" : "Hidden",
-                  }))}
-                  onDragEnd={(event) =>
-                    handleNavbarScopeDragEnd(
-                      event,
-                      topLevelNavbarItems.map((item) => item.id),
-                    )
-                  }
-                />
-
-                {navbarChildrenByParent
-                  .filter(({ children }) => children.length > 0)
-                  .map(({ parent, children }) => (
-                    <div key={parent.id} className="rounded-md bg-gray-50 p-3">
-                      <p className="text-sm font-medium">{tNav(parent.id)}</p>
-                      <p className="text-foreground-light mt-1 text-xs">
-                        Child items
-                      </p>
-                      <div className="mt-3">
-                        <SortableNavigationList
-                          items={children.map((item) => ({
-                            id: item.id,
-                            label: tNav(item.id),
-                            meta: item.navbar?.enabled ? "Shown" : "Hidden",
-                          }))}
-                          onDragEnd={(event) =>
-                            handleNavbarScopeDragEnd(
-                              event,
-                              children.map((item) => item.id),
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </section>
-
-            <section className="rounded-md border border-gray-200 p-4">
-              <h2 className="text-base font-medium">Quick Reorder: Footer</h2>
-              <p className="text-foreground-light mt-1 text-sm">
-                Drag groups and items within each group to update footer order.
-              </p>
-
-              <div className="mt-4 flex flex-col gap-4">
-                <div>
-                  <p className="mb-3 text-sm font-medium">Footer groups</p>
-                  <SortableNavigationList
-                    items={sortedFooterGroups.map((group) => ({
-                      id: group.id,
-                      label: tFooter(group.labelKey),
-                      meta: group.enabled ? "Enabled" : "Hidden",
-                    }))}
-                    onDragEnd={handleFooterGroupDragEnd}
-                  />
-                </div>
-
-                {footerItemsByGroup.map(({ group, items }) => (
-                  <div key={group.id} className="rounded-md bg-gray-50 p-3">
-                    <p className="text-sm font-medium">{tFooter(group.labelKey)}</p>
-                    <p className="text-foreground-light mt-1 text-xs">
-                      Group items
-                    </p>
-                    <div className="mt-3">
-                      <SortableNavigationList
-                        items={items.map((item) => ({
-                          id: item.id,
-                          label: tNav(item.id),
-                          meta: item.footer?.enabled ? "Shown" : "Hidden",
-                        }))}
-                        onDragEnd={(event) =>
-                          handleFooterScopeDragEnd(
-                            event,
-                            items.map((item) => item.id),
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-2">
-            <section className="flex flex-col gap-4">
-          <h2 className="text-base font-medium">Footer groups</h2>
-          {sortedFooterGroups
-            .map((group) => (
-            <div
-              key={group.id}
-              className="rounded-md border border-gray-200 p-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium">{tFooter(group.labelKey)}</p>
-                  <p className="text-foreground-light text-sm">{group.id}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex w-24 flex-col gap-2">
-                    <Label htmlFor={`group-order-${group.id}`}>Order</Label>
-                    <Input
-                      id={`group-order-${group.id}`}
-                      type="number"
-                      value={group.order}
-                      onChange={(event) => {
-                        updateOrder(event.target.value, (order) => {
-                          updateDraft((current) => ({
-                            ...current,
-                            footerGroups: current.footerGroups.map((item) =>
-                              item.id === group.id ? { ...item, order } : item,
-                            ),
-                          }));
-                        });
-                      }}
-                    />
-                  </div>
-
-                  <label className="flex items-center gap-2 pt-7 text-sm">
-                    Enabled
-                    <Switch
-                      checked={group.enabled}
-                      disabled={group.id === "overview"}
-                      onCheckedChange={(checked) => {
-                        updateDraft((current) => ({
-                          ...current,
-                          footerGroups: current.footerGroups.map((item) =>
-                            item.id === group.id
-                              ? { ...item, enabled: checked }
-                              : item,
-                          ),
-                        }));
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-              {group.id === "overview" ? (
-                <p className="text-foreground-light mt-3 text-xs">
-                  The overview group stays enabled because it contains the
-                  protected Home link.
-                </p>
-              ) : null}
+          {/* Navbar preview */}
+          <section className="rounded-md border border-gray-200 p-4">
+            <h2 className="text-base font-medium">Navbar</h2>
+            <p className="text-foreground-light mt-1 text-sm">
+              Drag columns to reorder. Drag child items between columns to
+              reparent.
+            </p>
+            <div className="mt-4">
+              <NavbarPreview
+                columns={navbarColumns}
+                tNav={tNav}
+                onCommit={commitNavbarColumns}
+                onToggleEnabled={updateNavbarItemEnabled}
+                onChangePriority={updateNavbarItemPriority}
+              />
             </div>
-          ))}
-            </section>
+          </section>
 
-            <section className="flex flex-col gap-4">
-          <h2 className="text-base font-medium">Navigation items</h2>
-          {draft.items
-            .slice()
-            .sort((a, b) => {
-              const aOrder =
-                a.navbar?.order ?? a.footer?.order ?? Number.MAX_SAFE_INTEGER;
-              const bOrder =
-                b.navbar?.order ?? b.footer?.order ?? Number.MAX_SAFE_INTEGER;
-
-              return aOrder - bOrder || a.id.localeCompare(b.id);
-            })
-            .map((item) => {
-              const footerGroupId = item.footer?.groupId ?? FOOTER_GROUP_IDS[0];
-              const isHome = item.id === "home";
-
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-md border border-gray-200 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium">{tNav(item.id)}</p>
-                      <p className="text-foreground-light text-sm">{item.id}</p>
-                    </div>
-                    {item.parentId ? (
-                      <span className="text-foreground-light text-xs">
-                        Parent: {tNav(item.parentId)}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                    {item.navbar ? (
-                      <div className="flex flex-col gap-3 rounded-md bg-gray-50 p-3">
-                        <div className="flex items-center justify-between gap-4 text-sm">
-                          <span className="font-medium">Navbar</span>
-                          <Switch
-                            checked={item.navbar.enabled}
-                            disabled={isHome}
-                            onCheckedChange={(checked) => {
-                              updateDraft((current) => ({
-                                ...current,
-                                items: current.items.map((entry) =>
-                                  entry.id === item.id && entry.navbar
-                                    ? {
-                                        ...entry,
-                                        navbar: {
-                                          ...entry.navbar,
-                                          enabled: checked,
-                                        },
-                                      }
-                                    : entry,
-                                ),
-                              }));
-                            }}
-                          />
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="flex flex-col gap-2">
-                            <Label htmlFor={`navbar-order-${item.id}`}>
-                              Order
-                            </Label>
-                            <Input
-                              id={`navbar-order-${item.id}`}
-                              type="number"
-                              value={item.navbar.order}
-                              onChange={(event) => {
-                                updateOrder(event.target.value, (order) => {
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    items: current.items.map((entry) =>
-                                      entry.id === item.id && entry.navbar
-                                        ? {
-                                            ...entry,
-                                            navbar: {
-                                              ...entry.navbar,
-                                              order,
-                                            },
-                                          }
-                                        : entry,
-                                    ),
-                                  }));
-                                });
-                              }}
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-2">
-                            <Label>Visibility group</Label>
-                            <Select
-                              value={item.navbar.visibility}
-                              onValueChange={(value) => {
-                                updateDraft((current) => ({
-                                  ...current,
-                                  items: current.items.map((entry) =>
-                                    entry.id === item.id && entry.navbar
-                                      ? {
-                                          ...entry,
-                                          navbar: {
-                                            ...entry.navbar,
-                                            visibility: value as
-                                              | "essential"
-                                              | "secondary",
-                                          },
-                                        }
-                                      : entry,
-                                  ),
-                                }));
-                              }}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="essential">
-                                  Essential
-                                </SelectItem>
-                                <SelectItem value="secondary">
-                                  Secondary
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {item.footer ? (
-                      <div className="flex flex-col gap-3 rounded-md bg-gray-50 p-3">
-                        <div className="flex items-center justify-between gap-4 text-sm">
-                          <span className="font-medium">Footer</span>
-                          <Switch
-                            checked={item.footer.enabled}
-                            disabled={isHome}
-                            onCheckedChange={(checked) => {
-                              updateDraft((current) => ({
-                                ...current,
-                                items: current.items.map((entry) =>
-                                  entry.id === item.id && entry.footer
-                                    ? {
-                                        ...entry,
-                                        footer: {
-                                          ...entry.footer,
-                                          enabled: checked,
-                                        },
-                                      }
-                                    : entry,
-                                ),
-                              }));
-                            }}
-                          />
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="flex flex-col gap-2">
-                            <Label htmlFor={`footer-order-${item.id}`}>
-                              Order
-                            </Label>
-                            <Input
-                              id={`footer-order-${item.id}`}
-                              type="number"
-                              value={item.footer.order}
-                              onChange={(event) => {
-                                updateOrder(event.target.value, (order) => {
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    items: current.items.map((entry) =>
-                                      entry.id === item.id && entry.footer
-                                        ? {
-                                            ...entry,
-                                            footer: {
-                                              ...entry.footer,
-                                              order,
-                                            },
-                                          }
-                                        : entry,
-                                    ),
-                                  }));
-                                });
-                              }}
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-2">
-                            <Label>Footer group</Label>
-                            <Select
-                              value={footerGroupId}
-                              onValueChange={(value: FooterGroupId) => {
-                                updateDraft((current) => ({
-                                  ...current,
-                                  items: current.items.map((entry) =>
-                                    entry.id === item.id && entry.footer
-                                      ? {
-                                          ...entry,
-                                          footer: {
-                                            ...entry.footer,
-                                            groupId: value,
-                                          },
-                                        }
-                                      : entry,
-                                  ),
-                                }));
-                              }}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {draft.footerGroups
-                                  .slice()
-                                  .sort((a, b) => a.order - b.order)
-                                  .map((group) => (
-                                    <SelectItem key={group.id} value={group.id}>
-                                      {tFooter(group.labelKey)}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {isHome ? (
-                    <p className="text-foreground-light mt-4 text-xs">
-                      Home is protected and cannot be hidden.
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })}
-            </section>
-          </div>
+          {/* Footer preview */}
+          <section className="rounded-md border border-gray-200 p-4">
+            <h2 className="text-base font-medium">Footer</h2>
+            <p className="text-foreground-light mt-1 text-sm">
+              Drag group columns to reorder. Drag items between columns to
+              reassign.
+            </p>
+            <div className="mt-4">
+              <FooterPreview
+                groups={footerGroups}
+                tFooter={tFooter}
+                tNav={tNav}
+                onCommit={commitFooterGroups}
+                onToggleGroupEnabled={(groupId, enabled) => {
+                  updateDraft((current) => ({
+                    ...current,
+                    footerGroups: current.footerGroups.map((g) =>
+                      g.id === groupId ? { ...g, enabled } : g,
+                    ),
+                  }));
+                }}
+                onToggleItemEnabled={(itemId, enabled) => {
+                  updateDraft((current) => ({
+                    ...current,
+                    items: current.items.map((item) =>
+                      item.id === itemId && item.footer
+                        ? { ...item, footer: { ...item.footer, enabled } }
+                        : item,
+                    ),
+                  }));
+                }}
+              />
+            </div>
+          </section>
         </div>
       </div>
     </Card>
   );
 }
 
-function SortableNavigationList({
-  items,
-  onDragEnd,
-}: {
-  items: {
-    id: string;
-    label: string;
-    meta?: string;
-  }[];
-  onDragEnd: (event: DragEndEvent) => void;
-}) {
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+// ---------------------------------------------------------------------------
+// Navbar preview — multi-sortable-list using @dnd-kit/react v1
+// ---------------------------------------------------------------------------
 
-  if (items.length === 0) {
-    return (
-      <div className="text-foreground-light rounded-md border border-dashed border-gray-300 px-3 py-4 text-sm">
-        Nothing to reorder here.
-      </div>
+const NAVBAR_COLUMN_TYPE = "navbar-column";
+const NAVBAR_ITEM_TYPE = "navbar-item";
+
+function NavbarPreview({
+  columns: columnsProp,
+  tNav,
+  onCommit,
+  onToggleEnabled,
+  onChangePriority,
+}: {
+  columns: NavbarColumn[];
+  tNav: ReturnType<typeof useTranslations>;
+  onCommit: (columns: NavbarColumn[]) => void;
+  onToggleEnabled: (id: NavigationItemId, enabled: boolean) => void;
+  onChangePriority: (id: NavigationItemId, priority: NavPriority) => void;
+}) {
+  // Local state for optimistic live reorder
+  const [columns, setColumns] = useState<NavbarColumn[]>(columnsProp);
+  const isDraggingRef = useRef(false);
+  const snapshotRef = useRef<NavbarColumn[]>(columnsProp);
+
+  // Track what is being dragged for the overlay
+  const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+
+  // Sync from parent when not dragging (e.g. after save/reset)
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setColumns(columnsProp);
+    }
+  }, [columnsProp]);
+
+  const draggingColumn = draggingColumnId
+    ? (columns.find((c) => c.parent.id === draggingColumnId) ?? null)
+    : null;
+  const draggingItem = draggingItemId
+    ? (columns
+        .flatMap((c) => c.children)
+        .find((ch) => ch.id === draggingItemId) ?? null)
+    : null;
+
+  // Build items record for move(): { [columnId]: [childId, ...] }
+  // Column order is tracked as an array of column ids under a special "_columns" key
+  function buildItemsRecord(cols: NavbarColumn[]): ItemsRecord {
+    const record: ItemsRecord = {
+      _columns: cols.map((c) => c.parent.id),
+    };
+    for (const col of cols) {
+      record[col.parent.id] = col.children.map((ch) => ch.id);
+    }
+    return record;
+  }
+
+  function applyItemsRecord(
+    record: ItemsRecord,
+    prevCols: NavbarColumn[],
+  ): NavbarColumn[] {
+    const columnOrder = record["_columns"] as string[];
+    const parentById = new Map(prevCols.map((c) => [c.parent.id, c.parent]));
+    const childById = new Map(
+      prevCols.flatMap((c) => c.children.map((ch) => [ch.id, ch])),
     );
+
+    return columnOrder.map((colId) => ({
+      parent: parentById.get(colId as NavigationItemId)!,
+      children: (record[colId] ?? [])
+        .map((childId) => childById.get(childId as NavigationItemId)!)
+        .filter(Boolean),
+    }));
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={onDragEnd}
+    <DragDropProvider
+      onDragStart={(event) => {
+        isDraggingRef.current = true;
+        snapshotRef.current = columns;
+        const src = event.operation.source;
+        if (!src) return;
+        if (src.data?.type === NAVBAR_COLUMN_TYPE) {
+          setDraggingColumnId(String(src.id));
+        } else if (src.data?.type === NAVBAR_ITEM_TYPE) {
+          setDraggingItemId(String(src.id));
+        }
+      }}
+      onDragOver={(event) => {
+        const src = event.operation.source;
+        if (!src) return;
+        setColumns((prev) => {
+          const record = buildItemsRecord(prev);
+          const next = move(record, event);
+          return applyItemsRecord(next as ItemsRecord, prev);
+        });
+      }}
+      onDragEnd={(event) => {
+        setDraggingColumnId(null);
+        setDraggingItemId(null);
+        isDraggingRef.current = false;
+
+        if (event.canceled) {
+          setColumns(snapshotRef.current);
+          return;
+        }
+
+        // Commit the final local state to the parent draft
+        setColumns((finalCols) => {
+          onCommit(finalCols);
+          return finalCols;
+        });
+      }}
     >
-      <SortableContext
-        items={items.map((item) => item.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="flex flex-col gap-2">
-          {items.map((item, index) => (
-            <SortableNavigationRow
-              key={item.id}
-              id={item.id}
-              index={index}
-              label={item.label}
-              meta={item.meta}
-            />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+      <div className="flex flex-wrap gap-4">
+        {columns.map((col, colIndex) => (
+          <NavbarColumnCard
+            key={col.parent.id}
+            col={col}
+            colIndex={colIndex}
+            totalColumns={columns.length}
+            tNav={tNav}
+            isDragging={draggingColumnId === col.parent.id}
+            onToggleEnabled={onToggleEnabled}
+            onChangePriority={onChangePriority}
+          />
+        ))}
+      </div>
+
+      <DragOverlay>
+        {draggingColumn ? (
+          <NavbarColumnOverlay col={draggingColumn} tNav={tNav} />
+        ) : draggingItem ? (
+          <NavbarItemOverlay item={draggingItem} tNav={tNav} />
+        ) : null}
+      </DragOverlay>
+    </DragDropProvider>
   );
 }
 
-function SortableNavigationRow({
-  id,
-  index,
-  label,
-  meta,
+function NavbarColumnCard({
+  col,
+  colIndex,
+  totalColumns,
+  tNav,
+  isDragging,
+  onToggleEnabled,
+  onChangePriority,
 }: {
-  id: string;
-  index: number;
-  label: string;
-  meta?: string;
+  col: NavbarColumn;
+  colIndex: number;
+  totalColumns: number;
+  tNav: ReturnType<typeof useTranslations>;
+  isDragging: boolean;
+  onToggleEnabled: (id: NavigationItemId, enabled: boolean) => void;
+  onChangePriority: (id: NavigationItemId, priority: NavPriority) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { ref: columnDropRef, isDropTarget: isColumnDropTarget } = useDroppable(
+    {
+      id: col.parent.id + "-droppable",
+      collisionPriority: CollisionPriority.Low,
+    },
+  );
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  const { ref: columnSortRef, handleRef: columnHandleRef } = useSortable({
+    id: col.parent.id,
+    index: colIndex,
+    type: NAVBAR_COLUMN_TYPE,
+    accept: [NAVBAR_COLUMN_TYPE],
+    data: { type: NAVBAR_COLUMN_TYPE },
+  });
+
+  const enabled = col.parent.navbar?.enabled ?? true;
+  const priority = col.parent.navbar?.priority ?? "important";
+  const isProtected = col.parent.id === "home";
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className="flex items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2"
+      ref={(el) => {
+        columnSortRef(el);
+        columnDropRef(el);
+      }}
+      className={[
+        "min-w-32 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
+        isDragging ? "opacity-40" : "",
+        !enabled ? "opacity-50" : "",
+        isColumnDropTarget && !isDragging ? "ring-2 ring-blue-400" : "",
+      ].join(" ")}
+    >
+      {/* Column header */}
+      <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            ref={columnHandleRef as React.Ref<HTMLButtonElement>}
+            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          >
+            <GripVertical className="size-4 shrink-0" />
+          </button>
+          <span className="min-w-0 truncate text-sm font-semibold">
+            {tNav(col.parent.id as NavigationItemId)}
+          </span>
+          <Switch
+            checked={enabled}
+            disabled={isProtected}
+            onCheckedChange={(checked) =>
+              onToggleEnabled(col.parent.id as NavigationItemId, checked)
+            }
+            className="shrink-0 scale-75"
+          />
+        </div>
+        <Select
+          value={priority}
+          onValueChange={(value) =>
+            onChangePriority(col.parent.id as NavigationItemId, value as NavPriority)
+          }
+        >
+          <SelectTrigger className="h-7 w-full text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="important">Important</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="optional">Optional</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Child items */}
+      <ul className="flex flex-col gap-1 p-2">
+        {col.children.map((child, childIndex) => (
+          <NavbarChildItem
+            key={child.id}
+            item={child}
+            childIndex={childIndex}
+            groupId={col.parent.id}
+            tNav={tNav}
+            onToggleEnabled={onToggleEnabled}
+          />
+        ))}
+        {col.children.length === 0 && (
+          <li className="text-foreground-light px-2 py-3 text-xs">
+            No sub-items
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function NavbarChildItem({
+  item,
+  childIndex,
+  groupId,
+  tNav,
+  onToggleEnabled,
+}: {
+  item: SiteNavigationConfig["items"][number];
+  childIndex: number;
+  groupId: string;
+  tNav: ReturnType<typeof useTranslations>;
+  onToggleEnabled: (id: NavigationItemId, enabled: boolean) => void;
+}) {
+  const { ref, handleRef, isDragSource } = useSortable({
+    id: item.id,
+    index: childIndex,
+    type: NAVBAR_ITEM_TYPE,
+    accept: [NAVBAR_ITEM_TYPE],
+    group: groupId,
+    data: { type: NAVBAR_ITEM_TYPE },
+  });
+
+  const enabled = item.navbar?.enabled ?? true;
+
+  return (
+    <li
+      ref={ref as React.Ref<HTMLLIElement>}
+      className={[
+        "flex items-center gap-1 rounded px-1 py-1 hover:bg-gray-50",
+        isDragSource ? "opacity-40" : "",
+        !enabled ? "opacity-50" : "",
+      ].join(" ")}
     >
       <button
         type="button"
+        ref={handleRef as React.Ref<HTMLButtonElement>}
         className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-        {...attributes}
-        {...listeners}
       >
-        <GripVertical className="size-4" />
+        <GripVertical className="size-3 shrink-0" />
       </button>
-      <span className="text-foreground-light w-8 text-sm">{index + 1}</span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{label}</p>
-        {meta ? (
-          <p className="text-foreground-light truncate text-xs">{meta}</p>
-        ) : null}
+      <span className="min-w-0 truncate text-xs">
+        {tNav(item.id as NavigationItemId)}
+      </span>
+      <Switch
+        checked={enabled}
+        onCheckedChange={(checked) =>
+          onToggleEnabled(item.id as NavigationItemId, checked)
+        }
+        className="shrink-0 scale-75"
+      />
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Navbar drag overlay clones
+// ---------------------------------------------------------------------------
+
+function NavbarColumnOverlay({
+  col,
+  tNav,
+}: {
+  col: NavbarColumn;
+  tNav: ReturnType<typeof useTranslations>;
+}) {
+  const enabled = col.parent.navbar?.enabled ?? true;
+  const priority = col.parent.navbar?.priority ?? "important";
+
+  return (
+    <div
+      className={[
+        "flex-shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
+        !enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
+        <div className="flex items-center gap-1">
+          <GripVertical className="size-4 shrink-0 text-gray-400" />
+          <span className="min-w-0 truncate text-sm font-semibold">
+            {tNav(col.parent.id as NavigationItemId)}
+          </span>
+        </div>
+        <div className="rounded-md border border-gray-200 px-2 py-1 text-xs capitalize text-gray-500">
+          {priority}
+        </div>
       </div>
+      <ul className="flex flex-col gap-1 p-2">
+        {col.children.map((child) => (
+          <li
+            key={child.id}
+            className="flex items-center gap-1 rounded px-1 py-1"
+          >
+            <GripVertical className="size-3 shrink-0 text-gray-400" />
+            <span className="min-w-0 truncate text-xs">
+              {tNav(child.id as NavigationItemId)}
+            </span>
+          </li>
+        ))}
+        {col.children.length === 0 && (
+          <li className="text-foreground-light px-2 py-3 text-xs">
+            No sub-items
+          </li>
+        )}
+      </ul>
     </div>
+  );
+}
+
+function NavbarItemOverlay({
+  item,
+  tNav,
+}: {
+  item: SiteNavigationConfig["items"][number];
+  tNav: ReturnType<typeof useTranslations>;
+}) {
+  const enabled = item.navbar?.enabled ?? true;
+  return (
+    <li
+      className={[
+        "flex items-center gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
+        !enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <GripVertical className="size-3 shrink-0 text-gray-400" />
+      <span className="min-w-0 truncate text-xs">
+        {tNav(item.id as NavigationItemId)}
+      </span>
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Footer preview — multi-sortable-list using @dnd-kit/react v1
+// ---------------------------------------------------------------------------
+
+const FOOTER_GROUP_TYPE = "footer-group";
+const FOOTER_ITEM_TYPE = "footer-item";
+
+function FooterPreview({
+  groups: groupsProp,
+  tFooter,
+  tNav,
+  onCommit,
+  onToggleGroupEnabled,
+  onToggleItemEnabled,
+}: {
+  groups: FooterGroupWithItems[];
+  tFooter: ReturnType<typeof useTranslations>;
+  tNav: ReturnType<typeof useTranslations>;
+  onCommit: (groups: FooterGroupWithItems[]) => void;
+  onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
+  onToggleItemEnabled: (itemId: NavigationItemId, enabled: boolean) => void;
+}) {
+  const [groups, setGroups] = useState<FooterGroupWithItems[]>(groupsProp);
+  const isDraggingRef = useRef(false);
+  const snapshotRef = useRef<FooterGroupWithItems[]>(groupsProp);
+
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setGroups(groupsProp);
+    }
+  }, [groupsProp]);
+
+  const draggingGroup = draggingGroupId
+    ? (groups.find((g) => g.group.id === draggingGroupId) ?? null)
+    : null;
+  const draggingItem = draggingItemId
+    ? (groups.flatMap((g) => g.items).find((i) => i.id === draggingItemId) ??
+      null)
+    : null;
+
+  function buildItemsRecord(gs: FooterGroupWithItems[]): ItemsRecord {
+    const record: ItemsRecord = {
+      _groups: gs.map((g) => g.group.id),
+    };
+    for (const { group, items } of gs) {
+      record[group.id] = items.map((i) => i.id);
+    }
+    return record;
+  }
+
+  function applyItemsRecord(
+    record: ItemsRecord,
+    prevGroups: FooterGroupWithItems[],
+  ): FooterGroupWithItems[] {
+    const groupOrder = record["_groups"] as string[];
+    const groupById = new Map(prevGroups.map((g) => [g.group.id, g.group]));
+    const itemById = new Map(
+      prevGroups.flatMap((g) => g.items.map((i) => [i.id, i])),
+    );
+
+    return groupOrder.map((groupId) => ({
+      group: groupById.get(groupId as FooterGroupId)!,
+      items: (record[groupId] ?? [])
+        .map((itemId) => itemById.get(itemId as NavigationItemId)!)
+        .filter(Boolean),
+    }));
+  }
+
+  return (
+    <DragDropProvider
+      onDragStart={(event) => {
+        isDraggingRef.current = true;
+        snapshotRef.current = groups;
+        const src = event.operation.source;
+        if (!src) return;
+        if (src.data?.type === FOOTER_GROUP_TYPE) {
+          setDraggingGroupId(String(src.id));
+        } else if (src.data?.type === FOOTER_ITEM_TYPE) {
+          setDraggingItemId(String(src.id));
+        }
+      }}
+      onDragOver={(event) => {
+        const src = event.operation.source;
+        if (!src) return;
+        setGroups((prev) => {
+          const record = buildItemsRecord(prev);
+          const next = move(record, event);
+          return applyItemsRecord(next as ItemsRecord, prev);
+        });
+      }}
+      onDragEnd={(event) => {
+        setDraggingGroupId(null);
+        setDraggingItemId(null);
+        isDraggingRef.current = false;
+
+        if (event.canceled) {
+          setGroups(snapshotRef.current);
+          return;
+        }
+
+        setGroups((finalGroups) => {
+          onCommit(finalGroups);
+          return finalGroups;
+        });
+      }}
+    >
+      <div className="flex flex-wrap gap-4">
+        {groups.map((g, groupIndex) => (
+          <FooterGroupColumn
+            key={g.group.id}
+            g={g}
+            groupIndex={groupIndex}
+            tFooter={tFooter}
+            tNav={tNav}
+            isDragging={draggingGroupId === g.group.id}
+            onToggleGroupEnabled={onToggleGroupEnabled}
+            onToggleItemEnabled={onToggleItemEnabled}
+          />
+        ))}
+      </div>
+
+      <DragOverlay>
+        {draggingGroup ? (
+          <FooterGroupOverlay g={draggingGroup} tFooter={tFooter} tNav={tNav} />
+        ) : draggingItem ? (
+          <FooterItemOverlay item={draggingItem} tNav={tNav} />
+        ) : null}
+      </DragOverlay>
+    </DragDropProvider>
+  );
+}
+
+function FooterGroupColumn({
+  g,
+  groupIndex,
+  tFooter,
+  tNav,
+  isDragging,
+  onToggleGroupEnabled,
+  onToggleItemEnabled,
+}: {
+  g: FooterGroupWithItems;
+  groupIndex: number;
+  tFooter: ReturnType<typeof useTranslations>;
+  tNav: ReturnType<typeof useTranslations>;
+  isDragging: boolean;
+  onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
+  onToggleItemEnabled: (itemId: NavigationItemId, enabled: boolean) => void;
+}) {
+  const { ref: groupDropRef, isDropTarget } = useDroppable({
+    id: g.group.id + "-droppable",
+    collisionPriority: CollisionPriority.Low,
+  });
+
+  const { ref: groupSortRef, handleRef: groupHandleRef } = useSortable({
+    id: g.group.id,
+    index: groupIndex,
+    type: FOOTER_GROUP_TYPE,
+    accept: [FOOTER_GROUP_TYPE],
+    data: { type: FOOTER_GROUP_TYPE },
+  });
+
+  return (
+    <div
+      ref={(el) => {
+        groupSortRef(el);
+        groupDropRef(el);
+      }}
+      className={[
+        "min-w-32 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
+        isDragging ? "opacity-40" : "",
+        !g.group.enabled ? "opacity-50" : "",
+        isDropTarget && !isDragging ? "ring-2 ring-blue-400" : "",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+        <button
+          type="button"
+          ref={groupHandleRef as React.Ref<HTMLButtonElement>}
+          className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+        >
+          <GripVertical className="size-4 shrink-0" />
+        </button>
+        <span className="flex-1 truncate text-xs font-semibold uppercase text-gray-500">
+          {tFooter(g.group.labelKey)}
+        </span>
+        <Switch
+          checked={g.group.enabled}
+          disabled={g.group.id === "overview"}
+          onCheckedChange={(checked) =>
+            onToggleGroupEnabled(g.group.id, checked)
+          }
+          className="shrink-0 scale-75"
+        />
+      </div>
+
+      <ul className="flex flex-col gap-1 p-2">
+        {g.items.map((item, itemIndex) => (
+          <FooterItemRow
+            key={item.id}
+            item={item}
+            itemIndex={itemIndex}
+            groupId={g.group.id}
+            tNav={tNav}
+            onToggleEnabled={onToggleItemEnabled}
+          />
+        ))}
+        {g.items.length === 0 && (
+          <li className="text-foreground-light px-2 py-3 text-xs">No items</li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function FooterItemRow({
+  item,
+  itemIndex,
+  groupId,
+  tNav,
+  onToggleEnabled,
+}: {
+  item: SiteNavigationConfig["items"][number];
+  itemIndex: number;
+  groupId: string;
+  tNav: ReturnType<typeof useTranslations>;
+  onToggleEnabled: (itemId: NavigationItemId, enabled: boolean) => void;
+}) {
+  const { ref, handleRef, isDragSource } = useSortable({
+    id: item.id,
+    index: itemIndex,
+    type: FOOTER_ITEM_TYPE,
+    accept: [FOOTER_ITEM_TYPE],
+    group: groupId,
+    data: { type: FOOTER_ITEM_TYPE },
+  });
+
+  const enabled = item.footer?.enabled ?? true;
+
+  return (
+    <li
+      ref={ref as React.Ref<HTMLLIElement>}
+      className={[
+        "flex items-center gap-1 rounded px-1 py-1 hover:bg-gray-50",
+        isDragSource ? "opacity-40" : "",
+        !enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        ref={handleRef as React.Ref<HTMLButtonElement>}
+        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+      >
+        <GripVertical className="size-3 shrink-0" />
+      </button>
+      <span className="flex-1 truncate text-xs">
+        {tNav(item.id as NavigationItemId)}
+      </span>
+      <Switch
+        checked={enabled}
+        disabled={item.id === "home"}
+        onCheckedChange={(checked) =>
+          onToggleEnabled(item.id as NavigationItemId, checked)
+        }
+        className="shrink-0 scale-75"
+      />
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Footer drag overlay clones
+// ---------------------------------------------------------------------------
+
+function FooterGroupOverlay({
+  g,
+  tFooter,
+  tNav,
+}: {
+  g: FooterGroupWithItems;
+  tFooter: ReturnType<typeof useTranslations>;
+  tNav: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div
+      className={[
+        "min-w-32 max-w-96 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
+        !g.group.enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+        <GripVertical className="size-4 shrink-0 text-gray-400" />
+        <span className="flex-1 truncate text-xs font-semibold uppercase text-gray-500">
+          {tFooter(g.group.labelKey)}
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1 p-2">
+        {g.items.map((item) => (
+          <li
+            key={item.id}
+            className="flex items-center gap-1 rounded px-1 py-1"
+          >
+            <GripVertical className="size-3 shrink-0 text-gray-400" />
+            <span className="flex-1 truncate text-xs">
+              {tNav(item.id as NavigationItemId)}
+            </span>
+          </li>
+        ))}
+        {g.items.length === 0 && (
+          <li className="text-foreground-light px-2 py-3 text-xs">No items</li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function FooterItemOverlay({
+  item,
+  tNav,
+}: {
+  item: SiteNavigationConfig["items"][number];
+  tNav: ReturnType<typeof useTranslations>;
+}) {
+  const enabled = item.footer?.enabled ?? true;
+  return (
+    <li
+      className={[
+        "flex items-center gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
+        !enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <GripVertical className="size-3 shrink-0 text-gray-400" />
+      <span className="flex-1 truncate text-xs">
+        {tNav(item.id as NavigationItemId)}
+      </span>
+    </li>
   );
 }

@@ -30,6 +30,9 @@ export const siteNavigationConfigSchema = z
             enabled: z.boolean(),
             visibility: z.enum(["essential", "secondary"]),
             order: z.number().int(),
+            priority: z
+              .enum(["important", "medium", "optional"])
+              .default("important"),
           })
           .optional(),
         footer: z
