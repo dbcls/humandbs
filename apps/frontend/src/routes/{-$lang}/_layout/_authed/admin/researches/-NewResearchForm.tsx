@@ -18,7 +18,7 @@ import {
   type CreateResearchResult,
 } from "@/serverFunctions/researches";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
-import { JsonImportExport } from "./-JsonImportExport";
+
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
@@ -122,20 +122,7 @@ export function NewResearchForm({
             <Button type="submit" variant="accent" disabled={isPending} size="slim">
               {isPending ? "Creating…" : "Create"}
             </Button>
-            <JsonImportExport
-              filename={DUMMY_HUM_ID}
-              getValues={() => form.store.state.values}
-              onImport={(values) => form.reset(values as typeof defaultValues)}
-              hasData={() => {
-                const v = form.store.state.values;
-                return !!(
-                  v.humId ||
-                  v.title?.ja ||
-                  v.title?.en ||
-                  v.dataProvider?.length > 0 ||
-                  v.uids?.length > 0
-                );
-              }}
+
             />
           </div>
 

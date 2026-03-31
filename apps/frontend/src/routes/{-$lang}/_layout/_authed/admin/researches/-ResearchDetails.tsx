@@ -14,10 +14,8 @@ import {
   $updateResearchUids,
   getResearchQueryOptions,
   type UpdateResearchResult,
-  type WorkflowActionResult,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { JsonImportExport } from "./-JsonImportExport";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
 import { Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/-VersionCard";
@@ -115,6 +113,7 @@ export function ResearchDetails({
     action: "versions/new",
     params: { research: researchValues },
   });
+
   const { can: canUpdateUids } = useCan({
     resource: "researches",
     action: "update-uids",
@@ -386,299 +385,295 @@ export function ResearchDetails({
   });
 
   return (
-    <>
-      <Card
-        className="flex h-full flex-1 flex-col min-w-0"
-        caption={
-          <>
-            <span>{researchValues.humId}</span>
-            <Tag tag={researchValues.status} size="md" className="ml-3" />
-            <ResearchVersionSelector
-              humId={humId}
-              lang={lang}
-              selectedVersion={selectedVersion}
-              draftVersion={researchValues.draftVersion}
-              latestVersion={researchValues.latestVersion}
-              canNewVersion={canNewVersion}
-              onVersionChange={setSelectedVersion}
+    <Card
+      className="flex h-full flex-1 flex-col min-w-0"
+      caption={
+        <>
+          <span>{researchValues.humId}</span>
+          <Tag tag={researchValues.status} size="md" className="ml-3" />
+          <ResearchVersionSelector
+            humId={humId}
+            lang={lang}
+            selectedVersion={selectedVersion}
+            draftVersion={researchValues.draftVersion}
+            latestVersion={researchValues.latestVersion}
+            canNewVersion={canNewVersion}
+            onVersionChange={setSelectedVersion}
+          />
+          <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+            Preview
+            <Switch
+              checked={preview}
+              onCheckedChange={setPreview}
+              className="data-[state=checked]:bg-secondary"
             />
-            <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
-              Preview
-              <Switch
-                checked={preview}
-                onCheckedChange={setPreview}
-                className="data-[state=checked]:bg-secondary"
-              />
-            </label>
-          </>
-        }
-        captionClassName="flex items-center"
-        containerClassName="flex flex-1 flex-col min-h-0"
-      >
-        {error && (
-          <div className="mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
-            {error}
-          </div>
-        )}
-        {isConflict && (
-          <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
-            <span>Someone else saved a newer version. Reload to continue.</span>
-            <Button
-              size="slim"
-              variant="outline"
-              type="button"
-              onClick={() => {
-                queryClient.invalidateQueries({
-                  queryKey: ["researches", "byId"],
-                });
-              }}
-            >
-              Reload
-            </Button>
-          </div>
-        )}
-        <div
-          className={cn(
-            "min-h-0 flex-1 flex-col overflow-hidden",
-            preview ? "flex" : "hidden",
-          )}
-        >
-          <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
-            <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-            <VersionCard
-              versionData={previewValues as ResearchDetailResponse["data"]}
-              lang={previewLang}
-            />
-          </div>
+          </label>
+        </>
+      }
+      captionClassName="flex items-center"
+      containerClassName="flex flex-1 flex-col min-h-0"
+    >
+      {error && (
+        <div className="mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+          {error}
         </div>
+      )}
+      {isConflict && (
+        <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+          <span>Someone else saved a newer version. Reload to continue.</span>
+          <Button
+            size="slim"
+            variant="outline"
+            type="button"
+            onClick={() => {
+              queryClient.invalidateQueries({
+                queryKey: ["researches", "byId"],
+              });
+            }}
+          >
+            Reload
+          </Button>
+        </div>
+      )}
+      <div
+        className={cn(
+          "min-h-0 flex-1 flex-col overflow-hidden",
+          preview ? "flex" : "hidden",
+        )}
+      >
+        <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
+          <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+          <VersionCard
+            versionData={previewValues as ResearchDetailResponse["data"]}
+            lang={previewLang}
+          />
+        </div>
+      </div>
 
-        <div className={cn("min-h-0 flex-1", preview && "hidden")}>
-          <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
-            <div className="px-5 pt-5 shrink-0">
-              <TabsList variant="line">
-                <TabsTrigger variant="line" value="metadata">
-                  <TabLabel dirty={Object.values(dirtyFields).some(Boolean)}>
-                    Research Metadata
-                  </TabLabel>
-                </TabsTrigger>
-                <TabsTrigger variant="line" value="datasets">
-                  <TabLabel dirty={datasetDirty}>Datasets</TabLabel>
-                </TabsTrigger>
-              </TabsList>
-            </div>
+      <div className={cn("min-h-0 flex-1", preview && "hidden")}>
+        <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
+          <div className="px-5 pt-5 shrink-0">
+            <TabsList variant="line">
+              <TabsTrigger variant="line" value="metadata">
+                <TabLabel dirty={Object.values(dirtyFields).some(Boolean)}>
+                  Research Metadata
+                </TabLabel>
+              </TabsTrigger>
+              <TabsTrigger variant="line" value="datasets">
+                <TabLabel dirty={datasetDirty}>Datasets</TabLabel>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-            <TabsContent value="metadata" className="min-h-0 flex-1 flex flex-col">
-              {/* Workflow action row */}
-              <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
-                <div className="ml-auto flex items-center gap-2">
-                  {isViewingDraft && canUpdate && (
-                    <Button
-                      size="slim"
-                      onClick={() => form.handleSubmit()}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "Saving…" : "Save draft"}
-                    </Button>
-                  )}
-                  <JsonImportExport
-                    filename={humId}
-                    getValues={() => form.store.state.values}
-                    onImport={(values) =>
-                      form.reset(values as typeof researchValues)
-                    }
-                    hasData={() => {
-                      const v = form.store.state.values;
-                      return !!(v.title?.ja || v.title?.en);
-                    }}
-                  />
-                  {isViewingDraft && canSubmit && (
-                    <Button
-                      variant="outline"
-                      size="slim"
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Submitting…" : "Submit for review"}
-                    </Button>
-                  )}
-                  {isViewingDraft && canReject && (
-                    <Button
-                      variant="outline"
-                      size="slim"
-                      onClick={handleReject}
-                      disabled={isRejecting}
-                    >
-                      {isRejecting ? "Rejecting…" : "Reject"}
-                    </Button>
-                  )}
-                  {isViewingDraft && canApprove && (
-                    <Button
-                      variant="action"
-                      size="slim"
-                      onClick={handleApprove}
-                      disabled={isApproving}
-                    >
-                      {isApproving ? "Approving…" : "Approve"}
-                    </Button>
-                  )}
-                  {canUnpublish && (
-                    <Button variant="outline" size="slim">
-                      Unpublish
-                    </Button>
-                  )}
-                  {canDelete && (
-                    <Button
-                      type="button"
-                      size="slim"
-                      onClick={handleDelete}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
-
-                {canUpdateUids && (
-                  <div className="px-5 pt-5">
-                    <form.AppField
-                      name="uids"
-                      mode="array"
-                      disabled={!isViewingDraft || !canUpdate}
-                    >
-                      {(field) => (
-                        <fieldset className="flex flex-col gap-2">
-                          <Label>User IDs (uids)</Label>
-                          <div className="nested-form flex flex-col gap-1">
-                            {field.state.value?.map((_: string, i: number) => (
-                              <div key={i} className="flex items-center gap-1">
-                                <form.AppField name={`uids[${i}]` as "uids"}>
-                                  {(f) => <f.TextField />}
-                                </form.AppField>
-                                <button
-                                  type="button"
-                                  onClick={() => field.removeValue(i)}
-                                >
-                                  <Trash2 className="text-danger size-4" />
-                                </button>
-                              </div>
-                            ))}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="slim"
-                              className="self-start"
-                              onClick={() => field.pushValue("")}
-                            >
-                              Add UID
-                            </Button>
-                          </div>
-                        </fieldset>
-                      )}
-                    </form.AppField>
-                  </div>
+          <TabsContent
+            value="metadata"
+            className="min-h-0 flex-1 flex flex-col"
+          >
+            {/* Workflow action row */}
+            <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-2">
+                {isViewingDraft && canUpdate && (
+                  <Button
+                    size="slim"
+                    onClick={() => form.handleSubmit()}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving…" : "Save draft"}
+                  </Button>
                 )}
 
-                <Tabs defaultValue="title" className="mt-5 flex flex-col">
-                  <div className="overflow-x-auto px-5 shrink-0">
-                    <TabsList variant="line">
-                      <TabsTrigger variant="line" value="title">
-                        <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
-                      </TabsTrigger>
-                      <TabsTrigger variant="line" value="summary">
-                        <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
-                      </TabsTrigger>
-                      <TabsTrigger variant="line" value="dataProvider">
-                        <TabLabel dirty={dirtyFields.dataProvider}>
-                          Data providers
-                        </TabLabel>
-                      </TabsTrigger>
-                      <TabsTrigger variant="line" value="researchProject">
-                        <TabLabel dirty={dirtyFields.researchProject}>
-                          Research project
-                        </TabLabel>
-                      </TabsTrigger>
-                      <TabsTrigger variant="line" value="grant">
-                        <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
-                      </TabsTrigger>
-                      <TabsTrigger variant="line" value="relatedPublication">
-                        <TabLabel dirty={dirtyFields.relatedPublication}>
-                          Related publication
-                        </TabLabel>
-                      </TabsTrigger>
-                      <TabsTrigger variant="line" value="controlledAccessUser">
-                        <TabLabel dirty={dirtyFields.controlledAccessUser}>
-                          Controlled access user
-                        </TabLabel>
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
-                  <fieldset
-                    disabled={!isViewingDraft || !canUpdate}
-                    className="px-5 pt-5 pb-5 disabled:opacity-60"
+                {isViewingDraft && canSubmit && (
+                  <Button
+                    variant="outline"
+                    size="slim"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
                   >
-                    <TabsContent value="title">
-                      <form.AppField name="title">
-                        {(field) => <field.BilingualTextField variant="textarea" />}
-                      </form.AppField>
-                    </TabsContent>
-                    <TabsContent value="summary">
-                      <SummaryForm form={form} fields="summary" />
-                    </TabsContent>
-                    <TabsContent value="dataProvider">
-                      <DataProviderArrayField form={form} />
-                    </TabsContent>
-                    <TabsContent value="researchProject">
-                      <ResearchProjectArrayField form={form} />
-                    </TabsContent>
-                    <TabsContent value="grant">
-                      <GrantArrayField form={form} />
-                    </TabsContent>
-                    <TabsContent value="relatedPublication">
-                      <RelatedPublicationArrayField form={form} />
-                    </TabsContent>
-                    <TabsContent value="controlledAccessUser">
-                      <ControlledAccessUserArrayField form={form} />
-                    </TabsContent>
-                  </fieldset>
-                </Tabs>
+                    {isSubmitting ? "Submitting…" : "Submit for review"}
+                  </Button>
+                )}
+                {isViewingDraft && canReject && (
+                  <Button
+                    variant="outline"
+                    size="slim"
+                    onClick={handleReject}
+                    disabled={isRejecting}
+                  >
+                    {isRejecting ? "Rejecting…" : "Reject"}
+                  </Button>
+                )}
+                {isViewingDraft && canApprove && (
+                  <Button
+                    variant="action"
+                    size="slim"
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                  >
+                    {isApproving ? "Approving…" : "Approve"}
+                  </Button>
+                )}
+                {canUnpublish && (
+                  <Button variant="outline" size="slim">
+                    Unpublish
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button type="button" size="slim" onClick={handleDelete}>
+                    Delete
+                  </Button>
+                )}
               </div>
-            </TabsContent>
+            </div>
 
-            <TabsContent forceMount value="datasets" className="min-h-0 flex-1 flex flex-col">
-              {datasetView === null ? (
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
-                  <ResearchDatasetsTab
-                    humId={humId}
-                    research={researchValues}
-                    onSelectDataset={(id) => setDatasetView(id)}
-                    onAddNew={() => setDatasetView("new")}
-                  />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
+
+              {canUpdateUids && (
+                <div className="px-5 pt-5">
+                  <form.AppField
+                    name="uids"
+                    mode="array"
+                    disabled={!isViewingDraft || !canUpdate}
+                  >
+                    {(field) => (
+                      <fieldset className="flex flex-col gap-2">
+                        <Label>User IDs (uids)</Label>
+                        <div className="nested-form flex flex-col gap-1">
+                          {field.state.value?.map((_: string, i: number) => (
+                            <div key={i} className="flex items-center gap-1">
+                              <form.AppField name={`uids[${i}]` as "uids"}>
+                                {(f) => <f.TextField />}
+                              </form.AppField>
+                              <button
+                                type="button"
+                                onClick={() => field.removeValue(i)}
+                              >
+                                <Trash2 className="text-danger size-4" />
+                              </button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="slim"
+                            className="self-start"
+                            onClick={() => field.pushValue("")}
+                          >
+                            Add UID
+                          </Button>
+                        </div>
+                      </fieldset>
+                    )}
+                  </form.AppField>
                 </div>
-              ) : datasetView !== "new" ? (
-                <DatasetEditView
-                  datasetId={datasetView}
-                  lang={lang}
-                  research={researchValues}
-                  onBack={() => { setDatasetView(null); setDatasetDirty(false); }}
-                  onDirtyChange={setDatasetDirty}
-                />
-              ) : (
-                <DatasetCreateView
-                  humId={humId}
-                  onBack={() => setDatasetView(null)}
-                  onCreated={(id) => setDatasetView(id)}
-                />
               )}
-            </TabsContent>
-          </Tabs>
-        </div>
-      </Card>
-    </>
+
+              <Tabs defaultValue="title" className="mt-5 flex flex-col">
+                <div className="overflow-x-auto px-5 shrink-0">
+                  <TabsList variant="line">
+                    <TabsTrigger variant="line" value="title">
+                      <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="summary">
+                      <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="dataProvider">
+                      <TabLabel dirty={dirtyFields.dataProvider}>
+                        Data providers
+                      </TabLabel>
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="researchProject">
+                      <TabLabel dirty={dirtyFields.researchProject}>
+                        Research project
+                      </TabLabel>
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="grant">
+                      <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="relatedPublication">
+                      <TabLabel dirty={dirtyFields.relatedPublication}>
+                        Related publication
+                      </TabLabel>
+                    </TabsTrigger>
+                    <TabsTrigger variant="line" value="controlledAccessUser">
+                      <TabLabel dirty={dirtyFields.controlledAccessUser}>
+                        Controlled access user
+                      </TabLabel>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <fieldset
+                  disabled={!isViewingDraft || !canUpdate}
+                  className="px-5 pt-5 pb-5 disabled:opacity-60"
+                >
+                  <TabsContent value="title">
+                    <form.AppField name="title">
+                      {(field) => (
+                        <field.BilingualTextField variant="textarea" />
+                      )}
+                    </form.AppField>
+                  </TabsContent>
+                  <TabsContent value="summary">
+                    <SummaryForm form={form} fields="summary" />
+                  </TabsContent>
+                  <TabsContent value="dataProvider">
+                    <DataProviderArrayField form={form} />
+                  </TabsContent>
+                  <TabsContent value="researchProject">
+                    <ResearchProjectArrayField form={form} />
+                  </TabsContent>
+                  <TabsContent value="grant">
+                    <GrantArrayField form={form} />
+                  </TabsContent>
+                  <TabsContent value="relatedPublication">
+                    <RelatedPublicationArrayField form={form} />
+                  </TabsContent>
+                  <TabsContent value="controlledAccessUser">
+                    <ControlledAccessUserArrayField form={form} />
+                  </TabsContent>
+                </fieldset>
+              </Tabs>
+            </div>
+          </TabsContent>
+
+          <TabsContent
+            forceMount
+            value="datasets"
+            className="min-h-0 flex-1 flex flex-col"
+          >
+            {datasetView === null ? (
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+                <ResearchDatasetsTab
+                  humId={humId}
+                  research={researchValues}
+                  onSelectDataset={(id) => setDatasetView(id)}
+                  onAddNew={() => setDatasetView("new")}
+                />
+              </div>
+            ) : datasetView !== "new" ? (
+              <DatasetEditView
+                datasetId={datasetView}
+                lang={lang}
+                research={researchValues}
+                onBack={() => {
+                  setDatasetView(null);
+                  setDatasetDirty(false);
+                }}
+                onDirtyChange={setDatasetDirty}
+              />
+            ) : (
+              <DatasetCreateView
+                humId={humId}
+                onBack={() => setDatasetView(null)}
+                onCreated={(id) => setDatasetView(id)}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </Card>
   );
 }
 
