@@ -67,6 +67,11 @@ export interface FooterSitemapGroup {
   }>;
 }
 
+export interface ResolvedSiteNavigation {
+  navbar: NavbarItem[];
+  footer: FooterSitemapGroup[];
+}
+
 export const NAVIGATION_ITEM_IDS: NavigationItemId[] = [
   "home",
   "data-submission",
@@ -368,7 +373,7 @@ export function buildSiteNavigation(lang: Locale, config: SiteNavigationConfig) 
   return {
     navbar: buildNavbarItems(lang, config),
     footer: buildFooterSitemapGroups(lang, config),
-  };
+  } satisfies ResolvedSiteNavigation;
 }
 
 export function getNavbarItems(

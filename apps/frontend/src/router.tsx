@@ -5,6 +5,7 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { NotFound } from "@/components/NotFound";
 import { i18n, type Locale, type Messages } from "@/config/i18n";
+import { type ResolvedSiteNavigation } from "@/config/site-navigation";
 import { routeTree } from "@/routeTree.gen";
 
 export interface Context {
@@ -13,6 +14,7 @@ export interface Context {
   crumb: string;
   lang: Locale;
   messages: Messages;
+  siteNavigation: ResolvedSiteNavigation;
   // user: SessionUser | null | undefined;
   // session: SessionMeta | null | undefined;
 }

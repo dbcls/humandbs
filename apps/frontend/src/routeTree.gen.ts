@@ -23,6 +23,7 @@ import { Route as Char123LangChar125LayoutMainHomeIndexRouteImport } from './rou
 import { Route as Char123LangChar125LayoutMainOtherCartRouteImport } from './routes/{-$lang}/_layout/_main/_other/cart'
 import { Route as Char123LangChar125LayoutMainOtherSplatRouteImport } from './routes/{-$lang}/_layout/_main/_other/$'
 import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/news'
+import { Route as Char123LangChar125LayoutAuthedAdminNavigationRouteImport } from './routes/{-$lang}/_layout/_authed/admin/navigation'
 import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
 import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin/content'
 import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
@@ -132,6 +133,12 @@ const Char123LangChar125LayoutAuthedAdminNewsRoute =
   Char123LangChar125LayoutAuthedAdminNewsRouteImport.update({
     id: '/news',
     path: '/news',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminNavigationRoute =
+  Char123LangChar125LayoutAuthedAdminNavigationRouteImport.update({
+    id: '/navigation',
+    path: '/navigation',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
 const Char123LangChar125LayoutAuthedAdminDocumentsRoute =
@@ -403,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/admin/navigation': typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
@@ -445,6 +453,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/admin/navigation': typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
@@ -489,6 +498,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/_layout/_authed/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/_layout/_authed/admin/navigation': typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   '/{-$lang}/_layout/_authed/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/_layout/_main/_other/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/_layout/_main/_other/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
@@ -537,6 +547,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
     | '/{-$lang}/admin/documents'
+    | '/{-$lang}/admin/navigation'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
@@ -579,6 +590,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
     | '/{-$lang}/admin/documents'
+    | '/{-$lang}/admin/navigation'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
@@ -622,6 +634,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/assets'
     | '/{-$lang}/_layout/_authed/admin/content'
     | '/{-$lang}/_layout/_authed/admin/documents'
+    | '/{-$lang}/_layout/_authed/admin/navigation'
     | '/{-$lang}/_layout/_authed/admin/news'
     | '/{-$lang}/_layout/_main/_other/$'
     | '/{-$lang}/_layout/_main/_other/cart'
@@ -761,6 +774,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/{-$lang}/admin/news'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/navigation': {
+      id: '/{-$lang}/_layout/_authed/admin/navigation'
+      path: '/navigation'
+      fullPath: '/{-$lang}/admin/navigation'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminNavigationRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
     '/{-$lang}/_layout/_authed/admin/documents': {
@@ -1008,6 +1028,7 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   Char123LangChar125LayoutAuthedAdminContentRoute: typeof Char123LangChar125LayoutAuthedAdminContentRoute
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  Char123LangChar125LayoutAuthedAdminNavigationRoute: typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   Char123LangChar125LayoutAuthedAdminNewsRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   Char123LangChar125LayoutAuthedAdminResearchesIndexRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
@@ -1021,6 +1042,8 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminContentRoute,
     Char123LangChar125LayoutAuthedAdminDocumentsRoute:
       Char123LangChar125LayoutAuthedAdminDocumentsRoute,
+    Char123LangChar125LayoutAuthedAdminNavigationRoute:
+      Char123LangChar125LayoutAuthedAdminNavigationRoute,
     Char123LangChar125LayoutAuthedAdminNewsRoute:
       Char123LangChar125LayoutAuthedAdminNewsRoute,
     Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route:

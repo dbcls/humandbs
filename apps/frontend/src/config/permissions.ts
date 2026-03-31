@@ -52,6 +52,10 @@ export interface Permissions {
     dataType: Alert;
     action: "list" | "update" | "create" | "delete";
   };
+  "admin-panel": {
+    dataType: never;
+    action: "view-cms";
+  };
 }
 
 const ROLES = {
@@ -100,6 +104,9 @@ const ROLES = {
       update: true,
       create: true,
       delete: true,
+    },
+    "admin-panel": {
+      "view-cms": true,
     },
   },
   user: {},

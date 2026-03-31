@@ -8,9 +8,9 @@ import {
   Cuboid,
   Files,
   LibraryBig,
+  PanelsTopLeft,
   Newspaper,
   PenTool,
-  User2,
 } from "lucide-react";
 import { z } from "zod";
 
@@ -26,6 +26,7 @@ export const tabParamSchema = z.enum([
   "users",
   "researches",
   "assets",
+  "navigation",
 ]);
 
 export type TabType = z.infer<typeof tabParamSchema>;
@@ -184,6 +185,15 @@ function NavPanel() {
                 </span>
               }
               tab="assets"
+            />
+            <PanelItem
+              title={
+                <span>
+                  <PanelsTopLeft className="mr-2 inline size-5 align-middle leading-normal" />
+                  Navigation
+                </span>
+              }
+              tab="navigation"
             />
           </div>
         </section>
