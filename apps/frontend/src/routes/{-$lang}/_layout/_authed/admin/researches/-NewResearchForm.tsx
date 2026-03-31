@@ -19,7 +19,6 @@ import {
 } from "@/serverFunctions/researches";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
 
-
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
   title: { ja: "", en: "" },
@@ -119,11 +118,14 @@ export function NewResearchForm({
           )}
 
           <div className="mx-5 mt-5 flex items-center gap-2">
-            <Button type="submit" variant="accent" disabled={isPending} size="slim">
+            <Button
+              type="submit"
+              variant="accent"
+              disabled={isPending}
+              size="slim"
+            >
               {isPending ? "Creating…" : "Create"}
             </Button>
-
-            />
           </div>
 
           <div className="flex flex-col gap-4 px-5 pt-5 shrink-0">
@@ -179,22 +181,38 @@ export function NewResearchForm({
 
             <form.AppField name="initialReleaseNote">
               {(field) => (
-                <field.BilingualTextValueField label="Initial Release Note" inputsClassName="flex w-full gap-2" />
+                <field.BilingualTextValueField
+                  label="Initial Release Note"
+                  inputsClassName="flex w-full gap-2"
+                />
               )}
             </form.AppField>
           </div>
 
-          <Tabs defaultValue="title" className="mt-4 flex flex-col flex-1 min-h-0">
+          <Tabs
+            defaultValue="title"
+            className="mt-4 flex flex-col flex-1 min-h-0"
+          >
             <div className="overflow-x-auto px-5 shrink-0">
               <TabsList variant="line">
-                <TabsTrigger variant="line" value="title">Title</TabsTrigger>
-                <TabsTrigger variant="line" value="summary">Summary</TabsTrigger>
-                <TabsTrigger variant="line" value="dataProvider">Data providers</TabsTrigger>
+                <TabsTrigger variant="line" value="title">
+                  Title
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="summary">
+                  Summary
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="dataProvider">
+                  Data providers
+                </TabsTrigger>
                 <TabsTrigger variant="line" value="researchProject">
                   Research project
                 </TabsTrigger>
-                <TabsTrigger variant="line" value="grants">Grant</TabsTrigger>
-                <TabsTrigger variant="line" value="publications">Related publication</TabsTrigger>
+                <TabsTrigger variant="line" value="grants">
+                  Grant
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="publications">
+                  Related publication
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -252,7 +270,6 @@ export function NewResearchForm({
               </TabsContent>
             </div>
           </Tabs>
-
         </form>
       </form.AppForm>
     </Card>
