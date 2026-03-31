@@ -16,7 +16,7 @@ import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { api, APIError } from "@/services/backend";
+import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 
@@ -140,24 +140,7 @@ export const $createDatasetForResearch = createServerFn({ method: "POST" })
       );
       return { ok: true, data: created };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to create dataset.";
-        if (error.status === 409) {
-          return { ok: false, error: detail, code: "CONFLICT" };
-        }
-        if (error.status === 403) {
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        }
-        if (error.status === 404) {
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        }
-        if (error.status === 401) {
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-        }
-      }
-      throw error;
+      return mapApiError(error, "Failed to create dataset.");
     }
   });
 
@@ -180,24 +163,7 @@ export const $updateDataset = createServerFn({ method: "POST" })
       );
       return { ok: true, data: updated };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to update dataset.";
-        if (error.status === 409) {
-          return { ok: false, error: detail, code: "CONFLICT" };
-        }
-        if (error.status === 403) {
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        }
-        if (error.status === 404) {
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        }
-        if (error.status === 401) {
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-        }
-      }
-      throw error;
+      return mapApiError(error, "Failed to update dataset.");
     }
   });
 
@@ -215,20 +181,6 @@ export const $deleteDataset = createServerFn({ method: "POST" })
       await api.deleteDataset(data.datasetId, accessToken);
       return { ok: true };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to delete dataset.";
-        if (error.status === 403) {
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        }
-        if (error.status === 404) {
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        }
-        if (error.status === 401) {
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-        }
-      }
-      throw error;
+      return mapApiError(error, "Failed to delete dataset.");
     }
   });

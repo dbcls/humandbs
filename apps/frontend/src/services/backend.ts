@@ -378,3 +378,23 @@ const api: APIService = {
 };
 
 export { api };
+
+type StandardErrorCode = "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+
+export function mapApiError<C extends string = never>(
+  error: unknown,
+  fallback: string,
+  extraMappings?: Partial<Record<number, C>>,
+): { ok: false; error: string; code: StandardErrorCode | C } {
+  if (error instanceof APIError) {
+    const detail =
+      (error.data as { detail?: string } | undefined)?.detail ?? fallback;
+    const extra = extraMappings?.[error.status];
+    if (extra !== undefined) return { ok: false, error: detail, code: extra };
+    if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
+    if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
+    if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
+    if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+  }
+  throw error;
+}
