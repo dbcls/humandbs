@@ -23,6 +23,7 @@ import { useStableSortableIds } from "@/components/form-context/fields/useStable
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
+import { Button } from "@/components/ui/button";
 
 const relatedPublicationSchema = z.object({
   ...ResearchDetailSchema.shape.relatedPublication.element.shape,
@@ -39,7 +40,13 @@ const RelatedPublicationItemForm = withFieldGroup({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RelatedPublicationSortableList({ form, field }: { form: any; field: any }) {
+function RelatedPublicationSortableList({
+  form,
+  field,
+}: {
+  form: any;
+  field: any;
+}) {
   const dndId = useId();
   const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
@@ -51,7 +58,8 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
 
   const items: RelatedPublication[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: RelatedPublication[] = (field.form.options.defaultValues as any)?.relatedPublication ?? [];
+  const initialItems: RelatedPublication[] =
+    (field.form.options.defaultValues as any)?.relatedPublication ?? [];
   const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
     items.length,
     dndId,
@@ -84,7 +92,9 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               id={itemIds[i]!}
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
-              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
+              isModified={
+                i >= initialItems.length || !deepEqual(item, initialItems[i])
+              }
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
@@ -97,10 +107,17 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
               />
               {item?.datasetIds && item.datasetIds.length > 0 && (
                 <div className="mt-3 flex flex-col gap-1">
-                  <span className="text-xs font-medium text-gray-500">Dataset IDs</span>
+                  <span className="text-xs font-medium text-gray-500">
+                    Dataset IDs
+                  </span>
                   <div className="flex flex-wrap gap-1">
                     {item.datasetIds.map((id) => (
-                      <span key={id} className="font-mono text-xs text-gray-700">{id}</span>
+                      <span
+                        key={id}
+                        className="font-mono text-xs text-gray-700"
+                      >
+                        {id}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -109,15 +126,15 @@ function RelatedPublicationSortableList({ form, field }: { form: any; field: any
           ))}
         </SortableContext>
       </DndContext>
-      <button
+      <Button
         type="button"
         onClick={() =>
           field.pushValue({ title: { ja: null, en: null }, doi: null })
         }
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+        variant={"dashed"}
       >
         + Add
-      </button>
+      </Button>
     </fieldset>
   );
 }

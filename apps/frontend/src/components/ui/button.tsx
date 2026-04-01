@@ -25,6 +25,8 @@ export const buttonVariants = cva(
         plain: "bg-none",
         "cms-table-action":
           "bg-none rounded-xs enabled:hover:bg-hover active:bg-foreground-light/30",
+        dashed:
+          "w-full rounded border border-dashed text-sm text-gray-500 hover:bg-gray-50",
         toggle:
           " bg-none rounded-md whitespace-normal w-full text-left enabled:hover:bg-hover",
         ghost: "bg-none",

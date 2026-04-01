@@ -148,31 +148,28 @@ export function NewResearchForm({
               {(field) => (
                 <fieldset className="flex flex-col gap-2">
                   <Label>User IDs (uids)</Label>
-                  <div className="nested-form flex flex-col gap-1">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(field.state.value as any[])?.map(
-                      (_: string, i: number) => (
-                        <div key={i} className="flex items-center gap-1">
-                          <form.AppField name={`uids[${i}]`}>
-                            {(f) => <f.TextField />}
-                          </form.AppField>
-                          <button
-                            type="button"
-                            onClick={() => field.removeValue(i)}
-                          >
-                            <Trash2 className="text-danger size-4" />
-                          </button>
-                        </div>
-                      ),
-                    )}
+                  <div className="nested-form flex flex-col gap-1 w-full">
+                    {field.state.value?.map((_, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <form.AppField name={`uids[${i}]`}>
+                          {(f) => <f.TextField />}
+                        </form.AppField>
+                        <button
+                          type="button"
+                          onClick={() => field.removeValue(i)}
+                        >
+                          <Trash2 className="text-danger size-4" />
+                        </button>
+                      </div>
+                    ))}
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="dashed"
                       size="slim"
                       className="self-start"
                       onClick={() => field.pushValue("")}
                     >
-                      Add UID
+                      + Add UID
                     </Button>
                   </div>
                 </fieldset>

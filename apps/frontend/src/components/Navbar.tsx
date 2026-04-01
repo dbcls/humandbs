@@ -385,7 +385,7 @@ function UserMenu() {
           >
             My Page
           </Button>
-          <Button type="submit" className="justify-self-end">
+          <Button type="submit" className="justify-self-end mt-3">
             Logout
             <LucideLogOut className="ml-2 size-8" />
           </Button>

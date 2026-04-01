@@ -23,6 +23,7 @@ import { useStableSortableIds } from "@/components/form-context/fields/useStable
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
+import { Button } from "@/components/ui/button";
 
 const dataProviderSchema = z.object({
   ...ResearchDetailSchema.shape.dataProvider.element.shape,
@@ -51,7 +52,8 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
 
   const items: Person[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: Person[] = (field.form.options.defaultValues as any)?.dataProvider ?? [];
+  const initialItems: Person[] =
+    (field.form.options.defaultValues as any)?.dataProvider ?? [];
   const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
     items.length,
     dndId,
@@ -84,7 +86,9 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
-              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
+              isModified={
+                i >= initialItems.length || !deepEqual(item, initialItems[i])
+              }
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
@@ -99,7 +103,7 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
           ))}
         </SortableContext>
       </DndContext>
-      <button
+      <Button
         type="button"
         onClick={() =>
           field.pushValue({
@@ -112,10 +116,10 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
             organization: null,
           })
         }
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+        variant={"dashed"}
       >
         + Add
-      </button>
+      </Button>
     </fieldset>
   );
 }

@@ -23,6 +23,7 @@ import { useStableSortableIds } from "@/components/form-context/fields/useStable
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
+import { Button } from "@/components/ui/button";
 
 const researchProjectSchema = z.object({
   ...ResearchDetailSchema.shape.researchProject.element.shape,
@@ -39,7 +40,13 @@ const ResearchProjectItemForm = withFieldGroup({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ResearchProjectSortableList({ form, field }: { form: any; field: any }) {
+function ResearchProjectSortableList({
+  form,
+  field,
+}: {
+  form: any;
+  field: any;
+}) {
   const dndId = useId();
   const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
@@ -51,7 +58,8 @@ function ResearchProjectSortableList({ form, field }: { form: any; field: any })
 
   const items: ResearchProject[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: ResearchProject[] = (field.form.options.defaultValues as any)?.researchProject ?? [];
+  const initialItems: ResearchProject[] =
+    (field.form.options.defaultValues as any)?.researchProject ?? [];
   const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
     items.length,
     dndId,
@@ -84,7 +92,9 @@ function ResearchProjectSortableList({ form, field }: { form: any; field: any })
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
-              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
+              isModified={
+                i >= initialItems.length || !deepEqual(item, initialItems[i])
+              }
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
@@ -99,7 +109,7 @@ function ResearchProjectSortableList({ form, field }: { form: any; field: any })
           ))}
         </SortableContext>
       </DndContext>
-      <button
+      <Button
         type="button"
         onClick={() =>
           field.pushValue({
@@ -110,10 +120,10 @@ function ResearchProjectSortableList({ form, field }: { form: any; field: any })
             url: null,
           })
         }
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+        variant={"dashed"}
       >
         + Add
-      </button>
+      </Button>
     </fieldset>
   );
 }

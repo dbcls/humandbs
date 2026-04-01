@@ -47,7 +47,12 @@ import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
 import { DatasetCreateView } from "./-DatasetCreateView";
 import { TabContentLayout } from "./-TabContentLayout";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/Breadcrumb";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/Breadcrumb";
 import { cn } from "@/lib/utils";
 
 export function ResearchDetails({
@@ -131,7 +136,9 @@ export function ResearchDetails({
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
   const [datasetDirty, setDatasetDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState<"metadata" | "datasets">("metadata");
+  const [activeTab, setActiveTab] = useState<"metadata" | "datasets">(
+    "metadata",
+  );
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
@@ -366,10 +373,15 @@ export function ResearchDetails({
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
   const [datasetPreview, setDatasetPreview] = useState(false);
 
-  const isDatasetSubviewActive = activeTab === "datasets" && datasetView !== null;
+  const isDatasetSubviewActive =
+    activeTab === "datasets" && datasetView !== null;
   const effectivePreview = isDatasetSubviewActive ? datasetPreview : preview;
-  const setEffectivePreview = isDatasetSubviewActive ? setDatasetPreview : setPreview;
-  const previewLabel = isDatasetSubviewActive ? "Dataset preview" : "Research preview";
+  const setEffectivePreview = isDatasetSubviewActive
+    ? setDatasetPreview
+    : setPreview;
+  const previewLabel = isDatasetSubviewActive
+    ? "Dataset preview"
+    : "Research preview";
 
   // True only when the selected version is the current draft being edited.
   // researchValues.draftVersion always reflects the current research state —
@@ -467,7 +479,12 @@ export function ResearchDetails({
       </div>
 
       <div className={cn("min-h-0 flex-1 flex flex-col", preview && "hidden")}>
-        <Tabs defaultValue="metadata" value={activeTab} onValueChange={(v) => setActiveTab(v as "metadata" | "datasets")} className="min-h-0 flex-1 flex flex-col">
+        <Tabs
+          defaultValue="metadata"
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as "metadata" | "datasets")}
+          className="min-h-0 flex-1 flex flex-col"
+        >
           <div className="px-5 pt-5 shrink-0">
             <TabsList variant="line">
               <TabsTrigger variant="line" value="metadata">
@@ -554,11 +571,11 @@ export function ResearchDetails({
                     {(field) => (
                       <fieldset className="flex flex-col gap-2">
                         <Label>User IDs (uids)</Label>
-                        <div className="nested-form flex flex-col gap-1">
-                          {field.state.value?.map((_: string, i: number) => (
+                        <div className="nested-form flex flex-col gap-1 w-full">
+                          {field.state.value?.map((_, i) => (
                             <div key={i} className="flex items-center gap-1">
-                              <form.AppField name={`uids[${i}]` as "uids"}>
-                                {(f) => <f.TextField />}
+                              <form.AppField name={`uids[${i}]`}>
+                                {(f) => <f.TextField className="flex-1" />}
                               </form.AppField>
                               <button
                                 type="button"
@@ -570,12 +587,12 @@ export function ResearchDetails({
                           ))}
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="dashed"
                             size="slim"
                             className="self-start"
                             onClick={() => field.pushValue("")}
                           >
-                            Add UID
+                            + Add UID
                           </Button>
                         </div>
                       </fieldset>
