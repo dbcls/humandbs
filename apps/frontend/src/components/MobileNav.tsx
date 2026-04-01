@@ -1,6 +1,6 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
-import { useLoaderData, useRouteContext } from "@tanstack/react-router";
+import { useRouteContext } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import {
@@ -18,6 +18,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Link } from "./Link";
+import type { ResolvedSiteNavigation } from "@/config/site-navigation";
 
 export function MobileNav() {
   const t = useTranslations("Navbar");
@@ -38,7 +39,7 @@ export function MobileNav() {
         </SheetHeader>
         <nav className="mt-6 flex flex-col gap-4">
           <Accordion type="multiple" className="w-full px-3">
-            {siteNavigation.navbar.map((item) => {
+            {(siteNavigation as ResolvedSiteNavigation).navbar.map((item) => {
               if (item.children && item.children.length > 0) {
                 return (
                   <AccordionItem key={item.id} value={item.id}>

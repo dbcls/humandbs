@@ -1,5 +1,4 @@
 import {
-  useLoaderData,
   useLocation,
   useNavigate,
   useRouteContext,
@@ -23,7 +22,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import type { NavbarItem } from "@/config/site-navigation";
+import type {
+  NavbarItem,
+  ResolvedSiteNavigation,
+} from "@/config/site-navigation";
 import { useCart } from "@/hooks/useCart";
 
 import { LangSwitcher } from "./LanguageSwitcher";
@@ -42,7 +44,7 @@ export function Navbar() {
     from: "/{-$lang}/_layout",
   });
 
-  const items = siteNavigation.navbar;
+  const items = (siteNavigation as ResolvedSiteNavigation).navbar;
   const navContainerRef = useRef<HTMLDivElement>(null);
   const navListRef = useRef<HTMLUListElement>(null);
   const measureItemRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -200,9 +202,17 @@ function NavItem({
           </NavigationMenuContent>
         </>
       ) : (
-        <Link variant="nav" className="whitespace-nowrap" {...item.linkOptions}>
-          {t(item.id)}
-        </Link>
+        <NavigationMenuItem>
+          <NavigationMenuLink asChild>
+            <Link
+              variant="nav"
+              className="whitespace-nowrap"
+              {...item.linkOptions}
+            >
+              {t(item.id)}
+            </Link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
       )}
     </NavigationMenuItem>
   );
