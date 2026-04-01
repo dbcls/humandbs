@@ -469,7 +469,7 @@ export function ResearchDetails({
 
           <TabsContent
             value="metadata"
-            className="min-h-0 flex-1 flex flex-col"
+            className="min-h-0 flex-1 flex flex-col max-h-full overflow-y-auto"
           >
             {/* Workflow action row */}
             <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
@@ -527,7 +527,7 @@ export function ResearchDetails({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1">
               <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
 
               {canUpdateUids && (
@@ -641,7 +641,7 @@ export function ResearchDetails({
           <TabsContent
             forceMount
             value="datasets"
-            className="min-h-0 flex-1 flex flex-col"
+            className="min-h-0 flex-1 flex flex-col max-h-full overflow-y-auto"
           >
             {datasetView === null ? (
               <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
