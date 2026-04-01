@@ -10,7 +10,6 @@ import { z } from "zod";
 
 import { Input } from "@/components/Input";
 import { ListItem } from "@/components/ListItem";
-import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,13 +23,12 @@ import {
   $createContentItem,
   $deleteContentItem,
   $validateContentId,
-  type ContentItemsListItem,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
-import { StatusTag, Tag } from "@/components/StatusTag";
+import { AdminListItem } from "./AdminListItem";
 
 export function ContentList({
   selectedContentId,
@@ -84,8 +82,6 @@ export function ContentList({
     });
   }
 
-  console.log("contents", contents);
-
   return (
     <>
       <AddNewDialog />
@@ -101,90 +97,23 @@ export function ContentList({
               }}
               key={content.id}
               isActive={isActive}
+              className="mb-2 last:mb-0"
             >
-              <ContentListItem
-                item={content}
-                onClickDelete={handleClickDeleteContentItem}
-              />
-              {/*<div className="text-sm font-medium">
-                <span>{content.id}</span>
-                <ul className="space-y-1">
-                  {showItems.map((tr) => {
-                    return (
-                      <li
-                        key={tr.lang}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        <Tag tag={tr.lang} isActive={isActive} />
-
-                        <StatusTag status={tr.status} isActive={isActive} />
-
-                        <span>{tr.title}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-
-              <TrashButton
-                onClick={(e) => {
+              <AdminListItem
+                id={content.id}
+                translations={content.translations.map((tr) => ({
+                  lang: tr.lang,
+                  statuses: tr.statuses,
+                }))}
+                onClickDelete={(e) => {
                   e.stopPropagation();
                   handleClickDeleteContentItem(content.id);
                 }}
-                isActive={isActive}
-              />*/}
+              />
             </ListItem>
           );
         })}
       </ul>
-    </>
-  );
-}
-
-function ContentListItem({
-  item,
-  onClickDelete,
-}: {
-  item: ContentItemsListItem;
-  onClickDelete: (id: string) => void;
-}) {
-  return (
-    <>
-      <div className="text-sm font-medium">
-        <p className="mb-2">{item.id}</p>
-        <ul className="space-y-2">
-          {item.translations.map((tr) => {
-            return (
-              <li key={tr.lang} className="flex items-start gap-1 text-xs">
-                <Tag tag={tr.lang} />
-
-                <ul className="flex flex-col items-start">
-                  {tr.statuses.published ? (
-                    <li className="flex items-start gap-2">
-                      <StatusTag status={"published"} />
-                      <span>{tr.statuses.published}</span>
-                    </li>
-                  ) : null}
-
-                  {tr.statuses.draft ? (
-                    <li className="flex items-start gap-2">
-                      <StatusTag status={"draft"} />
-                      <span>{tr.statuses.draft}</span>
-                    </li>
-                  ) : null}
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-      <TrashButton
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log("item id", item.id);
-          onClickDelete(item.id);
-        }}
-      />
     </>
   );
 }

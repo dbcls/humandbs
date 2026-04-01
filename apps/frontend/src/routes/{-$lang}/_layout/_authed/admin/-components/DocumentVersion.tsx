@@ -6,7 +6,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
@@ -39,6 +39,7 @@ import {
 import { waitUntilNoMutations } from "@/utils/mutations";
 
 import { StatusTag, Tag } from "@/components/StatusTag";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
 
@@ -59,68 +60,48 @@ function normalizeDocTextValue(value: string | undefined) {
   return value ?? "";
 }
 
-export function DocumentVersion({ contentId }: { contentId: ContentId }) {
-  const {
-    selectedVersionContent,
-    selectedVersionNumber,
-    setSelectedVersionNumber,
-    versions,
-  } = useDocVersions(contentId);
+export function DocumentVersion({ contentId }: { contentId: string }) {
+  const { selectedVersionNumber, setSelectedVersionNumber, versions } =
+    useDocVersionsList(contentId);
 
-  const savingStatuses = useMutationState({
-    filters: {
-      mutationKey: [
-        "documentVersion",
-        contentId,
-        selectedVersionNumber,
-        "draft",
-        "save",
-      ],
-    },
-    select: (mutation) => mutation.state.status,
-  });
+  const [lang, setLang] = useState<Locale>(i18n.defaultLocale);
 
-  const { isPending: isPublishPending } = usePublishDraft(
-    contentId,
-    selectedVersionNumber ?? 0,
-  );
+  const { mutate: createVersion, isPending: isCreatingVersion } =
+    useCreateVersion(contentId);
 
-  const { mutate: unpublishVersion, isPending: isUnpublishPending } =
-    useUnpublishVersion(contentId, selectedVersionNumber ?? 0);
-
-  const versionNumber = selectedVersionNumber ?? 0;
-
-  const form = useDocumentVersionForm({
-    initialValues: {
-      lang: i18n.defaultLocale,
-      translations: selectedVersionContent.translations,
-    },
-    contentId,
-    versionNumber,
-  });
-
-  const isDraftChanged = useStore(
-    form.store,
-    (state) => {
-      const draft =
-        state.values.translations[state.values.lang]?.draft;
-      const published =
-        state.values.translations[state.values.lang]?.published;
-
-      return (
-        state.isValid &&
-        (normalizeDocTextValue(draft?.content) !==
-          normalizeDocTextValue(published?.content) ||
-          normalizeDocTextValue(draft?.title) !==
-            normalizeDocTextValue(published?.title))
-      );
-    },
-  );
+  if (versions.length === 0) {
+    return (
+      <Card
+        className="flex h-full flex-1 flex-col"
+        containerClassName="flex flex-1 flex-col"
+        captionSize={"sm"}
+        caption="Document"
+      >
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-sm">
+          <p>No versions available for this document.</p>
+          <Button
+            variant="accent"
+            onClick={() => {
+              createVersion();
+            }}
+            disabled={isCreatingVersion}
+          >
+            {isCreatingVersion ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
+            Create First Version
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card
       className="flex h-full flex-1 flex-col"
-      containerClassName="flex flex-col flex-1"
+      containerClassName="flex flex-col flex-1 px-8"
       captionSize={"sm"}
       caption={
         <span className="flex items-center gap-5">
@@ -130,113 +111,199 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
             onSelect={setSelectedVersionNumber}
             contentId={contentId}
           />
-
-          <form.AppField name="lang">
-            {(field) => <field.LocaleSwitchField />}
-          </form.AppField>
+          <LocaleSwitcher locale={lang} onSwitchLocale={setLang} />
         </span>
       }
     >
-      <Tabs
-        className="flex-1 min-h-0"
-        defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
-      >
-        <TabsList>
-          <TabsTrigger
-            className="flex items-center gap-2"
-            value={DOCUMENT_VERSION_STATUS.DRAFT}
-          >
-            <Pencil /> <span>Editor</span>
-            {isDraftChanged && <UnpublishedDot />}
-            <div className="w-4">
-              {savingStatuses.at(-1) === "pending" && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
-            </div>
-          </TabsTrigger>
-          <TabsTrigger
-            className="flex items-center gap-2"
-            value={DOCUMENT_VERSION_STATUS.PUBLISHED}
-          >
-            <span>Live</span>
-            <div className="w-4">
-              {(isPublishPending || isUnpublishPending) && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
-            </div>
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent
-          className="flex flex-1 flex-col gap-2"
+      <Suspense fallback={<SkeletonLoading />}>
+        <DocumentVersionContent
+          key={selectedVersionNumber}
+          contentId={contentId}
+          versionNumber={selectedVersionNumber!}
+          lang={lang}
+        />
+      </Suspense>
+    </Card>
+  );
+}
+
+function DocumentVersionContent({
+  contentId,
+  versionNumber,
+  lang,
+}: {
+  contentId: string;
+  versionNumber: number;
+  lang: Locale;
+}) {
+  const docVersionQO = getDocumentVersionQueryOptions({
+    contentId,
+    versionNumber,
+  });
+  const { data: selectedVersionContent } = useSuspenseQuery(docVersionQO);
+
+  const savingStatuses = useMutationState({
+    filters: {
+      mutationKey: [
+        "documentVersion",
+        contentId,
+        versionNumber,
+        "draft",
+        "save",
+      ],
+    },
+    select: (mutation) => mutation.state.status,
+  });
+
+  const { isPending: isPublishPending } = usePublishDraft(
+    contentId,
+    versionNumber,
+  );
+
+  const { mutate: unpublishVersion, isPending: isUnpublishPending } =
+    useUnpublishVersion(contentId, versionNumber);
+
+  const form = useDocumentVersionForm({
+    initialValues: {
+      lang,
+      translations: selectedVersionContent?.translations ?? {},
+    },
+    contentId,
+    versionNumber,
+  });
+
+  useEffect(() => {
+    form.setFieldValue("lang", lang);
+  }, [lang]);
+
+  const isDraftChanged = useStore(form.store, (state) => {
+    const draft = state.values.translations[state.values.lang]?.draft;
+    const published = state.values.translations[state.values.lang]?.published;
+
+    return (
+      state.isValid &&
+      (normalizeDocTextValue(draft?.content) !==
+        normalizeDocTextValue(published?.content) ||
+        normalizeDocTextValue(draft?.title) !==
+          normalizeDocTextValue(published?.title))
+    );
+  });
+
+  return (
+    <Tabs
+      className="flex-1 min-h-0"
+      defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+    >
+      <TabsList>
+        <TabsTrigger
+          className="flex items-center gap-2"
           value={DOCUMENT_VERSION_STATUS.DRAFT}
         >
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => (
-              <div className="flex items-center justify-between gap-4 pb-2">
-                <form.Subscribe
-                  selector={(state) => ({
-                    draftContent:
-                      state.values.translations[lang]?.draft?.content ?? "",
-                    draftTitle:
-                      state.values.translations[lang]?.draft?.title ?? "",
-                  })}
-                >
-                  {({ draftContent, draftTitle }) => (
-                    <MarkdownFileActions
-                      filename={`${contentId}-${lang}-v${versionNumber}`}
-                      content={draftContent}
-                      title={draftTitle}
-                      lang={lang}
-                      onUpload={(text, uploadedTitle) => {
-                        form.setFieldValue(
-                          `translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
-                          text,
-                        );
-                        if (uploadedTitle !== undefined) {
-                          form.setFieldValue(
-                            `translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
-                            uploadedTitle,
-                          );
-                        }
-                        form.handleSubmit({ submitAction: "saveDraft" });
-                      }}
-                    />
-                  )}
-                </form.Subscribe>
-                <div className="flex gap-2">
-                  <Button
-                    variant={"outline"}
-                    size={"lg"}
-                    disabled={!isDraftChanged}
-                    onClick={() => {
-                      form.handleSubmit({ submitAction: "resetDraft" });
-                    }}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    type="submit"
-                    onClick={() => {
-                      form.handleSubmit({ submitAction: "publish" });
-                    }}
-                    className="gap-1 self-end"
-                    size={"lg"}
-                    variant={"accent"}
-                    disabled={!isDraftChanged}
-                  >
-                    <Save className="size-5" />
-                    Publish
-                  </Button>
-                </div>
-              </div>
+          <Pencil /> <span>Editor</span>
+          {isDraftChanged && <UnpublishedDot />}
+          <div className="w-4">
+            {savingStatuses.at(-1) === "pending" && (
+              <Loader2 className="size-4 animate-spin" />
             )}
-          </form.Subscribe>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger
+          className="flex items-center gap-2"
+          value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+        >
+          <span>Live</span>
+          <div className="w-4">
+            {(isPublishPending || isUnpublishPending) && (
+              <Loader2 className="size-4 animate-spin" />
+            )}
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent
+        className="flex flex-1 flex-col gap-2"
+        value={DOCUMENT_VERSION_STATUS.DRAFT}
+      >
+        <form.Subscribe selector={(state) => state.values.lang}>
+          {(lang) => (
+            <div className="flex items-center justify-between gap-4 pb-2">
+              <form.Subscribe
+                selector={(state) => ({
+                  draftContent:
+                    state.values.translations[lang]?.draft?.content ?? "",
+                  draftTitle:
+                    state.values.translations[lang]?.draft?.title ?? "",
+                })}
+              >
+                {({ draftContent, draftTitle }) => (
+                  <MarkdownFileActions
+                    filename={`${contentId}-${lang}-v${versionNumber}`}
+                    content={draftContent}
+                    title={draftTitle}
+                    lang={lang}
+                    onUpload={(text, uploadedTitle) => {
+                      form.setFieldValue(
+                        `translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
+                        text,
+                      );
+                      if (uploadedTitle !== undefined) {
+                        form.setFieldValue(
+                          `translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
+                          uploadedTitle,
+                        );
+                      }
+                      form.handleSubmit({ submitAction: "saveDraft" });
+                    }}
+                  />
+                )}
+              </form.Subscribe>
+              <div className="flex gap-2">
+                <Button
+                  variant={"outline"}
+                  size={"lg"}
+                  disabled={!isDraftChanged}
+                  onClick={() => {
+                    form.handleSubmit({ submitAction: "resetDraft" });
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="submit"
+                  onClick={() => {
+                    form.handleSubmit({ submitAction: "publish" });
+                  }}
+                  className="gap-1 self-end"
+                  size={"lg"}
+                  variant={"accent"}
+                  disabled={!isDraftChanged}
+                >
+                  <Save className="size-5" />
+                  Publish
+                </Button>
+              </div>
+            </div>
+          )}
+        </form.Subscribe>
 
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => (
-              <>
+        <form.Subscribe selector={(state) => state.values.lang}>
+          {(lang) => (
+            <>
+              <form.AppField
+                name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
+                listeners={{
+                  onChange: ({ fieldApi }) => {
+                    fieldApi.form.handleSubmit({
+                      submitAction: "saveDraft",
+                    });
+                  },
+                  onChangeDebounceMs: 800,
+                }}
+              >
+                {(field) => <field.TextField label="Title" />}
+              </form.AppField>
+              <Suspense fallback={<SkeletonLoading />}>
                 <form.AppField
-                  name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
+                  name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
                   listeners={{
                     onChange: ({ fieldApi }) => {
                       fieldApi.form.handleSubmit({
@@ -246,72 +313,57 @@ export function DocumentVersion({ contentId }: { contentId: ContentId }) {
                     onChangeDebounceMs: 800,
                   }}
                 >
-                  {(field) => <field.TextField label="Title" />}
+                  {(field) => (
+                    <field.ContentAreaField
+                      label="Content"
+                      assetFolder={contentId}
+                    />
+                  )}
                 </form.AppField>
-                <Suspense fallback={<SkeletonLoading />}>
-                  <form.AppField
-                    name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
-                    listeners={{
-                      onChange: ({ fieldApi }) => {
-                        fieldApi.form.handleSubmit({
-                          submitAction: "saveDraft",
-                        });
-                      },
-                      onChangeDebounceMs: 800,
+              </Suspense>
+            </>
+          )}
+        </form.Subscribe>
+      </TabsContent>
+      <TabsContent
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
+        value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+      >
+        <form.Subscribe selector={(state) => state.values.lang}>
+          {(lang) => {
+            if (
+              !selectedVersionContent.translations[lang]?.published?.content
+            ) {
+              return <div>No published content</div>;
+            }
+
+            return (
+              <>
+                <div className="border-b flex justify-end border-foreground-light pb-2">
+                  <Button
+                    variant={"outline"}
+                    size={"lg"}
+                    onClick={() => {
+                      unpublishVersion({ locale: lang });
                     }}
+                    disabled={isUnpublishPending}
                   >
-                    {(field) => (
-                      <field.ContentAreaField
-                        label="Content"
-                        assetFolder={contentId}
-                      />
-                    )}
-                  </form.AppField>
-                </Suspense>
+                    Unpublish
+                  </Button>
+                </div>
+
+                <MarkdownClientPreview
+                  source={
+                    selectedVersionContent.translations[lang]?.published
+                      ?.content ?? ""
+                  }
+                />
               </>
-            )}
-          </form.Subscribe>
-        </TabsContent>
-        <TabsContent
-          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
-          value={DOCUMENT_VERSION_STATUS.PUBLISHED}
-        >
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => {
-              if (
-                !selectedVersionContent.translations[lang]?.published?.content
-              ) {
-                return <div>No published content</div>;
-              }
-
-              return (
-                <>
-                  <div className="border-b flex justify-end border-foreground-light pb-2">
-                    <Button
-                      variant={"outline"}
-                      size={"lg"}
-                      onClick={() => {
-                        unpublishVersion({ locale: lang });
-                      }}
-                      disabled={isUnpublishPending}
-                    >
-                      Unpublish
-                    </Button>
-                  </div>
-
-                  <MarkdownClientPreview
-                    source={
-                      selectedVersionContent.translations[lang]?.published
-                        ?.content ?? ""
-                    }
-                  />
-                </>
-              );
-            }}
-          </form.Subscribe>
-        </TabsContent>
-      </Tabs>
-    </Card>
+            );
+          }}
+        </form.Subscribe>
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -321,7 +373,7 @@ function useDocumentVersionForm({
   versionNumber,
 }: {
   initialValues: FormData;
-  contentId: ContentId;
+  contentId: string;
   versionNumber: number;
 }) {
   const { mutate: saveDraft } = useSaveDraft(contentId, versionNumber);
@@ -427,7 +479,7 @@ function useDocumentVersionForm({
   return form;
 }
 
-function useDocVersions(contentId: ContentId) {
+function useDocVersionsList(contentId: string) {
   const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
   const { data: versions } = useSuspenseQuery(docVersionsListQO);
 
@@ -435,21 +487,30 @@ function useDocVersions(contentId: ContentId) {
     number | undefined
   >(versions.at(-1)?.versionNumber);
 
-  const docVersionQO = getDocumentVersionQueryOptions({
-    contentId,
-    versionNumber: selectedVersionNumber,
-  });
+  useEffect(() => {
+    if (versions.length === 0) {
+      if (selectedVersionNumber !== undefined) {
+        setSelectedVersionNumber(undefined);
+      }
+      return;
+    }
 
-  const { data: selectedVersionContent } = useSuspenseQuery(docVersionQO);
+    const hasSelectedVersion = versions.some(
+      (version) => version.versionNumber === selectedVersionNumber,
+    );
+
+    if (!hasSelectedVersion) {
+      setSelectedVersionNumber(versions.at(-1)?.versionNumber);
+    }
+  }, [selectedVersionNumber, versions]);
 
   return useMemo(
     () => ({
       selectedVersionNumber,
       setSelectedVersionNumber,
-      selectedVersionContent,
       versions,
     }),
-    [selectedVersionNumber, selectedVersionContent, versions],
+    [selectedVersionNumber, versions],
   );
 }
 
@@ -570,10 +631,7 @@ function DocumentVersionSelectorItem({
   );
 }
 
-function useDocVersionQueryOptions(
-  contentId: ContentId,
-  versionNumber: number,
-) {
+function useDocVersionQueryOptions(contentId: string, versionNumber: number) {
   return useMemo(
     () => ({
       version: getDocumentVersionQueryOptions({ contentId, versionNumber }),
@@ -583,7 +641,7 @@ function useDocVersionQueryOptions(
   );
 }
 
-function useSaveDraft(contentId: ContentId, versionNumber: number) {
+function useSaveDraft(contentId: string, versionNumber: number) {
   const { version: docVersionQO, list: docVersionsListQO } =
     useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
@@ -657,7 +715,7 @@ function useSaveDraft(contentId: ContentId, versionNumber: number) {
   });
 }
 
-function usePublishDraft(contentId: ContentId, versionNumber: number) {
+function usePublishDraft(contentId: string, versionNumber: number) {
   const { version: docVersionQO, list: docVersionsListQO } =
     useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
@@ -736,7 +794,7 @@ function usePublishDraft(contentId: ContentId, versionNumber: number) {
   });
 }
 
-function useResetDraft(contentId: ContentId, versionNumber: number) {
+function useResetDraft(contentId: string, versionNumber: number) {
   const { version: docVersionQO, list: docVersionsListQO } =
     useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
@@ -793,7 +851,7 @@ function useResetDraft(contentId: ContentId, versionNumber: number) {
   });
 }
 
-function useUnpublishVersion(contentId: ContentId, versionNumber: number) {
+function useUnpublishVersion(contentId: string, versionNumber: number) {
   const { version: docVersionQO, list: docVersionsListQO } =
     useDocVersionQueryOptions(contentId, versionNumber);
   const queryClient = useQueryClient();
