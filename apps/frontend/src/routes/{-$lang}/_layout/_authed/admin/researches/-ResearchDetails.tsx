@@ -46,6 +46,8 @@ import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
 import { DatasetCreateView } from "./-DatasetCreateView";
+import { TabContentLayout } from "./-TabContentLayout";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/Breadcrumb";
 import { cn } from "@/lib/utils";
 
 export function ResearchDetails({
@@ -118,12 +120,18 @@ export function ResearchDetails({
     resource: "researches",
     action: "update-uids",
   });
+  const { can: canCreateDataset } = useCan({
+    resource: "datasets",
+    action: "create",
+    params: { research: researchValues },
+  });
   const [error, setError] = useState<string | null>(null);
   const [isConflict, setIsConflict] = useState(false);
 
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
   const [datasetDirty, setDatasetDirty] = useState(false);
+  const [activeTab, setActiveTab] = useState<"metadata" | "datasets">("metadata");
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
@@ -356,6 +364,12 @@ export function ResearchDetails({
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
+  const [datasetPreview, setDatasetPreview] = useState(false);
+
+  const isDatasetSubviewActive = activeTab === "datasets" && datasetView !== null;
+  const effectivePreview = isDatasetSubviewActive ? datasetPreview : preview;
+  const setEffectivePreview = isDatasetSubviewActive ? setDatasetPreview : setPreview;
+  const previewLabel = isDatasetSubviewActive ? "Dataset preview" : "Research preview";
 
   // True only when the selected version is the current draft being edited.
   // researchValues.draftVersion always reflects the current research state —
@@ -401,10 +415,10 @@ export function ResearchDetails({
             onVersionChange={setSelectedVersion}
           />
           <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
-            Preview
+            {previewLabel}
             <Switch
-              checked={preview}
-              onCheckedChange={setPreview}
+              checked={effectivePreview}
+              onCheckedChange={setEffectivePreview}
               className="data-[state=checked]:bg-secondary"
             />
           </label>
@@ -452,8 +466,8 @@ export function ResearchDetails({
         </div>
       </div>
 
-      <div className={cn("min-h-0 flex-1", preview && "hidden")}>
-        <Tabs defaultValue="metadata" className="min-h-0 flex-1 flex flex-col">
+      <div className={cn("min-h-0 flex-1 flex flex-col", preview && "hidden")}>
+        <Tabs defaultValue="metadata" value={activeTab} onValueChange={(v) => setActiveTab(v as "metadata" | "datasets")} className="min-h-0 flex-1 flex flex-col">
           <div className="px-5 pt-5 shrink-0">
             <TabsList variant="line">
               <TabsTrigger variant="line" value="metadata">
@@ -469,14 +483,14 @@ export function ResearchDetails({
 
           <TabsContent
             value="metadata"
-            className="min-h-0 flex-1 flex flex-col max-h-full overflow-y-auto"
+            className="min-h-0 flex-1 flex flex-col max-h-full"
           >
             {/* Workflow action row */}
             <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
               <div className="ml-auto flex items-center gap-2">
                 {isViewingDraft && canUpdate && (
                   <Button
-                    size="slim"
+                    size="lg"
                     onClick={() => form.handleSubmit()}
                     disabled={isSaving}
                   >
@@ -487,7 +501,7 @@ export function ResearchDetails({
                 {isViewingDraft && canSubmit && (
                   <Button
                     variant="outline"
-                    size="slim"
+                    size="lg"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                   >
@@ -497,7 +511,7 @@ export function ResearchDetails({
                 {isViewingDraft && canReject && (
                   <Button
                     variant="outline"
-                    size="slim"
+                    size="lg"
                     onClick={handleReject}
                     disabled={isRejecting}
                   >
@@ -507,7 +521,7 @@ export function ResearchDetails({
                 {isViewingDraft && canApprove && (
                   <Button
                     variant="action"
-                    size="slim"
+                    size="lg"
                     onClick={handleApprove}
                     disabled={isApproving}
                   >
@@ -515,19 +529,19 @@ export function ResearchDetails({
                   </Button>
                 )}
                 {canUnpublish && (
-                  <Button variant="outline" size="slim">
+                  <Button variant="outline" size="lg">
                     Unpublish
                   </Button>
                 )}
                 {canDelete && (
-                  <Button type="button" size="slim" onClick={handleDelete}>
+                  <Button type="button" size="lg" onClick={handleDelete}>
                     Delete
                   </Button>
                 )}
               </div>
             </div>
 
-            <div className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <ReleaseNoteDisplay releaseNote={researchValues.releaseNote} />
 
               {canUpdateUids && (
@@ -641,32 +655,57 @@ export function ResearchDetails({
           <TabsContent
             forceMount
             value="datasets"
-            className="min-h-0 flex-1 flex flex-col max-h-full overflow-y-auto"
+            className="min-h-0 flex-1 flex flex-col max-h-full"
           >
             {datasetView === null ? (
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+              <TabContentLayout
+                header={
+                  <Breadcrumb>
+                    <BreadcrumbList>
+                      <BreadcrumbItem>
+                        <BreadcrumbPage>Datasets</BreadcrumbPage>
+                      </BreadcrumbItem>
+                    </BreadcrumbList>
+                  </Breadcrumb>
+                }
+                actions={
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    disabled={!canCreateDataset}
+                    onClick={() => setDatasetView("new")}
+                  >
+                    Add new dataset
+                  </Button>
+                }
+              >
                 <ResearchDatasetsTab
-                  humId={humId}
                   research={researchValues}
                   onSelectDataset={(id) => setDatasetView(id)}
-                  onAddNew={() => setDatasetView("new")}
                 />
-              </div>
+              </TabContentLayout>
             ) : datasetView !== "new" ? (
               <DatasetEditView
                 datasetId={datasetView}
                 lang={lang}
                 research={researchValues}
+                preview={datasetPreview}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetDirty(false);
+                  setDatasetPreview(false);
                 }}
                 onDirtyChange={setDatasetDirty}
               />
             ) : (
               <DatasetCreateView
                 humId={humId}
-                onBack={() => setDatasetView(null)}
+                preview={datasetPreview}
+                onBack={() => {
+                  setDatasetView(null);
+                  setDatasetPreview(false);
+                }}
                 onCreated={(id) => setDatasetView(id)}
               />
             )}

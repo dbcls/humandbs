@@ -10,13 +10,10 @@ import { routeTree } from "@/routeTree.gen";
 
 export interface Context {
   queryClient: QueryClient;
-  // auth: Auth;
   crumb: string;
   lang: Locale;
   messages: Messages;
   siteNavigation: ResolvedSiteNavigation;
-  // user: SessionUser | null | undefined;
-  // session: SessionMeta | null | undefined;
 }
 
 export function getRouter() {

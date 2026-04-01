@@ -19,14 +19,9 @@ export function MarkdownWithTOC({
 }) {
   return (
     <Card className="w-full py-6">
-      <div className="relative flex flex-col items-stretch gap-4 md:flex-row md:items-start">
-        <TOC headings={markdownResult.headings} />
-        <div className="mx-auto w-full max-w-6xl min-w-0">
-          {title && (
-            <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
-              <h1>{title}</h1>
-            </div>
-          )}
+      <div className="prose mx-auto prose-a:text-secondary-light prose-a:visited:text-secondary-lighter flex justify-center gap-5 prose-h1:text-secondary prose-h1:font-medium prose-h1:mt-8 prose-h1:mb-16">
+        <div className="flex-1">
+          {title && <h1>{title}</h1>}
           <Markdown contentHtml={markdownResult} />
           {previousVersions && (
             <PreviousVersionsList
@@ -36,6 +31,9 @@ export function MarkdownWithTOC({
           )}
           {afterContent}
         </div>
+        {markdownResult.headings.length > 0 ? (
+          <TOC headings={markdownResult.headings} />
+        ) : null}
       </div>
     </Card>
   );

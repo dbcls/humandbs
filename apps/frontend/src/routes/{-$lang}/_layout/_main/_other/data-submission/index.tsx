@@ -10,6 +10,7 @@ import {
   $getPublishedDocumentVersionList,
 } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-submission/",
@@ -37,16 +38,11 @@ function RouteComponent() {
   const tCommon = useTranslations("common");
 
   return (
-    <Card className="w-full">
-      <div className="max-w-[800px] mx-auto">
-        <div className="prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base">
-          <h1>{title}</h1>
-        </div>
-        <Markdown contentHtml={contentHtml} />
-        <PreviousVersionsList
-          slug="/{-$lang}/data-submission"
-          versions={versions}
-        />
+    <MarkdownWithTOC
+      title={title}
+      markdownResult={contentHtml}
+      previousVersions={versions}
+      afterContent={
         <div className="my-5 flex justify-center">
           <Button
             className="text-3xl"
@@ -58,7 +54,7 @@ function RouteComponent() {
             {tCommon("to-", { place: t("data-submission").toLowerCase() })}
           </Button>
         </div>
-      </div>
-    </Card>
+      }
+    />
   );
 }

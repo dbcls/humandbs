@@ -34,7 +34,7 @@ export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
   }, [headingsToShow.map((h) => h.id).join(",")]);
 
   return (
-    <div className="border-secondary static flex w-96 min-w-44 flex-col gap-4 rounded bg-white p-2 md:sticky md:top-4 md:mt-6 md:max-h-[calc(100vh-2rem)] md:overflow-y-auto">
+    <div className="border-secondary static flex w-96 min-w-44 shrink-0 flex-col gap-4 rounded bg-white p-2 md:sticky md:top-4 md:mt-6 md:max-h-[calc(100vh-2rem)] md:overflow-y-auto">
       {headingsToShow.map((heading) => (
         <a
           key={heading.id}

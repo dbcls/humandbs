@@ -1,4 +1,5 @@
 import {
+  useLoaderData,
   useLocation,
   useNavigate,
   useRouteContext,
@@ -12,7 +13,6 @@ import {
 import { forwardRef, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
-import type { NavbarItem } from "@/config/site-navigation";
 import Logo from "@/assets/Logo.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,14 +23,13 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import type { NavbarItem } from "@/config/site-navigation";
 import { useCart } from "@/hooks/useCart";
 
-import {
-  getNavbarOverflowLayout,
-} from "./navbar-overflow";
 import { LangSwitcher } from "./LanguageSwitcher";
 import { Link } from "./Link";
 import { MobileNav } from "./MobileNav";
+import { getNavbarOverflowLayout } from "./navbar-overflow";
 import { Search } from "./Search";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
@@ -178,7 +177,11 @@ function NavItem({
       {item.children ? (
         <>
           <NavigationMenuTrigger className="text-sm">
-            <Link variant="nav" className="whitespace-nowrap" {...item.linkOptions}>
+            <Link
+              variant="nav"
+              className="whitespace-nowrap"
+              {...item.linkOptions}
+            >
               {t(item.id)}
             </Link>
           </NavigationMenuTrigger>
@@ -217,7 +220,10 @@ function OverflowMenu({
       <PopoverTrigger asChild>
         <OverflowTrigger />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 border bg-white p-2 text-black">
+      <PopoverContent
+        align="end"
+        className="w-72 border bg-white p-2 text-black"
+      >
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
             {items.map((item) => (
@@ -271,7 +277,11 @@ function OverflowMenuItem({
   return (
     <NavigationMenuItem className="w-full">
       <NavigationMenuLink asChild>
-        <Link variant="nav" {...item.linkOptions} className="w-full rounded-sm px-2 py-2">
+        <Link
+          variant="nav"
+          {...item.linkOptions}
+          className="w-full rounded-sm px-2 py-2"
+        >
           {t(item.id)}
         </Link>
       </NavigationMenuLink>
@@ -359,7 +369,9 @@ function UserMenu() {
             variant={"plain"}
             type="button"
             className="block w-full text-left text-inherit hover:bg-hover"
-            onClick={() => navigate({ to: "/{-$lang}/admin", params: { lang } })}
+            onClick={() =>
+              navigate({ to: "/{-$lang}/admin", params: { lang } })
+            }
           >
             My Page
           </Button>
@@ -385,9 +397,7 @@ function ShoppingCartButton() {
       onClick={() => navigate({ to: "/{-$lang}/cart", params: { lang } })}
     >
       {cart.length > 0 ? (
-        <span className="bg-primary rounded-full h-6 w-6">
-          {cart.length}
-        </span>
+        <span className="bg-primary rounded-full h-6 w-6">{cart.length}</span>
       ) : null}
       <ShoppingCart className="text-secondary" />
     </Button>

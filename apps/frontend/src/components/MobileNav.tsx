@@ -1,6 +1,6 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
-import { useRouteContext } from "@tanstack/react-router";
+import { useLoaderData, useRouteContext } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import {

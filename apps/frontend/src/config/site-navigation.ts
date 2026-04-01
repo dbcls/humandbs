@@ -78,7 +78,6 @@ export interface ResolvedSiteNavigation {
 export const NAVIGATION_ITEM_IDS: NavigationItemId[] = [
   "home",
   "data-submission",
-  "application",
   "guidelines",
   "data-sharing-guidelines",
   "security-guidelines-for-users",
@@ -122,20 +121,19 @@ const siteNavigationRegistry: SiteNavigationRegistryItem[] = [
   {
     id: "data-submission",
     labelKey: "data-submission",
-    getLinkOptions: (lang) => ({ to: "/{-$lang}/data-submission", params: { lang } }),
-  },
-  {
-    id: "application",
-    labelKey: "application",
     getLinkOptions: (lang) => ({
-      to: "/{-$lang}/data-submission/application",
+      to: "/{-$lang}/data-submission",
       params: { lang },
     }),
   },
+
   {
     id: "guidelines",
     labelKey: "guidelines",
-    getLinkOptions: (lang) => ({ to: "/{-$lang}/guidelines", params: { lang } }),
+    getLinkOptions: (lang) => ({
+      to: "/{-$lang}/guidelines",
+      params: { lang },
+    }),
   },
   {
     id: "data-sharing-guidelines",
@@ -172,7 +170,10 @@ const siteNavigationRegistry: SiteNavigationRegistryItem[] = [
   {
     id: "data-usage",
     labelKey: "data-usage",
-    getLinkOptions: (lang) => ({ to: "/{-$lang}/data-usage", params: { lang } }),
+    getLinkOptions: (lang) => ({
+      to: "/{-$lang}/data-usage",
+      params: { lang },
+    }),
   },
   {
     id: "research-list",
@@ -241,7 +242,10 @@ const siteNavigationRegistry: SiteNavigationRegistryItem[] = [
   {
     id: "faq",
     labelKey: "faq",
-    getLinkOptions: (lang) => ({ to: "/{-$lang}/$", params: { lang, _splat: "faq" } }),
+    getLinkOptions: (lang) => ({
+      to: "/{-$lang}/$",
+      params: { lang, _splat: "faq" },
+    }),
   },
   {
     id: "supported-browsers",
@@ -260,8 +264,18 @@ const siteNavigationRegistryById = new Map(
 const defaultSiteNavigationConfig: SiteNavigationConfig = {
   footerGroups: [
     { id: "overview", labelKey: "group-overview", order: 10, enabled: true },
-    { id: "guidelines", labelKey: "group-guidelines", order: 20, enabled: true },
-    { id: "submission", labelKey: "group-submission", order: 30, enabled: true },
+    {
+      id: "guidelines",
+      labelKey: "group-guidelines",
+      order: 20,
+      enabled: true,
+    },
+    {
+      id: "submission",
+      labelKey: "group-submission",
+      order: 30,
+      enabled: true,
+    },
     { id: "usage", labelKey: "group-usage", order: 40, enabled: true },
     { id: "policy", labelKey: "group-policy", order: 50, enabled: true },
   ],
@@ -269,94 +283,169 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     { id: "home", footer: { enabled: true, groupId: "overview", order: 10 } },
     {
       id: "data-submission",
-      navbar: { enabled: true, visibility: "essential", order: 10, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 10,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "submission", order: 10 },
     },
-    {
-      id: "application",
-      parentId: "data-submission",
-      navbar: { enabled: true, visibility: "secondary", order: 10, priority: "important" },
-      footer: { enabled: true, groupId: "submission", order: 20 },
-    },
+
     {
       id: "guidelines",
-      navbar: { enabled: true, visibility: "essential", order: 20, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 20,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "guidelines", order: 10 },
     },
     {
       id: "data-sharing-guidelines",
       parentId: "guidelines",
-      navbar: { enabled: true, visibility: "secondary", order: 10, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "secondary",
+        order: 10,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "guidelines", order: 20 },
     },
     {
       id: "security-guidelines-for-users",
       parentId: "guidelines",
-      navbar: { enabled: true, visibility: "secondary", order: 20, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "secondary",
+        order: 20,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "guidelines", order: 30 },
     },
     {
       id: "security-guidelines-for-submitters",
       parentId: "guidelines",
-      navbar: { enabled: true, visibility: "secondary", order: 30, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "secondary",
+        order: 30,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "guidelines", order: 40 },
     },
     {
       id: "security-guidelines-for-dbcenters",
       parentId: "guidelines",
-      navbar: { enabled: true, visibility: "secondary", order: 40, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "secondary",
+        order: 40,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "guidelines", order: 50 },
     },
     {
       id: "data-usage",
-      navbar: { enabled: true, visibility: "essential", order: 30, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 30,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "usage", order: 10 },
     },
     {
       id: "research-list",
       parentId: "data-usage",
-      navbar: { enabled: true, visibility: "secondary", order: 10, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "secondary",
+        order: 10,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "usage", order: 20 },
     },
     {
       id: "dataset-list",
       parentId: "data-usage",
-      navbar: { enabled: true, visibility: "secondary", order: 20, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "secondary",
+        order: 20,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "usage", order: 30 },
     },
     {
       id: "data-processing",
-      navbar: { enabled: true, visibility: "essential", order: 40, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 40,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "usage", order: 40 },
     },
     {
       id: "off-premise-server",
-      navbar: { enabled: true, visibility: "essential", order: 50, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 50,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "policy", order: 20 },
     },
     {
       id: "dac",
-      navbar: { enabled: true, visibility: "essential", order: 60, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 60,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "submission", order: 40 },
     },
     {
       id: "publications",
-      navbar: { enabled: true, visibility: "essential", order: 70, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 70,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "overview", order: 70 },
     },
     {
       id: "violation",
-      navbar: { enabled: true, visibility: "essential", order: 80, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 80,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "policy", order: 40 },
     },
     {
       id: "privacy-policy",
-      navbar: { enabled: true, visibility: "essential", order: 90, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 90,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "policy", order: 50 },
     },
     {
       id: "faq",
-      navbar: { enabled: true, visibility: "essential", order: 100, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 100,
+        priority: "important",
+      },
       footer: { enabled: true, groupId: "overview", order: 80 },
     },
     {
@@ -370,7 +459,10 @@ export function getDefaultSiteNavigationConfig(): SiteNavigationConfig {
   return structuredClone(defaultSiteNavigationConfig);
 }
 
-export function buildSiteNavigation(lang: Locale, config: SiteNavigationConfig) {
+export function buildSiteNavigation(
+  lang: Locale,
+  config: SiteNavigationConfig,
+) {
   assertNavigationConfigIntegrity(config);
 
   return {
@@ -438,7 +530,9 @@ function buildFooterSitemapGroups(
       id: group.id,
       labelKey: group.labelKey,
       items: config.items
-        .filter((item) => item.footer?.enabled && item.footer.groupId === group.id)
+        .filter(
+          (item) => item.footer?.enabled && item.footer.groupId === group.id,
+        )
         .sort((a, b) => (a.footer?.order ?? 0) - (b.footer?.order ?? 0))
         .map((item) => {
           const registryItem = getRegistryItem(item.id);
@@ -472,7 +566,9 @@ function assertNavigationConfigIntegrity(config: SiteNavigationConfig) {
       throw new Error(`Unknown parent "${item.parentId}" for "${item.id}".`);
     }
     if (item.footer?.groupId && !groupIds.has(item.footer.groupId)) {
-      throw new Error(`Unknown footer group "${item.footer.groupId}" for "${item.id}".`);
+      throw new Error(
+        `Unknown footer group "${item.footer.groupId}" for "${item.id}".`,
+      );
     }
   }
 }

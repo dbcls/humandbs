@@ -314,6 +314,11 @@
   --cms-list-panel-width: 30rem;
 }
 
+@utility prose {
+  max-width: 90rem;
+  min-width: 10rem;
+}
+
 @theme {
   --color-primary: #edeff2;
   --color-primary-translucent: rgba(0, 0, 0, 0.1);
