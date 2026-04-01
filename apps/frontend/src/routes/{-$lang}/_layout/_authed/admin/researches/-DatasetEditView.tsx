@@ -26,9 +26,9 @@ import {
 import { useState, Suspense } from "react";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/-DatasetVersionCard";
 import { IntlProvider } from "use-intl";
-import enMessages from "../../../../../../../localization/messages/en.json";
-import jaMessages from "../../../../../../../localization/messages/ja.json";
+import { messages } from "@/config/messages";
 import { TabContentLayout } from "./-TabContentLayout";
+import { cn } from "@/lib/utils";
 
 type ResearchData = ResearchDetailResponse["data"];
 
@@ -153,21 +153,7 @@ function DatasetEditViewInner({
 
   return (
     <TabContentLayout header={breadcrumb} actions={actions}>
-      {preview ? (
-        <IntlProvider
-          locale={previewLang}
-          messages={previewLang === "ja" ? jaMessages : enMessages}
-        >
-          <DatasetVersionCard
-            versionData={datasetFormValuesToPreviewDataset(previewValues, {
-              datasetId: dataset.datasetId,
-              version: dataset.version,
-            })}
-            lang={previewLang}
-            showPublicActions={false}
-          />
-        </IntlProvider>
-      ) : (
+      <div className={cn(preview && "hidden")}>
         <DatasetForm
           defaultValues={defaultValues}
           readOnly={!isDraft}
@@ -182,7 +168,19 @@ function DatasetEditViewInner({
           onValuesChange={setPreviewValues}
           hideSaveButton
         />
-      )}
+      </div>
+      <div className={cn(!preview && "hidden")}>
+        <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+          <DatasetVersionCard
+            versionData={datasetFormValuesToPreviewDataset(previewValues, {
+              datasetId: dataset.datasetId,
+              version: dataset.version,
+            })}
+            lang={previewLang}
+            showPublicActions={false}
+          />
+        </IntlProvider>
+      </div>
     </TabContentLayout>
   );
 }

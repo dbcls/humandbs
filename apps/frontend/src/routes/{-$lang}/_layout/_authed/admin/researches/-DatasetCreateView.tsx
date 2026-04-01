@@ -18,11 +18,11 @@ import { Button } from "@/components/ui/button";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { IntlProvider } from "use-intl";
-import enMessages from "../../../../../../../localization/messages/en.json";
-import jaMessages from "../../../../../../../localization/messages/ja.json";
+import { messages } from "@/config/messages";
 import { TabContentLayout } from "./-TabContentLayout";
+import { cn } from "@/lib/utils";
 
 interface DatasetCreateViewProps {
   humId: string;
@@ -40,7 +40,10 @@ export function DatasetCreateView({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  const defaultValues = getDefaultDatasetFormValues(humId);
+  const defaultValues = useMemo(
+    () => getDefaultDatasetFormValues(humId),
+    [humId],
+  );
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
   const [previewValues, setPreviewValues] = useState(defaultValues);
 
@@ -52,16 +55,21 @@ export function DatasetCreateView({
           body: {
             datasetId: values.datasetId || undefined,
             releaseDate: values.releaseDate || undefined,
-            criteria: values.criteria as any || undefined,
-            typeOfData: values.typeOfData.ja || values.typeOfData.en
-              ? { ja: values.typeOfData.ja ?? null, en: values.typeOfData.en ?? null }
-              : undefined,
-            experiments: values.experiments.length > 0
-              ? values.experiments.map((exp) => ({
-                  header: exp.header,
-                  data: entriesToExperimentData(exp.data),
-                }))
-              : undefined,
+            criteria: (values.criteria as any) || undefined,
+            typeOfData:
+              values.typeOfData.ja || values.typeOfData.en
+                ? {
+                    ja: values.typeOfData.ja ?? null,
+                    en: values.typeOfData.en ?? null,
+                  }
+                : undefined,
+            experiments:
+              values.experiments.length > 0
+                ? values.experiments.map((exp) => ({
+                    header: exp.header,
+                    data: entriesToExperimentData(exp.data),
+                  }))
+                : undefined,
           },
         },
       });
@@ -82,7 +90,9 @@ export function DatasetCreateView({
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <button type="button" onClick={onBack}>Datasets</button>
+            <button type="button" onClick={onBack}>
+              Datasets
+            </button>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
@@ -114,18 +124,11 @@ export function DatasetCreateView({
 
   return (
     <TabContentLayout header={breadcrumb} actions={actions}>
-      {preview ? (
-        <IntlProvider
-          locale={previewLang}
-          messages={previewLang === "ja" ? jaMessages : enMessages}
-        >
-          <DatasetVersionCard
-            versionData={datasetFormValuesToPreviewDataset(previewValues)}
-            lang={previewLang}
-            showPublicActions={false}
-          />
-        </IntlProvider>
-      ) : (
+      <div
+        className={cn({
+          hidden: preview,
+        })}
+      >
         <DatasetForm
           defaultValues={defaultValues}
           readOnly={false}
@@ -138,7 +141,20 @@ export function DatasetCreateView({
           onValuesChange={setPreviewValues}
           hideSaveButton
         />
-      )}
+      </div>
+      <div
+        className={cn({
+          hidden: !preview,
+        })}
+      >
+        <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+          <DatasetVersionCard
+            versionData={datasetFormValuesToPreviewDataset(previewValues)}
+            lang={previewLang}
+            showPublicActions={false}
+          />
+        </IntlProvider>
+      </div>
     </TabContentLayout>
   );
 }
