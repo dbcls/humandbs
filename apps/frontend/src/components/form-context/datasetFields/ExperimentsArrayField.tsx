@@ -17,7 +17,6 @@ import { useStore } from "@tanstack/react-form";
 import { Trash2 } from "lucide-react";
 import { useId, useRef } from "react";
 
-import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/select";
 
 import { SortableItem } from "../researchFields/SortableItem";
+import { Button } from "@/components/ui/button";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyForm = any;
@@ -364,13 +364,13 @@ function ExperimentsSortableList({
           })}
         </SortableContext>
       </DndContext>
-      <button
+      <Button
         type="button"
         onClick={() => field.pushValue({ ...EMPTY_EXPERIMENT })}
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+        variant={"dashed"}
       >
         + Add experiment
-      </button>
+      </Button>
     </fieldset>
   );
 }

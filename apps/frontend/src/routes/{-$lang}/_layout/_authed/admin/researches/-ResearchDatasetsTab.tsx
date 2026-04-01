@@ -1,11 +1,4 @@
 import { Table, SortHeader } from "@/components/Table";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/Breadcrumb";
-import { Button } from "@/components/ui/button";
 import { useCan } from "@/hooks/useCan";
 import { $deleteDataset } from "@/serverFunctions/datasets";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -19,27 +12,18 @@ type ResearchData = ResearchDetailResponse["data"];
 type Dataset = NonNullable<ResearchData["datasets"]>[number];
 
 interface ResearchDatasetsTabProps {
-  humId: string;
   research: ResearchData;
   onSelectDataset: (datasetId: string) => void;
-  onAddNew: () => void;
 }
 
 export function ResearchDatasetsTab({
-  humId,
   research,
   onSelectDataset,
-  onAddNew,
 }: ResearchDatasetsTabProps) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const { can: canCreate } = useCan({
-    resource: "datasets",
-    action: "create",
-    params: { research },
-  });
   const { can: canDelete } = useCan({
     resource: "datasets",
     action: "delete",
@@ -143,25 +127,6 @@ export function ResearchDatasetsTab({
           {deleteError}
         </div>
       )}
-
-      <div className="flex items-center justify-between">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>Datasets</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-        <Button
-          type="button"
-          size="slim"
-          variant="outline"
-          disabled={!canCreate}
-          onClick={onAddNew}
-        >
-          Add new dataset
-        </Button>
-      </div>
 
       {datasets.length === 0 ? (
         <p className="text-sm text-gray-400">No datasets yet.</p>

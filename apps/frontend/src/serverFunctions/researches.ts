@@ -24,7 +24,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
-import { api, APIError } from "@/services/backend";
+import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
@@ -64,13 +64,7 @@ export const $createResearch = createServerFn({ method: "POST" })
       const result = await api.createResearch(data, accessToken);
       return { ok: true, data: result };
     } catch (error) {
-      if (error instanceof APIError && error.status === 409) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "A research with this humId already exists.";
-        return { ok: false, error: detail, code: "HUMID_CONFLICT" };
-      }
-      throw error;
+      return mapApiError(error, "A research with this humId already exists.", { 409: "HUMID_CONFLICT" as const });
     }
   });
 
@@ -93,24 +87,7 @@ export const $updateResearch = createServerFn({ method: "POST" })
       );
       return { ok: true, data: result };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to update research.";
-        if (error.status === 409) {
-          return { ok: false, error: detail, code: "CONFLICT" };
-        }
-        if (error.status === 403) {
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        }
-        if (error.status === 404) {
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        }
-        if (error.status === 401) {
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-        }
-      }
-      throw error;
+      return mapApiError(error, "Failed to update research.");
     }
   });
 
@@ -129,24 +106,7 @@ export const $updateResearchUids = createServerFn({ method: "POST" })
       await api.updateResearchUids(data.humId, data.body, accessToken);
       return { ok: true };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to update research uids.";
-        if (error.status === 409) {
-          return { ok: false, error: detail, code: "CONFLICT" };
-        }
-        if (error.status === 403) {
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        }
-        if (error.status === 404) {
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        }
-        if (error.status === 401) {
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-        }
-      }
-      throw error;
+      return mapApiError(error, "Failed to update research uids.");
     }
   });
 
@@ -164,24 +124,7 @@ export const $deleteResearch = createServerFn({ method: "POST" })
       await api.deleteResearch(data.humId, accessToken);
       return { ok: true };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to delete research.";
-        if (error.status === 409) {
-          return { ok: false, error: detail, code: "CONFLICT" };
-        }
-        if (error.status === 403) {
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        }
-        if (error.status === 404) {
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        }
-        if (error.status === 401) {
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-        }
-      }
-      throw error;
+      return mapApiError(error, "Failed to delete research.");
     }
   });
 
@@ -197,25 +140,6 @@ const WorkflowActionInputSchema = z.object({
   humId: HumIdParamsSchema.shape.humId,
 });
 
-async function handleWorkflowError(
-  error: unknown,
-  fallback: string,
-): Promise<WorkflowActionResult> {
-  if (error instanceof APIError) {
-    const detail =
-      (error.data as { detail?: string } | undefined)?.detail ?? fallback;
-    if (error.status === 409)
-      return { ok: false, error: detail, code: "CONFLICT" };
-    if (error.status === 403)
-      return { ok: false, error: detail, code: "FORBIDDEN" };
-    if (error.status === 404)
-      return { ok: false, error: detail, code: "NOT_FOUND" };
-    if (error.status === 401)
-      return { ok: false, error: detail, code: "UNAUTHORIZED" };
-  }
-  throw error;
-}
-
 export const $submitResearch = createServerFn({ method: "POST" })
   .inputValidator(WorkflowActionInputSchema)
   .handler<Promise<WorkflowActionResult>>(async ({ data }) => {
@@ -225,7 +149,7 @@ export const $submitResearch = createServerFn({ method: "POST" })
       const result = await api.submitResearch(data.humId, accessToken);
       return { ok: true, data: result };
     } catch (error) {
-      return handleWorkflowError(error, "Failed to submit research.");
+      return mapApiError(error, "Failed to submit research.");
     }
   });
 
@@ -238,7 +162,7 @@ export const $approveResearch = createServerFn({ method: "POST" })
       const result = await api.approveResearch(data.humId, accessToken);
       return { ok: true, data: result };
     } catch (error) {
-      return handleWorkflowError(error, "Failed to approve research.");
+      return mapApiError(error, "Failed to approve research.");
     }
   });
 
@@ -251,7 +175,7 @@ export const $rejectResearch = createServerFn({ method: "POST" })
       const result = await api.rejectResearch(data.humId, accessToken);
       return { ok: true, data: result };
     } catch (error) {
-      return handleWorkflowError(error, "Failed to reject research.");
+      return mapApiError(error, "Failed to reject research.");
     }
   });
 
@@ -286,20 +210,7 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
       );
       return { ok: true, data: result };
     } catch (error) {
-      if (error instanceof APIError) {
-        const detail =
-          (error.data as { detail?: string } | undefined)?.detail ??
-          "Failed to create version.";
-        if (error.status === 409)
-          return { ok: false, error: detail, code: "CONFLICT" };
-        if (error.status === 403)
-          return { ok: false, error: detail, code: "FORBIDDEN" };
-        if (error.status === 404)
-          return { ok: false, error: detail, code: "NOT_FOUND" };
-        if (error.status === 401)
-          return { ok: false, error: detail, code: "UNAUTHORIZED" };
-      }
-      throw error;
+      return mapApiError(error, "Failed to create version.");
     }
   });
 

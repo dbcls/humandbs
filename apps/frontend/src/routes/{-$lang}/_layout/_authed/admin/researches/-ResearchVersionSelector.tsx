@@ -9,26 +9,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
-import type { ResearchVersion } from "@humandbs/backend/types";
+import type { ResearchVersionDoc } from "@humandbs/backend/types";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { Locale } from "@/config/i18n";
 import { NewVersionDialog } from "./-NewVersionDialog";
+import { Button } from "@/components/ui/button";
+import { Tag } from "@/components/StatusTag";
 
-function versionLabel(
-  v: ResearchVersion,
-  draftVersion: string | null,
-  latestVersion: string | null,
-) {
-  const date = v.versionReleaseDate
-    ? v.versionReleaseDate.slice(0, 10)
-    : "—";
-  const suffix =
-    v.version === draftVersion
-      ? " (draft)"
-      : v.version === latestVersion
-        ? " (latest)"
-        : "";
-  return `${v.version} — ${date}${suffix}`;
+interface ResearchSelectorItemProps {
+  compact?: boolean;
+  item: {
+    v: ResearchVersionDoc;
+    draftVersion: string | null;
+    latestVersion: string | null;
+  };
 }
 
 function VersionSelectorInner({
@@ -49,36 +43,48 @@ function VersionSelectorInner({
   onVersionChange: (version: string) => void;
 }) {
   const { data } = useSuspenseQuery(
-    getResearchVersionsQueryOptions({ humId, lang }),
+    getResearchVersionsQueryOptions({ humId, lang, includeRawHtml: false }),
   );
   const versions = data.data;
+
+  const selectedItem = versions.find((v) => v.version === selectedVersion);
+
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
     <>
       <Select value={selectedVersion} onValueChange={onVersionChange}>
         <SelectTrigger className="h-7 w-40 text-xs">
-          <SelectValue />
+          <SelectValue>
+            {selectedItem && (
+              <ResearchSelectorItem
+                item={{ v: selectedItem, draftVersion, latestVersion }}
+                compact
+              />
+            )}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {versions.map((v) => (
-            <SelectItem key={v.version} value={v.version} className="text-xs">
-              {versionLabel(v, draftVersion, latestVersion)}
+            <SelectItem
+              key={v.version}
+              value={v.version}
+              className="group focus:bg-secondary-light text-xs"
+            >
+              <ResearchSelectorItem item={{ v, draftVersion, latestVersion }} />
             </SelectItem>
           ))}
           {canNewVersion && (
             <>
               <SelectSeparator />
-              <div className="px-2 py-1">
-                <button
-                  type="button"
-                  className="w-full rounded px-2 py-1.5 text-left text-xs font-medium text-secondary hover:bg-muted"
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={() => setDialogOpen(true)}
-                >
-                  + Add new version
-                </button>
-              </div>
+
+              <Button
+                className="w-full"
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => setDialogOpen(true)}
+              >
+                + Add new version
+              </Button>
             </>
           )}
         </SelectContent>
@@ -113,5 +119,21 @@ export function ResearchVersionSelector(props: {
     >
       <VersionSelectorInner {...props} />
     </Suspense>
+  );
+}
+
+function ResearchSelectorItem({ item, compact }: ResearchSelectorItemProps) {
+  const isDraft = item.v.version === item.draftVersion;
+
+  return (
+    <div className="text-left text-xs group-focus:text-white inline-flex gap-2">
+      {item.v.version}
+      {!compact && (
+        <div className="text-foreground-light group-focus:text-white">
+          {item.v.versionReleaseDate}
+        </div>
+      )}
+      {isDraft && <Tag tag="draft" />}
+    </div>
   );
 }

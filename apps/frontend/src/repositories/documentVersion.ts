@@ -330,7 +330,11 @@ export function createDocumentVersionRepository(
 
         return tx
           .update(documentVersion)
-          .set(published)
+          .set({
+            title: published.title,
+            content: published.content,
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(documentVersion.contentId, contentId),

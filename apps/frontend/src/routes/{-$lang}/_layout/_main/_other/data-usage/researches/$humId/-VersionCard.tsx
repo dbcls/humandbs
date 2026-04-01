@@ -337,6 +337,6 @@ const dataUsedByColumns = [
     id: "org.name",
     header: "Organization name",
     cell: (ctx) =>
-      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
   }),
 ];

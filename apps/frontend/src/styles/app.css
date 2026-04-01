@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@plugin "@tailwindcss/typography";
+
 .front-stats {
   padding: 22px 16px 30px;
   color: #172133;
@@ -302,8 +304,6 @@
   }
 }
 
-@plugin "@tailwindcss/typography";
-
 :root {
   --books: "\f5db";
   --dataset: "\f1c0";
@@ -348,10 +348,15 @@
   --spacing-cms-assets-panel: var(--cms-assets-panel-width);
   --spacing-cms-list-panel: var(--cms-list-panel-width);
 
-  --font-sans:
-    i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-    "Segoe UI Symbol", "Noto Color Emoji";
+  --spacing-content-max-width: 90rem;
+  --spacing-content-min-width:
+    10rem --font-sans: i-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-fontawesome: "FontAwesome6";
+}
+
+@utility prose {
+  @apply max-w-content-max-width min-w-content-min-width;
 }
 
 @layer base {

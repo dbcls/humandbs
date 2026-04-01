@@ -154,7 +154,7 @@ export const getDocumentVersionQueryOptions = ({
   contentId,
   versionNumber,
 }: {
-  contentId: ContentId;
+  contentId: string;
   versionNumber: number | undefined;
 }) =>
   queryOptions({
@@ -177,6 +177,14 @@ export const getDocumentVersionQueryOptions = ({
 export function groupDocVersion(
   rawVersion: DocVersionResponseRaw[],
 ): DocVersionResponse {
+  if (rawVersion.length === 0) {
+    return {
+      contentId: "",
+      versionNumber: 0,
+      translations: {},
+    };
+  }
+
   const result: DocVersionResponse = {
     contentId: rawVersion[0].contentId,
     versionNumber: rawVersion[0].versionNumber,

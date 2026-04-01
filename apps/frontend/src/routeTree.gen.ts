@@ -23,6 +23,7 @@ import { Route as Char123LangChar125LayoutMainHomeIndexRouteImport } from './rou
 import { Route as Char123LangChar125LayoutMainOtherCartRouteImport } from './routes/{-$lang}/_layout/_main/_other/cart'
 import { Route as Char123LangChar125LayoutMainOtherSplatRouteImport } from './routes/{-$lang}/_layout/_main/_other/$'
 import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/news'
+import { Route as Char123LangChar125LayoutAuthedAdminNavigationRouteImport } from './routes/{-$lang}/_layout/_authed/admin/navigation'
 import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
 import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin/content'
 import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
@@ -44,7 +45,6 @@ import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationRoute
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/index'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/datasets/index'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/index'
-import { Route as Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/application/index'
 import { Route as Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
 import { Route as Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/route'
@@ -132,6 +132,12 @@ const Char123LangChar125LayoutAuthedAdminNewsRoute =
   Char123LangChar125LayoutAuthedAdminNewsRouteImport.update({
     id: '/news',
     path: '/news',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminNavigationRoute =
+  Char123LangChar125LayoutAuthedAdminNavigationRouteImport.update({
+    id: '/navigation',
+    path: '/navigation',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
 const Char123LangChar125LayoutAuthedAdminDocumentsRoute =
@@ -271,15 +277,6 @@ const Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute =
         Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute,
     } as any,
   )
-const Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute =
-  Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport.update(
-    {
-      id: '/application/',
-      path: '/application/',
-      getParentRoute: () =>
-        Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute,
-    } as any,
-  )
 const Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute =
   Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRouteImport.update(
     {
@@ -403,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/admin/navigation': typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
@@ -423,7 +421,6 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/data-usage/researches/$humId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteWithChildren
   '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
   '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
-  '/{-$lang}/data-submission/application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/data-usage/datasets/': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
@@ -445,6 +442,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/admin/navigation': typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   '/{-$lang}/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
@@ -458,7 +456,6 @@ export interface FileRoutesByTo {
   '/{-$lang}/news': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
   '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
   '/{-$lang}/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
-  '/{-$lang}/data-submission/application': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/data-submission/navigation': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/data-usage/datasets': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/data-usage/researches': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
@@ -489,6 +486,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/_layout/_authed/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  '/{-$lang}/_layout/_authed/admin/navigation': typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   '/{-$lang}/_layout/_authed/admin/news': typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   '/{-$lang}/_layout/_main/_other/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/_layout/_main/_other/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
@@ -509,7 +507,6 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesHumIdRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
   '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision': typeof Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRoute
-  '/{-$lang}/_layout/_main/_other/data-submission/application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
   '/{-$lang}/_layout/_main/_other/data-submission/navigation/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/datasets/': typeof Char123LangChar125LayoutMainOtherDataUsageDatasetsIndexRoute
   '/{-$lang}/_layout/_main/_other/data-usage/researches/': typeof Char123LangChar125LayoutMainOtherDataUsageResearchesIndexRoute
@@ -537,6 +534,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
     | '/{-$lang}/admin/documents'
+    | '/{-$lang}/admin/navigation'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
@@ -557,7 +555,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-usage/researches/$humId'
     | '/{-$lang}/data-submission/revision/$revision'
     | '/{-$lang}/guidelines/revision/$revision'
-    | '/{-$lang}/data-submission/application/'
     | '/{-$lang}/data-submission/navigation/'
     | '/{-$lang}/data-usage/datasets/'
     | '/{-$lang}/data-usage/researches/'
@@ -579,6 +576,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
     | '/{-$lang}/admin/documents'
+    | '/{-$lang}/admin/navigation'
     | '/{-$lang}/admin/news'
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
@@ -592,7 +590,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/news'
     | '/{-$lang}/data-submission/revision/$revision'
     | '/{-$lang}/guidelines/revision/$revision'
-    | '/{-$lang}/data-submission/application'
     | '/{-$lang}/data-submission/navigation'
     | '/{-$lang}/data-usage/datasets'
     | '/{-$lang}/data-usage/researches'
@@ -622,6 +619,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/assets'
     | '/{-$lang}/_layout/_authed/admin/content'
     | '/{-$lang}/_layout/_authed/admin/documents'
+    | '/{-$lang}/_layout/_authed/admin/navigation'
     | '/{-$lang}/_layout/_authed/admin/news'
     | '/{-$lang}/_layout/_main/_other/$'
     | '/{-$lang}/_layout/_main/_other/cart'
@@ -642,7 +640,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/data-usage/researches/$humId'
     | '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
     | '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
-    | '/{-$lang}/_layout/_main/_other/data-submission/application/'
     | '/{-$lang}/_layout/_main/_other/data-submission/navigation/'
     | '/{-$lang}/_layout/_main/_other/data-usage/datasets/'
     | '/{-$lang}/_layout/_main/_other/data-usage/researches/'
@@ -761,6 +758,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/{-$lang}/admin/news'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/navigation': {
+      id: '/{-$lang}/_layout/_authed/admin/navigation'
+      path: '/navigation'
+      fullPath: '/{-$lang}/admin/navigation'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminNavigationRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
     '/{-$lang}/_layout/_authed/admin/documents': {
@@ -910,13 +914,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute
     }
-    '/{-$lang}/_layout/_main/_other/data-submission/application/': {
-      id: '/{-$lang}/_layout/_main/_other/data-submission/application/'
-      path: '/application'
-      fullPath: '/{-$lang}/data-submission/application/'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRouteRoute
-    }
     '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision': {
       id: '/{-$lang}/_layout/_main/_other/guidelines/revision/$revision'
       path: '/revision/$revision'
@@ -1008,6 +1005,7 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   Char123LangChar125LayoutAuthedAdminContentRoute: typeof Char123LangChar125LayoutAuthedAdminContentRoute
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
+  Char123LangChar125LayoutAuthedAdminNavigationRoute: typeof Char123LangChar125LayoutAuthedAdminNavigationRoute
   Char123LangChar125LayoutAuthedAdminNewsRoute: typeof Char123LangChar125LayoutAuthedAdminNewsRoute
   Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route: typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
   Char123LangChar125LayoutAuthedAdminResearchesIndexRoute: typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
@@ -1021,6 +1019,8 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminContentRoute,
     Char123LangChar125LayoutAuthedAdminDocumentsRoute:
       Char123LangChar125LayoutAuthedAdminDocumentsRoute,
+    Char123LangChar125LayoutAuthedAdminNavigationRoute:
+      Char123LangChar125LayoutAuthedAdminNavigationRoute,
     Char123LangChar125LayoutAuthedAdminNewsRoute:
       Char123LangChar125LayoutAuthedAdminNewsRoute,
     Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route:
@@ -1101,7 +1101,6 @@ interface Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren {
   Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
   Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
-  Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute
 }
 
 const Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren =
@@ -1112,8 +1111,6 @@ const Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteChildren: Char123
       Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute,
     Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute:
       Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute,
-    Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute:
-      Char123LangChar125LayoutMainOtherDataSubmissionApplicationIndexRoute,
   }
 
 const Char123LangChar125LayoutMainOtherDataSubmissionRouteRouteWithChildren =

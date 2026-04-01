@@ -4,11 +4,24 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { type ContentId } from "@/config/content-config";
+import { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
-import { document } from "@/db/schema";
+import { DOCUMENT_VERSION_STATUS, document } from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
+
+export interface DocumentsListItemResponse {
+  createdAt: Date;
+  contentId: ContentId;
+  translations: {
+    lang: (typeof i18n.locales)[number];
+    statuses: {
+      published?: string;
+      draft?: string;
+    };
+  }[];
+}
 
 /** List all documents */
 export const $getDocuments = createServerFn({
@@ -16,7 +29,58 @@ export const $getDocuments = createServerFn({
 }).handler(async () => {
   const documents = await db.query.document.findMany();
 
-  return documents as { createdAt: Date; contentId: ContentId }[];
+  const documentsWithTitles = await Promise.all(
+    documents.map(async (doc) => {
+      const translations = await Promise.all(
+        i18n.locales.map(async (locale) => {
+          const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
+            db.query.documentVersion.findFirst({
+              where: (table, { and, eq }) =>
+                and(
+                  eq(table.contentId, doc.contentId),
+                  eq(table.locale, locale),
+                  eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+                ),
+              orderBy: (table, { desc }) => desc(table.versionNumber),
+              columns: {
+                title: true,
+              },
+            }),
+            db.query.documentVersion.findFirst({
+              where: (table, { and, eq }) =>
+                and(
+                  eq(table.contentId, doc.contentId),
+                  eq(table.locale, locale),
+                  eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                ),
+              orderBy: (table, { desc }) => desc(table.versionNumber),
+              columns: {
+                title: true,
+              },
+            }),
+          ]);
+
+          return {
+            lang: locale,
+            statuses: {
+              published: latestPublishedVersion?.title ?? undefined,
+              draft: latestDraftVersion?.title ?? undefined,
+            },
+          };
+        }),
+      );
+
+      return {
+        ...doc,
+        translations: translations.filter(
+          (translation) =>
+            translation.statuses.published || translation.statuses.draft,
+        ),
+      };
+    }),
+  );
+
+  return documentsWithTitles as DocumentsListItemResponse[];
 });
 
 export function getDocumentsQueryOptions() {

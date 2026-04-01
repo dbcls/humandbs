@@ -1,39 +1,30 @@
-import { useLocale, useTranslations } from "use-intl";
+import { useRouteContext } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 import DBCLSLogo from "@/assets/DBCLS_Logo.png";
 import { Link } from "@/components/Link";
-import { getFooterSitemapGroups } from "@/config/site-navigation";
-
-const footerGroupLabels = {
-  overview: "group-overview",
-  guidelines: "group-guidelines",
-  submission: "group-submission",
-  usage: "group-usage",
-  policy: "group-policy",
-} as const;
 
 export function Footer() {
-  const lang = useLocale();
+  const { siteNavigation } = useRouteContext({ from: "/{-$lang}/_layout" });
   const tFooter = useTranslations("Footer");
   const tNav = useTranslations("Navbar");
-  const sitemapGroups = getFooterSitemapGroups(lang);
 
   return (
-    <footer className="mt-8 flex justify-between bg-white p-6 text-sm">
-      <nav>
+    <footer className="mt-8 flex flex-wrap justify-between gap-6 bg-white p-6 text-sm">
+      <nav className="min-w-0 flex-1">
         <h3 className="text-secondary font-semibold">{tFooter("sitemap")}</h3>
-        <div className="mt-4 flex gap-8">
-          {sitemapGroups.map((group) => (
-            <section key={group.id} className="min-w-0">
+        <div className="mt-4 flex flex-wrap gap-8">
+          {siteNavigation.footer.map((group) => (
+            <section key={group.id} className="min-w-40 max-w-96">
               <h4 className="text-secondary text-xs font-semibold uppercase">
-                {tFooter(footerGroupLabels[group.id])}
+                {tFooter(group.labelKey)}
               </h4>
               <ul className="mt-3 flex flex-col gap-2">
                 {group.items.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} className="min-w-0">
                     <Link
                       {...item.linkOptions}
-                      className="text-foreground no-underline hover:underline"
+                      className="text-foreground block max-w-full whitespace-normal break-words no-underline hover:underline"
                     >
                       {tNav(item.labelKey)}
                     </Link>
@@ -45,7 +36,7 @@ export function Footer() {
         </div>
       </nav>
 
-      <div>
+      <div className="shrink-0">
         <img src={DBCLSLogo} alt=" DBCLS Logo" className="w-32" />
       </div>
     </footer>

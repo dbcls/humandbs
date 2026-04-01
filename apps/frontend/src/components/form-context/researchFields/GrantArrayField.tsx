@@ -23,6 +23,7 @@ import { useStableSortableIds } from "@/components/form-context/fields/useStable
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
+import { Button } from "@/components/ui/button";
 
 const grantSchema = z.object({
   ...ResearchDetailSchema.shape.grant.element.shape,
@@ -51,7 +52,8 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
 
   const items: Grant[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: Grant[] = (field.form.options.defaultValues as any)?.grant ?? [];
+  const initialItems: Grant[] =
+    (field.form.options.defaultValues as any)?.grant ?? [];
   const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
     items.length,
     dndId,
@@ -84,7 +86,9 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
               id={itemIds[i]!}
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
-              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
+              isModified={
+                i >= initialItems.length || !deepEqual(item, initialItems[i])
+              }
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
@@ -99,7 +103,7 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
           ))}
         </SortableContext>
       </DndContext>
-      <button
+      <Button
         type="button"
         onClick={() =>
           field.pushValue({
@@ -108,10 +112,10 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
             agency: { name: { ja: "", en: "" } },
           })
         }
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+        variant={"dashed"}
       >
         + Add
-      </button>
+      </Button>
     </fieldset>
   );
 }

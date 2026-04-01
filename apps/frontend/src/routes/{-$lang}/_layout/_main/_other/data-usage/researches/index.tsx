@@ -176,13 +176,12 @@ const columns = [
     cell: function Cell(ctx) {
       return (
         <div>
-          <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
-            <TextWithIcon
-              className="text-foreground-dark"
-              icon={FA_ICONS.books}
-            >
-              {ctx.getValue()}
-            </TextWithIcon>
+          <Route.Link
+            to="$humId"
+            params={{ humId: ctx.getValue() }}
+            className="text-secondary"
+          >
+            <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
           </Route.Link>
         </div>
       );

@@ -8,6 +8,7 @@ import * as z from "zod";
 import { localeSchema } from "@/config/i18n";
 
 import * as schema from "./schema";
+import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 
 export const insertDocumentSchema = createInsertSchema(schema.document);
 
@@ -152,3 +153,20 @@ export type NewsTranslationSelect = z.infer<typeof newsTranslationSelectSchema>;
 export type NewsItem = z.infer<typeof newsItemSelectSchema>;
 
 export type Alert = z.infer<typeof selectAlertSchema>;
+
+export const siteNavigationConfigSelectSchema = createSelectSchema(
+  schema.siteNavigationConfig,
+).extend({
+  config: siteNavigationConfigSchema,
+});
+
+export const siteNavigationConfigRevisionSelectSchema = createSelectSchema(
+  schema.siteNavigationConfigRevision,
+).extend({
+  config: siteNavigationConfigSchema,
+});
+
+export const siteNavigationConfigUpdateSchema = z.object({
+  config: siteNavigationConfigSchema,
+  expectedRevision: z.number().int().min(1),
+});

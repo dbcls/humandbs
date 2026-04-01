@@ -5,3 +5,4 @@ export * from "./documentVersion";
 export * from "./contentItem";
 export * from "./newsItem";
 export * from "./alert";
+export * from "./siteNavigation";

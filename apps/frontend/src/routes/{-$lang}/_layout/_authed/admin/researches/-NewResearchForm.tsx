@@ -18,7 +18,6 @@ import {
   type CreateResearchResult,
 } from "@/serverFunctions/researches";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
-import { JsonImportExport } from "./-JsonImportExport";
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
@@ -119,24 +118,14 @@ export function NewResearchForm({
           )}
 
           <div className="mx-5 mt-5 flex items-center gap-2">
-            <Button type="submit" variant="accent" disabled={isPending} size="slim">
+            <Button
+              type="submit"
+              variant="accent"
+              disabled={isPending}
+              size="slim"
+            >
               {isPending ? "Creating…" : "Create"}
             </Button>
-            <JsonImportExport
-              filename={DUMMY_HUM_ID}
-              getValues={() => form.store.state.values}
-              onImport={(values) => form.reset(values as typeof defaultValues)}
-              hasData={() => {
-                const v = form.store.state.values;
-                return !!(
-                  v.humId ||
-                  v.title?.ja ||
-                  v.title?.en ||
-                  v.dataProvider?.length > 0 ||
-                  v.uids?.length > 0
-                );
-              }}
-            />
           </div>
 
           <div className="flex flex-col gap-4 px-5 pt-5 shrink-0">
@@ -159,31 +148,28 @@ export function NewResearchForm({
               {(field) => (
                 <fieldset className="flex flex-col gap-2">
                   <Label>User IDs (uids)</Label>
-                  <div className="nested-form flex flex-col gap-1">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(field.state.value as any[])?.map(
-                      (_: string, i: number) => (
-                        <div key={i} className="flex items-center gap-1">
-                          <form.AppField name={`uids[${i}]`}>
-                            {(f) => <f.TextField />}
-                          </form.AppField>
-                          <button
-                            type="button"
-                            onClick={() => field.removeValue(i)}
-                          >
-                            <Trash2 className="text-danger size-4" />
-                          </button>
-                        </div>
-                      ),
-                    )}
+                  <div className="nested-form flex flex-col gap-1 w-full">
+                    {field.state.value?.map((_, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <form.AppField name={`uids[${i}]`}>
+                          {(f) => <f.TextField />}
+                        </form.AppField>
+                        <button
+                          type="button"
+                          onClick={() => field.removeValue(i)}
+                        >
+                          <Trash2 className="text-danger size-4" />
+                        </button>
+                      </div>
+                    ))}
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="dashed"
                       size="slim"
                       className="self-start"
                       onClick={() => field.pushValue("")}
                     >
-                      Add UID
+                      + Add UID
                     </Button>
                   </div>
                 </fieldset>
@@ -192,22 +178,38 @@ export function NewResearchForm({
 
             <form.AppField name="initialReleaseNote">
               {(field) => (
-                <field.BilingualTextValueField label="Initial Release Note" inputsClassName="flex w-full gap-2" />
+                <field.BilingualTextValueField
+                  label="Initial Release Note"
+                  inputsClassName="flex w-full gap-2"
+                />
               )}
             </form.AppField>
           </div>
 
-          <Tabs defaultValue="title" className="mt-4 flex flex-col flex-1 min-h-0">
+          <Tabs
+            defaultValue="title"
+            className="mt-4 flex flex-col flex-1 min-h-0"
+          >
             <div className="overflow-x-auto px-5 shrink-0">
               <TabsList variant="line">
-                <TabsTrigger variant="line" value="title">Title</TabsTrigger>
-                <TabsTrigger variant="line" value="summary">Summary</TabsTrigger>
-                <TabsTrigger variant="line" value="dataProvider">Data providers</TabsTrigger>
+                <TabsTrigger variant="line" value="title">
+                  Title
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="summary">
+                  Summary
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="dataProvider">
+                  Data providers
+                </TabsTrigger>
                 <TabsTrigger variant="line" value="researchProject">
                   Research project
                 </TabsTrigger>
-                <TabsTrigger variant="line" value="grants">Grant</TabsTrigger>
-                <TabsTrigger variant="line" value="publications">Related publication</TabsTrigger>
+                <TabsTrigger variant="line" value="grants">
+                  Grant
+                </TabsTrigger>
+                <TabsTrigger variant="line" value="publications">
+                  Related publication
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -265,7 +267,6 @@ export function NewResearchForm({
               </TabsContent>
             </div>
           </Tabs>
-
         </form>
       </form.AppForm>
     </Card>

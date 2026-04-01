@@ -18,6 +18,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_home/")({
 });
 
 function RouteComponent() {
-  const { contentHtml } = Route.useLoaderData();
-  return <Markdown contentHtml={contentHtml} />;
+  const { contentHtml, title } = Route.useLoaderData();
+  return (
+    <>
+      <h1>{title}</h1>
+
+      <Markdown contentHtml={contentHtml} />
+    </>
+  );
 }

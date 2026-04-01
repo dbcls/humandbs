@@ -23,6 +23,7 @@ import { useStableSortableIds } from "@/components/form-context/fields/useStable
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 import { SortableItem } from "./SortableItem";
+import { Button } from "@/components/ui/button";
 
 const controlledAccessUserSchema = z.object({
   ...ResearchDetailSchema.shape.controlledAccessUser.element.shape,
@@ -41,7 +42,13 @@ const ControlledAccessUserItemForm = withFieldGroup({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ControlledAccessUserSortableList({ form, field }: { form: any; field: any }) {
+function ControlledAccessUserSortableList({
+  form,
+  field,
+}: {
+  form: any;
+  field: any;
+}) {
   const dndId = useId();
   const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
@@ -53,7 +60,8 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
 
   const items: ControlledAccessUser[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: ControlledAccessUser[] = (field.form.options.defaultValues as any)?.controlledAccessUser ?? [];
+  const initialItems: ControlledAccessUser[] =
+    (field.form.options.defaultValues as any)?.controlledAccessUser ?? [];
   const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
     items.length,
     dndId,
@@ -86,7 +94,9 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
-              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
+              isModified={
+                i >= initialItems.length || !deepEqual(item, initialItems[i])
+              }
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
@@ -101,7 +111,7 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
           ))}
         </SortableContext>
       </DndContext>
-      <button
+      <Button
         type="button"
         onClick={() =>
           field.pushValue({
@@ -115,10 +125,10 @@ function ControlledAccessUserSortableList({ form, field }: { form: any; field: a
             periodOfDataUse: { startDate: null, endDate: null },
           })
         }
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-500 hover:bg-gray-50"
+        variant={"dashed"}
       >
         + Add
-      </button>
+      </Button>
     </fieldset>
   );
 }

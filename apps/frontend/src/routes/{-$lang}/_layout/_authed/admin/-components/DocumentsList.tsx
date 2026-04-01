@@ -4,11 +4,9 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { ListItem } from "@/components/ListItem";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -22,11 +20,14 @@ import {
   $createDocument,
   $deleteDocument,
   $validateDocumentContentId,
+  type DocumentsListItemResponse,
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
+import { AdminListItem } from "./AdminListItem";
+import { Button } from "@/components/ui/button";
 
 export function DocumentsList({
   onSelectDoc,
@@ -51,10 +52,19 @@ export function DocumentsList({
 
       const prevDocList = queryClient.getQueryData(documentsListQO.queryKey);
 
-      queryClient.setQueryData(documentsListQO.queryKey, (oldData) => {
-        if (!oldData) return [{ id: "new", contentId, createdAt: new Date() }];
-        return [...oldData, { id: "new", contentId, createdAt: new Date() }];
-      });
+      queryClient.setQueryData(
+        documentsListQO.queryKey,
+        (oldData: DocumentsListItemResponse[] | undefined) => {
+          const optimisticDocument: DocumentsListItemResponse = {
+            contentId,
+            createdAt: new Date(),
+            translations: [],
+          };
+
+          if (!oldData) return [optimisticDocument];
+          return [...oldData, optimisticDocument];
+        },
+      );
 
       return { prevDocList };
     },
@@ -75,10 +85,13 @@ export function DocumentsList({
       await queryClient.cancelQueries(documentsListQO);
       const prevDocList = queryClient.getQueryData(documentsListQO.queryKey);
 
-      queryClient.setQueryData(documentsListQO.queryKey, (oldData) => {
-        if (!oldData) return [];
-        return oldData.filter((doc) => doc.contentId !== contentId);
-      });
+      queryClient.setQueryData(
+        documentsListQO.queryKey,
+        (oldData: DocumentsListItemResponse[] | undefined) => {
+          if (!oldData) return [];
+          return oldData.filter((doc) => doc.contentId !== contentId);
+        },
+      );
 
       return { prevDocList };
     },
@@ -188,29 +201,27 @@ export function DocumentsList({
         </DialogContent>
       </Dialog>
 
-      <ul>
+      <ul className="max-h-full overflow-y-auto">
         {documents.map((doc) => {
           const isActive = doc.contentId === selectedContentId;
           return (
             <ListItem
               key={doc.contentId}
               role="menuitem"
+              className="mb-2 last:mb-0"
               onClick={() => {
                 onSelectDoc(doc.contentId);
               }}
               isActive={isActive}
             >
-              <span>{doc.contentId}</span>
-              <Button
-                variant={"ghost"}
-                size={"slim"}
-                onClick={(e) => {
+              <AdminListItem
+                id={doc.contentId}
+                translations={doc.translations}
+                onClickDelete={(e) => {
                   e.stopPropagation();
                   handleClickDeleteDoc(doc.contentId);
                 }}
-              >
-                <Trash2Icon className="text-danger size-5 transition-colors group-data-[active=true]:text-white" />
-              </Button>
+              />
             </ListItem>
           );
         })}
