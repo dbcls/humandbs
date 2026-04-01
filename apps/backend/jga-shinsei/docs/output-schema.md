@@ -12,7 +12,7 @@ type Lang = "ja" | "en"
 type YesNo = "yes" | "no"
 type DataAccess = "submission_open" | "submission_type1" | "submission_type2"
 type ServerLocation = "onpre" | "offpre" | "both"
-type OffPremiseServer = "nig" | "tombo" | "hgc" | "kog"
+type OffPremiseServer = "nig" | "tombo" | "hgc" | "kog" | "oasis"
 type UseReviewStatus = "completed" | "notyet" | "unnecessary"
 ```
 

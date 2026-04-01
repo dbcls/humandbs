@@ -99,6 +99,8 @@ export const ResearchSearchQuerySchema = PaginationQuerySchema
       .describe("Sort order (default: desc when sort=relevance)"),
     status: z.enum(["draft", "review", "published", "deleted"]).optional()
       .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
+    humId: z.string().optional()
+      .describe("Filter by specific Research ID"),
   })
 export type ResearchSearchQuery = z.infer<typeof ResearchSearchQuerySchema>
 

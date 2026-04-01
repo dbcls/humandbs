@@ -39,7 +39,7 @@ export const ServerLocationSchema = z.enum(["onpre", "offpre", "both"])
 export type ServerLocation = z.infer<typeof ServerLocationSchema>
 
 /** オフプレミス解析サーバー (J-DU) */
-export const OffPremiseServerSchema = z.enum(["nig", "tombo", "hgc", "kog"])
+export const OffPremiseServerSchema = z.enum(["nig", "tombo", "hgc", "kog", "oasis"])
 export type OffPremiseServer = z.infer<typeof OffPremiseServerSchema>
 
 /** 倫理審査ステータス (J-DU) */

@@ -64,6 +64,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       sort: query.sort,
       order: query.order,
       status: query.status,
+      humId: query.humId,
       includeFacets: query.includeFacets,
       includeRawHtml: query.includeRawHtml,
     }, authUser)

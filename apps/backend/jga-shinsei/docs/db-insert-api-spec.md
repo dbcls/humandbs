@@ -608,7 +608,7 @@ VALUES ($1, $2);
 | `statusHistory[].status` | `10`, `20`, `30`, `40`, `50`, `60`, `70`, `80` |
 | `data[].dataAccess` | `"submission_open"`, `"submission_type1"`, `"submission_type2"` |
 | `server.status` | `"onpre"`, `"offpre"`, `"both"` |
-| `server.offPremiseStatus[]` | `"nig"`, `"tombo"`, `"hgc"`, `"kog"` |
+| `server.offPremiseStatus[]` | `"nig"`, `"tombo"`, `"hgc"`, `"kog"`, `"oasis"` |
 | `useReview.status` | `"completed"`, `"notyet"`, `"unnecessary"` |
 | `control.lang` | `"ja"`, `"en"` |
 

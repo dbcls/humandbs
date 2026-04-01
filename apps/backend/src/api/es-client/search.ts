@@ -593,7 +593,7 @@ export const searchResearches = async (
   authUser: AuthUser | null = null,
 ): Promise<ResearchSearchResult> => {
   const {
-    page, limit, lang, sort, order, q,
+    page, limit, lang, sort, order, q, humId,
     minDatePublished, maxDatePublished, minDateModified, maxDateModified,
     includeFacets, status: requestedStatus,
   } = params
@@ -645,6 +645,10 @@ export const searchResearches = async (
     if (statusFilter) {
       must.push(statusFilter)
     }
+  }
+
+  if (humId) {
+    must.push({ term: { humId } })
   }
 
   if (humIdFilter) {
