@@ -76,7 +76,7 @@ function Index() {
               variant={"action"}
               size={"lg"}
               onClick={() => {
-                navigate({ to: "/{-$lang}/data-usage" });
+                navigate({ to: "/{-$lang}/data-use" });
               }}
             >
               {t("data-usage-button")}

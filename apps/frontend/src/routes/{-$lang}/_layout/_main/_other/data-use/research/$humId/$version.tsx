@@ -5,7 +5,7 @@ import { getResearchQueryOptions } from "@/serverFunctions/researches";
 import { VersionCard } from "./-VersionCard";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/$version",
+  "/{-$lang}/_layout/_main/_other/data-use/research/$humId/$version",
 )({
   loader: async ({ params, context }) => {
     const researchInfo = await context.queryClient.ensureQueryData(

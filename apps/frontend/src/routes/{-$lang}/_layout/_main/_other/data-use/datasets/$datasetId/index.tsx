@@ -5,21 +5,23 @@ import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
 import { DatasetVersionCard } from "./-DatasetVersionCard";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/$version",
+  "/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/",
 )({
   component: RouteComponent,
-  loader: async ({ params, context }) => {
-    const { data } = await context.queryClient.ensureQueryData(
+  loader: async ({ context, params }) => {
+    const dataset = await context.queryClient.ensureQueryData(
       getDatasetQueryOptions({
-        datasetId: params.datasetId,
         lang: context.lang,
-        version: params.version,
+        datasetId: params.datasetId,
         includeRawHtml: false,
       }),
     );
 
-    return { data, crumb: params.version };
+    return { data: dataset.data };
   },
+  errorComponent: (ctx) => (
+    <div className="text-danger">{ctx.error.message}</div>
+  ),
 });
 
 function RouteComponent() {

@@ -39,9 +39,9 @@ export function DatasetVersionCard({
     (item) => item.datasetId === versionData.datasetId,
   );
 
-  const identifier = [versionData.datasetId, versionData.version]
-    .filter(Boolean)
-    .join(".") || "Preview";
+  const identifier =
+    [versionData.datasetId, versionData.version].filter(Boolean).join(".") ||
+    "Preview";
 
   return (
     <CardWithCaption
@@ -54,7 +54,7 @@ export function DatasetVersionCard({
           badge={
             showPublicActions ? (
               <Link
-                to="/{-$lang}/data-usage/datasets/$datasetId/versions"
+                to="/{-$lang}/data-use/datasets/$datasetId/versions"
                 params={{ datasetId: versionData.datasetId }}
               >
                 {t("releaseInfo")}

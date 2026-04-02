@@ -17,7 +17,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     if (parsedHumId.success) {
       throw redirect({
-        to: "/{-$lang}/data-usage/researches/$humId",
+        to: "/{-$lang}/data-use/research/$humId",
         params: {
           lang: context.lang,
           humId: parsedHumId.data,

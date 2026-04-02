@@ -23,7 +23,7 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/",
+  "/{-$lang}/_layout/_main/_other/data-use/research/",
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,

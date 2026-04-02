@@ -50,7 +50,7 @@ export function VersionCard({
           icon="books"
           badge={
             <Link
-              to="/{-$lang}/data-usage/researches/$humId/versions"
+              to="/{-$lang}/data-use/research/$humId/versions"
               params={{ humId: versionData.humId }}
             >
               {t("releaseInfo")}
@@ -214,7 +214,7 @@ function DatasetCaption({
       </div>
 
       <Link
-        to={"/{-$lang}/data-usage/datasets/$datasetId"}
+        to={"/{-$lang}/data-use/datasets/$datasetId"}
         params={{ datasetId }}
         className="link-button"
       >
@@ -264,7 +264,7 @@ function makeDatasetColumns(
       cell: (ctx) => (
         <div className="flex justify-end">
           <Link
-            to={"/{-$lang}/data-usage/datasets/$datasetId"}
+            to={"/{-$lang}/data-use/datasets/$datasetId"}
             params={{ datasetId: ctx.row.original.datasetId }}
             className="link-button"
           >
@@ -337,6 +337,7 @@ const dataUsedByColumns = [
     id: "org.name",
     header: "Organization name",
     cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
+        ?.text,
   }),
 ];

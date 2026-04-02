@@ -7,7 +7,7 @@ import { getDatasetVersionsQueryOptions } from "@/serverFunctions/datasets";
 import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/versions",
+  "/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/versions",
 )({
   component: RouteComponent,
   loader: async ({ params, context }) => {

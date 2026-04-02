@@ -171,7 +171,7 @@ const siteNavigationRegistry: SiteNavigationRegistryItem[] = [
     id: "data-usage",
     labelKey: "data-usage",
     getLinkOptions: (lang) => ({
-      to: "/{-$lang}/data-usage",
+      to: "/{-$lang}/data-use",
       params: { lang },
     }),
   },
@@ -179,7 +179,7 @@ const siteNavigationRegistry: SiteNavigationRegistryItem[] = [
     id: "research-list",
     labelKey: "research-list",
     getLinkOptions: (lang) => ({
-      to: "/{-$lang}/data-usage/researches",
+      to: "/{-$lang}/data-use/research",
       params: { lang },
     }),
   },
@@ -187,7 +187,7 @@ const siteNavigationRegistry: SiteNavigationRegistryItem[] = [
     id: "dataset-list",
     labelKey: "dataset-list",
     getLinkOptions: (lang) => ({
-      to: "/{-$lang}/data-usage/datasets",
+      to: "/{-$lang}/data-use/datasets",
       params: { lang },
     }),
   },

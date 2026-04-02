@@ -8,7 +8,7 @@ import { i18n } from "@/config/i18n";
 import { getResearchVersionsQueryOptions } from "@/serverFunctions/researches";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/$humId/versions",
+  "/{-$lang}/_layout/_main/_other/data-use/research/$humId/versions",
 )({
   component: RouteComponent,
   loader: async ({ context, params }) => {
