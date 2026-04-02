@@ -25,8 +25,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       });
     }
 
-    // const parsedContentId = contentIdSchema.safeParse(params._splat);
-
     const data = await $getLatestDocumentOrContent({
       data: { id: params._splat, lang: context.lang },
     });

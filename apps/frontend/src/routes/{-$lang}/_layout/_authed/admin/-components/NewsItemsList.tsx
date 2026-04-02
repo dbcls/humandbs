@@ -12,17 +12,23 @@ import {
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { AddNewButton } from "./AddNewButton";
 import { Tag } from "@/components/StatusTag";
+import { cn } from "@/lib/utils";
+import { isDraftNewsItem } from "../-draftNewsItem";
+import { AddNewButton } from "./AddNewButton";
 
 export function NewsItemsList({
   onClickAdd,
   selectedNewsItem,
   onSelectNewsItem,
+  draftNewsItem,
+  onDiscardDraft,
 }: {
-  onClickAdd: () => Promise<void>;
+  onClickAdd: () => void;
   selectedNewsItem: NewsItemResponse | undefined;
   onSelectNewsItem: (item: NewsItemResponse) => void;
+  draftNewsItem: NewsItemResponse | null;
+  onDiscardDraft: () => void;
 }) {
   const { openConfirmation } = useConfirmationStore();
   const t = useTranslations("DeleteDialog");
@@ -44,7 +50,6 @@ export function NewsItemsList({
         await $deleteNewsItem({ data: { id: item.id } });
         queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
       },
-
       cancelLabel: t("cancel"),
       actionLabel: (
         <>
@@ -55,23 +60,31 @@ export function NewsItemsList({
     });
   }
 
+  const allItems = draftNewsItem
+    ? [draftNewsItem, ...newsItems]
+    : newsItems;
+
   return (
     <Card
       caption="News"
       className="w-cms-list-panel flex h-full flex-col"
       containerClassName="overflow-auto flex-1 max-h-full"
     >
-      <AddNewButton className="mb-5" onClick={onClickAdd} />
+      <AddNewButton
+        className="mb-5"
+        onClick={onClickAdd}
+        disabled={!!draftNewsItem}
+      />
       <ul>
-        {newsItems.map((item) => {
+        {allItems.map((item) => {
           const isActive = item.id === selectedNewsItem?.id;
+          const isDraft = isDraftNewsItem(item.id);
           return (
             <ListItem
               key={item.id}
-              onClick={() => {
-                onSelectNewsItem(item);
-              }}
+              onClick={() => onSelectNewsItem(item)}
               isActive={isActive}
+              className={cn({ "border border-dashed": isDraft })}
             >
               <div className="text-sm font-medium">
                 <span>{item.publishedAt || "No data"}</span>
@@ -100,7 +113,11 @@ export function NewsItemsList({
               <TrashButton
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleClickDeleteNewsItem(item);
+                  if (isDraft) {
+                    onDiscardDraft();
+                  } else {
+                    handleClickDeleteNewsItem(item);
+                  }
                 }}
                 isActive={isActive}
               />

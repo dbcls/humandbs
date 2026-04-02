@@ -125,6 +125,12 @@ export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
   alert: createAlertSchema.omit({ newsId: true }).optional(),
 });
 
+export const newsItemCreateSchema = z.object({
+  publishedAt: z.string().optional().nullable(),
+  translations: newsTranslationUpsertSchema,
+  alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
+});
+
 export type ContentItem = typeof schema.contentItem.$inferSelect;
 
 export const contentTranslationInsertSchema = createInsertSchema(

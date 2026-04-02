@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { cn } from "@/lib/utils";
 import {
+  $createNewsItem,
   $updateNewsItem,
   getNewsItemsQueryOptions,
   type NewsItemResponse,
@@ -26,9 +27,13 @@ interface FormDataType {
 export function NewsItemContent({
   newsItem,
   className,
+  mode = "update",
+  onCreateSuccess,
 }: {
   newsItem: NewsItemResponse | undefined;
   className?: string;
+  mode?: "create" | "update";
+  onCreateSuccess?: (newItem: NewsItemResponse) => void;
 }) {
   const locale = useLocale();
   const queryClient = useQueryClient();
@@ -59,12 +64,10 @@ export function NewsItemContent({
             return {
               ...item,
               ...inputValues,
-
               translations: Object.entries(item.translations).reduce<
                 NewsItemResponse["translations"]
               >((acc, curr) => {
                 const [key, value] = curr;
-
                 acc[key as Locale] = {
                   ...value,
                   ...inputValues.translations[key as Locale],
@@ -92,6 +95,21 @@ export function NewsItemContent({
     },
   });
 
+  const { mutate: createNewsItem } = useMutation({
+    mutationFn: async (values: FormDataType) => {
+      return $createNewsItem({
+        data: {
+          publishedAt: values.publishedAt,
+          translations: values.translations,
+          alert: values.alertRange,
+        },
+      });
+    },
+    onSuccess: (newItem) => {
+      onCreateSuccess?.(newItem);
+    },
+  });
+
   const form = useAppForm({
     defaultValues: {
       translations: newsItem?.translations || {},
@@ -101,7 +119,11 @@ export function NewsItemContent({
       publishedAt: newsItem?.publishedAt,
     } as FormDataType,
     onSubmit: ({ value }) => {
-      updateNewsItem(value);
+      if (mode === "create") {
+        createNewsItem(value);
+      } else {
+        updateNewsItem(value);
+      }
     },
   });
 
@@ -137,7 +159,7 @@ export function NewsItemContent({
                 form.handleSubmit();
               }}
             >
-              Update
+              {mode === "create" ? "Create" : "Update"}
             </Button>
           )}
         </form.Subscribe>
@@ -152,24 +174,27 @@ export function NewsItemContent({
           )}
         </form.AppField>
 
-        <TitleValue
-          title="Created at:"
-          value={newsItem.createdAt.toLocaleDateString(locale)}
-        />
-        <TitleValue
-          title="Updated at:"
-          value={newsItem.translations[
-            form.state.values.locale
-          ]?.updatedAt?.toLocaleDateString()}
-        />
-        <TitleValue title="Author:" value={newsItem.author.name} />
+        {mode === "update" && (
+          <>
+            <TitleValue
+              title="Created at:"
+              value={newsItem.createdAt.toLocaleDateString(locale)}
+            />
+            <TitleValue
+              title="Updated at:"
+              value={newsItem.translations[
+                form.state.values.locale
+              ]?.updatedAt?.toLocaleDateString()}
+            />
+            <TitleValue title="Author:" value={newsItem.author.name ?? undefined} />
+          </>
+        )}
       </div>
 
       <form.AppField
         name="isAlert"
         listeners={{
           onChange: ({ value }) => {
-            // set range to null if checkbox is unchecked
             if (!value) {
               form.setFieldValue("alertRange", null);
             }

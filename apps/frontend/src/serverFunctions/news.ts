@@ -1,21 +1,20 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from "zod";
+
+import { and, eq } from "drizzle-orm";
 
 import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
-import { alert, newsItem, newsTranslation } from "@/db/schema";
+import { newsTranslation } from "@/db/schema";
 import {
+  newsItemCreateSchema,
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
-  type NewsTranslationSelect,
-  newsTranslationSelectSchema,
   newsTranslationUpdateSchema,
-  type NewsTranslationUpsert,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { toDateString } from "@/utils/dates";
+import { newsItemRepository } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
   alert: boolean;
@@ -37,37 +36,11 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
-    const locale = data.locale;
-
-    const nowStr = toDateString(new Date())!;
-
-    const news = await db
-      .select({
-        id: newsItem.id,
-        locale: newsTranslation.lang,
-        title: newsTranslation.title,
-        publishedAt: newsItem.publishedAt,
-        alert: alert.newsId,
-      })
-      .from(newsTranslation)
-      .where(eq(newsTranslation.lang, locale))
-      .innerJoin(
-        newsItem,
-        and(
-          eq(newsTranslation.newsId, newsItem.id),
-          lte(newsItem.publishedAt, nowStr),
-        ),
-      )
-      .leftJoin(alert, eq(alert.newsId, newsItem.id))
-      .orderBy(desc(newsItem.publishedAt))
-      .limit(data.limit)
-      .offset(data.offset);
-
-    return news.map((n) => ({
-      ...n,
-      locale: n.locale as Locale,
-      alert: !!n.alert,
-    }));
+    return newsItemRepository.listPublishedTitles({
+      limit: data.limit,
+      offset: data.offset,
+      locale: data.locale,
+    });
   });
 
 export function getNewsTitlesQueryOptions({
@@ -90,12 +63,9 @@ export function getNewsTitlesQueryOptions({
  * Get specific news translation by newsItemId and lang, for public-facing
  */
 export const $getNewsTranslation = createServerFn({ method: "GET" })
-  .inputValidator(
-    newsTranslationSelectSchema.pick({ lang: true, newsId: true }),
-  )
+  .inputValidator(z.object({ newsId: z.string(), lang: z.string() }))
   .handler(async ({ data }) => {
     const newsItemId = data.newsId;
-
     const lang = data.lang;
 
     let result = await db.query.newsTranslation.findFirst({
@@ -166,57 +136,7 @@ export const $getNewsItems = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
-
-    const news = await db.query.newsItem.findMany({
-      with: {
-        translations: true,
-        alert: {
-          columns: {
-            from: true,
-            to: true,
-          },
-        },
-        author: {
-          columns: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-      columns: {
-        authorId: false,
-      },
-      orderBy: (table, { desc }) => [desc(table.createdAt)],
-      limit: data.limit,
-      offset: data.offset,
-    });
-
-    type T = typeof news;
-
-    type News = (Omit<T[number], "alert"> & {
-      alert: Pick<T[number], "alert">["alert"] | null;
-    })[];
-
-    const response = news.map((item) => ({
-      ...(item as Omit<News[number], "translations">),
-      translations: item.translations.reduce<
-        Partial<
-          Record<
-            Locale,
-            Pick<NewsTranslationSelect, "content" | "title" | "updatedAt">
-          >
-        >
-      >((acc, curr) => {
-        acc[curr.lang as Locale] = {
-          content: curr.content,
-          title: curr.title,
-          updatedAt: curr.updatedAt,
-        };
-        return acc;
-      }, {}),
-    }));
-
-    return response;
+    return newsItemRepository.list({ limit: data.limit, offset: data.offset });
   });
 
 export type NewsItemResponse = Awaited<
@@ -228,52 +148,11 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
   .inputValidator(newsItemUpdateSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("news", "update");
-
-    const { id, ...restItem } = data;
-
-    await db.transaction(async (tx) => {
-      // update publication date
-      await tx
-        .update(newsItem)
-        .set({ publishedAt: restItem.publishedAt })
-        .where(eq(newsItem.id, id));
-
-      const translations = Object.entries(data.translations) as [
-        Locale,
-        NewsTranslationUpsert[keyof NewsTranslationUpsert],
-      ][];
-
-      const translationsToInsert = translations.map(
-        ([locale, translation]) => ({
-          newsId: id,
-          lang: locale,
-          title: translation?.title!,
-          content: translation?.content!,
-        }),
-      );
-      //upsert translations
-      await tx
-        .insert(newsTranslation)
-        .values(translationsToInsert)
-        .onConflictDoUpdate({
-          target: [newsTranslation.newsId, newsTranslation.lang],
-          set: {
-            title: sql.raw(`excluded.${newsTranslation.title.name}`),
-            content: sql.raw(`excluded.${newsTranslation.content.name}`),
-            updatedAt: new Date(),
-          },
-        });
-      if (data.alert) {
-        await tx
-          .insert(alert)
-          .values({ newsId: id, ...data.alert })
-          .onConflictDoUpdate({
-            target: [alert.newsId],
-            set: data.alert,
-          });
-      } else {
-        await tx.delete(alert).where(eq(alert.newsId, id));
-      }
+    await newsItemRepository.update({
+      id: data.id,
+      publishedAt: data.publishedAt,
+      translations: data.translations,
+      alert: data.alert,
     });
   });
 
@@ -340,21 +219,20 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   });
 
 /**
- * Create empty newsItem
+ * Create a new news item with full content in a single transaction.
  */
 export const $createNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .handler(async ({ context }) => {
+  .inputValidator(newsItemCreateSchema)
+  .handler(async ({ context, data }) => {
     context.checkPermission("news", "create");
-
     const user = context.user;
-
-    const [result] = await db
-      .insert(newsItem)
-      .values({ authorId: user.id })
-      .returning();
-
-    return result;
+    return newsItemRepository.create({
+      authorId: user.id,
+      publishedAt: data.publishedAt,
+      translations: data.translations,
+      alert: data.alert,
+    });
   });
 
 /**
@@ -365,11 +243,5 @@ export const $deleteNewsItem = createServerFn({ method: "POST" })
   .inputValidator(newsItemUpdateSchema.pick({ id: true }).required())
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
-
-    const result = await db
-      .delete(newsItem)
-      .where(eq(newsItem.id, data.id))
-      .returning();
-
-    return result;
+    await newsItemRepository.delete(data.id);
   });

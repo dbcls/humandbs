@@ -1,14 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useRouteContext } from "@tanstack/react-router";
 import { Suspense, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  $createNewsItem,
   getNewsItemsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
 
+import {
+  createDraftNewsItem,
+  isDraftNewsItem,
+} from "./-draftNewsItem";
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
 
@@ -18,14 +22,33 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/news")({
 
 function RouteComponent() {
   const queryClient = useQueryClient();
+  const { user } = useRouteContext({ from: "__root__" });
 
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemResponse>();
+  const [draftNewsItem, setDraftNewsItem] = useState<NewsItemResponse | null>(null);
 
-  async function handleAddNewsItem() {
-    await $createNewsItem({});
-    await queryClient.invalidateQueries(
-      getNewsItemsQueryOptions({ limit: 100 }),
-    );
+  function handleAddNewsItem() {
+    if (draftNewsItem) {
+      setSelectedNewsItem(draftNewsItem);
+      return;
+    }
+    const draft = createDraftNewsItem({
+      name: user?.name ?? null,
+      email: user?.email ?? "",
+    });
+    setDraftNewsItem(draft);
+    setSelectedNewsItem(draft);
+  }
+
+  function handleDiscardDraft() {
+    setDraftNewsItem(null);
+    if (selectedNewsItem && isDraftNewsItem(selectedNewsItem.id)) {
+      setSelectedNewsItem(undefined);
+    }
+  }
+
+  function handleSelectNewsItem(item: NewsItemResponse) {
+    setSelectedNewsItem(item);
   }
 
   return (
@@ -34,11 +57,25 @@ function RouteComponent() {
         <NewsItemsList
           onClickAdd={handleAddNewsItem}
           selectedNewsItem={selectedNewsItem}
-          onSelectNewsItem={setSelectedNewsItem}
+          onSelectNewsItem={handleSelectNewsItem}
+          draftNewsItem={draftNewsItem}
+          onDiscardDraft={handleDiscardDraft}
         />
       </Suspense>
 
-      <NewsItemContent key={selectedNewsItem?.id} newsItem={selectedNewsItem} />
+      <NewsItemContent
+        key={selectedNewsItem?.id}
+        newsItem={selectedNewsItem}
+        mode={selectedNewsItem && isDraftNewsItem(selectedNewsItem.id) ? "create" : "update"}
+        onCreateSuccess={(newItem) => {
+          setDraftNewsItem(null);
+          queryClient.invalidateQueries(
+            getNewsItemsQueryOptions({ limit: 100 }),
+          ).then(() => {
+            setSelectedNewsItem(newItem);
+          });
+        }}
+      />
     </>
   );
 }

@@ -11,11 +11,13 @@ export function MarkdownWithTOC({
   markdownResult,
   previousVersions,
   afterContent,
+  hideTOC,
 }: {
   title: string | null;
   markdownResult: MarkdownResult;
   previousVersions?: DocPublishedVersionListItemResponse[];
   afterContent?: React.ReactNode;
+  hideTOC?: boolean;
 }) {
   return (
     <Card className="w-full py-6">
@@ -31,7 +33,7 @@ export function MarkdownWithTOC({
           )}
           {afterContent}
         </div>
-        {markdownResult.headings.length > 0 ? (
+        {markdownResult.headings.length > 0 && !hideTOC ? (
           <TOC headings={markdownResult.headings} />
         ) : null}
       </div>

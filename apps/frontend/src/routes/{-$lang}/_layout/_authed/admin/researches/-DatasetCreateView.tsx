@@ -15,7 +15,7 @@ import {
 } from "@/components/Breadcrumb";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
-import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/-DatasetVersionCard";
+import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
