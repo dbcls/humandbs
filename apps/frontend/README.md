@@ -1,12 +1,23 @@
-# 起動手順
+# Deploy to staging
 
-- DBのマイグレーション（必要に応じて）、 `bun run db:push`
-- `bun run build`
-- `bun run serve`
+Since the podman container is most likety already running, we need to stop it, rebuild and restart.
 
-# Development
+- `git pull` on the server
+- Restart container (to stop the inner `bun run serve`): `podman restart humandbs-staging-frontend`
+- Migrate DB if needed
+  - Enter the container bash: `podman exec -it humandbs-staging-frontend bash`
+  - Inside, apply DB schema changes if any: `bun run db:push`
+- Build & start: `podman exec -d humandbs-staging-frontend bash -lc 'bun run build && bun run start'`
 
-## 1. Acidentally importing stuff from the server-side
+If needed, when updating nginx config (consult with backend engineer):
+
+- Update nginx config
+- `podman rm -f humandbs-staging-nginx`
+- `podman-compose --env-file .env up -d nginx`
+
+# Development Troubleshooting
+
+## 1. Accidentally importing stuff from the server-side
 
 When error is like
 
