@@ -10,6 +10,7 @@ export const buttonVariants = cva(
     variants: {
       size: {
         lg: "px-8 py-4 text-sm",
+        xl: "px-10 py-5 text-base",
         tableAction: "px-8 py-3 text-sm",
         default: "px-4 py-2 text-xs",
         slim: "p-1 text-xs",
@@ -17,8 +18,9 @@ export const buttonVariants = cva(
       },
       variant: {
         accent:
-          "bg-linear-to-r  text-white  from-accent to-accent-light enabled:hover:from-accent/80 enabled:hover:saturate-150 active:bg-accent/90",
-        action: " bg-linear-to-r text-white  from-secondary to-secondary-light",
+          "bg-linear-to-r  text-white  from-accent to-accent-light hover:from-accent/80 hover:saturate-150 active:saturate-100 transition-colors",
+        action:
+          " bg-linear-to-r text-white  from-secondary to-secondary-light hover:saturate-150 active:saturate-100 transition-colors",
         outline:
           "border border-tetriary bg-transparent enabled:hover:bg-white/50",
         tableAction: "bg-secondary-light  text-white  rounded-full ",
