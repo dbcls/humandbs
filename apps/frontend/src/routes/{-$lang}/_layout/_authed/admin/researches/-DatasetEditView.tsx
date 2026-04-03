@@ -24,7 +24,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useState, Suspense } from "react";
-import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-usage/datasets/$datasetId/-DatasetVersionCard";
+import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/-DatasetVersionCard";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
 import { TabContentLayout } from "./-TabContentLayout";

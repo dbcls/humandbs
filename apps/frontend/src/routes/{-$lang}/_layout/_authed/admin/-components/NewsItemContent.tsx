@@ -1,17 +1,35 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { LucideBell } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { type Locale, useLocale } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { cn } from "@/lib/utils";
+import type { NewsTag } from "@/repositories/newsItem";
 import {
   $createNewsItem,
+  $createTag,
   $updateNewsItem,
   getNewsItemsQueryOptions,
+  getTagsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
 import type { DateStringRange } from "@/utils/dates";
@@ -22,6 +40,7 @@ interface FormDataType {
   alertRange: DateStringRange | null;
   locale: Locale;
   publishedAt: string | null;
+  tags: string[];
 }
 
 export function NewsItemContent({
@@ -39,6 +58,9 @@ export function NewsItemContent({
   const queryClient = useQueryClient();
 
   const newsItemsListQO = getNewsItemsQueryOptions({ limit: 100 });
+  const tagsQO = getTagsQueryOptions();
+
+  const { data: allTags = [] } = useQuery(tagsQO);
 
   const { mutate: updateNewsItem } = useMutation({
     mutationFn: async (values: FormDataType) => {
@@ -48,6 +70,7 @@ export function NewsItemContent({
           id: newsItem.id,
           ...values,
           alert: values.alertRange,
+          tags: values.tags,
         },
       });
     },
@@ -59,11 +82,12 @@ export function NewsItemContent({
       queryClient.setQueryData(newsItemsListQO.queryKey, (prev) => {
         if (!prev) return prev;
 
-        return prev.map((item) => {
+        return prev.map((item): NewsItemResponse => {
           if (item.id === newsItem?.id) {
             return {
               ...item,
-              ...inputValues,
+              publishedAt: inputValues.publishedAt ?? item.publishedAt,
+              tags: item.tags.filter((t) => inputValues.tags.includes(t.id)),
               translations: Object.entries(item.translations).reduce<
                 NewsItemResponse["translations"]
               >((acc, curr) => {
@@ -102,6 +126,7 @@ export function NewsItemContent({
           publishedAt: values.publishedAt,
           translations: values.translations,
           alert: values.alertRange,
+          tags: values.tags,
         },
       });
     },
@@ -117,6 +142,7 @@ export function NewsItemContent({
       alertRange: newsItem?.alert,
       locale: i18n.defaultLocale,
       publishedAt: newsItem?.publishedAt,
+      tags: newsItem?.tags.map((t) => t.id) ?? [],
     } as FormDataType,
     onSubmit: ({ value }) => {
       if (mode === "create") {
@@ -124,6 +150,21 @@ export function NewsItemContent({
       } else {
         updateNewsItem(value);
       }
+    },
+  });
+
+  const { mutateAsync: createTag } = useMutation({
+    mutationFn: (name: string) => $createTag({ data: { name } }),
+    onSuccess: (newTag) => {
+      queryClient.setQueryData(tagsQO.queryKey, (prev: NewsTag[] = []) => [
+        ...prev,
+        newTag,
+      ]);
+      form.setFieldValue("tags", [...form.state.values.tags, newTag.id]);
+      console.log("[createTag] onSuccess", newTag, form.state.values.tags);
+    },
+    onError: (err) => {
+      console.error("[createTag] error", err);
     },
   });
 
@@ -138,6 +179,17 @@ export function NewsItemContent({
           <form.AppField name="locale">
             {(field) => <field.LocaleSwitchField />}
           </form.AppField>
+
+          <form.Subscribe selector={(state) => state.values.tags}>
+            {(selectedTagIds) => (
+              <TagPicker
+                allTags={allTags}
+                selectedTagIds={selectedTagIds}
+                onChange={(ids) => form.setFieldValue("tags", ids)}
+                onCreateTag={createTag}
+              />
+            )}
+          </form.Subscribe>
         </span>
       }
       className={cn("flex h-full flex-1 flex-col", className)}
@@ -250,6 +302,90 @@ export function NewsItemContent({
         )}
       </form.Subscribe>
     </Card>
+  );
+}
+
+function TagPicker({
+  allTags,
+  selectedTagIds,
+  onChange,
+  onCreateTag,
+}: {
+  allTags: NewsTag[];
+  selectedTagIds: string[];
+  onChange: (ids: string[]) => void;
+  onCreateTag: (name: string) => Promise<unknown>;
+}) {
+  const CREATE_SENTINEL = "__create__";
+  const [inputValue, setInputValue] = useState("");
+  const anchor = useComboboxAnchor();
+
+  const selectedTags = allTags.filter((t) => selectedTagIds.includes(t.id));
+  const filteredTags = allTags.filter((t) =>
+    t.name.toLowerCase().includes(inputValue.toLowerCase()),
+  );
+  const hasExactMatch = allTags.some(
+    (t) => t.name.toLowerCase() === inputValue.toLowerCase(),
+  );
+  const showCreate = inputValue.trim().length > 0 && !hasExactMatch;
+
+  function handleValueChange(ids: string[]) {
+    console.log("[TagPicker] handleValueChange", ids);
+    if (ids.includes(CREATE_SENTINEL)) {
+      const name = inputValue.trim();
+      console.log("[TagPicker] creating tag", name);
+      if (name) {
+        setInputValue("");
+        void onCreateTag(name);
+      }
+      onChange(ids.filter((id) => id !== CREATE_SENTINEL));
+    } else {
+      onChange(ids);
+    }
+  }
+
+  return (
+    <Combobox
+      multiple
+      value={selectedTagIds}
+      onValueChange={handleValueChange}
+      onInputValueChange={(val) => setInputValue(val)}
+    >
+      <ComboboxChips ref={anchor} className="min-w-48 max-w-xs">
+        {selectedTags.map((tag) => (
+          <ComboboxChip key={tag.id}>
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: tag.color ?? "#e5e7eb" }}
+            />
+            {tag.name}
+          </ComboboxChip>
+        ))}
+        <ComboboxChipsInput placeholder="Add tag…" />
+      </ComboboxChips>
+
+      <ComboboxContent anchor={anchor}>
+        <ComboboxList>
+          {filteredTags.map((tag) => (
+            <ComboboxItem key={tag.id} value={tag.id}>
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: tag.color ?? "#e5e7eb" }}
+              />
+              {tag.name}
+            </ComboboxItem>
+          ))}
+          {showCreate && (
+            <ComboboxItem value={CREATE_SENTINEL}>
+              Create tag: <span className="font-medium">{inputValue}</span>
+            </ComboboxItem>
+          )}
+          {filteredTags.length === 0 && !showCreate && (
+            <ComboboxEmpty>No tags found</ComboboxEmpty>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }
 

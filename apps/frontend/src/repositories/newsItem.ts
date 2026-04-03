@@ -2,10 +2,8 @@ import { and, desc, eq, lte, sql } from "drizzle-orm";
 
 import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
-import { alert, newsItem, newsTranslation } from "@/db/schema";
-import type {
-  NewsTranslationUpsert,
-} from "@/db/types";
+import { alert, newsItem, newsItemTag, newsTag, newsTranslation } from "@/db/schema";
+import type { NewsTranslationUpsert } from "@/db/types";
 import { toDateString } from "@/utils/dates";
 
 export interface NewsTitleItem {
@@ -32,6 +30,12 @@ export interface NewsItemTranslation {
   updatedAt: Date | null;
 }
 
+export interface NewsTag {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
 export interface NewsItemRecord {
   id: string;
   createdAt: Date;
@@ -39,6 +43,7 @@ export interface NewsItemRecord {
   author: NewsItemAuthor;
   alert: NewsItemAlert | null;
   translations: Partial<Record<Locale, NewsItemTranslation>>;
+  tags: NewsTag[];
 }
 
 export interface NewsItemCreateInput {
@@ -46,6 +51,7 @@ export interface NewsItemCreateInput {
   publishedAt?: string | null;
   translations: NewsTranslationUpsert;
   alert?: { from?: string | null; to?: string | null } | null;
+  tags?: string[];
 }
 
 export interface NewsItemUpdateInput {
@@ -53,12 +59,13 @@ export interface NewsItemUpdateInput {
   publishedAt?: string | null;
   translations: NewsTranslationUpsert;
   alert?: { from?: string | null; to?: string | null } | null;
+  tags?: string[];
 }
 
 export interface NewsItemRepository {
   /**
    * Private
-   * Get paginated list of news items with translations, alert, and author.
+   * Get paginated list of news items with translations, alert, author, and tags.
    */
   list: (options: { limit?: number; offset?: number }) => Promise<NewsItemRecord[]>;
 
@@ -74,13 +81,13 @@ export interface NewsItemRepository {
 
   /**
    * Private
-   * Create a new news item with translations and optional alert in one transaction.
+   * Create a new news item with translations, optional alert, and tags in one transaction.
    */
   create: (input: NewsItemCreateInput) => Promise<NewsItemRecord>;
 
   /**
    * Private
-   * Update an existing news item's publishedAt, translations, and alert in one transaction.
+   * Update an existing news item's publishedAt, translations, alert, and tags in one transaction.
    */
   update: (input: NewsItemUpdateInput) => Promise<void>;
 
@@ -89,6 +96,25 @@ export interface NewsItemRepository {
    * Delete a news item by id.
    */
   delete: (id: string) => Promise<void>;
+}
+
+function mapTags(
+  rawTags: { tag: { id: string; name: string; color: string | null } }[],
+): NewsTag[] {
+  return rawTags.map((t) => t.tag);
+}
+
+async function syncTags(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  itemId: string,
+  tagIds: string[],
+) {
+  await tx.delete(newsItemTag).where(eq(newsItemTag.newsId, itemId));
+  if (tagIds.length > 0) {
+    await tx
+      .insert(newsItemTag)
+      .values(tagIds.map((tagId) => ({ newsId: itemId, tagId })));
+  }
 }
 
 export function createNewsItemRepository(
@@ -137,6 +163,13 @@ export function createNewsItemRepository(
           author: {
             columns: { name: true, email: true },
           },
+          tags: {
+            with: {
+              tag: {
+                columns: { id: true, name: true, color: true },
+              },
+            },
+          },
         },
         columns: { authorId: false },
         orderBy: (table, { desc }) => [desc(table.createdAt)],
@@ -147,6 +180,7 @@ export function createNewsItemRepository(
       return news.map((item) => ({
         ...item,
         alert: item.alert ?? null,
+        tags: mapTags(item.tags),
         translations: item.translations.reduce<
           Partial<Record<Locale, NewsItemTranslation>>
         >((acc, curr) => {
@@ -160,7 +194,7 @@ export function createNewsItemRepository(
       }));
     },
 
-    async create({ authorId, publishedAt, translations, alert: alertInput }) {
+    async create({ authorId, publishedAt, translations, alert: alertInput, tags = [] }) {
       return database.transaction(async (tx) => {
         const [created] = await tx
           .insert(newsItem)
@@ -202,12 +236,19 @@ export function createNewsItemRepository(
             });
         }
 
+        await syncTags(tx, created.id, tags);
+
         const result = await tx.query.newsItem.findFirst({
           where: eq(newsItem.id, created.id),
           with: {
             translations: true,
             alert: { columns: { from: true, to: true } },
             author: { columns: { name: true, email: true } },
+            tags: {
+              with: {
+                tag: { columns: { id: true, name: true, color: true } },
+              },
+            },
           },
           columns: { authorId: false },
         });
@@ -217,6 +258,7 @@ export function createNewsItemRepository(
         return {
           ...result,
           alert: result.alert ?? null,
+          tags: mapTags(result.tags),
           translations: result.translations.reduce<
             Partial<Record<Locale, NewsItemTranslation>>
           >((acc, curr) => {
@@ -231,7 +273,7 @@ export function createNewsItemRepository(
       });
     },
 
-    async update({ id, publishedAt, translations, alert: alertInput }) {
+    async update({ id, publishedAt, translations, alert: alertInput, tags = [] }) {
       await database.transaction(async (tx) => {
         await tx
           .update(newsItem)
@@ -274,6 +316,8 @@ export function createNewsItemRepository(
         } else {
           await tx.delete(alert).where(eq(alert.newsId, id));
         }
+
+        await syncTags(tx, id, tags);
       });
     },
 

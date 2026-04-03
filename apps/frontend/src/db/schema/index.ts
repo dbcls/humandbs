@@ -5,4 +5,5 @@ export * from "./documentVersion";
 export * from "./contentItem";
 export * from "./newsItem";
 export * from "./alert";
+export * from "./newsTag";
 export * from "./siteNavigation";

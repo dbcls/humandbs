@@ -13,6 +13,7 @@ export function createDraftNewsItem(author: {
     author,
     alert: null,
     translations: {},
+    tags: [],
   };
 }
 

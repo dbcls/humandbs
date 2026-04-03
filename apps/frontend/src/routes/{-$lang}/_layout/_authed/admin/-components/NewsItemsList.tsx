@@ -108,6 +108,23 @@ export function NewsItemsList({
                       ),
                     )}
                 </ul>
+                {item.tags && item.tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{
+                          backgroundColor: `${tag.color ?? "#e5e7eb"}22`,
+                          color: tag.color ?? "#6b7280",
+                          border: `1px solid ${tag.color ?? "#e5e7eb"}`,
+                        }}
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <TrashButton

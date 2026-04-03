@@ -2,11 +2,11 @@ import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
-import { newsTranslation } from "@/db/schema";
+import { newsTag, newsTranslation } from "@/db/schema";
 import {
   newsItemCreateSchema,
   newsItemUpdateSchema,
@@ -15,6 +15,7 @@ import {
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { newsItemRepository } from "@/repositories/newsItem";
+import type { NewsTag } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
   alert: boolean;
@@ -153,6 +154,7 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
       publishedAt: data.publishedAt,
       translations: data.translations,
       alert: data.alert,
+      tags: data.tags,
     });
   });
 
@@ -232,7 +234,40 @@ export const $createNewsItem = createServerFn({ method: "POST" })
       publishedAt: data.publishedAt,
       translations: data.translations,
       alert: data.alert,
+      tags: data.tags,
     });
+  });
+
+/**
+ * Get all tags ordered by name.
+ */
+export const $getTags = createServerFn({ method: "GET" })
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ context }): Promise<NewsTag[]> => {
+    context.checkPermission("news", "view");
+    return db.select().from(newsTag).orderBy(asc(newsTag.name));
+  });
+
+export function getTagsQueryOptions() {
+  return queryOptions({
+    queryKey: ["news", "tags"],
+    queryFn: () => $getTags({}),
+  });
+}
+
+/**
+ * Create a new tag with the given name. Color defaults to null.
+ */
+export const $createTag = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ name: z.string().min(1).trim() }))
+  .handler(async ({ context, data }): Promise<NewsTag> => {
+    context.checkPermission("news", "create");
+    const [created] = await db
+      .insert(newsTag)
+      .values({ name: data.name })
+      .returning();
+    return created;
   });
 
 /**

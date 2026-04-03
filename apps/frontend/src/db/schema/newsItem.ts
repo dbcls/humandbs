@@ -9,6 +9,7 @@ import {
 
 import { alert } from "./alert";
 import { user } from "./auth-schema";
+import { newsItemTag } from "./newsTag";
 
 export const newsItem = pgTable("news_item", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
@@ -29,6 +30,7 @@ export const newsItemRelations = relations(newsItem, ({ many, one }) => ({
     fields: [newsItem.id],
     references: [alert.newsId],
   }),
+  tags: many(newsItemTag),
 }));
 
 export const newsTranslation = pgTable(
