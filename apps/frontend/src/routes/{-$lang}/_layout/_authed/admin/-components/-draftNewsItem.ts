@@ -2,6 +2,7 @@ import {
   getNewsItemQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
+import { toDateString } from "@/utils/dates";
 
 export const DRAFT_NEWS_ID = "draft-news-item" as const;
 
@@ -12,7 +13,7 @@ export function createDraftNewsItem(author: {
   return {
     id: DRAFT_NEWS_ID,
     createdAt: new Date(),
-    publishedAt: null,
+    publishedAt: toDateString(new Date()) || "",
     author,
     alert: null,
     translations: {},

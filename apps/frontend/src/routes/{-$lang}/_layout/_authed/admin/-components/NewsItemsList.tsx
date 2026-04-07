@@ -19,7 +19,7 @@ import {
   DRAFT_NEWS_ID,
   draftNewsItemQO,
   isDraftNewsItem,
-} from "../-draftNewsItem";
+} from "./-draftNewsItem";
 import { AddNewButton } from "./AddNewButton";
 import { TagPill } from "@/components/TagPill";
 import { useRouteContext } from "@tanstack/react-router";

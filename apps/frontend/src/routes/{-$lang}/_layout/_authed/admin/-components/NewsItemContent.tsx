@@ -35,7 +35,7 @@ import {
 } from "@/serverFunctions/news";
 import type { DateStringRange } from "@/utils/dates";
 import { Label } from "@/components/ui/label";
-import { isDraftNewsItem } from "../-draftNewsItem";
+import { isDraftNewsItem } from "./-draftNewsItem";
 import { useRouteContext } from "@tanstack/react-router";
 import type { SessionUser } from "@/utils/jwt-helpers";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -120,11 +120,9 @@ function getOptimisticallyCreatedNewsItem(
 export function NewsItemContent({
   selectedNewsItemId,
   className,
-  mode = "update",
 }: {
   selectedNewsItemId: string;
   className?: string;
-  mode?: "create" | "update";
 }) {
   const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
   const { data: newsItem } = useQuery(newsItemQO);
@@ -141,25 +139,18 @@ export function NewsItemContent({
     );
   }
 
-  return (
-    <NewsItemForm
-      newsItem={newsItem}
-      className={className}
-      mode={mode}
-    />
-  );
+  return <NewsItemForm newsItem={newsItem} className={className} />;
 }
 
 function NewsItemForm({
   newsItem,
   className,
-  mode,
 }: {
   newsItem: NewsItemResponse;
   className?: string;
-  mode: "create" | "update";
 }) {
   const { user } = useRouteContext({ from: "__root__" });
+  const mode = isDraftNewsItem(newsItem.id) ? "create" : "update";
   const locale = useLocale();
 
   const queryClient = useQueryClient();
