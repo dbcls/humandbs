@@ -39,7 +39,6 @@ import { isDraftNewsItem } from "../-draftNewsItem";
 import { useRouteContext } from "@tanstack/react-router";
 import type { SessionUser } from "@/utils/jwt-helpers";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
@@ -127,19 +126,47 @@ export function NewsItemContent({
   className?: string;
   mode?: "create" | "update";
 }) {
+  const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
+  const { data: newsItem } = useQuery(newsItemQO);
+
+  if (!newsItem) {
+    return (
+      <Card
+        caption="Details"
+        className={cn("flex h-full flex-1 flex-col", className)}
+        containerClassName="flex flex-col flex-1 gap-4"
+      >
+        <SkeletonLoading />
+      </Card>
+    );
+  }
+
+  return (
+    <NewsItemForm
+      newsItem={newsItem}
+      className={className}
+      mode={mode}
+    />
+  );
+}
+
+function NewsItemForm({
+  newsItem,
+  className,
+  mode,
+}: {
+  newsItem: NewsItemResponse;
+  className?: string;
+  mode: "create" | "update";
+}) {
   const { user } = useRouteContext({ from: "__root__" });
   const locale = useLocale();
 
   const queryClient = useQueryClient();
 
-  const isDraft = isDraftNewsItem(selectedNewsItemId);
-
   const newsItemsListQO = getNewsItemsQueryOptions();
 
-  const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
-
-  console.log("selectedNewsItemId", selectedNewsItemId);
-  const { data: newsItem } = useQuery(newsItemQO);
+  const newsItemQO = getNewsItemQueryOptions(newsItem.id);
 
   const tagsQO = getTagsQueryOptions();
 
@@ -147,10 +174,9 @@ export function NewsItemContent({
 
   const { mutate: updateNewsItem } = useMutation({
     mutationFn: async (values: FormDataType) => {
-      if (!newsItem?.id) return;
       return $updateNewsItem({
         data: {
-          id: selectedNewsItemId,
+          id: newsItem.id,
           ...values,
           alert: values.alertRange,
           tags: values.tags,
@@ -246,12 +272,12 @@ export function NewsItemContent({
 
   const form = useAppForm({
     defaultValues: {
-      translations: newsItem?.translations || {},
-      isAlert: !!newsItem?.alert,
-      alertRange: newsItem?.alert,
+      translations: newsItem.translations,
+      isAlert: !!newsItem.alert,
+      alertRange: newsItem.alert,
       locale: i18n.defaultLocale,
-      publishedAt: newsItem?.publishedAt,
-      tags: newsItem?.tags.map((t) => t.id) ?? [],
+      publishedAt: newsItem.publishedAt,
+      tags: newsItem.tags.map((t) => t.id),
     } as FormDataType,
     onSubmit: ({ value, formApi }) => {
       if (mode === "create") {
@@ -343,21 +369,18 @@ export function NewsItemContent({
         {mode === "update" && (
           <>
             <TitleValue
-              isLoading={!newsItem}
               title="Created at:"
-              value={newsItem?.createdAt.toLocaleDateString(locale)}
+              value={newsItem.createdAt.toLocaleDateString(locale)}
             />
             <TitleValue
-              isLoading={!newsItem}
               title="Updated at:"
-              value={newsItem?.translations[
+              value={newsItem.translations[
                 form.state.values.locale
               ]?.updatedAt?.toLocaleDateString()}
             />
             <TitleValue
-              isLoading={!newsItem}
               title="Author:"
-              value={newsItem?.author.name ?? undefined}
+              value={newsItem.author.name ?? undefined}
             />
           </>
         )}
@@ -438,9 +461,7 @@ export function NewsItemContent({
                           <ModifiedTag isModified={isDirty} />
                         </span>
                       }
-                      assetFolder={
-                        newsItem?.id ? `news/${newsItem.id}` : "news"
-                      }
+                      assetFolder={newsItem.id ? `news/${newsItem.id}` : "news"}
                     />
                   </Suspense>
                 );
@@ -532,16 +553,14 @@ function TagPicker({
 function TitleValue({
   title,
   value,
-  isLoading = false,
 }: {
   title: string;
   value: string | undefined;
-  isLoading?: boolean;
 }) {
   return (
     <p className="flex flex-col items-start gap-2">
       <span className="text-sm leading-none font-medium">{title}</span>
-      <span className="text-xs">{isLoading ? <Skeleton /> : value}</span>
+      <span className="text-xs">{value}</span>
     </p>
   );
 }
