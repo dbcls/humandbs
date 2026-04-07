@@ -1,4 +1,7 @@
-import { useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import {
+  useQueryClient,
+  useSuspenseInfiniteQuery,
+} from "@tanstack/react-query";
 import { LucideBell, Trash2Icon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
@@ -99,9 +102,7 @@ export function NewsItemsList({
       if (!prev) return prev;
       return {
         ...prev,
-        pages: prev.pages.map((page, i) =>
-          i === 0 ? [draft, ...page] : page,
-        ),
+        pages: prev.pages.map((page, i) => (i === 0 ? [draft, ...page] : page)),
       };
     });
 
@@ -133,14 +134,16 @@ export function NewsItemsList({
     <Card
       caption="News"
       className="w-cms-list-panel flex h-full flex-col"
-      containerClassName="overflow-auto flex-1 max-h-full"
+      containerClassName="overflow-auto flex-1 flex flex-col max-h-full"
     >
-      <AddNewButton
-        className="mb-5"
-        onClick={handleClickAdd}
-        disabled={hasDraft}
-      />
-      <ul>
+      <div>
+        <AddNewButton
+          className="mb-5"
+          onClick={handleClickAdd}
+          disabled={hasDraft}
+        />
+      </div>
+      <ul className="flex-1 max-h-full overflow-y-auto">
         {newsItems.map((item) => {
           const isActive = item.id === selectedNewsItemId;
           const isDraft = isDraftNewsItem(item.id);
