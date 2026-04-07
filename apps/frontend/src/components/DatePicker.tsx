@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
@@ -57,10 +57,12 @@ export function DateRangePicker({
   // label,
   value,
   onSelect,
+  onClear,
 }: {
   // label: string;
   value: DateStringRange | undefined;
   onSelect: (value: DateStringRange) => void;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -96,6 +98,7 @@ export function DateRangePicker({
     // <Label className="flex w-fit flex-col items-start gap-2">
     //   <span>{label ?? "Date"}</span>
 
+    <div className="flex items-center gap-1">
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size={"slim"} className="font-normal">
@@ -117,6 +120,17 @@ export function DateRangePicker({
         />
       </PopoverContent>
     </Popover>
+    {onClear && value && (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7 text-muted-foreground hover:text-foreground"
+        onClick={onClear}
+      >
+        <XIcon className="size-4" />
+      </Button>
+    )}
+    </div>
     // </Label>
   );
 }

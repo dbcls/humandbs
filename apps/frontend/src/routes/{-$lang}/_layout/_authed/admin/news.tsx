@@ -1,35 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useState } from "react";
+import { useFilters } from "@/hooks/useFilters";
+import { newsAdminSearchParamsSchema } from "@/utils/queryParams";
 
-import { Skeleton } from "@/components/ui/skeleton";
-
-import { isDraftNewsItem } from "./-components/-draftNewsItem";
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/news")({
+  validateSearch: newsAdminSearchParamsSchema,
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const [selectedNewsItemId, setSelectedNewsItemId] = useState<
-    string | undefined
-  >();
+  const { selectedId } = Route.useSearch();
+  const { setFilters } = useFilters(Route.id);
+
+  function handleSelectNewsItem(id: string | undefined) {
+    setFilters({ selectedId: id });
+  }
 
   return (
     <>
-      <Suspense fallback={<Skeleton />}>
-        <NewsItemsList
-          selectedNewsItemId={selectedNewsItemId}
-          onSelectNewsItem={setSelectedNewsItemId}
-        />
-      </Suspense>
+      <NewsItemsList
+        selectedNewsItemId={selectedId}
+        onSelectNewsItem={handleSelectNewsItem}
+      />
 
-      {selectedNewsItemId ? (
+      {selectedId ? (
         <NewsItemContent
-          key={selectedNewsItemId}
-          selectedNewsItemId={selectedNewsItemId}
-          onSelectNewsItemId={setSelectedNewsItemId}
+          key={selectedId}
+          selectedNewsItemId={selectedId}
+          onSelectNewsItemId={handleSelectNewsItem}
         />
       ) : null}
     </>

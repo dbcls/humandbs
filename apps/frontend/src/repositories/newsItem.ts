@@ -1,4 +1,16 @@
-import { and, desc, eq, lte, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
@@ -68,6 +80,14 @@ export interface NewsItemUpdateInput {
   tags?: string[];
 }
 
+export interface NewsItemFilters {
+  titleOrContent?: string;
+  publishedFrom?: string;
+  publishedTo?: string;
+  isAlert?: boolean;
+  tagIds?: string[];
+}
+
 export interface NewsItemRepository {
   /**
    * Private
@@ -76,6 +96,7 @@ export interface NewsItemRepository {
   list: (options: {
     limit?: number;
     offset?: number;
+    filters?: NewsItemFilters;
   }) => Promise<NewsItemRecord[]>;
 
   /**
@@ -184,7 +205,7 @@ export function createNewsItemRepository(
       }));
     },
 
-    async list({ limit = 5, offset = 0 }) {
+    async list({ limit = 5, offset = 0, filters = {} }) {
       const news = await database.query.newsItem.findMany({
         with: {
           translations: true,
@@ -204,6 +225,75 @@ export function createNewsItemRepository(
         },
         columns: { authorId: false },
         orderBy: (table, { desc }) => [desc(table.createdAt)],
+        where: (table, { and, or, exists, notExists }) => {
+          const conditions = [];
+
+          if (filters.titleOrContent) {
+            const term = `%${filters.titleOrContent}%`;
+            conditions.push(
+              exists(
+                database
+                  .select({ _: newsTranslation.newsId })
+                  .from(newsTranslation)
+                  .where(
+                    and(
+                      eq(newsTranslation.newsId, table.id),
+                      or(
+                        ilike(newsTranslation.title, term),
+                        ilike(newsTranslation.content, term),
+                      ),
+                    ),
+                  ),
+              ),
+            );
+          }
+
+          if (filters.publishedFrom) {
+            conditions.push(gte(table.publishedAt, filters.publishedFrom));
+          }
+
+          if (filters.publishedTo) {
+            conditions.push(lte(table.publishedAt, filters.publishedTo));
+          }
+
+          if (filters.isAlert === true) {
+            conditions.push(
+              exists(
+                database
+                  .select({ _: alert.newsId })
+                  .from(alert)
+                  .where(eq(alert.newsId, table.id)),
+              ),
+            );
+          } else if (filters.isAlert === false) {
+            conditions.push(
+              notExists(
+                database
+                  .select({ _: alert.newsId })
+                  .from(alert)
+                  .where(eq(alert.newsId, table.id)),
+              ),
+            );
+          }
+
+          if (filters.tagIds && filters.tagIds.length > 0) {
+            conditions.push(
+              exists(
+                database
+                  .select({ _: newsItemTag.newsId })
+                  .from(newsItemTag)
+                  .where(
+                    and(
+                      eq(newsItemTag.newsId, table.id),
+                      inArray(newsItemTag.tagId, filters.tagIds),
+                    ),
+                  ),
+              ),
+            );
+          }
+
+          return conditions.length > 0 ? and(...conditions) : undefined;
+        },
         limit,
         offset,
       });

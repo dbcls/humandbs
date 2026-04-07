@@ -127,17 +127,35 @@ export function getNewsTranslationQueryOptions({
   });
 }
 
+const newsItemFiltersSchema = z.object({
+  titleOrContent: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  isAlert: z.boolean().optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
 export const $getNewsItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
-    }),
+    }).merge(newsItemFiltersSchema),
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
-    return newsItemRepository.list({ limit: data.limit, offset: data.offset });
+    return newsItemRepository.list({
+      limit: data.limit,
+      offset: data.offset,
+      filters: {
+        titleOrContent: data.titleOrContent,
+        publishedFrom: data.publishedFrom,
+        publishedTo: data.publishedTo,
+        isAlert: data.isAlert,
+        tagIds: data.tagIds,
+      },
+    });
   });
 
 export type NewsItemResponse = Awaited<
@@ -185,19 +203,33 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
 
 const NEWS_ITEMS_PAGE_SIZE = 20;
 
-export const newsItemsInfiniteQueryOptions = infiniteQueryOptions({
-  queryKey: ["news", "items"],
-  queryFn: ({ pageParam }: { pageParam: number }) =>
-    $getNewsItems({
-      data: { limit: NEWS_ITEMS_PAGE_SIZE, offset: pageParam },
-    }),
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, _allPages, lastPageParam) =>
-    lastPage.length < NEWS_ITEMS_PAGE_SIZE
-      ? undefined
-      : lastPageParam + NEWS_ITEMS_PAGE_SIZE,
-  staleTime: 1000 * 60 * 60 * 24, // 24 hours
-});
+export interface NewsItemsFilters {
+  titleOrContent?: string;
+  publishedFrom?: string;
+  publishedTo?: string;
+  isAlert?: boolean;
+  tagIds?: string[];
+}
+
+export function newsItemsInfiniteQueryOptions(filters: NewsItemsFilters = {}) {
+  return infiniteQueryOptions({
+    queryKey: ["news", "items", filters],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      $getNewsItems({
+        data: {
+          limit: NEWS_ITEMS_PAGE_SIZE,
+          offset: pageParam,
+          ...filters,
+        },
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length < NEWS_ITEMS_PAGE_SIZE
+        ? undefined
+        : lastPageParam + NEWS_ITEMS_PAGE_SIZE,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
 
 /**
  * Update news translation by newsItemId and locale. If existing, updates the existing item

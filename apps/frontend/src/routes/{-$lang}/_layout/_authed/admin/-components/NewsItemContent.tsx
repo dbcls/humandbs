@@ -29,7 +29,6 @@ import {
   $createTag,
   $updateNewsItem,
   getNewsItemQueryOptions,
-  newsItemsInfiniteQueryOptions,
   getTagsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
@@ -130,11 +129,13 @@ export function NewsItemContent({
   const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
   const { data: fetchedNewsItem } = useQuery(newsItemQO);
 
+  const newsListQueryFilter = { queryKey: ["news", "items"] };
+
   const newsItem =
     fetchedNewsItem ??
     queryClient
-      .getQueryData(newsItemsInfiniteQueryOptions.queryKey)
-      ?.pages.flat()
+      .getQueriesData<{ pages: NewsItemResponse[][] }>(newsListQueryFilter)
+      .flatMap(([, data]) => data?.pages.flat() ?? [])
       .find((item) => item.id === selectedNewsItemId);
 
   if (!newsItem) {
@@ -180,8 +181,12 @@ function NewsItemForm({
 
   const { data: allTags = [] } = useQuery(tagsQO);
 
+  const newsListQueryFilter = { queryKey: ["news", "items"] };
+
+  type NewsListData = { pages: NewsItemResponse[][]; pageParams: number[] };
+
   const { mutate: updateNewsItem } = useMutation({
-    mutationFn: async (values: FormDataType) => {
+    mutationFn: async ({ values }: { values: FormDataType; formApi: { reset: (values?: FormDataType) => void } }) => {
       return $updateNewsItem({
         data: {
           id: newsItem.id,
@@ -191,16 +196,14 @@ function NewsItemForm({
         },
       });
     },
-    onMutate: async (inputValues) => {
+    onMutate: async ({ values: inputValues }) => {
       if (!newsItem?.id) return;
 
       await queryClient.cancelQueries(newsItemQO);
-      await queryClient.cancelQueries(newsItemsInfiniteQueryOptions);
+      await queryClient.cancelQueries(newsListQueryFilter);
 
       const prevNewsItem = queryClient.getQueryData(newsItemQO.queryKey);
-      const prevNewsListItems = queryClient.getQueryData(
-        newsItemsInfiniteQueryOptions.queryKey,
-      );
+      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
       const optimisticNewsItem = getOptimisticallyUpdatedNewsValue(
         newsItem,
@@ -209,7 +212,7 @@ function NewsItemForm({
       );
       queryClient.setQueryData(newsItemQO.queryKey, optimisticNewsItem);
 
-      queryClient.setQueryData(newsItemsInfiniteQueryOptions.queryKey, (prev) => {
+      queryClient.setQueriesData<NewsListData>(newsListQueryFilter, (prev) => {
         if (!prev) return prev;
         return {
           ...prev,
@@ -221,14 +224,16 @@ function NewsItemForm({
         };
       });
 
-      return { prevNewsListItems, prevNewsItem };
+      return { prevNewsListEntries, prevNewsItem };
+    },
+    onSuccess: (_, { values, formApi }) => {
+      formApi.reset(values);
     },
     onError: (_, __, context) => {
-      if (context?.prevNewsListItems) {
-        queryClient.setQueryData(
-          newsItemsInfiniteQueryOptions.queryKey,
-          context.prevNewsListItems,
-        );
+      if (context?.prevNewsListEntries) {
+        for (const [queryKey, data] of context.prevNewsListEntries) {
+          queryClient.setQueryData(queryKey, data);
+        }
       }
       if (context?.prevNewsItem) {
         queryClient.setQueryData(newsItemQO.queryKey, context.prevNewsItem);
@@ -236,7 +241,7 @@ function NewsItemForm({
     },
     onSettled: () => {
       queryClient.invalidateQueries(newsItemQO);
-      queryClient.invalidateQueries(newsItemsInfiniteQueryOptions);
+      queryClient.invalidateQueries(newsListQueryFilter);
     },
   });
 
@@ -252,9 +257,9 @@ function NewsItemForm({
       });
     },
     onMutate: async (inputValues) => {
-      await queryClient.cancelQueries(newsItemsInfiniteQueryOptions);
+      await queryClient.cancelQueries(newsListQueryFilter);
 
-      const prevNewsListItems = queryClient.getQueryData(newsItemsInfiniteQueryOptions.queryKey);
+      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
       const optimisticNewsItem = getOptimisticallyCreatedNewsItem(
         user,
@@ -262,7 +267,7 @@ function NewsItemForm({
         allTags,
       );
 
-      queryClient.setQueryData(newsItemsInfiniteQueryOptions.queryKey, (prev) => {
+      queryClient.setQueriesData<NewsListData>(newsListQueryFilter, (prev) => {
         if (!prev) return prev;
         return {
           ...prev,
@@ -281,7 +286,7 @@ function NewsItemForm({
 
       onSelectNewsItemId(optimisticNewsItem.id);
 
-      return { prevNewsListItems };
+      return { prevNewsListEntries };
     },
     onSuccess: (newItem) => {
       queryClient.setQueryData(
@@ -291,13 +296,15 @@ function NewsItemForm({
       onSelectNewsItemId(newItem.id);
     },
     onError: (_, __, context) => {
-      if (context?.prevNewsListItems) {
-        queryClient.setQueryData(newsItemsInfiniteQueryOptions.queryKey, context.prevNewsListItems);
+      if (context?.prevNewsListEntries) {
+        for (const [queryKey, data] of context.prevNewsListEntries) {
+          queryClient.setQueryData(queryKey, data);
+        }
       }
       onSelectNewsItemId(DRAFT_NEWS_ID);
     },
     onSettled: () => {
-      queryClient.invalidateQueries(newsItemsInfiniteQueryOptions);
+      queryClient.invalidateQueries(newsListQueryFilter);
     },
   });
 
@@ -314,7 +321,7 @@ function NewsItemForm({
       if (mode === "create") {
         createNewsItem(value);
       } else {
-        updateNewsItem(value);
+        updateNewsItem({ values: value, formApi });
       }
     },
   });
