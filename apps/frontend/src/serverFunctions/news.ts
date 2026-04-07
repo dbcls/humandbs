@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -183,16 +183,21 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
     });
   });
 
-export function getNewsItemsQueryOptions(param?: {
-  limit?: number;
-  offset?: number;
-}) {
-  return queryOptions({
-    queryKey: ["news", "items", param?.limit, param?.offset],
-    queryFn: () =>
-      $getNewsItems({ data: { limit: param?.limit, offset: param?.offset } }),
-  });
-}
+const NEWS_ITEMS_PAGE_SIZE = 20;
+
+export const newsItemsInfiniteQueryOptions = infiniteQueryOptions({
+  queryKey: ["news", "items"],
+  queryFn: ({ pageParam }: { pageParam: number }) =>
+    $getNewsItems({
+      data: { limit: NEWS_ITEMS_PAGE_SIZE, offset: pageParam },
+    }),
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+    lastPage.length < NEWS_ITEMS_PAGE_SIZE
+      ? undefined
+      : lastPageParam + NEWS_ITEMS_PAGE_SIZE,
+  staleTime: 1000 * 60 * 60 * 24, // 24 hours
+});
 
 /**
  * Update news translation by newsItemId and locale. If existing, updates the existing item

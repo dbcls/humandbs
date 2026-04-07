@@ -1,5 +1,6 @@
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { LucideBell, Trash2Icon } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
@@ -7,7 +8,7 @@ import { ListItem } from "@/components/ListItem";
 import { TrashButton } from "@/components/TrashButton";
 import {
   $deleteNewsItem,
-  getNewsItemsQueryOptions,
+  newsItemsInfiniteQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -17,7 +18,6 @@ import { cn } from "@/lib/utils";
 import {
   createDraftNewsItem,
   DRAFT_NEWS_ID,
-  draftNewsItemQO,
   isDraftNewsItem,
 } from "./-draftNewsItem";
 import { AddNewButton } from "./AddNewButton";
@@ -37,11 +37,30 @@ export function NewsItemsList({
 
   const queryClient = useQueryClient();
 
-  const listQO = getNewsItemsQueryOptions();
+  const listQO = newsItemsInfiniteQueryOptions;
 
-  const { data: newsItems } = useSuspenseQuery(listQO);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(listQO);
+
+  const newsItems = data.pages.flat();
 
   const locale = useLocale();
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   async function handleClickDeleteNewsItem(item: NewsItemResponse) {
     openConfirmation({
@@ -51,7 +70,7 @@ export function NewsItemsList({
       }),
       onAction: async () => {
         await $deleteNewsItem({ data: { id: item.id } });
-        queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+        queryClient.invalidateQueries(listQO);
       },
       cancelLabel: t("cancel"),
       actionLabel: (
@@ -63,10 +82,11 @@ export function NewsItemsList({
     });
   }
 
+  const hasDraft = newsItems.some((item) => isDraftNewsItem(item.id));
+
   /** Add draft dummy to query cache */
   function handleClickAdd() {
-    const existing = queryClient.getQueryData(listQO.queryKey);
-    if (existing?.some((item) => isDraftNewsItem(item.id))) {
+    if (hasDraft) {
       onSelectNewsItem(DRAFT_NEWS_ID);
       return;
     }
@@ -76,30 +96,39 @@ export function NewsItemsList({
     });
 
     queryClient.setQueryData(listQO.queryKey, (prev) => {
-      return prev ? [draft, ...prev] : [draft];
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page, i) =>
+          i === 0 ? [draft, ...page] : page,
+        ),
+      };
     });
-
-    queryClient.setQueryData(draftNewsItemQO.queryKey, draft);
 
     onSelectNewsItem(DRAFT_NEWS_ID);
   }
 
   function handleDiscardDraft() {
-    queryClient.setQueryData(listQO.queryKey, (old) =>
-      old?.filter((i) => !isDraftNewsItem(i.id)),
-    );
-
+    queryClient.setQueryData(listQO.queryKey, (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.filter((i) => !isDraftNewsItem(i.id)),
+        ),
+      };
+    });
     onSelectNewsItem(undefined);
   }
+
   function handleClickDelete(item: NewsItemResponse) {
-    const isDraft = isDraftNewsItem(item.id);
-    if (isDraft) {
+    if (isDraftNewsItem(item.id)) {
       handleDiscardDraft();
     } else {
       handleClickDeleteNewsItem(item);
     }
   }
-  const isCreateMode = newsItems.some((item) => isDraftNewsItem(item.id));
+
   return (
     <Card
       caption="News"
@@ -109,7 +138,7 @@ export function NewsItemsList({
       <AddNewButton
         className="mb-5"
         onClick={handleClickAdd}
-        disabled={!!isCreateMode}
+        disabled={hasDraft}
       />
       <ul>
         {newsItems.map((item) => {
@@ -166,6 +195,7 @@ export function NewsItemsList({
           );
         })}
       </ul>
+      <div ref={sentinelRef} className="h-1" />
     </Card>
   );
 }

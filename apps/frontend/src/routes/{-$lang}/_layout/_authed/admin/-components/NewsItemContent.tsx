@@ -29,13 +29,13 @@ import {
   $createTag,
   $updateNewsItem,
   getNewsItemQueryOptions,
-  getNewsItemsQueryOptions,
+  newsItemsInfiniteQueryOptions,
   getTagsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
 import type { DateStringRange } from "@/utils/dates";
 import { Label } from "@/components/ui/label";
-import { isDraftNewsItem } from "./-draftNewsItem";
+import { DRAFT_NEWS_ID, isDraftNewsItem } from "./-draftNewsItem";
 import { useRouteContext } from "@tanstack/react-router";
 import type { SessionUser } from "@/utils/jwt-helpers";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -120,12 +120,22 @@ function getOptimisticallyCreatedNewsItem(
 export function NewsItemContent({
   selectedNewsItemId,
   className,
+  onSelectNewsItemId,
 }: {
   selectedNewsItemId: string;
   className?: string;
+  onSelectNewsItemId: (id: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
-  const { data: newsItem } = useQuery(newsItemQO);
+  const { data: fetchedNewsItem } = useQuery(newsItemQO);
+
+  const newsItem =
+    fetchedNewsItem ??
+    queryClient
+      .getQueryData(newsItemsInfiniteQueryOptions.queryKey)
+      ?.pages.flat()
+      .find((item) => item.id === selectedNewsItemId);
 
   if (!newsItem) {
     return (
@@ -139,23 +149,30 @@ export function NewsItemContent({
     );
   }
 
-  return <NewsItemForm newsItem={newsItem} className={className} />;
+  return (
+    <NewsItemForm
+      key={newsItem.id}
+      newsItem={newsItem}
+      className={className}
+      onSelectNewsItemId={onSelectNewsItemId}
+    />
+  );
 }
 
 function NewsItemForm({
   newsItem,
   className,
+  onSelectNewsItemId,
 }: {
   newsItem: NewsItemResponse;
   className?: string;
+  onSelectNewsItemId: (id: string) => void;
 }) {
   const { user } = useRouteContext({ from: "__root__" });
   const mode = isDraftNewsItem(newsItem.id) ? "create" : "update";
   const locale = useLocale();
 
   const queryClient = useQueryClient();
-
-  const newsItemsListQO = getNewsItemsQueryOptions();
 
   const newsItemQO = getNewsItemQueryOptions(newsItem.id);
 
@@ -178,11 +195,11 @@ function NewsItemForm({
       if (!newsItem?.id) return;
 
       await queryClient.cancelQueries(newsItemQO);
-      await queryClient.cancelQueries(newsItemsListQO);
+      await queryClient.cancelQueries(newsItemsInfiniteQueryOptions);
 
       const prevNewsItem = queryClient.getQueryData(newsItemQO.queryKey);
       const prevNewsListItems = queryClient.getQueryData(
-        newsItemsListQO.queryKey,
+        newsItemsInfiniteQueryOptions.queryKey,
       );
 
       const optimisticNewsItem = getOptimisticallyUpdatedNewsValue(
@@ -192,15 +209,16 @@ function NewsItemForm({
       );
       queryClient.setQueryData(newsItemQO.queryKey, optimisticNewsItem);
 
-      queryClient.setQueryData(newsItemsListQO.queryKey, (prev) => {
+      queryClient.setQueryData(newsItemsInfiniteQueryOptions.queryKey, (prev) => {
         if (!prev) return prev;
-
-        return prev.map((item) => {
-          if (item.id === newsItem?.id) {
-            return optimisticNewsItem;
-          }
-          return item;
-        });
+        return {
+          ...prev,
+          pages: prev.pages.map((page) =>
+            page.map((item) =>
+              item.id === newsItem.id ? optimisticNewsItem : item,
+            ),
+          ),
+        };
       });
 
       return { prevNewsListItems, prevNewsItem };
@@ -208,7 +226,7 @@ function NewsItemForm({
     onError: (_, __, context) => {
       if (context?.prevNewsListItems) {
         queryClient.setQueryData(
-          newsItemsListQO.queryKey,
+          newsItemsInfiniteQueryOptions.queryKey,
           context.prevNewsListItems,
         );
       }
@@ -218,7 +236,7 @@ function NewsItemForm({
     },
     onSettled: () => {
       queryClient.invalidateQueries(newsItemQO);
-      queryClient.invalidateQueries(newsItemsListQO);
+      queryClient.invalidateQueries(newsItemsInfiniteQueryOptions);
     },
   });
 
@@ -234,7 +252,9 @@ function NewsItemForm({
       });
     },
     onMutate: async (inputValues) => {
-      await queryClient.cancelQueries(newsItemsListQO);
+      await queryClient.cancelQueries(newsItemsInfiniteQueryOptions);
+
+      const prevNewsListItems = queryClient.getQueryData(newsItemsInfiniteQueryOptions.queryKey);
 
       const optimisticNewsItem = getOptimisticallyCreatedNewsItem(
         user,
@@ -242,22 +262,42 @@ function NewsItemForm({
         allTags,
       );
 
-      queryClient.setQueryData(newsItemsListQO.queryKey, (prev) => {
-        if (!prev) return [optimisticNewsItem];
-        const newItems = prev.filter(
-          (prevItem) => !isDraftNewsItem(prevItem.id),
-        );
-        return [optimisticNewsItem, ...newItems];
+      queryClient.setQueryData(newsItemsInfiniteQueryOptions.queryKey, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) =>
+            page.map((item) =>
+              isDraftNewsItem(item.id) ? optimisticNewsItem : item,
+            ),
+          ),
+        };
       });
+
+      queryClient.setQueryData(
+        getNewsItemQueryOptions(optimisticNewsItem.id).queryKey,
+        optimisticNewsItem,
+      );
+
+      onSelectNewsItemId(optimisticNewsItem.id);
+
+      return { prevNewsListItems };
     },
     onSuccess: (newItem) => {
       queryClient.setQueryData(
         getNewsItemQueryOptions(newItem.id).queryKey,
         newItem,
       );
+      onSelectNewsItemId(newItem.id);
+    },
+    onError: (_, __, context) => {
+      if (context?.prevNewsListItems) {
+        queryClient.setQueryData(newsItemsInfiniteQueryOptions.queryKey, context.prevNewsListItems);
+      }
+      onSelectNewsItemId(DRAFT_NEWS_ID);
     },
     onSettled: () => {
-      queryClient.invalidateQueries(newsItemsListQO);
+      queryClient.invalidateQueries(newsItemsInfiniteQueryOptions);
     },
   });
 
@@ -268,7 +308,7 @@ function NewsItemForm({
       alertRange: newsItem.alert,
       locale: i18n.defaultLocale,
       publishedAt: newsItem.publishedAt,
-      tags: newsItem.tags.map((t) => t.id),
+      tags: newsItem.tags?.map((t) => t.id) ?? [],
     } as FormDataType,
     onSubmit: ({ value, formApi }) => {
       if (mode === "create") {
@@ -295,9 +335,9 @@ function NewsItemForm({
     return Object.fromEntries(
       i18n.locales.map((loc) => [
         loc,
-        state.values.translations[loc]?.title !==
+        state.values.translations?.[loc]?.title !==
           defaults.translations?.[loc]?.title ||
-          state.values.translations[loc]?.content !==
+          state.values.translations?.[loc]?.content !==
             defaults.translations?.[loc]?.content,
       ]),
     ) as Record<Locale, boolean>;
@@ -361,7 +401,7 @@ function NewsItemForm({
           <>
             <TitleValue
               title="Created at:"
-              value={newsItem.createdAt.toLocaleDateString(locale)}
+              value={newsItem.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
             />
             <TitleValue
               title="Updated at:"

@@ -29,6 +29,7 @@ function RouteComponent() {
         <NewsItemContent
           key={selectedNewsItemId}
           selectedNewsItemId={selectedNewsItemId}
+          onSelectNewsItemId={setSelectedNewsItemId}
         />
       ) : null}
     </>
