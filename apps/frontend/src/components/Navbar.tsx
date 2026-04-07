@@ -202,17 +202,15 @@ function NavItem({
           </NavigationMenuContent>
         </>
       ) : (
-        <NavigationMenuItem>
-          <NavigationMenuLink asChild>
-            <Link
-              variant="nav"
-              className="whitespace-nowrap"
-              {...item.linkOptions}
-            >
-              {t(item.id)}
-            </Link>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
+        <NavigationMenuLink asChild>
+          <Link
+            variant="nav"
+            className="whitespace-nowrap"
+            {...item.linkOptions}
+          >
+            {t(item.id)}
+          </Link>
+        </NavigationMenuLink>
       )}
     </NavigationMenuItem>
   );

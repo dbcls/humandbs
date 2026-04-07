@@ -14,29 +14,32 @@ import useConfirmationStore from "@/stores/confirmationStore";
 
 import { Tag } from "@/components/StatusTag";
 import { cn } from "@/lib/utils";
-import { isDraftNewsItem } from "../-draftNewsItem";
+import {
+  createDraftNewsItem,
+  DRAFT_NEWS_ID,
+  draftNewsItemQO,
+  isDraftNewsItem,
+} from "../-draftNewsItem";
 import { AddNewButton } from "./AddNewButton";
+import { TagPill } from "@/components/TagPill";
+import { useRouteContext } from "@tanstack/react-router";
 
 export function NewsItemsList({
-  onClickAdd,
-  selectedNewsItem,
+  selectedNewsItemId,
   onSelectNewsItem,
-  draftNewsItem,
-  onDiscardDraft,
 }: {
-  onClickAdd: () => void;
-  selectedNewsItem: NewsItemResponse | undefined;
-  onSelectNewsItem: (item: NewsItemResponse) => void;
-  draftNewsItem: NewsItemResponse | null;
-  onDiscardDraft: () => void;
+  selectedNewsItemId: string | undefined;
+  onSelectNewsItem: (itemId: string | undefined) => void;
 }) {
+  const { user } = useRouteContext({ from: "__root__" });
   const { openConfirmation } = useConfirmationStore();
   const t = useTranslations("DeleteDialog");
 
   const queryClient = useQueryClient();
-  const { data: newsItems } = useSuspenseQuery(
-    getNewsItemsQueryOptions({ limit: 100 }),
-  );
+
+  const listQO = getNewsItemsQueryOptions();
+
+  const { data: newsItems } = useSuspenseQuery(listQO);
 
   const locale = useLocale();
 
@@ -60,10 +63,43 @@ export function NewsItemsList({
     });
   }
 
-  const allItems = draftNewsItem
-    ? [draftNewsItem, ...newsItems]
-    : newsItems;
+  /** Add draft dummy to query cache */
+  function handleClickAdd() {
+    const existing = queryClient.getQueryData(listQO.queryKey);
+    if (existing?.some((item) => isDraftNewsItem(item.id))) {
+      onSelectNewsItem(DRAFT_NEWS_ID);
+      return;
+    }
+    const draft = createDraftNewsItem({
+      name: user?.name ?? null,
+      email: user?.email ?? "",
+    });
 
+    queryClient.setQueryData(listQO.queryKey, (prev) => {
+      return prev ? [draft, ...prev] : [draft];
+    });
+
+    queryClient.setQueryData(draftNewsItemQO.queryKey, draft);
+
+    onSelectNewsItem(DRAFT_NEWS_ID);
+  }
+
+  function handleDiscardDraft() {
+    queryClient.setQueryData(listQO.queryKey, (old) =>
+      old?.filter((i) => !isDraftNewsItem(i.id)),
+    );
+
+    onSelectNewsItem(undefined);
+  }
+  function handleClickDelete(item: NewsItemResponse) {
+    const isDraft = isDraftNewsItem(item.id);
+    if (isDraft) {
+      handleDiscardDraft();
+    } else {
+      handleClickDeleteNewsItem(item);
+    }
+  }
+  const isCreateMode = newsItems.some((item) => isDraftNewsItem(item.id));
   return (
     <Card
       caption="News"
@@ -72,17 +108,17 @@ export function NewsItemsList({
     >
       <AddNewButton
         className="mb-5"
-        onClick={onClickAdd}
-        disabled={!!draftNewsItem}
+        onClick={handleClickAdd}
+        disabled={!!isCreateMode}
       />
       <ul>
-        {allItems.map((item) => {
-          const isActive = item.id === selectedNewsItem?.id;
+        {newsItems.map((item) => {
+          const isActive = item.id === selectedNewsItemId;
           const isDraft = isDraftNewsItem(item.id);
           return (
             <ListItem
               key={item.id}
-              onClick={() => onSelectNewsItem(item)}
+              onClick={() => onSelectNewsItem(item.id)}
               isActive={isActive}
               className={cn({ "border border-dashed": isDraft })}
             >
@@ -111,17 +147,9 @@ export function NewsItemsList({
                 {item.tags && item.tags.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {item.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{
-                          backgroundColor: `${tag.color ?? "#e5e7eb"}22`,
-                          color: tag.color ?? "#6b7280",
-                          border: `1px solid ${tag.color ?? "#e5e7eb"}`,
-                        }}
-                      >
+                      <TagPill key={tag.id} color={tag.color}>
                         {tag.name}
-                      </span>
+                      </TagPill>
                     ))}
                   </div>
                 )}
@@ -130,11 +158,7 @@ export function NewsItemsList({
               <TrashButton
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isDraft) {
-                    onDiscardDraft();
-                  } else {
-                    handleClickDeleteNewsItem(item);
-                  }
+                  handleClickDelete(item);
                 }}
                 isActive={isActive}
               />

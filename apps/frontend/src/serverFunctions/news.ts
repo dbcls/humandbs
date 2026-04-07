@@ -144,6 +144,31 @@ export type NewsItemResponse = Awaited<
   ReturnType<typeof $getNewsItems>
 >[number];
 
+/**
+ * Get news item with tags, alerts & translations by its id.
+ */
+export const $getNewsItem = createServerFn()
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data, context }) => {
+    context.checkPermission("news", "view");
+
+    const item = await newsItemRepository.get({ id: data.id });
+
+    if (!item) {
+      throw Response.json({ message: "Not found" }, { status: 404 });
+    }
+    return item;
+  });
+
+export function getNewsItemQueryOptions(id: string) {
+  return queryOptions({
+    queryKey: ["news", "item", id],
+    queryFn: () => $getNewsItem({ data: { id } }),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
 export const $updateNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(newsItemUpdateSchema)
@@ -158,16 +183,14 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
     });
   });
 
-export function getNewsItemsQueryOptions({
-  limit,
-  offset,
-}: {
+export function getNewsItemsQueryOptions(param?: {
   limit?: number;
   offset?: number;
 }) {
   return queryOptions({
-    queryKey: ["news", "items", limit, offset],
-    queryFn: () => $getNewsItems({ data: { limit, offset } }),
+    queryKey: ["news", "items", param?.limit, param?.offset],
+    queryFn: () =>
+      $getNewsItems({ data: { limit: param?.limit, offset: param?.offset } }),
   });
 }
 

@@ -1,9 +1,15 @@
 import { and, desc, eq, lte, sql } from "drizzle-orm";
 
-import { i18n, type Locale } from "@/config/i18n";
+import { type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
-import { alert, newsItem, newsItemTag, newsTag, newsTranslation } from "@/db/schema";
-import type { NewsTranslationUpsert } from "@/db/types";
+import {
+  alert,
+  newsItem,
+  newsItemTag,
+  newsTag,
+  newsTranslation,
+} from "@/db/schema";
+import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
 import { toDateString } from "@/utils/dates";
 
 export interface NewsTitleItem {
@@ -67,7 +73,16 @@ export interface NewsItemRepository {
    * Private
    * Get paginated list of news items with translations, alert, author, and tags.
    */
-  list: (options: { limit?: number; offset?: number }) => Promise<NewsItemRecord[]>;
+  list: (options: {
+    limit?: number;
+    offset?: number;
+  }) => Promise<NewsItemRecord[]>;
+
+  /**
+   * Public
+   * Get a news item by id
+   */
+  get: (options: { id: string }) => Promise<NewsItemRecord | undefined>;
 
   /**
    * Public
@@ -102,6 +117,22 @@ function mapTags(
   rawTags: { tag: { id: string; name: string; color: string | null } }[],
 ): NewsTag[] {
   return rawTags.map((t) => t.tag);
+}
+
+function mapTranslations(
+  translation: NewsTranslationSelect[],
+): Partial<Record<Locale, NewsItemTranslation>> {
+  return translation.reduce<Partial<Record<Locale, NewsItemTranslation>>>(
+    (acc, curr) => {
+      acc[curr.lang as Locale] = {
+        content: curr.content,
+        title: curr.title,
+        updatedAt: curr.updatedAt,
+      };
+      return acc;
+    },
+    {},
+  );
 }
 
 async function syncTags(
@@ -181,20 +212,48 @@ export function createNewsItemRepository(
         ...item,
         alert: item.alert ?? null,
         tags: mapTags(item.tags),
-        translations: item.translations.reduce<
-          Partial<Record<Locale, NewsItemTranslation>>
-        >((acc, curr) => {
-          acc[curr.lang as Locale] = {
-            content: curr.content,
-            title: curr.title,
-            updatedAt: curr.updatedAt,
-          };
-          return acc;
-        }, {}),
+        translations: mapTranslations(item.translations),
       }));
     },
 
-    async create({ authorId, publishedAt, translations, alert: alertInput, tags = [] }) {
+    async get({ id }) {
+      const item = await database.query.newsItem.findFirst({
+        where: (table, { eq }) => eq(table.id, id),
+        with: {
+          translations: true,
+          alert: {
+            columns: { from: true, to: true },
+          },
+          author: {
+            columns: { name: true, email: true },
+          },
+          tags: {
+            with: {
+              tag: {
+                columns: { id: true, name: true, color: true },
+              },
+            },
+          },
+        },
+        columns: { authorId: false },
+      });
+
+      if (!item) return undefined;
+
+      return {
+        ...item,
+        tags: mapTags(item.tags),
+        alert: item.alert ?? null,
+        translations: mapTranslations(item.translations),
+      };
+    },
+    async create({
+      authorId,
+      publishedAt,
+      translations,
+      alert: alertInput,
+      tags = [],
+    }) {
       return database.transaction(async (tx) => {
         const [created] = await tx
           .insert(newsItem)
@@ -273,7 +332,13 @@ export function createNewsItemRepository(
       });
     },
 
-    async update({ id, publishedAt, translations, alert: alertInput, tags = [] }) {
+    async update({
+      id,
+      publishedAt,
+      translations,
+      alert: alertInput,
+      tags = [],
+    }) {
       await database.transaction(async (tx) => {
         await tx
           .update(newsItem)

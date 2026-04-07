@@ -1,4 +1,7 @@
-import type { NewsItemResponse } from "@/serverFunctions/news";
+import {
+  getNewsItemQueryOptions,
+  type NewsItemResponse,
+} from "@/serverFunctions/news";
 
 export const DRAFT_NEWS_ID = "draft-news-item" as const;
 
@@ -16,6 +19,8 @@ export function createDraftNewsItem(author: {
     tags: [],
   };
 }
+
+export const draftNewsItemQO = getNewsItemQueryOptions(DRAFT_NEWS_ID);
 
 export function isDraftNewsItem(id: string): boolean {
   return id === DRAFT_NEWS_ID;
