@@ -110,7 +110,8 @@
     "info": "Info",
     "releaseDate": "Release date",
     "typeOfData": "Type of data",
-    "criteria": "Criteria"
+    "criteria": "Criteria",
+    "experiments": "Experiments"
   },
   "Data-submission": {
     "data-submission": "Data submission",

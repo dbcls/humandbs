@@ -110,7 +110,8 @@
     "info": "情報",
     "releaseDate": "公開日付",
     "typeOfData": "データの種類",
-    "criteria": "アクセス制限"
+    "criteria": "アクセス制限",
+    "experiments": "実験一覧"
   },
   "Data-submission": {
     "data-submission": "データの提供",
