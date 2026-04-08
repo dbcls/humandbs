@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import type { SiteNavigationConfig } from "@/config/site-navigation";
 
-const multilingualLabelSchema = z.record(z.string(), z.string());
+const localizedLabelValueSchema = z.string().trim().min(1);
+const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);
 
 const navigationGroupItemSchema = z.object({
   id: z.string().uuid(),
@@ -33,7 +34,9 @@ const navigationItemSchema = z.object({
       enabled: z.boolean(),
       visibility: z.enum(["essential", "secondary"]),
       order: z.number().int(),
-      priority: z.enum(["important", "medium", "optional"]).default("important"),
+      priority: z
+        .enum(["important", "medium", "optional"])
+        .default("important"),
       parentItemId: z.string().uuid().optional(),
     })
     .optional(),
@@ -82,6 +85,13 @@ export const siteNavigationConfigSchema = z
           message: `Link item "${item.id}" must have a url.`,
         });
       }
+
+      if (item.type === "link" && !item.label?.en?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Link item "${item.id}" must have a non-empty English label.`,
+        });
+      }
     }
 
     // Validate each zone
@@ -100,6 +110,13 @@ export const siteNavigationConfigSchema = z
       const assignedItemIds = new Set<string>();
 
       for (const group of zone.groups) {
+        if (!group.label.en?.trim()) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Group "${group.id}" in zone "${zoneName}" must have a non-empty English label.`,
+          });
+        }
+
         // parentGroupId must reference an existing group in the same zone
         if (group.parentGroupId && !groupIds.has(group.parentGroupId)) {
           ctx.addIssue({
@@ -152,14 +169,19 @@ export const siteNavigationConfigSchema = z
       if (!inFooter && !inNavbar) {
         ctx.addIssue({
           code: "custom",
-          message: 'The protected navigation item "home" cannot be hidden from both navbar and footer.',
+          message:
+            'The protected navigation item "home" cannot be hidden from both navbar and footer.',
         });
       }
     }
   });
 
-export type SiteNavigationConfigInput = z.input<typeof siteNavigationConfigSchema>;
-export type SiteNavigationConfigOutput = z.output<typeof siteNavigationConfigSchema>;
+export type SiteNavigationConfigInput = z.input<
+  typeof siteNavigationConfigSchema
+>;
+export type SiteNavigationConfigOutput = z.output<
+  typeof siteNavigationConfigSchema
+>;
 
 export function parseSiteNavigationConfig(data: unknown): SiteNavigationConfig {
   return siteNavigationConfigSchema.parse(data) as SiteNavigationConfig;

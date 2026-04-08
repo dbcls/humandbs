@@ -11,9 +11,7 @@
  * row is already in the new shape), it exits without changes.
  */
 
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { Pool } from "pg";
 
 // ---------------------------------------------------------------------------
 // Old shape types (kept here to avoid importing from the deleted source)
@@ -93,28 +91,31 @@ interface NewConfig {
 
 // These are the stable UUIDs from the new default config
 const ITEM_ID_MAP: Record<string, string> = {
-  "home":                               "00000000-0000-0000-0000-000000000001",
-  "data-submission":                    "00000000-0000-0000-0000-000000000002",
-  "guidelines":                         "00000000-0000-0000-0000-000000000003",
-  "data-sharing-guidelines":            "00000000-0000-0000-0000-000000000004",
-  "security-guidelines-for-users":      "00000000-0000-0000-0000-000000000005",
+  home: "00000000-0000-0000-0000-000000000001",
+  "data-submission": "00000000-0000-0000-0000-000000000002",
+  guidelines: "00000000-0000-0000-0000-000000000003",
+  "data-sharing-guidelines": "00000000-0000-0000-0000-000000000004",
+  "security-guidelines-for-users": "00000000-0000-0000-0000-000000000005",
   "security-guidelines-for-submitters": "00000000-0000-0000-0000-000000000006",
-  "security-guidelines-for-dbcenters":  "00000000-0000-0000-0000-000000000007",
-  "data-usage":                         "00000000-0000-0000-0000-000000000008",
-  "research-list":                      "00000000-0000-0000-0000-000000000009",
-  "dataset-list":                       "00000000-0000-0000-0000-000000000010",
-  "data-processing":                    "00000000-0000-0000-0000-000000000011",
-  "off-premise-server":                 "00000000-0000-0000-0000-000000000012",
-  "dac":                                "00000000-0000-0000-0000-000000000013",
-  "publications":                       "00000000-0000-0000-0000-000000000014",
-  "violation":                          "00000000-0000-0000-0000-000000000015",
-  "privacy-policy":                     "00000000-0000-0000-0000-000000000016",
-  "faq":                                "00000000-0000-0000-0000-000000000017",
-  "supported-browsers":                 "00000000-0000-0000-0000-000000000018",
+  "security-guidelines-for-dbcenters": "00000000-0000-0000-0000-000000000007",
+  "data-usage": "00000000-0000-0000-0000-000000000008",
+  "research-list": "00000000-0000-0000-0000-000000000009",
+  "dataset-list": "00000000-0000-0000-0000-000000000010",
+  "data-processing": "00000000-0000-0000-0000-000000000011",
+  "off-premise-server": "00000000-0000-0000-0000-000000000012",
+  dac: "00000000-0000-0000-0000-000000000013",
+  publications: "00000000-0000-0000-0000-000000000014",
+  violation: "00000000-0000-0000-0000-000000000015",
+  "privacy-policy": "00000000-0000-0000-0000-000000000016",
+  faq: "00000000-0000-0000-0000-000000000017",
+  "supported-browsers": "00000000-0000-0000-0000-000000000018",
 };
 
 // Items that are link-type (route-only, no CMS document)
-const LINK_ITEMS: Record<string, { url: string; label: Record<string, string> }> = {
+const LINK_ITEMS: Record<
+  string,
+  { url: string; label: Record<string, string> }
+> = {
   "research-list": {
     url: "/data-use/research",
     label: { en: "Research List", ja: "研究一覧" },
@@ -127,19 +128,19 @@ const LINK_ITEMS: Record<string, { url: string; label: Record<string, string> }>
 
 // Old footer group ID → new UUID + inline labels
 const GROUP_ID_MAP: Record<string, string> = {
-  "overview":    "00000000-0000-0001-0000-000000000001",
-  "guidelines":  "00000000-0000-0001-0000-000000000002",
-  "submission":  "00000000-0000-0001-0000-000000000003",
-  "usage":       "00000000-0000-0001-0000-000000000004",
-  "policy":      "00000000-0000-0001-0000-000000000005",
+  overview: "00000000-0000-0001-0000-000000000001",
+  guidelines: "00000000-0000-0001-0000-000000000002",
+  submission: "00000000-0000-0001-0000-000000000003",
+  usage: "00000000-0000-0001-0000-000000000004",
+  policy: "00000000-0000-0001-0000-000000000005",
 };
 
 const GROUP_LABELS: Record<string, Record<string, string>> = {
-  "overview":   { en: "Overview",   ja: "概要" },
-  "guidelines": { en: "Guidelines", ja: "ガイドライン" },
-  "submission": { en: "Submission", ja: "提供" },
-  "usage":      { en: "Usage",      ja: "利用" },
-  "policy":     { en: "Policies",   ja: "ポリシー" },
+  overview: { en: "Overview", ja: "概要" },
+  guidelines: { en: "Guidelines", ja: "ガイドライン" },
+  submission: { en: "Submission", ja: "提供" },
+  usage: { en: "Usage", ja: "利用" },
+  policy: { en: "Policies", ja: "ポリシー" },
 };
 
 // ---------------------------------------------------------------------------
@@ -176,7 +177,9 @@ function migrateConfig(old: OldConfig): NewConfig {
     };
 
     if (item.navbar) {
-      const parentNewId = item.parentId ? ITEM_ID_MAP[item.parentId] : undefined;
+      const parentNewId = item.parentId
+        ? ITEM_ID_MAP[item.parentId]
+        : undefined;
       if (item.parentId && !parentNewId) {
         throw new Error(`Unknown old parentId: ${item.parentId}`);
       }
@@ -219,7 +222,10 @@ function migrateConfig(old: OldConfig): NewConfig {
 
       return {
         id: newGroupId,
-        label: GROUP_LABELS[oldGroup.id] ?? { en: oldGroup.id, ja: oldGroup.id },
+        label: GROUP_LABELS[oldGroup.id] ?? {
+          en: oldGroup.id,
+          ja: oldGroup.id,
+        },
         order: (idx + 1) * 10,
         enabled: oldGroup.enabled,
         items: groupItems,
@@ -240,22 +246,28 @@ function migrateConfig(old: OldConfig): NewConfig {
 // Main
 // ---------------------------------------------------------------------------
 
-const url = process.env.DATABASE_URL;
-if (!url) {
-  console.error("DATABASE_URL environment variable is required.");
+const databaseUrl =
+  process.env.DATABASE_URL ??
+  `postgres://${process.env.HUMANDBS_POSTGRES_USER}:${process.env.HUMANDBS_POSTGRES_PASSWORD}@${process.env.HUMANDBS_POSTGRES_HOST}:${process.env.HUMANDBS_POSTGRES_PORT}/${process.env.HUMANDBS_POSTGRES_DB}`;
+
+if (!databaseUrl || databaseUrl.includes("undefined")) {
+  console.error(
+    "DATABASE_URL or HUMANDBS_POSTGRES_* environment variables are required.",
+  );
   process.exit(1);
 }
 
-const client = postgres(url);
-const db = drizzle(client);
+const pool = new Pool({ connectionString: databaseUrl });
 
-const rows = await db.execute(
+const { rows } = await pool.query(
   `SELECT id, config, revision FROM site_navigation_config WHERE id = 'global'`,
 );
 
 if (rows.length === 0) {
-  console.log("No existing site_navigation_config row found — nothing to migrate.");
-  await client.end();
+  console.log(
+    "No existing site_navigation_config row found — nothing to migrate.",
+  );
+  await pool.end();
   process.exit(0);
 }
 
@@ -266,7 +278,7 @@ if (!isOldShape(config)) {
   console.log(
     "Config is not in old shape (already migrated or unknown format) — skipping.",
   );
-  await client.end();
+  await pool.end();
   process.exit(0);
 }
 
@@ -274,16 +286,16 @@ console.log("Migrating old site navigation config to new shape...");
 const newConfig = migrateConfig(config);
 const newRevision = (row.revision ?? 1) + 1;
 
-await db.execute(
-  `UPDATE site_navigation_config SET config = $1::jsonb, revision = $2, updated_at = now() WHERE id = 'global'`,
+await pool.query(
+  "UPDATE site_navigation_config SET config = $1::jsonb, revision = $2, updated_at = now() WHERE id = 'global'",
   [JSON.stringify(newConfig), newRevision],
 );
 
 // Insert a revision snapshot
-await db.execute(
-  `INSERT INTO site_navigation_config_revision (config_id, config, revision, created_at) VALUES ('global', $1::jsonb, $2, now())`,
+await pool.query(
+  "INSERT INTO site_navigation_config_revision (config_id, config, revision, created_at) VALUES ('global', $1::jsonb, $2, now())",
   [JSON.stringify(newConfig), newRevision],
 );
 
 console.log(`Migration complete. Config updated to revision ${newRevision}.`);
-await client.end();
+await pool.end();

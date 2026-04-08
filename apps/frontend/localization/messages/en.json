@@ -5,19 +5,7 @@
     "previous-versions": "Previous versions of {documentName}:"
   },
   "Footer": {
-    "sitemap": "Sitemap",
-    "home": "Home",
-    "process-data": "Processed Data",
-    "guideline-violation": "Guideline Violation",
-    "guideline": "Guidelines",
-    "off-premise-server": "Off-premise Server",
-    "FAQ": "FAQ",
-    "data-submission": "Data submission",
-    "data-privision-committee": "Human Data Review Committee",
-    "contact": "Contact Us",
-    "data-usage": "Data Usage",
-    "publications": "Publications",
-    "supported-browsers": "Supported Browsers"
+    "sitemap": "Sitemap"
   },
   "DeleteDialog": {
     "title": "Item delete confirmation",

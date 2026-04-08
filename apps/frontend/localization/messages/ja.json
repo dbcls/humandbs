@@ -5,19 +5,7 @@
     "previous-versions": "{documentName}の改定"
   },
   "Footer": {
-    "sitemap": "サイトマップ",
-    "home": "ホーム",
-    "process-data": "加工データ",
-    "guideline-violation": "ガイドライン違反",
-    "guideline": "ガイドライン",
-    "off-premise-server": "機関外サーバ",
-    "FAQ": "FAQ",
-    "data-submission": "データの提供",
-    "data-privision-committee": "ヒトデータ審査委員会",
-    "contact": "お問い合わせ",
-    "data-usage": "データの利用",
-    "publications": "成果発表",
-    "supported-browsers": "対応ブラウザ"
+    "sitemap": "サイトマップ"
   },
   "DeleteDialog": {
     "title": "アイテム削除確認",
