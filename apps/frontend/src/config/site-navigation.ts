@@ -517,13 +517,24 @@ export function getDefaultSiteNavigationConfig(): SiteNavigationConfig {
 // Build resolved navigation for rendering
 // ---------------------------------------------------------------------------
 
+/**
+ * Optional resolver for document-backed item labels.
+ * The server function passes in published document titles from the DB;
+ * without it, the registry default labels are used as fallback.
+ */
+export type DocumentLabelResolver = (
+  contentId: string,
+  lang: Locale,
+) => string | undefined;
+
 export function buildSiteNavigation(
   lang: Locale,
   config: SiteNavigationConfig,
+  resolveDocumentLabel?: DocumentLabelResolver,
 ): ResolvedSiteNavigation {
   return {
-    navbar: buildNavbarItems(lang, config),
-    footer: buildFooterGroups(lang, config),
+    navbar: buildNavbarItems(lang, config, resolveDocumentLabel),
+    footer: buildFooterGroups(lang, config, resolveDocumentLabel),
   };
 }
 
@@ -531,20 +542,26 @@ export function getNavbarItems(
   lang: Locale,
   visibility: NavVisibility = "essential",
 ): ResolvedNavbarItem[] {
-  return buildNavbarItems(lang, getDefaultSiteNavigationConfig(), visibility);
+  return buildNavbarItems(lang, getDefaultSiteNavigationConfig(), undefined, visibility);
 }
 
 export function getFooterSitemapGroups(lang: Locale): ResolvedFooterGroup[] {
   return buildFooterGroups(lang, getDefaultSiteNavigationConfig());
 }
 
-function resolveItemLabel(item: NavigationItem, lang: Locale): string {
-  // Explicit label override takes priority
+function resolveItemLabel(
+  item: NavigationItem,
+  lang: Locale,
+  resolveDocumentLabel?: DocumentLabelResolver,
+): string {
+  // Explicit label override on the item takes priority
   if (item.label) {
     return item.label[lang] ?? item.label["en"] ?? item.contentId ?? item.url ?? item.id;
   }
-  // Document items: look up registry default label
+  // Document items: try DB-resolved title first, then registry default
   if (item.type === "document" && item.contentId) {
+    const dbLabel = resolveDocumentLabel?.(item.contentId, lang);
+    if (dbLabel) return dbLabel;
     const reg = navigationRegistry.get(item.contentId);
     if (reg) {
       return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? item.contentId;
@@ -569,10 +586,9 @@ function resolveItemLinkOptions(item: NavigationItem, lang: Locale): LinkOptions
 function buildNavbarItems(
   lang: Locale,
   config: SiteNavigationConfig,
+  resolveDocumentLabel?: DocumentLabelResolver,
   visibility: NavVisibility = "essential",
 ): ResolvedNavbarItem[] {
-  const itemById = new Map(config.items.map((i) => [i.id, i]));
-
   return config.items
     .filter(
       (item) =>
@@ -591,13 +607,13 @@ function buildNavbarItems(
         .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0))
         .map((child) => ({
           id: child.id,
-          label: resolveItemLabel(child, lang),
+          label: resolveItemLabel(child, lang, resolveDocumentLabel),
           linkOptions: resolveItemLinkOptions(child, lang),
         }));
 
       return {
         id: item.id,
-        label: resolveItemLabel(item, lang),
+        label: resolveItemLabel(item, lang, resolveDocumentLabel),
         linkOptions: resolveItemLinkOptions(item, lang),
         priority: item.navbar?.priority ?? "important",
         ...(children.length > 0 ? { children } : {}),
@@ -608,6 +624,7 @@ function buildNavbarItems(
 function buildFooterGroups(
   lang: Locale,
   config: SiteNavigationConfig,
+  resolveDocumentLabel?: DocumentLabelResolver,
 ): ResolvedFooterGroup[] {
   const itemById = new Map(config.items.map((i) => [i.id, i]));
 
@@ -618,12 +635,13 @@ function buildFooterGroups(
       id: group.id,
       label: group.label[lang] ?? group.label["en"] ?? "",
       items: group.items
+        .slice()
         .sort((a, b) => a.order - b.order)
         .map((ref) => itemById.get(ref.id))
         .filter((item): item is NavigationItem => item !== undefined)
         .map((item) => ({
           id: item.id,
-          label: resolveItemLabel(item, lang),
+          label: resolveItemLabel(item, lang, resolveDocumentLabel),
           linkOptions: resolveItemLinkOptions(item, lang),
         })),
     }))

@@ -5,26 +5,60 @@ import { z } from "zod";
 import {
   buildSiteNavigation,
   getDefaultSiteNavigationConfig,
+  type DocumentLabelResolver,
 } from "@/config/site-navigation";
-import { localeSchema } from "@/config/i18n";
+import { localeSchema, type Locale } from "@/config/i18n";
 import { siteNavigationConfigUpdateSchema } from "@/db/types";
+import { db } from "@/db/database";
+import { documentVersion, DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
   siteNavigationRepository,
   SiteNavigationConfigConflictError,
 } from "@/repositories/siteNavigation";
 
+/**
+ * Fetches all published document titles for a given locale and returns
+ * a DocumentLabelResolver that the navigation builder can use.
+ */
+async function buildDocumentLabelResolver(lang: Locale): Promise<DocumentLabelResolver> {
+  // DISTINCT ON contentId, ordered by contentId ASC, versionNumber DESC
+  // → picks the highest version number per contentId
+  const rows = await db
+    .selectDistinctOn([documentVersion.contentId], {
+      contentId: documentVersion.contentId,
+      title: documentVersion.title,
+    })
+    .from(documentVersion)
+    .where(
+      and(
+        eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+        eq(documentVersion.locale, lang),
+      ),
+    )
+    .orderBy(asc(documentVersion.contentId), desc(documentVersion.versionNumber));
+
+  const titleMap = new Map(
+    rows
+      .filter((row) => row.title !== null)
+      .map((row) => [row.contentId, row.title as string]),
+  );
+
+  return (contentId, _lang) => titleMap.get(contentId);
+}
+
 export const $getSiteNavigation = createServerFn({ method: "GET" })
   .inputValidator(localeSchema)
   .handler(async ({ data: lang }) => {
     try {
-      const active = await siteNavigationRepository.getActive();
+      const [active, resolver] = await Promise.all([
+        siteNavigationRepository.getActive(),
+        buildDocumentLabelResolver(lang),
+      ]);
 
-      if (!active) {
-        return buildSiteNavigation(lang, getDefaultSiteNavigationConfig());
-      }
-
-      return buildSiteNavigation(lang, active.config);
+      const config = active?.config ?? getDefaultSiteNavigationConfig();
+      return buildSiteNavigation(lang, config, resolver);
     } catch (error) {
       console.error(
         "Failed to load persisted site navigation config, using fallback.",
