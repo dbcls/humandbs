@@ -1,9 +1,4 @@
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  redirect,
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
   Cuboid,
   Files,
@@ -17,13 +12,12 @@ import { z } from "zod";
 import { Navbar } from "@/components/Navbar";
 import { USER_ROLES } from "@/config/permissions";
 import { useCan } from "@/hooks/useCan";
-import { cn } from "@/lib/utils";
+import { Link } from "@/components/Link";
 
 export const tabParamSchema = z.enum([
   "news",
   "documents",
   "content",
-  "users",
   "researches",
   "assets",
   "navigation",
@@ -147,9 +141,9 @@ function NavPanel() {
   return (
     <aside className="flex flex-col gap-5 rounded-md bg-white px-4 py-3">
       {canViewCms && (
-        <section className="flex flex-col gap-5">
-          <p>Static Pages</p>
-          <div className="flex flex-col gap-5 pl-5">
+        <section className="flex flex-col gap-5 text-sm">
+          <span>Static Pages</span>
+          <div className="flex flex-col gap-5 pl-5 items-stretch">
             <PanelItem
               title={
                 <span>
@@ -213,14 +207,12 @@ function NavPanel() {
 }
 
 function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
-  const { tab: activeTab, lang } = Route.useRouteContext();
+  const { lang } = Route.useRouteContext();
 
   return (
     <Link
-      className={cn("hover:bg-hover rounded-sm px-3 py-2 transition-colors", {
-        "bg-secondary/20 hover:bg-secondary/30": activeTab === tab,
-      })}
-      //@ts-expect-error
+      variant={"nav"}
+      className="w-auto rounded-sm data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground py-2 px-4"
       to={`/{-$lang}/admin/${tab}`}
       params={{ lang }}
     >

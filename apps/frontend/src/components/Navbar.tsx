@@ -95,65 +95,66 @@ export function Navbar() {
   const hiddenItems = items.filter((_, index) => overflowIndexSet.has(index));
 
   return (
-    <header className="flex items-center justify-between gap-4 rounded-md bg-white p-4 md:gap-8">
+    <header className="flex items-center justify-between gap-12 rounded-md bg-white p-4">
       <MobileNav />
-      <nav className="hidden min-w-0 flex-1 items-center gap-8 md:flex">
-        <Link
-          className="w-fit shrink-0"
-          variant={"nav"}
-          to="/{-$lang}"
-          params={{ lang }}
-        >
-          <img
-            src={Logo}
-            width={200}
-            height={50}
-            className="block w-32 md:w-[200px]"
-          />
-          <div className="text-center text-sm font-semibold whitespace-nowrap">
-            {tCommon("humandb")}
-          </div>
-        </Link>
+      <Link
+        className="w-fit shrink-0"
+        variant={"nav"}
+        to="/{-$lang}"
+        params={{ lang }}
+      >
+        <img
+          src={Logo}
+          width={200}
+          height={50}
+          className="block w-40 md:w-80"
+        />
+        <div className="text-center text-sm font-semibold whitespace-nowrap">
+          {tCommon("humandb")}
+        </div>
+      </Link>
 
-        <div ref={navContainerRef} className="relative min-w-0 flex-1">
-          <NavigationMenu viewport={false} className="min-w-0 w-full">
-            <NavigationMenuList
-              ref={navListRef}
-              className="flex flex-nowrap items-center justify-start gap-8"
-            >
-              {visibleItems.map((item) => (
-                <NavItem key={item.id} item={item} t={t} />
+      <nav
+        ref={navContainerRef}
+        className="hidden md:block relative min-w-0 flex-1"
+      >
+        <NavigationMenu viewport={false} className="min-w-0 w-full">
+          <NavigationMenuList
+            ref={navListRef}
+            className="flex flex-nowrap items-center justify-start gap-4"
+          >
+            {visibleItems.map((item) => (
+              <NavItem key={item.id} item={item} t={t} />
+            ))}
+            {hiddenItems.length > 0 ? (
+              <NavigationMenuItem>
+                <OverflowMenu items={hiddenItems} t={t} />
+              </NavigationMenuItem>
+            ) : null}
+          </NavigationMenuList>
+        </NavigationMenu>
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
+        >
+          <NavigationMenu viewport={false}>
+            <NavigationMenuList className="flex flex-nowrap items-center justify-start gap-8">
+              {items.map((item, index) => (
+                <div
+                  key={item.id}
+                  ref={(element) => {
+                    measureItemRefs.current[index] = element;
+                  }}
+                >
+                  <NavItem item={item} t={t} />
+                </div>
               ))}
-              {hiddenItems.length > 0 ? (
-                <NavigationMenuItem>
-                  <OverflowMenu items={hiddenItems} t={t} />
-                </NavigationMenuItem>
-              ) : null}
+              <div ref={measureOverflowTriggerRef}>
+                <OverflowTrigger />
+              </div>
             </NavigationMenuList>
           </NavigationMenu>
-
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
-          >
-            <NavigationMenu viewport={false}>
-              <NavigationMenuList className="flex flex-nowrap items-center justify-start gap-8">
-                {items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    ref={(element) => {
-                      measureItemRefs.current[index] = element;
-                    }}
-                  >
-                    <NavItem item={item} t={t} />
-                  </div>
-                ))}
-                <div ref={measureOverflowTriggerRef}>
-                  <OverflowTrigger />
-                </div>
-              </NavigationMenuList>
-            </NavigationMenu>
-          </div>
         </div>
       </nav>
 
@@ -187,7 +188,7 @@ function NavItem({
               {t(item.id)}
             </Link>
           </NavigationMenuTrigger>
-          <NavigationMenuContent className="z-10 p-2">
+          <NavigationMenuContent className="z-10">
             <ul className="w-max max-w-96 min-w-full">
               {item.children.map((child) => (
                 <li key={child.id}>
