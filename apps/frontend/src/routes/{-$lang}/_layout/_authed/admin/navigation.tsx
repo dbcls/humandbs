@@ -19,12 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  type FooterGroupId,
+  type NavigationItem,
+  type NavigationGroup,
   type NavPriority,
-  type NavigationItemId,
   type SiteNavigationConfig,
 } from "@/config/site-navigation";
-import { useTranslations } from "use-intl";
 import {
   $resetSiteNavigationConfig,
   $saveSiteNavigationConfig,
@@ -43,25 +42,34 @@ export const Route = createFileRoute(
 // ---------------------------------------------------------------------------
 
 type NavbarColumn = {
-  parent: SiteNavigationConfig["items"][number];
-  children: SiteNavigationConfig["items"];
+  parent: NavigationItem;
+  children: NavigationItem[];
 };
 
 type FooterGroupWithItems = {
-  group: SiteNavigationConfig["footerGroups"][number];
-  items: SiteNavigationConfig["items"];
+  group: NavigationGroup;
+  items: NavigationItem[];
 };
 
 // Record<groupId, itemIds[]> shape expected by move() for multi-list
 type ItemsRecord = Record<string, string[]>;
 
 // ---------------------------------------------------------------------------
+// Label helpers
+// ---------------------------------------------------------------------------
+
+function getItemLabel(item: NavigationItem): string {
+  if (item.label) {
+    return item.label["en"] ?? item.label["ja"] ?? item.contentId ?? item.url ?? item.id;
+  }
+  return item.contentId ?? item.url ?? item.id;
+}
+
+// ---------------------------------------------------------------------------
 // Route component
 // ---------------------------------------------------------------------------
 
 function RouteComponent() {
-  const tNav = useTranslations("Navbar");
-  const tFooter = useTranslations("Footer");
   const router = useRouter();
   const queryClient = useQueryClient();
   const {
@@ -185,33 +193,36 @@ function RouteComponent() {
   }
 
   // ---------------------------------------------------------------------------
-  // Navbar commit handlers — called from NavbarPreview with final state
+  // Navbar commit handlers
   // ---------------------------------------------------------------------------
 
   function commitNavbarColumns(columns: NavbarColumn[]) {
     updateDraft((current) => {
-      // Build new parentId and order for every navbar item from the local columns state
       const newItems = current.items.map((item) => {
         if (!item.navbar) return item;
 
-        // Is this a top-level column?
         const colIndex = columns.findIndex((c) => c.parent.id === item.id);
         if (colIndex >= 0) {
           return {
             ...item,
-            parentId: undefined,
-            navbar: { ...item.navbar, order: (colIndex + 1) * 10 },
+            navbar: {
+              ...item.navbar,
+              order: (colIndex + 1) * 10,
+              parentItemId: undefined,
+            },
           };
         }
 
-        // Is this a child?
         for (const col of columns) {
           const childIndex = col.children.findIndex((ch) => ch.id === item.id);
           if (childIndex >= 0) {
             return {
               ...item,
-              parentId: col.parent.id as NavigationItemId,
-              navbar: { ...item.navbar, order: (childIndex + 1) * 10 },
+              navbar: {
+                ...item.navbar,
+                order: (childIndex + 1) * 10,
+                parentItemId: col.parent.id,
+              },
             };
           }
         }
@@ -223,39 +234,36 @@ function RouteComponent() {
   }
 
   // ---------------------------------------------------------------------------
-  // Footer commit handlers — called from FooterPreview with final state
+  // Footer commit handlers
   // ---------------------------------------------------------------------------
 
   function commitFooterGroups(groups: FooterGroupWithItems[]) {
     updateDraft((current) => {
-      const newFooterGroups = current.footerGroups.map((fg) => {
+      const newGroups = current.zones.footer.groups.map((fg) => {
         const idx = groups.findIndex((g) => g.group.id === fg.id);
-        return idx >= 0 ? { ...fg, order: (idx + 1) * 10 } : fg;
+        if (idx < 0) return fg;
+        const groupWithItems = groups[idx];
+        return {
+          ...fg,
+          order: (idx + 1) * 10,
+          items: groupWithItems.items.map((item, itemIdx) => ({
+            id: item.id,
+            order: (itemIdx + 1) * 10,
+          })),
+        };
       });
 
-      const newItems = current.items.map((item) => {
-        if (!item.footer) return item;
-        for (const { group, items } of groups) {
-          const itemIndex = items.findIndex((i) => i.id === item.id);
-          if (itemIndex >= 0) {
-            return {
-              ...item,
-              footer: {
-                ...item.footer,
-                groupId: group.id as FooterGroupId,
-                order: (itemIndex + 1) * 10,
-              },
-            };
-          }
-        }
-        return item;
-      });
-
-      return { ...current, footerGroups: newFooterGroups, items: newItems };
+      return {
+        ...current,
+        zones: {
+          ...current.zones,
+          footer: { ...current.zones.footer, groups: newGroups },
+        },
+      };
     });
   }
 
-  function updateNavbarItemEnabled(id: NavigationItemId, enabled: boolean) {
+  function updateNavbarItemEnabled(id: string, enabled: boolean) {
     updateDraft((current) => ({
       ...current,
       items: current.items.map((entry) =>
@@ -266,10 +274,7 @@ function RouteComponent() {
     }));
   }
 
-  function updateNavbarItemPriority(
-    id: NavigationItemId,
-    priority: NavPriority,
-  ) {
+  function updateNavbarItemPriority(id: string, priority: NavPriority) {
     updateDraft((current) => ({
       ...current,
       items: current.items.map((entry) =>
@@ -283,30 +288,34 @@ function RouteComponent() {
   // ---------------------------------------------------------------------------
   // Derived data
   // ---------------------------------------------------------------------------
-  const sortedFooterGroups = draft.footerGroups
-    .slice()
-    .sort((a, b) => a.order - b.order);
+
+  const itemById = new Map(draft.items.map((i) => [i.id, i]));
 
   const topLevelNavbarItems = draft.items
-    .filter((item) => item.navbar && !item.parentId)
+    .filter((item) => item.navbar && !item.navbar.parentItemId)
     .slice()
     .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0));
 
   const navbarColumns: NavbarColumn[] = topLevelNavbarItems.map((parent) => ({
     parent,
     children: draft.items
-      .filter((item) => item.parentId === parent.id && item.navbar)
+      .filter((item) => item.navbar?.parentItemId === parent.id)
       .slice()
       .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0)),
   }));
 
+  const sortedFooterGroups = draft.zones.footer.groups
+    .slice()
+    .sort((a, b) => a.order - b.order);
+
   const footerGroups: FooterGroupWithItems[] = sortedFooterGroups.map(
     (group) => ({
       group,
-      items: draft.items
-        .filter((item) => item.footer?.groupId === group.id)
+      items: group.items
         .slice()
-        .sort((a, b) => (a.footer?.order ?? 0) - (b.footer?.order ?? 0)),
+        .sort((a, b) => a.order - b.order)
+        .map((ref) => itemById.get(ref.id))
+        .filter((item): item is NavigationItem => item !== undefined),
     }),
   );
 
@@ -322,8 +331,8 @@ function RouteComponent() {
             Shared structure for both locales
           </p>
           <p className="text-foreground-light text-sm">
-            Labels come from translation keys. This editor changes ordering,
-            visibility, priority, and footer grouping.
+            Labels come from document titles and item labels. This editor
+            changes ordering, visibility, priority, and footer grouping.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -369,7 +378,6 @@ function RouteComponent() {
             <div className="mt-4">
               <NavbarPreview
                 columns={navbarColumns}
-                tNav={tNav}
                 onCommit={commitNavbarColumns}
                 onToggleEnabled={updateNavbarItemEnabled}
                 onChangePriority={updateNavbarItemPriority}
@@ -387,25 +395,19 @@ function RouteComponent() {
             <div className="mt-4">
               <FooterPreview
                 groups={footerGroups}
-                tFooter={tFooter}
-                tNav={tNav}
                 onCommit={commitFooterGroups}
                 onToggleGroupEnabled={(groupId, enabled) => {
                   updateDraft((current) => ({
                     ...current,
-                    footerGroups: current.footerGroups.map((g) =>
-                      g.id === groupId ? { ...g, enabled } : g,
-                    ),
-                  }));
-                }}
-                onToggleItemEnabled={(itemId, enabled) => {
-                  updateDraft((current) => ({
-                    ...current,
-                    items: current.items.map((item) =>
-                      item.id === itemId && item.footer
-                        ? { ...item, footer: { ...item.footer, enabled } }
-                        : item,
-                    ),
+                    zones: {
+                      ...current.zones,
+                      footer: {
+                        ...current.zones.footer,
+                        groups: current.zones.footer.groups.map((g) =>
+                          g.id === groupId ? { ...g, enabled } : g,
+                        ),
+                      },
+                    },
                   }));
                 }}
               />
@@ -426,27 +428,22 @@ const NAVBAR_ITEM_TYPE = "navbar-item";
 
 function NavbarPreview({
   columns: columnsProp,
-  tNav,
   onCommit,
   onToggleEnabled,
   onChangePriority,
 }: {
   columns: NavbarColumn[];
-  tNav: ReturnType<typeof useTranslations>;
   onCommit: (columns: NavbarColumn[]) => void;
-  onToggleEnabled: (id: NavigationItemId, enabled: boolean) => void;
-  onChangePriority: (id: NavigationItemId, priority: NavPriority) => void;
+  onToggleEnabled: (id: string, enabled: boolean) => void;
+  onChangePriority: (id: string, priority: NavPriority) => void;
 }) {
-  // Local state for optimistic live reorder
   const [columns, setColumns] = useState<NavbarColumn[]>(columnsProp);
   const isDraggingRef = useRef(false);
   const snapshotRef = useRef<NavbarColumn[]>(columnsProp);
 
-  // Track what is being dragged for the overlay
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
 
-  // Sync from parent when not dragging (e.g. after save/reset)
   useEffect(() => {
     if (!isDraggingRef.current) {
       setColumns(columnsProp);
@@ -462,8 +459,6 @@ function NavbarPreview({
         .find((ch) => ch.id === draggingItemId) ?? null)
     : null;
 
-  // Build items record for move(): { [columnId]: [childId, ...] }
-  // Column order is tracked as an array of column ids under a special "_columns" key
   function buildItemsRecord(cols: NavbarColumn[]): ItemsRecord {
     const record: ItemsRecord = {
       _columns: cols.map((c) => c.parent.id),
@@ -485,9 +480,9 @@ function NavbarPreview({
     );
 
     return columnOrder.map((colId) => ({
-      parent: parentById.get(colId as NavigationItemId)!,
+      parent: parentById.get(colId)!,
       children: (record[colId] ?? [])
-        .map((childId) => childById.get(childId as NavigationItemId)!)
+        .map((childId) => childById.get(childId)!)
         .filter(Boolean),
     }));
   }
@@ -524,7 +519,6 @@ function NavbarPreview({
           return;
         }
 
-        // Commit the final local state to the parent draft
         setColumns((finalCols) => {
           onCommit(finalCols);
           return finalCols;
@@ -538,7 +532,6 @@ function NavbarPreview({
             col={col}
             colIndex={colIndex}
             totalColumns={columns.length}
-            tNav={tNav}
             isDragging={draggingColumnId === col.parent.id}
             onToggleEnabled={onToggleEnabled}
             onChangePriority={onChangePriority}
@@ -548,9 +541,9 @@ function NavbarPreview({
 
       <DragOverlay>
         {draggingColumn ? (
-          <NavbarColumnOverlay col={draggingColumn} tNav={tNav} />
+          <NavbarColumnOverlay col={draggingColumn} />
         ) : draggingItem ? (
-          <NavbarItemOverlay item={draggingItem} tNav={tNav} />
+          <NavbarItemOverlay item={draggingItem} />
         ) : null}
       </DragOverlay>
     </DragDropProvider>
@@ -561,7 +554,6 @@ function NavbarColumnCard({
   col,
   colIndex,
   totalColumns,
-  tNav,
   isDragging,
   onToggleEnabled,
   onChangePriority,
@@ -569,10 +561,9 @@ function NavbarColumnCard({
   col: NavbarColumn;
   colIndex: number;
   totalColumns: number;
-  tNav: ReturnType<typeof useTranslations>;
   isDragging: boolean;
-  onToggleEnabled: (id: NavigationItemId, enabled: boolean) => void;
-  onChangePriority: (id: NavigationItemId, priority: NavPriority) => void;
+  onToggleEnabled: (id: string, enabled: boolean) => void;
+  onChangePriority: (id: string, priority: NavPriority) => void;
 }) {
   const { ref: columnDropRef, isDropTarget: isColumnDropTarget } = useDroppable(
     {
@@ -591,7 +582,7 @@ function NavbarColumnCard({
 
   const enabled = col.parent.navbar?.enabled ?? true;
   const priority = col.parent.navbar?.priority ?? "important";
-  const isProtected = col.parent.id === "home";
+  const isHomeItem = col.parent.type === "document" && col.parent.contentId === "home";
 
   return (
     <div
@@ -616,14 +607,14 @@ function NavbarColumnCard({
           >
             <GripVertical className="size-4 shrink-0" />
           </button>
-          <span className="min-w-0 truncate text-sm font-semibold">
-            {tNav(col.parent.id as NavigationItemId)}
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {getItemLabel(col.parent)}
           </span>
           <Switch
             checked={enabled}
-            disabled={isProtected}
+            disabled={isHomeItem}
             onCheckedChange={(checked) =>
-              onToggleEnabled(col.parent.id as NavigationItemId, checked)
+              onToggleEnabled(col.parent.id, checked)
             }
             className="shrink-0 scale-75"
           />
@@ -631,10 +622,7 @@ function NavbarColumnCard({
         <Select
           value={priority}
           onValueChange={(value) =>
-            onChangePriority(
-              col.parent.id as NavigationItemId,
-              value as NavPriority,
-            )
+            onChangePriority(col.parent.id, value as NavPriority)
           }
         >
           <SelectTrigger className="h-7 w-full text-xs">
@@ -656,7 +644,6 @@ function NavbarColumnCard({
             item={child}
             childIndex={childIndex}
             groupId={col.parent.id}
-            tNav={tNav}
             onToggleEnabled={onToggleEnabled}
           />
         ))}
@@ -674,14 +661,12 @@ function NavbarChildItem({
   item,
   childIndex,
   groupId,
-  tNav,
   onToggleEnabled,
 }: {
-  item: SiteNavigationConfig["items"][number];
+  item: NavigationItem;
   childIndex: number;
   groupId: string;
-  tNav: ReturnType<typeof useTranslations>;
-  onToggleEnabled: (id: NavigationItemId, enabled: boolean) => void;
+  onToggleEnabled: (id: string, enabled: boolean) => void;
 }) {
   const { ref, handleRef, isDragSource } = useSortable({
     id: item.id,
@@ -711,13 +696,11 @@ function NavbarChildItem({
         <GripVertical className="size-3 shrink-0" />
       </button>
       <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-        {tNav(item.id as NavigationItemId)}
+        {getItemLabel(item)}
       </span>
       <Switch
         checked={enabled}
-        onCheckedChange={(checked) =>
-          onToggleEnabled(item.id as NavigationItemId, checked)
-        }
+        onCheckedChange={(checked) => onToggleEnabled(item.id, checked)}
         className="shrink-0 scale-75"
       />
     </li>
@@ -728,13 +711,7 @@ function NavbarChildItem({
 // Navbar drag overlay clones
 // ---------------------------------------------------------------------------
 
-function NavbarColumnOverlay({
-  col,
-  tNav,
-}: {
-  col: NavbarColumn;
-  tNav: ReturnType<typeof useTranslations>;
-}) {
+function NavbarColumnOverlay({ col }: { col: NavbarColumn }) {
   const enabled = col.parent.navbar?.enabled ?? true;
   const priority = col.parent.navbar?.priority ?? "important";
 
@@ -749,7 +726,7 @@ function NavbarColumnOverlay({
         <div className="flex items-center gap-1">
           <GripVertical className="size-4 shrink-0 text-gray-400" />
           <span className="min-w-0 truncate text-sm font-semibold">
-            {tNav(col.parent.id as NavigationItemId)}
+            {getItemLabel(col.parent)}
           </span>
         </div>
         <div className="rounded-md border border-gray-200 px-2 py-1 text-xs capitalize text-gray-500">
@@ -764,7 +741,7 @@ function NavbarColumnOverlay({
           >
             <GripVertical className="size-3 shrink-0 text-gray-400" />
             <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-              {tNav(child.id as NavigationItemId)}
+              {getItemLabel(child)}
             </span>
           </li>
         ))}
@@ -778,13 +755,7 @@ function NavbarColumnOverlay({
   );
 }
 
-function NavbarItemOverlay({
-  item,
-  tNav,
-}: {
-  item: SiteNavigationConfig["items"][number];
-  tNav: ReturnType<typeof useTranslations>;
-}) {
+function NavbarItemOverlay({ item }: { item: NavigationItem }) {
   const enabled = item.navbar?.enabled ?? true;
   return (
     <li
@@ -795,7 +766,7 @@ function NavbarItemOverlay({
     >
       <GripVertical className="size-3 shrink-0 text-gray-400" />
       <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-        {tNav(item.id as NavigationItemId)}
+        {getItemLabel(item)}
       </span>
     </li>
   );
@@ -810,18 +781,12 @@ const FOOTER_ITEM_TYPE = "footer-item";
 
 function FooterPreview({
   groups: groupsProp,
-  tFooter,
-  tNav,
   onCommit,
   onToggleGroupEnabled,
-  onToggleItemEnabled,
 }: {
   groups: FooterGroupWithItems[];
-  tFooter: ReturnType<typeof useTranslations>;
-  tNav: ReturnType<typeof useTranslations>;
   onCommit: (groups: FooterGroupWithItems[]) => void;
   onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
-  onToggleItemEnabled: (itemId: NavigationItemId, enabled: boolean) => void;
 }) {
   const [groups, setGroups] = useState<FooterGroupWithItems[]>(groupsProp);
   const isDraggingRef = useRef(false);
@@ -865,9 +830,9 @@ function FooterPreview({
     );
 
     return groupOrder.map((groupId) => ({
-      group: groupById.get(groupId as FooterGroupId)!,
+      group: groupById.get(groupId)!,
       items: (record[groupId] ?? [])
-        .map((itemId) => itemById.get(itemId as NavigationItemId)!)
+        .map((itemId) => itemById.get(itemId)!)
         .filter(Boolean),
     }));
   }
@@ -916,20 +881,17 @@ function FooterPreview({
             key={g.group.id}
             g={g}
             groupIndex={groupIndex}
-            tFooter={tFooter}
-            tNav={tNav}
             isDragging={draggingGroupId === g.group.id}
             onToggleGroupEnabled={onToggleGroupEnabled}
-            onToggleItemEnabled={onToggleItemEnabled}
           />
         ))}
       </div>
 
       <DragOverlay>
         {draggingGroup ? (
-          <FooterGroupOverlay g={draggingGroup} tFooter={tFooter} tNav={tNav} />
+          <FooterGroupOverlay g={draggingGroup} />
         ) : draggingItem ? (
-          <FooterItemOverlay item={draggingItem} tNav={tNav} />
+          <FooterItemOverlay item={draggingItem} />
         ) : null}
       </DragOverlay>
     </DragDropProvider>
@@ -939,19 +901,13 @@ function FooterPreview({
 function FooterGroupColumn({
   g,
   groupIndex,
-  tFooter,
-  tNav,
   isDragging,
   onToggleGroupEnabled,
-  onToggleItemEnabled,
 }: {
   g: FooterGroupWithItems;
   groupIndex: number;
-  tFooter: ReturnType<typeof useTranslations>;
-  tNav: ReturnType<typeof useTranslations>;
   isDragging: boolean;
   onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
-  onToggleItemEnabled: (itemId: NavigationItemId, enabled: boolean) => void;
 }) {
   const { ref: groupDropRef, isDropTarget } = useDroppable({
     id: g.group.id + "-droppable",
@@ -965,6 +921,8 @@ function FooterGroupColumn({
     accept: [FOOTER_GROUP_TYPE],
     data: { type: FOOTER_GROUP_TYPE },
   });
+
+  const groupLabel = g.group.label["en"] ?? g.group.label["ja"] ?? "";
 
   return (
     <div
@@ -988,11 +946,10 @@ function FooterGroupColumn({
           <GripVertical className="size-4 shrink-0" />
         </button>
         <span className="flex-1 truncate text-xs font-semibold uppercase text-gray-500">
-          {tFooter(g.group.labelKey)}
+          {groupLabel}
         </span>
         <Switch
           checked={g.group.enabled}
-          disabled={g.group.id === "overview"}
           onCheckedChange={(checked) =>
             onToggleGroupEnabled(g.group.id, checked)
           }
@@ -1007,8 +964,6 @@ function FooterGroupColumn({
             item={item}
             itemIndex={itemIndex}
             groupId={g.group.id}
-            tNav={tNav}
-            onToggleEnabled={onToggleItemEnabled}
           />
         ))}
         {g.items.length === 0 && (
@@ -1023,14 +978,10 @@ function FooterItemRow({
   item,
   itemIndex,
   groupId,
-  tNav,
-  onToggleEnabled,
 }: {
-  item: SiteNavigationConfig["items"][number];
+  item: NavigationItem;
   itemIndex: number;
   groupId: string;
-  tNav: ReturnType<typeof useTranslations>;
-  onToggleEnabled: (itemId: NavigationItemId, enabled: boolean) => void;
 }) {
   const { ref, handleRef, isDragSource } = useSortable({
     id: item.id,
@@ -1041,15 +992,12 @@ function FooterItemRow({
     data: { type: FOOTER_ITEM_TYPE },
   });
 
-  const enabled = item.footer?.enabled ?? true;
-
   return (
     <li
       ref={ref as React.Ref<HTMLLIElement>}
       className={[
         "flex items-start gap-1 rounded px-1 py-1 hover:bg-gray-50",
         isDragSource ? "opacity-40" : "",
-        !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
       <button
@@ -1060,16 +1008,8 @@ function FooterItemRow({
         <GripVertical className="size-3 shrink-0" />
       </button>
       <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-        {tNav(item.id as NavigationItemId)}
+        {getItemLabel(item)}
       </span>
-      <Switch
-        checked={enabled}
-        disabled={item.id === "home"}
-        onCheckedChange={(checked) =>
-          onToggleEnabled(item.id as NavigationItemId, checked)
-        }
-        className="shrink-0 scale-75"
-      />
     </li>
   );
 }
@@ -1078,15 +1018,8 @@ function FooterItemRow({
 // Footer drag overlay clones
 // ---------------------------------------------------------------------------
 
-function FooterGroupOverlay({
-  g,
-  tFooter,
-  tNav,
-}: {
-  g: FooterGroupWithItems;
-  tFooter: ReturnType<typeof useTranslations>;
-  tNav: ReturnType<typeof useTranslations>;
-}) {
+function FooterGroupOverlay({ g }: { g: FooterGroupWithItems }) {
+  const groupLabel = g.group.label["en"] ?? g.group.label["ja"] ?? "";
   return (
     <div
       className={[
@@ -1097,7 +1030,7 @@ function FooterGroupOverlay({
       <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
         <GripVertical className="size-4 shrink-0 text-gray-400" />
         <span className="flex-1 truncate text-xs font-semibold uppercase text-gray-500">
-          {tFooter(g.group.labelKey)}
+          {groupLabel}
         </span>
       </div>
       <ul className="flex flex-col gap-1 p-2">
@@ -1108,7 +1041,7 @@ function FooterGroupOverlay({
           >
             <GripVertical className="size-3 shrink-0 text-gray-400" />
             <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-              {tNav(item.id as NavigationItemId)}
+              {getItemLabel(item)}
             </span>
           </li>
         ))}
@@ -1120,24 +1053,12 @@ function FooterGroupOverlay({
   );
 }
 
-function FooterItemOverlay({
-  item,
-  tNav,
-}: {
-  item: SiteNavigationConfig["items"][number];
-  tNav: ReturnType<typeof useTranslations>;
-}) {
-  const enabled = item.footer?.enabled ?? true;
+function FooterItemOverlay({ item }: { item: NavigationItem }) {
   return (
-    <li
-      className={[
-        "flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
-        !enabled ? "opacity-50" : "",
-      ].join(" ")}
-    >
+    <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
       <GripVertical className="size-3 shrink-0 text-gray-400" />
       <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-        {tNav(item.id as NavigationItemId)}
+        {getItemLabel(item)}
       </span>
     </li>
   );

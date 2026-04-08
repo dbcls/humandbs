@@ -23,7 +23,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import type {
-  NavbarItem,
+  ResolvedNavbarItem,
   ResolvedSiteNavigation,
 } from "@/config/site-navigation";
 import { useCart } from "@/hooks/useCart";
@@ -36,7 +36,6 @@ import { Search } from "./Search";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 export function Navbar() {
-  const t = useTranslations("Navbar");
   const tCommon = useTranslations("common");
 
   const { user } = useRouteContext({ from: "__root__" });
@@ -44,7 +43,7 @@ export function Navbar() {
     from: "/{-$lang}/_layout",
   });
 
-  const items = (siteNavigation as ResolvedSiteNavigation).navbar;
+  const items: ResolvedNavbarItem[] = (siteNavigation as ResolvedSiteNavigation).navbar;
   const navContainerRef = useRef<HTMLDivElement>(null);
   const navListRef = useRef<HTMLUListElement>(null);
   const measureItemRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -124,11 +123,11 @@ export function Navbar() {
             className="flex flex-nowrap items-center justify-start gap-4"
           >
             {visibleItems.map((item) => (
-              <NavItem key={item.id} item={item} t={t} />
+              <NavItem key={item.id} item={item} />
             ))}
             {hiddenItems.length > 0 ? (
               <NavigationMenuItem>
-                <OverflowMenu items={hiddenItems} t={t} />
+                <OverflowMenu items={hiddenItems} />
               </NavigationMenuItem>
             ) : null}
           </NavigationMenuList>
@@ -147,7 +146,7 @@ export function Navbar() {
                     measureItemRefs.current[index] = element;
                   }}
                 >
-                  <NavItem item={item} t={t} />
+                  <NavItem item={item} />
                 </div>
               ))}
               <div ref={measureOverflowTriggerRef}>
@@ -168,13 +167,7 @@ export function Navbar() {
   );
 }
 
-function NavItem({
-  item,
-  t,
-}: {
-  item: NavbarItem;
-  t: ReturnType<typeof useTranslations>;
-}) {
+function NavItem({ item }: { item: ResolvedNavbarItem }) {
   return (
     <NavigationMenuItem>
       {item.children ? (
@@ -185,7 +178,7 @@ function NavItem({
               className="whitespace-nowrap"
               {...item.linkOptions}
             >
-              {t(item.id)}
+              {item.label}
             </Link>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
@@ -194,7 +187,7 @@ function NavItem({
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
                     <Link variant="nav" {...child.linkOptions}>
-                      {t(child.id)}
+                      {child.label}
                     </Link>
                   </NavigationMenuLink>
                 </li>
@@ -209,7 +202,7 @@ function NavItem({
             className="whitespace-nowrap"
             {...item.linkOptions}
           >
-            {t(item.id)}
+            {item.label}
           </Link>
         </NavigationMenuLink>
       )}
@@ -217,13 +210,7 @@ function NavItem({
   );
 }
 
-function OverflowMenu({
-  items,
-  t,
-}: {
-  items: NavbarItem[];
-  t: ReturnType<typeof useTranslations>;
-}) {
+function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -236,7 +223,7 @@ function OverflowMenu({
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
             {items.map((item) => (
-              <OverflowMenuItem key={item.id} item={item} t={t} />
+              <OverflowMenuItem key={item.id} item={item} />
             ))}
           </NavigationMenuList>
         </NavigationMenu>
@@ -276,13 +263,7 @@ function getNavigationListGap(list: HTMLUListElement | null) {
   return Number.isFinite(parsedGap) ? parsedGap : 0;
 }
 
-function OverflowMenuItem({
-  item,
-  t,
-}: {
-  item: NavbarItem;
-  t: ReturnType<typeof useTranslations>;
-}) {
+function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   return (
     <NavigationMenuItem className="w-full">
       <NavigationMenuLink asChild>
@@ -291,7 +272,7 @@ function OverflowMenuItem({
           {...item.linkOptions}
           className="w-full rounded-sm px-2 py-2"
         >
-          {t(item.id)}
+          {item.label}
         </Link>
       </NavigationMenuLink>
       {item.children?.length ? (
@@ -304,7 +285,7 @@ function OverflowMenuItem({
                   {...child.linkOptions}
                   className="w-full rounded-sm px-2 py-2 text-sm"
                 >
-                  {t(child.id)}
+                  {child.label}
                 </Link>
               </NavigationMenuLink>
             </li>
