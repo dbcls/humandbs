@@ -15,7 +15,7 @@ import {
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { newsItemRepository } from "@/repositories/newsItem";
-import type { NewsTag } from "@/repositories/newsItem";
+import type { NewsTag, PublishedTitlesFilters } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
   alert: boolean;
@@ -57,6 +57,73 @@ export function getNewsTitlesQueryOptions({
     queryKey: ["news", { limit, offset, locale }],
     queryFn: () => $getNewsTitles({ data: { limit, offset, locale } }),
     staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
+const publicNewsTitlesFiltersSchema = z.object({
+  titleOrContent: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
+const PUBLIC_NEWS_PAGE_SIZE = 20;
+
+export const $getPublishedNewsTitles = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      locale: z.string(),
+      limit: z.number().min(1).max(100).optional().default(PUBLIC_NEWS_PAGE_SIZE),
+      offset: z.number().min(0).optional().default(0),
+    }).merge(publicNewsTitlesFiltersSchema),
+  )
+  .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
+    return newsItemRepository.listPublishedTitles({
+      limit: data.limit,
+      offset: data.offset,
+      locale: data.locale,
+      filters: {
+        titleOrContent: data.titleOrContent,
+        publishedFrom: data.publishedFrom,
+        publishedTo: data.publishedTo,
+        tagIds: data.tagIds,
+      },
+    });
+  });
+
+export function getPublishedNewsTitlesInfiniteQueryOptions({
+  locale,
+  filters,
+}: {
+  locale: Locale;
+  filters: PublishedTitlesFilters;
+}) {
+  return infiniteQueryOptions({
+    queryKey: ["news", "published", locale, filters],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      $getPublishedNewsTitles({
+        data: { locale, offset: pageParam, ...filters },
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length < PUBLIC_NEWS_PAGE_SIZE
+        ? undefined
+        : lastPageParam + PUBLIC_NEWS_PAGE_SIZE,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+}
+
+export const $getPublicTags = createServerFn({ method: "GET" }).handler(
+  async (): Promise<NewsTag[]> => {
+    return db.select().from(newsTag).orderBy(asc(newsTag.name));
+  },
+);
+
+export function getPublicTagsQueryOptions() {
+  return queryOptions({
+    queryKey: ["news", "tags", "public"],
+    queryFn: () => $getPublicTags({}),
+    staleTime: 1000 * 60 * 60 * 24,
   });
 }
 

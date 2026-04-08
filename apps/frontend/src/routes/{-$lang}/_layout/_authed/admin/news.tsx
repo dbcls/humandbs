@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useFilters } from "@/hooks/useFilters";
 import { newsAdminSearchParamsSchema } from "@/utils/queryParams";
 
@@ -11,10 +12,19 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/news")({
 });
 
 function RouteComponent() {
-  const { selectedId } = Route.useSearch();
+  const { selectedId: urlSelectedId } = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
 
+  // selectedId leads the URL: set synchronously on click for instant highlight
+  // and skeleton, then the URL catches up asynchronously via setFilters.
+  // When the URL changes externally (browser back/forward), sync back to it.
+  const [selectedId, setSelectedId] = useState<string | undefined>(urlSelectedId);
+  if (selectedId !== urlSelectedId && urlSelectedId !== undefined) {
+    setSelectedId(urlSelectedId);
+  }
+
   function handleSelectNewsItem(id: string | undefined) {
+    setSelectedId(id);
     setFilters({ selectedId: id });
   }
 

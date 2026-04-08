@@ -43,3 +43,12 @@ export const newsAdminSearchParamsSchema = z.object({
 });
 
 export type NewsAdminSearchParams = z.infer<typeof newsAdminSearchParamsSchema>;
+
+export const newsPublicSearchParamsSchema = z.object({
+  q: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
+export type NewsPublicSearchParams = z.infer<typeof newsPublicSearchParamsSchema>;

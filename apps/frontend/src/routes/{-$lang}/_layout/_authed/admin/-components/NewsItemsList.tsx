@@ -186,7 +186,15 @@ export function NewsItemsList({
                         {item.publishedAt || "No date"}
                       </span>
                       {item.alert ? (
-                        <LucideBell className="text-accent inline size-3" />
+                        <span className="flex items-center gap-0.5">
+                          <LucideBell className="text-accent inline size-3" />
+                          <span className="font-mono text-xs opacity-70">
+                            {item.alert.from}
+                            {item.alert.to && item.alert.to !== item.alert.from
+                              ? ` – ${item.alert.to}`
+                              : null}
+                          </span>
+                        </span>
                       ) : null}
                     </div>
                     {item.translations &&

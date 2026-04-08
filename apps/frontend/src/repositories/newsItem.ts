@@ -32,6 +32,13 @@ export interface NewsTitleItem {
   publishedAt: string | null;
 }
 
+export interface PublishedTitlesFilters {
+  titleOrContent?: string;
+  publishedFrom?: string;
+  publishedTo?: string;
+  tagIds?: string[];
+}
+
 export interface NewsItemAuthor {
   name: string | null;
   email: string | null;
@@ -113,6 +120,7 @@ export interface NewsItemRepository {
     limit?: number;
     offset?: number;
     locale: string;
+    filters?: PublishedTitlesFilters;
   }) => Promise<NewsTitleItem[]>;
 
   /**
@@ -173,8 +181,58 @@ export function createNewsItemRepository(
   database: typeof db,
 ): NewsItemRepository {
   return {
-    async listPublishedTitles({ limit = 5, offset = 0, locale }) {
+    async listPublishedTitles({ limit = 5, offset = 0, locale, filters = {} }) {
       const nowStr = toDateString(new Date())!;
+
+      const conditions = [
+        eq(newsTranslation.lang, locale),
+        lte(newsItem.publishedAt, nowStr),
+      ];
+
+      if (filters.publishedFrom) {
+        conditions.push(gte(newsItem.publishedAt, filters.publishedFrom));
+      }
+
+      if (filters.publishedTo) {
+        conditions.push(lte(newsItem.publishedAt, filters.publishedTo));
+      }
+
+      if (filters.titleOrContent) {
+        const term = `%${filters.titleOrContent}%`;
+        // Search across all locales, not just the current one
+        conditions.push(
+          exists(
+            database
+              .select({ _: newsTranslation.newsId })
+              .from(newsTranslation)
+              .where(
+                and(
+                  eq(newsTranslation.newsId, newsItem.id),
+                  or(
+                    ilike(newsTranslation.title, term),
+                    ilike(newsTranslation.content, term),
+                  ),
+                ),
+              ),
+          ),
+        );
+      }
+
+      if (filters.tagIds && filters.tagIds.length > 0) {
+        conditions.push(
+          exists(
+            database
+              .select({ _: newsItemTag.newsId })
+              .from(newsItemTag)
+              .where(
+                and(
+                  eq(newsItemTag.newsId, newsItem.id),
+                  inArray(newsItemTag.tagId, filters.tagIds),
+                ),
+              ),
+          ),
+        );
+      }
 
       const news = await database
         .select({
@@ -185,15 +243,9 @@ export function createNewsItemRepository(
           alert: alert.newsId,
         })
         .from(newsTranslation)
-        .where(eq(newsTranslation.lang, locale))
-        .innerJoin(
-          newsItem,
-          and(
-            eq(newsTranslation.newsId, newsItem.id),
-            lte(newsItem.publishedAt, nowStr),
-          ),
-        )
+        .innerJoin(newsItem, eq(newsTranslation.newsId, newsItem.id))
         .leftJoin(alert, eq(alert.newsId, newsItem.id))
+        .where(and(...conditions))
         .orderBy(desc(newsItem.publishedAt))
         .limit(limit)
         .offset(offset);
