@@ -175,15 +175,9 @@ const columns = [
 
     cell: function Cell(ctx) {
       return (
-        <div>
-          <Route.Link
-            to="$humId"
-            params={{ humId: ctx.getValue() }}
-            className="text-secondary"
-          >
-            <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-          </Route.Link>
-        </div>
+        <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
+          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+        </Route.Link>
       );
     },
     size: 15,
@@ -196,11 +190,7 @@ const columns = [
         <ul>
           {ctx.row.original.datasetIds.map((datasetId) => (
             <li key={datasetId}>
-              <Route.Link
-                className="text-secondary"
-                to="../datasets/$datasetId"
-                params={{ datasetId }}
-              >
+              <Route.Link to="../datasets/$datasetId" params={{ datasetId }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
               </Route.Link>
             </li>
