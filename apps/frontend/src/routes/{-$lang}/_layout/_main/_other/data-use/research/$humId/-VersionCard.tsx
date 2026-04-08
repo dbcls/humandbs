@@ -239,9 +239,8 @@ function makeDatasetColumns(
       header: t("datasetId"),
       cell: (ctx) => (
         <Link
-          to="/{-$lang}/data-use/research/$humId"
-          params={{ humId: ctx.getValue() }}
-          className="text-secondary"
+          to="/{-$lang}/data-use/datasets/$datasetId"
+          params={{ datasetId: ctx.getValue() }}
         >
           <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
         </Link>
