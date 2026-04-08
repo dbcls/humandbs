@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCart } from "@/hooks/useCart";
 import { Link } from "@/components/Link";
+import { TextWithIcon } from "@/components/TextWithIcon";
+import { FA_ICONS } from "@/lib/faIcons";
 
 export function DatasetVersionCard({
   versionData,
@@ -24,6 +26,7 @@ export function DatasetVersionCard({
     | "typeOfData"
     | "version"
     | "experiments"
+    | "humId"
   >;
   lang?: "ja" | "en";
   showPublicActions?: boolean;
@@ -55,39 +58,51 @@ export function DatasetVersionCard({
       size={"lg"}
       variant={"light"}
       caption={
-        <CardCaption
-          title="NBDC Dataset ID:"
-          icon="dataset"
-          badge={
-            showPublicActions ? (
-              <Link
-                to="/{-$lang}/data-use/datasets/$datasetId/versions"
-                params={{ datasetId: versionData.datasetId }}
-                className="no-underline text-white"
-              >
-                {t("releaseInfo")}
-              </Link>
-            ) : null
-          }
-          right={
-            showPublicActions && user ? (
-              <div className="flex gap-5">
-                <Button
-                  variant={"accent"}
-                  className="rounded-full"
-                  disabled={isInCart}
-                  onClick={() => {
-                    add(versionData as DatasetDoc);
-                  }}
+        <div>
+          <Link
+            className="text-white"
+            to="/{-$lang}/data-use/research/$humId"
+            params={{ humId: versionData.humId }}
+          >
+            <TextWithIcon icon={FA_ICONS.books}>
+              {versionData.humId}
+            </TextWithIcon>
+          </Link>
+          <CardCaption
+            className="flex-1"
+            title="NBDC Dataset ID:"
+            icon="dataset"
+            badge={
+              showPublicActions ? (
+                <Link
+                  to="/{-$lang}/data-use/datasets/$datasetId/versions"
+                  params={{ datasetId: versionData.datasetId }}
+                  className="no-underline text-white"
                 >
-                  {isInCart ? t("alreadyInCart") : t("addToCart")}
-                </Button>
-              </div>
-            ) : null
-          }
-        >
-          {identifier}
-        </CardCaption>
+                  {t("releaseInfo")}
+                </Link>
+              ) : null
+            }
+            right={
+              showPublicActions && user ? (
+                <div className="flex gap-5">
+                  <Button
+                    variant={"accent"}
+                    className="rounded-full"
+                    disabled={isInCart}
+                    onClick={() => {
+                      add(versionData as DatasetDoc);
+                    }}
+                  >
+                    {isInCart ? t("alreadyInCart") : t("addToCart")}
+                  </Button>
+                </div>
+              ) : null
+            }
+          >
+            {identifier}
+          </CardCaption>
+        </div>
       }
     >
       <section>
