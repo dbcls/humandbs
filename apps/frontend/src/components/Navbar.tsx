@@ -402,11 +402,14 @@ function ShoppingCartButton() {
   return (
     <Button
       variant={"plain"}
+      className="relative"
       size="icon"
       onClick={() => navigate({ to: "/{-$lang}/cart", params: { lang } })}
     >
       {cart.length > 0 ? (
-        <span className="bg-primary rounded-full h-6 w-6">{cart.length}</span>
+        <span className="bg-accent absolute top-0 left-0 text-xs text-white rounded-full min-w-8 w-fit p-0.5">
+          {cart.length}
+        </span>
       ) : null}
       <ShoppingCart className="text-secondary" />
     </Button>
