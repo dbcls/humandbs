@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { MarkdownResult } from "@/utils/markdown";
 
 interface MarkdownProps {
+  title?: string | null;
   contentHtml: MarkdownResult;
   className?: string;
 }
@@ -30,7 +31,7 @@ function getCalloutType(rawType?: string): CalloutType {
   return "info";
 }
 
-export function Markdown({ contentHtml, className }: MarkdownProps) {
+export function Markdown({ contentHtml, className, title }: MarkdownProps) {
   const options: HTMLReactParserOptions = {
     replace: (domNode) => {
       if (domNode instanceof Element) {
@@ -76,12 +77,8 @@ export function Markdown({ contentHtml, className }: MarkdownProps) {
   };
 
   return (
-    <div
-      className={cn(
-        "prose prose-h1:text-secondary prose-h1:font-medium prose-h1:mb-2 text-base prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words",
-        className,
-      )}
-    >
+    <div className={cn("custom-prose", className)}>
+      {title ? <h1>{title}</h1> : null}
       {parse(contentHtml.markup ?? "", options)}
     </div>
   );

@@ -30,7 +30,7 @@ function RouteComponent() {
     // All that after the Navbar component
     <section className="flex flex-col gap-8 max-w-content-max-width mx-auto">
       <section className="flex h-fit items-start justify-between gap-8">
-        <div className="flex flex-1 flex-col items-center prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16">
+        <div className="flex flex-1 flex-col items-center  prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16">
           <Outlet />
           <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
             <Button
