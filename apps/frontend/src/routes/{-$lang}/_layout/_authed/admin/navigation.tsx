@@ -5,7 +5,7 @@ import { CollisionPriority } from "@dnd-kit/abstract";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Plus, Trash2, Check, X } from "lucide-react";
 
 import { Card } from "@/components/Card";
 import { Button } from "@/components/ui/button";
@@ -239,28 +239,99 @@ function RouteComponent() {
 
   function commitFooterGroups(groups: FooterGroupWithItems[]) {
     updateDraft((current) => {
-      const newGroups = current.zones.footer.groups.map((fg) => {
-        const idx = groups.findIndex((g) => g.group.id === fg.id);
-        if (idx < 0) return fg;
-        const groupWithItems = groups[idx];
-        return {
-          ...fg,
-          order: (idx + 1) * 10,
-          items: groupWithItems.items.map((item, itemIdx) => ({
-            id: item.id,
-            order: (itemIdx + 1) * 10,
-          })),
-        };
-      });
+      // Build new group list preserving all groups (including those not in the
+      // drag-drop view, i.e. empty groups that were filtered out)
+      const updatedGroupIds = new Set(groups.map((g) => g.group.id));
+      const unchangedGroups = current.zones.footer.groups.filter(
+        (g) => !updatedGroupIds.has(g.id),
+      );
+
+      const updatedGroups = groups.map((g, idx) => ({
+        ...g.group,
+        order: (idx + 1) * 10,
+        items: g.items.map((item, itemIdx) => ({
+          id: item.id,
+          order: (itemIdx + 1) * 10,
+        })),
+      }));
 
       return {
         ...current,
         zones: {
           ...current.zones,
-          footer: { ...current.zones.footer, groups: newGroups },
+          footer: {
+            groups: [...updatedGroups, ...unchangedGroups],
+          },
         },
       };
     });
+  }
+
+  function addFooterGroup(label: { en: string; ja: string }) {
+    const id = crypto.randomUUID();
+    const maxOrder = Math.max(
+      0,
+      ...(draft?.zones.footer.groups.map((g) => g.order) ?? [0]),
+    );
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        footer: {
+          groups: [
+            ...current.zones.footer.groups,
+            {
+              id,
+              label,
+              order: maxOrder + 10,
+              enabled: true,
+              items: [],
+            },
+          ],
+        },
+      },
+    }));
+  }
+
+  function renameFooterGroup(groupId: string, label: { en: string; ja: string }) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        footer: {
+          groups: current.zones.footer.groups.map((g) =>
+            g.id === groupId ? { ...g, label } : g,
+          ),
+        },
+      },
+    }));
+  }
+
+  function deleteFooterGroup(groupId: string) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        footer: {
+          groups: current.zones.footer.groups.filter((g) => g.id !== groupId),
+        },
+      },
+      // Items that were in the deleted group remain in config.items (unassigned)
+    }));
+  }
+
+  function toggleFooterGroupEnabled(groupId: string, enabled: boolean) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        footer: {
+          groups: current.zones.footer.groups.map((g) =>
+            g.id === groupId ? { ...g, enabled } : g,
+          ),
+        },
+      },
+    }));
   }
 
   function updateNavbarItemEnabled(id: string, enabled: boolean) {
@@ -390,26 +461,16 @@ function RouteComponent() {
             <h2 className="text-base font-medium">Footer</h2>
             <p className="text-foreground-light mt-1 text-sm">
               Drag group columns to reorder. Drag items between columns to
-              reassign.
+              reassign. Click a group header to rename it.
             </p>
             <div className="mt-4">
               <FooterPreview
                 groups={footerGroups}
                 onCommit={commitFooterGroups}
-                onToggleGroupEnabled={(groupId, enabled) => {
-                  updateDraft((current) => ({
-                    ...current,
-                    zones: {
-                      ...current.zones,
-                      footer: {
-                        ...current.zones.footer,
-                        groups: current.zones.footer.groups.map((g) =>
-                          g.id === groupId ? { ...g, enabled } : g,
-                        ),
-                      },
-                    },
-                  }));
-                }}
+                onToggleGroupEnabled={toggleFooterGroupEnabled}
+                onRenameGroup={renameFooterGroup}
+                onDeleteGroup={deleteFooterGroup}
+                onAddGroup={addFooterGroup}
               />
             </div>
           </section>
@@ -597,7 +658,6 @@ function NavbarColumnCard({
         isColumnDropTarget && !isDragging ? "ring-2 ring-blue-400" : "",
       ].join(" ")}
     >
-      {/* Column header */}
       <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
         <div className="flex items-center gap-1">
           <button
@@ -636,7 +696,6 @@ function NavbarColumnCard({
         </Select>
       </div>
 
-      {/* Child items */}
       <ul className="flex flex-col gap-1 p-2">
         {col.children.map((child, childIndex) => (
           <NavbarChildItem
@@ -783,14 +842,23 @@ function FooterPreview({
   groups: groupsProp,
   onCommit,
   onToggleGroupEnabled,
+  onRenameGroup,
+  onDeleteGroup,
+  onAddGroup,
 }: {
   groups: FooterGroupWithItems[];
   onCommit: (groups: FooterGroupWithItems[]) => void;
   onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
+  onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
+  onDeleteGroup: (groupId: string) => void;
+  onAddGroup: (label: { en: string; ja: string }) => void;
 }) {
   const [groups, setGroups] = useState<FooterGroupWithItems[]>(groupsProp);
   const isDraggingRef = useRef(false);
   const snapshotRef = useRef<FooterGroupWithItems[]>(groupsProp);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newLabelEn, setNewLabelEn] = useState("");
+  const [newLabelJa, setNewLabelJa] = useState("");
 
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
@@ -837,78 +905,181 @@ function FooterPreview({
     }));
   }
 
+  function handleAddGroup() {
+    const en = newLabelEn.trim();
+    const ja = newLabelJa.trim();
+    if (!en) return;
+    onAddGroup({ en, ja: ja || en });
+    setNewLabelEn("");
+    setNewLabelJa("");
+    setShowAddForm(false);
+  }
+
+  function cancelAddGroup() {
+    setNewLabelEn("");
+    setNewLabelJa("");
+    setShowAddForm(false);
+  }
+
   return (
-    <DragDropProvider
-      onDragStart={(event) => {
-        isDraggingRef.current = true;
-        snapshotRef.current = groups;
-        const src = event.operation.source;
-        if (!src) return;
-        if (src.data?.type === FOOTER_GROUP_TYPE) {
-          setDraggingGroupId(String(src.id));
-        } else if (src.data?.type === FOOTER_ITEM_TYPE) {
-          setDraggingItemId(String(src.id));
-        }
-      }}
-      onDragOver={(event) => {
-        const src = event.operation.source;
-        if (!src) return;
-        setGroups((prev) => {
-          const record = buildItemsRecord(prev);
-          const next = move(record, event);
-          return applyItemsRecord(next as ItemsRecord, prev);
-        });
-      }}
-      onDragEnd={(event) => {
-        setDraggingGroupId(null);
-        setDraggingItemId(null);
-        isDraggingRef.current = false;
+    <div className="flex flex-col gap-4">
+      <DragDropProvider
+        onDragStart={(event) => {
+          isDraggingRef.current = true;
+          snapshotRef.current = groups;
+          const src = event.operation.source;
+          if (!src) return;
+          if (src.data?.type === FOOTER_GROUP_TYPE) {
+            setDraggingGroupId(String(src.id));
+          } else if (src.data?.type === FOOTER_ITEM_TYPE) {
+            setDraggingItemId(String(src.id));
+          }
+        }}
+        onDragOver={(event) => {
+          const src = event.operation.source;
+          if (!src) return;
+          setGroups((prev) => {
+            const record = buildItemsRecord(prev);
+            const next = move(record, event);
+            return applyItemsRecord(next as ItemsRecord, prev);
+          });
+        }}
+        onDragEnd={(event) => {
+          setDraggingGroupId(null);
+          setDraggingItemId(null);
+          isDraggingRef.current = false;
 
-        if (event.canceled) {
-          setGroups(snapshotRef.current);
-          return;
-        }
+          if (event.canceled) {
+            setGroups(snapshotRef.current);
+            return;
+          }
 
-        setGroups((finalGroups) => {
-          onCommit(finalGroups);
-          return finalGroups;
-        });
-      }}
-    >
-      <div className="flex flex-wrap gap-4">
-        {groups.map((g, groupIndex) => (
-          <FooterGroupColumn
-            key={g.group.id}
-            g={g}
-            groupIndex={groupIndex}
-            isDragging={draggingGroupId === g.group.id}
-            onToggleGroupEnabled={onToggleGroupEnabled}
-          />
-        ))}
-      </div>
+          setGroups((finalGroups) => {
+            onCommit(finalGroups);
+            return finalGroups;
+          });
+        }}
+      >
+        <div className="flex flex-wrap gap-4">
+          {groups.map((g, groupIndex) => (
+            <FooterGroupColumn
+              key={g.group.id}
+              g={g}
+              groupIndex={groupIndex}
+              isDragging={draggingGroupId === g.group.id}
+              onToggleGroupEnabled={onToggleGroupEnabled}
+              onRenameGroup={onRenameGroup}
+              onDeleteGroup={onDeleteGroup}
+            />
+          ))}
+        </div>
 
-      <DragOverlay>
-        {draggingGroup ? (
-          <FooterGroupOverlay g={draggingGroup} />
-        ) : draggingItem ? (
-          <FooterItemOverlay item={draggingItem} />
-        ) : null}
-      </DragOverlay>
-    </DragDropProvider>
+        <DragOverlay>
+          {draggingGroup ? (
+            <FooterGroupOverlay g={draggingGroup} />
+          ) : draggingItem ? (
+            <FooterItemOverlay item={draggingItem} />
+          ) : null}
+        </DragOverlay>
+      </DragDropProvider>
+
+      {/* Add group */}
+      {showAddForm ? (
+        <div className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
+          <p className="mb-2 text-xs font-medium text-gray-600">New group</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <label className="w-6 shrink-0 text-xs text-gray-500">EN</label>
+              <input
+                type="text"
+                value={newLabelEn}
+                onChange={(e) => setNewLabelEn(e.target.value)}
+                placeholder="English name"
+                className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddGroup();
+                  if (e.key === "Escape") cancelAddGroup();
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="w-6 shrink-0 text-xs text-gray-500">JA</label>
+              <input
+                type="text"
+                value={newLabelJa}
+                onChange={(e) => setNewLabelJa(e.target.value)}
+                placeholder="Japanese name"
+                className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddGroup();
+                  if (e.key === "Escape") cancelAddGroup();
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-1 pt-1">
+              <Button
+                type="button"
+                size="slim"
+                onClick={handleAddGroup}
+                disabled={!newLabelEn.trim()}
+                className="h-7 text-xs"
+              >
+                <Check className="mr-1 size-3" />
+                Add
+              </Button>
+              <Button
+                type="button"
+                size="slim"
+                variant="outline"
+                onClick={cancelAddGroup}
+                className="h-7 text-xs"
+              >
+                <X className="mr-1 size-3" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="slim"
+          className="w-fit text-xs"
+          onClick={() => setShowAddForm(true)}
+        >
+          <Plus className="mr-1 size-3" />
+          Add group
+        </Button>
+      )}
+    </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Footer group column with inline rename
+// ---------------------------------------------------------------------------
 
 function FooterGroupColumn({
   g,
   groupIndex,
   isDragging,
   onToggleGroupEnabled,
+  onRenameGroup,
+  onDeleteGroup,
 }: {
   g: FooterGroupWithItems;
   groupIndex: number;
   isDragging: boolean;
   onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
+  onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
+  onDeleteGroup: (groupId: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editEn, setEditEn] = useState("");
+  const [editJa, setEditJa] = useState("");
+
   const { ref: groupDropRef, isDropTarget } = useDroppable({
     id: g.group.id + "-droppable",
     collisionPriority: CollisionPriority.Low,
@@ -924,6 +1095,24 @@ function FooterGroupColumn({
 
   const groupLabel = g.group.label["en"] ?? g.group.label["ja"] ?? "";
 
+  function startEditing() {
+    setEditEn(g.group.label["en"] ?? "");
+    setEditJa(g.group.label["ja"] ?? "");
+    setIsEditing(true);
+  }
+
+  function confirmEdit() {
+    const en = editEn.trim();
+    const ja = editJa.trim();
+    if (!en) return;
+    onRenameGroup(g.group.id, { en, ja: ja || en });
+    setIsEditing(false);
+  }
+
+  function cancelEdit() {
+    setIsEditing(false);
+  }
+
   return (
     <div
       ref={(el) => {
@@ -931,31 +1120,96 @@ function FooterGroupColumn({
         groupDropRef(el);
       }}
       className={[
-        "min-w-32 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
         isDragging ? "opacity-40" : "",
         !g.group.enabled ? "opacity-50" : "",
         isDropTarget && !isDragging ? "ring-2 ring-blue-400" : "",
       ].join(" ")}
     >
-      <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
-        <button
-          type="button"
-          ref={groupHandleRef as React.Ref<HTMLButtonElement>}
-          className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-        >
-          <GripVertical className="size-4 shrink-0" />
-        </button>
-        <span className="flex-1 truncate text-xs font-semibold uppercase text-gray-500">
-          {groupLabel}
-        </span>
-        <Switch
-          checked={g.group.enabled}
-          onCheckedChange={(checked) =>
-            onToggleGroupEnabled(g.group.id, checked)
-          }
-          className="shrink-0 scale-75"
-        />
-      </div>
+      {/* Group header */}
+      {isEditing ? (
+        <div className="border-b border-gray-100 px-3 py-2">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <label className="w-5 shrink-0 text-xs text-gray-500">EN</label>
+              <input
+                type="text"
+                value={editEn}
+                onChange={(e) => setEditEn(e.target.value)}
+                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmEdit();
+                  if (e.key === "Escape") cancelEdit();
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="w-5 shrink-0 text-xs text-gray-500">JA</label>
+              <input
+                type="text"
+                value={editJa}
+                onChange={(e) => setEditJa(e.target.value)}
+                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmEdit();
+                  if (e.key === "Escape") cancelEdit();
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-1 pt-0.5">
+              <button
+                type="button"
+                onClick={confirmEdit}
+                disabled={!editEn.trim()}
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs text-green-700 hover:bg-green-50 disabled:opacity-40"
+              >
+                <Check className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs text-gray-500 hover:bg-gray-50"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+          <button
+            type="button"
+            ref={groupHandleRef as React.Ref<HTMLButtonElement>}
+            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          >
+            <GripVertical className="size-4 shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={startEditing}
+            className="flex-1 truncate text-left text-xs font-semibold uppercase text-gray-500 hover:text-gray-800"
+            title="Click to rename"
+          >
+            {groupLabel}
+          </button>
+          <Switch
+            checked={g.group.enabled}
+            onCheckedChange={(checked) =>
+              onToggleGroupEnabled(g.group.id, checked)
+            }
+            className="shrink-0 scale-75"
+          />
+          <button
+            type="button"
+            onClick={() => onDeleteGroup(g.group.id)}
+            className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+            title="Delete group"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       <ul className="flex flex-col gap-1 p-2">
         {g.items.map((item, itemIndex) => (
@@ -1023,7 +1277,7 @@ function FooterGroupOverlay({ g }: { g: FooterGroupWithItems }) {
   return (
     <div
       className={[
-        "min-w-32 max-w-96 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
         !g.group.enabled ? "opacity-50" : "",
       ].join(" ")}
     >

@@ -52,10 +52,20 @@ export function createSiteNavigationRepository(
 
       if (!row) return null;
 
-      return {
-        ...row,
-        config: parseSiteNavigationConfig(row.config),
-      };
+      try {
+        return {
+          ...row,
+          config: parseSiteNavigationConfig(row.config),
+        };
+      } catch (error) {
+        // Config in DB is in an unrecognized shape (e.g. pre-migration).
+        // Treat as missing so callers fall back to the default config.
+        console.error(
+          "Stored site navigation config failed validation — treating as missing. Run the migration script to upgrade.",
+          error,
+        );
+        return null;
+      }
     },
 
     async getEffective() {
