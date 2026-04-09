@@ -1,0 +1,265 @@
+{
+  "items": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "type": "document",
+      "contentId": "home"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "type": "document",
+      "contentId": "data-submission",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 10,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "type": "document",
+      "contentId": "guidelines",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 20,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "type": "document",
+      "contentId": "data-sharing-guidelines",
+      "navbar": {
+        "enabled": true,
+        "visibility": "secondary",
+        "order": 10,
+        "priority": "important",
+        "parentItemId": "00000000-0000-4000-8000-000000000003"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "type": "document",
+      "contentId": "security-guidelines-for-users",
+      "navbar": {
+        "enabled": true,
+        "visibility": "secondary",
+        "order": 20,
+        "priority": "important",
+        "parentItemId": "00000000-0000-4000-8000-000000000003"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "type": "document",
+      "contentId": "security-guidelines-for-submitters",
+      "navbar": {
+        "enabled": true,
+        "visibility": "secondary",
+        "order": 30,
+        "priority": "important",
+        "parentItemId": "00000000-0000-4000-8000-000000000003"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "type": "document",
+      "contentId": "security-guidelines-for-dbcenters",
+      "navbar": {
+        "enabled": true,
+        "visibility": "secondary",
+        "order": 40,
+        "priority": "important",
+        "parentItemId": "00000000-0000-4000-8000-000000000003"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "type": "document",
+      "contentId": "data-usage",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 30,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "type": "link",
+      "url": "/data-use/research",
+      "label": { "en": "Research List", "ja": "研究一覧" },
+      "navbar": {
+        "enabled": true,
+        "visibility": "secondary",
+        "order": 10,
+        "priority": "important",
+        "parentItemId": "00000000-0000-4000-8000-000000000008"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "type": "link",
+      "url": "/data-use/datasets",
+      "label": { "en": "Dataset List", "ja": "データセット一覧" },
+      "navbar": {
+        "enabled": true,
+        "visibility": "secondary",
+        "order": 20,
+        "priority": "important",
+        "parentItemId": "00000000-0000-4000-8000-000000000008"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "type": "document",
+      "contentId": "data-processing",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 40,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000012",
+      "type": "document",
+      "contentId": "off-premise-server",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 50,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000013",
+      "type": "document",
+      "contentId": "dac",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 60,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000014",
+      "type": "document",
+      "contentId": "publications",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 70,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000015",
+      "type": "document",
+      "contentId": "violation",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 80,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000016",
+      "type": "document",
+      "contentId": "privacy-policy",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 90,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000017",
+      "type": "document",
+      "contentId": "faq",
+      "navbar": {
+        "enabled": true,
+        "visibility": "essential",
+        "order": 100,
+        "priority": "important"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000018",
+      "type": "document",
+      "contentId": "supported-browsers"
+    }
+  ],
+  "zones": {
+    "footer": {
+      "groups": [
+        {
+          "id": "00000000-0000-4001-8000-000000000001",
+          "label": { "en": "Overview", "ja": "概要" },
+          "order": 10,
+          "enabled": true,
+          "items": [
+            { "id": "00000000-0000-4000-8000-000000000001", "order": 10 },
+            { "id": "00000000-0000-4000-8000-000000000014", "order": 70 },
+            { "id": "00000000-0000-4000-8000-000000000017", "order": 80 }
+          ]
+        },
+        {
+          "id": "00000000-0000-4001-8000-000000000002",
+          "label": { "en": "Guidelines", "ja": "ガイドライン" },
+          "order": 20,
+          "enabled": true,
+          "items": [
+            { "id": "00000000-0000-4000-8000-000000000003", "order": 10 },
+            { "id": "00000000-0000-4000-8000-000000000004", "order": 20 },
+            { "id": "00000000-0000-4000-8000-000000000005", "order": 30 },
+            { "id": "00000000-0000-4000-8000-000000000006", "order": 40 },
+            { "id": "00000000-0000-4000-8000-000000000007", "order": 50 }
+          ]
+        },
+        {
+          "id": "00000000-0000-4001-8000-000000000003",
+          "label": { "en": "Submission", "ja": "提供" },
+          "order": 30,
+          "enabled": true,
+          "items": [
+            { "id": "00000000-0000-4000-8000-000000000002", "order": 10 },
+            { "id": "00000000-0000-4000-8000-000000000013", "order": 40 }
+          ]
+        },
+        {
+          "id": "00000000-0000-4001-8000-000000000004",
+          "label": { "en": "Usage", "ja": "利用" },
+          "order": 40,
+          "enabled": true,
+          "items": [
+            { "id": "00000000-0000-4000-8000-000000000008", "order": 10 },
+            { "id": "00000000-0000-4000-8000-000000000009", "order": 20 },
+            { "id": "00000000-0000-4000-8000-000000000010", "order": 30 },
+            { "id": "00000000-0000-4000-8000-000000000011", "order": 40 }
+          ]
+        },
+        {
+          "id": "00000000-0000-4001-8000-000000000005",
+          "label": { "en": "Policies", "ja": "ポリシー" },
+          "order": 50,
+          "enabled": true,
+          "items": [
+            { "id": "00000000-0000-4000-8000-000000000012", "order": 20 },
+            { "id": "00000000-0000-4000-8000-000000000015", "order": 40 },
+            { "id": "00000000-0000-4000-8000-000000000016", "order": 50 },
+            { "id": "00000000-0000-4000-8000-000000000018", "order": 60 }
+          ]
+        }
+      ]
+    },
+    "navbar": {
+      "groups": []
+    }
+  }
+}

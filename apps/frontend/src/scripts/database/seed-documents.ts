@@ -7,6 +7,7 @@ import { Pool } from "pg";
 
 import { CONTENT_IDS, type ContentId } from "@/config/content-config";
 import { i18n, type Locale } from "@/config/i18n";
+import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 
@@ -539,6 +540,47 @@ async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<void> {
   }
 }
 
+const NAV_CONFIG_ID = "default";
+
+async function seedNavigation(
+  db: ReturnType<typeof drizzle<typeof schema>>,
+  overwrite = false,
+): Promise<void> {
+  console.log("\nSeeding navigation config...");
+
+  const config = getDefaultSiteNavigationConfig();
+
+  const [existing] = await db
+    .select({ id: schema.siteNavigationConfig.id })
+    .from(schema.siteNavigationConfig)
+    .where(eq(schema.siteNavigationConfig.id, NAV_CONFIG_ID))
+    .limit(1)
+    .execute();
+
+  if (existing && !overwrite) {
+    console.log("Navigation config already exists, skipping (use --overwrite to replace).");
+    return;
+  }
+
+  await db
+    .insert(schema.siteNavigationConfig)
+    .values({
+      id: NAV_CONFIG_ID,
+      config,
+      revision: 1,
+    })
+    .onConflictDoUpdate({
+      target: schema.siteNavigationConfig.id,
+      set: {
+        config,
+        updatedAt: new Date(),
+      },
+    })
+    .execute();
+
+  console.log(`Navigation config seeded (id: "${NAV_CONFIG_ID}").`);
+}
+
 async function seedDocuments(overwrite = false) {
   console.log("Starting document seed...");
 
@@ -550,8 +592,10 @@ async function seedDocuments(overwrite = false) {
     const documents = await loadDocuments();
     console.log(`Found ${documents.size} document(s) to seed`);
 
+    await seedNavigation(db, overwrite);
+
     if (documents.size === 0) {
-      console.log("No documents to seed. Exiting.");
+      console.log("No documents to seed.");
       return;
     }
 
