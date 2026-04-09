@@ -53,6 +53,8 @@ export function DatasetVersionCard({
     [versionData.datasetId, versionData.version].filter(Boolean).join(".") ||
     "Preview";
 
+  console.log("versionData", versionData);
+
   return (
     <CardWithCaption
       size={"lg"}

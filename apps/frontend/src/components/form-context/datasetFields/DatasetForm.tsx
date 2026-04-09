@@ -88,7 +88,16 @@ export function datasetFormValuesToPreviewDataset(
     datasetId?: string;
     version?: string;
   },
-): Pick<DatasetDoc, "criteria" | "datasetId" | "releaseDate" | "typeOfData" | "version"> {
+): Pick<
+  DatasetDoc,
+  | "criteria"
+  | "datasetId"
+  | "releaseDate"
+  | "typeOfData"
+  | "version"
+  | "experiments"
+  | "humId"
+> {
   return {
     criteria: values.criteria,
     datasetId: values.datasetId || options?.datasetId || "",
@@ -98,6 +107,8 @@ export function datasetFormValuesToPreviewDataset(
       en: values.typeOfData.en ?? null,
     },
     version: options?.version || "",
+    experiments: [],
+    humId: values.humId,
   };
 }
 
@@ -212,7 +223,9 @@ export function DatasetForm({
         {/* Dataset ID (create only) */}
         {showDatasetIdField && (
           <form.AppField name="datasetId">
-            {(field) => <field.TextField type="col" label="Dataset ID (optional)" />}
+            {(field) => (
+              <field.TextField type="col" label="Dataset ID (optional)" />
+            )}
           </form.AppField>
         )}
 
@@ -243,7 +256,10 @@ export function DatasetForm({
             <Label>Experiments</Label>
             <ModifiedTag isModified={isExperimentsModified} />
           </div>
-          <ExperimentsArrayField form={form} initialItems={defaultValues.experiments} />
+          <ExperimentsArrayField
+            form={form}
+            initialItems={defaultValues.experiments}
+          />
         </div>
       </fieldset>
 
