@@ -7,7 +7,7 @@ import { Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 
-import { datasetsColumnHelper, datasetsColumns } from "./data-usage/datasets";
+import { datasetsColumnHelper, datasetsColumns } from "./data-use/datasets";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,

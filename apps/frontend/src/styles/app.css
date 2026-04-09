@@ -408,7 +408,7 @@
     background-blend-mode: multiply;
     background-repeat: no-repeat;
     background-position: top;
-    background-size: contain;
+    background-size: 100% auto;
   }
 
   .md-editor {
@@ -434,6 +434,10 @@
       width: 100%;
       height: 100%;
       z-index: 9999;
+    }
+
+    .w-md-editor-preview > .anchor {
+      display: inline;
     }
 
     .wmde-markdown-color {

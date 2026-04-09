@@ -67,6 +67,7 @@ interface NewNavigationItem {
 interface NewNavigationGroupItem {
   id: string;
   order: number;
+  enabled?: boolean;
 }
 
 interface NewNavigationGroup {
@@ -91,24 +92,24 @@ interface NewConfig {
 
 // These are the stable UUIDs from the new default config
 const ITEM_ID_MAP: Record<string, string> = {
-  home: "00000000-0000-0000-0000-000000000001",
-  "data-submission": "00000000-0000-0000-0000-000000000002",
-  guidelines: "00000000-0000-0000-0000-000000000003",
-  "data-sharing-guidelines": "00000000-0000-0000-0000-000000000004",
-  "security-guidelines-for-users": "00000000-0000-0000-0000-000000000005",
-  "security-guidelines-for-submitters": "00000000-0000-0000-0000-000000000006",
-  "security-guidelines-for-dbcenters": "00000000-0000-0000-0000-000000000007",
-  "data-usage": "00000000-0000-0000-0000-000000000008",
-  "research-list": "00000000-0000-0000-0000-000000000009",
-  "dataset-list": "00000000-0000-0000-0000-000000000010",
-  "data-processing": "00000000-0000-0000-0000-000000000011",
-  "off-premise-server": "00000000-0000-0000-0000-000000000012",
-  dac: "00000000-0000-0000-0000-000000000013",
-  publications: "00000000-0000-0000-0000-000000000014",
-  violation: "00000000-0000-0000-0000-000000000015",
-  "privacy-policy": "00000000-0000-0000-0000-000000000016",
-  faq: "00000000-0000-0000-0000-000000000017",
-  "supported-browsers": "00000000-0000-0000-0000-000000000018",
+  home: "00000000-0000-4000-8000-000000000001",
+  "data-submission": "00000000-0000-4000-8000-000000000002",
+  guidelines: "00000000-0000-4000-8000-000000000003",
+  "data-sharing-guidelines": "00000000-0000-4000-8000-000000000004",
+  "security-guidelines-for-users": "00000000-0000-4000-8000-000000000005",
+  "security-guidelines-for-submitters": "00000000-0000-4000-8000-000000000006",
+  "security-guidelines-for-dbcenters": "00000000-0000-4000-8000-000000000007",
+  "data-usage": "00000000-0000-4000-8000-000000000008",
+  "research-list": "00000000-0000-4000-8000-000000000009",
+  "dataset-list": "00000000-0000-4000-8000-000000000010",
+  "data-processing": "00000000-0000-4000-8000-000000000011",
+  "off-premise-server": "00000000-0000-4000-8000-000000000012",
+  dac: "00000000-0000-4000-8000-000000000013",
+  publications: "00000000-0000-4000-8000-000000000014",
+  violation: "00000000-0000-4000-8000-000000000015",
+  "privacy-policy": "00000000-0000-4000-8000-000000000016",
+  faq: "00000000-0000-4000-8000-000000000017",
+  "supported-browsers": "00000000-0000-4000-8000-000000000018",
 };
 
 // Items that are link-type (route-only, no CMS document)
@@ -128,11 +129,11 @@ const LINK_ITEMS: Record<
 
 // Old footer group ID → new UUID + inline labels
 const GROUP_ID_MAP: Record<string, string> = {
-  overview: "00000000-0000-0001-0000-000000000001",
-  guidelines: "00000000-0000-0001-0000-000000000002",
-  submission: "00000000-0000-0001-0000-000000000003",
-  usage: "00000000-0000-0001-0000-000000000004",
-  policy: "00000000-0000-0001-0000-000000000005",
+  overview: "00000000-0000-4001-8000-000000000001",
+  guidelines: "00000000-0000-4001-8000-000000000002",
+  submission: "00000000-0000-4001-8000-000000000003",
+  usage: "00000000-0000-4001-8000-000000000004",
+  policy: "00000000-0000-4001-8000-000000000005",
 };
 
 const GROUP_LABELS: Record<string, Record<string, string>> = {
@@ -217,6 +218,7 @@ function migrateConfig(old: OldConfig): NewConfig {
           return {
             id: newItemId,
             order: item.footer!.order,
+            enabled: item.footer?.enabled ?? true,
           };
         });
 

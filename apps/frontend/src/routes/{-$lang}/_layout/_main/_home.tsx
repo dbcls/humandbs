@@ -8,6 +8,8 @@ import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
 import ArrowIcon from "@/assets/icons/arrow.svg?react";
+import SubmitDataIcon from "@/assets/submit-data.svg?react";
+import UseDataIcon from "@/assets/use-data.svg?react";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
@@ -39,22 +41,23 @@ function RouteComponent() {
                 navigate({ to: "/{-$lang}/data-submission" });
               }}
               size={"xl"}
-              className="w-[27rem] h-[6.8rem] block text-center"
+              className="w-[27rem] h-[6.8rem] block text-center relative"
             >
               <span>{t("data-submission-button")}</span>
-              <ArrowIcon className="inline" />
+
+              <SubmitDataIcon className="absolute right-2 w-40 h-auto bottom-2" />
             </Button>
 
             <Button
               variant={"action"}
               size={"xl"}
-              className="w-[27rem] h-[6.8rem] block text-center"
+              className="w-[27rem] h-[6.8rem] block text-center relative"
               onClick={() => {
                 navigate({ to: "/{-$lang}/data-use" });
               }}
             >
               <span>{t("data-usage-button")}</span>
-              <ArrowIcon className="inline" />
+              <UseDataIcon className="absolute left-0 w-40 h-auto bottom-2" />
             </Button>
           </div>
         </div>

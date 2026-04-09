@@ -38,6 +38,7 @@ export interface NavigationItem {
 export interface NavigationGroupItem {
   id: string; // references NavigationItem.id
   order: number;
+  enabled?: boolean;
 }
 
 export interface NavigationGroup {
@@ -238,7 +239,10 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
         to: "/{-$lang}/$",
         params: { lang, _splat: "dac" },
       }),
-      defaultLabel: { en: "Human Data Review Committee", ja: "ヒトデータ審査委員会" },
+      defaultLabel: {
+        en: "Human Data Review Committee",
+        ja: "ヒトデータ審査委員会",
+      },
     },
   ],
   [
@@ -299,21 +303,35 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
 
 const defaultSiteNavigationConfig: SiteNavigationConfig = {
   items: [
-    { id: "00000000-0000-0000-0000-000000000001", type: "document", contentId: "home" },
     {
-      id: "00000000-0000-0000-0000-000000000002",
+      id: "00000000-0000-4000-8000-000000000001",
+      type: "document",
+      contentId: "home",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000002",
       type: "document",
       contentId: "data-submission",
-      navbar: { enabled: true, visibility: "essential", order: 10, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 10,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000003",
+      id: "00000000-0000-4000-8000-000000000003",
       type: "document",
       contentId: "guidelines",
-      navbar: { enabled: true, visibility: "essential", order: 20, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 20,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000004",
+      id: "00000000-0000-4000-8000-000000000004",
       type: "document",
       contentId: "data-sharing-guidelines",
       navbar: {
@@ -321,11 +339,11 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
         visibility: "secondary",
         order: 10,
         priority: "important",
-        parentItemId: "00000000-0000-0000-0000-000000000003",
+        parentItemId: "00000000-0000-4000-8000-000000000003",
       },
     },
     {
-      id: "00000000-0000-0000-0000-000000000005",
+      id: "00000000-0000-4000-8000-000000000005",
       type: "document",
       contentId: "security-guidelines-for-users",
       navbar: {
@@ -333,11 +351,11 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
         visibility: "secondary",
         order: 20,
         priority: "important",
-        parentItemId: "00000000-0000-0000-0000-000000000003",
+        parentItemId: "00000000-0000-4000-8000-000000000003",
       },
     },
     {
-      id: "00000000-0000-0000-0000-000000000006",
+      id: "00000000-0000-4000-8000-000000000006",
       type: "document",
       contentId: "security-guidelines-for-submitters",
       navbar: {
@@ -345,11 +363,11 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
         visibility: "secondary",
         order: 30,
         priority: "important",
-        parentItemId: "00000000-0000-0000-0000-000000000003",
+        parentItemId: "00000000-0000-4000-8000-000000000003",
       },
     },
     {
-      id: "00000000-0000-0000-0000-000000000007",
+      id: "00000000-0000-4000-8000-000000000007",
       type: "document",
       contentId: "security-guidelines-for-dbcenters",
       navbar: {
@@ -357,17 +375,22 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
         visibility: "secondary",
         order: 40,
         priority: "important",
-        parentItemId: "00000000-0000-0000-0000-000000000003",
+        parentItemId: "00000000-0000-4000-8000-000000000003",
       },
     },
     {
-      id: "00000000-0000-0000-0000-000000000008",
+      id: "00000000-0000-4000-8000-000000000008",
       type: "document",
       contentId: "data-usage",
-      navbar: { enabled: true, visibility: "essential", order: 30, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 30,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000009",
+      id: "00000000-0000-4000-8000-000000000009",
       type: "link",
       url: "/data-use/research",
       label: { en: "Research List", ja: "研究一覧" },
@@ -376,11 +399,11 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
         visibility: "secondary",
         order: 10,
         priority: "important",
-        parentItemId: "00000000-0000-0000-0000-000000000008",
+        parentItemId: "00000000-0000-4000-8000-000000000008",
       },
     },
     {
-      id: "00000000-0000-0000-0000-000000000010",
+      id: "00000000-0000-4000-8000-000000000010",
       type: "link",
       url: "/data-use/datasets",
       label: { en: "Dataset List", ja: "データセット一覧" },
@@ -389,53 +412,88 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
         visibility: "secondary",
         order: 20,
         priority: "important",
-        parentItemId: "00000000-0000-0000-0000-000000000008",
+        parentItemId: "00000000-0000-4000-8000-000000000008",
       },
     },
     {
-      id: "00000000-0000-0000-0000-000000000011",
+      id: "00000000-0000-4000-8000-000000000011",
       type: "document",
       contentId: "data-processing",
-      navbar: { enabled: true, visibility: "essential", order: 40, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 40,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000012",
+      id: "00000000-0000-4000-8000-000000000012",
       type: "document",
       contentId: "off-premise-server",
-      navbar: { enabled: true, visibility: "essential", order: 50, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 50,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000013",
+      id: "00000000-0000-4000-8000-000000000013",
       type: "document",
       contentId: "dac",
-      navbar: { enabled: true, visibility: "essential", order: 60, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 60,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000014",
+      id: "00000000-0000-4000-8000-000000000014",
       type: "document",
       contentId: "publications",
-      navbar: { enabled: true, visibility: "essential", order: 70, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 70,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000015",
+      id: "00000000-0000-4000-8000-000000000015",
       type: "document",
       contentId: "violation",
-      navbar: { enabled: true, visibility: "essential", order: 80, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 80,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000016",
+      id: "00000000-0000-4000-8000-000000000016",
       type: "document",
       contentId: "privacy-policy",
-      navbar: { enabled: true, visibility: "essential", order: 90, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 90,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000017",
+      id: "00000000-0000-4000-8000-000000000017",
       type: "document",
       contentId: "faq",
-      navbar: { enabled: true, visibility: "essential", order: 100, priority: "important" },
+      navbar: {
+        enabled: true,
+        visibility: "essential",
+        order: 100,
+        priority: "important",
+      },
     },
     {
-      id: "00000000-0000-0000-0000-000000000018",
+      id: "00000000-0000-4000-8000-000000000018",
       type: "document",
       contentId: "supported-browsers",
     },
@@ -444,61 +502,61 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     footer: {
       groups: [
         {
-          id: "00000000-0000-0001-0000-000000000001",
+          id: "00000000-0000-4001-8000-000000000001",
           label: { en: "Overview", ja: "概要" },
           order: 10,
           enabled: true,
           items: [
-            { id: "00000000-0000-0000-0000-000000000001", order: 10 }, // home
-            { id: "00000000-0000-0000-0000-000000000014", order: 70 }, // publications
-            { id: "00000000-0000-0000-0000-000000000017", order: 80 }, // faq
+            { id: "00000000-0000-4000-8000-000000000001", order: 10 }, // home
+            { id: "00000000-0000-4000-8000-000000000014", order: 70 }, // publications
+            { id: "00000000-0000-4000-8000-000000000017", order: 80 }, // faq
           ],
         },
         {
-          id: "00000000-0000-0001-0000-000000000002",
+          id: "00000000-0000-4001-8000-000000000002",
           label: { en: "Guidelines", ja: "ガイドライン" },
           order: 20,
           enabled: true,
           items: [
-            { id: "00000000-0000-0000-0000-000000000003", order: 10 }, // guidelines
-            { id: "00000000-0000-0000-0000-000000000004", order: 20 }, // data-sharing-guidelines
-            { id: "00000000-0000-0000-0000-000000000005", order: 30 }, // security-guidelines-for-users
-            { id: "00000000-0000-0000-0000-000000000006", order: 40 }, // security-guidelines-for-submitters
-            { id: "00000000-0000-0000-0000-000000000007", order: 50 }, // security-guidelines-for-dbcenters
+            { id: "00000000-0000-4000-8000-000000000003", order: 10 }, // guidelines
+            { id: "00000000-0000-4000-8000-000000000004", order: 20 }, // data-sharing-guidelines
+            { id: "00000000-0000-4000-8000-000000000005", order: 30 }, // security-guidelines-for-users
+            { id: "00000000-0000-4000-8000-000000000006", order: 40 }, // security-guidelines-for-submitters
+            { id: "00000000-0000-4000-8000-000000000007", order: 50 }, // security-guidelines-for-dbcenters
           ],
         },
         {
-          id: "00000000-0000-0001-0000-000000000003",
+          id: "00000000-0000-4001-8000-000000000003",
           label: { en: "Submission", ja: "提供" },
           order: 30,
           enabled: true,
           items: [
-            { id: "00000000-0000-0000-0000-000000000002", order: 10 }, // data-submission
-            { id: "00000000-0000-0000-0000-000000000013", order: 40 }, // dac
+            { id: "00000000-0000-4000-8000-000000000002", order: 10 }, // data-submission
+            { id: "00000000-0000-4000-8000-000000000013", order: 40 }, // dac
           ],
         },
         {
-          id: "00000000-0000-0001-0000-000000000004",
+          id: "00000000-0000-4001-8000-000000000004",
           label: { en: "Usage", ja: "利用" },
           order: 40,
           enabled: true,
           items: [
-            { id: "00000000-0000-0000-0000-000000000008", order: 10 }, // data-usage
-            { id: "00000000-0000-0000-0000-000000000009", order: 20 }, // research-list
-            { id: "00000000-0000-0000-0000-000000000010", order: 30 }, // dataset-list
-            { id: "00000000-0000-0000-0000-000000000011", order: 40 }, // data-processing
+            { id: "00000000-0000-4000-8000-000000000008", order: 10 }, // data-usage
+            { id: "00000000-0000-4000-8000-000000000009", order: 20 }, // research-list
+            { id: "00000000-0000-4000-8000-000000000010", order: 30 }, // dataset-list
+            { id: "00000000-0000-4000-8000-000000000011", order: 40 }, // data-processing
           ],
         },
         {
-          id: "00000000-0000-0001-0000-000000000005",
+          id: "00000000-0000-4001-8000-000000000005",
           label: { en: "Policies", ja: "ポリシー" },
           order: 50,
           enabled: true,
           items: [
-            { id: "00000000-0000-0000-0000-000000000012", order: 20 }, // off-premise-server
-            { id: "00000000-0000-0000-0000-000000000015", order: 40 }, // violation
-            { id: "00000000-0000-0000-0000-000000000016", order: 50 }, // privacy-policy
-            { id: "00000000-0000-0000-0000-000000000018", order: 60 }, // supported-browsers
+            { id: "00000000-0000-4000-8000-000000000012", order: 20 }, // off-premise-server
+            { id: "00000000-0000-4000-8000-000000000015", order: 40 }, // violation
+            { id: "00000000-0000-4000-8000-000000000016", order: 50 }, // privacy-policy
+            { id: "00000000-0000-4000-8000-000000000018", order: 60 }, // supported-browsers
           ],
         },
       ],
@@ -542,7 +600,12 @@ export function getNavbarItems(
   lang: Locale,
   visibility: NavVisibility = "essential",
 ): ResolvedNavbarItem[] {
-  return buildNavbarItems(lang, getDefaultSiteNavigationConfig(), undefined, visibility);
+  return buildNavbarItems(
+    lang,
+    getDefaultSiteNavigationConfig(),
+    undefined,
+    visibility,
+  );
 }
 
 export function getFooterSitemapGroups(lang: Locale): ResolvedFooterGroup[] {
@@ -556,7 +619,13 @@ function resolveItemLabel(
 ): string {
   // Explicit label override on the item takes priority
   if (item.label) {
-    return item.label[lang] ?? item.label["en"] ?? item.contentId ?? item.url ?? item.id;
+    return (
+      item.label[lang] ??
+      item.label["en"] ??
+      item.contentId ??
+      item.url ??
+      item.id
+    );
   }
   // Document items: try DB-resolved title first, then registry default
   if (item.type === "document" && item.contentId) {
@@ -571,7 +640,10 @@ function resolveItemLabel(
   return item.url ?? item.id;
 }
 
-function resolveItemLinkOptions(item: NavigationItem, lang: Locale): LinkOptions {
+function resolveItemLinkOptions(
+  item: NavigationItem,
+  lang: Locale,
+): LinkOptions {
   if (item.type === "document" && item.contentId) {
     const reg = navigationRegistry.get(item.contentId);
     if (reg) return reg.getLinkOptions(lang);
@@ -601,8 +673,7 @@ function buildNavbarItems(
       const children = config.items
         .filter(
           (child) =>
-            child.navbar?.enabled &&
-            child.navbar.parentItemId === item.id,
+            child.navbar?.enabled && child.navbar.parentItemId === item.id,
         )
         .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0))
         .map((child) => ({
@@ -637,6 +708,7 @@ function buildFooterGroups(
       items: group.items
         .slice()
         .sort((a, b) => a.order - b.order)
+        .filter((ref) => ref.enabled !== false)
         .map((ref) => itemById.get(ref.id))
         .filter((item): item is NavigationItem => item !== undefined)
         .map((item) => ({

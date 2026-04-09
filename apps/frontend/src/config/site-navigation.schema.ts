@@ -8,6 +8,7 @@ const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);
 const navigationGroupItemSchema = z.object({
   id: z.string().uuid(),
   order: z.number().int(),
+  enabled: z.boolean().optional().default(true),
 });
 
 const navigationGroupSchema = z.object({
