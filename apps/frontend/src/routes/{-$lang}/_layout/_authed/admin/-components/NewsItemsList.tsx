@@ -1,7 +1,4 @@
-import {
-  useInfiniteQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { LucideBell, Trash2Icon } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -24,7 +21,7 @@ import {
   createDraftNewsItem,
   DRAFT_NEWS_ID,
   isDraftNewsItem,
-} from "./-draftNewsItem";
+} from "./draftNewsItem";
 import { AddNewButton } from "./AddNewButton";
 import { NewsFiltersBar } from "./NewsFiltersBar";
 import { TagPill } from "@/components/TagPill";
@@ -44,18 +41,26 @@ export function NewsItemsList({
   const queryClient = useQueryClient();
 
   const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
-  const { q, publishedFrom, publishedTo, isAlert, tagIds } = routeApi.useSearch();
+  const { q, publishedFrom, publishedTo, isAlert, tagIds } =
+    routeApi.useSearch();
 
   const listQO = newsItemsInfiniteQueryOptions({
     titleOrContent: q,
     publishedFrom,
     publishedTo,
-    isAlert: isAlert === "alert" ? true : isAlert === "news" ? false : undefined,
+    isAlert:
+      isAlert === "alert" ? true : isAlert === "news" ? false : undefined,
     tagIds: tagIds && tagIds.length > 0 ? tagIds : undefined,
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
-    useInfiniteQuery(listQO);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+  } = useInfiniteQuery(listQO);
 
   const newsItems = data?.pages.flat() ?? [];
 
@@ -198,14 +203,19 @@ export function NewsItemsList({
                       ) : null}
                     </div>
                     {item.translations &&
-                      Object.entries(item.translations).map(([lang, tr], index) => (
-                        <div key={`${lang}-${index}`} className="flex items-center gap-1 w-full">
-                          <Tag tag={lang} isActive={isActive} />
-                          <span className="block min-w-0 truncate text-xs opacity-70">
-                            {tr.title}
-                          </span>
-                        </div>
-                      ))}
+                      Object.entries(item.translations).map(
+                        ([lang, tr], index) => (
+                          <div
+                            key={`${lang}-${index}`}
+                            className="flex items-center gap-1 w-full"
+                          >
+                            <Tag tag={lang} isActive={isActive} />
+                            <span className="block min-w-0 truncate text-xs opacity-70">
+                              {tr.title}
+                            </span>
+                          </div>
+                        ),
+                      )}
                     {item.tags && item.tags.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {item.tags.map((tag) => (

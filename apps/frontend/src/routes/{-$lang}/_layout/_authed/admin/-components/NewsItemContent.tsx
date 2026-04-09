@@ -34,7 +34,7 @@ import {
 } from "@/serverFunctions/news";
 import type { DateStringRange } from "@/utils/dates";
 import { Label } from "@/components/ui/label";
-import { DRAFT_NEWS_ID, isDraftNewsItem } from "./-draftNewsItem";
+import { DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
 import { useRouteContext } from "@tanstack/react-router";
 import type { SessionUser } from "@/utils/jwt-helpers";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -186,7 +186,12 @@ function NewsItemForm({
   type NewsListData = { pages: NewsItemResponse[][]; pageParams: number[] };
 
   const { mutate: updateNewsItem } = useMutation({
-    mutationFn: async ({ values }: { values: FormDataType; formApi: { reset: (values?: FormDataType) => void } }) => {
+    mutationFn: async ({
+      values,
+    }: {
+      values: FormDataType;
+      formApi: { reset: (values?: FormDataType) => void };
+    }) => {
       return $updateNewsItem({
         data: {
           id: newsItem.id,
@@ -203,7 +208,8 @@ function NewsItemForm({
       await queryClient.cancelQueries(newsListQueryFilter);
 
       const prevNewsItem = queryClient.getQueryData(newsItemQO.queryKey);
-      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
+      const prevNewsListEntries =
+        queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
       const optimisticNewsItem = getOptimisticallyUpdatedNewsValue(
         newsItem,
@@ -259,7 +265,8 @@ function NewsItemForm({
     onMutate: async (inputValues) => {
       await queryClient.cancelQueries(newsListQueryFilter);
 
-      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
+      const prevNewsListEntries =
+        queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
       const optimisticNewsItem = getOptimisticallyCreatedNewsItem(
         user,
@@ -405,7 +412,9 @@ function NewsItemForm({
           <>
             <TitleValue
               title="Created at:"
-              value={newsItem.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
+              value={newsItem.createdAt.toLocaleDateString(locale, {
+                timeZone: "UTC",
+              })}
             />
             <TitleValue
               title="Updated at:"

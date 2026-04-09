@@ -1,7 +1,6 @@
 import { useStore } from "@tanstack/react-form";
 import { useEffect } from "react";
 
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
@@ -155,15 +154,16 @@ export function DatasetForm({
 }: DatasetFormProps) {
   const form = useAppForm({
     defaultValues,
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
       await onSubmit(value);
+      formApi.reset(value);
     },
   });
 
   const values = useStore(form.store, (state) => state.values);
+  const isDirty = useStore(form.store, (state) => state.isDirty);
 
   // Notify parent when dirty state changes
-  const isDirty = !deepEqual(values, defaultValues);
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
@@ -172,9 +172,10 @@ export function DatasetForm({
     onValuesChange?.(values);
   }, [onValuesChange, values]);
 
-  const isExperimentsModified = useStore(
-    form.store,
-    (state) => !deepEqual(state.values.experiments, defaultValues.experiments),
+  const isExperimentsModified = useStore(form.store, (state) =>
+    Object.entries(state.fieldMeta).some(
+      ([key, meta]) => key.startsWith("experiments") && meta.isDirty,
+    ),
   );
 
   return (
