@@ -26,7 +26,7 @@ const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
 
 export function NewsFiltersBar() {
   const search = routeApi.useSearch();
-  const { setFilters } = useFilters(routeApi.id);
+  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/news");
 
   const hasActiveFilters = !!(
     search.q ||
@@ -115,7 +115,9 @@ function DateRangeFilter({
       onSelect={(range) =>
         onChange({ publishedFrom: range.from, publishedTo: range.to })
       }
-      onClear={() => onChange({ publishedFrom: undefined, publishedTo: undefined })}
+      onClear={() =>
+        onChange({ publishedFrom: undefined, publishedTo: undefined })
+      }
     />
   );
 }
@@ -156,11 +158,7 @@ function TagFilter({
   const anchor = useComboboxAnchor();
 
   return (
-    <Combobox
-      multiple
-      value={value}
-      onValueChange={onChange}
-    >
+    <Combobox multiple value={value} onValueChange={onChange}>
       <ComboboxChips ref={anchor} className="min-h-8 text-sm">
         {value.map((id) => {
           const tag = allTags.find((t) => t.id === id);
@@ -171,7 +169,9 @@ function TagFilter({
             </ComboboxChip>
           );
         })}
-        <ComboboxChipsInput placeholder={value.length === 0 ? "Filter by tag…" : ""} />
+        <ComboboxChipsInput
+          placeholder={value.length === 0 ? "Filter by tag…" : ""}
+        />
       </ComboboxChips>
       <ComboboxContent anchor={anchor}>
         <ComboboxList>

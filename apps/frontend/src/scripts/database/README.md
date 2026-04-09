@@ -27,6 +27,25 @@ bun seed-documents.ts
 - **MIME type detection** for various file formats
 - **Content validation** - Only seeds document IDs from CONTENT_IDS configuration
 
+### `seed-navigation.ts`
+
+Resets and reseeds the site navigation config to the current default config.
+
+**Usage:**
+
+```bash
+bun run db:seed-navigation
+# or run directly with:
+bun ./src/scripts/database/seed-navigation.ts
+```
+
+**Behavior:**
+
+- **Overwrites existing navigation config** - Deletes current navigation config rows and revisions
+- **Seeds active config as `global`** - Matches the runtime repository key used by the app
+- **Creates revision history baseline** - Inserts a fresh revision `1` snapshot
+- **Useful for navbar resets** - Fast way to reseed the admin navigation editor after model changes
+
 **Expected Directory Structure:**
 
 ```
@@ -124,6 +143,9 @@ bun run db:reset
 
 # 3. Seed documents and assets (creates documents + content)
 bun run seed:documents
+
+# Optional: reset and reseed only the navigation config
+bun run db:seed-navigation
 ```
 
 ### Regular Updates
@@ -131,6 +153,9 @@ bun run seed:documents
 ```bash
 # Update documents and content (safe to run repeatedly)
 bun run seed:documents
+
+# Reset navigation config to the current default
+bun run db:seed-navigation
 
 # Quick data refresh (preserves schema)
 bun run db:clear && bun run seed:documents

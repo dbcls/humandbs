@@ -31,8 +31,7 @@ export function ResearchDatasetsTab({
   });
 
   const { mutate: deleteDataset } = useMutation({
-    mutationFn: (datasetId: string) =>
-      $deleteDataset({ data: { datasetId } }),
+    mutationFn: (datasetId: string) => $deleteDataset({ data: { datasetId } }),
     onSuccess: (result) => {
       if (!result.ok) {
         setDeleteError(result.error);
@@ -52,6 +51,7 @@ export function ResearchDatasetsTab({
     });
   }
 
+  // TODO refactor - hide "actions" columns conditionally
   const columns = useMemo<ColumnDef<Dataset>[]>(() => {
     const cols: ColumnDef<Dataset>[] = [
       {
@@ -59,9 +59,7 @@ export function ResearchDatasetsTab({
         accessorKey: "datasetId",
         header: (ctx) => <SortHeader ctx={ctx} label="Dataset ID" />,
         cell: (ctx) => (
-          <span className="font-mono text-xs">
-            {ctx.getValue() as string}
-          </span>
+          <span className="font-mono text-xs">{ctx.getValue() as string}</span>
         ),
         size: 14,
       },
@@ -134,8 +132,8 @@ export function ResearchDatasetsTab({
         <div className="overflow-auto">
           <Table
             className="text-sm"
-            columns={columns as ColumnDef<Record<string, unknown>>[]}
-            data={datasets as unknown as Record<string, unknown>[]}
+            columns={columns}
+            data={datasets}
             onRowClick={(row) =>
               onSelectDataset((row as unknown as Dataset).datasetId)
             }

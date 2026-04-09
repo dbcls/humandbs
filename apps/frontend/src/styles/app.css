@@ -436,8 +436,32 @@
       z-index: 9999;
     }
 
-    .w-md-editor-preview > .anchor {
-      display: inline;
+
+
+    .w-md-editor-preview {
+      h1, h2, h3, h4, h5, h6 {
+        position: relative;
+        .anchor {
+          display: none;
+          position: absolute;
+          right: 100%;
+          padding-right: 0.4em;
+          color: inherit;
+          text-decoration: none;
+        }
+        &:hover .anchor {
+          display: inline !important;
+          cursor: pointer;
+        }
+        .icon.icon-link {
+          &::before {
+            font-family: "FontAwesome6";
+            font-weight: 900;
+            content: "\f0c1";
+            font-size: 0.75em;
+          }
+        }
+      }
     }
 
     .wmde-markdown-color {
@@ -525,6 +549,30 @@
       @apply text-secondary visited:text-neutral-400 font-medium;
     }
     @apply prose prose-h1:text-secondary text-base prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words;
+
+    h1, h2, h3, h4, h5, h6 {
+      position: relative;
+      .anchor {
+        display: none;
+        position: absolute;
+        right: 100%;
+        padding-right: 0.4em;
+        color: inherit;
+        text-decoration: none;
+      }
+      &:hover .anchor {
+        display: inline;
+        cursor: pointer;
+      }
+      .icon.icon-link {
+        &::before {
+          font-family: "FontAwesome6";
+          font-weight: 900;
+          content: "\f0c1";
+          font-size: 0.75em;
+        }
+      }
+    }
   }
 
   .nested-form {

@@ -2,14 +2,13 @@ import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { move } from "@dnd-kit/helpers";
 import { CollisionPriority } from "@dnd-kit/abstract";
-import { pointerIntersection } from "@dnd-kit/collision";
 import {
   createFileRoute,
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useRef, useState } from "react";
 import {
   GripVertical,
   Plus,
@@ -37,6 +36,11 @@ import {
   type NavPriority,
   type SiteNavigationConfig,
 } from "@/config/site-navigation";
+import {
+  deriveNavbarCommittedGroups,
+  mergeCommittedNavbarGroups,
+  type NavbarCommittedGroup,
+} from "@/config/site-navigation-admin";
 import { type Locale } from "@/config/i18n";
 import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 import {
@@ -61,10 +65,7 @@ export const Route = createFileRoute(
 // Types
 // ---------------------------------------------------------------------------
 
-type NavbarColumn = {
-  parent: NavigationItem;
-  children: NavigationItem[];
-};
+type NavbarGroupWithItems = NavbarCommittedGroup;
 
 type FooterGroupWithItems = {
   group: NavigationGroup;
@@ -80,19 +81,6 @@ type ItemsRecord = Record<string, string[]>;
 // ---------------------------------------------------------------------------
 // Label helpers
 // ---------------------------------------------------------------------------
-
-function getItemLabel(item: NavigationItem): string {
-  if (item.label) {
-    return (
-      item.label["en"] ??
-      item.label["ja"] ??
-      item.contentId ??
-      item.url ??
-      item.id
-    );
-  }
-  return item.contentId ?? item.url ?? item.id;
-}
 
 function getDocumentLabel(
   doc: DocumentsListItemResponse,
@@ -139,20 +127,6 @@ function NavigationItemLeadingIcon({ item }: { item: NavigationItem }) {
   }
 
   return <Link2 className="mt-0.5 size-3 shrink-0 text-amber-600" />;
-}
-
-function getNextNavbarOrder(
-  items: NavigationItem[],
-  parentItemId?: string,
-): number {
-  const maxOrder = Math.max(
-    0,
-    ...items
-      .filter((item) => item.navbar?.parentItemId === parentItemId)
-      .map((item) => item.navbar?.order ?? 0),
-  );
-
-  return maxOrder + 10;
 }
 
 // ---------------------------------------------------------------------------
@@ -303,41 +277,168 @@ function RouteComponent() {
   // Navbar commit handlers
   // ---------------------------------------------------------------------------
 
-  function commitNavbarColumns(columns: NavbarColumn[]) {
-    updateDraft((current) => {
-      const newItems = current.items.map((item) => {
-        if (!item.navbar) return item;
+  function commitNavbarGroups(navGroups: NavbarGroupWithItems[]) {
+    updateDraft((current) => mergeCommittedNavbarGroups(current, navGroups));
+  }
 
-        const colIndex = columns.findIndex((c) => c.parent.id === item.id);
-        if (colIndex >= 0) {
-          return {
-            ...item,
-            navbar: {
-              ...item.navbar,
-              order: (colIndex + 1) * 10,
-              parentItemId: undefined,
+  function addNavbarGroup(label: { en: string; ja: string }) {
+    const id = crypto.randomUUID();
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: [
+            ...current.zones.navbar.groups,
+            {
+              id,
+              label,
+              enabled: false,
+              priority: "important" as const,
+              items: [],
             },
-          };
-        }
+          ],
+        },
+      },
+    }));
+  }
 
-        for (const col of columns) {
-          const childIndex = col.children.findIndex((ch) => ch.id === item.id);
-          if (childIndex >= 0) {
-            return {
-              ...item,
-              navbar: {
-                ...item.navbar,
-                order: (childIndex + 1) * 10,
-                parentItemId: col.parent.id,
-              },
-            };
-          }
-        }
+  function renameNavbarGroup(groupId: string, label: { en: string; ja: string }) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.map((g) =>
+            g.id === groupId ? { ...g, label } : g,
+          ),
+        },
+      },
+    }));
+  }
 
-        return item;
-      });
-      return { ...current, items: newItems };
+  function deleteNavbarGroup(groupId: string) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.filter((g) => g.id !== groupId),
+        },
+      },
+    }));
+  }
+
+  function toggleNavbarGroupEnabled(groupId: string, enabled: boolean) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.map((g) =>
+            g.id === groupId
+              ? { ...g, enabled: enabled ? g.items.length > 0 : false }
+              : g,
+          ),
+        },
+      },
+    }));
+  }
+
+  function updateNavbarGroupPriority(groupId: string, priority: NavPriority) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.map((g) =>
+            g.id === groupId ? { ...g, priority } : g,
+          ),
+        },
+      },
+    }));
+  }
+
+  function assignDocumentToNavbarGroup(contentId: string, groupId: string) {
+    updateDraft((current) => {
+      const existingItem = current.items.find(
+        (i) => i.type === "document" && i.contentId === contentId,
+      );
+      const itemId = existingItem?.id ?? crypto.randomUUID();
+
+      const newItems = existingItem
+        ? current.items
+        : [...current.items, { id: itemId, type: "document" as const, contentId }];
+
+      // Remove from any navbar group
+      const newGroups = current.zones.navbar.groups.map((g) => ({
+        ...g,
+        items: g.items.filter((ref) => ref.id !== itemId),
+      }));
+
+      // Add to target group
+      const targetGroups = newGroups.map((g) =>
+        g.id === groupId
+          ? { ...g, items: [...g.items, { id: itemId, enabled: true }] }
+          : g,
+      );
+
+      return {
+        ...current,
+        items: newItems,
+        zones: { ...current.zones, navbar: { groups: targetGroups } },
+      };
     });
+  }
+
+  function removeItemFromNavbarGroup(itemId: string, groupId: string) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.map((g) =>
+            g.id === groupId
+              ? { ...g, items: g.items.filter((ref) => ref.id !== itemId) }
+              : g,
+          ),
+        },
+      },
+    }));
+  }
+
+  function toggleNavbarItemEnabled(itemId: string, groupId: string, enabled: boolean) {
+    updateDraft((current) => ({
+      ...current,
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.map((g) =>
+            g.id === groupId
+              ? { ...g, items: g.items.map((ref) => ref.id === itemId ? { ...ref, enabled } : ref) }
+              : g,
+          ),
+        },
+      },
+    }));
+  }
+
+  function addLinkItemToNavbarGroup(groupId: string, url: string, label: { en: string; ja: string }) {
+    const id = crypto.randomUUID();
+    updateDraft((current) => ({
+      ...current,
+      items: [...current.items, { id, type: "link" as const, url, label }],
+      zones: {
+        ...current.zones,
+        navbar: {
+          groups: current.zones.navbar.groups.map((g) =>
+            g.id === groupId
+              ? { ...g, items: [...g.items, { id, enabled: true }] }
+              : g,
+          ),
+        },
+      },
+    }));
   }
 
   // ---------------------------------------------------------------------------
@@ -353,12 +454,10 @@ function RouteComponent() {
         (g) => !updatedGroupIds.has(g.id),
       );
 
-      const updatedGroups = groups.map((g, idx) => ({
+      const updatedGroups = groups.map((g) => ({
         ...g.group,
-        order: (idx + 1) * 10,
-        items: g.items.map(({ item, enabled }, itemIdx) => ({
+        items: g.items.map(({ item, enabled }) => ({
           id: item.id,
-          order: (itemIdx + 1) * 10,
           enabled,
         })),
       }));
@@ -377,10 +476,6 @@ function RouteComponent() {
 
   function addFooterGroup(label: { en: string; ja: string }) {
     const id = crypto.randomUUID();
-    const maxOrder = Math.max(
-      0,
-      ...(draft?.zones.footer.groups.map((g) => g.order) ?? [0]),
-    );
     updateDraft((current) => ({
       ...current,
       zones: {
@@ -388,13 +483,7 @@ function RouteComponent() {
         footer: {
           groups: [
             ...current.zones.footer.groups,
-            {
-              id,
-              label,
-              order: maxOrder + 10,
-              enabled: true,
-              items: [],
-            },
+            { id, label, enabled: true, items: [] },
           ],
         },
       },
@@ -472,10 +561,7 @@ function RouteComponent() {
         if (g.id !== groupId) return g;
         return {
           ...g,
-          items: [
-            ...g.items,
-            { id: itemId, order: (g.items.length + 1) * 10, enabled: true },
-          ],
+          items: [...g.items, { id: itemId, enabled: true }],
         };
       });
 
@@ -502,10 +588,7 @@ function RouteComponent() {
         if (g.id !== groupId) return g;
         return {
           ...g,
-          items: [
-            ...g.items,
-            { id, order: (g.items.length + 1) * 10, enabled: true },
-          ],
+          items: [...g.items, { id, enabled: true }],
         };
       });
       return {
@@ -565,36 +648,12 @@ function RouteComponent() {
     }));
   }
 
-  function createLinkItem(
-    url: string,
-    label: { en: string; ja: string },
-    navbarParentItemId?: string,
-  ) {
+  function createUnassignedLinkItem(url: string, label: { en: string; ja: string }) {
     const id = crypto.randomUUID();
-    updateDraft((current) => {
-      const item: NavigationItem = {
-        id,
-        type: "link",
-        url,
-        label,
-        ...(navbarParentItemId
-          ? {
-              navbar: {
-                enabled: true,
-                visibility: "secondary" as const,
-                order: getNextNavbarOrder(current.items, navbarParentItemId),
-                priority: "important" as const,
-                parentItemId: navbarParentItemId,
-              },
-            }
-          : {}),
-      };
-
-      return {
-        ...current,
-        items: [...current.items, item],
-      };
-    });
+    updateDraft((current) => ({
+      ...current,
+      items: [...current.items, { id, type: "link" as const, url, label }],
+    }));
   }
 
   function deleteLinkItem(itemId: string) {
@@ -609,94 +668,13 @@ function RouteComponent() {
             items: group.items.filter((ref) => ref.id !== itemId),
           })),
         },
-        navbar: current.zones.navbar,
+        navbar: {
+          groups: current.zones.navbar.groups.map((group) => ({
+            ...group,
+            items: group.items.filter((ref) => ref.id !== itemId),
+          })),
+        },
       },
-    }));
-  }
-
-  function assignDocumentToNavbar(contentId: string, parentItemId?: string) {
-    updateDraft((current) => {
-      const existingItem = current.items.find(
-        (item) => item.type === "document" && item.contentId === contentId,
-      );
-      const itemId = existingItem?.id ?? crypto.randomUUID();
-
-      const navbar = {
-        enabled: true,
-        visibility: parentItemId
-          ? ("secondary" as const)
-          : ("essential" as const),
-        order: getNextNavbarOrder(current.items, parentItemId),
-        priority: "important" as const,
-        parentItemId,
-      };
-
-      return {
-        ...current,
-        items: existingItem
-          ? current.items.map((item) =>
-              item.id === itemId ? { ...item, navbar } : item,
-            )
-          : [
-              ...current.items,
-              { id: itemId, type: "document" as const, contentId, navbar },
-            ],
-      };
-    });
-  }
-
-  function assignExistingLinkToNavbar(itemId: string, parentItemId?: string) {
-    updateDraft((current) => ({
-      ...current,
-      items: current.items.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              navbar: {
-                enabled: true,
-                visibility: parentItemId
-                  ? ("secondary" as const)
-                  : ("essential" as const),
-                order: getNextNavbarOrder(current.items, parentItemId),
-                priority: item.navbar?.priority ?? "important",
-                parentItemId,
-              },
-            }
-          : item,
-      ),
-    }));
-  }
-
-  function removeNavbarItem(itemId: string) {
-    updateDraft((current) => ({
-      ...current,
-      items: current.items.map((item) =>
-        item.id === itemId || item.navbar?.parentItemId === itemId
-          ? { ...item, navbar: undefined }
-          : item,
-      ),
-    }));
-  }
-
-  function updateNavbarItemEnabled(id: string, enabled: boolean) {
-    updateDraft((current) => ({
-      ...current,
-      items: current.items.map((entry) =>
-        entry.id === id && entry.navbar
-          ? { ...entry, navbar: { ...entry.navbar, enabled } }
-          : entry,
-      ),
-    }));
-  }
-
-  function updateNavbarItemPriority(id: string, priority: NavPriority) {
-    updateDraft((current) => ({
-      ...current,
-      items: current.items.map((entry) =>
-        entry.id === id && entry.navbar
-          ? { ...entry, navbar: { ...entry.navbar, priority } }
-          : entry,
-      ),
     }));
   }
 
@@ -706,46 +684,26 @@ function RouteComponent() {
 
   const itemById = new Map(draft.items.map((i) => [i.id, i]));
 
-  const topLevelNavbarItems = draft.items
-    .filter((item) => item.navbar && !item.navbar.parentItemId)
-    .slice()
-    .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0));
+  function resolveGroupItems(
+    group: NavigationGroup,
+  ): Array<{ item: NavigationItem; enabled: boolean }> {
+    return group.items
+      .map((ref) => {
+        const item = itemById.get(ref.id);
+        return item ? { item, enabled: ref.enabled !== false } : undefined;
+      })
+      .filter(
+        (e): e is { item: NavigationItem; enabled: boolean } => e !== undefined,
+      );
+  }
 
-  const navbarColumns: NavbarColumn[] = topLevelNavbarItems.map((parent) => ({
-    parent,
-    children: draft.items
-      .filter((item) => item.navbar?.parentItemId === parent.id)
-      .slice()
-      .sort((a, b) => (a.navbar?.order ?? 0) - (b.navbar?.order ?? 0)),
-  }));
+  const navbarGroups: NavbarGroupWithItems[] =
+    deriveNavbarCommittedGroups(draft);
 
-  const sortedFooterGroups = draft.zones.footer.groups
-    .slice()
-    .sort((a, b) => a.order - b.order);
-
-  const footerGroups: FooterGroupWithItems[] = sortedFooterGroups.map(
+  const footerGroups: FooterGroupWithItems[] = draft.zones.footer.groups.map(
     (group) => ({
       group,
-      items: group.items
-        .slice()
-        .sort((a, b) => a.order - b.order)
-        .map((ref) => {
-          const item = itemById.get(ref.id);
-          return item
-            ? {
-                item,
-                enabled: ref.enabled !== false,
-              }
-            : undefined;
-        })
-        .filter(
-          (
-            entry,
-          ): entry is {
-            item: NavigationItem;
-            enabled: boolean;
-          } => entry !== undefined,
-        ),
+      items: resolveGroupItems(group),
     }),
   );
 
@@ -812,24 +770,21 @@ function RouteComponent() {
           <section className="rounded-md border border-gray-200 p-4">
             <h2 className="text-base font-medium">Navbar</h2>
             <p className="text-foreground-light mt-1 text-sm">
-              Drag columns to reorder. Drag child items between columns to
-              reparent.
+              Drag groups to reorder. Drag items between groups to reassign.
             </p>
             <div className="mt-4">
               <NavbarPreview
-                columns={navbarColumns}
+                groups={navbarGroups}
                 allItems={draft.items}
                 documents={documents}
                 lang={lang}
-                onCommit={commitNavbarColumns}
-                onToggleEnabled={updateNavbarItemEnabled}
-                onChangePriority={updateNavbarItemPriority}
-                onAssignDocument={assignDocumentToNavbar}
-                onAssignExistingLink={assignExistingLinkToNavbar}
-                onCreateLinkItem={createLinkItem}
+                onCommit={commitNavbarGroups}
+                onToggleGroupEnabled={toggleNavbarGroupEnabled}
+                onChangePriority={updateNavbarGroupPriority}
+                onRenameGroup={renameNavbarGroup}
+                onDeleteGroup={deleteNavbarGroup}
+                onAddGroup={addNavbarGroup}
                 onDeleteLinkItem={deleteLinkItem}
-                onUpdateLinkLabel={updateLinkItem}
-                onRemoveNavbarItem={removeNavbarItem}
               />
             </div>
           </section>
@@ -854,7 +809,7 @@ function RouteComponent() {
                 onAddGroup={addFooterGroup}
                 onAssignDocument={assignDocumentToGroup}
                 onAddLinkToGroup={addLinkItemToGroup}
-                onCreateUnassignedLinkItem={createLinkItem}
+                onCreateUnassignedLinkItem={createUnassignedLinkItem}
                 onDeleteLinkItem={deleteLinkItem}
                 onUpdateLinkLabel={updateLinkItem}
                 onRemoveItem={removeFooterItem}
@@ -869,552 +824,501 @@ function RouteComponent() {
 }
 
 // ---------------------------------------------------------------------------
-// Navbar preview — multi-sortable-list using @dnd-kit/react v1
+// Navbar preview — group-based layout mirroring FooterPreview
 // ---------------------------------------------------------------------------
 
-const NAVBAR_COLUMN_TYPE = "navbar-column";
-const NAVBAR_ITEM_TYPE = "navbar-item";
+const NAVBAR_GROUP_TYPE = "navbar-group";
+const NAVBAR_ASSIGNED_ITEM_TYPE = "navbar-assigned-item";
 const NAVBAR_UNASSIGNED_DOC_TYPE = "navbar-unassigned-doc";
 const NAVBAR_UNASSIGNED_LINK_TYPE = "navbar-unassigned-link";
 const NAVBAR_UNASSIGNED_POOL_ID = "__navbar-pool__";
-const NAVBAR_TOP_LEVEL_DROPZONE_ID = "__navbar-top-level__";
 
-function getNavbarColumnSortId(parentItemId: string): string {
-  return `navbar-column:${parentItemId}`;
+function getNavbarGroupSortId(groupId: string): string {
+  return `navbar-group:${groupId}`;
 }
 
-function getNavbarColumnGroupId(parentItemId: string): string {
-  return `navbar-column-group:${parentItemId}`;
+function getNavbarGroupLinkedSlotId(groupId: string): string {
+  return `navbar-group-linked:${groupId}`;
 }
 
-function parseNavbarColumnGroupId(value: string): string | null {
-  return value.startsWith("navbar-column-group:")
-    ? value.slice("navbar-column-group:".length)
+function getNavbarGroupSubItemsId(groupId: string): string {
+  return `navbar-group-sub:${groupId}`;
+}
+
+function parseNavbarGroupLinkedSlotId(value: string): string | null {
+  return value.startsWith("navbar-group-linked:")
+    ? value.slice("navbar-group-linked:".length)
     : null;
 }
 
+function parseNavbarGroupSubItemsId(value: string): string | null {
+  return value.startsWith("navbar-group-sub:")
+    ? value.slice("navbar-group-sub:".length)
+    : null;
+}
+
+function updateNavbarAssignedItem(
+  currentGroups: NavbarGroupWithItems[],
+  itemId: string,
+  updater: (item: NavbarGroupWithItems["subItems"][number]) => NavbarGroupWithItems["subItems"][number],
+): NavbarGroupWithItems[] {
+  return currentGroups.map((group) => ({
+    ...group,
+    subItems: group.subItems.map((item) =>
+      item.item.id === itemId ? updater(item) : item,
+    ),
+  }));
+}
+
+function removeNavbarAssignedItem(
+  currentGroups: NavbarGroupWithItems[],
+  itemId: string,
+): NavbarGroupWithItems[] {
+  return currentGroups.map((group) => ({
+    ...group,
+    ...(group.linkedItem?.item.id === itemId ? { linkedItem: undefined } : {}),
+    subItems: group.subItems.filter((item) => item.item.id !== itemId),
+  }));
+}
+
 function NavbarPreview({
-  columns: columnsProp,
+  groups: groupsProp,
   allItems,
   documents,
   lang,
   onCommit,
-  onToggleEnabled,
+  onToggleGroupEnabled,
   onChangePriority,
-  onAssignDocument,
-  onAssignExistingLink,
-  onCreateLinkItem,
+  onRenameGroup,
+  onDeleteGroup,
+  onAddGroup,
   onDeleteLinkItem,
-  onUpdateLinkLabel,
-  onRemoveNavbarItem,
 }: {
-  columns: NavbarColumn[];
+  groups: NavbarGroupWithItems[];
   allItems: NavigationItem[];
   documents: DocumentsListItemResponse[];
   lang: Locale;
-  onCommit: (columns: NavbarColumn[]) => void;
-  onToggleEnabled: (id: string, enabled: boolean) => void;
-  onChangePriority: (id: string, priority: NavPriority) => void;
-  onAssignDocument: (contentId: string, parentItemId?: string) => void;
-  onAssignExistingLink: (itemId: string, parentItemId?: string) => void;
-  onCreateLinkItem: (
-    url: string,
-    label: { en: string; ja: string },
-    parentItemId?: string,
-  ) => void;
+  onCommit: (groups: NavbarGroupWithItems[]) => void;
+  onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
+  onChangePriority: (groupId: string, priority: NavPriority) => void;
+  onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
+  onDeleteGroup: (groupId: string) => void;
+  onAddGroup: (label: { en: string; ja: string }) => void;
   onDeleteLinkItem: (itemId: string) => void;
-  onUpdateLinkLabel: (
-    itemId: string,
-    value: { url: string; label: { en: string; ja: string } },
-  ) => void;
-  onRemoveNavbarItem: (itemId: string) => void;
 }) {
-  const [columns, setColumns] = useState<NavbarColumn[]>(columnsProp);
+  const [groups, setGroups] = useState<NavbarGroupWithItems[]>(groupsProp);
   const isDraggingRef = useRef(false);
-  const snapshotRef = useRef<NavbarColumn[]>(columnsProp);
-  const [showAddLink, setShowAddLink] = useState(false);
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkEn, setLinkEn] = useState("");
-  const [linkJa, setLinkJa] = useState("");
+  const snapshotRef = useRef<NavbarGroupWithItems[]>(groupsProp);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newLabelEn, setNewLabelEn] = useState("");
+  const [newLabelJa, setNewLabelJa] = useState("");
 
-  const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
-  const [draggingDocContentId, setDraggingDocContentId] = useState<
-    string | null
-  >(null);
-  const [draggingLinkItemId, setDraggingLinkItemId] = useState<string | null>(
-    null,
-  );
+  const [draggingDocContentId, setDraggingDocContentId] = useState<string | null>(null);
+  const [draggingLinkItemId, setDraggingLinkItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
-      setColumns(columnsProp);
+      setGroups(groupsProp);
     }
-  }, [columnsProp]);
+  }, [groupsProp]);
 
-  const draggingColumn = draggingColumnId
-    ? (columns.find((c) => c.parent.id === draggingColumnId) ?? null)
+  const draggingGroup = draggingGroupId
+    ? (groups.find((g) => g.group.id === draggingGroupId) ?? null)
     : null;
   const draggingItem = draggingItemId
-    ? (columns
-        .flatMap((c) => c.children)
-        .find((ch) => ch.id === draggingItemId) ?? null)
+    ? (groups
+        .flatMap((group) => [
+          ...(group.linkedItem ? [{ item: group.linkedItem.item, enabled: true }] : []),
+          ...group.subItems,
+        ])
+        .find((item) => item.item.id === draggingItemId) ?? null)
     : null;
-  const assignedNavbarItemIds = new Set(
-    columns.flatMap((column) => [
-      column.parent.id,
-      ...column.children.map((child) => child.id),
+
+  const assignedItemIds = new Set(
+    groups.flatMap((group) => [
+      ...(group.linkedItem ? [group.linkedItem.item.id] : []),
+      ...group.subItems.map((item) => item.item.id),
     ]),
   );
+
   const docItemMap = new Map<string, NavigationItem>(
     allItems
       .filter((item) => item.type === "document" && item.contentId)
       .map((item) => [item.contentId!, item]),
   );
+
   const unassignedLinkItems = allItems.filter(
-    (item) => item.type === "link" && !item.navbar,
+    (item) => item.type === "link" && !assignedItemIds.has(item.id),
   );
+
   const documentTitleByContentId = new Map(
     documents.map((doc) => [doc.contentId, getDocumentLabel(doc, lang)]),
   );
 
-  function buildItemsRecord(cols: NavbarColumn[]): ItemsRecord {
+  function normalizeGroups(nextGroups: NavbarGroupWithItems[]): NavbarGroupWithItems[] {
+    return nextGroups.map((group) => ({
+      ...group,
+      group: {
+        ...group.group,
+        enabled: group.linkedItem ? group.group.enabled : false,
+      },
+    }));
+  }
+
+  function buildItemsRecord(gs: NavbarGroupWithItems[]): ItemsRecord {
     const record: ItemsRecord = {
-      _columns: cols.map((c) => getNavbarColumnSortId(c.parent.id)),
+      _groups: gs.map((g) => getNavbarGroupSortId(g.group.id)),
     };
-    for (const col of cols) {
-      record[getNavbarColumnGroupId(col.parent.id)] = col.children.map(
-        (ch) => ch.id,
+
+    for (const group of gs) {
+      record[getNavbarGroupLinkedSlotId(group.group.id)] = group.linkedItem
+        ? [group.linkedItem.item.id]
+        : [];
+      record[getNavbarGroupSubItemsId(group.group.id)] = group.subItems.map(
+        (item) => item.item.id,
       );
     }
+
     return record;
   }
 
   function applyItemsRecord(
     record: ItemsRecord,
-    prevCols: NavbarColumn[],
-  ): NavbarColumn[] {
-    const columnOrder = record["_columns"] as string[];
-    const parentById = new Map(
-      prevCols.map((c) => [getNavbarColumnSortId(c.parent.id), c.parent]),
+    prevGroups: NavbarGroupWithItems[],
+  ): NavbarGroupWithItems[] {
+    const groupOrder = record["_groups"] as string[];
+    const groupById = new Map(
+      prevGroups.map((group) => [getNavbarGroupSortId(group.group.id), group]),
     );
-    const childById = new Map(
-      prevCols.flatMap((c) => c.children.map((ch) => [ch.id, ch])),
+    const itemById = new Map(
+      prevGroups.flatMap((group) => [
+        ...(group.linkedItem
+          ? [[group.linkedItem.item.id, { item: group.linkedItem.item, enabled: true }] as const]
+          : []),
+        ...group.subItems.map((item) => [item.item.id, item] as const),
+      ]),
     );
 
-    return columnOrder
-      .map((colId) => {
-        const parent = parentById.get(colId);
-        if (!parent) return null;
+    return groupOrder
+      .map((groupSortId) => {
+        const group = groupById.get(groupSortId);
+        if (!group) return null;
+
+        const linkedItemId = record[getNavbarGroupLinkedSlotId(group.group.id)]?.[0];
+        const linkedItem = linkedItemId
+          ? itemById.get(linkedItemId)
+          : undefined;
 
         return {
-          parent,
-          children: (record[getNavbarColumnGroupId(parent.id)] ?? [])
-            .map((childId) => childById.get(childId))
-            .filter(Boolean) as NavigationItem[],
+          ...group,
+          ...(linkedItem ? { linkedItem: { item: linkedItem.item } } : {}),
+          ...(linkedItem ? {} : { linkedItem: undefined }),
+          subItems: (record[getNavbarGroupSubItemsId(group.group.id)] ?? [])
+            .map((itemId) => itemById.get(itemId))
+            .filter(Boolean) as NavbarGroupWithItems["subItems"],
         };
       })
-      .filter(Boolean) as NavbarColumn[];
+      .filter(Boolean) as NavbarGroupWithItems[];
   }
 
-  function handleCreateLinkItem() {
-    const url = linkUrl.trim();
-    const en = linkEn.trim();
-    const ja = linkJa.trim();
-    if (!url || !en) return;
-    onCreateLinkItem(url, { en, ja: ja || en });
-    setLinkUrl("");
-    setLinkEn("");
-    setLinkJa("");
-    setShowAddLink(false);
+  function commitAndSet(nextGroups: NavbarGroupWithItems[]) {
+    const normalizedGroups = normalizeGroups(nextGroups);
+    setGroups(normalizedGroups);
+    onCommit(normalizedGroups);
   }
 
-  function cancelCreateLinkItem() {
-    setLinkUrl("");
-    setLinkEn("");
-    setLinkJa("");
-    setShowAddLink(false);
+  function findDropTarget(
+    targetId: string,
+    currentGroups: NavbarGroupWithItems[],
+  ):
+    | { kind: "pool" }
+    | { kind: "linked"; groupId: string }
+    | { kind: "sub"; groupId: string }
+    | null {
+    if (
+      targetId === NAVBAR_UNASSIGNED_POOL_ID ||
+      targetId === `${NAVBAR_UNASSIGNED_POOL_ID}-droppable`
+    ) {
+      return { kind: "pool" };
+    }
+
+    const linkedGroupId = parseNavbarGroupLinkedSlotId(targetId);
+    if (linkedGroupId) {
+      return { kind: "linked", groupId: linkedGroupId };
+    }
+
+    const subGroupId = parseNavbarGroupSubItemsId(targetId);
+    if (subGroupId) {
+      return { kind: "sub", groupId: subGroupId };
+    }
+
+    for (const group of currentGroups) {
+      if (group.linkedItem?.item.id === targetId) {
+        return { kind: "linked", groupId: group.group.id };
+      }
+      if (group.subItems.some((item) => item.item.id === targetId)) {
+        return { kind: "sub", groupId: group.group.id };
+      }
+    }
+
+    return null;
+  }
+
+  function handleAddGroup() {
+    const en = newLabelEn.trim();
+    const ja = newLabelJa.trim();
+    if (!en) return;
+    onAddGroup({ en, ja: ja || en });
+    setNewLabelEn("");
+    setNewLabelJa("");
+    setShowAddForm(false);
+  }
+
+  function cancelAddGroup() {
+    setNewLabelEn("");
+    setNewLabelJa("");
+    setShowAddForm(false);
   }
 
   return (
-    <DragDropProvider
-      onDragStart={(event) => {
-        isDraggingRef.current = true;
-        snapshotRef.current = columns;
-        const src = event.operation.source;
-        if (!src) return;
-        if (src.data?.type === NAVBAR_COLUMN_TYPE) {
-          setDraggingColumnId(String(src.data.parentItemId));
-        } else if (src.data?.type === NAVBAR_ITEM_TYPE) {
-          setDraggingItemId(String(src.id));
-        } else if (src.data?.type === NAVBAR_UNASSIGNED_DOC_TYPE) {
-          setDraggingDocContentId(String(src.data.contentId));
-        } else if (src.data?.type === NAVBAR_UNASSIGNED_LINK_TYPE) {
-          setDraggingLinkItemId(String(src.data.itemId));
-        }
-      }}
-      onDragOver={(event) => {
-        const src = event.operation.source;
-        if (!src) return;
-        if (
-          src.data?.type === NAVBAR_COLUMN_TYPE ||
-          src.data?.type === NAVBAR_ITEM_TYPE
-        ) {
-          setColumns((prev) => {
-            const record = buildItemsRecord(prev);
-            const next = move(record, event);
-            return applyItemsRecord(next as ItemsRecord, prev);
-          });
-        }
-      }}
-      onDragEnd={(event) => {
-        const src = event.operation.source;
-        const dest = event.operation.target;
+    <div className="flex flex-col gap-4">
+      <DragDropProvider
+        onDragStart={(event) => {
+          isDraggingRef.current = true;
+          snapshotRef.current = groups;
+          const src = event.operation.source;
+          if (!src) return;
+          if (src.data?.type === NAVBAR_GROUP_TYPE) {
+            setDraggingGroupId(String(src.id));
+          } else if (src.data?.type === NAVBAR_ASSIGNED_ITEM_TYPE) {
+            setDraggingItemId(String(src.id));
+          } else if (src.data?.type === NAVBAR_UNASSIGNED_DOC_TYPE) {
+            setDraggingDocContentId(String(src.data.contentId));
+          } else if (src.data?.type === NAVBAR_UNASSIGNED_LINK_TYPE) {
+            setDraggingLinkItemId(String(src.data.itemId));
+          }
+        }}
+        onDragOver={(event) => {
+          const src = event.operation.source;
+          if (!src) return;
+          if (
+            src.data?.type === NAVBAR_ASSIGNED_ITEM_TYPE ||
+            src.data?.type === NAVBAR_GROUP_TYPE
+          ) {
+            setGroups((prev) => {
+              const record = buildItemsRecord(prev);
+              const next = move(record, event);
+              return normalizeGroups(applyItemsRecord(next as ItemsRecord, prev));
+            });
+          }
+        }}
+        onDragEnd={(event) => {
+          const src = event.operation.source;
+          const dest = event.operation.target;
 
-        queueMicrotask(() => {
-          setDraggingColumnId(null);
+          setDraggingGroupId(null);
           setDraggingItemId(null);
           setDraggingDocContentId(null);
           setDraggingLinkItemId(null);
           isDraggingRef.current = false;
 
           if (event.canceled) {
-            setColumns(snapshotRef.current);
+            setGroups(snapshotRef.current);
             return;
           }
 
           if (src?.data?.type === NAVBAR_UNASSIGNED_DOC_TYPE) {
-            const contentId = String(src.data.contentId);
-            if (dest) {
-              const destId = String(dest.id);
-              if (
-                destId === NAVBAR_TOP_LEVEL_DROPZONE_ID ||
-                destId === NAVBAR_TOP_LEVEL_DROPZONE_ID + "-droppable"
-              ) {
-                onAssignDocument(contentId);
-              } else {
-                const parentItemId = parseNavbarColumnGroupId(destId);
-                if (parentItemId) {
-                  onAssignDocument(contentId, parentItemId);
-                }
-              }
+            if (!dest) {
+              setGroups(snapshotRef.current);
+              return;
             }
-            setColumns(snapshotRef.current);
+
+            const target = findDropTarget(String(dest.id), groups);
+            if (!target || target.kind === "pool") {
+              setGroups(snapshotRef.current);
+              return;
+            }
+
+            const existingItem = docItemMap.get(String(src.data.contentId));
+            const item =
+              existingItem ??
+              ({
+                id: crypto.randomUUID(),
+                type: "document",
+                contentId: String(src.data.contentId),
+              } satisfies NavigationItem);
+
+            const nextGroups = snapshotRef.current.map((group) => {
+              if (group.group.id !== target.groupId) {
+                return group;
+              }
+
+              if (target.kind === "linked") {
+                if (group.linkedItem) {
+                  return group;
+                }
+
+                return {
+                  ...group,
+                  linkedItem: { item },
+                };
+              }
+
+              return {
+                ...group,
+                subItems: [...group.subItems, { item, enabled: true }],
+              };
+            });
+
+            commitAndSet(nextGroups);
             return;
           }
 
           if (src?.data?.type === NAVBAR_UNASSIGNED_LINK_TYPE) {
-            const itemId = String(src.data.itemId);
-            if (dest) {
-              const destId = String(dest.id);
-              if (
-                destId === NAVBAR_TOP_LEVEL_DROPZONE_ID ||
-                destId === NAVBAR_TOP_LEVEL_DROPZONE_ID + "-droppable"
-              ) {
-                onAssignExistingLink(itemId);
-              } else {
-                const parentItemId = parseNavbarColumnGroupId(destId);
-                if (parentItemId) {
-                  onAssignExistingLink(itemId, parentItemId);
-                }
-              }
+            if (!dest) {
+              setGroups(snapshotRef.current);
+              return;
             }
-            setColumns(snapshotRef.current);
+
+            const item = unassignedLinkItems.find(
+              (candidate) => candidate.id === String(src.data.itemId),
+            );
+            const target = findDropTarget(String(dest.id), groups);
+
+            if (!item || !target || target.kind === "pool") {
+              setGroups(snapshotRef.current);
+              return;
+            }
+
+            const nextGroups = snapshotRef.current.map((group) => {
+              if (group.group.id !== target.groupId) {
+                return group;
+              }
+
+              if (target.kind === "linked") {
+                if (group.linkedItem) {
+                  return group;
+                }
+
+                return {
+                  ...group,
+                  linkedItem: { item },
+                };
+              }
+
+              return {
+                ...group,
+                subItems: [...group.subItems, { item, enabled: true }],
+              };
+            });
+
+            commitAndSet(nextGroups);
             return;
           }
 
-          if (src?.data?.type === NAVBAR_ITEM_TYPE && dest) {
-            const destId = String(dest.id);
-            if (
-              destId === NAVBAR_UNASSIGNED_POOL_ID ||
-              destId === NAVBAR_UNASSIGNED_POOL_ID + "-droppable"
-            ) {
-              onRemoveNavbarItem(String(src.id));
-              setColumns(snapshotRef.current);
+          if (!dest) {
+            setGroups(snapshotRef.current);
+            return;
+          }
+
+          if (src?.data?.type === NAVBAR_ASSIGNED_ITEM_TYPE) {
+            const target = findDropTarget(String(dest.id), groups);
+            if (target?.kind === "pool") {
+              commitAndSet(removeNavbarAssignedItem(groups, String(src.id)));
               return;
             }
           }
 
-          onCommit(columns);
-          setColumns(columns);
-        });
-      }}
-    >
-      <div className="flex gap-4">
-        <NavbarUnassignedPool
-          documents={documents}
-          lang={lang}
-          docItemMap={docItemMap}
-          assignedNavbarItemIds={assignedNavbarItemIds}
-          unassignedLinkItems={unassignedLinkItems}
-          columns={columns}
-          showAddLink={showAddLink}
-          linkUrl={linkUrl}
-          linkEn={linkEn}
-          linkJa={linkJa}
-          setLinkUrl={setLinkUrl}
-          setLinkEn={setLinkEn}
-          setLinkJa={setLinkJa}
-          onShowAddLink={() => setShowAddLink(true)}
-          onCreateLink={handleCreateLinkItem}
-          onCancelCreateLink={cancelCreateLinkItem}
-          onDeleteLinkItem={onDeleteLinkItem}
-        />
-
-        <NavbarTopLevelArea columns={columns}>
-          {columns.map((col, colIndex) => (
-            <NavbarColumnCard
-              key={col.parent.id}
-              col={col}
-              colIndex={colIndex}
-              lang={lang}
-              documentTitleByContentId={documentTitleByContentId}
-              isDragging={draggingColumnId === col.parent.id}
-              onToggleEnabled={onToggleEnabled}
-              onChangePriority={onChangePriority}
-              onCreateLinkItem={onCreateLinkItem}
-              onUpdateLinkLabel={onUpdateLinkLabel}
-              onRemoveNavbarItem={onRemoveNavbarItem}
-            />
-          ))}
-        </NavbarTopLevelArea>
-      </div>
-
-      <DragOverlay>
-        {draggingColumn ? (
-          <NavbarColumnOverlay
-            col={draggingColumn}
+          commitAndSet(groups);
+        }}
+      >
+        <div className="flex gap-4">
+          {/* Left panel: available documents + unassigned links */}
+          <NavbarUnassignedPool
+            documents={documents}
             lang={lang}
+            docItemMap={docItemMap}
+            assignedItemIds={assignedItemIds}
+            unassignedLinkItems={unassignedLinkItems}
+            groups={groups}
             documentTitleByContentId={documentTitleByContentId}
+            draggingItemId={draggingItemId}
+            onDeleteLinkItem={onDeleteLinkItem}
           />
-        ) : draggingItem ? (
-          <NavbarItemOverlay
-            item={draggingItem}
-            lang={lang}
-            documentTitleByContentId={documentTitleByContentId}
-          />
-        ) : draggingDocContentId ? (
-          <FooterDocOverlay
-            label={
-              documents.find((doc) => doc.contentId === draggingDocContentId)
-                ? getDocumentLabel(
-                    documents.find(
-                      (doc) => doc.contentId === draggingDocContentId,
-                    )!,
-                    lang,
-                  )
-                : draggingDocContentId
-            }
-          />
-        ) : draggingLinkItemId ? (
-          <NavbarItemOverlay
-            item={
-              unassignedLinkItems.find(
-                (item) => item.id === draggingLinkItemId,
-              )!
-            }
-            lang={lang}
-            documentTitleByContentId={documentTitleByContentId}
-          />
-        ) : null}
-      </DragOverlay>
-    </DragDropProvider>
-  );
-}
 
-function NavbarColumnCard({
-  col,
-  colIndex,
-  lang,
-  documentTitleByContentId,
-  isDragging,
-  onToggleEnabled,
-  onChangePriority,
-  onCreateLinkItem,
-  onUpdateLinkLabel,
-  onRemoveNavbarItem,
-}: {
-  col: NavbarColumn;
-  colIndex: number;
-  lang: Locale;
-  documentTitleByContentId: Map<string, string>;
-  isDragging: boolean;
-  onToggleEnabled: (id: string, enabled: boolean) => void;
-  onChangePriority: (id: string, priority: NavPriority) => void;
-  onCreateLinkItem: (
-    url: string,
-    label: { en: string; ja: string },
-    parentItemId?: string,
-  ) => void;
-  onUpdateLinkLabel: (
-    itemId: string,
-    value: { url: string; label: { en: string; ja: string } },
-  ) => void;
-  onRemoveNavbarItem: (itemId: string) => void;
-}) {
-  const [showAddLink, setShowAddLink] = useState(false);
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkEn, setLinkEn] = useState("");
-  const [linkJa, setLinkJa] = useState("");
-  const { ref: columnDropRef, isDropTarget: isColumnDropTarget } = useDroppable(
-    {
-      id: getNavbarColumnGroupId(col.parent.id),
-      accept: [
-        NAVBAR_ITEM_TYPE,
-        NAVBAR_UNASSIGNED_DOC_TYPE,
-        NAVBAR_UNASSIGNED_LINK_TYPE,
-      ],
-      collisionPriority: CollisionPriority.Low,
-      collisionDetector: pointerIntersection,
-    },
-  );
-
-  const { ref: columnSortRef, handleRef: columnHandleRef } = useSortable({
-    id: getNavbarColumnSortId(col.parent.id),
-    index: colIndex,
-    type: NAVBAR_COLUMN_TYPE,
-    accept: [NAVBAR_COLUMN_TYPE],
-    collisionDetector: pointerIntersection,
-    data: { type: NAVBAR_COLUMN_TYPE, parentItemId: col.parent.id },
-  });
-
-  const enabled = col.parent.navbar?.enabled ?? true;
-  const priority = col.parent.navbar?.priority ?? "important";
-  const isHomeItem =
-    col.parent.type === "document" && col.parent.contentId === "home";
-
-  function confirmAddLink() {
-    const url = linkUrl.trim();
-    const en = linkEn.trim();
-    const ja = linkJa.trim();
-    if (!url || !en) return;
-    onCreateLinkItem(url, { en, ja: ja || en }, col.parent.id);
-    setLinkUrl("");
-    setLinkEn("");
-    setLinkJa("");
-    setShowAddLink(false);
-  }
-
-  function cancelAddLink() {
-    setLinkUrl("");
-    setLinkEn("");
-    setLinkJa("");
-    setShowAddLink(false);
-  }
-
-  return (
-    <div
-      ref={(el) => {
-        columnSortRef(el);
-        columnDropRef(el);
-      }}
-      className={[
-        "min-w-32 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
-        isDragging ? "opacity-40" : "",
-        !enabled ? "opacity-50" : "",
-        isColumnDropTarget && !isDragging ? "ring-2 ring-blue-400" : "",
-      ].join(" ")}
-    >
-      <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            ref={columnHandleRef as Ref<HTMLButtonElement>}
-            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-          >
-            <GripVertical className="size-4 shrink-0" />
-          </button>
-          <EditableLinkLabel
-            item={col.parent}
-            lang={lang}
-            documentTitleByContentId={documentTitleByContentId}
-            className="min-w-0 flex-1 truncate text-left text-sm font-semibold"
-            onSave={(value) => onUpdateLinkLabel(col.parent.id, value)}
-          />
-          <Switch
-            checked={enabled}
-            disabled={isHomeItem}
-            onCheckedChange={(checked) =>
-              onToggleEnabled(col.parent.id, checked)
-            }
-            className="shrink-0 scale-75"
-          />
-          {!isHomeItem ? (
-            <button
-              type="button"
-              onClick={() => onRemoveNavbarItem(col.parent.id)}
-              className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-              title="Remove item from navbar"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          ) : null}
+          {/* Right panel: group columns */}
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex flex-wrap gap-4">
+              {groups.map((g, groupIndex) => (
+                <NavbarGroupColumn
+                  key={g.group.id}
+                  g={g}
+                  groupIndex={groupIndex}
+                  documentTitleByContentId={documentTitleByContentId}
+                  isDragging={draggingGroupId === g.group.id}
+                  lang={lang}
+                  onCommit={commitAndSet}
+                  allGroups={groups}
+                  onToggleGroupEnabled={onToggleGroupEnabled}
+                  onChangePriority={onChangePriority}
+                  onRenameGroup={onRenameGroup}
+                  onDeleteGroup={onDeleteGroup}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <Select
-          value={priority}
-          onValueChange={(value) =>
-            onChangePriority(col.parent.id, value as NavPriority)
-          }
-        >
-          <SelectTrigger className="h-7 w-full text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="important">Important</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="optional">Optional</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      <div className="min-h-28 flex-1 p-2">
-        <ul className="flex min-h-full flex-col gap-1">
-          {col.children.map((child, childIndex) => (
-            <NavbarChildItem
-              key={child.id}
-              item={child}
-              childIndex={childIndex}
-              groupId={col.parent.id}
+        <DragOverlay>
+          {draggingGroup ? (
+            <NavbarGroupOverlay
+              g={draggingGroup}
               lang={lang}
               documentTitleByContentId={documentTitleByContentId}
-              onToggleEnabled={onToggleEnabled}
-              onUpdateLinkLabel={onUpdateLinkLabel}
-              onRemoveNavbarItem={onRemoveNavbarItem}
             />
-          ))}
-          {col.children.length === 0 && (
-            <li className="text-foreground-light px-2 py-3 text-xs">
-              No sub-items
-            </li>
-          )}
-        </ul>
-      </div>
+          ) : draggingItem ? (
+            <NavbarItemOverlay
+              item={draggingItem.item}
+              lang={lang}
+              documentTitleByContentId={documentTitleByContentId}
+            />
+          ) : draggingDocContentId ? (
+            <FooterDocOverlay
+              label={
+                documents.find((doc) => doc.contentId === draggingDocContentId)
+                  ? getDocumentLabel(documents.find((doc) => doc.contentId === draggingDocContentId)!, lang)
+                  : draggingDocContentId
+              }
+            />
+          ) : draggingLinkItemId ? (
+            <NavbarItemOverlay
+              item={unassignedLinkItems.find((item) => item.id === draggingLinkItemId)!}
+              lang={lang}
+              documentTitleByContentId={documentTitleByContentId}
+            />
+          ) : null}
+        </DragOverlay>
+      </DragDropProvider>
 
-      <div className="border-t border-gray-100 px-2 pb-2 pt-1">
-        {showAddLink ? (
-          <div className="flex flex-col gap-1.5 pt-1">
-            <input
-              type="text"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="URL"
-              className="w-full rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Escape") cancelAddLink();
-              }}
-            />
+      {/* Add group */}
+      {showAddForm ? (
+        <div className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
+          <p className="mb-2 text-xs font-medium text-gray-600">New group</p>
+          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
               <input
                 type="text"
-                value={linkEn}
-                onChange={(e) => setLinkEn(e.target.value)}
-                placeholder="English label"
+                value={newLabelEn}
+                onChange={(e) => setNewLabelEn(e.target.value)}
+                placeholder="English name"
                 className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+                autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmAddLink();
-                  if (e.key === "Escape") cancelAddLink();
+                  if (e.key === "Enter") handleAddGroup();
+                  if (e.key === "Escape") cancelAddGroup();
                 }}
               />
             </div>
@@ -1422,292 +1326,76 @@ function NavbarColumnCard({
               <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
               <input
                 type="text"
-                value={linkJa}
-                onChange={(e) => setLinkJa(e.target.value)}
-                placeholder="Japanese label"
+                value={newLabelJa}
+                onChange={(e) => setNewLabelJa(e.target.value)}
+                placeholder="Japanese name"
                 className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmAddLink();
-                  if (e.key === "Escape") cancelAddLink();
+                  if (e.key === "Enter") handleAddGroup();
+                  if (e.key === "Escape") cancelAddGroup();
                 }}
               />
             </div>
-            <div className="flex items-center gap-1 pt-0.5">
-              <Button
-                type="button"
-                size="slim"
-                onClick={confirmAddLink}
-                disabled={!linkUrl.trim() || !linkEn.trim()}
-                className="h-6 text-xs"
-              >
+            <div className="flex items-center gap-1 pt-1">
+              <Button type="button" size="slim" onClick={handleAddGroup} disabled={!newLabelEn.trim()} className="h-7 text-xs">
                 <Check className="mr-1 size-3" />
                 Add
               </Button>
-              <Button
-                type="button"
-                size="slim"
-                variant="outline"
-                onClick={cancelAddLink}
-                className="h-6 text-xs"
-              >
+              <Button type="button" size="slim" variant="outline" onClick={cancelAddGroup} className="h-7 text-xs">
                 <X className="mr-1 size-3" />
                 Cancel
               </Button>
             </div>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowAddLink(true)}
-            className="flex w-full items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-          >
-            <Plus className="size-3" />
-            Add link
-          </button>
-        )}
-      </div>
+        </div>
+      ) : (
+        <Button type="button" variant="outline" size="slim" className="w-fit text-xs" onClick={() => setShowAddForm(true)}>
+          <Plus className="mr-1 size-3" />
+          Add group
+        </Button>
+      )}
     </div>
-  );
-}
-
-function NavbarChildItem({
-  item,
-  childIndex,
-  groupId,
-  lang,
-  documentTitleByContentId,
-  onToggleEnabled,
-  onUpdateLinkLabel,
-  onRemoveNavbarItem,
-}: {
-  item: NavigationItem;
-  childIndex: number;
-  groupId: string;
-  lang: Locale;
-  documentTitleByContentId: Map<string, string>;
-  onToggleEnabled: (id: string, enabled: boolean) => void;
-  onUpdateLinkLabel: (
-    itemId: string,
-    value: { url: string; label: { en: string; ja: string } },
-  ) => void;
-  onRemoveNavbarItem: (itemId: string) => void;
-}) {
-  const { ref, handleRef, isDragSource } = useSortable({
-    id: item.id,
-    index: childIndex,
-    type: NAVBAR_ITEM_TYPE,
-    accept: [NAVBAR_ITEM_TYPE],
-    group: getNavbarColumnGroupId(groupId),
-    collisionDetector: pointerIntersection,
-    data: { type: NAVBAR_ITEM_TYPE },
-  });
-
-  const enabled = item.navbar?.enabled ?? true;
-
-  return (
-    <li
-      ref={ref as Ref<HTMLLIElement>}
-      className={[
-        "flex items-start gap-1 rounded px-1 py-1 hover:bg-gray-50",
-        isDragSource ? "opacity-40" : "",
-        !enabled ? "opacity-50" : "",
-      ].join(" ")}
-    >
-      <button
-        type="button"
-        ref={handleRef as Ref<HTMLButtonElement>}
-        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-      >
-        <GripVertical className="size-3 shrink-0" />
-      </button>
-      <NavigationItemLeadingIcon item={item} />
-      <EditableLinkLabel
-        item={item}
-        lang={lang}
-        documentTitleByContentId={documentTitleByContentId}
-        className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
-        onSave={(value) => onUpdateLinkLabel(item.id, value)}
-      />
-      <Switch
-        checked={enabled}
-        onCheckedChange={(checked) => onToggleEnabled(item.id, checked)}
-        className="shrink-0 scale-75"
-      />
-      <button
-        type="button"
-        onClick={() => onRemoveNavbarItem(item.id)}
-        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-        title="Remove item from navbar"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
-    </li>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Navbar drag overlay clones
+// Navbar unassigned pool
 // ---------------------------------------------------------------------------
-
-function NavbarColumnOverlay({
-  col,
-  lang,
-  documentTitleByContentId,
-}: {
-  col: NavbarColumn;
-  lang: Locale;
-  documentTitleByContentId: Map<string, string>;
-}) {
-  const enabled = col.parent.navbar?.enabled ?? true;
-  const priority = col.parent.navbar?.priority ?? "important";
-
-  return (
-    <div
-      className={[
-        "flex-shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
-        !enabled ? "opacity-50" : "",
-      ].join(" ")}
-    >
-      <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
-        <div className="flex items-center gap-1">
-          <GripVertical className="size-4 shrink-0 text-gray-400" />
-          <span className="min-w-0 truncate text-sm font-semibold">
-            {getEditorItemLabel(col.parent, lang, documentTitleByContentId)}
-          </span>
-        </div>
-        <div className="rounded-md border border-gray-200 px-2 py-1 text-xs capitalize text-gray-500">
-          {priority}
-        </div>
-      </div>
-      <ul className="flex flex-col gap-1 p-2">
-        {col.children.map((child) => (
-          <li
-            key={child.id}
-            className="flex items-start gap-1 rounded px-1 py-1"
-          >
-            <NavigationItemLeadingIcon item={child} />
-            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-              {getEditorItemLabel(child, lang, documentTitleByContentId)}
-            </span>
-          </li>
-        ))}
-        {col.children.length === 0 && (
-          <li className="text-foreground-light px-2 py-3 text-xs">
-            No sub-items
-          </li>
-        )}
-      </ul>
-    </div>
-  );
-}
-
-function NavbarItemOverlay({
-  item,
-  lang,
-  documentTitleByContentId,
-}: {
-  item: NavigationItem;
-  lang: Locale;
-  documentTitleByContentId: Map<string, string>;
-}) {
-  const enabled = item.navbar?.enabled ?? true;
-  return (
-    <li
-      className={[
-        "flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300",
-        !enabled ? "opacity-50" : "",
-      ].join(" ")}
-    >
-      <NavigationItemLeadingIcon item={item} />
-      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-        {getEditorItemLabel(item, lang, documentTitleByContentId)}
-      </span>
-    </li>
-  );
-}
-
-function NavbarTopLevelArea({
-  columns,
-  children,
-}: {
-  columns: NavbarColumn[];
-  children: ReactNode;
-}) {
-  const { ref, isDropTarget } = useDroppable({
-    id: NAVBAR_TOP_LEVEL_DROPZONE_ID + "-droppable",
-    collisionPriority: CollisionPriority.Low,
-    collisionDetector: pointerIntersection,
-  });
-
-  return (
-    <div className="flex min-w-0 flex-1 flex-col gap-3">
-      <div
-        ref={ref}
-        className={[
-          "rounded-md border border-dashed px-3 py-2 text-xs text-gray-500 transition-colors",
-          isDropTarget
-            ? "border-blue-400 bg-blue-50"
-            : "border-gray-300 bg-gray-50",
-        ].join(" ")}
-      >
-        Drop here to add a top-level navbar item
-      </div>
-      <div className="flex flex-wrap gap-4">{children}</div>
-      {columns.length === 0 ? (
-        <p className="text-foreground-light text-xs">No navbar items yet</p>
-      ) : null}
-    </div>
-  );
-}
 
 function NavbarUnassignedPool({
   documents,
   lang,
   docItemMap,
-  assignedNavbarItemIds,
+  assignedItemIds,
   unassignedLinkItems,
-  columns,
-  showAddLink,
-  linkUrl,
-  linkEn,
-  linkJa,
-  setLinkUrl,
-  setLinkEn,
-  setLinkJa,
-  onShowAddLink,
-  onCreateLink,
-  onCancelCreateLink,
+  groups,
+  documentTitleByContentId,
+  draggingItemId,
   onDeleteLinkItem,
 }: {
   documents: DocumentsListItemResponse[];
   lang: Locale;
   docItemMap: Map<string, NavigationItem>;
-  assignedNavbarItemIds: Set<string>;
+  assignedItemIds: Set<string>;
   unassignedLinkItems: NavigationItem[];
-  columns: NavbarColumn[];
-  showAddLink: boolean;
-  linkUrl: string;
-  linkEn: string;
-  linkJa: string;
-  setLinkUrl: (value: string) => void;
-  setLinkEn: (value: string) => void;
-  setLinkJa: (value: string) => void;
-  onShowAddLink: () => void;
-  onCreateLink: () => void;
-  onCancelCreateLink: () => void;
+  groups: NavbarGroupWithItems[];
+  documentTitleByContentId: Map<string, string>;
+  draggingItemId: string | null;
   onDeleteLinkItem: (itemId: string) => void;
 }) {
   const { ref: poolDropRef, isDropTarget } = useDroppable({
     id: NAVBAR_UNASSIGNED_POOL_ID + "-droppable",
     collisionPriority: CollisionPriority.Low,
-    collisionDetector: pointerIntersection,
   });
 
   const itemGroupName = new Map<string, string>();
-  for (const column of columns) {
-    itemGroupName.set(column.parent.id, "Top level");
-    for (const child of column.children) {
-      itemGroupName.set(child.id, getItemLabel(column.parent));
+  for (const group of groups) {
+    const label = group.group.label["en"] ?? group.group.label["ja"] ?? "";
+    if (group.linkedItem) {
+      itemGroupName.set(group.linkedItem.item.id, label);
+    }
+    for (const item of group.subItems) {
+      itemGroupName.set(item.item.id, label);
     }
   }
 
@@ -1726,12 +1414,8 @@ function NavbarUnassignedPool({
         <ul className="flex flex-col gap-1">
           {documents.map((doc) => {
             const navItem = docItemMap.get(doc.contentId);
-            const isAssigned = navItem
-              ? assignedNavbarItemIds.has(navItem.id)
-              : false;
-            const groupName = navItem
-              ? itemGroupName.get(navItem.id)
-              : undefined;
+            const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
+            const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
             return (
               <NavbarPoolDocCard
                 key={doc.contentId}
@@ -1756,89 +1440,13 @@ function NavbarUnassignedPool({
                   item={item}
                   index={index}
                   lang={lang}
+                  isDragSource={draggingItemId === item.id}
                   onDelete={() => onDeleteLinkItem(item.id)}
                 />
               ))}
             </ul>
           </>
         ) : null}
-      </div>
-
-      <div className="mt-3 border-t border-gray-200 pt-2">
-        {showAddLink ? (
-          <div className="flex flex-col gap-1.5">
-            <input
-              type="text"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="URL"
-              className="w-full rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Escape") onCancelCreateLink();
-              }}
-            />
-            <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
-              <input
-                type="text"
-                value={linkEn}
-                onChange={(e) => setLinkEn(e.target.value)}
-                placeholder="English label"
-                className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onCreateLink();
-                  if (e.key === "Escape") onCancelCreateLink();
-                }}
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
-              <input
-                type="text"
-                value={linkJa}
-                onChange={(e) => setLinkJa(e.target.value)}
-                placeholder="Japanese label"
-                className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onCreateLink();
-                  if (e.key === "Escape") onCancelCreateLink();
-                }}
-              />
-            </div>
-            <div className="flex items-center gap-1 pt-0.5">
-              <Button
-                type="button"
-                size="slim"
-                onClick={onCreateLink}
-                disabled={!linkUrl.trim() || !linkEn.trim()}
-                className="h-6 text-xs"
-              >
-                <Check className="mr-1 size-3" />
-                Add
-              </Button>
-              <Button
-                type="button"
-                size="slim"
-                variant="outline"
-                onClick={onCancelCreateLink}
-                className="h-6 text-xs"
-              >
-                <X className="mr-1 size-3" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onShowAddLink}
-            className="flex w-full items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
-            <Plus className="size-3" />
-            Add link
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1868,18 +1476,19 @@ function NavbarPoolDocCard({
       ref={ref as Ref<HTMLLIElement>}
       className={[
         "flex items-start gap-1.5 rounded px-2 py-1.5 text-xs transition-colors",
-        isAssigned
-          ? "cursor-not-allowed opacity-50"
-          : "cursor-grab bg-white shadow-sm ring-1 ring-gray-200 hover:bg-gray-50",
+        isAssigned ? "cursor-not-allowed opacity-50" : "cursor-grab bg-white shadow-sm ring-1 ring-gray-200 hover:bg-gray-50",
         isDragSource ? "opacity-30" : "",
       ].join(" ")}
       title={isAssigned ? `Assigned to: ${groupName ?? "navbar"}` : undefined}
     >
       <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
       <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
-      <span className="min-w-0 flex-1 break-words">
-        {getDocumentLabel(doc, lang)}
-      </span>
+      <span className="min-w-0 flex-1 break-words">{getDocumentLabel(doc, lang)}</span>
+      {isAssigned && (
+        <span className="ml-auto shrink-0 rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
+          {groupName ?? "assigned"}
+        </span>
+      )}
     </li>
   );
 }
@@ -1888,14 +1497,16 @@ function NavbarPoolLinkCard({
   item,
   index,
   lang,
+  isDragSource,
   onDelete,
 }: {
   item: NavigationItem;
   index: number;
   lang: Locale;
+  isDragSource: boolean;
   onDelete: () => void;
 }) {
-  const { ref, isDragSource } = useSortable({
+  const { ref, isDragSource: isDraggingPoolItem } = useSortable({
     id: "navbar-link-" + item.id,
     index,
     type: NAVBAR_UNASSIGNED_LINK_TYPE,
@@ -1907,7 +1518,7 @@ function NavbarPoolLinkCard({
       ref={ref as Ref<HTMLLIElement>}
       className={[
         "flex cursor-grab items-start gap-1.5 rounded bg-white px-2 py-1.5 text-xs shadow-sm ring-1 ring-gray-200 hover:bg-gray-50",
-        isDragSource ? "opacity-30" : "",
+        isDragSource || isDraggingPoolItem ? "opacity-30" : "",
       ].join(" ")}
     >
       <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
@@ -1923,6 +1534,732 @@ function NavbarPoolLinkCard({
       >
         <Trash2 className="size-3.5" />
       </button>
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Navbar group column
+// ---------------------------------------------------------------------------
+
+function NavbarGroupColumn({
+  g,
+  groupIndex,
+  documentTitleByContentId,
+  lang,
+  isDragging,
+  allGroups,
+  onCommit,
+  onToggleGroupEnabled,
+  onChangePriority,
+  onRenameGroup,
+  onDeleteGroup,
+}: {
+  g: NavbarGroupWithItems;
+  groupIndex: number;
+  documentTitleByContentId: Map<string, string>;
+  lang: Locale;
+  isDragging: boolean;
+  allGroups: NavbarGroupWithItems[];
+  onCommit: (groups: NavbarGroupWithItems[]) => void;
+  onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
+  onChangePriority: (groupId: string, priority: NavPriority) => void;
+  onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
+  onDeleteGroup: (groupId: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editEn, setEditEn] = useState("");
+  const [editJa, setEditJa] = useState("");
+  const [showLinkedAddLink, setShowLinkedAddLink] = useState(false);
+  const [showSubAddLink, setShowSubAddLink] = useState(false);
+  const [linkedUrl, setLinkedUrl] = useState("");
+  const [linkedEn, setLinkedEn] = useState("");
+  const [linkedJa, setLinkedJa] = useState("");
+  const [subUrl, setSubUrl] = useState("");
+  const [subEn, setSubEn] = useState("");
+  const [subJa, setSubJa] = useState("");
+  const editFormRef = useRef<HTMLDivElement | null>(null);
+  const editEnInputRef = useRef<HTMLInputElement | null>(null);
+
+  const { ref: linkedDropRef, isDropTarget: isLinkedDropTarget } = useDroppable({
+    id: getNavbarGroupLinkedSlotId(g.group.id),
+    accept: [
+      NAVBAR_ASSIGNED_ITEM_TYPE,
+      NAVBAR_UNASSIGNED_DOC_TYPE,
+      NAVBAR_UNASSIGNED_LINK_TYPE,
+    ],
+    collisionPriority: CollisionPriority.Low,
+    disabled: g.linkedItem !== undefined,
+  });
+
+  const { ref: subItemsDropRef, isDropTarget: isSubItemsDropTarget } = useDroppable({
+    id: getNavbarGroupSubItemsId(g.group.id),
+    accept: [
+      NAVBAR_ASSIGNED_ITEM_TYPE,
+      NAVBAR_UNASSIGNED_DOC_TYPE,
+      NAVBAR_UNASSIGNED_LINK_TYPE,
+    ],
+    collisionPriority: CollisionPriority.Low,
+  });
+
+  const { ref: groupSortRef, handleRef: groupHandleRef } = useSortable({
+    id: getNavbarGroupSortId(g.group.id),
+    index: groupIndex,
+    type: NAVBAR_GROUP_TYPE,
+    accept: [NAVBAR_GROUP_TYPE],
+    data: { type: NAVBAR_GROUP_TYPE },
+  });
+
+  const groupLabel = g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
+  const priority = g.group.priority ?? "important";
+  const canEnableGroup = g.linkedItem !== undefined;
+
+  function startEditing() {
+    setEditEn(g.group.label["en"] ?? "");
+    setEditJa(g.group.label["ja"] ?? "");
+    setIsEditing(true);
+  }
+
+  function confirmEdit() {
+    const en = editEn.trim();
+    const ja = editJa.trim();
+    if (!en) return;
+    onRenameGroup(g.group.id, { en, ja: ja || en });
+    setIsEditing(false);
+  }
+
+  function cancelEdit() {
+    setIsEditing(false);
+  }
+
+  const confirmEditRef = useRef(confirmEdit);
+  confirmEditRef.current = confirmEdit;
+
+  useEffect(() => {
+    if (!isEditing) return;
+    editEnInputRef.current?.focus();
+    editEnInputRef.current?.select();
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (editFormRef.current?.contains(target)) return;
+      confirmEditRef.current();
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isEditing]);
+
+  function updateCurrentGroup(
+    updater: (group: NavbarGroupWithItems) => NavbarGroupWithItems,
+  ) {
+    onCommit(
+      allGroups.map((group) =>
+        group.group.id === g.group.id ? updater(group) : group,
+      ),
+    );
+  }
+
+  function confirmAddLinkedLink() {
+    const url = linkedUrl.trim();
+    const en = linkedEn.trim();
+    const ja = linkedJa.trim();
+    if (!url || !en) return;
+    updateCurrentGroup((group) => ({
+      ...group,
+      linkedItem: {
+        item: {
+          id: crypto.randomUUID(),
+          type: "link",
+          url,
+          label: { en, ja: ja || en },
+        },
+      },
+    }));
+    setLinkedUrl("");
+    setLinkedEn("");
+    setLinkedJa("");
+    setShowLinkedAddLink(false);
+  }
+
+  function confirmAddSubLink() {
+    const url = subUrl.trim();
+    const en = subEn.trim();
+    const ja = subJa.trim();
+    if (!url || !en) return;
+    updateCurrentGroup((group) => ({
+      ...group,
+      subItems: [
+        ...group.subItems,
+        {
+          item: {
+            id: crypto.randomUUID(),
+            type: "link",
+            url,
+            label: { en, ja: ja || en },
+          },
+          enabled: true,
+        },
+      ],
+    }));
+    setSubUrl("");
+    setSubEn("");
+    setSubJa("");
+    setShowSubAddLink(false);
+  }
+
+  function cancelAddLinkedLink() {
+    setLinkedUrl("");
+    setLinkedEn("");
+    setLinkedJa("");
+    setShowLinkedAddLink(false);
+  }
+
+  function cancelAddSubLink() {
+    setSubUrl("");
+    setSubEn("");
+    setSubJa("");
+    setShowSubAddLink(false);
+  }
+
+  return (
+    <div
+      ref={groupSortRef as Ref<HTMLDivElement>}
+      className={[
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
+        isDragging ? "opacity-40" : "",
+        !g.group.enabled ? "opacity-50" : "",
+        (isLinkedDropTarget || isSubItemsDropTarget) && !isDragging
+          ? "ring-2 ring-blue-400"
+          : "",
+      ].join(" ")}
+    >
+      {/* Group header */}
+      {isEditing ? (
+        <div ref={editFormRef} className="border-b border-gray-100 px-3 py-2">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-3">
+              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+              <input
+                ref={editEnInputRef}
+                type="text"
+                value={editEn}
+                onChange={(e) => setEditEn(e.target.value)}
+                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmEdit();
+                  if (e.key === "Escape") cancelEdit();
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+              <input
+                type="text"
+                value={editJa}
+                onChange={(e) => setEditJa(e.target.value)}
+                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmEdit();
+                  if (e.key === "Escape") cancelEdit();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              ref={groupHandleRef as Ref<HTMLButtonElement>}
+              className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+            >
+              <GripVertical className="size-4 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={startEditing}
+              className="flex-1 truncate text-left text-xs font-semibold uppercase text-gray-500 hover:text-gray-800"
+              title="Click to rename"
+            >
+              {groupLabel}
+            </button>
+            <Switch
+              checked={g.group.enabled}
+              disabled={!canEnableGroup}
+              onCheckedChange={(checked) =>
+                onToggleGroupEnabled(g.group.id, checked)
+              }
+              className="shrink-0 scale-75"
+            />
+            <button
+              type="button"
+              onClick={() => onDeleteGroup(g.group.id)}
+              className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+              title="Delete group"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+          <Select
+            value={priority}
+            onValueChange={(value) => onChangePriority(g.group.id, value as NavPriority)}
+          >
+            <SelectTrigger className="h-7 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="important">Important</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="optional">Optional</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div
+        ref={linkedDropRef as Ref<HTMLDivElement>}
+        className={[
+          "mx-2 mt-2 rounded border p-2",
+          g.linkedItem
+            ? "border-gray-200"
+            : "border-dashed border-gray-300 bg-gray-50",
+          isLinkedDropTarget ? "border-blue-400 bg-blue-50" : "",
+        ].join(" ")}
+      >
+        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">
+          Linked item
+        </p>
+        {g.linkedItem ? (
+          <NavbarLinkedItemRow
+            item={g.linkedItem.item}
+            groupId={g.group.id}
+            lang={lang}
+            documentTitleByContentId={documentTitleByContentId}
+            onSave={(value) =>
+              updateCurrentGroup((group) => ({
+                ...group,
+                linkedItem:
+                  group.linkedItem?.item.id === g.linkedItem?.item.id
+                    ? {
+                        item: {
+                          ...(group.linkedItem?.item ?? g.linkedItem!.item),
+                          url: value.url,
+                          label: value.label,
+                        },
+                      }
+                    : group.linkedItem,
+              }))
+            }
+            onRemove={() =>
+              updateCurrentGroup((group) => ({
+                ...group,
+                linkedItem: undefined,
+              }))
+            }
+          />
+        ) : showLinkedAddLink ? (
+          <NavbarAddLinkForm
+            url={linkedUrl}
+            labelEn={linkedEn}
+            labelJa={linkedJa}
+            onChangeUrl={setLinkedUrl}
+            onChangeLabelEn={setLinkedEn}
+            onChangeLabelJa={setLinkedJa}
+            onConfirm={confirmAddLinkedLink}
+            onCancel={cancelAddLinkedLink}
+          />
+        ) : (
+          <div className="px-1 py-2">
+            <p className="text-foreground-light text-xs">
+              Drop a document or link here
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowLinkedAddLink(true)}
+              className="mt-2 flex items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            >
+              <Plus className="size-3" />
+              Add link
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-gray-100 px-2 py-2">
+        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">
+          Sub-groups
+        </p>
+        <ul
+          ref={subItemsDropRef as Ref<HTMLUListElement>}
+          className={[
+            "flex min-h-8 flex-col gap-1 rounded border p-2",
+            g.subItems.length === 0
+              ? "border-dashed border-gray-300 bg-gray-50"
+              : "border-gray-100",
+            isSubItemsDropTarget ? "border-blue-400 bg-blue-50" : "",
+          ].join(" ")}
+        >
+          {g.subItems.map(({ item, enabled }, itemIndex) => (
+            <NavbarSubItemRow
+              key={item.id}
+              item={item}
+              enabled={enabled}
+              itemIndex={itemIndex}
+              groupId={g.group.id}
+              lang={lang}
+              documentTitleByContentId={documentTitleByContentId}
+              onSave={(value) =>
+                onCommit(
+                  updateNavbarAssignedItem(allGroups, item.id, (currentItem) => ({
+                    ...currentItem,
+                    item: {
+                      ...currentItem.item,
+                      url: value.url,
+                      label: value.label,
+                    },
+                  })),
+                )
+              }
+              onRemove={() => onCommit(removeNavbarAssignedItem(allGroups, item.id))}
+              onToggleEnabled={(checked) =>
+                onCommit(
+                  updateNavbarAssignedItem(allGroups, item.id, (currentItem) => ({
+                    ...currentItem,
+                    enabled: checked,
+                  })),
+                )
+              }
+            />
+          ))}
+          {g.subItems.length === 0 && (
+            <li className="text-foreground-light px-2 py-3 text-xs">
+              Drop submenu items here
+            </li>
+          )}
+        </ul>
+
+        <div className="pt-1">
+          {showSubAddLink ? (
+            <NavbarAddLinkForm
+              url={subUrl}
+              labelEn={subEn}
+              labelJa={subJa}
+              onChangeUrl={setSubUrl}
+              onChangeLabelEn={setSubEn}
+              onChangeLabelJa={setSubJa}
+              onConfirm={confirmAddSubLink}
+              onCancel={cancelAddSubLink}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowSubAddLink(true)}
+              className="flex w-full items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            >
+              <Plus className="size-3" />
+              Add link
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NavbarLinkedItemRow({
+  item,
+  groupId,
+  lang,
+  documentTitleByContentId,
+  onSave,
+  onRemove,
+}: {
+  item: NavigationItem;
+  groupId: string;
+  lang: Locale;
+  documentTitleByContentId: Map<string, string>;
+  onSave: (value: { url: string; label: { en: string; ja: string } }) => void;
+  onRemove: () => void;
+}) {
+  const { ref, handleRef, isDragSource } = useSortable({
+    id: item.id,
+    index: 0,
+    type: NAVBAR_ASSIGNED_ITEM_TYPE,
+    accept: [NAVBAR_ASSIGNED_ITEM_TYPE],
+    group: getNavbarGroupLinkedSlotId(groupId),
+    data: { type: NAVBAR_ASSIGNED_ITEM_TYPE },
+  });
+
+  return (
+    <li
+      ref={ref as Ref<HTMLLIElement>}
+      className={[
+        "flex items-start gap-1 rounded px-1 py-1 hover:bg-gray-50",
+        isDragSource ? "opacity-40" : "",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        ref={handleRef as Ref<HTMLButtonElement>}
+        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+      >
+        <GripVertical className="size-3 shrink-0" />
+      </button>
+      <NavigationItemLeadingIcon item={item} />
+      <EditableLinkLabel
+        item={item}
+        lang={lang}
+        documentTitleByContentId={documentTitleByContentId}
+        className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
+        onSave={onSave}
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+        title="Remove item from group"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </li>
+  );
+}
+
+function NavbarSubItemRow({
+  item,
+  enabled,
+  itemIndex,
+  groupId,
+  lang,
+  documentTitleByContentId,
+  onSave,
+  onRemove,
+  onToggleEnabled,
+}: {
+  item: NavigationItem;
+  enabled: boolean;
+  itemIndex: number;
+  groupId: string;
+  lang: Locale;
+  documentTitleByContentId: Map<string, string>;
+  onSave: (value: { url: string; label: { en: string; ja: string } }) => void;
+  onRemove: () => void;
+  onToggleEnabled: (enabled: boolean) => void;
+}) {
+  const { ref, handleRef, isDragSource } = useSortable({
+    id: item.id,
+    index: itemIndex,
+    type: NAVBAR_ASSIGNED_ITEM_TYPE,
+    accept: [NAVBAR_ASSIGNED_ITEM_TYPE],
+    group: getNavbarGroupSubItemsId(groupId),
+    data: { type: NAVBAR_ASSIGNED_ITEM_TYPE },
+  });
+
+  return (
+    <li
+      ref={ref as Ref<HTMLLIElement>}
+      className={[
+        "flex items-start gap-1 rounded px-1 py-1 hover:bg-gray-50",
+        isDragSource ? "opacity-40" : "",
+        !enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        ref={handleRef as Ref<HTMLButtonElement>}
+        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+      >
+        <GripVertical className="size-3 shrink-0" />
+      </button>
+      <NavigationItemLeadingIcon item={item} />
+      <EditableLinkLabel
+        item={item}
+        lang={lang}
+        documentTitleByContentId={documentTitleByContentId}
+        className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
+        onSave={onSave}
+      />
+      <Switch
+        checked={enabled}
+        onCheckedChange={onToggleEnabled}
+        className="shrink-0 scale-75"
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+        title="Remove item from group"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </li>
+  );
+}
+
+function NavbarAddLinkForm({
+  url,
+  labelEn,
+  labelJa,
+  onChangeUrl,
+  onChangeLabelEn,
+  onChangeLabelJa,
+  onConfirm,
+  onCancel,
+}: {
+  url: string;
+  labelEn: string;
+  labelJa: string;
+  onChangeUrl: (value: string) => void;
+  onChangeLabelEn: (value: string) => void;
+  onChangeLabelJa: (value: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 pt-1">
+      <input
+        type="text"
+        value={url}
+        onChange={(event) => onChangeUrl(event.target.value)}
+        placeholder="URL"
+        className="w-full rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+        autoFocus
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancel();
+        }}
+      />
+      <div className="flex items-center gap-3">
+        <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+        <input
+          type="text"
+          value={labelEn}
+          onChange={(event) => onChangeLabelEn(event.target.value)}
+          placeholder="English label"
+          className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onConfirm();
+            if (event.key === "Escape") onCancel();
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+        <input
+          type="text"
+          value={labelJa}
+          onChange={(event) => onChangeLabelJa(event.target.value)}
+          placeholder="Japanese label"
+          className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onConfirm();
+            if (event.key === "Escape") onCancel();
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-1 pt-0.5">
+        <Button
+          type="button"
+          size="slim"
+          onClick={onConfirm}
+          disabled={!url.trim() || !labelEn.trim()}
+          className="h-6 text-xs"
+        >
+          <Check className="mr-1 size-3" />
+          Add
+        </Button>
+        <Button
+          type="button"
+          size="slim"
+          variant="outline"
+          onClick={onCancel}
+          className="h-6 text-xs"
+        >
+          <X className="mr-1 size-3" />
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Navbar drag overlay clones
+// ---------------------------------------------------------------------------
+
+function NavbarGroupOverlay({
+  g,
+  lang,
+  documentTitleByContentId,
+}: {
+  g: NavbarGroupWithItems;
+  lang: Locale;
+  documentTitleByContentId: Map<string, string>;
+}) {
+  const groupLabel = g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
+  return (
+    <div
+      className={[
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
+        !g.group.enabled ? "opacity-50" : "",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+        <GripVertical className="size-4 shrink-0 text-gray-400" />
+        <span className="flex-1 truncate text-xs font-semibold uppercase text-gray-500">{groupLabel}</span>
+      </div>
+      <ul className="flex flex-col gap-1 p-2">
+        {g.linkedItem ? (
+          <li key={g.linkedItem.item.id} className="flex items-start gap-1 rounded px-1 py-1">
+            <NavigationItemLeadingIcon item={g.linkedItem.item} />
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
+              {getEditorItemLabel(g.linkedItem.item, lang, documentTitleByContentId)}
+            </span>
+          </li>
+        ) : (
+          <li className="text-foreground-light px-2 py-2 text-xs">No linked item</li>
+        )}
+      </ul>
+      <div className="border-t border-gray-100 px-2 py-2">
+        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Sub-groups</p>
+        <ul className="flex flex-col gap-1">
+        {g.subItems.map(({ item, enabled }) => (
+          <li key={item.id} className="flex items-start gap-1 rounded px-1 py-1">
+            <NavigationItemLeadingIcon item={item} />
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
+              {getEditorItemLabel(item, lang, documentTitleByContentId)}
+            </span>
+            {!enabled ? <span className="text-[10px] text-gray-400">off</span> : null}
+          </li>
+        ))}
+        {g.subItems.length === 0 && (
+          <li className="text-foreground-light px-2 py-2 text-xs">No submenu items</li>
+        )}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function NavbarItemOverlay({
+  item,
+  lang,
+  documentTitleByContentId,
+}: {
+  item: NavigationItem;
+  lang: Locale;
+  documentTitleByContentId: Map<string, string>;
+}) {
+  return (
+    <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
+      <NavigationItemLeadingIcon item={item} />
+      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
+        {getEditorItemLabel(item, lang, documentTitleByContentId)}
+      </span>
     </li>
   );
 }
@@ -2679,25 +3016,26 @@ function EditableLinkLabel({
   const editFormRef = useRef<HTMLDivElement | null>(null);
   const editUrlInputRef = useRef<HTMLInputElement | null>(null);
 
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+
   useEffect(() => {
     if (!isEditing) return;
+    editUrlInputRef.current?.focus();
+    editUrlInputRef.current?.select();
+  }, [isEditing]);
 
-    const input = editUrlInputRef.current;
-    if (input) {
-      input.focus();
-      input.select();
-    }
-
+  useEffect(() => {
+    if (!isEditing) return;
     function handlePointerDown(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (editFormRef.current?.contains(target)) return;
-      commit();
+      commitRef.current();
     }
-
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isEditing, editUrl, editEn, editJa]);
+  }, [isEditing]);
 
   function startEditing() {
     setEditUrl(item.url ?? "");
@@ -2868,25 +3206,26 @@ function FooterGroupColumn({
     setIsEditing(false);
   }
 
+  const confirmEditRef = useRef(confirmEdit);
+  confirmEditRef.current = confirmEdit;
+
   useEffect(() => {
     if (!isEditing) return;
+    editEnInputRef.current?.focus();
+    editEnInputRef.current?.select();
+  }, [isEditing]);
 
-    const input = editEnInputRef.current;
-    if (input) {
-      input.focus();
-      input.select();
-    }
-
+  useEffect(() => {
+    if (!isEditing) return;
     function handlePointerDown(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (editFormRef.current?.contains(target)) return;
-      confirmEdit();
+      confirmEditRef.current();
     }
-
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isEditing, editEn, editJa]);
+  }, [isEditing]);
 
   function confirmAddLink() {
     const url = linkUrl.trim();

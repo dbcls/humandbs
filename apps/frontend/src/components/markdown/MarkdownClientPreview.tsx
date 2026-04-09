@@ -24,7 +24,7 @@ export function MarkdownClientPreview({ source }: { source: string }) {
     return <div>Some error occurred. Markdown couldn't be previewed </div>;
 
   return (
-    <section className="w-full max-h-full overflow-y-auto">
+    <section className="w-full">
       <Markdown contentHtml={contentHtml ?? { markup: "", headings: [] }} />
     </section>
   );

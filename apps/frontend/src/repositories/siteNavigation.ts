@@ -59,12 +59,17 @@ export function createSiteNavigationRepository(
         };
       } catch (error) {
         // Config in DB is in an unrecognized shape (e.g. pre-migration).
-        // Treat as missing so callers fall back to the default config.
+        // Fall back to the current default config but preserve row identity and
+        // revision so the next save overwrites the existing record instead of
+        // trying to insert a second "global" row.
         console.error(
-          "Stored site navigation config failed validation — treating as missing. Run the migration script to upgrade.",
+          "Stored site navigation config failed validation — falling back to the default config for this row.",
           error,
         );
-        return null;
+        return {
+          ...row,
+          config: getDefaultSiteNavigationConfig(),
+        };
       }
     },
 

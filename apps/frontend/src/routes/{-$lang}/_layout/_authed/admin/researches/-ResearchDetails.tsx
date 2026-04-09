@@ -29,7 +29,6 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -362,10 +361,13 @@ export function ResearchDetails({
 
   const form = useAppForm({
     defaultValues: researchValues,
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
       setError(null);
       setIsConflict(false);
-      await updateResearch(value);
+      const result = await updateResearch(value);
+      if (result?.ok) {
+        formApi.reset(value);
+      }
     },
   });
   const previewValues = useStore(form.store, (state) => state.values);
@@ -389,25 +391,26 @@ export function ResearchDetails({
   // regardless of which version was requested.
   const isViewingDraft = selectedVersion === researchValues.draftVersion;
 
-  // Per-tab dirty state: compare current value of each top-level field to initial
+  const topLevelFields = [
+    "title",
+    "summary",
+    "dataProvider",
+    "researchProject",
+    "grant",
+    "relatedPublication",
+    "controlledAccessUser",
+  ] as const;
+
+  // Per-tab dirty state: a tab is dirty if any of its fields (or nested fields) are dirty
   const dirtyFields = useStore(form.store, (state) => {
-    const v = state.values;
-    const i = researchValues;
-    return {
-      title: !deepEqual(v.title, i.title),
-      summary: !deepEqual(v.summary, i.summary),
-      dataProvider: !deepEqual(v.dataProvider, i.dataProvider),
-      researchProject: !deepEqual(v.researchProject, i.researchProject),
-      grant: !deepEqual(v.grant, i.grant),
-      relatedPublication: !deepEqual(
-        v.relatedPublication,
-        i.relatedPublication,
-      ),
-      controlledAccessUser: !deepEqual(
-        v.controlledAccessUser,
-        i.controlledAccessUser,
-      ),
-    };
+    return Object.fromEntries(
+      topLevelFields.map((field) => [
+        field,
+        Object.entries(state.fieldMeta).some(
+          ([key, meta]) => (key === field || key.startsWith(`${field}.`) || key.startsWith(`${field}[`)) && meta.isDirty,
+        ),
+      ]),
+    ) as Record<(typeof topLevelFields)[number], boolean>;
   });
 
   return (
@@ -505,13 +508,9 @@ export function ResearchDetails({
             {/* Workflow action row */}
             <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
               <div className="ml-auto flex items-center gap-2">
-                {isViewingDraft && canUpdate && (
-                  <Button
-                    size="lg"
-                    onClick={() => form.handleSubmit()}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "Saving…" : "Save draft"}
+                {canDelete && (
+                  <Button type="button" size="lg" onClick={handleDelete}>
+                    Delete
                   </Button>
                 )}
 
@@ -550,9 +549,14 @@ export function ResearchDetails({
                     Unpublish
                   </Button>
                 )}
-                {canDelete && (
-                  <Button type="button" size="lg" onClick={handleDelete}>
-                    Delete
+
+                {isViewingDraft && canUpdate && (
+                  <Button
+                    size="lg"
+                    onClick={() => form.handleSubmit()}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving…" : "Save draft"}
                   </Button>
                 )}
               </div>

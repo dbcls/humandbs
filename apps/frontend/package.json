@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "start": "bun server.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
+    "db:seed-navigation": "bun ./src/scripts/database/seed-navigation.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
     "db:push": "bunx --bun drizzle-kit push"
