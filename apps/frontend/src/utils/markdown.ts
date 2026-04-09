@@ -194,7 +194,7 @@ export async function renderMarkdown(content: string): Promise<MarkdownResult> {
     .use(rehypeSlug) // Add IDs to headings
     .use(collectHeadings(headings)) // Collect headings with generated IDs
     .use(rehypeAutolinkHeadings, {
-      behavior: "wrap",
+      behavior: "prepend",
       properties: { className: ["anchor"] },
     })
 
