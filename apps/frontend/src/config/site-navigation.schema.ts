@@ -7,7 +7,6 @@ const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);
 
 const navigationGroupItemSchema = z.object({
   id: z.string().uuid(),
-  order: z.number().int(),
   enabled: z.boolean().optional().default(true),
 });
 
@@ -15,9 +14,10 @@ const navigationGroupSchema = z.object({
   id: z.string().uuid(),
   label: multilingualLabelSchema,
   parentGroupId: z.string().uuid().optional(),
-  order: z.number().int(),
   enabled: z.boolean(),
   items: z.array(navigationGroupItemSchema),
+  visibility: z.enum(["essential", "secondary"]).optional(),
+  priority: z.enum(["important", "medium", "optional"]).optional(),
 });
 
 const navigationZoneSchema = z.object({
@@ -30,17 +30,6 @@ const navigationItemSchema = z.object({
   contentId: z.string().optional(),
   url: z.string().optional(),
   label: multilingualLabelSchema.optional(),
-  navbar: z
-    .object({
-      enabled: z.boolean(),
-      visibility: z.enum(["essential", "secondary"]),
-      order: z.number().int(),
-      priority: z
-        .enum(["important", "medium", "optional"])
-        .default("important"),
-      parentItemId: z.string().uuid().optional(),
-    })
-    .optional(),
 });
 
 export const siteNavigationConfigSchema = z
@@ -62,31 +51,20 @@ export const siteNavigationConfigSchema = z
       });
     }
 
-    // Validate navbar parentItemId references
+    // Document items must have contentId; link items must have url and label
     for (const item of config.items) {
-      if (item.navbar?.parentItemId && !itemIds.has(item.navbar.parentItemId)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Unknown navbar parentItemId "${item.navbar.parentItemId}" for item "${item.id}".`,
-        });
-      }
-
-      // Document items must have contentId
       if (item.type === "document" && !item.contentId) {
         ctx.addIssue({
           code: "custom",
           message: `Document item "${item.id}" must have a contentId.`,
         });
       }
-
-      // Link items must have url and label
       if (item.type === "link" && !item.url) {
         ctx.addIssue({
           code: "custom",
           message: `Link item "${item.id}" must have a url.`,
         });
       }
-
       if (item.type === "link" && !item.label?.en?.trim()) {
         ctx.addIssue({
           code: "custom",
@@ -103,11 +81,10 @@ export const siteNavigationConfigSchema = z
       if (groupIds.size !== zone.groups.length) {
         ctx.addIssue({
           code: "custom",
-          message: `Footer group ids must be unique in zone "${zoneName}".`,
+          message: `Group ids must be unique in zone "${zoneName}".`,
         });
       }
 
-      // Track which items are assigned (to enforce one item per group)
       const assignedItemIds = new Set<string>();
 
       for (const group of zone.groups) {
@@ -118,16 +95,21 @@ export const siteNavigationConfigSchema = z
           });
         }
 
-        // parentGroupId must reference an existing group in the same zone
-        if (group.parentGroupId && !groupIds.has(group.parentGroupId)) {
+        if (zoneName === "navbar" && group.parentGroupId) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Navbar group "${group.id}" cannot define a parentGroupId in the simplified navbar model.`,
+          });
+        }
+
+        if (zoneName !== "navbar" && group.parentGroupId && !groupIds.has(group.parentGroupId)) {
           ctx.addIssue({
             code: "custom",
             message: `Unknown parentGroupId "${group.parentGroupId}" in group "${group.id}" in zone "${zoneName}".`,
           });
         }
 
-        // Navbar nesting max depth 2
-        if (group.parentGroupId) {
+        if (zoneName !== "navbar" && group.parentGroupId) {
           const parent = zone.groups.find((g) => g.id === group.parentGroupId);
           if (parent?.parentGroupId) {
             ctx.addIssue({
@@ -137,8 +119,23 @@ export const siteNavigationConfigSchema = z
           }
         }
 
+        if (zoneName === "navbar") {
+          if (group.enabled && group.items.length === 0) {
+            ctx.addIssue({
+              code: "custom",
+              message: `Navbar group "${group.id}" cannot be enabled without a linked item.`,
+            });
+          }
+
+          if (group.items[0]?.enabled === false) {
+            ctx.addIssue({
+              code: "custom",
+              message: `Navbar group "${group.id}" cannot disable its top-level linked item.`,
+            });
+          }
+        }
+
         for (const ref of group.items) {
-          // Item reference must point to an existing NavigationItem
           if (!itemIds.has(ref.id)) {
             ctx.addIssue({
               code: "custom",
@@ -146,7 +143,6 @@ export const siteNavigationConfigSchema = z
             });
           }
 
-          // One item can only appear in one group per zone
           if (assignedItemIds.has(ref.id)) {
             ctx.addIssue({
               code: "custom",
@@ -158,7 +154,7 @@ export const siteNavigationConfigSchema = z
       }
     }
 
-    // Home item (contentId === "home") must be visible somewhere
+    // Home item must be visible somewhere
     const homeItem = config.items.find(
       (item) => item.type === "document" && item.contentId === "home",
     );
@@ -166,7 +162,9 @@ export const siteNavigationConfigSchema = z
       const inFooter = config.zones.footer.groups.some((g) =>
         g.items.some((ref) => ref.id === homeItem.id),
       );
-      const inNavbar = homeItem.navbar?.enabled;
+      const inNavbar = config.zones.navbar.groups.some((g) =>
+        g.items.some((ref) => ref.id === homeItem.id),
+      );
       if (!inFooter && !inNavbar) {
         ctx.addIssue({
           code: "custom",
