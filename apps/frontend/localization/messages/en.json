@@ -86,6 +86,11 @@
     "type-of-data": "Type of data",
     "criteria": "Access type"
   },
+  "Dataset": {},
+  "Research": {
+    "research-id": "Research ID",
+    "datasets": "Datasets"
+  },
   "DatasetVersionCard": {
     "releaseInfo": "Release info",
     "alreadyInCart": "Already in cart",

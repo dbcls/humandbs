@@ -540,7 +540,7 @@ async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<void> {
   }
 }
 
-const NAV_CONFIG_ID = "default";
+const NAV_CONFIG_ID = "global";
 
 async function seedNavigation(
   db: ReturnType<typeof drizzle<typeof schema>>,
