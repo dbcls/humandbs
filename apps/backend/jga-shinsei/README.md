@@ -65,6 +65,33 @@ vim .env
 | `ds-applications.json` | J-DS (データ提供申請) 詳細 |
 | `du-applications.json` | J-DU (データ利用申請) 詳細 |
 
+### 1b. JGA <-> hum-id リレーション TSV ダンプ
+
+`nbdc_application.hum_id` を起点に、JGAS/JGAD と hum-id のリレーションを preserve-format TSV として出力する。ddbj-search-converter の DBLink パイプラインに組み込むためのデータ。
+
+```bash
+./scripts/dump-jga-hum-relations.sh
+```
+
+**データの導出経路:**
+
+```plaintext
+nbdc_application.hum_id
+  -> submission_permission -> submission -> entry -> relation
+  -> accession (JGAS/JGAD)
+```
+
+metadata XML の `nbdc_number` を経由しない経路で、担当者が DB に直接投入した hum_id を使用する。
+
+**出力ファイル:** (`$JGA_HUM_REL_OUTPUT_DIR` 以下、デフォルト: `~/jga-relation/`)
+
+| ファイル | 内容 | 形式 |
+|----------|------|------|
+| `jga_study_hum_id.tsv` | JGAS ↔ hum-id | ヘッダなし TSV 2カラム |
+| `jga_dataset_hum_id.tsv` | JGAD ↔ hum-id | ヘッダなし TSV 2カラム |
+
+**運用:** a014 上で cron 実行し、出力 TSV を converter 環境に scp する想定。
+
 ### 2. EAV → API フレンドリー変換
 
 DB ダンプの `components` 配列は EAV (Entity-Attribute-Value) パターンで、そのままでは扱いにくい。
