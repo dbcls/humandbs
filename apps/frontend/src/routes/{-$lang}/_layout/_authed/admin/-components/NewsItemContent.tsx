@@ -338,14 +338,11 @@ function NewsItemForm({
   });
 
   const dirtyLocales = useStore(form.store, (state) => {
-    const defaults = form.options.defaultValues as FormDataType;
     return Object.fromEntries(
       i18n.locales.map((loc) => [
         loc,
-        state.values.translations?.[loc]?.title !==
-          defaults.translations?.[loc]?.title ||
-          state.values.translations?.[loc]?.content !==
-            defaults.translations?.[loc]?.content,
+        state.fieldMeta[`translations.${loc}.title`]?.isDirty ||
+          state.fieldMeta[`translations.${loc}.content`]?.isDirty,
       ]),
     ) as Record<Locale, boolean>;
   });
@@ -485,11 +482,7 @@ function NewsItemForm({
             </form.AppField>
             <form.AppField name={`translations.${loc}.content`}>
               {(field) => {
-                const isDirty =
-                  field.state.value !==
-                  (form.options.defaultValues as FormDataType)?.translations?.[
-                    loc
-                  ]?.content;
+                const isDirty = field.state.meta.isDirty;
                 return (
                   <Suspense fallback={<div>Loading...</div>}>
                     <field.ContentAreaField
