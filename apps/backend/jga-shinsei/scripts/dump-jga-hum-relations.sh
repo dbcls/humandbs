@@ -9,6 +9,10 @@
 #   nbdc_application.hum_id -> submission_permission -> relation -> accession
 #   (metadata XML を経由しない経路)
 #
+# Filter:
+#   current_accession_status.accession_status = 2098186 (public/live) のみ出力
+#   See docs/database-schema.md for details on accession_status bit flags
+#
 # Usage:
 #   ./scripts/dump-jga-hum-relations.sh
 #
@@ -57,9 +61,13 @@ export PGPASSWORD="${JGA_DB_PASSWORD}"
 OUTPUT_DIR="${JGA_HUM_REL_OUTPUT_DIR:-$HOME/jga-relation}"
 mkdir -p "$OUTPUT_DIR"
 
+# accession_status = 2098186 = public/live (bit21 + bit3)
+ACCESSION_STATUS_PUBLIC=2098186
+
 echo "=== JGA <-> hum-id Relation Dump ==="
 echo "Host:     $DB_HOST:$DB_PORT"
 echo "Database: $DB_NAME (schema: $DB_SCHEMA, user: $DB_USER)"
+echo "Filter:   accession_status = $ACCESSION_STATUS_PUBLIC (public/live)"
 echo "Output:   $OUTPUT_DIR"
 echo ""
 
@@ -81,10 +89,12 @@ JOIN ${DB_SCHEMA}.submission s ON sp.submission_id = s.submission_id
 JOIN ${DB_SCHEMA}.entry e ON s.submission_id = e.submission_id
 JOIN ${DB_SCHEMA}.relation r ON e.entry_id = r.entry_id
 JOIN ${DB_SCHEMA}.accession a ON r.self = a.accession_id
+JOIN ${DB_SCHEMA}.current_accession_status cas ON a.accession = cas.accession
 WHERE na.hum_id IS NOT NULL
   AND na.hum_id != ''
   AND na.hum_id != 'N/A'
   AND a.accession LIKE 'JGAS%'
+  AND cas.accession_status = ${ACCESSION_STATUS_PUBLIC}
 ORDER BY a.accession, na.hum_id;
 " > "$OUTPUT_DIR/jga_study_hum_id.tsv"
 
@@ -102,10 +112,12 @@ JOIN ${DB_SCHEMA}.submission s ON sp.submission_id = s.submission_id
 JOIN ${DB_SCHEMA}.entry e ON s.submission_id = e.submission_id
 JOIN ${DB_SCHEMA}.relation r ON e.entry_id = r.entry_id
 JOIN ${DB_SCHEMA}.accession a ON r.self = a.accession_id
+JOIN ${DB_SCHEMA}.current_accession_status cas ON a.accession = cas.accession
 WHERE na.hum_id IS NOT NULL
   AND na.hum_id != ''
   AND na.hum_id != 'N/A'
   AND a.accession LIKE 'JGAD%'
+  AND cas.accession_status = ${ACCESSION_STATUS_PUBLIC}
 ORDER BY a.accession, na.hum_id;
 " > "$OUTPUT_DIR/jga_dataset_hum_id.tsv"
 

@@ -79,16 +79,17 @@ vim .env
 nbdc_application.hum_id
   -> submission_permission -> submission -> entry -> relation
   -> accession (JGAS/JGAD)
+  -> current_accession_status (accession_status = 2098186: public/live)
 ```
 
-metadata XML の `nbdc_number` を経由しない経路で、担当者が DB に直接投入した hum_id を使用する。
+metadata XML の `nbdc_number` を経由しない経路で、担当者が DB に直接投入した hum_id を使用する。`current_accession_status` で公開済み (public/live) の accession のみに絞り込む。ステータスの詳細は [database-schema.md](docs/database-schema.md) を参照。
 
 **出力ファイル:** (`$JGA_HUM_REL_OUTPUT_DIR` 以下、デフォルト: `~/jga-relation/`)
 
 | ファイル | 内容 | 形式 |
 |----------|------|------|
-| `jga_study_hum_id.tsv` | JGAS ↔ hum-id | ヘッダなし TSV 2カラム |
-| `jga_dataset_hum_id.tsv` | JGAD ↔ hum-id | ヘッダなし TSV 2カラム |
+| `jga_study_hum_id.tsv` | JGAS ↔ hum-id (公開済みのみ) | ヘッダなし TSV 2カラム |
+| `jga_dataset_hum_id.tsv` | JGAD ↔ hum-id (公開済みのみ) | ヘッダなし TSV 2カラム |
 
 **運用:** a014 上で cron 実行し、出力 TSV を converter 環境に scp する想定。
 
