@@ -5,24 +5,7 @@
     "previous-versions": "{documentName}の改定"
   },
   "Footer": {
-    "sitemap": "サイトマップ",
-    "group-overview": "概要",
-    "group-guidelines": "ガイドライン",
-    "group-submission": "提供",
-    "group-usage": "利用",
-    "group-policy": "ポリシー",
-    "home": "ホーム",
-    "process-data": "加工データ",
-    "guideline-violation": "ガイドライン違反",
-    "guideline": "ガイドライン",
-    "off-premise-server": "機関外サーバ",
-    "FAQ": "FAQ",
-    "data-submission": "データの提供",
-    "data-privision-committee": "ヒトデータ審査委員会",
-    "contact": "お問い合わせ",
-    "data-usage": "データの利用",
-    "publications": "成果発表",
-    "supported-browsers": "対応ブラウザ"
+    "sitemap": "サイトマップ"
   },
   "DeleteDialog": {
     "title": "アイテム削除確認",
@@ -110,7 +93,8 @@
     "info": "情報",
     "releaseDate": "公開日付",
     "typeOfData": "データの種類",
-    "criteria": "アクセス制限"
+    "criteria": "アクセス制限",
+    "experiments": "実験一覧"
   },
   "Data-submission": {
     "data-submission": "データの提供",

@@ -23,7 +23,7 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/researches/",
+  "/{-$lang}/_layout/_main/_other/data-use/research/",
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
@@ -175,15 +175,9 @@ const columns = [
 
     cell: function Cell(ctx) {
       return (
-        <div>
-          <Route.Link
-            to="$humId"
-            params={{ humId: ctx.getValue() }}
-            className="text-secondary"
-          >
-            <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-          </Route.Link>
-        </div>
+        <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
+          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+        </Route.Link>
       );
     },
     size: 15,
@@ -196,11 +190,7 @@ const columns = [
         <ul>
           {ctx.row.original.datasetIds.map((datasetId) => (
             <li key={datasetId}>
-              <Route.Link
-                className="text-secondary"
-                to="../datasets/$datasetId"
-                params={{ datasetId }}
-              >
+              <Route.Link to="../datasets/$datasetId" params={{ datasetId }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
               </Route.Link>
             </li>

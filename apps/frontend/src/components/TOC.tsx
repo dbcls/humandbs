@@ -41,7 +41,7 @@ export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
           key={heading.id}
           href={`#${heading.id}`}
           className={cn(
-            "text-sm hover:text-neutral-800 text-neutral-500 font-medium",
+            "text-sm no-underline hover:text-neutral-800 text-neutral-500 font-medium",
             {
               "font-bold text-neutral-900": activeId === heading.id,
             },

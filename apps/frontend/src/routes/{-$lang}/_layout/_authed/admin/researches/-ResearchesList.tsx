@@ -9,7 +9,7 @@ import {
   useQueryClient,
   type QueryKey,
 } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { ListItem } from "@/components/ListItem";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { Input } from "@/components/Input";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { Tag } from "@/components/StatusTag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -274,16 +274,6 @@ function ResearchFilters() {
     "/{-$lang}/_layout/_authed/admin/researches/",
   );
 
-  const debouncedSetQuery = useMemo(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    return (value: string) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        setFilters({ q: value ?? undefined });
-      }, 300);
-    };
-  }, [setFilters]);
-
   return (
     <div className="flex flex-col gap-2">
       <ToggleGroup
@@ -291,12 +281,7 @@ function ResearchFilters() {
         value={filters.status ?? "all"}
         onValueChange={(value) => {
           if (!value) return;
-
-          if (value === "all") {
-            setFilters({ status: undefined });
-          } else {
-            setFilters({ status: value });
-          }
+          setFilters({ status: value === "all" ? undefined : value });
         }}
       >
         {statuses.map((status) => (
@@ -310,15 +295,9 @@ function ResearchFilters() {
         ))}
       </ToggleGroup>
 
-      <Input
-        type="text"
-        placeholder="Search…"
-        defaultValue={filters.q ?? ""}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (value !== "" && value.length < 3) return;
-          debouncedSetQuery(value);
-        }}
+      <FilterSearchInput
+        value={filters.q}
+        onChange={(q) => setFilters({ q })}
       />
     </div>
   );

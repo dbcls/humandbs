@@ -1,5 +1,5 @@
-import { ChevronDownIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDownIcon, XIcon } from "lucide-react";
+import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
@@ -57,46 +57,49 @@ export function DateRangePicker({
   // label,
   value,
   onSelect,
+  onClear,
 }: {
   // label: string;
   value: DateStringRange | undefined;
   onSelect: (value: DateStringRange) => void;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
-  const [dateRange, setDateRange] = useState<DateStringRange | undefined>(
-    value,
+  // In-progress local selection, independent of the committed value prop.
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>(
+    toDateRange(value),
   );
 
-  useEffect(() => {
-    setDateRange(value);
-  }, [value]);
+  // Seed/reset draft from the committed value on every open/close.
+  const handleOpenChange = (next: boolean) => {
+    setDraftRange(toDateRange(value));
+    setOpen(next);
+  };
 
-  const handleSelect = (
-    nextRange: DateRange | undefined,
-    selectedDay: Date | undefined,
-  ) => {
-    const newRange =
-      dateRange?.from && dateRange?.to ? { from: selectedDay } : nextRange!;
+  const handleSelect = (nextRange: DateRange | undefined, selectedDay: Date) => {
+    // If a complete (non-trivial) range already exists, the user is starting a new selection.
+    const hasCompleteRange =
+      draftRange?.from &&
+      draftRange?.to &&
+      draftRange.from.getTime() !== draftRange.to.getTime();
 
-    setDateRange(toDateStringRange(newRange));
+    const incoming: DateRange = hasCompleteRange
+      ? { from: selectedDay, to: undefined }
+      : (nextRange ?? { from: selectedDay, to: undefined });
 
-    if (
-      (newRange?.from && newRange?.to) ||
-      (!newRange?.from && !newRange?.to)
-    ) {
-      const dateStringRange = toDateStringRange(newRange);
-      if (dateStringRange) {
-        onSelect(dateStringRange);
-      }
+    setDraftRange(incoming);
+
+    const { from, to } = incoming;
+    if (from && to && from.getTime() !== to.getTime()) {
+      onSelect(toDateStringRange({ from, to })!);
+      setOpen(false);
     }
   };
 
   return (
-    // <Label className="flex w-fit flex-col items-start gap-2">
-    //   <span>{label ?? "Date"}</span>
-
-    <Popover open={open} onOpenChange={setOpen}>
+    <div className="flex items-center gap-1">
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="outline" size={"slim"} className="font-normal">
           {value ? `${value.from} - ${value.to}` : "Select date range"}
@@ -110,13 +113,23 @@ export function DateRangePicker({
         <Calendar
           numberOfMonths={2}
           mode="range"
-          selected={toDateRange(dateRange)}
-          defaultMonth={toDateRange(dateRange)?.from}
+          selected={draftRange}
+          defaultMonth={draftRange?.from}
           captionLayout="dropdown"
           onSelect={handleSelect}
         />
       </PopoverContent>
     </Popover>
-    // </Label>
+    {onClear && value && (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7 text-muted-foreground hover:text-foreground"
+        onClick={onClear}
+      >
+        <XIcon className="size-4" />
+      </Button>
+    )}
+    </div>
   );
 }

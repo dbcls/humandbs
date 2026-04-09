@@ -2,7 +2,7 @@ import {
   type DatasetDoc,
   type ResearchDetailResponse,
 } from "@humandbs/backend/types";
-import { Link, useRouteContext } from "@tanstack/react-router";
+import { useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useTranslations } from "use-intl";
 
@@ -23,6 +23,7 @@ import {
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
 import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
+import { Link } from "@/components/Link";
 
 export function VersionCard({
   versionData,
@@ -50,7 +51,8 @@ export function VersionCard({
           icon="books"
           badge={
             <Link
-              to="/{-$lang}/data-usage/researches/$humId/versions"
+              to="/{-$lang}/data-use/research/$humId/versions"
+              className="no-underline text-white"
               params={{ humId: versionData.humId }}
             >
               {t("releaseInfo")}
@@ -214,7 +216,7 @@ function DatasetCaption({
       </div>
 
       <Link
-        to={"/{-$lang}/data-usage/datasets/$datasetId"}
+        to={"/{-$lang}/data-use/datasets/$datasetId"}
         params={{ datasetId }}
         className="link-button"
       >
@@ -236,9 +238,12 @@ function makeDatasetColumns(
       id: "datasetId",
       header: t("datasetId"),
       cell: (ctx) => (
-        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-          {ctx.getValue()}
-        </TextWithIcon>
+        <Link
+          to="/{-$lang}/data-use/datasets/$datasetId"
+          params={{ datasetId: ctx.getValue() }}
+        >
+          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+        </Link>
       ),
       maxSize: 12,
     }),
@@ -257,23 +262,6 @@ function makeDatasetColumns(
         </span>
       ),
       maxSize: 14,
-    }),
-    datasetColumnHelper.display({
-      id: "details",
-      header: "",
-      cell: (ctx) => (
-        <div className="flex justify-end">
-          <Link
-            to={"/{-$lang}/data-usage/datasets/$datasetId"}
-            params={{ datasetId: ctx.row.original.datasetId }}
-            className="link-button"
-          >
-            <span>{t("details")}</span>
-            <ArrowIcon className="block" />
-          </Link>
-        </div>
-      ),
-      maxSize: 10,
     }),
   ];
 }
@@ -337,6 +325,7 @@ const dataUsedByColumns = [
     id: "org.name",
     header: "Organization name",
     cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
+        ?.text,
   }),
 ];

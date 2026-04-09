@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
+import ArrowIcon from "@/assets/icons/arrow.svg?react";
+import SubmitDataIcon from "@/assets/submit-data.svg?react";
+import UseDataIcon from "@/assets/use-data.svg?react";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
@@ -29,27 +32,32 @@ function RouteComponent() {
     // All that after the Navbar component
     <section className="flex flex-col gap-8 max-w-content-max-width mx-auto">
       <section className="flex h-fit items-start justify-between gap-8">
-        <div className="flex flex-1 flex-col items-center prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16">
+        <div className="flex flex-1 flex-col items-center  prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16">
           <Outlet />
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
             <Button
               variant={"accent"}
               onClick={() => {
                 navigate({ to: "/{-$lang}/data-submission" });
               }}
-              size={"lg"}
+              size={"xl"}
+              className="w-[27rem] h-[6.8rem] block text-center relative"
             >
-              {t("data-submission-button")}
+              <span>{t("data-submission-button")}</span>
+
+              <SubmitDataIcon className="absolute right-2 w-40 h-auto bottom-2" />
             </Button>
 
             <Button
               variant={"action"}
-              size={"lg"}
+              size={"xl"}
+              className="w-[27rem] h-[6.8rem] block text-center relative"
               onClick={() => {
-                navigate({ to: "/{-$lang}/data-usage" });
+                navigate({ to: "/{-$lang}/data-use" });
               }}
             >
-              {t("data-usage-button")}
+              <span>{t("data-usage-button")}</span>
+              <UseDataIcon className="absolute left-0 w-40 h-auto bottom-2" />
             </Button>
           </div>
         </div>

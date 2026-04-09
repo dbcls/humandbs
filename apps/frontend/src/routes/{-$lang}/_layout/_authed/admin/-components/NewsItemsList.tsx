@@ -1,5 +1,10 @@
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { LucideBell, Trash2Icon } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
@@ -7,32 +12,70 @@ import { ListItem } from "@/components/ListItem";
 import { TrashButton } from "@/components/TrashButton";
 import {
   $deleteNewsItem,
-  getNewsItemsQueryOptions,
+  newsItemsInfiniteQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 
-import { AddNewButton } from "./AddNewButton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tag } from "@/components/StatusTag";
+import { cn } from "@/lib/utils";
+import {
+  createDraftNewsItem,
+  DRAFT_NEWS_ID,
+  isDraftNewsItem,
+} from "./-draftNewsItem";
+import { AddNewButton } from "./AddNewButton";
+import { NewsFiltersBar } from "./NewsFiltersBar";
+import { TagPill } from "@/components/TagPill";
+import { useRouteContext } from "@tanstack/react-router";
 
 export function NewsItemsList({
-  onClickAdd,
-  selectedNewsItem,
+  selectedNewsItemId,
   onSelectNewsItem,
 }: {
-  onClickAdd: () => Promise<void>;
-  selectedNewsItem: NewsItemResponse | undefined;
-  onSelectNewsItem: (item: NewsItemResponse) => void;
+  selectedNewsItemId: string | undefined;
+  onSelectNewsItem: (itemId: string | undefined) => void;
 }) {
+  const { user } = useRouteContext({ from: "__root__" });
   const { openConfirmation } = useConfirmationStore();
   const t = useTranslations("DeleteDialog");
 
   const queryClient = useQueryClient();
-  const { data: newsItems } = useSuspenseQuery(
-    getNewsItemsQueryOptions({ limit: 100 }),
-  );
+
+  const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
+  const { q, publishedFrom, publishedTo, isAlert, tagIds } = routeApi.useSearch();
+
+  const listQO = newsItemsInfiniteQueryOptions({
+    titleOrContent: q,
+    publishedFrom,
+    publishedTo,
+    isAlert: isAlert === "alert" ? true : isAlert === "news" ? false : undefined,
+    tagIds: tagIds && tagIds.length > 0 ? tagIds : undefined,
+  });
+
+  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
+    useInfiniteQuery(listQO);
+
+  const newsItems = data?.pages.flat() ?? [];
 
   const locale = useLocale();
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   async function handleClickDeleteNewsItem(item: NewsItemResponse) {
     openConfirmation({
@@ -42,9 +85,8 @@ export function NewsItemsList({
       }),
       onAction: async () => {
         await $deleteNewsItem({ data: { id: item.id } });
-        queryClient.invalidateQueries(getNewsItemsQueryOptions({ limit: 100 }));
+        queryClient.invalidateQueries({ queryKey: ["news", "items"] });
       },
-
       cancelLabel: t("cancel"),
       actionLabel: (
         <>
@@ -55,59 +97,160 @@ export function NewsItemsList({
     });
   }
 
+  const hasDraft = newsItems.some((item) => isDraftNewsItem(item.id));
+
+  /** Add draft dummy to query cache */
+  function handleClickAdd() {
+    if (hasDraft) {
+      onSelectNewsItem(DRAFT_NEWS_ID);
+      return;
+    }
+    const draft = createDraftNewsItem({
+      name: user?.name ?? null,
+      email: user?.email ?? "",
+    });
+
+    queryClient.setQueryData(listQO.queryKey, (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page, i) => (i === 0 ? [draft, ...page] : page)),
+      };
+    });
+
+    onSelectNewsItem(DRAFT_NEWS_ID);
+  }
+
+  function handleDiscardDraft() {
+    queryClient.setQueryData(listQO.queryKey, (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.filter((i) => !isDraftNewsItem(i.id)),
+        ),
+      };
+    });
+    onSelectNewsItem(undefined);
+  }
+
+  function handleClickDelete(item: NewsItemResponse) {
+    if (isDraftNewsItem(item.id)) {
+      handleDiscardDraft();
+    } else {
+      handleClickDeleteNewsItem(item);
+    }
+  }
+
   return (
     <Card
       caption="News"
       className="w-cms-list-panel flex h-full flex-col"
-      containerClassName="overflow-auto flex-1 max-h-full"
+      containerClassName="overflow-auto flex-1 flex flex-col max-h-full"
     >
-      <AddNewButton className="mb-5" onClick={onClickAdd} />
-      <ul>
-        {newsItems.map((item) => {
-          const isActive = item.id === selectedNewsItem?.id;
-          return (
-            <ListItem
-              key={item.id}
-              onClick={() => {
-                onSelectNewsItem(item);
-              }}
-              isActive={isActive}
-            >
-              <div className="text-sm font-medium">
-                <span>{item.publishedAt || "No data"}</span>
-                {item.alert ? (
-                  <div className="text-xs">
-                    <LucideBell className="text-accent mr-1 inline size-4" />
-                    <span>{`${item.alert.from} - ${item.alert.to}`}</span>
-                  </div>
-                ) : null}
-                <ul className="space-y-1">
-                  {item.translations &&
-                    Object.entries(item.translations).map(
-                      ([lang, tr], index) => (
-                        <li
-                          key={`${lang}-${index}`}
-                          className="flex items-center gap-1 text-xs"
-                        >
+      <div>
+        <NewsFiltersBar />
+        <AddNewButton
+          className="mb-5"
+          onClick={handleClickAdd}
+          disabled={hasDraft}
+        />
+      </div>
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {isPending ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        ) : (
+          <ul
+            className={cn(
+              "h-full overflow-y-auto transition-opacity",
+              isFetching && !isFetchingNextPage && "opacity-60",
+            )}
+          >
+            {newsItems.map((item) => {
+              const isActive = item.id === selectedNewsItemId;
+              const isDraft = isDraftNewsItem(item.id);
+              return (
+                <ListItem
+                  key={item.id}
+                  onClick={() => onSelectNewsItem(item.id)}
+                  isActive={isActive}
+                  className={cn({ "border border-dashed": isDraft })}
+                >
+                  <div className="flex flex-col gap-1 items-start min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-mono text-xs">
+                        {item.publishedAt || "No date"}
+                      </span>
+                      {item.alert ? (
+                        <span className="flex items-center gap-0.5">
+                          <LucideBell className="text-accent inline size-3" />
+                          <span className="font-mono text-xs opacity-70">
+                            {item.alert.from}
+                            {item.alert.to && item.alert.to !== item.alert.from
+                              ? ` – ${item.alert.to}`
+                              : null}
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                    {item.translations &&
+                      Object.entries(item.translations).map(([lang, tr], index) => (
+                        <div key={`${lang}-${index}`} className="flex items-center gap-1 w-full">
                           <Tag tag={lang} isActive={isActive} />
-                          <span>{tr.title}</span>
-                        </li>
-                      ),
+                          <span className="block min-w-0 truncate text-xs opacity-70">
+                            {tr.title}
+                          </span>
+                        </div>
+                      ))}
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {item.tags.map((tag) => (
+                          <TagPill key={tag.id} color={tag.color}>
+                            {tag.name}
+                          </TagPill>
+                        ))}
+                      </div>
                     )}
-                </ul>
-              </div>
+                  </div>
 
-              <TrashButton
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClickDeleteNewsItem(item);
-                }}
-                isActive={isActive}
-              />
-            </ListItem>
-          );
-        })}
-      </ul>
+                  <TrashButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClickDelete(item);
+                    }}
+                    isActive={isActive}
+                  />
+                </ListItem>
+              );
+            })}
+            <div ref={sentinelRef} className="h-4 shrink-0">
+              {isFetchingNextPage && (
+                <span className="text-foreground-light block py-2 text-center text-xs">
+                  Loading more…
+                </span>
+              )}
+            </div>
+          </ul>
+        )}
+
+        {isFetching && !isFetchingNextPage && data ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+            <div className="mx-2 h-1 rounded-full bg-primary/20">
+              <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
+            </div>
+          </div>
+        ) : null}
+
+        {!isPending && data && newsItems.length === 0 ? (
+          <div className="text-foreground-light flex h-full items-center justify-center text-sm">
+            No news items found
+          </div>
+        ) : null}
+      </div>
     </Card>
   );
 }

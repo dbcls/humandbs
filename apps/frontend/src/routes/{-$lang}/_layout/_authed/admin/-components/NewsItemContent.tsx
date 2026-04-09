@@ -1,19 +1,43 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useStore, uuid } from "@tanstack/react-form";
 import { LucideBell } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { type Locale, useLocale } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { TabLabel } from "@/components/form-context/fields/TabLabel";
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/config/i18n";
 import { cn } from "@/lib/utils";
+import type { NewsItemRecord, NewsTag } from "@/repositories/newsItem";
 import {
+  $createNewsItem,
+  $createTag,
   $updateNewsItem,
-  getNewsItemsQueryOptions,
+  getNewsItemQueryOptions,
+  getTagsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
 import type { DateStringRange } from "@/utils/dates";
+import { Label } from "@/components/ui/label";
+import { DRAFT_NEWS_ID, isDraftNewsItem } from "./-draftNewsItem";
+import { useRouteContext } from "@tanstack/react-router";
+import type { SessionUser } from "@/utils/jwt-helpers";
+import { SkeletonLoading } from "@/components/Skeleton";
 
 interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
@@ -21,107 +45,319 @@ interface FormDataType {
   alertRange: DateStringRange | null;
   locale: Locale;
   publishedAt: string | null;
+  tags: string[];
+}
+
+function getOptimisticallyUpdatedNewsValue(
+  newsItem: NewsItemRecord,
+  formValues: FormDataType,
+  allTags: NewsTag[],
+): NewsItemRecord {
+  return {
+    id: newsItem.id,
+    createdAt: newsItem.createdAt,
+    publishedAt: formValues.publishedAt,
+    author: newsItem.author,
+    alert: formValues.alertRange
+      ? {
+          from: formValues.alertRange.from ?? null,
+          to: formValues.alertRange.to ?? null,
+        }
+      : null,
+    tags: formValues.tags
+      .map((id) => allTags.find((t) => t.id === id))
+      .filter((t): t is NewsTag => !!t),
+    translations: Object.entries(newsItem?.translations || {}).reduce<
+      NewsItemResponse["translations"]
+    >((acc, curr) => {
+      const [key, value] = curr;
+      acc[key as Locale] = {
+        ...value,
+        ...formValues.translations[key as Locale],
+      };
+      return acc;
+    }, {}),
+  };
+}
+
+function getOptimisticallyCreatedNewsItem(
+  user: SessionUser | null,
+  formValues: FormDataType,
+  allTags: NewsTag[],
+): NewsItemRecord {
+  const now = new Date();
+  return {
+    id: uuid(),
+    createdAt: now,
+    publishedAt: formValues.publishedAt,
+    author: {
+      name: user?.name || "You",
+      email: user?.email || "",
+    },
+    translations: Object.fromEntries(
+      Object.entries(formValues.translations).map(([key, value]) => [
+        key,
+        {
+          title: value.title,
+          content: value.content,
+          updatedAt: now,
+        },
+      ]),
+    ),
+    alert: formValues.alertRange
+      ? {
+          from: formValues.alertRange.from ?? null,
+          to: formValues.alertRange.to ?? null,
+        }
+      : null,
+    tags: formValues.tags
+      .map((id) => allTags.find((t) => t.id === id))
+      .filter((t): t is NewsTag => !!t),
+  };
 }
 
 export function NewsItemContent({
+  selectedNewsItemId,
+  className,
+  onSelectNewsItemId,
+}: {
+  selectedNewsItemId: string;
+  className?: string;
+  onSelectNewsItemId: (id: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const newsItemQO = getNewsItemQueryOptions(selectedNewsItemId);
+  const { data: fetchedNewsItem } = useQuery(newsItemQO);
+
+  const newsListQueryFilter = { queryKey: ["news", "items"] };
+
+  const newsItem =
+    fetchedNewsItem ??
+    queryClient
+      .getQueriesData<{ pages: NewsItemResponse[][] }>(newsListQueryFilter)
+      .flatMap(([, data]) => data?.pages.flat() ?? [])
+      .find((item) => item.id === selectedNewsItemId);
+
+  if (!newsItem) {
+    return (
+      <Card
+        caption="Details"
+        className={cn("flex h-full flex-1 flex-col", className)}
+        containerClassName="flex flex-col flex-1 gap-4"
+      >
+        <SkeletonLoading />
+      </Card>
+    );
+  }
+
+  return (
+    <NewsItemForm
+      key={newsItem.id}
+      newsItem={newsItem}
+      className={className}
+      onSelectNewsItemId={onSelectNewsItemId}
+    />
+  );
+}
+
+function NewsItemForm({
   newsItem,
   className,
+  onSelectNewsItemId,
 }: {
-  newsItem: NewsItemResponse | undefined;
+  newsItem: NewsItemResponse;
   className?: string;
+  onSelectNewsItemId: (id: string) => void;
 }) {
+  const { user } = useRouteContext({ from: "__root__" });
+  const mode = isDraftNewsItem(newsItem.id) ? "create" : "update";
   const locale = useLocale();
+
   const queryClient = useQueryClient();
 
-  const newsItemsListQO = getNewsItemsQueryOptions({ limit: 100 });
+  const newsItemQO = getNewsItemQueryOptions(newsItem.id);
+
+  const tagsQO = getTagsQueryOptions();
+
+  const { data: allTags = [] } = useQuery(tagsQO);
+
+  const newsListQueryFilter = { queryKey: ["news", "items"] };
+
+  type NewsListData = { pages: NewsItemResponse[][]; pageParams: number[] };
 
   const { mutate: updateNewsItem } = useMutation({
-    mutationFn: async (values: FormDataType) => {
-      if (!newsItem?.id) return;
-      await $updateNewsItem({
+    mutationFn: async ({ values }: { values: FormDataType; formApi: { reset: (values?: FormDataType) => void } }) => {
+      return $updateNewsItem({
         data: {
           id: newsItem.id,
           ...values,
           alert: values.alertRange,
+          tags: values.tags,
+        },
+      });
+    },
+    onMutate: async ({ values: inputValues }) => {
+      if (!newsItem?.id) return;
+
+      await queryClient.cancelQueries(newsItemQO);
+      await queryClient.cancelQueries(newsListQueryFilter);
+
+      const prevNewsItem = queryClient.getQueryData(newsItemQO.queryKey);
+      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
+
+      const optimisticNewsItem = getOptimisticallyUpdatedNewsValue(
+        newsItem,
+        inputValues,
+        allTags,
+      );
+      queryClient.setQueryData(newsItemQO.queryKey, optimisticNewsItem);
+
+      queryClient.setQueriesData<NewsListData>(newsListQueryFilter, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) =>
+            page.map((item) =>
+              item.id === newsItem.id ? optimisticNewsItem : item,
+            ),
+          ),
+        };
+      });
+
+      return { prevNewsListEntries, prevNewsItem };
+    },
+    onSuccess: (_, { values, formApi }) => {
+      formApi.reset(values);
+    },
+    onError: (_, __, context) => {
+      if (context?.prevNewsListEntries) {
+        for (const [queryKey, data] of context.prevNewsListEntries) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      if (context?.prevNewsItem) {
+        queryClient.setQueryData(newsItemQO.queryKey, context.prevNewsItem);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(newsItemQO);
+      queryClient.invalidateQueries(newsListQueryFilter);
+    },
+  });
+
+  const { mutate: createNewsItem } = useMutation({
+    mutationFn: async (values: FormDataType) => {
+      return $createNewsItem({
+        data: {
+          publishedAt: values.publishedAt,
+          translations: values.translations,
+          alert: values.alertRange,
+          tags: values.tags,
         },
       });
     },
     onMutate: async (inputValues) => {
-      await queryClient.cancelQueries(newsItemsListQO);
+      await queryClient.cancelQueries(newsListQueryFilter);
 
-      const prevNewsItems = queryClient.getQueryData(newsItemsListQO.queryKey);
+      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
-      queryClient.setQueryData(newsItemsListQO.queryKey, (prev) => {
+      const optimisticNewsItem = getOptimisticallyCreatedNewsItem(
+        user,
+        inputValues,
+        allTags,
+      );
+
+      queryClient.setQueriesData<NewsListData>(newsListQueryFilter, (prev) => {
         if (!prev) return prev;
-
-        return prev.map((item) => {
-          if (item.id === newsItem?.id) {
-            return {
-              ...item,
-              ...inputValues,
-
-              translations: Object.entries(item.translations).reduce<
-                NewsItemResponse["translations"]
-              >((acc, curr) => {
-                const [key, value] = curr;
-
-                acc[key as Locale] = {
-                  ...value,
-                  ...inputValues.translations[key as Locale],
-                };
-                return acc;
-              }, {}),
-            };
-          }
-          return item;
-        });
+        return {
+          ...prev,
+          pages: prev.pages.map((page) =>
+            page.map((item) =>
+              isDraftNewsItem(item.id) ? optimisticNewsItem : item,
+            ),
+          ),
+        };
       });
 
-      return { prevNewsItems };
+      queryClient.setQueryData(
+        getNewsItemQueryOptions(optimisticNewsItem.id).queryKey,
+        optimisticNewsItem,
+      );
+
+      onSelectNewsItemId(optimisticNewsItem.id);
+
+      return { prevNewsListEntries };
+    },
+    onSuccess: (newItem) => {
+      queryClient.setQueryData(
+        getNewsItemQueryOptions(newItem.id).queryKey,
+        newItem,
+      );
+      onSelectNewsItemId(newItem.id);
     },
     onError: (_, __, context) => {
-      if (context?.prevNewsItems) {
-        queryClient.setQueryData(
-          newsItemsListQO.queryKey,
-          context.prevNewsItems,
-        );
+      if (context?.prevNewsListEntries) {
+        for (const [queryKey, data] of context.prevNewsListEntries) {
+          queryClient.setQueryData(queryKey, data);
+        }
       }
+      onSelectNewsItemId(DRAFT_NEWS_ID);
     },
     onSettled: () => {
-      queryClient.invalidateQueries(newsItemsListQO);
+      queryClient.invalidateQueries(newsListQueryFilter);
     },
   });
 
   const form = useAppForm({
     defaultValues: {
-      translations: newsItem?.translations || {},
-      isAlert: !!newsItem?.alert,
-      alertRange: newsItem?.alert,
+      translations: newsItem.translations,
+      isAlert: !!newsItem.alert,
+      alertRange: newsItem.alert,
       locale: i18n.defaultLocale,
-      publishedAt: newsItem?.publishedAt,
+      publishedAt: newsItem.publishedAt,
+      tags: newsItem.tags?.map((t) => t.id) ?? [],
     } as FormDataType,
-    onSubmit: ({ value }) => {
-      updateNewsItem(value);
+    onSubmit: ({ value, formApi }) => {
+      if (mode === "create") {
+        createNewsItem(value);
+      } else {
+        updateNewsItem({ values: value, formApi });
+      }
     },
   });
 
-  if (!newsItem) return null;
+  const { mutateAsync: createTag } = useMutation({
+    mutationFn: (name: string) => $createTag({ data: { name } }),
+    onSuccess: (newTag) => {
+      queryClient.setQueryData(tagsQO.queryKey, (prev: NewsTag[] = []) => [
+        ...prev,
+        newTag,
+      ]);
+      form.setFieldValue("tags", [...form.state.values.tags, newTag.id]);
+    },
+  });
+
+  const dirtyLocales = useStore(form.store, (state) => {
+    const defaults = form.options.defaultValues as FormDataType;
+    return Object.fromEntries(
+      i18n.locales.map((loc) => [
+        loc,
+        state.values.translations?.[loc]?.title !==
+          defaults.translations?.[loc]?.title ||
+          state.values.translations?.[loc]?.content !==
+            defaults.translations?.[loc]?.content,
+      ]),
+    ) as Record<Locale, boolean>;
+  });
 
   return (
     <Card
-      caption={
-        <span className="flex items-center gap-5">
-          <span>Details</span>
-
-          <form.AppField name="locale">
-            {(field) => <field.LocaleSwitchField />}
-          </form.AppField>
-        </span>
-      }
+      caption="Details"
       className={cn("flex h-full flex-1 flex-col", className)}
       containerClassName="flex flex-col flex-1 gap-4"
     >
-      <div className="flex items-center justify-end">
+      {/* Top bar: tags + submit button */}
+      <div className="flex items-center justify-end gap-4">
         <form.Subscribe
           selector={(state) => [
             state.isSubmitting,
@@ -133,16 +369,32 @@ export function NewsItemContent({
             <Button
               disabled={isSubmitting || !isTouched || !isValid}
               size="lg"
-              onClick={() => {
-                form.handleSubmit();
-              }}
+              onClick={() => form.handleSubmit()}
             >
-              Update
+              {mode === "create" ? "Create" : "Update"}
             </Button>
           )}
         </form.Subscribe>
       </div>
 
+      <form.AppField name="tags">
+        {(field) => (
+          <div className="flex items-center gap-2">
+            <Label className="flex flex-col gap-2 items-stretch">
+              <span>Tags</span>
+              <TagPicker
+                allTags={allTags}
+                selectedTagIds={field.state.value}
+                onChange={field.handleChange}
+                onCreateTag={createTag}
+              />
+            </Label>
+            <ModifiedTag isModified={field.state.meta.isDirty} />
+          </div>
+        )}
+      </form.AppField>
+
+      {/* Item-level fields */}
       <div className="flex items-start gap-6">
         <form.AppField name="publishedAt">
           {(field) => (
@@ -152,24 +404,30 @@ export function NewsItemContent({
           )}
         </form.AppField>
 
-        <TitleValue
-          title="Created at:"
-          value={newsItem.createdAt.toLocaleDateString(locale)}
-        />
-        <TitleValue
-          title="Updated at:"
-          value={newsItem.translations[
-            form.state.values.locale
-          ]?.updatedAt?.toLocaleDateString()}
-        />
-        <TitleValue title="Author:" value={newsItem.author.name} />
+        {mode === "update" && (
+          <>
+            <TitleValue
+              title="Created at:"
+              value={newsItem.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
+            />
+            <TitleValue
+              title="Updated at:"
+              value={newsItem.translations[
+                form.state.values.locale
+              ]?.updatedAt?.toLocaleDateString()}
+            />
+            <TitleValue
+              title="Author:"
+              value={newsItem.author.name ?? undefined}
+            />
+          </>
+        )}
       </div>
 
       <form.AppField
         name="isAlert"
         listeners={{
           onChange: ({ value }) => {
-            // set range to null if checkbox is unchecked
             if (!value) {
               form.setFieldValue("alertRange", null);
             }
@@ -187,12 +445,13 @@ export function NewsItemContent({
           />
         )}
       </form.AppField>
+
       <form.Subscribe selector={(state) => state.values.isAlert}>
         {(isAlert) => {
           if (!isAlert) return null;
           return (
             <Suspense fallback={<div>Loading...</div>}>
-              <form.AppField name={"alertRange"}>
+              <form.AppField name="alertRange">
                 {(field) => (
                   <field.DateRangeField
                     className="ml-5"
@@ -205,26 +464,127 @@ export function NewsItemContent({
         }}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.values.locale}>
-        {(locale) => (
-          <>
-            <form.AppField name={`translations.${locale}.title`}>
+      {/* Locale tabs */}
+      <Tabs
+        defaultValue={i18n.defaultLocale}
+        onValueChange={(val) => form.setFieldValue("locale", val as Locale)}
+        className="flex flex-1 flex-col"
+      >
+        <TabsList variant="line">
+          {i18n.locales.map((loc) => (
+            <TabsTrigger key={loc} value={loc} variant="line">
+              <TabLabel dirty={dirtyLocales[loc]}>{loc.toUpperCase()}</TabLabel>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {i18n.locales.map((loc) => (
+          <TabsContent key={loc} value={loc} className="flex flex-col gap-4">
+            <form.AppField name={`translations.${loc}.title`}>
               {(field) => <field.TextField label="Title" />}
             </form.AppField>
-            <form.AppField name={`translations.${locale}.content`}>
-              {(field) => (
-                <Suspense fallback={<div>Loading...</div>}>
-                  <field.ContentAreaField
-                    label="Content"
-                    assetFolder={newsItem.id ? `news/${newsItem.id}` : "news"}
-                  />
-                </Suspense>
-              )}
+            <form.AppField name={`translations.${loc}.content`}>
+              {(field) => {
+                const isDirty =
+                  field.state.value !==
+                  (form.options.defaultValues as FormDataType)?.translations?.[
+                    loc
+                  ]?.content;
+                return (
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <field.ContentAreaField
+                      label={
+                        <span className="flex items-center gap-1">
+                          Content
+                          <ModifiedTag isModified={isDirty} />
+                        </span>
+                      }
+                      assetFolder={newsItem.id ? `news/${newsItem.id}` : "news"}
+                    />
+                  </Suspense>
+                );
+              }}
             </form.AppField>
-          </>
-        )}
-      </form.Subscribe>
+          </TabsContent>
+        ))}
+      </Tabs>
     </Card>
+  );
+}
+
+function TagPicker({
+  allTags,
+  selectedTagIds,
+  onChange,
+  onCreateTag,
+}: {
+  allTags: NewsTag[];
+  selectedTagIds: string[];
+  onChange: (ids: string[]) => void;
+  onCreateTag: (name: string) => Promise<unknown>;
+}) {
+  const CREATE_SENTINEL = "__create__";
+  const [inputValue, setInputValue] = useState("");
+  const anchor = useComboboxAnchor();
+
+  const selectedTags = allTags.filter((t) => selectedTagIds.includes(t.id));
+  const filteredTags = allTags.filter((t) =>
+    t.name.toLowerCase().includes(inputValue.toLowerCase()),
+  );
+  const hasExactMatch = allTags.some(
+    (t) => t.name.toLowerCase() === inputValue.toLowerCase(),
+  );
+  const showCreate = inputValue.trim().length > 0 && !hasExactMatch;
+
+  function handleValueChange(ids: string[]) {
+    if (ids.includes(CREATE_SENTINEL)) {
+      const name = inputValue.trim();
+      if (name) {
+        setInputValue("");
+        void onCreateTag(name);
+      }
+      onChange(ids.filter((id) => id !== CREATE_SENTINEL));
+    } else {
+      onChange(ids);
+    }
+  }
+
+  return (
+    <Combobox
+      multiple
+      value={selectedTagIds}
+      onValueChange={handleValueChange}
+      onInputValueChange={(val) => setInputValue(val)}
+    >
+      <ComboboxChips ref={anchor} className="min-w-48 flex-1">
+        {selectedTags.map((tag) => (
+          <ComboboxChip key={tag.id}>{tag.name}</ComboboxChip>
+        ))}
+        <ComboboxChipsInput placeholder="Add tag…" />
+      </ComboboxChips>
+
+      <ComboboxContent anchor={anchor} className={"max-w-96"}>
+        <ComboboxList>
+          {filteredTags.map((tag) => (
+            <ComboboxItem key={tag.id} value={tag.id}>
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: tag.color ?? "#e5e7eb" }}
+              />
+              {tag.name}
+            </ComboboxItem>
+          ))}
+          {showCreate && (
+            <ComboboxItem value={CREATE_SENTINEL}>
+              Create tag: <span className="font-medium">{inputValue}</span>
+            </ComboboxItem>
+          )}
+          {filteredTags.length === 0 && !showCreate && (
+            <ComboboxEmpty>No tags found</ComboboxEmpty>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }
 

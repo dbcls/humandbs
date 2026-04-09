@@ -24,9 +24,11 @@ import { useFieldContext } from "./FormContext";
 export default function ContentAreaField({
   label,
   assetFolder,
+  isLoading,
 }: {
-  label: string;
+  label: React.ReactNode;
   assetFolder?: string;
+  isLoading?: boolean;
 }) {
   const field = useFieldContext<string>();
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
@@ -38,10 +40,13 @@ export default function ContentAreaField({
   function insertAssetMarkdown(asset: AssetHierarchyFile) {
     const markdown = buildAssetMarkdown(asset);
     const currentValue = field.state.value ?? "";
-    const textarea = editorContainerRef.current?.querySelector("textarea") ?? null;
+    const textarea =
+      editorContainerRef.current?.querySelector("textarea") ?? null;
 
     if (!textarea) {
-      field.handleChange(currentValue ? `${currentValue}\n${markdown}` : markdown);
+      field.handleChange(
+        currentValue ? `${currentValue}\n${markdown}` : markdown,
+      );
       return;
     }
 
@@ -63,7 +68,11 @@ export default function ContentAreaField({
     <div className="flex w-full flex-1 flex-col gap-2 text-sm font-medium">
       <div className="flex items-center justify-between gap-2">
         <span>{label}</span>
-        <Button variant="outline" type="button" onClick={() => setDialogOpen(true)}>
+        <Button
+          variant="outline"
+          type="button"
+          onClick={() => setDialogOpen(true)}
+        >
           <PaperclipIcon className="mr-2 size-4" />
           Attach asset
         </Button>
@@ -110,7 +119,11 @@ export default function ContentAreaField({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button

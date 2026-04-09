@@ -4,7 +4,6 @@ import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-// import { nitro } from "nitro/vite";
 import svgr from "vite-plugin-svgr";
 
 export default defineConfig({
@@ -29,6 +28,5 @@ export default defineConfig({
     }),
     svgr(),
     viteReact(),
-    // nitro(),
   ],
 });

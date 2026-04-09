@@ -1,4 +1,4 @@
-import type { NavbarItem, NavPriority } from "@/config/site-navigation";
+import type { ResolvedNavbarItem, NavPriority } from "@/config/site-navigation";
 
 const PRIORITY_RANK: Record<NavPriority, number> = {
   important: 0,
@@ -7,7 +7,7 @@ const PRIORITY_RANK: Record<NavPriority, number> = {
 };
 
 export function getNavbarOverflowDropOrder(
-  items: Array<Pick<NavbarItem, "priority">>,
+  items: Array<Pick<ResolvedNavbarItem, "priority">>,
 ): number[] {
   return items
     .map((item, index) => ({
@@ -31,7 +31,7 @@ export function getNavbarOverflowLayout({
   overflowTriggerWidth,
   gap = 0,
 }: {
-  items: Array<Pick<NavbarItem, "priority">>;
+  items: Array<Pick<ResolvedNavbarItem, "priority">>;
   itemWidths: number[];
   containerWidth: number;
   overflowTriggerWidth: number;

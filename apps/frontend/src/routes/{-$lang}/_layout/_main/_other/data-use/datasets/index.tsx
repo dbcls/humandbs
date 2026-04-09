@@ -33,7 +33,7 @@ const datasetListQuerySchema = DatasetSearchBodySchema.omit({
 });
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/datasets/",
+  "/{-$lang}/_layout/_main/_other/data-use/datasets/",
 )({
   component: RouteComponent,
   validateSearch: zodValidator(datasetListQuerySchema),

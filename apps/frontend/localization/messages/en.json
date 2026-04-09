@@ -5,24 +5,7 @@
     "previous-versions": "Previous versions of {documentName}:"
   },
   "Footer": {
-    "sitemap": "Sitemap",
-    "group-overview": "Overview",
-    "group-guidelines": "Guidelines",
-    "group-submission": "Submission",
-    "group-usage": "Usage",
-    "group-policy": "Policies",
-    "home": "Home",
-    "process-data": "Processed Data",
-    "guideline-violation": "Guideline Violation",
-    "guideline": "Guidelines",
-    "off-premise-server": "Off-premise Server",
-    "FAQ": "FAQ",
-    "data-submission": "Data submission",
-    "data-privision-committee": "Human Data Review Committee",
-    "contact": "Contact Us",
-    "data-usage": "Data Usage",
-    "publications": "Publications",
-    "supported-browsers": "Supported Browsers"
+    "sitemap": "Sitemap"
   },
   "DeleteDialog": {
     "title": "Item delete confirmation",
@@ -110,7 +93,8 @@
     "info": "Info",
     "releaseDate": "Release date",
     "typeOfData": "Type of data",
-    "criteria": "Criteria"
+    "criteria": "Criteria",
+    "experiments": "Experiments"
   },
   "Data-submission": {
     "data-submission": "Data submission",

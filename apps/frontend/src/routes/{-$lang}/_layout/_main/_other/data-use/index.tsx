@@ -7,7 +7,7 @@ import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVe
 import { renderMarkdown } from "@/utils/markdown";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-usage/",
+  "/{-$lang}/_layout/_main/_other/data-use/",
 )({
   component: RouteComponent,
   loader: async ({ context }) => {

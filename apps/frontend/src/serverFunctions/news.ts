@@ -1,21 +1,21 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { z } from "zod";
+
+import { and, asc, eq } from "drizzle-orm";
 
 import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
-import { alert, newsItem, newsTranslation } from "@/db/schema";
+import { newsTag, newsTranslation } from "@/db/schema";
 import {
+  newsItemCreateSchema,
   newsItemUpdateSchema,
   newsTranslationInsertSchema,
-  type NewsTranslationSelect,
-  newsTranslationSelectSchema,
   newsTranslationUpdateSchema,
-  type NewsTranslationUpsert,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { toDateString } from "@/utils/dates";
+import { newsItemRepository } from "@/repositories/newsItem";
+import type { NewsTag, PublishedTitlesFilters } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
   alert: boolean;
@@ -37,37 +37,11 @@ export const $getNewsTitles = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
-    const locale = data.locale;
-
-    const nowStr = toDateString(new Date())!;
-
-    const news = await db
-      .select({
-        id: newsItem.id,
-        locale: newsTranslation.lang,
-        title: newsTranslation.title,
-        publishedAt: newsItem.publishedAt,
-        alert: alert.newsId,
-      })
-      .from(newsTranslation)
-      .where(eq(newsTranslation.lang, locale))
-      .innerJoin(
-        newsItem,
-        and(
-          eq(newsTranslation.newsId, newsItem.id),
-          lte(newsItem.publishedAt, nowStr),
-        ),
-      )
-      .leftJoin(alert, eq(alert.newsId, newsItem.id))
-      .orderBy(desc(newsItem.publishedAt))
-      .limit(data.limit)
-      .offset(data.offset);
-
-    return news.map((n) => ({
-      ...n,
-      locale: n.locale as Locale,
-      alert: !!n.alert,
-    }));
+    return newsItemRepository.listPublishedTitles({
+      limit: data.limit,
+      offset: data.offset,
+      locale: data.locale,
+    });
   });
 
 export function getNewsTitlesQueryOptions({
@@ -86,16 +60,80 @@ export function getNewsTitlesQueryOptions({
   });
 }
 
+const publicNewsTitlesFiltersSchema = z.object({
+  titleOrContent: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
+const PUBLIC_NEWS_PAGE_SIZE = 20;
+
+export const $getPublishedNewsTitles = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      locale: z.string(),
+      limit: z.number().min(1).max(100).optional().default(PUBLIC_NEWS_PAGE_SIZE),
+      offset: z.number().min(0).optional().default(0),
+    }).merge(publicNewsTitlesFiltersSchema),
+  )
+  .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
+    return newsItemRepository.listPublishedTitles({
+      limit: data.limit,
+      offset: data.offset,
+      locale: data.locale,
+      filters: {
+        titleOrContent: data.titleOrContent,
+        publishedFrom: data.publishedFrom,
+        publishedTo: data.publishedTo,
+        tagIds: data.tagIds,
+      },
+    });
+  });
+
+export function getPublishedNewsTitlesInfiniteQueryOptions({
+  locale,
+  filters,
+}: {
+  locale: Locale;
+  filters: PublishedTitlesFilters;
+}) {
+  return infiniteQueryOptions({
+    queryKey: ["news", "published", locale, filters],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      $getPublishedNewsTitles({
+        data: { locale, offset: pageParam, ...filters },
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length < PUBLIC_NEWS_PAGE_SIZE
+        ? undefined
+        : lastPageParam + PUBLIC_NEWS_PAGE_SIZE,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+}
+
+export const $getPublicTags = createServerFn({ method: "GET" }).handler(
+  async (): Promise<NewsTag[]> => {
+    return db.select().from(newsTag).orderBy(asc(newsTag.name));
+  },
+);
+
+export function getPublicTagsQueryOptions() {
+  return queryOptions({
+    queryKey: ["news", "tags", "public"],
+    queryFn: () => $getPublicTags({}),
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+}
+
 /**
  * Get specific news translation by newsItemId and lang, for public-facing
  */
 export const $getNewsTranslation = createServerFn({ method: "GET" })
-  .inputValidator(
-    newsTranslationSelectSchema.pick({ lang: true, newsId: true }),
-  )
+  .inputValidator(z.object({ newsId: z.string(), lang: z.string() }))
   .handler(async ({ data }) => {
     const newsItemId = data.newsId;
-
     const lang = data.lang;
 
     let result = await db.query.newsTranslation.findFirst({
@@ -156,137 +194,107 @@ export function getNewsTranslationQueryOptions({
   });
 }
 
+const newsItemFiltersSchema = z.object({
+  titleOrContent: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  isAlert: z.boolean().optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
 export const $getNewsItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(
     z.object({
       limit: z.number().min(1).max(100).optional().default(5),
       offset: z.number().min(0).optional().default(0),
-    }),
+    }).merge(newsItemFiltersSchema),
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");
-
-    const news = await db.query.newsItem.findMany({
-      with: {
-        translations: true,
-        alert: {
-          columns: {
-            from: true,
-            to: true,
-          },
-        },
-        author: {
-          columns: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-      columns: {
-        authorId: false,
-      },
-      orderBy: (table, { desc }) => [desc(table.createdAt)],
+    return newsItemRepository.list({
       limit: data.limit,
       offset: data.offset,
+      filters: {
+        titleOrContent: data.titleOrContent,
+        publishedFrom: data.publishedFrom,
+        publishedTo: data.publishedTo,
+        isAlert: data.isAlert,
+        tagIds: data.tagIds,
+      },
     });
-
-    type T = typeof news;
-
-    type News = (Omit<T[number], "alert"> & {
-      alert: Pick<T[number], "alert">["alert"] | null;
-    })[];
-
-    const response = news.map((item) => ({
-      ...(item as Omit<News[number], "translations">),
-      translations: item.translations.reduce<
-        Partial<
-          Record<
-            Locale,
-            Pick<NewsTranslationSelect, "content" | "title" | "updatedAt">
-          >
-        >
-      >((acc, curr) => {
-        acc[curr.lang as Locale] = {
-          content: curr.content,
-          title: curr.title,
-          updatedAt: curr.updatedAt,
-        };
-        return acc;
-      }, {}),
-    }));
-
-    return response;
   });
 
 export type NewsItemResponse = Awaited<
   ReturnType<typeof $getNewsItems>
 >[number];
 
+/**
+ * Get news item with tags, alerts & translations by its id.
+ */
+export const $getNewsItem = createServerFn()
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data, context }) => {
+    context.checkPermission("news", "view");
+
+    const item = await newsItemRepository.get({ id: data.id });
+
+    if (!item) {
+      throw Response.json({ message: "Not found" }, { status: 404 });
+    }
+    return item;
+  });
+
+export function getNewsItemQueryOptions(id: string) {
+  return queryOptions({
+    queryKey: ["news", "item", id],
+    queryFn: () => $getNewsItem({ data: { id } }),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
 export const $updateNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(newsItemUpdateSchema)
   .handler(async ({ context, data }) => {
     context.checkPermission("news", "update");
-
-    const { id, ...restItem } = data;
-
-    await db.transaction(async (tx) => {
-      // update publication date
-      await tx
-        .update(newsItem)
-        .set({ publishedAt: restItem.publishedAt })
-        .where(eq(newsItem.id, id));
-
-      const translations = Object.entries(data.translations) as [
-        Locale,
-        NewsTranslationUpsert[keyof NewsTranslationUpsert],
-      ][];
-
-      const translationsToInsert = translations.map(
-        ([locale, translation]) => ({
-          newsId: id,
-          lang: locale,
-          title: translation?.title!,
-          content: translation?.content!,
-        }),
-      );
-      //upsert translations
-      await tx
-        .insert(newsTranslation)
-        .values(translationsToInsert)
-        .onConflictDoUpdate({
-          target: [newsTranslation.newsId, newsTranslation.lang],
-          set: {
-            title: sql.raw(`excluded.${newsTranslation.title.name}`),
-            content: sql.raw(`excluded.${newsTranslation.content.name}`),
-            updatedAt: new Date(),
-          },
-        });
-      if (data.alert) {
-        await tx
-          .insert(alert)
-          .values({ newsId: id, ...data.alert })
-          .onConflictDoUpdate({
-            target: [alert.newsId],
-            set: data.alert,
-          });
-      } else {
-        await tx.delete(alert).where(eq(alert.newsId, id));
-      }
+    await newsItemRepository.update({
+      id: data.id,
+      publishedAt: data.publishedAt,
+      translations: data.translations,
+      alert: data.alert,
+      tags: data.tags,
     });
   });
 
-export function getNewsItemsQueryOptions({
-  limit,
-  offset,
-}: {
-  limit?: number;
-  offset?: number;
-}) {
-  return queryOptions({
-    queryKey: ["news", "items", limit, offset],
-    queryFn: () => $getNewsItems({ data: { limit, offset } }),
+const NEWS_ITEMS_PAGE_SIZE = 20;
+
+export interface NewsItemsFilters {
+  titleOrContent?: string;
+  publishedFrom?: string;
+  publishedTo?: string;
+  isAlert?: boolean;
+  tagIds?: string[];
+}
+
+export function newsItemsInfiniteQueryOptions(filters: NewsItemsFilters = {}) {
+  return infiniteQueryOptions({
+    queryKey: ["news", "items", filters],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      $getNewsItems({
+        data: {
+          limit: NEWS_ITEMS_PAGE_SIZE,
+          offset: pageParam,
+          ...filters,
+        },
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length < NEWS_ITEMS_PAGE_SIZE
+        ? undefined
+        : lastPageParam + NEWS_ITEMS_PAGE_SIZE,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 }
 
@@ -340,21 +348,53 @@ export const $deleteNewsTranslation = createServerFn({ method: "POST" })
   });
 
 /**
- * Create empty newsItem
+ * Create a new news item with full content in a single transaction.
  */
 export const $createNewsItem = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
-  .handler(async ({ context }) => {
+  .inputValidator(newsItemCreateSchema)
+  .handler(async ({ context, data }) => {
     context.checkPermission("news", "create");
-
     const user = context.user;
+    return newsItemRepository.create({
+      authorId: user.id,
+      publishedAt: data.publishedAt,
+      translations: data.translations,
+      alert: data.alert,
+      tags: data.tags,
+    });
+  });
 
-    const [result] = await db
-      .insert(newsItem)
-      .values({ authorId: user.id })
+/**
+ * Get all tags ordered by name.
+ */
+export const $getTags = createServerFn({ method: "GET" })
+  .middleware([hasPermissionMiddleware])
+  .handler(async ({ context }): Promise<NewsTag[]> => {
+    context.checkPermission("news", "view");
+    return db.select().from(newsTag).orderBy(asc(newsTag.name));
+  });
+
+export function getTagsQueryOptions() {
+  return queryOptions({
+    queryKey: ["news", "tags"],
+    queryFn: () => $getTags({}),
+  });
+}
+
+/**
+ * Create a new tag with the given name. Color defaults to null.
+ */
+export const $createTag = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ name: z.string().min(1).trim() }))
+  .handler(async ({ context, data }): Promise<NewsTag> => {
+    context.checkPermission("news", "create");
+    const [created] = await db
+      .insert(newsTag)
+      .values({ name: data.name })
       .returning();
-
-    return result;
+    return created;
   });
 
 /**
@@ -365,11 +405,5 @@ export const $deleteNewsItem = createServerFn({ method: "POST" })
   .inputValidator(newsItemUpdateSchema.pick({ id: true }).required())
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "delete");
-
-    const result = await db
-      .delete(newsItem)
-      .where(eq(newsItem.id, data.id))
-      .returning();
-
-    return result;
+    await newsItemRepository.delete(data.id);
   });

@@ -32,3 +32,23 @@ export const authedResearchesListSearchParamsSchema =
 export type AuthedResearchesListSearchParams = z.infer<
   typeof authedResearchesListSearchParamsSchema
 >;
+
+export const newsAdminSearchParamsSchema = z.object({
+  selectedId: z.string().optional(),
+  q: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  isAlert: z.enum(["alert", "news"]).optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
+export type NewsAdminSearchParams = z.infer<typeof newsAdminSearchParamsSchema>;
+
+export const newsPublicSearchParamsSchema = z.object({
+  q: z.string().optional(),
+  publishedFrom: z.string().optional(),
+  publishedTo: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
+});
+
+export type NewsPublicSearchParams = z.infer<typeof newsPublicSearchParamsSchema>;

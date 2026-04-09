@@ -312,6 +312,9 @@
   --warning: "\f071";
   --cms-assets-panel-width: 500px;
   --cms-list-panel-width: 30rem;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @theme {
@@ -355,17 +358,22 @@
   --font-fontawesome: "FontAwesome6";
 }
 
-@utility prose {
+/*@utility prose {
   @apply max-w-content-max-width min-w-content-min-width;
-}
+}*/
 
 @layer base {
   html {
     font-size: 62.5%;
+    color: var(--color-foreground-dark);
   }
 
   body {
     @apply text-base;
+  }
+
+  a {
+    @apply underline text-secondary hover:text-secondary-light visited:text-neutral-500;
   }
 
   @font-face {
@@ -389,11 +397,6 @@
   }
 }
 
-:root {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 @layer components {
   .main-bg {
     background-image:
@@ -401,11 +404,11 @@
         var(--color-primary-translucent),
         var(--color-primary-translucent)
       ),
-      url("../assets/BG.png");
+      url("../assets/BG.jpg");
     background-blend-mode: multiply;
     background-repeat: no-repeat;
     background-position: top;
-    background-size: contain;
+    background-size: 100% auto;
   }
 
   .md-editor {
@@ -431,6 +434,10 @@
       width: 100%;
       height: 100%;
       z-index: 9999;
+    }
+
+    .w-md-editor-preview > .anchor {
+      display: inline;
     }
 
     .wmde-markdown-color {
@@ -513,6 +520,13 @@
 }
 
 @layer utilities {
+  .custom-prose {
+    a {
+      @apply text-secondary visited:text-neutral-400 font-medium;
+    }
+    @apply prose prose-h1:text-secondary text-base prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words;
+  }
+
   .nested-form {
     position: relative;
     @apply pl-5;

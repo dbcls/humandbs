@@ -21,7 +21,8 @@ export function toDate(
   dateString: string | undefined | null,
 ): Date | undefined {
   if (!dateString) return undefined;
-  return new Date(dateString);
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 export function toDateStringRange(

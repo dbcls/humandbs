@@ -1,7 +1,6 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { useRouteContext } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
 
 import {
   Accordion,
@@ -21,7 +20,6 @@ import { Link } from "./Link";
 import type { ResolvedSiteNavigation } from "@/config/site-navigation";
 
 export function MobileNav() {
-  const t = useTranslations("Navbar");
   const [open, setOpen] = useState(false);
   const { siteNavigation } = useRouteContext({ from: "/{-$lang}/_layout" });
 
@@ -44,7 +42,7 @@ export function MobileNav() {
                 return (
                   <AccordionItem key={item.id} value={item.id}>
                     <AccordionTrigger className="py-3 text-base">
-                      {t(item.id)}
+                      {item.label}
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="flex flex-col gap-2 pl-4">
@@ -56,7 +54,7 @@ export function MobileNav() {
                             onClick={() => setOpen(false)}
                             className="block py-2 text-sm"
                           >
-                            {t(child.id)}
+                            {child.label}
                           </Link>
                         ))}
                       </div>
@@ -73,7 +71,7 @@ export function MobileNav() {
                     onClick={() => setOpen(false)}
                     className="block text-base font-medium"
                   >
-                    {t(item.id)}
+                    {item.label}
                   </Link>
                 </div>
               );

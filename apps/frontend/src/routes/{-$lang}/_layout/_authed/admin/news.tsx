@@ -1,44 +1,47 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useState } from "react";
-
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  $createNewsItem,
-  getNewsItemsQueryOptions,
-  type NewsItemResponse,
-} from "@/serverFunctions/news";
+import { useState } from "react";
+import { useFilters } from "@/hooks/useFilters";
+import { newsAdminSearchParamsSchema } from "@/utils/queryParams";
 
 import { NewsItemContent } from "./-components/NewsItemContent";
 import { NewsItemsList } from "./-components/NewsItemsList";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/news")({
+  validateSearch: newsAdminSearchParamsSchema,
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const queryClient = useQueryClient();
+  const { selectedId: urlSelectedId } = Route.useSearch();
+  const { setFilters } = useFilters(Route.id);
 
-  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemResponse>();
+  // selectedId leads the URL: set synchronously on click for instant highlight
+  // and skeleton, then the URL catches up asynchronously via setFilters.
+  // When the URL changes externally (browser back/forward), sync back to it.
+  const [selectedId, setSelectedId] = useState<string | undefined>(urlSelectedId);
+  if (selectedId !== urlSelectedId && urlSelectedId !== undefined) {
+    setSelectedId(urlSelectedId);
+  }
 
-  async function handleAddNewsItem() {
-    await $createNewsItem({});
-    await queryClient.invalidateQueries(
-      getNewsItemsQueryOptions({ limit: 100 }),
-    );
+  function handleSelectNewsItem(id: string | undefined) {
+    setSelectedId(id);
+    setFilters({ selectedId: id });
   }
 
   return (
     <>
-      <Suspense fallback={<Skeleton />}>
-        <NewsItemsList
-          onClickAdd={handleAddNewsItem}
-          selectedNewsItem={selectedNewsItem}
-          onSelectNewsItem={setSelectedNewsItem}
-        />
-      </Suspense>
+      <NewsItemsList
+        selectedNewsItemId={selectedId}
+        onSelectNewsItem={handleSelectNewsItem}
+      />
 
-      <NewsItemContent key={selectedNewsItem?.id} newsItem={selectedNewsItem} />
+      {selectedId ? (
+        <NewsItemContent
+          key={selectedId}
+          selectedNewsItemId={selectedId}
+          onSelectNewsItemId={handleSelectNewsItem}
+        />
+      ) : null}
     </>
   );
 }

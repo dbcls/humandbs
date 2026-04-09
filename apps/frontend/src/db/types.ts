@@ -119,10 +119,18 @@ export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
   .extend({
     alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
     translations: newsTranslationUpsertSchema,
+    tags: z.array(z.string()).optional().default([]),
   });
 
 export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
   alert: createAlertSchema.omit({ newsId: true }).optional(),
+});
+
+export const newsItemCreateSchema = z.object({
+  publishedAt: z.string().optional().nullable(),
+  translations: newsTranslationUpsertSchema,
+  alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
+  tags: z.array(z.string()).optional().default([]),
 });
 
 export type ContentItem = typeof schema.contentItem.$inferSelect;

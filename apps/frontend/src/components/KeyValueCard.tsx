@@ -14,10 +14,13 @@ export function KeyValueCard({
 }) {
   if (!value) return null;
   return (
-    <>
+    <div className="break-inside-avoid">
       <dt className="text-secondary mb-2 text-sm font-semibold">{title}</dt>
-      <dd dangerouslySetInnerHTML={{ __html: value }} />
-    </>
+      <dd
+        dangerouslySetInnerHTML={{ __html: value }}
+        className="wrap-break-word pl-4"
+      />
+    </div>
   );
 }
 
