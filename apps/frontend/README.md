@@ -1,37 +1,39 @@
-# Deploy to staging
+# ステージング環境へのデプロイ
 
-Since the podman container is most likety already running, we need to stop it, rebuild and restart.
+podman コンテナはすでに起動中であることが多いため、停止・再ビルド・再起動が必要です。
 
-- `git pull` on the server
-- Restart container (to stop the inner `bun run serve`): `podman restart humandbs-staging-frontend`
-- Migrate DB if needed
-  - Enter the container bash: `podman exec -it humandbs-staging-frontend bash`
-  - Inside, apply DB schema changes if any: `bun run db:push`
-- Build & start: `podman exec -d humandbs-staging-frontend bash -lc 'bun run build && bun run start'`
+- サーバー上で `git pull` を実行
+- コンテナを再起動（内部の `bun run serve` を停止するため）: `podman restart humandbs-staging-frontend`
+- 必要に応じて DB のマイグレーションとシードを実施
+  - コンテナの bash に入る: `podman exec -it humandbs-staging-frontend bash`
+  - 内部で DB スキーマの変更を適用: `bun run db:push`
+  - ドキュメントのシード: `bun run db:seed-documents`
+  - ナビゲーション設定のシード: `bun run db:seed-navigation`
+- ビルドと起動: `podman exec -d humandbs-staging-frontend bash -lc 'bun run build && bun run start'`
 
-If needed, when updating nginx config (consult with backend engineer):
+nginx の設定を更新する場合（バックエンドエンジニアに相談してください）:
 
-- Update nginx config
+- nginx の設定を更新
 - `podman rm -f humandbs-staging-nginx`
 - `podman-compose --env-file .env up -d nginx`
 
-# Development Troubleshooting
+# 開発時のトラブルシューティング
 
-## 1. Accidentally importing stuff from the server-side
+## 1. サーバーサイドのモジュールを誤ってインポートしてしまう場合
 
-When error is like
+以下のようなエラーが発生する場合:
 
 ```sh
 [plugin:vite:import-analysis] Failed to resolve import "tanstack-start-injected-head-scripts:v" from "../../node_modules/@tanstack/start-server-core/dist/esm/router-manifest.js?v=8960f5d8". Does the file exist?
 ```
 
-Most likely it is due importing something that is server-only into client/route file.
+クライアント/ルートファイルにサーバー専用のモジュールをインポートしている可能性があります。
 
-> ! Types too, unless all named imports are preceded by the `type`, not individual ones
+> 型のインポートも同様です。各インポートに個別に `type` を付けるのではなく、`import type` 構文を使用してください。
 
 ```ts
-// route file
-import { type NewsTitleResponse } from "@/serverFunctions/news"; // ERROR!
+// ルートファイル
+import { type NewsTitleResponse } from "@/serverFunctions/news"; // エラー！
 
-import type { NewsTitleResponse } from "@/serverFunctions/news"; // OK!
+import type { NewsTitleResponse } from "@/serverFunctions/news"; // OK！
 ```
