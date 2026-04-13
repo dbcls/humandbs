@@ -1,5 +1,6 @@
 import { Search, Settings2, X } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
+import { useTranslations } from "use-intl";
 
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ export function SearchCaption({
   onQueryChange: (query: string | undefined) => void;
   onFilterClick: () => void;
 }) {
+  const t = useTranslations("common");
   const [inputValue, setInputValue] = useState(committedQuery);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function SearchCaption({
       <div className="flex items-stretch gap-4">
         <div className="flex gap-1">
           <Button variant={"tableAction"} size={"tableAction"}>
-            Copy
+            {t("copy")}
           </Button>
           <Button variant={"tableAction"} size={"tableAction"}>
             CSV
@@ -40,7 +42,7 @@ export function SearchCaption({
 
         <Input
           type="text"
-          placeholder="検索"
+          placeholder={t("search")}
           value={inputValue}
           onChange={(e) => {
             setInputValue(e.target.value);

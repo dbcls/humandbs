@@ -2,7 +2,9 @@
   "common": {
     "humandb": "NBDC HumanDB",
     "to-": "To {place}",
-    "previous-versions": "Previous versions of {documentName}:"
+    "previous-versions": "Previous versions of {documentName}:",
+    "search": "Search",
+    "copy": "Copy"
   },
   "Footer": {
     "sitemap": "Sitemap"
@@ -56,7 +58,17 @@
   "Research-list": {
     "research-list": "Research list",
     "date-published": "Date published",
-    "date-modified": "Date modified"
+    "date-modified": "Date modified",
+    "research-id": "Research ID",
+    "datasets": "Datasets",
+    "title": "Title",
+    "methods": "Methods",
+    "type-of-data": "Type of data",
+    "platforms": "Platforms",
+    "targets": "Targets",
+    "data-provider": "Data provider",
+    "criteria": "Criteria",
+    "status": "Status"
   },
   "VersionCard": {
     "releaseInfo": "Release info",
@@ -84,7 +96,8 @@
     "version": "Version",
     "release-date": "Release date",
     "type-of-data": "Type of data",
-    "criteria": "Access type"
+    "criteria": "Access type",
+    "experiments": "Experiments"
   },
   "Dataset": {},
   "Research": {
@@ -104,5 +117,50 @@
   "Data-submission": {
     "data-submission": "Data submission",
     "before-application": "Before application system"
+  },
+  "Filters": {
+    "datePublished": "Date Published",
+    "dateModified": "Date Modified",
+    "criteria": "Criteria",
+    "subjectCountType": "Subject Count Type",
+    "healthStatus": "Health Status",
+    "diseaseIcd10": "Disease (ICD-10)",
+    "tissues": "Tissues",
+    "cellLine": "Cell Line",
+    "population": "Population",
+    "sex": "Sex",
+    "ageGroup": "Age Group",
+    "assayType": "Assay Type",
+    "libraryKits": "Library Kits",
+    "platform": "Platform",
+    "readType": "Read Type",
+    "referenceGenome": "Reference Genome",
+    "fileTypes": "File Types",
+    "processedDataTypes": "Processed Data Types",
+    "policyId": "Policy ID",
+    "disease": "Disease",
+    "isTumor": "Tumor Sample",
+    "hasPhenotypeData": "Has Phenotype Data",
+    "releaseDate": "Release Date",
+    "subjectCount": "Subject Count",
+    "readLength": "Read Length",
+    "sequencingDepth": "Sequencing Depth",
+    "targetCoverage": "Target Coverage",
+    "dataVolumeGb": "Data Volume (GB)",
+    "variantSnv": "SNV Count",
+    "variantIndel": "Indel Count",
+    "variantCnv": "CNV Count",
+    "variantSv": "SV Count",
+    "variantTotal": "Total Variant Count",
+    "humId": "Dataset ID",
+    "panel-title": "Filters",
+    "panel-reset-all": "Reset all",
+    "panel-reset": "Reset",
+    "panel-search": "Search"
+  },
+  "Pagination": {
+    "itemsPerPage": "Items per page",
+    "previous": "Previous",
+    "next": "Next"
   }
 }
