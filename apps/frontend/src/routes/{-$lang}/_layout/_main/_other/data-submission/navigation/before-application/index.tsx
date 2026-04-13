@@ -6,12 +6,12 @@ import { NavigationChart } from "@/components/NavigationChart";
 import { $getNavigationFlowchartData } from "@/serverFunctions/navigationFlowchart";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/"
+  "/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/",
 )({
   component: RouteComponent,
-  loader: () =>
+  loader: ({ context }) =>
     $getNavigationFlowchartData({
-      data: { type: "before-application" },
+      data: { type: "before-application", locale: context.lang },
     }),
 });
 
@@ -22,7 +22,12 @@ function RouteComponent() {
 
   return (
     <Card caption={t("before-application")} captionSize={"lg"}>
-      <NavigationChart data={navData} navigate={navigate} />
+      <NavigationChart
+        data={navData}
+        navigate={(location) => {
+          navigate(location);
+        }}
+      />
     </Card>
   );
 }
