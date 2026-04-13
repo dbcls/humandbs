@@ -9,8 +9,8 @@ export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-submission/navigation/",
 )({
   component: RouteComponent,
-  loader: () =>
-    $getNavigationFlowchartData({ data: { type: "data-submission" } }),
+  loader: ({ context }) =>
+    $getNavigationFlowchartData({ data: { type: "data-submission", locale: context.lang } }),
 });
 
 function RouteComponent() {
@@ -22,7 +22,7 @@ function RouteComponent() {
 
   return (
     <Card caption={t("data-submission")} captionSize={"lg"}>
-      <NavigationChart data={navData} navigate={navigate} />
+      <NavigationChart data={navData} navigate={(location) => { navigate(location); }} />
     </Card>
   );
 }
