@@ -4,7 +4,8 @@
     "to-": "To {place}",
     "previous-versions": "Previous versions of {documentName}:",
     "search": "Search",
-    "copy": "Copy"
+    "copy": "Copy",
+    "more": "{count} more"
   },
   "Footer": {
     "sitemap": "Sitemap"
