@@ -171,7 +171,9 @@ const columnHelper =
 const columns = [
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => <SortHeader ctx={ctx} label="Research ID" />,
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />
+    ),
 
     cell: function Cell(ctx) {
       return (
@@ -184,7 +186,7 @@ const columns = [
   }),
   columnHelper.accessor("datasetIds", {
     id: "datasets",
-    header: "Datasets",
+    header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => {
       return (
         <ul>
@@ -202,7 +204,9 @@ const columns = [
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("title")} />
+    ),
     cell: function Cell(ctx) {
       const { lang } = Route.useRouteContext();
       return ctx.renderValue()?.[lang];
@@ -210,7 +214,12 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => <SortHeader ctx={ctx} label="Date published" />,
+    header: (ctx) => (
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t?.("date-published")}
+      />
+    ),
     size: 10,
     cell: (ctx) => (
       <div>
@@ -232,7 +241,12 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => <SortHeader ctx={ctx} label="Date Modified" />,
+    header: (ctx) => (
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t?.("date-modified")}
+      />
+    ),
     cell: (ctx) => (
       <div>
         <span>{ctx.getValue().releaseDate}</span>
@@ -253,7 +267,7 @@ const columns = [
   }),
   columnHelper.accessor("methods", {
     id: "methods",
-    header: "手法",
+    header: (ctx) => ctx.table.options.meta?.t("methods"),
     cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
   }),
 ];

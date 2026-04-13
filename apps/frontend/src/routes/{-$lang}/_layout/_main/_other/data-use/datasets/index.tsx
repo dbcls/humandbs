@@ -202,7 +202,7 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("experiments", {
     id: "experiments",
-    header: "Experiments",
+    header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => (
       <ul className="space-y-4">
         {ctx.getValue().map((e, i) => (

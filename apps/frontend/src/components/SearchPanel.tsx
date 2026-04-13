@@ -1,6 +1,7 @@
 import type { DatasetFilters, RangeFilter } from "@humandbs/backend/types";
 import { Plus, Trash2, X as XIcon } from "lucide-react";
 import { startTransition, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "use-intl";
 
 import {
   Accordion,
@@ -384,9 +385,10 @@ function PanelHeader({
   onResetAll: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("Filters");
   return (
     <div className="flex items-center justify-between p-3">
-      <span className="text-sm font-medium">Filters</span>
+      <span className="text-sm font-medium">{t("panel-title")}</span>
       <div className="flex items-center gap-1">
         {hasAnyFilter && (
           <Button
@@ -395,7 +397,7 @@ function PanelHeader({
             className="text-xs text-muted-foreground"
             onClick={onResetAll}
           >
-            Reset all
+            {t("panel-reset-all")}
           </Button>
         )}
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -413,18 +415,19 @@ function PanelFooter({
   onSearch: () => void;
   onReset: () => void;
 }) {
+  const t = useTranslations("Filters");
   return (
     <div className="sticky bottom-0 z-10 border-t border-t-primary-translucent bg-white p-3">
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={onReset}>
-          Reset
+          {t("panel-reset")}
         </Button>
         <Button
           variant="accent"
           className="flex-1 text-center block"
           onClick={onSearch}
         >
-          Search
+          {t("panel-search")}
         </Button>
       </div>
     </div>
@@ -442,10 +445,11 @@ function FacetItemWrapper({
   onReset: () => void;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("Filters");
   return (
     <AccordionItem value={id} className="border-b-primary-translucent relative">
       <AccordionTrigger className="text-secondary font-bold">
-        <span>{id}</span>
+        <span>{t(id as Parameters<typeof t>[0])}</span>
       </AccordionTrigger>
       {hasValue && (
         <button
@@ -459,7 +463,7 @@ function FacetItemWrapper({
             onReset();
           }}
         >
-          Reset
+          {t("panel-reset")}
         </button>
       )}
       <AccordionContent className="pl-5 py-1">{children}</AccordionContent>
