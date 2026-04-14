@@ -154,10 +154,11 @@
     "variantSv": "SV Count",
     "variantTotal": "Total Variant Count",
     "humId": "Dataset ID",
-    "panel-title": "Filters",
+    "panel-title": "Filter details",
     "panel-reset-all": "Reset all",
     "panel-reset": "Reset",
-    "panel-search": "Search"
+    "panel-search": "Search",
+    "datasetFilters": "Dataset filters"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",

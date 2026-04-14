@@ -154,10 +154,11 @@
     "variantSv": "バリアント数（構造変異）",
     "variantTotal": "バリアント総数",
     "humId": "データセット ID",
-    "panel-title": "絞り込み",
+    "panel-title": "詳細条件",
     "panel-reset-all": "すべてをリセット",
     "panel-reset": "リセット",
-    "panel-search": "検索"
+    "panel-search": "検索",
+    "datasetFilters": "データセットのフィルター"
   },
   "Pagination": {
     "itemsPerPage": "1ページあたりのアイテム数",
