@@ -43,7 +43,8 @@ export function Navbar() {
     from: "/{-$lang}/_layout",
   });
 
-  const items: ResolvedNavbarItem[] = (siteNavigation as ResolvedSiteNavigation).navbar;
+  const items: ResolvedNavbarItem[] = (siteNavigation as ResolvedSiteNavigation)
+    .navbar;
   const navContainerRef = useRef<HTMLDivElement>(null);
   const navListRef = useRef<HTMLUListElement>(null);
   const measureItemRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -113,49 +114,48 @@ export function Navbar() {
         </div>
       </Link>
 
-      <nav
+      <NavigationMenu
         ref={navContainerRef}
-        className="hidden md:block relative min-w-0 flex-1"
+        viewport={false}
+        className="hidden md:flex relative flex-1 max-w-none w-full min-w-0 justify-start"
       >
-        <NavigationMenu viewport={false} className="min-w-0 w-full">
-          <NavigationMenuList
-            ref={navListRef}
-            className="flex flex-nowrap items-center justify-start gap-4"
-          >
-            {visibleItems.map((item) => (
-              <NavItem key={item.id} item={item} />
+        <NavigationMenuList
+          ref={navListRef}
+          className="flex flex-nowrap items-center justify-start gap-4"
+        >
+          {visibleItems.map((item) => (
+            <NavItem key={item.id} item={item} />
+          ))}
+          {hiddenItems.length > 0 ? (
+            <NavigationMenuItem>
+              <OverflowMenu items={hiddenItems} />
+            </NavigationMenuItem>
+          ) : null}
+        </NavigationMenuList>
+      </NavigationMenu>
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none overflow-hidden fixed top-0 left-0 -z-10 opacity-0"
+      >
+        <NavigationMenu viewport={false}>
+          <NavigationMenuList className="flex flex-nowrap items-center justify-start gap-8">
+            {items.map((item, index) => (
+              <div
+                key={item.id}
+                ref={(element) => {
+                  measureItemRefs.current[index] = element;
+                }}
+              >
+                <NavItem item={item} />
+              </div>
             ))}
-            {hiddenItems.length > 0 ? (
-              <NavigationMenuItem>
-                <OverflowMenu items={hiddenItems} />
-              </NavigationMenuItem>
-            ) : null}
+            <div ref={measureOverflowTriggerRef}>
+              <OverflowTrigger />
+            </div>
           </NavigationMenuList>
         </NavigationMenu>
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-0 left-0 -z-10 opacity-0"
-        >
-          <NavigationMenu viewport={false}>
-            <NavigationMenuList className="flex flex-nowrap items-center justify-start gap-8">
-              {items.map((item, index) => (
-                <div
-                  key={item.id}
-                  ref={(element) => {
-                    measureItemRefs.current[index] = element;
-                  }}
-                >
-                  <NavItem item={item} />
-                </div>
-              ))}
-              <div ref={measureOverflowTriggerRef}>
-                <OverflowTrigger />
-              </div>
-            </NavigationMenuList>
-          </NavigationMenu>
-        </div>
-      </nav>
+      </div>
 
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />

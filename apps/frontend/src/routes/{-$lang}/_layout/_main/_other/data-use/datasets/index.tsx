@@ -26,6 +26,8 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/buildFacetSections";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { cn } from "@/lib/utils";
 
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
@@ -61,20 +63,20 @@ function RouteComponent() {
   return (
     <FilterableCard
       captionSize="lg"
-      caption={({ onFilterClick }) => (
+      caption={({ onFilterClick, isOpen }) => (
         <SearchCaption
           title={t("dataset-list")}
           committedQuery={search.query ?? ""}
           onQueryChange={(query) => {
             setFilters({ query });
           }}
+          isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-    >
-      <CardContent />
-    </FilterableCard>
+      renderChildren={({ panelOpen }) => <CardContent panelOpen={panelOpen} />}
+    ></FilterableCard>
   );
 }
 
@@ -118,7 +120,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CardContent() {
+function CardContent({ panelOpen }: { panelOpen: boolean }) {
   const search = Route.useSearch();
 
   const { lang } = Route.useRouteContext();
@@ -139,9 +141,11 @@ function CardContent() {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-">
         <Table
-          className="text-sm"
+          className={cn("mt-4 text-sm transition-[margin]", {
+            "mr-filter-panel": panelOpen,
+          })}
           onSortingChange={(updater) => {
             const newState = functionalUpdate(updater, sortingState);
 
@@ -202,22 +206,27 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("experiments", {
     id: "experiments",
-    header: "Experiments",
+    header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => (
-      <ul className="space-y-4">
-        {ctx.getValue().map((e, i) => (
-          <li key={i}>
-            {
-              e.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
-                ?.text
-            }
-          </li>
-        ))}
-      </ul>
+      <CollapsiblePreview
+        items={ctx.getValue().map((item, i) => ({
+          id: i,
+          content: () => (
+            <span>
+              {
+                item.header?.[
+                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
+                ]?.text
+              }
+            </span>
+          ),
+        }))}
+      />
     ),
   }),
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    cell: (ctx) => ctx.renderValue(),
   }),
 ];

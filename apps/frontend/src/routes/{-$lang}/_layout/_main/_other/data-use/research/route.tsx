@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-use/research"
+  "/{-$lang}/_layout/_main/_other/data-use/research",
 )({
-  loader: () => ({
-    crumb: "研究一覧",
+  loader: ({ context }) => ({
+    crumb: context.messages.Navbar?.["research-list"],
   }),
 });

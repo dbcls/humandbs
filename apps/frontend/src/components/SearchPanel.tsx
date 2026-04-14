@@ -1,6 +1,7 @@
 import type { DatasetFilters, RangeFilter } from "@humandbs/backend/types";
 import { Plus, Trash2, X as XIcon } from "lucide-react";
 import { startTransition, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "use-intl";
 
 import {
   Accordion,
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { Separator } from "@base-ui/react";
 
 // === Section config types ===
 
@@ -37,7 +39,7 @@ export type RangeFacetConfig = {
   [K in RangeKeys<DatasetFilters>]: {
     type: "range";
     id: K;
-    groupKey: string;
+    groupKey?: string;
     value: RangeFilter;
   };
 }[RangeKeys<DatasetFilters>];
@@ -46,7 +48,7 @@ export type DateRangeFacetConfig = {
   [K in RangeKeys<DatasetFilters>]: {
     type: "date-range";
     id: K;
-    groupKey: string;
+    groupKey?: string;
     value: RangeFilter;
   };
 }[RangeKeys<DatasetFilters>];
@@ -55,25 +57,28 @@ export interface RangeFilterConfig {
   type: "range-filter";
   id: string;
   value: RangeFilter;
+  groupKey?: string;
 }
 
 export interface DateRangeFilterConfig {
   type: "date-range-filter";
   id: string;
   value: RangeFilter;
+  groupKey?: string;
 }
 
 export interface TextFilterConfig {
   type: "text-filter";
   id: string;
   value: string;
+  groupKey?: string;
 }
 
 export type CheckboxFacetConfig = {
   [K in StringArrayKeys<DatasetFilters>]: {
     type: "checkbox";
     id: K;
-    groupKey: string;
+    groupKey?: string;
     value: NonNullable<DatasetFilters[K]>;
     options: string[];
   };
@@ -83,7 +88,7 @@ export type TextFacetConfig = {
   [K in StringKeys<DatasetFilters>]: {
     type: "text";
     id: K;
-    groupKey: string;
+    groupKey?: string;
     value: NonNullable<DatasetFilters[K]>;
   };
 }[StringKeys<DatasetFilters>];
@@ -92,7 +97,7 @@ export type BooleanFacetConfig = {
   [K in BooleanKeys<DatasetFilters>]: {
     type: "boolean";
     id: K;
-    groupKey: string;
+    groupKey?: string;
     value: DatasetFilters[K];
   };
 }[BooleanKeys<DatasetFilters>];
@@ -101,7 +106,7 @@ export type TextListFacetConfig = {
   [K in StringArrayKeys<DatasetFilters>]: {
     type: "text-list";
     id: K;
-    groupKey: string;
+    groupKey?: string;
     value: NonNullable<DatasetFilters[K]>;
   };
 }[StringArrayKeys<DatasetFilters>];
@@ -127,8 +132,14 @@ type FacetConfig =
   | RangeFacetConfig
   | DateRangeFacetConfig;
 
-function isFacetConfig(section: SectionConfig): section is FacetConfig {
+function isNestedConfig(
+  section: SectionConfig,
+): section is SectionConfig & { groupKey: string } {
   return "groupKey" in section;
+}
+
+function isTopLevelConfig(section: SectionConfig): section is SectionConfig {
+  return !("groupKey" in section);
 }
 
 // === Props ===
@@ -200,7 +211,7 @@ function buildPayload(
   for (const section of sections) {
     const normalized = normalizeValue(draft[section.id]);
 
-    if (isFacetConfig(section)) {
+    if (isNestedConfig(section)) {
       const group = section.groupKey;
       if (!groups[group]) groups[group] = {};
       if (normalized !== undefined) {
@@ -222,6 +233,8 @@ function hasAnyDraftValue(draft: DraftState): boolean {
   return Object.values(draft).some((v) => normalizeValue(v) !== undefined);
 }
 
+type GroupedSections = Record<"top-level" | (string & {}), SectionConfig[]>;
+
 // === Main component ===
 
 export function SearchPanel({
@@ -231,6 +244,8 @@ export function SearchPanel({
   facetCounts,
   onSetFilters,
 }: SearchPanelProps) {
+  const t = useTranslations("Filters");
+
   const committedDraft = useMemo(() => buildDraftState(sections), [sections]);
 
   const [draft, setDraft] = useState<DraftState>(committedDraft);
@@ -269,8 +284,23 @@ export function SearchPanel({
     });
   };
 
+  const groupedSections = sections.reduce((acc, curr) => {
+    if (isNestedConfig(curr)) {
+      if (!acc[curr.groupKey]) {
+        acc[curr.groupKey] = [];
+      }
+      acc[curr.groupKey].push(curr);
+    } else {
+      if (!acc["top-level"]) {
+        acc["top-level"] = [];
+      }
+      acc["top-level"].push(curr);
+    }
+    return acc;
+  }, {} as GroupedSections);
+
   return (
-    <div className="flex min-h-full w-96 min-w-96 max-w-96 flex-col overflow-x-hidden">
+    <div className="flex min-h-full w-filter-panel min-w-filter-panel max-w-filter-panel flex-col overflow-x-hidden">
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onResetAll={handleResetAll}
@@ -278,97 +308,61 @@ export function SearchPanel({
       />
       <PanelFooter onSearch={handleSearch} onReset={handleResetAndApply} />
 
+      {Object.entries(groupedSections).map(([key, val]) => {
+        if (key === "top-level") {
+          return (
+            <Accordion
+              className="px-3 pb-2"
+              type="multiple"
+              key={key}
+              defaultValue={val
+                .filter((s) => normalizeValue(draft[s.id]) !== undefined)
+                .map((s) => s.id)}
+            >
+              {val.map((v, i) => (
+                <AccordionFilterItem
+                  key={`${v.groupKey}-${i}`}
+                  section={v}
+                  facetCounts={facetCounts}
+                  updateDraftField={updateDraftField}
+                  isFetching={isFetching}
+                  draft={draft}
+                />
+              ))}
+            </Accordion>
+          );
+        } else {
+          return (
+            <Accordion
+              className="px-3 pb-2 mt-6"
+              type="multiple"
+              key={key}
+              defaultValue={val
+                .filter((s) => normalizeValue(draft[s.id]) !== undefined)
+                .map((s) => s.id)}
+            >
+              <p className="text-sm font-medium py-3">{t(key)}</p>
+              {val.map((v) => (
+                <AccordionFilterItem
+                  key={v.id}
+                  section={v}
+                  facetCounts={facetCounts}
+                  updateDraftField={updateDraftField}
+                  isFetching={isFetching}
+                  draft={draft}
+                />
+              ))}
+            </Accordion>
+          );
+        }
+      })}
       <Accordion
         className="px-3 pb-2"
         type="multiple"
         defaultValue={sections
           .filter((s) => normalizeValue(draft[s.id]) !== undefined)
           .map((s) => s.id)}
-      >
-        {sections.map((section) => {
-          switch (section.type) {
-            case "checkbox":
-              return (
-                <CheckboxFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={draft[section.id]}
-                  onUpdate={updateDraftField}
-                  options={section.options}
-                  facetCounts={facetCounts?.[section.id]}
-                  isFetching={isFetching}
-                />
-              );
-            case "text":
-              return (
-                <TextFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={(draft[section.id] as string) ?? ""}
-                  onUpdate={updateDraftField}
-                />
-              );
-            case "text-filter":
-              return (
-                <TextFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={(draft[section.id] as string) ?? ""}
-                  onUpdate={updateDraftField}
-                />
-              );
-            case "boolean":
-              return (
-                <BooleanFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={draft[section.id] as boolean | undefined}
-                  onUpdate={updateDraftField}
-                  facetCounts={facetCounts?.[section.id]}
-                />
-              );
-            case "text-list":
-              return (
-                <TextListFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={
-                    Array.isArray(draft[section.id])
-                      ? (draft[section.id] as string[])
-                      : []
-                  }
-                  onUpdate={updateDraftField}
-                />
-              );
-            case "range":
-            case "range-filter":
-              return (
-                <RangeFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={
-                    (draft[section.id] as RangeFilter | undefined) ?? {}
-                  }
-                  onUpdate={updateDraftField}
-                />
-              );
-            case "date-range":
-            case "date-range-filter":
-              return (
-                <DateRangeFacetItem
-                  key={section.id}
-                  id={section.id}
-                  draftValue={
-                    (draft[section.id] as RangeFilter | undefined) ?? {}
-                  }
-                  onUpdate={updateDraftField}
-                />
-              );
-            default:
-              return null;
-          }
-        })}
-      </Accordion>
+      ></Accordion>
     </div>
   );
 }
@@ -384,18 +378,19 @@ function PanelHeader({
   onResetAll: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("Filters");
   return (
     <div className="flex items-center justify-between p-3">
-      <span className="text-sm font-medium">Filters</span>
+      <span className="text-sm font-medium">{t("panel-title")}</span>
       <div className="flex items-center gap-1">
         {hasAnyFilter && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="slim"
-            className="text-xs text-muted-foreground"
+            className="text-2xs text-muted-foreground py-0"
             onClick={onResetAll}
           >
-            Reset all
+            {t("panel-reset-all")}
           </Button>
         )}
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -406,6 +401,98 @@ function PanelHeader({
   );
 }
 
+function AccordionFilterItem({
+  section,
+  updateDraftField,
+  draft,
+  facetCounts,
+  isFetching,
+}: {
+  section: SectionConfig;
+  updateDraftField: (id: string, value: any) => void;
+  draft: DraftState;
+  facetCounts: Record<string, { value: string; count: number }[]> | undefined;
+  isFetching: boolean;
+}) {
+  switch (section.type) {
+    case "checkbox":
+      return (
+        <CheckboxFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={draft[section.id]}
+          onUpdate={updateDraftField}
+          options={section.options}
+          facetCounts={facetCounts?.[section.id]}
+          isFetching={isFetching}
+        />
+      );
+    case "text":
+      return (
+        <TextFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={(draft[section.id] as string) ?? ""}
+          onUpdate={updateDraftField}
+        />
+      );
+    case "text-filter":
+      return (
+        <TextFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={(draft[section.id] as string) ?? ""}
+          onUpdate={updateDraftField}
+        />
+      );
+    case "boolean":
+      return (
+        <BooleanFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={draft[section.id] as boolean | undefined}
+          onUpdate={updateDraftField}
+          facetCounts={facetCounts?.[section.id]}
+        />
+      );
+    case "text-list":
+      return (
+        <TextListFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={
+            Array.isArray(draft[section.id])
+              ? (draft[section.id] as string[])
+              : []
+          }
+          onUpdate={updateDraftField}
+        />
+      );
+    case "range":
+    case "range-filter":
+      return (
+        <RangeFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={(draft[section.id] as RangeFilter | undefined) ?? {}}
+          onUpdate={updateDraftField}
+        />
+      );
+    case "date-range":
+    case "date-range-filter":
+      return (
+        <DateRangeFacetItem
+          key={section.id}
+          id={section.id}
+          draftValue={(draft[section.id] as RangeFilter | undefined) ?? {}}
+          onUpdate={updateDraftField}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
 function PanelFooter({
   onSearch,
   onReset,
@@ -413,18 +500,19 @@ function PanelFooter({
   onSearch: () => void;
   onReset: () => void;
 }) {
+  const t = useTranslations("Filters");
   return (
     <div className="sticky bottom-0 z-10 border-t border-t-primary-translucent bg-white p-3">
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={onReset}>
-          Reset
+          {t("panel-reset")}
         </Button>
         <Button
           variant="accent"
           className="flex-1 text-center block"
           onClick={onSearch}
         >
-          Search
+          {t("panel-search")}
         </Button>
       </div>
     </div>
@@ -442,15 +530,17 @@ function FacetItemWrapper({
   onReset: () => void;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("Filters");
   return (
     <AccordionItem value={id} className="border-b-primary-translucent relative">
       <AccordionTrigger className="text-secondary font-bold">
-        <span>{id}</span>
+        <span>{t(id as Parameters<typeof t>[0])}</span>
       </AccordionTrigger>
       {hasValue && (
-        <button
-          type="button"
-          className="absolute right-6 top-0 z-10 h-10 px-0 text-xs text-muted-foreground"
+        <Button
+          variant={"outline"}
+          size={"slim"}
+          className="absolute right-0 top-1 py-0 z-10 text-2xs text-muted-foreground"
           onPointerDown={(e) => {
             e.stopPropagation();
           }}
@@ -459,8 +549,8 @@ function FacetItemWrapper({
             onReset();
           }}
         >
-          Reset
-        </button>
+          {t("panel-reset")}
+        </Button>
       )}
       <AccordionContent className="pl-5 py-1">{children}</AccordionContent>
     </AccordionItem>
@@ -497,7 +587,7 @@ function CheckboxFacetItem({
         onUpdate(id, undefined);
       }}
     >
-      <ul className="space-y-2">
+      <ul className="space-y-2 max-h-80 overflow-y-auto">
         {options.map((optionValue) => {
           const isChecked = selectedValues.includes(optionValue);
           const count =
@@ -505,8 +595,8 @@ function CheckboxFacetItem({
 
           return (
             <li key={`${id}-${optionValue}`}>
-              <Label className="flex justify-between items-start">
-                <span>
+              <Label className="flex justify-between items-start text-xs">
+                <div className="flex gap-2">
                   <Checkbox
                     checked={isChecked}
                     onCheckedChange={(checked) => {
@@ -524,13 +614,13 @@ function CheckboxFacetItem({
                     }}
                   />
                   <span
-                    className={cn("ml-2", {
+                    className={cn("flex-1", {
                       "opacity-40": isFetching,
                     })}
                   >
                     {optionValue}
                   </span>
-                </span>
+                </div>
                 <span>{count}</span>
               </Label>
             </li>

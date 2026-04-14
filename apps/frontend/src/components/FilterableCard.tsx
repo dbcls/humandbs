@@ -8,29 +8,35 @@ export function FilterableCard({
   caption,
   captionSize,
   className,
-  children,
+  renderChildren,
   renderPanel,
 }: {
-  caption: (props: { onFilterClick: () => void }) => React.ReactNode;
+  caption: (props: {
+    onFilterClick: () => void;
+    isOpen: boolean;
+  }) => React.ReactNode;
   captionSize?: "lg";
   className?: string;
-  children: React.ReactNode;
+  renderChildren: (props: { panelOpen: boolean }) => React.ReactNode;
   renderPanel: (props: { onClose: () => void }) => React.ReactNode;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
 
   return (
     <Card
-      className={className}
+      className={cn("flex-1", className)}
       caption={caption({
         onFilterClick: () => {
           setPanelOpen((v) => !v);
         },
+        isOpen: panelOpen,
       })}
       captionSize={captionSize}
-      containerClassName="relative overflow-hidden"
+      containerClassName="relative overflow-hidden flex flex-col flex-1"
     >
-      <Suspense fallback={<SkeletonLoading />}>{children}</Suspense>
+      <Suspense fallback={<SkeletonLoading />}>
+        {renderChildren({ panelOpen })}
+      </Suspense>
 
       <div
         className={cn(

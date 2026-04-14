@@ -21,6 +21,8 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-use/research/",
@@ -50,7 +52,8 @@ function RouteComponent() {
 
   return (
     <FilterableCard
-      caption={({ onFilterClick }) => (
+      className="flex flex-col"
+      caption={({ onFilterClick, isOpen }) => (
         <SearchCaption
           title={t("research-list")}
           committedQuery={search.query ?? ""}
@@ -58,12 +61,12 @@ function RouteComponent() {
             setFilters({ query });
           }}
           onFilterClick={onFilterClick}
+          isPanelOpen={isOpen}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-    >
-      <CardContent />
-    </FilterableCard>
+      renderChildren={({ panelOpen }) => <CardContent panelOpen={panelOpen} />}
+    ></FilterableCard>
   );
 }
 
@@ -113,7 +116,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CardContent() {
+function CardContent({ panelOpen }: { panelOpen: boolean }) {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
@@ -149,9 +152,14 @@ function CardContent() {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex flex-col flex-1 relative">
         <Table
-          className="mt-4 text-sm"
+          className={cn(
+            "mt-4 text-sm flex-1 transition-[margin] z-10 relative",
+            {
+              "mr-filter-panel": panelOpen,
+            },
+          )}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}
@@ -171,7 +179,9 @@ const columnHelper =
 const columns = [
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => <SortHeader ctx={ctx} label="Research ID" />,
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />
+    ),
 
     cell: function Cell(ctx) {
       return (
@@ -184,25 +194,31 @@ const columns = [
   }),
   columnHelper.accessor("datasetIds", {
     id: "datasets",
-    header: "Datasets",
+    header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => {
       return (
-        <ul>
-          {ctx.row.original.datasetIds.map((datasetId) => (
-            <li key={datasetId}>
-              <Route.Link to="../datasets/$datasetId" params={{ datasetId }}>
-                <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
+        <CollapsiblePreview
+          items={ctx.row.original.datasetIds.map((id) => ({
+            id,
+            content: () => (
+              <Route.Link
+                to="../datasets/$datasetId"
+                params={{ datasetId: id }}
+              >
+                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
               </Route.Link>
-            </li>
-          ))}
-        </ul>
+            ),
+          }))}
+        />
       );
     },
     size: 15,
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: (ctx) => <SortHeader ctx={ctx} label={"研究題目"} />,
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("title")} />
+    ),
     cell: function Cell(ctx) {
       const { lang } = Route.useRouteContext();
       return ctx.renderValue()?.[lang];
@@ -210,7 +226,12 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => <SortHeader ctx={ctx} label="Date published" />,
+    header: (ctx) => (
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t?.("date-published")}
+      />
+    ),
     size: 10,
     cell: (ctx) => (
       <div>
@@ -232,7 +253,12 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => <SortHeader ctx={ctx} label="Date Modified" />,
+    header: (ctx) => (
+      <SortHeader
+        ctx={ctx}
+        label={ctx.table.options.meta?.t?.("date-modified")}
+      />
+    ),
     cell: (ctx) => (
       <div>
         <span>{ctx.getValue().releaseDate}</span>
@@ -253,7 +279,44 @@ const columns = [
   }),
   columnHelper.accessor("methods", {
     id: "methods",
-    header: "手法",
-    cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
+    header: (ctx) => ctx.table.options.meta?.t("methods"),
+    cell: (ctx) => <p className="text-sm break-all">{ctx.renderValue()}</p>,
+  }),
+  columnHelper.accessor("typeOfData", {
+    id: "typeOfData",
+    header: (ctx) => ctx.table.options.meta?.t("type-of-data"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx
+          .renderValue()
+          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+      />
+    ),
+  }),
+  columnHelper.accessor("platforms", {
+    id: "platforms",
+    header: (ctx) => ctx.table.options.meta?.t("platforms"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx
+          .renderValue()
+          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+      />
+    ),
+  }),
+  columnHelper.accessor("targets", {
+    id: "targets",
+    header: (ctx) => ctx.table.options.meta?.t("targets"),
+  }),
+  columnHelper.accessor("dataProvider", {
+    id: "dataProvider",
+    header: (ctx) => ctx.table.options.meta?.t("data-provider"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx
+          .renderValue()
+          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+      />
+    ),
   }),
 ];

@@ -2,7 +2,12 @@
   "common": {
     "humandb": "NBDC ヒトデータベース",
     "to-": "{place}へ",
-    "previous-versions": "{documentName}の改定"
+    "previous-versions": "{documentName}の改定",
+    "search": "検索",
+    "copy": "コピー",
+    "more": "他{count}件",
+    "collapse": "折りたたむ",
+    "no-data": "データなし"
   },
   "Footer": {
     "sitemap": "サイトマップ"
@@ -55,8 +60,18 @@
   },
   "Research-list": {
     "research-list": "研究一覧",
-    "date-published": "公開日付",
-    "date-modified": "更新日付"
+    "date-published": "公開日",
+    "date-modified": "更新日",
+    "research-id": "研究ID",
+    "datasets": "データセット",
+    "title": "研究題目",
+    "methods": "手法",
+    "type-of-data": "データの種類",
+    "platforms": "プラットフォーム",
+    "targets": "対象",
+    "data-provider": "提供者",
+    "criteria": "選択基準",
+    "status": "ステータス"
   },
   "VersionCard": {
     "releaseInfo": "リリース情報",
@@ -84,7 +99,13 @@
     "version": "バージョン",
     "release-date": "公開日付",
     "type-of-data": "データの種類",
-    "criteria": "アクセス制限"
+    "criteria": "アクセス制限",
+    "experiments": "実験一覧"
+  },
+  "Dataset": {},
+  "Research": {
+    "research-id": "研究 ID",
+    "datasets": "データセット"
   },
   "DatasetVersionCard": {
     "releaseInfo": "リリース情報",
@@ -99,5 +120,51 @@
   "Data-submission": {
     "data-submission": "データの提供",
     "before-application": "申請システムの前に"
+  },
+  "Filters": {
+    "datePublished": "公開日",
+    "dateModified": "更新日",
+    "criteria": "選択基準",
+    "subjectCountType": "被験者数の種別",
+    "healthStatus": "健康状態",
+    "diseaseIcd10": "疾患（ICD-10）",
+    "tissues": "組織",
+    "cellLine": "細胞株",
+    "population": "集団",
+    "sex": "性別",
+    "ageGroup": "年齢群",
+    "assayType": "アッセイタイプ",
+    "libraryKits": "ライブラリ調製キット",
+    "platform": "プラットフォーム",
+    "readType": "リードタイプ",
+    "referenceGenome": "リファレンスゲノム",
+    "fileTypes": "ファイル形式",
+    "processedDataTypes": "解析済みデータ種別",
+    "policyId": "ポリシーID",
+    "disease": "疾患",
+    "isTumor": "腫瘍由来",
+    "hasPhenotypeData": "表現型データあり",
+    "releaseDate": "公開日",
+    "subjectCount": "被験者数",
+    "readLength": "リード長",
+    "sequencingDepth": "シーケンシング深度",
+    "targetCoverage": "ターゲットカバレッジ",
+    "dataVolumeGb": "データ量（GB）",
+    "variantSnv": "バリアント数（SNV）",
+    "variantIndel": "バリアント数（インデル）",
+    "variantCnv": "バリアント数（CNV）",
+    "variantSv": "バリアント数（構造変異）",
+    "variantTotal": "バリアント総数",
+    "humId": "研究ID",
+    "panel-title": "詳細条件",
+    "panel-reset-all": "すべてをリセット",
+    "panel-reset": "リセット",
+    "panel-search": "検索",
+    "datasetFilters": "データセットのフィルター"
+  },
+  "Pagination": {
+    "itemsPerPage": "1ページあたりのアイテム数",
+    "previous": "前へ",
+    "next": "次へ"
   }
 }

@@ -1,5 +1,6 @@
 import type { Pagination as APIPagination } from "@humandbs/backend/types";
 import { useNavigate } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 import {
   Pagination as PaginationBase,
@@ -85,6 +86,7 @@ export function Pagination({
   onItemsPerPageChange,
 }: PaginationProps) {
   const navigate = useNavigate();
+  const t = useTranslations("Pagination");
 
   const visiblePages = getVisiblePages(pagination.page, pagination.totalPages);
 
@@ -112,6 +114,7 @@ export function Pagination({
                 ...prev,
                 page: Math.max(1, pagination.page - 1),
               })}
+              label={t("previous")}
               className={cn({
                 "pointer-events-none opacity-50": !pagination.hasPrev,
               })}
@@ -149,6 +152,7 @@ export function Pagination({
                 ...prev,
                 page: Math.min(pagination.totalPages, pagination.page + 1),
               })}
+              label={t("next")}
               className={cn({
                 "pointer-events-none opacity-50": !pagination.hasNext,
               })}
@@ -159,7 +163,7 @@ export function Pagination({
       </PaginationBase>
 
       <div className="flex items-center gap-2 whitespace-nowrap">
-        <span className="text-muted-foreground text-sm">Items per page:</span>
+        <span className="text-muted-foreground text-sm">{t("itemsPerPage")}:</span>
         <Select
           value={pagination.limit.toString()}
           onValueChange={handleItemsPerPageChange}

@@ -1,20 +1,25 @@
 import { Search, Settings2, X } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
+import { useTranslations } from "use-intl";
 
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function SearchCaption({
   title,
   committedQuery,
   onQueryChange,
   onFilterClick,
+  isPanelOpen,
 }: {
   title: string;
   committedQuery: string;
   onQueryChange: (query: string | undefined) => void;
   onFilterClick: () => void;
+  isPanelOpen: boolean;
 }) {
+  const t = useTranslations("common");
   const [inputValue, setInputValue] = useState(committedQuery);
 
   useEffect(() => {
@@ -28,19 +33,16 @@ export function SearchCaption({
       <div className="flex items-stretch gap-4">
         <div className="flex gap-1">
           <Button variant={"tableAction"} size={"tableAction"}>
-            Copy
+            {t("copy")}
           </Button>
           <Button variant={"tableAction"} size={"tableAction"}>
             CSV
-          </Button>
-          <Button variant={"tableAction"} size={"tableAction"}>
-            Excel
           </Button>
         </div>
 
         <Input
           type="text"
-          placeholder="検索"
+          placeholder={t("search")}
           value={inputValue}
           onChange={(e) => {
             setInputValue(e.target.value);
@@ -66,7 +68,12 @@ export function SearchCaption({
               <Button
                 variant={"plain"}
                 size={"icon"}
-                className="pointer-events-auto text-secondary-light"
+                className={cn(
+                  "pointer-events-auto text-secondary-light hover:opacity-80",
+                  {
+                    "opacity-50": !isPanelOpen,
+                  },
+                )}
                 onClick={onFilterClick}
               >
                 <Settings2 size={22} />
