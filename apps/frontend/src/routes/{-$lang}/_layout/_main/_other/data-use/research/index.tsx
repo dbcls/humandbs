@@ -286,4 +286,30 @@ const columns = [
       />
     ),
   }),
+  columnHelper.accessor("platforms", {
+    id: "platforms",
+    header: (ctx) => ctx.table.options.meta?.t("platforms"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx
+          .renderValue()
+          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+      />
+    ),
+  }),
+  columnHelper.accessor("targets", {
+    id: "targets",
+    header: (ctx) => ctx.table.options.meta?.t("targets"),
+  }),
+  columnHelper.accessor("dataProvider", {
+    id: "dataProvider",
+    header: (ctx) => ctx.table.options.meta?.t("data-provider"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx
+          .renderValue()
+          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+      />
+    ),
+  }),
 ];
