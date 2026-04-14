@@ -18,17 +18,20 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
 
-const tableHeaderRowVariants = cva("rounded bg-linear-to-r text-left text-white", {
-  variants: {
-    variant: {
-      default: "from-secondary-light to-secondary-lighter",
-      darker: "from-secondary to-secondary-light",
+const tableHeaderRowVariants = cva(
+  "rounded bg-linear-to-r text-left text-white",
+  {
+    variants: {
+      variant: {
+        default: "from-secondary-light to-secondary-lighter",
+        darker: "from-secondary to-secondary-light",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
     },
   },
-  defaultVariants: {
-    variant: "default",
-  },
-});
+);
 
 function Table<T extends Record<string, unknown>>({
   className,
@@ -72,7 +75,12 @@ function Table<T extends Record<string, unknown>>({
   });
 
   return (
-    <table className={cn("w-full table-fixed align-top", className)}>
+    <table
+      className={cn(
+        "w-full table-fixed align-top relative min-h-full",
+        className,
+      )}
+    >
       <thead className="text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
@@ -100,12 +108,15 @@ function Table<T extends Record<string, unknown>>({
           );
         })}
       </thead>
+
       <tbody>
         {table.getRowModel().rows.map((row) => (
           <tr
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            className={onRowClick ? "cursor-pointer hover:bg-gray-50" : undefined}
+            className={
+              onRowClick ? "cursor-pointer hover:bg-gray-50" : undefined
+            }
           >
             {row.getVisibleCells().map((cell) => (
               <td

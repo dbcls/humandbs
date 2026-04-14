@@ -52,6 +52,7 @@ function RouteComponent() {
 
   return (
     <FilterableCard
+      className="flex flex-col"
       caption={({ onFilterClick, isOpen }) => (
         <SearchCaption
           title={t("research-list")}
@@ -151,9 +152,9 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex flex-col flex-1 relative">
         <Table
-          className={cn("mt-4 text-sm transition-[margin]", {
+          className={cn("mt-4 text-sm transition-[margin] z-10", {
             "mr-filter-panel": panelOpen,
           })}
           columns={columns}
@@ -162,6 +163,13 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
           onSortingChange={handleSortingChange}
           meta={{ t, lang }}
         />
+        {researchesData.data.length === 0 ? (
+          <div className="flex-1 relative z-0">
+            <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-neutral-500">
+              No data
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <Pagination pagination={researchesData.meta.pagination} />
@@ -276,7 +284,7 @@ const columns = [
   columnHelper.accessor("methods", {
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("methods"),
-    cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
+    cell: (ctx) => <p className="text-sm break-all">{ctx.renderValue()}</p>,
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",

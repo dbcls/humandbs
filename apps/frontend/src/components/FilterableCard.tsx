@@ -24,7 +24,7 @@ export function FilterableCard({
 
   return (
     <Card
-      className={className}
+      className={cn("flex-1", className)}
       caption={caption({
         onFilterClick: () => {
           setPanelOpen((v) => !v);
@@ -32,7 +32,7 @@ export function FilterableCard({
         isOpen: panelOpen,
       })}
       captionSize={captionSize}
-      containerClassName="relative overflow-hidden"
+      containerClassName="relative overflow-hidden flex flex-col flex-1"
     >
       <Suspense fallback={<SkeletonLoading />}>
         {renderChildren({ panelOpen })}

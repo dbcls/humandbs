@@ -141,7 +141,7 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-">
         <Table
           className={cn("mt-4 text-sm transition-[margin]", {
             "mr-filter-panel": panelOpen,
