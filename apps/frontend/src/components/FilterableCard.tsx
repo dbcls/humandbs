@@ -8,7 +8,7 @@ export function FilterableCard({
   caption,
   captionSize,
   className,
-  children,
+  renderChildren,
   renderPanel,
 }: {
   caption: (props: {
@@ -17,7 +17,7 @@ export function FilterableCard({
   }) => React.ReactNode;
   captionSize?: "lg";
   className?: string;
-  children: React.ReactNode;
+  renderChildren: (props: { panelOpen: boolean }) => React.ReactNode;
   renderPanel: (props: { onClose: () => void }) => React.ReactNode;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
@@ -34,7 +34,9 @@ export function FilterableCard({
       captionSize={captionSize}
       containerClassName="relative overflow-hidden"
     >
-      <Suspense fallback={<SkeletonLoading />}>{children}</Suspense>
+      <Suspense fallback={<SkeletonLoading />}>
+        {renderChildren({ panelOpen })}
+      </Suspense>
 
       <div
         className={cn(

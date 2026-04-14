@@ -22,6 +22,7 @@ import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-use/research/",
@@ -51,7 +52,7 @@ function RouteComponent() {
 
   return (
     <FilterableCard
-      caption={({ onFilterClick }) => (
+      caption={({ onFilterClick, isOpen }) => (
         <SearchCaption
           title={t("research-list")}
           committedQuery={search.query ?? ""}
@@ -59,12 +60,12 @@ function RouteComponent() {
             setFilters({ query });
           }}
           onFilterClick={onFilterClick}
+          isPanelOpen={isOpen}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-    >
-      <CardContent />
-    </FilterableCard>
+      renderChildren={({ panelOpen }) => <CardContent panelOpen={panelOpen} />}
+    ></FilterableCard>
   );
 }
 
@@ -114,7 +115,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CardContent() {
+function CardContent({ panelOpen }: { panelOpen: boolean }) {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
@@ -152,7 +153,9 @@ function CardContent() {
     <>
       <div className="overflow-x-auto">
         <Table
-          className="mt-4 text-sm"
+          className={cn("mt-4 text-sm transition-[margin]", {
+            "mr-filter-panel": panelOpen,
+          })}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}

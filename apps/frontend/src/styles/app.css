@@ -312,6 +312,7 @@
   --warning: "\f071";
   --cms-assets-panel-width: 500px;
   --cms-list-panel-width: 30rem;
+  --filter-panel-width: 30rem;
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -350,6 +351,7 @@
 
   --spacing-cms-assets-panel: var(--cms-assets-panel-width);
   --spacing-cms-list-panel: var(--cms-list-panel-width);
+  --spacing-filter-panel: var(--filter-panel-width);
 
   --spacing-content-max-width: 90rem;
   --spacing-content-min-width:
@@ -436,10 +438,13 @@
       z-index: 9999;
     }
 
-
-
     .w-md-editor-preview {
-      h1, h2, h3, h4, h5, h6 {
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
         position: relative;
         .anchor {
           display: none;
@@ -550,7 +555,12 @@
     }
     @apply prose prose-h1:text-secondary text-base prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words;
 
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
       position: relative;
       .anchor {
         display: none;
