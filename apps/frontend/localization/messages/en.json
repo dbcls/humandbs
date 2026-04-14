@@ -153,7 +153,7 @@
     "variantCnv": "CNV Count",
     "variantSv": "SV Count",
     "variantTotal": "Total Variant Count",
-    "humId": "Dataset ID",
+    "humId": "Research ID",
     "panel-title": "Filter details",
     "panel-reset-all": "Reset all",
     "panel-reset": "Reset",

@@ -11,7 +11,10 @@ export function FilterableCard({
   children,
   renderPanel,
 }: {
-  caption: (props: { onFilterClick: () => void }) => React.ReactNode;
+  caption: (props: {
+    onFilterClick: () => void;
+    isOpen: boolean;
+  }) => React.ReactNode;
   captionSize?: "lg";
   className?: string;
   children: React.ReactNode;
@@ -26,6 +29,7 @@ export function FilterableCard({
         onFilterClick: () => {
           setPanelOpen((v) => !v);
         },
+        isOpen: panelOpen,
       })}
       captionSize={captionSize}
       containerClassName="relative overflow-hidden"

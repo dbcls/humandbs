@@ -61,13 +61,14 @@ function RouteComponent() {
   return (
     <FilterableCard
       captionSize="lg"
-      caption={({ onFilterClick }) => (
+      caption={({ onFilterClick, isOpen }) => (
         <SearchCaption
           title={t("dataset-list")}
           committedQuery={search.query ?? ""}
           onQueryChange={(query) => {
             setFilters({ query });
           }}
+          isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
         />
       )}
