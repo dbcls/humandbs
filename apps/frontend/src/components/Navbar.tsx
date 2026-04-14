@@ -117,7 +117,7 @@ export function Navbar() {
       <NavigationMenu
         ref={navContainerRef}
         viewport={false}
-        className="hidden md:flex relative flex-1 max-w-none w-full min-w-0"
+        className="hidden md:flex relative flex-1 max-w-none w-full min-w-0 justify-start"
       >
         <NavigationMenuList
           ref={navListRef}
