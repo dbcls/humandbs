@@ -6,7 +6,8 @@
     "search": "検索",
     "copy": "コピー",
     "more": "他{count}件",
-    "collapse": "折りたたむ"
+    "collapse": "折りたたむ",
+    "no-data": "データなし"
   },
   "Footer": {
     "sitemap": "サイトマップ"

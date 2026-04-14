@@ -154,22 +154,18 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
     <>
       <div className="overflow-x-auto flex flex-col flex-1 relative">
         <Table
-          className={cn("mt-4 text-sm transition-[margin] z-10", {
-            "mr-filter-panel": panelOpen,
-          })}
+          className={cn(
+            "mt-4 text-sm flex-1 transition-[margin] z-10 relative",
+            {
+              "mr-filter-panel": panelOpen,
+            },
+          )}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}
           onSortingChange={handleSortingChange}
           meta={{ t, lang }}
         />
-        {researchesData.data.length === 0 ? (
-          <div className="flex-1 relative z-0">
-            <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-neutral-500">
-              No data
-            </p>
-          </div>
-        ) : null}
       </div>
 
       <Pagination pagination={researchesData.meta.pagination} />

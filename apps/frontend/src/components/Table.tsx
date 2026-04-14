@@ -17,6 +17,7 @@ import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
+import { useTranslations } from "use-intl";
 
 const tableHeaderRowVariants = cva(
   "rounded bg-linear-to-r text-left text-white",
@@ -52,6 +53,7 @@ function Table<T extends Record<string, unknown>>({
   meta?: TableMeta<T>;
   variant?: VariantProps<typeof tableHeaderRowVariants>["variant"];
 }) {
+  const t = useTranslations("common");
   const table = useReactTable({
     data,
     columns,
@@ -75,13 +77,8 @@ function Table<T extends Record<string, unknown>>({
   });
 
   return (
-    <table
-      className={cn(
-        "w-full table-fixed align-top relative min-h-full",
-        className,
-      )}
-    >
-      <thead className="text-white">
+    <table className={cn("w-full table-fixed align-top relative ", className)}>
+      <thead className="text-white z-10 relative">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
             <tr
@@ -145,6 +142,13 @@ function Table<T extends Record<string, unknown>>({
           </tr>
         ))}
       </tfoot>
+      {data.length === 0 ? (
+        <div className="absolute inset-0 z-0">
+          <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-neutral-400">
+            {t("no-data")}
+          </p>
+        </div>
+      ) : null}
     </table>
   );
 }

@@ -6,7 +6,8 @@
     "search": "Search",
     "copy": "Copy",
     "more": "{count} more",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "no-data": "No data"
   },
   "Footer": {
     "sitemap": "Sitemap"
