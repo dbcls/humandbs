@@ -6,6 +6,7 @@ import {
 } from "./ui/collapsible";
 import { Button } from "./ui/button";
 import { ChevronsUpDown } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 export function CollapsiblePreview({
   items,
@@ -15,6 +16,8 @@ export function CollapsiblePreview({
   items: { id: string | number; content: () => React.ReactNode }[] | undefined;
 }) {
   const [open, setOpen] = useState(false);
+
+  const t = useTranslations("common");
 
   if (!items) return null;
 
@@ -41,10 +44,14 @@ export function CollapsiblePreview({
       </CollapsibleContent>
       {xMore > 0 ? (
         <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-foreground-light">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-foreground-light transition-colors hover:text-neutral-500"
+          >
             <ChevronsUpDown className="size-6" />
             <span className="text-xs font-normal">
-              {open ? `Collapse` : `See ${xMore} more`}
+              {open ? t("collapse") : t("more", { count: xMore })}
             </span>
           </Button>
         </CollapsibleTrigger>

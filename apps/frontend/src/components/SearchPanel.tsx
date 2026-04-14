@@ -387,9 +387,9 @@ function PanelHeader({
       <div className="flex items-center gap-1">
         {hasAnyFilter && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="slim"
-            className="text-xs text-muted-foreground"
+            className="text-2xs text-muted-foreground py-0"
             onClick={onResetAll}
           >
             {t("panel-reset-all")}
@@ -539,9 +539,10 @@ function FacetItemWrapper({
         <span>{t(id as Parameters<typeof t>[0])}</span>
       </AccordionTrigger>
       {hasValue && (
-        <button
-          type="button"
-          className="absolute right-6 top-0 z-10 h-10 px-0 text-xs text-muted-foreground"
+        <Button
+          variant={"outline"}
+          size={"slim"}
+          className="absolute right-0 top-1 py-0 z-10 text-2xs text-muted-foreground"
           onPointerDown={(e) => {
             e.stopPropagation();
           }}
@@ -551,7 +552,7 @@ function FacetItemWrapper({
           }}
         >
           {t("panel-reset")}
-        </button>
+        </Button>
       )}
       <AccordionContent className="pl-5 py-1">{children}</AccordionContent>
     </AccordionItem>

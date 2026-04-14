@@ -5,7 +5,8 @@
     "previous-versions": "{documentName}の改定",
     "search": "検索",
     "copy": "コピー",
-    "more": "他{count}件"
+    "more": "他{count}件",
+    "collapse": "Collapse"
   },
   "Footer": {
     "sitemap": "サイトマップ"

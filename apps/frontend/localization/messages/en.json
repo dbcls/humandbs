@@ -5,7 +5,8 @@
     "previous-versions": "Previous versions of {documentName}:",
     "search": "Search",
     "copy": "Copy",
-    "more": "{count} more"
+    "more": "{count} more",
+    "collapse": "Collapse"
   },
   "Footer": {
     "sitemap": "Sitemap"
