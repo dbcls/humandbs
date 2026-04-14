@@ -21,6 +21,7 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/data-use/research/",
@@ -189,15 +190,19 @@ const columns = [
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => {
       return (
-        <ul>
-          {ctx.row.original.datasetIds.map((datasetId) => (
-            <li key={datasetId}>
-              <Route.Link to="../datasets/$datasetId" params={{ datasetId }}>
-                <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
+        <CollapsiblePreview
+          items={ctx.row.original.datasetIds.map((id) => ({
+            id,
+            content: () => (
+              <Route.Link
+                to="../datasets/$datasetId"
+                params={{ datasetId: id }}
+              >
+                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
               </Route.Link>
-            </li>
-          ))}
-        </ul>
+            ),
+          }))}
+        />
       );
     },
     size: 15,
@@ -269,5 +274,16 @@ const columns = [
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("methods"),
     cell: (ctx) => <p className="text-sm">{ctx.renderValue()}</p>,
+  }),
+  columnHelper.accessor("typeOfData", {
+    id: "typeOfData",
+    header: (ctx) => ctx.table.options.meta?.t("type-of-data"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx
+          .renderValue()
+          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+      />
+    ),
   }),
 ];
