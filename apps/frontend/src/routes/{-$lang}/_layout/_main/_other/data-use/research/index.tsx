@@ -120,7 +120,7 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
-  const t = useTranslations("Research-list");
+  const t = useTranslations("Research");
 
   const { data: researchesData } = useSuspenseQuery(
     getResearchesQueryOptions({ ...search, lang }),
@@ -307,6 +307,10 @@ const columns = [
   columnHelper.accessor("targets", {
     id: "targets",
     header: (ctx) => ctx.table.options.meta?.t("targets"),
+  }),
+  columnHelper.accessor("criteria", {
+    id: "criteria",
+    header: (ctx) => ctx.table.options.meta?.t("criteria"),
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
