@@ -300,8 +300,9 @@ searchRouter.openapi(postDatasetSearchRoute, async (c) => {
 
 // GET /facets
 searchRouter.openapi(getFacetsRoute, async (c) => {
-  const filters = c.req.valid("query")
+  const { countBy, ...filters } = c.req.valid("query")
   const authUser = c.get("authUser")
+  const facetCountField = countBy === "research" ? "humId" : "datasetId"
 
   // Fetch facets from Dataset index with includeFacets=true
   const result = await searchDatasets({
@@ -312,7 +313,7 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
     sort: "datasetId",
     order: "asc",
     includeFacets: true,
-  } as DatasetSearchQuery, authUser)
+  } as DatasetSearchQuery, authUser, { facetCountField })
 
   // Return facets with counts (read-only response)
   return singleReadOnlyResponse(c, result.facets ?? {})
@@ -321,8 +322,9 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
 // GET /facets/{fieldName}
 searchRouter.openapi(getFacetFieldRoute, async (c) => {
   const { fieldName } = c.req.valid("param")
-  const filters = c.req.valid("query")
+  const { countBy, ...filters } = c.req.valid("query")
   const authUser = c.get("authUser")
+  const facetCountField = countBy === "research" ? "humId" : "datasetId"
 
   // Fetch facets from Dataset index
   const result = await searchDatasets({
@@ -333,7 +335,7 @@ searchRouter.openapi(getFacetFieldRoute, async (c) => {
     sort: "datasetId",
     order: "asc",
     includeFacets: true,
-  } as DatasetSearchQuery, authUser)
+  } as DatasetSearchQuery, authUser, { facetCountField })
 
   // Return facet values with counts (read-only response)
   const fieldFacet = result.facets?.[fieldName] ?? []

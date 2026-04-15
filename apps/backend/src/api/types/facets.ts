@@ -41,12 +41,23 @@ export type ResearchFacetName = DatasetFacetName
 
 /**
  * Facet value with count (Zod schema)
+ *
+ * The meaning of `count` depends on the endpoint that returned it:
+ * - `POST /research/search` (includeFacets=true): number of unique Researches (humId cardinality)
+ * - `POST /dataset/search` (includeFacets=true): number of unique Datasets (datasetId cardinality)
+ * - `GET /facets`, `GET /facets/{fieldName}`: depends on the `countBy` query parameter
+ *   ("research" = humId cardinality, "dataset" = datasetId cardinality; defaults to "dataset")
  */
 export const FacetValueSchema = z.object({
   value: z.string()
     .describe("The facet value (e.g., 'WGS', 'Controlled-access (Type I)')"),
   count: z.number()
-    .describe("Number of resources matching this facet value"),
+    .describe(
+      "Number of unique entities matching this facet value. "
+      + "Research list endpoints count unique Researches (humId); "
+      + "Dataset list endpoints count unique Datasets (datasetId). "
+      + "For GET /facets, the counted entity is controlled by the countBy query parameter.",
+    ),
 })
 export type FacetValue = z.infer<typeof FacetValueSchema>
 

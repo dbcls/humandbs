@@ -51,6 +51,7 @@ export {
   doubleNestedFacetAgg,
   platformFacetAgg,
 } from "@/api/es-client/helpers"
+export type { FacetCountField } from "@/api/es-client/helpers"
 
 // Research operations
 export {

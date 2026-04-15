@@ -74,6 +74,49 @@ describe("Smoke: search & aggregations", () => {
     expect(typeof body.facets).toBe("object")
   })
 
+  itLive("POST /research/search facets は Dataset 一覧より小さい (Research 単位カウント)", async () => {
+    // Research 一覧は humId cardinality、Dataset 一覧は datasetId cardinality。
+    // 1 Research が複数 Dataset を持つケースが含まれるため、facet ごとに
+    // Research count ≤ Dataset count が成立するはず。
+    const asMap = (facets: unknown): Record<string, { value: string; count: number }[]> =>
+      (facets ?? {}) as Record<string, { value: string; count: number }[]>
+
+    const [r, d] = await Promise.all([
+      fetchJson("/research/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 1, lang: "ja", includeFacets: true }),
+      }),
+      fetchJson("/dataset/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 1, lang: "ja", includeFacets: true }),
+      }),
+    ])
+
+    expect(r.status).toBe(200)
+    expect(d.status).toBe(200)
+
+    const researchFacets = asMap(r.body.facets)
+    const datasetFacets = asMap(d.body.facets)
+
+    // 全 18 facet について Research count ≤ Dataset count を検証
+    const facetNames = Object.keys(datasetFacets)
+    expect(facetNames.length).toBeGreaterThan(0)
+
+    for (const name of facetNames) {
+      const rVals = researchFacets[name] ?? []
+      const dVals = datasetFacets[name] ?? []
+      const dByValue = new Map(dVals.map(v => [v.value, v.count]))
+
+      for (const rv of rVals) {
+        const dCount = dByValue.get(rv.value)
+        if (dCount === undefined) continue
+        expect(rv.count).toBeLessThanOrEqual(dCount)
+      }
+    }
+  })
+
   itLive("POST /research/search with datasetFilters -> 200, filtered", async () => {
     const { status, body } = await fetchJson("/research/search", {
       method: "POST",
@@ -199,5 +242,47 @@ describe("Smoke: search & aggregations", () => {
     const facet = body.data as Record<string, unknown>
     expect(facet).toHaveProperty("fieldName", "tissues")
     expect(Array.isArray(facet.values)).toBe(true)
+  })
+
+  itLive("GET /facets?countBy=research の count は countBy=dataset 以下", async () => {
+    type FacetMap = Record<string, { value: string; count: number }[] | undefined>
+
+    const [resDefault, resDataset, resResearch] = await Promise.all([
+      fetchJson("/facets"),
+      fetchJson("/facets?countBy=dataset"),
+      fetchJson("/facets?countBy=research"),
+    ])
+
+    expect(resDefault.status).toBe(200)
+    expect(resDataset.status).toBe(200)
+    expect(resResearch.status).toBe(200)
+
+    const defaultData = resDefault.body.data as FacetMap
+    const datasetData = resDataset.body.data as FacetMap
+    const researchData = resResearch.body.data as FacetMap
+
+    // デフォルトは countBy=dataset と同じ値 (後方互換)
+    expect(defaultData).toEqual(datasetData)
+
+    // Research 一覧の count は Dataset 一覧の count 以下
+    const facetNames = Object.keys(datasetData)
+    expect(facetNames.length).toBeGreaterThan(0)
+
+    for (const name of facetNames) {
+      const rVals = researchData[name] ?? []
+      const dVals = datasetData[name] ?? []
+      const dByValue = new Map(dVals.map(v => [v.value, v.count]))
+
+      for (const rv of rVals) {
+        const dCount = dByValue.get(rv.value)
+        if (dCount === undefined) continue
+        expect(rv.count).toBeLessThanOrEqual(dCount)
+      }
+    }
+  })
+
+  itLive("GET /facets?countBy=invalid -> 400", async () => {
+    const { status } = await fetchJson("/facets?countBy=invalid")
+    expect(status).toBe(400)
   })
 })

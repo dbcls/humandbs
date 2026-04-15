@@ -154,6 +154,12 @@ export const FacetFilterQuerySchema = DatasetSearchQuerySchema.omit({
   order: true,
   includeFacets: true,
   includeRawHtml: true,
+}).extend({
+  countBy: z.enum(["research", "dataset"]).default("dataset")
+    .describe(
+      "Entity to count in each facet bucket. 'research' counts unique Researches (humId), "
+      + "'dataset' counts unique Datasets (datasetId). Defaults to 'dataset' for backward compatibility.",
+    ),
 })
 export type FacetFilterQuery = z.infer<typeof FacetFilterQuerySchema>
 

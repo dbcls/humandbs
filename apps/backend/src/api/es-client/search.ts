@@ -20,6 +20,7 @@ import {
   platformFacetAgg,
   topLevelFacetAgg,
 } from "@/api/es-client/helpers"
+import type { FacetCountField } from "@/api/es-client/helpers"
 import {
   buildDatasetMultiMatchQuery,
   buildDatasetSortSpec,
@@ -271,42 +272,47 @@ export const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchS
 
 // === Facet Aggregation Builders ===
 
-const buildFacetAggregations = (): Record<string, estypes.AggregationsAggregationContainer> => ({
-  // Top-level facets (with cardinality for unique dataset count)
-  criteria: topLevelFacetAgg("criteria"),
+const buildFacetAggregations = (
+  countField: FacetCountField,
+): Record<string, estypes.AggregationsAggregationContainer> => ({
+  // Top-level facets (with cardinality for unique entity count)
+  criteria: topLevelFacetAgg("criteria", countField),
 
   // Basic nested facets
-  assayType: nestedFacetAgg("experiments.searchable.assayType"),
-  tissues: nestedFacetAgg("experiments.searchable.tissues"),
-  population: nestedFacetAgg("experiments.searchable.population"),
-  platform: platformFacetAgg(),
-  fileTypes: nestedFacetAgg("experiments.searchable.fileTypes"),
-  healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", 10),
+  assayType: nestedFacetAgg("experiments.searchable.assayType", countField),
+  tissues: nestedFacetAgg("experiments.searchable.tissues", countField),
+  population: nestedFacetAgg("experiments.searchable.population", countField),
+  platform: platformFacetAgg(countField),
+  fileTypes: nestedFacetAgg("experiments.searchable.fileTypes", countField),
+  healthStatus: nestedFacetAgg("experiments.searchable.healthStatus", countField, 10),
 
   // Extended facets
-  subjectCountType: nestedFacetAgg("experiments.searchable.subjectCountType", 10),
-  isTumor: nestedFacetAgg("experiments.searchable.isTumor", 5),
-  cellLine: nestedFacetAgg("experiments.searchable.cellLine"),
-  sex: nestedFacetAgg("experiments.searchable.sex", 10),
-  ageGroup: nestedFacetAgg("experiments.searchable.ageGroup", 10),
-  libraryKits: nestedFacetAgg("experiments.searchable.libraryKits"),
-  readType: nestedFacetAgg("experiments.searchable.readType", 10),
-  referenceGenome: nestedFacetAgg("experiments.searchable.referenceGenome"),
-  processedDataTypes: nestedFacetAgg("experiments.searchable.processedDataTypes"),
-  hasPhenotypeData: nestedFacetAgg("experiments.searchable.hasPhenotypeData", 5),
+  subjectCountType: nestedFacetAgg("experiments.searchable.subjectCountType", countField, 10),
+  isTumor: nestedFacetAgg("experiments.searchable.isTumor", countField, 5),
+  cellLine: nestedFacetAgg("experiments.searchable.cellLine", countField),
+  sex: nestedFacetAgg("experiments.searchable.sex", countField, 10),
+  ageGroup: nestedFacetAgg("experiments.searchable.ageGroup", countField, 10),
+  libraryKits: nestedFacetAgg("experiments.searchable.libraryKits", countField),
+  readType: nestedFacetAgg("experiments.searchable.readType", countField, 10),
+  referenceGenome: nestedFacetAgg("experiments.searchable.referenceGenome", countField),
+  processedDataTypes: nestedFacetAgg("experiments.searchable.processedDataTypes", countField),
+  hasPhenotypeData: nestedFacetAgg("experiments.searchable.hasPhenotypeData", countField, 5),
 
   // Double-nested facets
   disease: doubleNestedFacetAgg(
     "experiments.searchable.diseases",
     "experiments.searchable.diseases.label",
+    countField,
   ),
   diseaseIcd10: doubleNestedFacetAgg(
     "experiments.searchable.diseases",
     "experiments.searchable.diseases.icd10",
+    countField,
   ),
   policyId: doubleNestedFacetAgg(
     "experiments.searchable.policies",
     "experiments.searchable.policies.id",
+    countField,
   ),
 })
 
@@ -476,12 +482,19 @@ const extractFacets = (aggs: Record<string, unknown> | undefined): FacetsMap => 
 
 // === Dataset Search ===
 
+export interface SearchDatasetsOptions {
+  /** Field used for the cardinality count inside facet aggregations. Defaults to "datasetId". */
+  facetCountField?: FacetCountField
+}
+
 export const searchDatasets = async (
   params: DatasetSearchQuery,
   authUser: AuthUser | null = null,
+  opts: SearchDatasetsOptions = {},
 ): Promise<DatasetSearchResult> => {
   const { page, limit, sort, order, q, includeFacets } = params
   const from = (page - 1) * limit
+  const facetCountField: FacetCountField = opts.facetCountField ?? "datasetId"
 
   // Build query (lang filter removed - documents are BilingualText)
   const must: estypes.QueryDslQueryContainer[] = []
@@ -538,7 +551,7 @@ export const searchDatasets = async (
     track_total_hits: true,
     aggs: {
       uniq_ids: { cardinality: { field: "datasetId" } },
-      ...(includeFacets ? buildFacetAggregations() : {}),
+      ...(includeFacets ? buildFacetAggregations(facetCountField) : {}),
     },
   })
 
@@ -791,7 +804,7 @@ export const searchResearches = async (
       index: ES_INDEX.dataset,
       size: 0,
       query: datasetFacetQuery.length > 0 ? { bool: { must: datasetFacetQuery } } : { match_all: {} },
-      aggs: buildFacetAggregations(),
+      aggs: buildFacetAggregations("humId"),
     })
 
     facets = extractFacets(facetRes.aggregations as unknown as Record<string, unknown>)
