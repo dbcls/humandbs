@@ -18,7 +18,7 @@ import {
   BilingualUrlValueSchema,
   PeriodOfDataUseSchema,
   UrlValueSchema,
-} from "@/crawler/types/common"
+} from "../../crawler/types/common"
 
 /** TextValue without rawHtml (request-only) */
 export const TextValueRequestSchema = z.object({
