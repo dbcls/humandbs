@@ -338,8 +338,9 @@ const parseSummarySection = (
         }
       } else {
         const cleanedText = stripSummaryPrefix(text)
+        const currentRawHtml = summary[currentField].rawHtml ?? ""
         summary[currentField].text += (summary[currentField].text ? "\n" : "") + cleanedText
-        summary[currentField].rawHtml += (summary[currentField].rawHtml ? "\n" : "") + rawHtml
+        summary[currentField].rawHtml = currentRawHtml + (currentRawHtml ? "\n" : "") + rawHtml
       }
     } else {
       logger.debug("Text outside recognized summary fields", { humVersionId, lang, text })
@@ -482,7 +483,7 @@ const parseMolecularDataSection = (
         if (keyText in data && data[keyText] !== null) {
           data[keyText] = {
             text: data[keyText].text + "\n" + valueTexts.join(" "),
-            rawHtml: data[keyText].rawHtml + "\n" + valueHtmls.join("\n"),
+            rawHtml: (data[keyText].rawHtml ?? "") + "\n" + valueHtmls.join("\n"),
           }
         } else {
           data[keyText] = {

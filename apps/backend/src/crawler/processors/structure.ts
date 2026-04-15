@@ -193,7 +193,7 @@ export const extractDatasetIdsFromMolData = (molData: NormalizedMolecularData): 
     const values = Array.isArray(val) ? val : [val]
     for (const v of values) {
       addIds(v.text)
-      addIds(v.rawHtml)
+      if (v.rawHtml !== null) addIds(v.rawHtml)
     }
   }
 

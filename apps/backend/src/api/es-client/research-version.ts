@@ -20,6 +20,8 @@ import type {
   EsResearch,
   ResearchVersion,
 } from "@/api/types"
+import type { BilingualTextValueRequest } from "@/api/types/request-schemas"
+import { hydrateBilingualTextValue } from "@/api/utils/hydrate-raw-html"
 
 // === ResearchVersion Retrieval ===
 
@@ -123,7 +125,7 @@ export const listResearchVersionsSorted = async (
  */
 export const createResearchVersion = async (
   humId: string,
-  releaseNote: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null },
+  releaseNote: BilingualTextValueRequest,
   datasets: { datasetId: string; version: string }[] | undefined,
   seqNo: number,
   primaryTerm: number,
@@ -159,7 +161,7 @@ export const createResearchVersion = async (
     version: newVersion,
     versionReleaseDate: now,
     datasets: datasetsToUse,
-    releaseNote,
+    releaseNote: hydrateBilingualTextValue(releaseNote),
   }
 
   // Index the version document first

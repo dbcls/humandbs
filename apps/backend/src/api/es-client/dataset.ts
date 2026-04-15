@@ -19,7 +19,8 @@ import {
 } from "@/api/es-client/research-version"
 import { logger } from "@/api/logger"
 import { EsDatasetSchema } from "@/api/types"
-import type { AuthUser, DatasetVersionItem, EsDataset, ResearchDetail } from "@/api/types"
+import type { AuthUser, CreateDatasetRequest, DatasetVersionItem, EsDataset, ResearchDetail, UpdateDatasetRequest } from "@/api/types"
+import { hydrateExperiment } from "@/api/utils/hydrate-raw-html"
 
 // === Dataset Retrieval ===
 
@@ -184,18 +185,10 @@ const getNextDatasetVersion = async (datasetId: string): Promise<string> => {
  * @param autoLinkToResearch - Whether to auto-link to ResearchVersion (default: true)
  * @returns Created Dataset document
  */
-export const createDataset = async (params: {
-  datasetId?: string // Optional: auto-generates DRAFT-{humId}-{uuid} if not provided
-  humId: string
-  humVersionId: string
-  releaseDate: string
-  criteria: "Controlled-access (Type I)" | "Controlled-access (Type II)" | "Unrestricted-access"
-  typeOfData: { ja: string | null; en: string | null }
-  experiments: {
-    header: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-    data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
-  }[]
-}, autoLinkToResearch = true): Promise<EsDataset> => {
+export const createDataset = async (
+  params: CreateDatasetRequest & { datasetId?: string },
+  autoLinkToResearch = true,
+): Promise<EsDataset> => {
   const now = new Date().toISOString().split("T")[0]
 
   // Generate datasetId if not provided
@@ -214,7 +207,7 @@ export const createDataset = async (params: {
     releaseDate: params.releaseDate,
     criteria: params.criteria,
     typeOfData: params.typeOfData,
-    experiments: params.experiments,
+    experiments: params.experiments.map(hydrateExperiment),
   }
 
   const esId = `${datasetId}-${version}`
@@ -267,21 +260,19 @@ export const createDataset = async (params: {
 export const updateDataset = async (
   datasetId: string,
   version: string,
-  updates: {
-    releaseDate?: string
-    criteria?: "Controlled-access (Type I)" | "Controlled-access (Type II)" | "Unrestricted-access"
-    typeOfData?: { ja: string | null; en: string | null }
-    experiments?: {
-      header: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      data: Record<string, { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null } | null>
-    }[]
-    humId?: string
-    humVersionId?: string
-  },
+  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term">>,
   seqNo: number,
   primaryTerm: number,
 ): Promise<EsDataset | null> => {
   const esId = `${datasetId}-${version}`
+
+  const hydratedDoc: Record<string, unknown> = {}
+  if (updates.releaseDate !== undefined) hydratedDoc.releaseDate = updates.releaseDate
+  if (updates.criteria !== undefined) hydratedDoc.criteria = updates.criteria
+  if (updates.typeOfData !== undefined) hydratedDoc.typeOfData = updates.typeOfData
+  if (updates.humId !== undefined) hydratedDoc.humId = updates.humId
+  if (updates.humVersionId !== undefined) hydratedDoc.humVersionId = updates.humVersionId
+  if (updates.experiments !== undefined) hydratedDoc.experiments = updates.experiments.map(hydrateExperiment)
 
   try {
     await esClient.update({
@@ -290,7 +281,7 @@ export const updateDataset = async (
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
       body: {
-        doc: updates,
+        doc: hydratedDoc,
       },
       refresh: "wait_for",
     })

@@ -15,11 +15,8 @@ import {
   BilingualTextSchema,
   BilingualTextValueSchema,
   CriteriaCanonicalSchema,
-  PersonSchema,
-  ResearchProjectSchema,
   GrantSchema,
   PublicationSchema,
-  SummarySchema,
   // Crawler schemas (for API request validation)
   CrawlerResearchSchema as ResearchSchema,
   ResearchVersionSchema,
@@ -32,6 +29,13 @@ import {
 } from "./es-docs"
 import { FacetsMapSchema } from "./facets"
 import { ResearchSummarySchema } from "./query-params"
+import {
+  BilingualTextValueRequestSchema,
+  ExperimentRequestSchema,
+  PersonRequestSchema,
+  ResearchProjectRequestSchema,
+  SummaryRequestSchema,
+} from "./request-schemas"
 import {
   ResponseMetaReadOnlySchema,
   ResponseMetaWithLockSchema,
@@ -150,18 +154,18 @@ export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
 // - controlledAccessUser: all fields included
 // - relatedPublication: all fields included
 
-/** dataProvider: 実データのない 3 フィールドを除外 */
-const ApiDataProviderPersonSchema = PersonSchema.omit({
+/** relatedPublication: datasetIds で論文とデータセットを紐付ける */
+const ApiPublicationSchema = PublicationSchema
+
+/** dataProvider (request 用): rawHtml を含まない + 実データのない 3 フィールドを除外 */
+const ApiDataProviderPersonRequestSchema = PersonRequestSchema.omit({
   datasetIds: true,
   researchTitle: true,
   periodOfDataUse: true,
 })
 
-/** controlledAccessUser: 全フィールド必要 */
-const ApiControlledAccessUserPersonSchema = PersonSchema
-
-/** relatedPublication: datasetIds で論文とデータセットを紐付ける */
-const ApiPublicationSchema = PublicationSchema
+/** controlledAccessUser (request 用): rawHtml を含まない */
+const ApiControlledAccessUserPersonRequestSchema = PersonRequestSchema
 
 // === Research API ===
 
@@ -182,15 +186,15 @@ export const CreateResearchRequestSchema = z.object({
   title: BilingualTextSchema.optional().describe(
     "Research title in Japanese and English",
   ),
-  summary: SummarySchema.optional().describe(
+  summary: SummaryRequestSchema.optional().describe(
     "Research summary including aims, methods, and targets",
   ),
   dataProvider: z
-    .array(ApiDataProviderPersonSchema)
+    .array(ApiDataProviderPersonRequestSchema)
     .optional()
     .describe("Data providers (researchers providing the data)"),
   researchProject: z
-    .array(ResearchProjectSchema)
+    .array(ResearchProjectRequestSchema)
     .optional()
     .describe("Related research projects"),
   grant: z.array(GrantSchema).optional().describe("Funding grants"),
@@ -208,7 +212,7 @@ export const CreateResearchRequestSchema = z.object({
     ),
 
   // Initial version release note (optional)
-  initialReleaseNote: BilingualTextValueSchema.optional().describe(
+  initialReleaseNote: BilingualTextValueRequestSchema.optional().describe(
     "Release note for the initial version (v1)",
   ),
 })
@@ -224,15 +228,15 @@ export const UpdateResearchRequestSchema = z.object({
   title: BilingualTextSchema.optional().describe(
     "Research title in Japanese and English",
   ),
-  summary: SummarySchema.optional().describe(
+  summary: SummaryRequestSchema.optional().describe(
     "Research summary including aims, methods, and targets",
   ),
   dataProvider: z
-    .array(ApiDataProviderPersonSchema)
+    .array(ApiDataProviderPersonRequestSchema)
     .optional()
     .describe("Data providers (researchers providing the data)"),
   researchProject: z
-    .array(ResearchProjectSchema)
+    .array(ResearchProjectRequestSchema)
     .optional()
     .describe("Related research projects"),
   grant: z.array(GrantSchema).optional().describe("Funding grants"),
@@ -241,7 +245,7 @@ export const UpdateResearchRequestSchema = z.object({
     .optional()
     .describe("Related publications (papers, preprints)"),
   controlledAccessUser: z
-    .array(ApiControlledAccessUserPersonSchema)
+    .array(ApiControlledAccessUserPersonRequestSchema)
     .optional()
     .describe("Users with controlled access to the data"),
   _seq_no: z
@@ -296,7 +300,7 @@ export type UpdateUidsRequest = z.infer<typeof UpdateUidsRequestSchema>
  * Note: datasets are automatically copied from the previous version
  */
 export const CreateVersionRequestSchema = z.object({
-  releaseNote: BilingualTextValueSchema.optional().describe(
+  releaseNote: BilingualTextValueRequestSchema.optional().describe(
     "Bilingual release note describing changes in this version",
   ),
 })
@@ -328,7 +332,7 @@ export const CreateDatasetRequestSchema = z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
   }),
-  experiments: z.array(ExperimentSchemaBase),
+  experiments: z.array(ExperimentRequestSchema),
 })
 export type CreateDatasetRequest = z.infer<typeof CreateDatasetRequestSchema>
 
@@ -346,7 +350,7 @@ export const UpdateDatasetRequestSchema = z.object({
     ja: z.string().nullable(),
     en: z.string().nullable(),
   }),
-  experiments: z.array(ExperimentSchemaBase),
+  experiments: z.array(ExperimentRequestSchema),
   _seq_no: z.number().describe("Sequence number for optimistic locking"),
   _primary_term: z.number().describe("Primary term for optimistic locking"),
 })

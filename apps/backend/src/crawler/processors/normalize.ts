@@ -915,10 +915,12 @@ export const extractDatasetIdsFromMolData = (
         }
       }
       // Extract from rawHtml
-      const htmlIds = extractIdsByType(v.rawHtml)
-      for (const idList of Object.values(htmlIds)) {
-        for (const id of idList) {
-          ids.add(id)
+      if (v.rawHtml !== null) {
+        const htmlIds = extractIdsByType(v.rawHtml)
+        for (const idList of Object.values(htmlIds)) {
+          for (const id of idList) {
+            ids.add(id)
+          }
         }
       }
     }
@@ -977,7 +979,7 @@ export const extractAndExpandDatasetIdsFromMolData = async (
     const values = Array.isArray(val) ? val : [val]
     for (const v of values) {
       addIds(v.text)
-      addIds(v.rawHtml)
+      if (v.rawHtml !== null) addIds(v.rawHtml)
     }
   }
 

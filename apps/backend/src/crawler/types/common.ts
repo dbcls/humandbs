@@ -12,10 +12,10 @@ export type LangType = (typeof LANG_TYPES)[number]
 
 // === Zod Schemas (ES で使う型) ===
 
-/** Text with normalized text and original raw HTML */
+/** Text with normalized text and original raw HTML (null when absent, e.g., API-created records) */
 export const TextValueSchema = z.object({
   text: z.string(),
-  rawHtml: z.string(),
+  rawHtml: z.string().nullable(),
 })
 export type TextValue = z.infer<typeof TextValueSchema>
 

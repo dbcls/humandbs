@@ -20,12 +20,20 @@ import {
 } from "@/api/types"
 import type {
   AuthUser,
+  CreateResearchRequest,
   EsDataset,
   EsResearch,
   ResearchVersion,
   ResearchDetail,
   ResearchStatus,
+  UpdateResearchRequest,
 } from "@/api/types"
+import {
+  hydrateBilingualTextValue,
+  hydratePerson,
+  hydrateResearchProject,
+  hydrateSummary,
+} from "@/api/utils/hydrate-raw-html"
 import { resolveVersionForUser } from "@/api/utils/version"
 
 // === Elasticsearch Error Helpers ===
@@ -180,44 +188,9 @@ export const generateNextHumId = async (): Promise<string> => {
  * @param initialReleaseNote - Optional release note for v1
  * @returns Created Research and ResearchVersion
  */
-export const createResearch = async (params: {
-  title?: { ja: string | null; en: string | null }
-  summary?: {
-    aims: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-    methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-    targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-    url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
-  }
-  dataProvider?: {
-    name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-    email?: string | null
-    orcid?: string | null
-    organization?: {
-      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      address?: { country?: string | null } | null
-    } | null
-    datasetIds?: string[]
-    researchTitle?: { ja: string | null; en: string | null }
-    periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
-  }[]
-  researchProject?: {
-    name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-    url?: { ja: { text: string; url: string } | null; en: { text: string; url: string } | null } | null
-  }[]
-  grant?: {
-    id: string[]
-    title: { ja: string | null; en: string | null }
-    agency: { name: { ja: string | null; en: string | null } }
-  }[]
-  relatedPublication?: {
-    title: { ja: string | null; en: string | null }
-    doi?: string | null
-    datasetIds?: string[]
-  }[]
-  uids?: string[]
-  humId?: string
-  initialReleaseNote?: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-}): Promise<{ research: EsResearch; version: ResearchVersion }> => {
+export const createResearch = async (
+  params: CreateResearchRequest,
+): Promise<{ research: EsResearch; version: ResearchVersion }> => {
   const now = new Date().toISOString().split("T")[0]
 
   // Default summary structure
@@ -243,9 +216,9 @@ export const createResearch = async (params: {
       humId,
       url: { ja: `https://humandbs.dbcls.jp/hum${humId.substring(3).padStart(4, "0")}`, en: `https://humandbs.dbcls.jp/en/hum${humId.substring(3).padStart(4, "0")}` },
       title: params.title ?? { ja: null, en: null },
-      summary: params.summary ?? defaultSummary,
-      dataProvider: params.dataProvider ?? [],
-      researchProject: params.researchProject ?? [],
+      summary: params.summary ? hydrateSummary(params.summary) : defaultSummary,
+      dataProvider: params.dataProvider?.map(hydratePerson) ?? [],
+      researchProject: params.researchProject?.map(hydrateResearchProject) ?? [],
       grant: params.grant ?? [],
       relatedPublication: params.relatedPublication ?? [],
       controlledAccessUser: [],
@@ -265,7 +238,9 @@ export const createResearch = async (params: {
       version,
       versionReleaseDate: now,
       datasets: [],
-      releaseNote: params.initialReleaseNote ?? { ja: null, en: null },
+      releaseNote: params.initialReleaseNote
+        ? hydrateBilingualTextValue(params.initialReleaseNote)
+        : { ja: null, en: null },
     }
 
     // Index documents (version first, then research)
@@ -343,53 +318,8 @@ export const createResearch = async (params: {
  */
 export const updateResearch = async (
   humId: string,
-  updates: {
+  updates: Omit<UpdateResearchRequest, "_seq_no" | "_primary_term"> & {
     url?: { ja: string | null; en: string | null }
-    title?: { ja: string | null; en: string | null }
-    summary?: {
-      aims: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      methods: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      targets: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      url: { ja: { text: string; url: string }[]; en: { text: string; url: string }[] }
-    }
-    dataProvider?: {
-      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      email?: string | null
-      orcid?: string | null
-      organization?: {
-        name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-        address?: { country?: string | null } | null
-      } | null
-      datasetIds?: string[]
-      researchTitle?: { ja: string | null; en: string | null }
-      periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
-    }[]
-    researchProject?: {
-      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      url?: { ja: { text: string; url: string } | null; en: { text: string; url: string } | null } | null
-    }[]
-    grant?: {
-      id: string[]
-      title: { ja: string | null; en: string | null }
-      agency: { name: { ja: string | null; en: string | null } }
-    }[]
-    relatedPublication?: {
-      title: { ja: string | null; en: string | null }
-      doi?: string | null
-      datasetIds?: string[]
-    }[]
-    controlledAccessUser?: {
-      name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-      email?: string | null
-      orcid?: string | null
-      organization?: {
-        name: { ja: { text: string; rawHtml: string } | null; en: { text: string; rawHtml: string } | null }
-        address?: { country?: string | null } | null
-      } | null
-      datasetIds?: string[]
-      researchTitle?: { ja: string | null; en: string | null }
-      periodOfDataUse?: { startDate: string | null; endDate: string | null } | null
-    }[]
   },
   seqNo: number,
   primaryTerm: number,
@@ -397,16 +327,25 @@ export const updateResearch = async (
   try {
     const now = new Date().toISOString().split("T")[0]
 
+    const hydratedDoc: Record<string, unknown> = {
+      dateModified: now,
+    }
+    if (updates.url !== undefined) hydratedDoc.url = updates.url
+    if (updates.title !== undefined) hydratedDoc.title = updates.title
+    if (updates.summary !== undefined) hydratedDoc.summary = hydrateSummary(updates.summary)
+    if (updates.dataProvider !== undefined) hydratedDoc.dataProvider = updates.dataProvider.map(hydratePerson)
+    if (updates.researchProject !== undefined) hydratedDoc.researchProject = updates.researchProject.map(hydrateResearchProject)
+    if (updates.grant !== undefined) hydratedDoc.grant = updates.grant
+    if (updates.relatedPublication !== undefined) hydratedDoc.relatedPublication = updates.relatedPublication
+    if (updates.controlledAccessUser !== undefined) hydratedDoc.controlledAccessUser = updates.controlledAccessUser.map(hydratePerson)
+
     await esClient.update({
       index: ES_INDEX.research,
       id: humId,
       if_seq_no: seqNo,
       if_primary_term: primaryTerm,
       body: {
-        doc: {
-          ...updates,
-          dateModified: now,
-        },
+        doc: hydratedDoc,
       },
       refresh: "wait_for",
     })

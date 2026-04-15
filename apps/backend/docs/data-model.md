@@ -58,6 +58,8 @@ Crawler (structured.ts)  →  ES (es/types.ts)  →  API (api/types/)  →  Fron
     - `dataProvider`: `datasetIds`, `researchTitle`, `periodOfDataUse` を除外（実データなし）
     - `controlledAccessUser`: 全フィールドを含む（`datasetIds`, `researchTitle`, `periodOfDataUse`）
     - `relatedPublication`: 全フィールドを含む（`datasetIds` で論文とデータセットを紐付け）
+  - Create/Update リクエストは `api/types/request-schemas.ts` の `*RequestSchema` 系を使用。`TextValue` 系フィールドから `rawHtml` を除外する（`{ text: string }` のみ）。ES 書き込み時に `api/utils/hydrate-raw-html.ts` の hydrator が `rawHtml: null` を注入する。crawler 由来データは rawHtml を持つが、API 経由の編集で null に上書きされる仕様
+  - `TextValueSchema.rawHtml` は `z.string().nullable()`。crawler 由来は string、API 新規作成/編集は null
 - **API → Frontend**: `types/shared-types.ts` で clean name（`Es` prefix なし）のみを re-export
 
 依存の方向: `crawler/types → es/types → api/types/` を維持すること。
