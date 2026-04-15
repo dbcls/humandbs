@@ -228,11 +228,31 @@ describe("buildResearchSortSpec", () => {
 
 // === buildDatasetMultiMatchQuery ===
 
-describe("buildDatasetMultiMatchQuery", () => {
-  it("returns multi_match with correct fields", () => {
-    const result = buildDatasetMultiMatchQuery("cancer")
+interface IdMatchPart {
+  value: string
+  case_insensitive?: boolean
+  boost?: number
+}
 
-    expect(result).toEqual({
+interface ShouldClause {
+  multi_match?: { query: string; fields: string[]; type: string; fuzziness: string }
+  term?: Record<string, IdMatchPart>
+  prefix?: Record<string, IdMatchPart>
+}
+
+interface BoolShouldQuery {
+  bool: {
+    should: ShouldClause[]
+    minimum_should_match: number
+  }
+}
+
+describe("buildDatasetMultiMatchQuery", () => {
+  it("returns bool.should with multi_match plus term/prefix for humId and datasetId", () => {
+    const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
+
+    expect(result.bool.minimum_should_match).toBe(1)
+    expect(result.bool.should).toContainEqual({
       multi_match: {
         query: "cancer",
         fields: [
@@ -244,17 +264,77 @@ describe("buildDatasetMultiMatchQuery", () => {
         fuzziness: "AUTO",
       },
     })
+    expect(result.bool.should).toContainEqual({ term: { humId: { value: "cancer", case_insensitive: true, boost: 10 } } })
+    expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "cancer", case_insensitive: true, boost: 5 } } })
+    expect(result.bool.should).toContainEqual({ term: { datasetId: { value: "cancer", case_insensitive: true, boost: 10 } } })
+    expect(result.bool.should).toContainEqual({ prefix: { datasetId: { value: "cancer", case_insensitive: true, boost: 5 } } })
   })
 
-  // PBT: query string is always preserved
-  it("preserves the query string in output", () => {
+  it("uses case_insensitive: true on every id match clause", () => {
+    const result = buildDatasetMultiMatchQuery("hum0001") as BoolShouldQuery
+    const idClauses = result.bool.should.filter(c => c.term ?? c.prefix)
+
+    expect(idClauses.length).toBe(4)
+    for (const c of idClauses) {
+      const inner = c.term ?? c.prefix
+      const field = Object.values(inner!)[0]
+
+      expect(field.case_insensitive).toBe(true)
+    }
+  })
+
+  it("term boost is greater than prefix boost for both id fields", () => {
+    const result = buildDatasetMultiMatchQuery("anything") as BoolShouldQuery
+    for (const field of ["humId", "datasetId"] as const) {
+      const term = result.bool.should.find(c => c.term?.[field])?.term?.[field]
+      const prefix = result.bool.should.find(c => c.prefix?.[field])?.prefix?.[field]
+
+      expect(term?.boost ?? 0).toBeGreaterThan(prefix?.boost ?? 0)
+    }
+  })
+
+  // PBT: query string flows into multi_match.query and into id match clauses
+  it("PBT: query string is preserved in multi_match and id clauses", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }),
         (q) => {
-          const result = buildDatasetMultiMatchQuery(q)
+          const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
+          const mm = result.bool.should.find(c => c.multi_match)?.multi_match
 
-          return result.multi_match?.query === q
+          return mm?.query === q
+            && result.bool.should.some(c => c.term?.humId?.value === q)
+            && result.bool.should.some(c => c.term?.datasetId?.value === q)
+        },
+      ),
+    )
+  })
+
+  // PBT: term.boost > prefix.boost invariant for any query
+  it("PBT: term.humId.boost > prefix.humId.boost for any query", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 1 }),
+        (q) => {
+          const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
+          const term = result.bool.should.find(c => c.term?.humId)?.term?.humId.boost ?? 0
+          const prefix = result.bool.should.find(c => c.prefix?.humId)?.prefix?.humId.boost ?? 0
+
+          return term > prefix
+        },
+      ),
+    )
+  })
+
+  // PBT: minimum_should_match is always 1
+  it("PBT: minimum_should_match is always 1", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 1 }),
+        (q) => {
+          const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
+
+          return result.bool.minimum_should_match === 1
         },
       ),
     )
@@ -264,10 +344,11 @@ describe("buildDatasetMultiMatchQuery", () => {
 // === buildResearchMultiMatchQuery ===
 
 describe("buildResearchMultiMatchQuery", () => {
-  it("returns multi_match with correct fields", () => {
-    const result = buildResearchMultiMatchQuery("genomics")
+  it("returns bool.should with multi_match plus term/prefix for humId only", () => {
+    const result = buildResearchMultiMatchQuery("genomics") as BoolShouldQuery
 
-    expect(result).toEqual({
+    expect(result.bool.minimum_should_match).toBe(1)
+    expect(result.bool.should).toContainEqual({
       multi_match: {
         query: "genomics",
         fields: [
@@ -284,17 +365,63 @@ describe("buildResearchMultiMatchQuery", () => {
         fuzziness: "AUTO",
       },
     })
+    expect(result.bool.should).toContainEqual({ term: { humId: { value: "genomics", case_insensitive: true, boost: 10 } } })
+    expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "genomics", case_insensitive: true, boost: 5 } } })
   })
 
-  // PBT: query string is always preserved
-  it("preserves the query string in output", () => {
+  it("does not include datasetId clauses (Research domain only)", () => {
+    const result = buildResearchMultiMatchQuery("hum0001")
+
+    expect(JSON.stringify(result)).not.toContain("datasetId")
+  })
+
+  it("term boost is greater than prefix boost for humId", () => {
+    const result = buildResearchMultiMatchQuery("anything") as BoolShouldQuery
+    const term = result.bool.should.find(c => c.term?.humId)?.term?.humId
+    const prefix = result.bool.should.find(c => c.prefix?.humId)?.prefix?.humId
+
+    expect(term?.boost ?? 0).toBeGreaterThan(prefix?.boost ?? 0)
+  })
+
+  // PBT: query string flows into multi_match.query and term.humId.value
+  it("PBT: query string is preserved in multi_match and humId clauses", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 1 }),
+        (q) => {
+          const result = buildResearchMultiMatchQuery(q) as BoolShouldQuery
+          const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+
+          return mm?.query === q
+            && result.bool.should.some(c => c.term?.humId?.value === q)
+        },
+      ),
+    )
+  })
+
+  // PBT: Research result never contains datasetId
+  it("PBT: never contains datasetId field for any query", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }),
         (q) => {
           const result = buildResearchMultiMatchQuery(q)
 
-          return result.multi_match?.query === q
+          return !JSON.stringify(result).includes("datasetId")
+        },
+      ),
+    )
+  })
+
+  // PBT: minimum_should_match is always 1
+  it("PBT: minimum_should_match is always 1", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 1 }),
+        (q) => {
+          const result = buildResearchMultiMatchQuery(q) as BoolShouldQuery
+
+          return result.bool.minimum_should_match === 1
         },
       ),
     )

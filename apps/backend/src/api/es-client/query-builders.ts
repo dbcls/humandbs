@@ -67,34 +67,65 @@ export const buildResearchSortSpec = (
 
 // === Multi-Match Query Builders ===
 
+// term completes exact-match (boost 10), prefix catches partial typing like "hum000" (boost 5).
+// case_insensitive lets "HUM0001" match "hum0001".
+const buildIdMatchClauses = (
+  fields: readonly ("humId" | "datasetId")[],
+  q: string,
+): QueryContainer[] => {
+  const clauses: QueryContainer[] = []
+  for (const field of fields) {
+    clauses.push({ term: { [field]: { value: q, case_insensitive: true, boost: 10 } } })
+    clauses.push({ prefix: { [field]: { value: q, case_insensitive: true, boost: 5 } } })
+  }
+
+  return clauses
+}
+
 export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
-  multi_match: {
-    query: q,
-    fields: [
-      "typeOfData.ja^2",
-      "typeOfData.en^2",
-      "experiments.searchable.targets",
+  bool: {
+    minimum_should_match: 1,
+    should: [
+      {
+        multi_match: {
+          query: q,
+          fields: [
+            "typeOfData.ja^2",
+            "typeOfData.en^2",
+            "experiments.searchable.targets",
+          ],
+          type: "best_fields",
+          fuzziness: "AUTO",
+        },
+      },
+      ...buildIdMatchClauses(["humId", "datasetId"], q),
     ],
-    type: "best_fields",
-    fuzziness: "AUTO",
   },
 })
 
 export const buildResearchMultiMatchQuery = (q: string): QueryContainer => ({
-  multi_match: {
-    query: q,
-    fields: [
-      "title.ja^2",
-      "title.en^2",
-      "summary.aims.ja.text",
-      "summary.aims.en.text",
-      "summary.methods.ja.text",
-      "summary.methods.en.text",
-      "summary.targets.ja.text",
-      "summary.targets.en.text",
+  bool: {
+    minimum_should_match: 1,
+    should: [
+      {
+        multi_match: {
+          query: q,
+          fields: [
+            "title.ja^2",
+            "title.en^2",
+            "summary.aims.ja.text",
+            "summary.aims.en.text",
+            "summary.methods.ja.text",
+            "summary.methods.en.text",
+            "summary.targets.ja.text",
+            "summary.targets.en.text",
+          ],
+          type: "best_fields",
+          fuzziness: "AUTO",
+        },
+      },
+      ...buildIdMatchClauses(["humId"], q),
     ],
-    type: "best_fields",
-    fuzziness: "AUTO",
   },
 })
 

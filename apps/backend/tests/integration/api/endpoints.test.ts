@@ -265,6 +265,48 @@ describe("API Integration Tests", () => {
       const json = await res.json() as SearchResponse<unknown>
       expect(json).toHaveProperty("facets")
     })
+
+    itWithEs("should find Research when query equals humId (exact match)", async () => {
+      const app = getTestApp()
+      const listRes = await app.request(url("/research?limit=1&lang=ja"))
+      const list = await listRes.json() as SearchResponse<{ humId: string }>
+      if (list.data.length === 0) {
+        console.log("  Skipping: no Research data")
+        return
+      }
+      const humId = list.data[0].humId
+
+      const res = await app.request(url("/research/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 10, lang: "ja", query: humId }),
+      })
+
+      expect(res.status).toBe(200)
+      const json = await res.json() as SearchResponse<{ humId: string }>
+      expect(json.data.some(r => r.humId === humId)).toBe(true)
+    })
+
+    itWithEs("should find Research when query is uppercase humId (case-insensitive)", async () => {
+      const app = getTestApp()
+      const listRes = await app.request(url("/research?limit=1&lang=ja"))
+      const list = await listRes.json() as SearchResponse<{ humId: string }>
+      if (list.data.length === 0) {
+        console.log("  Skipping: no Research data")
+        return
+      }
+      const humId = list.data[0].humId
+
+      const res = await app.request(url("/research/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 10, lang: "ja", query: humId.toUpperCase() }),
+      })
+
+      expect(res.status).toBe(200)
+      const json = await res.json() as SearchResponse<{ humId: string }>
+      expect(json.data.some(r => r.humId === humId)).toBe(true)
+    })
   })
 
   describe("POST /dataset/search", () => {
@@ -300,6 +342,70 @@ describe("API Integration Tests", () => {
       })
 
       expect(res.status).toBe(200)
+    })
+
+    itWithEs("should find Dataset when query equals datasetId (exact match)", async () => {
+      const app = getTestApp()
+      const listRes = await app.request(url("/dataset?limit=1&lang=ja"))
+      const list = await listRes.json() as SearchResponse<{ datasetId: string }>
+      if (list.data.length === 0) {
+        console.log("  Skipping: no Dataset data")
+        return
+      }
+      const datasetId = list.data[0].datasetId
+
+      const res = await app.request(url("/dataset/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 10, lang: "ja", query: datasetId }),
+      })
+
+      expect(res.status).toBe(200)
+      const json = await res.json() as SearchResponse<{ datasetId: string }>
+      expect(json.data.some(d => d.datasetId === datasetId)).toBe(true)
+    })
+
+    itWithEs("should find Dataset by datasetId prefix (partial match)", async () => {
+      const app = getTestApp()
+      const listRes = await app.request(url("/dataset?limit=1&lang=ja"))
+      const list = await listRes.json() as SearchResponse<{ datasetId: string }>
+      if (list.data.length === 0) {
+        console.log("  Skipping: no Dataset data")
+        return
+      }
+      const datasetId = list.data[0].datasetId
+      const prefix = datasetId.slice(0, Math.max(1, datasetId.length - 2))
+
+      const res = await app.request(url("/dataset/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 50, lang: "ja", query: prefix }),
+      })
+
+      expect(res.status).toBe(200)
+      const json = await res.json() as SearchResponse<{ datasetId: string }>
+      expect(json.data.some(d => d.datasetId === datasetId)).toBe(true)
+    })
+
+    itWithEs("should find Datasets when query equals parent humId", async () => {
+      const app = getTestApp()
+      const listRes = await app.request(url("/dataset?limit=1&lang=ja"))
+      const list = await listRes.json() as SearchResponse<{ datasetId: string; humId: string }>
+      if (list.data.length === 0) {
+        console.log("  Skipping: no Dataset data")
+        return
+      }
+      const humId = list.data[0].humId
+
+      const res = await app.request(url("/dataset/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: 1, limit: 50, lang: "ja", query: humId }),
+      })
+
+      expect(res.status).toBe(200)
+      const json = await res.json() as SearchResponse<{ humId: string }>
+      expect(json.data.some(d => d.humId === humId)).toBe(true)
     })
   })
 

@@ -314,8 +314,19 @@ Research 一覧画面のフィルタ UI では `countBy=research` を、Dataset 
 
 #### フリーテキスト検索
 
-- Research: `title`, `summary.aims.text`, `summary.methods.text`, `summary.targets.text`
-- Dataset: `typeOfData`, `experiments.searchable.targets`
+`query` パラメータは本文フィールドと ID フィールドを横断検索する。検索入力に `humId` (例: `hum0001`) や `datasetId` (例: `JGAD000001`) を渡すと、該当リソースが直接ヒットする。フロント側で入力形式 (ID か本文か) を判定する必要はない。
+
+**Research 検索 (POST /research/search)**
+
+- 全文: `title`, `summary.aims.text`, `summary.methods.text`, `summary.targets.text`
+- ID 完全一致 / 前方一致: `humId` (例: `hum0001` で完全一致、`hum000` で前方一致)
+
+**Dataset 検索 (POST /dataset/search)**
+
+- 全文: `typeOfData`, `experiments.searchable.targets`
+- ID 完全一致 / 前方一致: `humId`, `datasetId` (例: `JGAD000001` で完全一致、`JGAD00` で前方一致)
+
+ID マッチは大文字小文字を区別しない。完全一致は `boost` によりスコア最上位に並ぶ。`hum0001 cancer` のような複合入力では、ID 節は完全一致しないため空振りし、本文側の `cancer` がヒットする。
 
 #### Boolean フィルター
 
