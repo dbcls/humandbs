@@ -1,17 +1,16 @@
 import {
-  FrontendCreateResearchRequestSchema,
-  FrontendUpdateResearchRequestSchema,
-} from "@/utils/researchSchemas";
-import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   ResearchSearchBodySchema,
-  UpdateUidsRequestSchema,
+  type CreateResearchRequest,
+  type CreateVersionRequest,
   type ResearchDetailResponse,
   type ResearchSearchBody,
   type ResearchSearchResponse,
   type ResearchWithLockResponse,
+  type UpdateResearchRequest,
+  type UpdateUidsRequest,
   type VersionCreateResponse,
   type WorkflowResponse,
 } from "@humandbs/backend/types";
@@ -54,8 +53,14 @@ export type DeleteResearchResult =
       code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
     };
 
+/**
+ * Creates a research. Trusts backend validation (validator is just an identity function - to provide only type safety),
+ * because it uses some logic other that just zod schema.
+ * The zod schema from the backend cannot simply be put in the input validator:
+ * it ignores the rawHtml but it is still required by the zod schema
+ */
 export const $createResearch = createServerFn({ method: "POST" })
-  .inputValidator(FrontendCreateResearchRequestSchema)
+  .inputValidator((data: CreateResearchRequest) => data)
   .handler<Promise<CreateResearchResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
@@ -64,17 +69,22 @@ export const $createResearch = createServerFn({ method: "POST" })
       const result = await api.createResearch(data, accessToken);
       return { ok: true, data: result };
     } catch (error) {
-      return mapApiError(error, "A research with this humId already exists.", { 409: "HUMID_CONFLICT" as const });
+      return mapApiError(error, "A research with this humId already exists.", {
+        409: "HUMID_CONFLICT" as const,
+      });
     }
   });
 
-const UpdateResearchInputSchema = z.object({
-  humId: HumIdParamsSchema.shape.humId,
-  body: FrontendUpdateResearchRequestSchema,
-});
-
+/**
+ * Updates a research. Trusts backend validation (validator is just an identity function - to provide only type safety),
+ * because it uses some logic other that just zod schema.
+ * The zod schema from the backend cannot simply be put in the input validator:
+ * it ignores the rawHtml but it is still required by the zod schema
+ */
 export const $updateResearch = createServerFn({ method: "POST" })
-  .inputValidator(UpdateResearchInputSchema)
+  .inputValidator(
+    (data: { humId: string; body: UpdateResearchRequest }) => data,
+  )
   .handler<Promise<UpdateResearchResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
@@ -91,13 +101,14 @@ export const $updateResearch = createServerFn({ method: "POST" })
     }
   });
 
-const UpdateResearchUidsInputSchema = z.object({
-  humId: HumIdParamsSchema.shape.humId,
-  body: UpdateUidsRequestSchema,
-});
-
+/**
+ * Creates a research uids. Trusts backend validation (validator is just an identity function - to provide only type safety),
+ * because it uses some logic other that just zod schema.
+ * The zod schema from the backend cannot simply be put in the input validator:
+ * it ignores the rawHtml but it is still required by the zod schema
+ */
 export const $updateResearchUids = createServerFn({ method: "POST" })
-  .inputValidator(UpdateResearchUidsInputSchema)
+  .inputValidator((data: { humId: string; body: UpdateUidsRequest }) => data)
   .handler<Promise<UpdateResearchUidsResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
@@ -187,18 +198,19 @@ export type CreateVersionResult =
       code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED" | "CONFLICT";
     };
 
-const CreateVersionInputSchema = z.object({
-  humId: HumIdParamsSchema.shape.humId,
-  releaseNote: z
-    .object({
-      en: z.object({ text: z.string(), rawHtml: z.string() }).nullable(),
-      ja: z.object({ text: z.string(), rawHtml: z.string() }).nullable(),
-    })
-    .optional(),
-});
-
+/**
+ * Creates research version. Trusts backend validator.
+ * Uses identity function as inputValidator in order to get type safety.
+ * The zod schema from the backend cannot simply be put in the input validator:
+ * it ignores the rawHtml but it is still required by the zod schema
+ */
 export const $createResearchVersion = createServerFn({ method: "POST" })
-  .inputValidator(CreateVersionInputSchema)
+  .inputValidator(
+    (data: {
+      humId: string;
+      releaseNote: CreateVersionRequest["releaseNote"];
+    }) => data,
+  )
   .handler<Promise<CreateVersionResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
