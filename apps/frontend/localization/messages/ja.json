@@ -118,6 +118,7 @@
     "organization": "所属機関",
     "researchTitle": "プロジェクト/研究グループ名",
     "relatedPublication": "関連論文",
+    "periodOfDataUse": "データ利用期間",
     "publicationTitle": "タイトル",
     "publicationDatasets": "データセット",
     "controlledAccessUser": "制限公開データの利用者一覧",
