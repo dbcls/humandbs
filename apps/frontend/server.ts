@@ -528,6 +528,29 @@ async function initializeServer() {
       // Serve static assets (preloaded or on-demand)
       ...routes,
 
+      // Serve uploaded user assets dynamically (not pre-scanned at startup).
+      // Uses path.resolve + prefix check to prevent path traversal attacks.
+      "/files/*": (req: Request) => {
+        const url = new URL(req.url);
+        const UPLOADS_DIR = path.resolve(CLIENT_DIRECTORY, "files");
+        const filePath = path.resolve(
+          CLIENT_DIRECTORY,
+          decodeURIComponent(url.pathname).slice(1),
+        );
+
+        if (!filePath.startsWith(UPLOADS_DIR + path.sep) && filePath !== UPLOADS_DIR) {
+          return new Response("Not Found", { status: 404 });
+        }
+
+        const file = Bun.file(filePath);
+        if (!file.size) {
+          return new Response("Not Found", { status: 404 });
+        }
+        return new Response(file, {
+          headers: { "Cache-Control": "public, max-age=3600" },
+        });
+      },
+
       // Fallback to TanStack Start handler for all other routes
       "/*": (req: Request) => {
         try {

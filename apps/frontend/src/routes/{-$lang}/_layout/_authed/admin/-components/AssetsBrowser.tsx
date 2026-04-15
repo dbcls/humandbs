@@ -1,4 +1,8 @@
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
   ChevronRight,
   CopyIcon,
@@ -112,7 +116,8 @@ export function AssetsBrowser({
 }: AssetsBrowserProps) {
   const queryClient = useQueryClient();
   const { data: root } = useSuspenseQuery(assetHierarchyQueryOptions());
-  const [selectedFolderPath, setSelectedFolderPath] = useState(initialFolderPath);
+  const [selectedFolderPath, setSelectedFolderPath] =
+    useState(initialFolderPath);
   const [selectedItemPath, setSelectedItemPath] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -137,9 +142,7 @@ export function AssetsBrowser({
       const folderPath = String(variables.data.get("folderPath") ?? "");
 
       if (file instanceof File) {
-        const nextPath = folderPath
-          ? `${folderPath}/${file.name}`
-          : file.name;
+        const nextPath = folderPath ? `${folderPath}/${file.name}` : file.name;
 
         setSelectedFolderPath(folderPath);
         setSelectedItemPath(nextPath);
@@ -161,10 +164,12 @@ export function AssetsBrowser({
     },
   });
 
-  const { mutate: deleteAssetByPath, isPending: isDeletingAsset } = useMutation({
-    mutationFn: $deleteAssetByPath,
-    onSuccess: invalidateHierarchy,
-  });
+  const { mutate: deleteAssetByPath, isPending: isDeletingAsset } = useMutation(
+    {
+      mutationFn: $deleteAssetByPath,
+      onSuccess: invalidateHierarchy,
+    },
+  );
 
   const { mutate: deleteFolder, isPending: isDeletingFolder } = useMutation({
     mutationFn: $deleteAssetFolder,
@@ -209,7 +214,7 @@ export function AssetsBrowser({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4">
+    <section className="flex min-h-0 flex-1 flex-col gap-4 items-stretch max-w-full">
       <Card className="p-4" caption="Actions" captionSize="sm">
         <div className="grid gap-4 md:grid-cols-2">
           <form
@@ -227,7 +232,8 @@ export function AssetsBrowser({
             }}
           >
             <div className="text-sm font-medium">
-              Create folder in <span className="text-secondary">{displayFolderPath}</span>
+              Create folder in{" "}
+              <span className="text-secondary">{displayFolderPath}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -236,7 +242,10 @@ export function AssetsBrowser({
                 placeholder="Folder name"
                 variant="form"
               />
-              <Button disabled={!newFolderName.trim() || isCreatingFolder} type="submit">
+              <Button
+                disabled={!newFolderName.trim() || isCreatingFolder}
+                type="submit"
+              >
                 <FolderPlus className="mr-2 size-4" />
                 Create
               </Button>
@@ -257,7 +266,8 @@ export function AssetsBrowser({
             }}
           >
             <div className="text-sm font-medium">
-              Upload to <span className="text-secondary">{displayFolderPath}</span>
+              Upload to{" "}
+              <span className="text-secondary">{displayFolderPath}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -278,7 +288,8 @@ export function AssetsBrowser({
         {!selectedFolderExists && selectedFolderPath ? (
           <div className="mt-4 flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
             <div>
-              Folder <span className="font-medium">{selectedFolderPath}</span> does not exist yet.
+              Folder <span className="font-medium">{selectedFolderPath}</span>{" "}
+              does not exist yet.
             </div>
             <Button
               disabled={isCreatingFolder}
@@ -299,9 +310,9 @@ export function AssetsBrowser({
         ) : null}
       </Card>
 
-      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+      <div className="flex min-h-0 flex-1 gap-4 max-w-full">
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex min-h-0 h-full gap-3">
+          <div className="flex min-h-0 h-full gap-3 flex-1 overflow-x-auto">
             {columns.map((folder) => (
               <Card
                 key={folder.path || "__root__"}
@@ -354,7 +365,9 @@ export function AssetsBrowser({
                                   ) : (
                                     <FileText className="size-4 shrink-0" />
                                   )}
-                                  <span className="min-w-0 truncate">{item.name}</span>
+                                  <span className="min-w-0 truncate">
+                                    {item.name}
+                                  </span>
                                 </>
                               )}
                             </Button>
@@ -373,99 +386,105 @@ export function AssetsBrowser({
           className="flex min-h-0 w-[300px] shrink-0 flex-col p-4 xl:w-[340px]"
           caption="Details"
         >
-        {selectedItem ? (
-          selectedItem.type === "folder" ? (
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2">
-                <Folder className="text-secondary size-5" />
-                <div className="font-medium">{selectedItem.name}</div>
-              </div>
-              <dl className="space-y-2">
-                <div>
-                  <dt className="text-xs uppercase text-gray-500">Path</dt>
-                  <dd className="break-all">{selectedItem.path}</dd>
+          {selectedItem ? (
+            selectedItem.type === "folder" ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Folder className="text-secondary size-5" />
+                  <div className="font-medium">{selectedItem.name}</div>
                 </div>
-                <div>
-                  <dt className="text-xs uppercase text-gray-500">Items</dt>
-                  <dd>{selectedItem.children.length}</dd>
-                </div>
-              </dl>
-              <Button
-                disabled={selectedItem.children.length > 0 || isDeletingFolder}
-                variant="outline"
-                onClick={() =>
-                  deleteFolder({ data: { folderPath: selectedItem.path } })
-                }
-              >
-                <Trash2Icon className="mr-2 size-4" />
-                Delete empty folder
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4 text-sm">
-              <div className="overflow-hidden rounded-sm border bg-gray-50">
-                {isImageFile(selectedItem) ? (
-                  <img
-                    src={selectedItem.url}
-                    alt={selectedItem.name}
-                    className="h-48 w-full object-contain"
-                  />
-                ) : (
-                  <div className="flex h-48 items-center justify-center">
-                    <FileText className="text-secondary size-12" />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="font-medium">{selectedItem.name}</div>
                 <dl className="space-y-2">
-                  <div>
-                    <dt className="text-xs uppercase text-gray-500">Type</dt>
-                    <dd>{selectedItem.mimeType || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase text-gray-500">URL</dt>
-                    <dd className="break-all">{selectedItem.url}</dd>
-                  </div>
                   <div>
                     <dt className="text-xs uppercase text-gray-500">Path</dt>
                     <dd className="break-all">{selectedItem.path}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs uppercase text-gray-500">Size</dt>
-                    <dd>{Intl.NumberFormat().format(selectedItem.size)} bytes</dd>
+                    <dt className="text-xs uppercase text-gray-500">Items</dt>
+                    <dd>{selectedItem.children.length}</dd>
                   </div>
                 </dl>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => copy(selectedItem.url)}
-                  >
-                    <CopyIcon className="mr-2 size-4" />
-                    Copy URL
-                  </Button>
-                  {canManageDeletes ? (
+                <Button
+                  disabled={
+                    selectedItem.children.length > 0 || isDeletingFolder
+                  }
+                  variant="outline"
+                  onClick={() =>
+                    deleteFolder({ data: { folderPath: selectedItem.path } })
+                  }
+                >
+                  <Trash2Icon className="mr-2 size-4" />
+                  Delete empty folder
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-sm">
+                <div className="overflow-hidden rounded-sm border bg-gray-50">
+                  {isImageFile(selectedItem) ? (
+                    <img
+                      src={selectedItem.url}
+                      alt={selectedItem.name}
+                      className="h-48 w-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-48 items-center justify-center">
+                      <FileText className="text-secondary size-12" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="font-medium">{selectedItem.name}</div>
+                  <dl className="space-y-2">
+                    <div>
+                      <dt className="text-xs uppercase text-gray-500">Type</dt>
+                      <dd>{selectedItem.mimeType || "Unknown"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase text-gray-500">URL</dt>
+                      <dd className="break-all">{selectedItem.url}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase text-gray-500">Path</dt>
+                      <dd className="break-all">{selectedItem.path}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase text-gray-500">Size</dt>
+                      <dd>
+                        {Intl.NumberFormat().format(selectedItem.size)} bytes
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="flex gap-2">
                     <Button
-                      disabled={isDeletingAsset}
                       variant="outline"
-                      onClick={() =>
-                        deleteAssetByPath({ data: { assetPath: selectedItem.path } })
-                      }
+                      onClick={() => copy(selectedItem.url)}
                     >
-                      <Trash2Icon className="mr-2 size-4" />
-                      Delete file
+                      <CopyIcon className="mr-2 size-4" />
+                      Copy URL
                     </Button>
-                  ) : null}
+                    {canManageDeletes ? (
+                      <Button
+                        disabled={isDeletingAsset}
+                        variant="outline"
+                        onClick={() =>
+                          deleteAssetByPath({
+                            data: { assetPath: selectedItem.path },
+                          })
+                        }
+                      >
+                        <Trash2Icon className="mr-2 size-4" />
+                        Delete file
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
+            )
+          ) : (
+            <div className="flex min-h-40 items-center justify-center text-sm text-gray-500">
+              Select a folder or file
             </div>
-          )
-        ) : (
-          <div className="flex min-h-40 items-center justify-center text-sm text-gray-500">
-            Select a folder or file
-          </div>
-        )}
+          )}
         </Card>
       </div>
     </section>

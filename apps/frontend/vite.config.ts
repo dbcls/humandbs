@@ -21,6 +21,11 @@ export default defineConfig({
   plugins: [
     tanstackStart({
       srcDirectory: "src",
+      server: {
+        build: {
+          staticNodeEnv: false, // for Runtime environment detection for understand, where to save asset files
+        },
+      },
     }),
     tailwindcss(),
     tsConfigPaths({
