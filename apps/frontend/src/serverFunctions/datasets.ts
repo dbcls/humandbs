@@ -1,5 +1,4 @@
 import {
-  CreateDatasetForResearchRequestSchema,
   DatasetIdParamsSchema,
   type DatasetCreateResponse,
   type DatasetVersionsListResponse,
@@ -10,7 +9,8 @@ import {
   type DatasetUpdateResponse,
   DatasetSearchBodySchema,
   type DatasetSearchBody,
-  UpdateDatasetRequestSchema,
+  type CreateDatasetForResearchRequest,
+  type UpdateDatasetRequest,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -121,36 +121,48 @@ export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {
   });
 }
 
-const CreateDatasetForResearchInputSchema = z.object({
-  humId: z.string().min(1),
-  body: CreateDatasetForResearchRequestSchema,
-});
-
+/**
+ * Creates a dataset. Trusts backend validation,
+ * because it uses some logic other that just zod schema.
+ * The zod schema from the backend cannot simply be put in the input validator:
+ * it ignores the rawHtml but it is still required by the zod schema
+ */
 export const $createDatasetForResearch = createServerFn({ method: "POST" })
-  .inputValidator(CreateDatasetForResearchInputSchema)
-  .handler<Promise<CreateDatasetForResearchResult>>(async ({ data }) => {
-    const accessToken = $$getJWT();
-    if (!accessToken) throw new Error("Unauthorized");
+  .inputValidator(
+    (data: { humId: string; body: CreateDatasetForResearchRequest }) => data,
+  )
+  .handler<Promise<CreateDatasetForResearchResult>>(
+    async ({
+      data,
+    }: {
+      data: { humId: string; body: CreateDatasetForResearchRequest };
+    }) => {
+      const accessToken = $$getJWT();
+      if (!accessToken) throw new Error("Unauthorized");
 
-    try {
-      const created = await api.createDatasetForResearch(
-        data.humId,
-        data.body,
-        accessToken,
-      );
-      return { ok: true, data: created };
-    } catch (error) {
-      return mapApiError(error, "Failed to create dataset.");
-    }
-  });
+      try {
+        const created = await api.createDatasetForResearch(
+          data.humId,
+          data.body,
+          accessToken,
+        );
+        return { ok: true, data: created };
+      } catch (error) {
+        return mapApiError(error, "Failed to create dataset.");
+      }
+    },
+  );
 
-const UpdateDatasetInputSchema = z.object({
-  datasetId: z.string().min(1),
-  body: UpdateDatasetRequestSchema,
-});
-
+/**
+ * Updates a dataset. Trusts backend validation,
+ * because it uses some logic other that just zod schema.
+ * The zod schema from the backend cannot simply be put in the input validator:
+ * it ignores the rawHtml but it is still required by the zod schema
+ */
 export const $updateDataset = createServerFn({ method: "POST" })
-  .inputValidator(UpdateDatasetInputSchema)
+  .inputValidator(
+    (data: { datasetId: string; body: UpdateDatasetRequest }) => data,
+  )
   .handler<Promise<UpdateDatasetResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");

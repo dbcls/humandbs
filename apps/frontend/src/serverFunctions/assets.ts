@@ -10,7 +10,11 @@ import { db } from "@/db/database";
 import { asset } from "@/db/schema";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
-const PUBLIC_DIR = "./public";
+// In production, static files are served from ./dist/client (see server.ts).
+// In dev, Vite serves from ./public. Use ASSET_PUBLIC_DIR to override.
+const PUBLIC_DIR =
+  process.env.ASSET_PUBLIC_DIR ??
+  (process.env.NODE_ENV === "development" ? "./public" : "./dist/client");
 const ASSETS_SUBDIR = `files`;
 const ASSET_DIR = `${PUBLIC_DIR}/${ASSETS_SUBDIR}`;
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
@@ -54,7 +58,9 @@ export interface AssetHierarchyFolder {
 
 export type AssetHierarchyItem = AssetHierarchyFolder | AssetHierarchyFile;
 
-async function readAssetFolder(relativePath = ""): Promise<AssetHierarchyFolder> {
+async function readAssetFolder(
+  relativePath = "",
+): Promise<AssetHierarchyFolder> {
   const folderPath = getAbsoluteAssetPath(relativePath);
   const entries = await readdir(folderPath, { withFileTypes: true });
 
@@ -289,7 +295,10 @@ export const $deleteAssetByPath = createServerFn({ method: "POST" })
 
     await rm(getAbsoluteAssetPath(assetPath));
 
-    const deleted = await db.delete(asset).where(eq(asset.url, assetUrl)).returning();
+    const deleted = await db
+      .delete(asset)
+      .where(eq(asset.url, assetUrl))
+      .returning();
 
     return deleted;
   });

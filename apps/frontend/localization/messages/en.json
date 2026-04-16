@@ -70,7 +70,7 @@
     "platforms": "Platforms",
     "targets": "Targets",
     "data-provider": "Data provider",
-    "criteria": "Criteria",
+    "criteria": "Access type",
     "status": "Status"
   },
   "VersionCard": {
@@ -85,11 +85,12 @@
     "organization": "Organization",
     "researchTitle": "Project / research group name",
     "relatedPublication": "Related publications",
+    "periodOfDataUse": "Period of data use",
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
     "controlledAccessUser": "Controlled access users",
     "datasetId": "Dataset ID",
-    "criteria": "Criteria",
+    "criteria": "Access type",
     "typeOfData": "Type of data",
     "details": "Details"
   },
@@ -105,7 +106,26 @@
   "Dataset": {},
   "Research": {
     "research-id": "Research ID",
-    "datasets": "Datasets"
+    "humId": "Research ID",
+    "datasets": "Datasets",
+    "releaseInfo": "Release info",
+    "researchOverview": "Research overview",
+    "aims": "Aims",
+    "title": "Title",
+    "methods": "Methods",
+    "targets": "Targets",
+    "dataProvider": "Data provider",
+    "representative": "Representative",
+    "organization": "Organiation",
+    "researchTitle": "Research title",
+    "relatedPublication": "Related publications",
+    "publicationTitle": "Title",
+    "publicationDatasets": "Datasets",
+    "controlledAccessUser": "Controlled access users",
+    "datasetId": "Dataset ID",
+    "criteria": "Access type",
+    "typeOfData": "Type of data",
+    "details": "Details"
   },
   "DatasetVersionCard": {
     "releaseInfo": "Release info",
@@ -114,7 +134,7 @@
     "info": "Info",
     "releaseDate": "Release date",
     "typeOfData": "Type of data",
-    "criteria": "Criteria",
+    "criteria": "Access type",
     "experiments": "Experiments"
   },
   "Data-submission": {
@@ -124,7 +144,7 @@
   "Filters": {
     "datePublished": "Date Published",
     "dateModified": "Date Modified",
-    "criteria": "Criteria",
+    "criteria": "Access type",
     "subjectCountType": "Subject Count Type",
     "healthStatus": "Health Status",
     "diseaseIcd10": "Disease (ICD-10)",

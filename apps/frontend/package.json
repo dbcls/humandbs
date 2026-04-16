@@ -7,7 +7,7 @@
     "dev": "vite dev --host 0.0.0.0 --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "bun server.ts",
+    "start": "NODE_ENV=production bun server.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
     "db:seed-navigation": "bun ./src/scripts/database/seed-navigation.ts",
     "db:generate": "bunx --bun drizzle-kit generate",

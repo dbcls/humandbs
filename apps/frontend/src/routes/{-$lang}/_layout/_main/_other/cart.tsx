@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
 import { Table } from "@/components/Table";
@@ -40,13 +40,34 @@ const cartDatasetColumns = [
 function RouteComponent() {
   const { cart } = useCart();
   const t = useTranslations("Dataset-list");
+  const locale = useLocale();
+
+  function handleSubmit() {
+    const payload = {
+      language_type: locale === "ja" ? 1 : 2,
+      components: cart.map((item) => ({
+        key: "use_dataset_request",
+        value: item.datasetId,
+      })),
+    };
+    console.log("Copied to clipboard:", JSON.stringify(payload, null, 2));
+    navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+  }
+
   return (
     <CardWithCaption size={"sm"}>
       {cart.length === 0 ? (
         <p className="text-center text-gray-400">Cart is empty</p>
       ) : (
+        <>
+        <Button
+          className="ml-auto mb-4"
+          onClick={handleSubmit}
+        >
+          Copy Cart Contents
+        </Button>
         <Table columns={cartDatasetColumns} data={cart} meta={{ t }} />
-      )}
+      </>)}
     </CardWithCaption>
   );
 }

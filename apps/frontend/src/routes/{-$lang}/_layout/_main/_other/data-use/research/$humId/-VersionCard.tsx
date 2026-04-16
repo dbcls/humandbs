@@ -112,6 +112,10 @@ export function VersionCard({
                   value={p.organization?.name[lang]?.text ?? ""}
                 />
                 <KeyValueCard
+                  title={t("periodOfDataUse")}
+                  value={`${p.periodOfDataUse?.startDate || ""} - ${p.periodOfDataUse?.endDate || ""}`}
+                />
+                <KeyValueCard
                   title={t("researchTitle")}
                   value={p.researchTitle?.[lang] ?? ""}
                 />
