@@ -34,7 +34,6 @@ hum0235-clinical-sites
 hum0311-v5-gwas-v1
 imputation-reference
 jga-maintenance
-nbdc-policy
 p-direct-policy
 policy-cancer
 policy-companylimitation

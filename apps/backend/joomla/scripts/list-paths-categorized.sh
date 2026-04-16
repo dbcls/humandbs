@@ -56,6 +56,15 @@ ORDER BY m.path
 " 2>/dev/null > "$OUTPUT_MENU"
 
 # misc: non-linked-pages-* OR (researches-* で research パターンに合わないもの)
+#
+# 除外リスト (FRONTEND_DOCUMENT_SLUGS):
+#   frontend が document テーブルで seed 済みの slug。backend menu としても扱えるが
+#   Joomla 上で menutype が non-linked-pages-* になっているため、機械的には misc に
+#   分類されてしまう。frontend 側の実装を正として、misc から除外する。
+#
+#   - nbdc-policy: frontend の seed-documents で document として登録済み
+FRONTEND_DOCUMENT_SLUGS="'nbdc-policy'"
+
 docker exec "$CONTAINER_NAME" mysql -uroot -prootpassword joomla -N -e "
 SELECT DISTINCT m.path
 FROM b1i5n_menu m
@@ -64,6 +73,7 @@ JOIN b1i5n_content c ON m.link LIKE CONCAT('%id=', c.id)
 WHERE m.published = 1
   AND m.path != ''
   AND c.state = 1
+  AND m.path NOT IN ($FRONTEND_DOCUMENT_SLUGS)
   AND (
     m.menutype LIKE 'non-linked-pages%'
     OR (

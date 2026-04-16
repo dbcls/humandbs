@@ -48,7 +48,7 @@ bun run scripts/export-news.ts
 
 # 7. 結果確認
 jq '.totalCount' output/menu-pages.json  # 約 34 件 (ja/en)
-jq '.totalCount' output/misc-pages.json  # 約 111 件 (ja/en)
+jq '.totalCount' output/misc-pages.json  # 約 109 件 (ja/en)
 jq '.totalCount' output/news-pages.json  # 約 630 件 (ja/en)
 
 # 8. 後片付け
@@ -57,11 +57,16 @@ docker stop humandbs-joomla-db && docker rm humandbs-joomla-db
 
 ## 出力ファイル
 
-| ファイル | 説明 |
-|----------|------|
-| `output/menu-pages.json` | menu ページ (クリーニング済み) |
-| `output/misc-pages.json` | misc ページ (クリーニング済み) |
-| `output/news-pages.json` | news 記事 (クリーニング済み) |
+| ファイル | git 管理 | 説明 |
+|----------|---------|------|
+| `output/menu-pages.json` | tracked | menu ページ (クリーニング済み) |
+| `output/misc-pages.json` | tracked | misc ページ (クリーニング済み、frontend document seed 済みの slug は除外) |
+| `output/news-pages.json` | tracked | news 記事 (クリーニング済み) |
+| `output/*-raw.json` | **ignored** | DB 直接出力の中間ファイル (`export-*.ts` の入力用) |
+| `output/paths*.txt` | tracked | list-paths-categorized.sh で生成するパス一覧 |
+
+**最終 JSON 3 種は commit 対象** (frontend 担当者への納品物)。raw JSON は `.gitignore` で除外する。
+frontend へのハンドオフ指示は `.claude/api-to-front-joomla-handoff.md` を参照。
 
 **出力フォーマット (menu / misc):**
 
