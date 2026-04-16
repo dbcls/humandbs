@@ -1,13 +1,14 @@
 # Joomla
 
-Joomla の MySQL ダンプから menu/misc ページのコンテンツを JSON として抽出する。
+Joomla の MySQL ダンプから menu / misc / news ページのコンテンツを JSON として抽出する。
 
 ## 目的
 
 HumanDBs ポータルサイトの Joomla CMS から、以下のページコンテンツを抽出する:
 
 - **menu ページ**: トップページ、FAQ、データ利用方法など (約 18 件)
-- **misc ページ**: お知らせ、ポリシー、古いガイドラインなど (約 66 件)
+- **misc ページ**: ポリシー、古いガイドラインなど (約 66 件)
+- **news 記事**: カテゴリ `cat-whats-new` の全記事 (約 630 件、ja=623 / en=7)
 
 ## クイックスタート
 
@@ -41,11 +42,16 @@ bun run scripts/export-menu.ts
 ./scripts/export-misc-json.sh
 bun run scripts/export-misc.ts
 
-# 6. 結果確認
+# 6. news 記事を抽出 (catid 直接なので paths 不要)
+./scripts/export-news-json.sh
+bun run scripts/export-news.ts
+
+# 7. 結果確認
 jq '.totalCount' output/menu-pages.json  # 約 34 件 (ja/en)
 jq '.totalCount' output/misc-pages.json  # 約 111 件 (ja/en)
+jq '.totalCount' output/news-pages.json  # 約 630 件 (ja/en)
 
-# 7. 後片付け
+# 8. 後片付け
 docker stop humandbs-joomla-db && docker rm humandbs-joomla-db
 ```
 
@@ -55,8 +61,9 @@ docker stop humandbs-joomla-db && docker rm humandbs-joomla-db
 |----------|------|
 | `output/menu-pages.json` | menu ページ (クリーニング済み) |
 | `output/misc-pages.json` | misc ページ (クリーニング済み) |
+| `output/news-pages.json` | news 記事 (クリーニング済み) |
 
-**出力フォーマット:**
+**出力フォーマット (menu / misc):**
 
 ```typescript
 interface MiscPagesOutput {
@@ -74,6 +81,28 @@ interface MiscPageContent {
   modifiedDate: string | null   // 更新日 (YYYY-MM-DD)
   contentHtml: string           // クリーンな HTML
   contentText: string           // プレーンテキスト (検索用)
+}
+```
+
+**出力フォーマット (news):**
+
+news は Joomla の個別記事パスを持たず旧 URL も廃止するため、`path` / `originalUrl` を持たない。
+frontend の `newsItemCreateSchema` にそのまま流し込める最小フィールド構成。
+
+```typescript
+interface NewsPagesOutput {
+  generatedAt: string
+  totalCount: number
+  pages: NewsPageContent[]
+}
+
+interface NewsPageContent {
+  lang: "ja" | "en"             // catid (19=ja, 21=en) から判定
+  title: string
+  publishedAt: string | null    // 公開日 (YYYY-MM-DD)
+  modifiedDate: string | null
+  contentHtml: string           // クリーンな HTML (内部 <a> は unwrap, 外部リンクは保持)
+  contentText: string           // プレーンテキスト
 }
 ```
 
@@ -114,6 +143,9 @@ export JOOMLA_DB_FILE=mysqldump_gr-sharingdbs.dbcls.jp.sql
 | menu | menutype が `main-menu-*` または `footer-menu-*` | 約 18 件 |
 | misc | menutype が `non-linked-pages-*`、または `researches-*` で research パターンに合わないもの | 約 66 件 |
 
+**news は `list-paths-categorized.sh` の対象外。** Joomla のカテゴリブログビューで、個別記事は
+`b1i5n_menu` に登録されていないため、`b1i5n_content.catid IN (19, 21)` で直接抽出する。
+
 **menutype について:**
 
 | menutype | 説明 | 対応カテゴリ |
@@ -131,6 +163,8 @@ export JOOMLA_DB_FILE=mysqldump_gr-sharingdbs.dbcls.jp.sql
 | `export-menu.ts` | menu ページを HTML クリーニング | `menu-pages-raw.json` | `menu-pages.json` |
 | `export-misc-json.sh` | misc ページを DB から取得 | `paths-misc.txt` | `misc-pages-raw.json` |
 | `export-misc.ts` | misc ページを HTML クリーニング | `misc-pages-raw.json` | `misc-pages.json` |
+| `export-news-json.sh` | news 記事を DB から取得 (catid=19, 21) | (なし) | `news-pages-raw.json` |
+| `export-news.ts` | news 記事を HTML クリーニング | `news-pages-raw.json` | `news-pages.json` |
 
 ### HTML クリーニング処理
 
@@ -138,6 +172,9 @@ export JOOMLA_DB_FILE=mysqldump_gr-sharingdbs.dbcls.jp.sql
 - **保持する属性**: `href`, `src`, `alt`, `title`, `colspan`, `rowspan`
 - **削除するタグ (コンテンツごと)**: `script`, `style`, `noscript`, `iframe`
 - **unwrap するタグ (タグのみ削除)**: `span`, `font`, `center`
+- **条件付き unwrap**: `<a>` のうち href が `http://` / `https://` で始まらないもの
+  (Joomla 内部リンク `index.php?Itemid=...` など) はタグを剥がしてテキストのみ残す。
+  外部リンクはそのまま保持する。
 
 ## その他のコマンド
 

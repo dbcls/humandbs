@@ -47,6 +47,15 @@ const TAGS_TO_UNWRAP = new Set([
 ])
 
 /**
+ * Check if an href points to an external URL (http/https scheme).
+ * Internal Joomla links like `index.php?...` or relative paths return false.
+ */
+const isExternalHref = (href: string | null): boolean => {
+  if (!href) return false
+  return /^https?:\/\//i.test(href.trim())
+}
+
+/**
  * Check if an attribute name is an event handler (onclick, onmouseover, etc.)
  */
 const isEventHandler = (attrName: string): boolean => {
@@ -85,6 +94,18 @@ const cleanAttributes = (el: Element): void => {
 }
 
 /**
+ * Replace the element with its children in the parent node
+ */
+const unwrapElement = (el: Element): void => {
+  const parent = el.parentNode
+  if (!parent) return
+  while (el.firstChild) {
+    parent.insertBefore(el.firstChild, el)
+  }
+  el.remove()
+}
+
+/**
  * Process a single element recursively
  */
 const processElement = (el: Element, doc: Document): void => {
@@ -103,13 +124,14 @@ const processElement = (el: Element, doc: Document): void => {
 
   // Unwrap tags (replace with children)
   if (TAGS_TO_UNWRAP.has(tagName)) {
-    const parent = el.parentNode
-    if (parent) {
-      while (el.firstChild) {
-        parent.insertBefore(el.firstChild, el)
-      }
-      el.remove()
-    }
+    unwrapElement(el)
+    return
+  }
+
+  // Unwrap internal <a> tags (non-http/https href) to strip dead Joomla links
+  // while keeping the visible text. External links are preserved.
+  if (tagName === "a" && !isExternalHref(el.getAttribute("href"))) {
+    unwrapElement(el)
     return
   }
 
