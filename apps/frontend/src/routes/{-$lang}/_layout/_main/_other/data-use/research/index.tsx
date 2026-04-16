@@ -9,6 +9,8 @@ import {
 import { startTransition, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
 
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
+
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -48,7 +50,46 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const t = useTranslations("Research-list");
   const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
   const { setFilters } = useFilters(Route.id);
+
+  const { data: researchesData } = useQuery(
+    getResearchesQueryOptions({ ...search, lang }),
+  );
+
+  const exportData = useMemo(() => {
+    type Row = ResearchSearchResponse["data"][number];
+    const columns: { header: string; value: (row: Row) => string }[] = [
+      { header: t("research-id"), value: (row) => row.humId },
+      { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
+      { header: t("title"), value: (row) => row.title[lang] ?? "" },
+      {
+        header: t("date-published"),
+        value: (row) =>
+          `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
+      },
+      {
+        header: t("date-modified"),
+        value: (row) =>
+          `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
+      },
+      { header: t("methods"), value: (row) => row.methods ?? "" },
+      { header: t("type-of-data"), value: (row) => row.typeOfData.join(", ") },
+      { header: t("platforms"), value: (row) => row.platforms.join(", ") },
+      { header: t("targets"), value: (row) => row.targets },
+      { header: t("criteria"), value: (row) => row.criteria },
+      {
+        header: t("data-provider"),
+        value: (row) => row.dataProvider.join(", "),
+      },
+    ];
+    return {
+      headers: columns.map((c) => c.header),
+      rows: (researchesData?.data ?? []).map((row) =>
+        columns.map((c) => c.value(row)),
+      ),
+    };
+  }, [researchesData, lang, t]);
 
   return (
     <FilterableCard
@@ -62,6 +103,9 @@ function RouteComponent() {
           }}
           onFilterClick={onFilterClick}
           isPanelOpen={isOpen}
+          onCopy={() => copyTableData(exportData)}
+          onCsv={() => downloadCsv(exportData, "research-list")}
+          onExcel={() => downloadExcel(exportData, "research-list")}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
