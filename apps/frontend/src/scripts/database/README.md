@@ -61,6 +61,13 @@ bun ./src/scripts/database/seed-navigation.ts
         └── assets...
 ```
 
+### `seed-news.ts`
+
+Seed news pages crawled by the [crawl script](../../../../backend/joomla/README.md)
+from the old site.
+
+> Since there is no grouping of news in Joomla!, every JSON array element would become a separate news item with single translation.
+
 ### `reset-db.ts`
 
 Database reset utility that clears all data and reinitializes the schema.
