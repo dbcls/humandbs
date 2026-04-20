@@ -8,8 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production bun server.ts",
+    "db:reset": "bun ./src/scripts/database/reset-db.ts",
+    "db:clear": "bun ./src/scripts/database/clear-db.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
     "db:seed-navigation": "bun ./src/scripts/database/seed-navigation.ts",
+    "db:seed-news": "bun ./src/scripts/database/seed-news.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
     "db:push": "bunx --bun drizzle-kit push"

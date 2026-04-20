@@ -3,30 +3,9 @@ import { Pool } from "pg";
 
 import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import * as schema from "@/db/schema";
+import { buildDatabaseUrl } from "./utils";
 
 const NAV_CONFIG_ID = "global";
-
-function buildDatabaseUrl(): string {
-  const {
-    HUMANDBS_POSTGRES_USER,
-    HUMANDBS_POSTGRES_PASSWORD,
-    HUMANDBS_POSTGRES_HOST,
-    HUMANDBS_POSTGRES_PORT,
-    HUMANDBS_POSTGRES_DB,
-  } = process.env;
-
-  if (
-    !HUMANDBS_POSTGRES_USER ||
-    !HUMANDBS_POSTGRES_PASSWORD ||
-    !HUMANDBS_POSTGRES_HOST ||
-    !HUMANDBS_POSTGRES_PORT ||
-    !HUMANDBS_POSTGRES_DB
-  ) {
-    throw new Error("Missing required Postgres environment variables.");
-  }
-
-  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
-}
 
 async function seedNavigation() {
   const pool = new Pool({ connectionString: buildDatabaseUrl() });

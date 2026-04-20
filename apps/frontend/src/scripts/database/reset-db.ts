@@ -52,15 +52,29 @@ async function resetDatabase() {
   }
 }
 
-// Add confirmation prompt if running directly
 if (import.meta.main) {
-  console.log("⚠️  WARNING: This will delete all data in the database!");
-  console.log("Press Ctrl+C within 5 seconds to cancel...");
+  const yes = process.argv.includes("-y");
 
-  setTimeout(() => {
+  if (yes) {
     resetDatabase().catch((err) => {
       console.error(err);
       process.exit(1);
     });
-  }, 5000);
+  } else {
+    console.log("⚠️  WARNING: This will DROP ALL TABLES in the database!");
+    process.stdout.write('Type "yes" to confirm: ');
+
+    process.stdin.setEncoding("utf8");
+    process.stdin.once("data", (input) => {
+      if (input.toString().trim() === "yes") {
+        resetDatabase().catch((err) => {
+          console.error(err);
+          process.exit(1);
+        });
+      } else {
+        console.log("Aborted.");
+        process.exit(0);
+      }
+    });
+  }
 }

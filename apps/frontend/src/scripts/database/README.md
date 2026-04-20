@@ -11,9 +11,9 @@ Comprehensive document seeding script that processes structured markdown files a
 **Usage:**
 
 ```bash
-bun run seed:documents
+bun run db:seed-documents
 # or run directly with:
-bun seed-documents.ts
+bun ./src/scripts/database/seed-documents.ts
 ```
 
 **Features:**
@@ -70,23 +70,25 @@ from the old site.
 
 ### `reset-db.ts`
 
-Database reset utility that clears all data and reinitializes the schema.
+Database reset utility that drops all tables entirely.
 
 **Usage:**
 
 ```bash
-bun run db:reset
-# or run directly with:
+# Prompts for confirmation before proceeding
 bun reset-db.ts
+
+# Skip confirmation prompt (for scripted use)
+bun reset-db.ts -y
 ```
 
 **Safety Features:**
 
+- **Explicit confirmation** - Requires typing `"yes"` before executing; use `-y` to bypass
 - **Production protection** - Automatically prevents execution in production
-- **Complete data removal** - Drops and recreates all tables
-- **Schema reinitialization** - Applies latest database schema
+- **Complete table removal** - Drops all tables with CASCADE; requires re-running migrations before use
 
-⚠️ **Warning:** This script will permanently delete all data. Use with extreme caution.
+⚠️ **Warning:** This drops the schema entirely. Run migrations (`bun run db:push`) after resetting before seeding.
 
 ### `clear-db.ts`
 
@@ -95,23 +97,28 @@ Database content clearing utility that removes all data while preserving table s
 **Usage:**
 
 ```bash
+# Clear all tables
 bun run db:clear
-# or run directly with:
-bun clear-db.ts
+
+# Clear specific tables only (CASCADE handles dependent tables automatically)
+bun run db:clear -- --tables=news_item
+bun run db:clear -- --tables=news_item,news_translation
 ```
 
 **Features:**
 
 - **Content clearing** - Removes all data from all tables using TRUNCATE
+- **Selective clearing** - `--tables=` flag to target specific tables only
 - **Structure preservation** - Keeps tables, indexes, and schema intact
 - **Auto-increment reset** - Resets identity columns to start values
-- **Foreign key handling** - Temporarily disables constraints during clearing
+- **Foreign key handling** - Temporarily disables constraints during clearing; CASCADE propagates to dependent tables
 - **Production protection** - Automatically prevents execution in production
 
 **When to use:**
 
 - Development data reset without schema changes
 - Quick content refresh while preserving structure
+- Re-seeding a specific table (e.g. `bun run db:clear -- --tables=news_item && bun run db:seed-news`)
 - Testing with clean data state
 - Faster than full reset when schema is unchanged
 
@@ -149,7 +156,7 @@ cp .env.example .env
 bun run db:reset
 
 # 3. Seed documents and assets (creates documents + content)
-bun run seed:documents
+bun run db:seed-documents
 
 # Optional: reset and reseed only the navigation config
 bun run db:seed-navigation
@@ -159,23 +166,23 @@ bun run db:seed-navigation
 
 ```bash
 # Update documents and content (safe to run repeatedly)
-bun run seed:documents
+bun run db:seed-documents
 
 # Reset navigation config to the current default
 bun run db:seed-navigation
 
 # Quick data refresh (preserves schema)
-bun run db:clear && bun run seed:documents
+bun run db:clear && bun run db:seed-documents
 ```
 
 ### Development Workflows
 
 ```bash
 # Full reset with schema changes
-bun run db:fresh  # Equivalent to: db:reset && db:push && seed:documents
+bun run db:fresh  # Equivalent to: db:reset && db:push && db:seed-documents
 
 # Quick content-only reset
-bun run db:clear && bun run seed:documents
+bun run db:clear && bun run db:seed-documents
 
 # Schema updates only
 bun run db:push

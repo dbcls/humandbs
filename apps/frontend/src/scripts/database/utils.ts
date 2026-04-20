@@ -1,0 +1,21 @@
+export function buildDatabaseUrl(): string {
+  const {
+    HUMANDBS_POSTGRES_USER,
+    HUMANDBS_POSTGRES_PASSWORD,
+    HUMANDBS_POSTGRES_HOST,
+    HUMANDBS_POSTGRES_PORT,
+    HUMANDBS_POSTGRES_DB,
+  } = process.env;
+
+  if (
+    !HUMANDBS_POSTGRES_USER ||
+    !HUMANDBS_POSTGRES_PASSWORD ||
+    !HUMANDBS_POSTGRES_HOST ||
+    !HUMANDBS_POSTGRES_PORT ||
+    !HUMANDBS_POSTGRES_DB
+  ) {
+    throw new Error("Missing required Postgres environment variables.");
+  }
+
+  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
+}

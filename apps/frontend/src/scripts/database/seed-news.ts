@@ -7,33 +7,12 @@ import { Pool } from "pg";
 
 import * as schema from "@/db/schema";
 import type { NewsPagesOutput } from "../../../../backend/joomla/lib/types";
+import { buildDatabaseUrl } from "./utils";
 
 const NEWS_JSON_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../../backend/joomla/output/news-pages.json",
 );
-
-function buildDatabaseUrl(): string {
-  const {
-    HUMANDBS_POSTGRES_USER,
-    HUMANDBS_POSTGRES_PASSWORD,
-    HUMANDBS_POSTGRES_HOST,
-    HUMANDBS_POSTGRES_PORT,
-    HUMANDBS_POSTGRES_DB,
-  } = process.env;
-
-  if (
-    !HUMANDBS_POSTGRES_USER ||
-    !HUMANDBS_POSTGRES_PASSWORD ||
-    !HUMANDBS_POSTGRES_HOST ||
-    !HUMANDBS_POSTGRES_PORT ||
-    !HUMANDBS_POSTGRES_DB
-  ) {
-    throw new Error("Missing required Postgres environment variables.");
-  }
-
-  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
-}
 
 async function ensureSystemUser(
   db: ReturnType<typeof drizzle<typeof schema>>,
@@ -155,82 +134,34 @@ async function seedNews(overwrite = false) {
     console.log(`\nSeeding ${raw.pages.length} news pages...`);
 
     let created = 0;
-    let skipped = 0;
 
     for (const page of raw.pages) {
-      const [existing] = await db
-        .select({ id: schema.newsItem.id })
-        .from(schema.newsItem)
-        .leftJoin(
-          schema.newsTranslation,
-          eq(schema.newsTranslation.newsId, schema.newsItem.id),
-        )
-        .where(eq(schema.newsTranslation.title, page.title))
-        .limit(1)
+      const [inserted] = await db
+        .insert(schema.newsItem)
+        .values({
+          authorId,
+          publishedAt: page.publishedAt,
+        })
+        .returning({ id: schema.newsItem.id })
         .execute();
 
-      let newsId: string;
+      await db
+        .insert(schema.newsTranslation)
+        .values({
+          newsId: inserted.id,
+          lang: page.lang,
+          title: page.title,
+          content: page.contentHtml,
+          updatedAt: page.modifiedDate ? new Date(page.modifiedDate) : null,
+        })
+        .execute();
 
-      if (existing) {
-        if (!overwrite) {
-          skipped++;
-          continue;
-        }
-        newsId = existing.id;
-      } else {
-        const [inserted] = await db
-          .insert(schema.newsItem)
-          .values({
-            authorId,
-            publishedAt: page.publishedAt,
-          })
-          .returning({ id: schema.newsItem.id })
-          .execute();
-
-        newsId = inserted.id;
-        created++;
-      }
-
-      const translationValues = {
-        newsId,
-        lang: page.lang,
-        title: page.title,
-        content: page.contentHtml,
-        updatedAt: page.modifiedDate ? new Date(page.modifiedDate) : null,
-      };
-
-      if (overwrite) {
-        await db
-          .insert(schema.newsTranslation)
-          .values(translationValues)
-          .onConflictDoUpdate({
-            target: [
-              schema.newsTranslation.newsId,
-              schema.newsTranslation.lang,
-            ],
-            set: {
-              title: translationValues.title,
-              content: translationValues.content,
-              updatedAt: translationValues.updatedAt,
-            },
-          })
-          .execute();
-      } else {
-        await db
-          .insert(schema.newsTranslation)
-          .values(translationValues)
-          .onConflictDoNothing()
-          .execute();
-      }
-
+      created++;
       console.log(`  [${page.lang}] "${page.title.slice(0, 60)}"`);
     }
 
     console.log(`\nSeeding complete!`);
     console.log(`  Created: ${created} news item(s)`);
-    console.log(
-      `  Skipped: ${skipped} (already exist; use --overwrite to replace)`,
-    );
   } catch (error) {
     console.error("Seeding failed:", error);
     throw error;

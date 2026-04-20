@@ -10,6 +10,7 @@ import { i18n, type Locale } from "@/config/i18n";
 import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { buildDatabaseUrl } from "./utils";
 
 const DOCUMENTS_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -44,28 +45,6 @@ type DocumentLocaleMap = Map<
   string,
   Map<Locale, { content: string; dir: string }>
 >;
-
-function buildDatabaseUrl(): string {
-  const {
-    HUMANDBS_POSTGRES_USER,
-    HUMANDBS_POSTGRES_PASSWORD,
-    HUMANDBS_POSTGRES_HOST,
-    HUMANDBS_POSTGRES_PORT,
-    HUMANDBS_POSTGRES_DB,
-  } = process.env;
-
-  if (
-    !HUMANDBS_POSTGRES_USER ||
-    !HUMANDBS_POSTGRES_PASSWORD ||
-    !HUMANDBS_POSTGRES_HOST ||
-    !HUMANDBS_POSTGRES_PORT ||
-    !HUMANDBS_POSTGRES_DB
-  ) {
-    throw new Error("Missing required Postgres environment variables.");
-  }
-
-  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
-}
 
 function extractImageFilenames(content: string): string[] {
   const results = new Set<string>();
@@ -534,7 +513,9 @@ async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<void> {
         const dest = path.join(destDir, entry.name);
         await copyFile(src, dest);
         copied.add(entry.name);
-        console.log(`Copied file: ${locale}/${documentId}/${entry.name} → public/files/${documentId}/${entry.name}`);
+        console.log(
+          `Copied file: ${locale}/${documentId}/${entry.name} → public/files/${documentId}/${entry.name}`,
+        );
       }
     }
   }
@@ -558,7 +539,9 @@ async function seedNavigation(
     .execute();
 
   if (existing && !overwrite) {
-    console.log("Navigation config already exists, skipping (use --overwrite to replace).");
+    console.log(
+      "Navigation config already exists, skipping (use --overwrite to replace).",
+    );
     return;
   }
 
