@@ -145,6 +145,21 @@ bun run db:clear -- --tables=news_item,news_translation
 - Testing with clean data state
 - Faster than full reset when schema is unchanged
 
+## Testing
+
+Tests live in `tests/` and run against a dedicated `humandbs_test` database created inside the existing dev Postgres container — no extra containers needed.
+
+```bash
+bun test ./src/scripts/database/tests
+```
+
+**Setup (`tests/test-db.ts`):**
+
+- Creates `humandbs_test` database, runs `bunx drizzle-kit push --force` against it to apply the current schema, then drops it after all tests complete
+- `clearTables()` truncates data between each test so tests are isolated
+
+**Requirements:** The dev Postgres container must be running and the standard `HUMANDBS_POSTGRES_*` env vars must be set.
+
 ## Database Configuration
 
 ### Required Environment Variables
