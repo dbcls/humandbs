@@ -166,9 +166,9 @@
     "hasPhenotypeData": "Has Phenotype Data",
     "releaseDate": "Release Date",
     "subjectCount": "Subject Count",
-    "readLength": "Read Length",
-    "sequencingDepth": "Sequencing Depth",
-    "targetCoverage": "Target Coverage",
+    "readLength": "Read Length (bp)",
+    "sequencingDepth": "Sequencing Depth (x)",
+    "targetCoverage": "Target Coverage (%)",
     "dataVolumeGb": "Data Volume (GB)",
     "variantSnv": "SNV Count",
     "variantIndel": "Indel Count",
@@ -180,7 +180,13 @@
     "panel-reset-all": "Reset all",
     "panel-reset": "Reset",
     "panel-search": "Search",
-    "datasetFilters": "Dataset filters"
+    "datasetFilters": "Dataset filters",
+    "experiment-overview": "Experiment Overview",
+    "subjects": "Subjects",
+    "platform-method": "Platform & Method",
+    "sequencing-quality": "Sequencing Quality",
+    "data-format": "Data Format",
+    "policy": "Policy"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",
