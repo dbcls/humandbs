@@ -63,10 +63,33 @@ bun ./src/scripts/database/seed-navigation.ts
 
 ### `seed-news.ts`
 
-Seed news pages crawled by the [crawl script](../../../../backend/joomla/README.md)
-from the old site.
+Seeds news pages crawled by the [Joomla export script](../../../../backend/joomla/README.md) from the old site.
 
-> Since there is no grouping of news in Joomla!, every JSON array element would become a separate news item with single translation.
+**Usage:**
+
+```bash
+bun run db:seed-news
+bun run db:seed-news -- --overwrite
+```
+
+> Since news articles in Joomla have no grouping, every JSON entry becomes a separate `newsItem` with a single `newsTranslation`.
+
+### `seed-content.ts`
+
+Seeds misc pages (policies, old guidelines, etc.) crawled by the [Joomla export script](../../../../backend/joomla/README.md) from the old site into `content_item` / `content_translation` tables.
+
+**Usage:**
+
+```bash
+bun run db:seed-content
+bun run db:seed-content -- --overwrite
+```
+
+**Features:**
+
+- **Groups by path** - Pages sharing the same `path` (e.g. `acknowledgement`) become one `contentItem` with ja/en translations
+- **Idempotent** - Skips existing items by `contentId`; use `--overwrite` to update in place
+- **Exported `seedContent(pages, overwrite?, db?)` function** - Accepts pages and an optional Drizzle instance for use in tests
 
 ### `reset-db.ts`
 
