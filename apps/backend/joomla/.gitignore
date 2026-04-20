@@ -1,0 +1,3 @@
+# Intermediate raw JSON (regenerated from DB via scripts/export-*-json.sh)
+# Final *-pages.json are tracked as the deliverable for frontend handoff.
+output/*-raw.json
