@@ -180,7 +180,13 @@
     "panel-reset-all": "すべてをリセット",
     "panel-reset": "リセット",
     "panel-search": "検索",
-    "datasetFilters": "データセットのフィルター"
+    "datasetFilters": "データセットのフィルター",
+    "experiment-overview": "実験の概要",
+    "subjects": "被験者",
+    "platform-method": "プラットフォーム・手法",
+    "sequencing-quality": "シーケンシング品質",
+    "data-format": "データ形式",
+    "policy": "ポリシー"
   },
   "Pagination": {
     "itemsPerPage": "1ページあたりのアイテム数",

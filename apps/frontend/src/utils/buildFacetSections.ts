@@ -6,6 +6,10 @@ import { DATASET_FACET_CONFIG } from "@/config/facet-config";
 /**
  * Builds SectionConfig[] from DATASET_FACET_CONFIG given the active filter
  * values and allFacets data. Shared between datasets and researches adapters.
+ *
+ * Each section receives a `uiGroup` matching its facet category so that
+ * SearchPanel can render the 6 category headers. Fields without a category
+ * (criteria, releaseDate) get no `uiGroup` and fall into the top-level section.
  */
 export function buildFacetSections(
   activeFilters: Partial<DatasetFilters>,
@@ -14,8 +18,10 @@ export function buildFacetSections(
 ): SectionConfig[] {
   const result: SectionConfig[] = [];
 
-  for (const [key, facetType] of Object.entries(DATASET_FACET_CONFIG)) {
+  for (const [key, config] of Object.entries(DATASET_FACET_CONFIG)) {
+    const { type: facetType, category } = config;
     const activeValue = activeFilters[key as keyof DatasetFilters];
+    const uiGroup = category;
 
     switch (facetType) {
       case "checkbox":
@@ -23,11 +29,10 @@ export function buildFacetSections(
           type: "checkbox",
           id: key,
           groupKey,
+          uiGroup,
           value: (activeValue as string[]) ?? [],
           options:
-            allFacetsData?.[key]?.map(
-              (f: { value: string }) => f.value,
-            ) ?? [],
+            allFacetsData?.[key]?.map((f: { value: string }) => f.value) ?? [],
         } as SectionConfig);
         break;
       case "text":
@@ -35,6 +40,7 @@ export function buildFacetSections(
           type: "text",
           id: key,
           groupKey,
+          uiGroup,
           value: (activeValue as string) ?? "",
         } as SectionConfig);
         break;
@@ -43,6 +49,7 @@ export function buildFacetSections(
           type: "text-list",
           id: key,
           groupKey,
+          uiGroup,
           value: (activeValue as string[]) ?? [],
         } as SectionConfig);
         break;
@@ -51,6 +58,7 @@ export function buildFacetSections(
           type: "boolean",
           id: key,
           groupKey,
+          uiGroup,
           value: activeValue as boolean | undefined,
         } as SectionConfig);
         break;
@@ -60,6 +68,7 @@ export function buildFacetSections(
           type: facetType,
           id: key,
           groupKey,
+          uiGroup,
           value:
             (activeValue as {
               min?: string | number;
