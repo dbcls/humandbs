@@ -1145,30 +1145,21 @@ function OptionRow({
       </div>
 
       {/* Destination selector */}
-      <div className="flex flex-col gap-1.5 pl-5">
-        <div className="flex items-center gap-3">
-          {(["next-step", "child-flowchart", "external-link"] as const).map(
-            (t) => (
-              <label
-                key={t}
-                className="flex cursor-pointer items-center gap-1 text-xs text-gray-600"
-              >
-                <input
-                  type="radio"
-                  name={"dest-" + option.id}
-                  checked={destType === t}
-                  onChange={() => handleDestChange(t)}
-                  className="accent-blue-600"
-                />
-                {t === "next-step"
-                  ? "Next step"
-                  : t === "child-flowchart"
-                    ? "Child flowchart"
-                    : "External link"}
-              </label>
-            ),
-          )}
-        </div>
+      <div className="flex flex-col gap-1.5">
+        <Select
+          value={destType}
+          onValueChange={(v) => handleDestChange(v as DestType)}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Destination…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="next-step">Next step</SelectItem>
+            <SelectItem value="child-flowchart">Child flowchart</SelectItem>
+            <SelectItem value="external-link">External link</SelectItem>
+            <SelectItem value="none">None</SelectItem>
+          </SelectContent>
+        </Select>
 
         {destType === "next-step" && (
           <Select
