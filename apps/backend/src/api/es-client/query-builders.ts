@@ -82,6 +82,10 @@ const buildIdMatchClauses = (
   return clauses
 }
 
+// AUTO:5,12 で「0-4 文字: 距離 0 / 5-11 文字: 距離 1 / 12+ 文字: 距離 2」。
+// 10 文字の JGAD ID が distance 2 で別番号と誤マッチするのを避けつつ英語 typo 吸収を残す。
+const FULL_TEXT_FUZZINESS = "AUTO:5,12" as const
+
 export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
   bool: {
     minimum_should_match: 1,
@@ -95,7 +99,7 @@ export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
             "experiments.searchable.targets",
           ],
           type: "best_fields",
-          fuzziness: "AUTO",
+          fuzziness: FULL_TEXT_FUZZINESS,
         },
       },
       ...buildIdMatchClauses(["humId", "datasetId"], q),
@@ -121,7 +125,7 @@ export const buildResearchMultiMatchQuery = (q: string): QueryContainer => ({
             "summary.targets.en.text",
           ],
           type: "best_fields",
-          fuzziness: "AUTO",
+          fuzziness: FULL_TEXT_FUZZINESS,
         },
       },
       ...buildIdMatchClauses(["humId"], q),
