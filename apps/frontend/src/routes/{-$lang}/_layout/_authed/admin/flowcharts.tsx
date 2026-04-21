@@ -644,14 +644,37 @@ function StepList({
   }
 
   function handleUpdateStep(id: string, patch: Partial<NavigationFlowchartStep>) {
-    // Apply the patch to both EN and JA steps. All bilingual fields
-    // (titleEn/titleJa, textEn/textJa) are included in the patch directly.
-    const applyPatch = (s: NavigationFlowchartStep) =>
-      s.id === id ? { ...s, ...patch } : s;
-    onChange({
-      en: { steps: steps.map(applyPatch) },
-      ja: { steps: config.ja.steps.map(applyPatch) },
+    const newEnSteps = steps.map((s) => (s.id === id ? { ...s, ...patch } : s));
+
+    // For the JA side, apply non-options fields directly (bilingual text/title
+    // fields are included in the patch). For `options`, preserve JA option
+    // objects but reorder them to match the EN order — never replace JA options
+    // wholesale with EN objects.
+    const newJaSteps = config.ja.steps.map((s) => {
+      if (s.id !== id) return s;
+      if (!patch.options) return { ...s, ...patch };
+      const jaById = Object.fromEntries(s.options.map((o) => [o.id, o]));
+      const { options: _enOptions, ...rest } = patch;
+      const reorderedJaOptions = patch.options
+        .map((enOpt) => jaById[enOpt.id] ?? enOpt)
+        .map((jaOpt, i) => {
+          // Carry over any structural fields (nextStep, linkedFlowchartId, link,
+          // linkTextEn/Ja) that may have been edited on the EN side.
+          const enOpt = patch.options![i];
+          if (!enOpt) return jaOpt;
+          return {
+            ...jaOpt,
+            nextStep: enOpt.nextStep,
+            linkedFlowchartId: enOpt.linkedFlowchartId,
+            link: enOpt.link,
+            linkTextEn: enOpt.linkTextEn,
+            linkTextJa: enOpt.linkTextJa ?? jaOpt.linkTextJa,
+          };
+        });
+      return { ...s, ...rest, options: reorderedJaOptions };
     });
+
+    onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
   }
 
   function canDeleteStep(stepId: string) {
