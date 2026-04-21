@@ -76,7 +76,7 @@ async function getFallbackData(
 
 export interface NavigationFlowchartResponse {
   id: string;
-  slug: string;
+  slug: string | null;
   nameEn: string;
   nameJa: string;
   data: NavigationFlowchartData;
