@@ -32,7 +32,7 @@ interface NavigationChartProps {
   flowchartId?: string;
   locale?: Locale;
   answers?: FlowchartAnswers;
-  onAnswerChange?: (slug: string, stepId: string, optionId: string) => void;
+  onAnswerChange?: (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
   onNavigateToChild?: (childId: string) => void;
   // Legacy prop
   data?: NavigationData;
@@ -285,12 +285,12 @@ function NavigationChartInner({
   locale?: Locale;
   answers: FlowchartAnswers;
   linkedFlowchartNames: Record<string, string>;
-  onAnswerChange: (slug: string, stepId: string, optionId: string) => void;
+  onAnswerChange: (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
   onNavigateToChild: (childSlug: string) => void;
 }) {
   const stepAnswers = answers[slug] ?? {};
 
-  // Compute enabled step index from existing answers
+  // Compute the furthest unlocked step index from existing answers
   const computeEnabledIndex = () => {
     let idx = 0;
     for (let i = 0; i < data.steps.length; i++) {
@@ -311,9 +311,13 @@ function NavigationChartInner({
   const handleOptionClick = (option: NavigationFlowchartOption, stepIndex: number) => {
     const step = data.steps[stepIndex];
     if (!step) return;
+    // Allow clicking any step that is currently enabled (answered or current).
     if (stepIndex > enabledStepIndex) return;
 
-    onAnswerChange(slug, step.id, option.id);
+    // When the user changes an answer on an already-answered step, clear all
+    // answers for steps that appear after this one so stale state is removed.
+    const stepsAfter = data.steps.slice(stepIndex + 1).map((s) => s.id);
+    onAnswerChange(slug, step.id, option.id, stepsAfter);
 
     if (option.linkedFlowchartId) {
       onNavigateToChild(option.linkedFlowchartId);
@@ -323,6 +327,9 @@ function NavigationChartInner({
     if (option.nextStep) {
       const targetIdx = data.steps.findIndex((s) => s.id === option.nextStep);
       setEnabledStepIndex(targetIdx !== -1 ? targetIdx : stepIndex + 1);
+    } else {
+      // Terminal option (no nextStep, no linkedFlowchartId) — stay at this step
+      setEnabledStepIndex(stepIndex);
     }
   };
 

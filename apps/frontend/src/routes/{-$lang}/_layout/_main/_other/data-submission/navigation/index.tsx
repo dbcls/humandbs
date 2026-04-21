@@ -78,18 +78,26 @@ function RouteComponent() {
     }),
   ];
 
-  const handleAnswerChange = (slug: string, stepId: string, optionId: string) => {
+  const handleAnswerChange = (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => {
     navigate({
-      search: (prev) => ({
-        ...prev,
-        answers: {
-          ...(prev.answers ?? {}),
-          [slug]: {
-            ...((prev.answers ?? {})[slug] ?? {}),
-            [stepId]: optionId,
-          },
-        },
-      }),
+      search: (prev) => {
+        const prevSlugAnswers = (prev.answers ?? {})[slug] ?? {};
+        // Remove answers for steps that come after the re-answered one
+        const newSlugAnswers: Record<string, string> = {};
+        for (const [sid, oid] of Object.entries(prevSlugAnswers)) {
+          if (!clearStepIds?.includes(sid)) newSlugAnswers[sid] = oid;
+        }
+        newSlugAnswers[stepId] = optionId;
+        return {
+          ...prev,
+          // If the user re-answers a step in the parent while on a child, pop
+          // back to just the parent (clear the chain) since the path may change.
+          chain: slug === ENTRY_POINT_SLUG && (prev.chain?.length ?? 0) > 0
+            ? []
+            : prev.chain,
+          answers: { ...(prev.answers ?? {}), [slug]: newSlugAnswers },
+        };
+      },
     });
   };
 
