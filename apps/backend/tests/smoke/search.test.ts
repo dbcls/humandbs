@@ -53,12 +53,12 @@ describe("Smoke: search & aggregations", () => {
   })
 
   itWithDataset("POST /research/search with datasetId query -> 200, 親 humId がヒットする", async (datasetId) => {
-    // datasetId の親 humId を取得する
+    // datasetId の親 Research を取得する (data は配列で返る)
     const parent = await fetchJson(`/dataset/${datasetId}/research`)
     expect(parent.status).toBe(200)
-    const parentHumId = (parent.body.data as { humId?: string })?.humId
+    const parentHumId = (parent.body.data as { humId?: string }[])[0]?.humId
     if (typeof parentHumId !== "string" || parentHumId === "") {
-      throw new Error(`Expected parent humId for ${datasetId}, got: ${JSON.stringify(parentHumId)}`)
+      throw new Error(`Expected parent humId for ${datasetId}, got: ${JSON.stringify(parent.body.data)}`)
     }
 
     // datasetId を Research 全文検索に入れると親 humId が結果に含まれること
