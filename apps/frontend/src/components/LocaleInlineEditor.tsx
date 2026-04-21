@@ -81,9 +81,9 @@ export function LocaleInlineEditor({
 
   if (isEditing) {
     return (
-      <div ref={formRef} className="flex flex-col gap-1.5">
+      <div ref={formRef} className="flex min-w-0 flex-col gap-1.5">
         {(["en", "ja"] as const).map((locale) => (
-          <div key={locale} className="flex items-center gap-2">
+          <div key={locale} className="flex min-w-0 items-center gap-2">
             <label className="w-6 shrink-0 text-xs font-medium uppercase text-gray-500">
               {locale}
             </label>
@@ -95,7 +95,7 @@ export function LocaleInlineEditor({
                 locale === "en" ? setEditEn(e.target.value) : setEditJa(e.target.value)
               }
               placeholder={locale === "en" ? "English" : "日本語"}
-              className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+              className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
               onKeyDown={(e) => {
                 if (e.key === "Enter") commit();
                 if (e.key === "Escape") cancel();
