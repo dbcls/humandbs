@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 
 import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
 import { parseNavigationFlowchartConfig } from "@/config/navigation-flowchart.schema";
@@ -100,7 +100,7 @@ export function createNavigationFlowchartRepository(
           revision: navigationFlowchart.revision,
         })
         .from(navigationFlowchart)
-        .orderBy(navigationFlowchart.nameEn);
+        .orderBy(desc(navigationFlowchart.isEntryPoint), navigationFlowchart.nameEn);
 
       return rows;
     },
