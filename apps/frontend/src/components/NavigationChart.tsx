@@ -23,7 +23,7 @@ export interface NavigationData {
   }>;
 }
 
-// Answers: { [flowchartSlug]: { [stepId]: optionId } }
+/** Answers keyed by flowchart slug (or UUID for child flowcharts), then by step ID. */
 export type FlowchartAnswers = Record<string, Record<string, string>>;
 
 interface NavigationChartProps {
@@ -51,6 +51,11 @@ interface BreadcrumbsProps {
   locale?: Locale;
 }
 
+/**
+ * Horizontal breadcrumb trail. The last item is the current location and is
+ * rendered as non-interactive bold text. All preceding items are rendered as
+ * clickable buttons if they have an `onClick` handler.
+ */
 function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
   if (items.length === 0) return null;
   return (
@@ -81,6 +86,17 @@ function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
   );
 }
 
+/**
+ * Renders a single answer option inside a step.
+ *
+ * - Regular nextStep option: button with optional downward arrow when the target
+ *   is the immediately adjacent step.
+ * - linkedFlowchartId option: title + labelled navigation button (no arrow).
+ * - External link option: title + anchor or internal-navigation button.
+ *
+ * Disabled once selected to prevent double-clicks; the parent step re-enables
+ * all options of previously answered steps so the user can change their answer.
+ */
 const OptionComponent = ({
   option,
   locale,
@@ -204,6 +220,13 @@ const OptionComponent = ({
   );
 };
 
+/**
+ * Renders a flowchart step: title, body text, and its options.
+ *
+ * Steps beyond `enabledStepIndex` are faded out (opacity-30) and their options
+ * are pointer-events disabled. The current active step (`isCurrent`) receives a
+ * `ring-secondary-light` highlight border.
+ */
 const StepComponent = ({
   step,
   stepIndex,
@@ -269,6 +292,15 @@ const StepComponent = ({
   );
 };
 
+/**
+ * Core interactive flowchart renderer. Manages `enabledStepIndex` — the index
+ * of the furthest step the user has unlocked via their answers.
+ *
+ * When the user clicks an option on any already-enabled step, all answers for
+ * steps that come after it are cleared (`clearStepIds`) so stale downstream
+ * state is removed. The `slug` (or UUID for child flowcharts) is used as the
+ * namespace key inside the `answers` map.
+ */
 function NavigationChartInner({
   flowchartId,
   slug,
@@ -364,6 +396,14 @@ function NavigationChartInner({
   );
 }
 
+/**
+ * Entry-point component for the public flowchart UI.
+ *
+ * Routes to the correct data-fetching variant:
+ * - `data` prop (legacy): static JSON, no DB.
+ * - `flowchartId` prop: fetches a child flowchart by UUID (no public slug).
+ * - `slug` prop: fetches the entry-point flowchart by its public slug.
+ */
 function NavigationChart({
   slug,
   flowchartId,
@@ -406,6 +446,10 @@ function NavigationChart({
   );
 }
 
+/**
+ * Fetches a flowchart by its public slug and renders it via NavigationChartInner.
+ * Also fetches display names for any linked child flowcharts referenced by options.
+ */
 function NavigationChartDB({
   slug,
   locale,
@@ -460,6 +504,10 @@ function NavigationChartDB({
   );
 }
 
+/**
+ * Fetches a child flowchart by UUID (used when the flowchart has no public slug).
+ * Uses `flowchartId` as the answers namespace key when `data.slug` is null.
+ */
 function NavigationChartByIdDB({
   flowchartId,
   locale,
@@ -514,7 +562,11 @@ function NavigationChartByIdDB({
   );
 }
 
-// Legacy adapter for routes still using the old NavigationData shape
+/**
+ * Backward-compatible adapter for routes that still pass the old static
+ * `NavigationData` shape. Converts to the new step/option schema and renders
+ * inline without any DB queries.
+ */
 function LegacyNavigationChart({
   data,
   navigate,

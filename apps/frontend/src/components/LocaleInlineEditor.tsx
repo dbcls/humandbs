@@ -16,6 +16,14 @@ interface LocaleInlineEditorProps {
   required?: boolean;
 }
 
+/**
+ * Inline bilingual (EN/JA) text editor.
+ *
+ * Renders as a clickable label showing the EN value. Clicking switches to a
+ * two-field form (EN + JA). Changes are committed on blur (click outside),
+ * Enter key, or focus moving to the JA field; Escape cancels. If `required`
+ * is set, the form will not commit when the EN field is empty.
+ */
 export function LocaleInlineEditor({
   value,
   onChange,
@@ -50,12 +58,14 @@ export function LocaleInlineEditor({
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, [isEditing]);
 
+  /** Opens the form, seeding it with the current value. */
   function startEditing() {
     setEditEn(value.en);
     setEditJa(value.ja);
     setIsEditing(true);
   }
 
+  /** Saves trimmed values and closes the form. Falls back JA to EN when JA is blank. */
   function commit() {
     const en = editEn.trim();
     const ja = editJa.trim();
@@ -64,6 +74,7 @@ export function LocaleInlineEditor({
     setIsEditing(false);
   }
 
+  /** Discards edits and closes the form without firing onChange. */
   function cancel() {
     setIsEditing(false);
   }

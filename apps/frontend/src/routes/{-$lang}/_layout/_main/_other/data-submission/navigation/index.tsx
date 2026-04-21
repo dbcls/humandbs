@@ -37,6 +37,19 @@ export const Route = createFileRoute(
     ),
 });
 
+/**
+ * Public data-submission navigation page.
+ *
+ * State is stored entirely in URL search params so the page is bookmarkable
+ * and shareable:
+ * - `answers`: nested map of { [slugOrId]: { [stepId]: optionId } }
+ * - `chain`: ordered stack of child flowchart UUIDs navigated into; the last
+ *   element is the currently displayed child.
+ *
+ * Breadcrumbs are built from the entry-point record + one entry per chain item.
+ * The last breadcrumb (current location) is non-clickable; clicking an earlier
+ * one truncates the chain to that depth and discards downstream answers.
+ */
 function RouteComponent() {
   const navigate = useNavigate({ from: Route.fullPath });
   const { lang } = Route.useRouteContext();
@@ -78,6 +91,12 @@ function RouteComponent() {
     }),
   ];
 
+  /**
+   * Persists an answer to URL state. Clears `clearStepIds` from the same
+   * flowchart's answer map so stale downstream answers are removed when the user
+   * changes an earlier selection. Also resets the chain when re-answering a step
+   * on the parent while viewing a child, since the chosen path may have changed.
+   */
   const handleAnswerChange = (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => {
     navigate({
       search: (prev) => {
@@ -101,6 +120,7 @@ function RouteComponent() {
     });
   };
 
+  /** Pushes a child flowchart UUID onto the chain, making it the active view. */
   const handleNavigateToChild = (linkedFlowchartId: string) => {
     navigate({
       search: (prev) => ({
@@ -110,8 +130,11 @@ function RouteComponent() {
     });
   };
 
-  // Navigate to a breadcrumb: truncate chain to that depth and discard
-  // answers for everything deeper.
+  /**
+   * Handles breadcrumb navigation. `childDepth` is the chain index + 1 of the
+   * clicked item (null = entry point, i.e. clear the whole chain). Truncates
+   * the chain and removes answers for all flowcharts no longer in scope.
+   */
   const handleBreadcrumbClick = (childDepth: number | null) => {
     const newChain = childDepth === null ? [] : chain.slice(0, childDepth);
     // Keep only answers for flowcharts still in scope (entry point + newChain ids)

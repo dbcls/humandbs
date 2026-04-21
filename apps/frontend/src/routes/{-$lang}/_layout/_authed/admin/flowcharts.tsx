@@ -126,6 +126,11 @@ function RouteComponent() {
 // FlowchartList
 // ---------------------------------------------------------------------------
 
+/**
+ * Scrollable sidebar list of all flowcharts. Highlights the currently selected
+ * entry. Each item shows the EN name, published/draft badge, and an "entry
+ * point" badge when the flowchart has a public slug.
+ */
 function FlowchartList({
   selectedId,
   onSelect,
@@ -197,6 +202,11 @@ function FlowchartListItem({
 // CreateFlowchartPanel
 // ---------------------------------------------------------------------------
 
+/**
+ * Panel for creating a new flowchart record. Collects EN/JA name and an
+ * optional slug. Leaving the slug blank creates a child-only flowchart that
+ * can only be reached via a linked option in another flowchart.
+ */
 function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }) {
   const queryClient = useQueryClient();
   const [nameEn, setNameEn] = useState("");
@@ -307,6 +317,10 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
 // EditFlowchartPanel
 // ---------------------------------------------------------------------------
 
+/**
+ * Fetches a flowchart by ID and renders either a loading skeleton, an error
+ * state, or the full `FlowchartEditor` once data is available.
+ */
 function EditFlowchartPanel({
   id,
   onDeleted,
@@ -347,6 +361,11 @@ function EditFlowchartPanel({
 // FlowchartEditor — metadata fields + step list
 // ---------------------------------------------------------------------------
 
+/**
+ * Local state shape for the non-config metadata fields (name, slug, status).
+ * Kept separate from the config draft so metadata saves and step edits don't
+ * interfere with each other.
+ */
 interface FlowchartMeta {
   nameEn: string;
   nameJa: string;
@@ -354,6 +373,21 @@ interface FlowchartMeta {
   status: (typeof NAVIGATION_FLOWCHART_STATUS)[keyof typeof NAVIGATION_FLOWCHART_STATUS];
 }
 
+/**
+ * Main editor for a single flowchart record. Manages local drafts for both the
+ * metadata (name, slug, status) and the bilingual step config. Uses optimistic
+ * locking (`revision`) to detect concurrent edits.
+ *
+ * Save flow:
+ * 1. Validates EN/JA name and slug uniqueness.
+ * 2. Validates that every step has at least 2 options.
+ * 3. If the slug is being removed from an existing entry point, prompts for
+ *    confirmation before proceeding.
+ * 4. Sends the full config + expectedRevision to the server; handles CONFLICT.
+ *
+ * Delete flow: checks for dependent flowcharts (options in other flowcharts
+ * that link to this one) and surfaces them before allowing deletion.
+ */
 function FlowchartEditor({
   record,
   onDeleted,
@@ -399,6 +433,7 @@ function FlowchartEditor({
     mutationFn: () => $deleteNavigationFlowchart({ data: { id: record.id } }),
   });
 
+  /** Client-side uniqueness check against already-loaded flowchart list. */
   function checkSlugUniqueness(slug: string) {
     const trimmed = slug.trim();
     if (!trimmed) { setSlugConflictError(null); return; }
@@ -408,6 +443,7 @@ function FlowchartEditor({
     );
   }
 
+  /** Returns IDs of EN steps that have fewer than 2 options (invalid for publishing). */
   function validateSteps(config: NavigationFlowchartConfig) {
     return config.en.steps.filter((s) => s.options.length < 2).map((s) => s.id);
   }
@@ -606,8 +642,14 @@ function FlowchartEditor({
 // StepList — dnd-kit sortable step cards
 // ---------------------------------------------------------------------------
 
-const STEP_TYPE = "flowchart-step";
-
+/**
+ * Drag-and-drop sortable list of steps. Uses dnd-kit with prefixed IDs
+ * (`"step-" + step.id`) so the `move()` helper matches sortable registrations
+ * correctly; prefixes are stripped after reordering.
+ *
+ * EN steps are authoritative for order; JA steps are kept in sync by ID lookup
+ * inside `updateSteps`.
+ */
 function StepList({
   config,
   onChange,
@@ -621,6 +663,7 @@ function StepList({
 }) {
   const steps = config.en.steps;
 
+  /** Applies a new EN step order and rebuilds the JA array to match, preserving JA content. */
   function updateSteps(newEnSteps: NavigationFlowchartStep[]) {
     const jaById = Object.fromEntries(config.ja.steps.map((s) => [s.id, s]));
     const newJaSteps = newEnSteps.map((s) => jaById[s.id] ?? s);
@@ -677,6 +720,7 @@ function StepList({
     onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
   }
 
+  /** A step cannot be deleted while any option in this flowchart points to it as a nextStep target. */
   function canDeleteStep(stepId: string) {
     return !steps.some((s) => s.options.some((o) => o.nextStep === stepId));
   }
@@ -725,6 +769,17 @@ function StepList({
 // StepCard
 // ---------------------------------------------------------------------------
 
+/**
+ * Collapsible card for a single step. Contains:
+ * - Drag handle (dnd-kit `useSortable`)
+ * - Inline bilingual title editor
+ * - Validation badge when fewer than 2 options exist
+ * - EN/JA body text textareas
+ * - `OptionList` for managing answer options
+ *
+ * Propagates all mutations up via `onUpdate(patch)` so the parent `StepList`
+ * can keep EN and JA configs in sync.
+ */
 function StepCard({
   step,
   index,
@@ -878,8 +933,11 @@ function StepCard({
 // OptionList + OptionRow
 // ---------------------------------------------------------------------------
 
-const OPTION_TYPE_PREFIX = "flowchart-option-";
-
+/**
+ * Each step owns its own drag-and-drop context so options can only be reordered
+ * within their parent step. The `optionType` is prefixed with the step ID to
+ * prevent cross-step drops.
+ */
 function OptionList({
   options,
   allSteps,
@@ -953,6 +1011,11 @@ function OptionList({
 
 type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
 
+/**
+ * Derives the current destination type of an option from its config fields.
+ * `link` is checked with an explicit null/undefined guard because an empty
+ * string means "external link selected but URL not yet typed".
+ */
 function getDestType(opt: NavigationFlowchartOption): DestType {
   if (opt.nextStep) return "next-step";
   if (opt.linkedFlowchartId) return "child-flowchart";
@@ -962,6 +1025,16 @@ function getDestType(opt: NavigationFlowchartOption): DestType {
   return "none";
 }
 
+/**
+ * Single editable option row with:
+ * - Drag handle (dnd-kit `useSortable`, scoped to parent step via `optionType`)
+ * - Inline bilingual title editor
+ * - Radio buttons for destination type (next step / child flowchart / external link)
+ * - Context-sensitive sub-form for the selected destination type
+ *
+ * Changing the destination type clears all previously set dest fields before
+ * seeding a default for the new type, so `getDestType()` resolves correctly.
+ */
 function OptionRow({
   option,
   index,
@@ -991,6 +1064,7 @@ function OptionRow({
 
   const destType = getDestType(option);
 
+  /** Clears all destination fields then seeds a sensible default for the newly selected type. */
   function handleDestChange(newType: DestType) {
     // Clear all dest fields first, then seed a placeholder for the new type
     // so that getDestType() returns the correct value immediately.
