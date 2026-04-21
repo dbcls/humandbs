@@ -933,7 +933,9 @@ type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
 function getDestType(opt: NavigationFlowchartOption): DestType {
   if (opt.nextStep) return "next-step";
   if (opt.linkedFlowchartId) return "child-flowchart";
-  if (opt.link) return "external-link";
+  // link can be an empty string when the user just selected "External link"
+  // but hasn't typed a URL yet — treat null/undefined as unset, string as set.
+  if (opt.link !== undefined && opt.link !== null) return "external-link";
   return "none";
 }
 
