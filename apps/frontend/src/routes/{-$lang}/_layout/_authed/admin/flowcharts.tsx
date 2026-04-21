@@ -11,8 +11,6 @@ import {
   GitBranch,
   GripVertical,
   Plus,
-  RotateCcw,
-  Save,
   Trash2,
 } from "lucide-react";
 
@@ -304,7 +302,6 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
 
         <div className="flex gap-2">
           <Button type="button" onClick={handleSave} disabled={isPending}>
-            <Save className="size-3.5" />
             Create
           </Button>
         </div>
@@ -532,63 +529,14 @@ function FlowchartEditor({
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
   return (
-    <Card className="flex flex-1 flex-col gap-0 overflow-y-auto" caption={record.nameEn}>
-      <div className="flex flex-col gap-6 p-5">
-        {message && (
-          <div className="rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-            {message}
-          </div>
-        )}
-        {error && (
-          <div className="whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* Flowchart name */}
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-gray-700">Name</h3>
-          <LocaleInlineEditor
-            value={{ en: meta.nameEn, ja: meta.nameJa }}
-            onChange={({ en, ja }) => {
-              setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
-              setMetaErrors((p) => ({ ...p, nameEn: undefined, nameJa: undefined }));
-            }}
-            displayClassName="text-sm font-medium"
-            required
-          />
-          {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
-          {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
-        </div>
-
-        {/* Slug */}
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-gray-700">
-            Slug <span className="font-normal text-gray-400">(optional)</span>
-          </h3>
-          <input
-            type="text"
-            value={meta.slug}
-            onChange={(e) => { setMeta((p) => ({ ...p, slug: e.target.value })); setSlugConflictError(null); }}
-            onBlur={() => checkSlugUniqueness(meta.slug)}
-            placeholder="/path/to/flowchart"
-            className={cn(
-              "rounded border px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-400",
-              slugConflictError ? "border-red-400" : "border-gray-200",
-            )}
-          />
-          {slugConflictError && <FieldError>{slugConflictError}</FieldError>}
-          {meta.slug.trim() && !slugConflictError && (
-            <p className="text-xs text-blue-600">
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium">entry point</span>
-              {" "}at <code className="font-mono">{meta.slug.trim()}</code>
-            </p>
-          )}
-        </div>
-
-        {/* Status */}
+    <Card
+      className="flex h-full flex-1 flex-col"
+      caption={record.nameEn}
+      containerClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      {/* Sticky action bar */}
+      <div className="flex items-center justify-between px-5 pt-5">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-medium text-gray-700">Published</h3>
           <Switch
             checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
             onCheckedChange={(checked) =>
@@ -602,18 +550,13 @@ function FlowchartEditor({
             {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
           </span>
         </div>
-
-        {/* Actions */}
         <div className="flex items-center gap-2">
-          <Button type="button" onClick={handleSave} disabled={isSaving || isDeleting}>
-            <Save className="size-3.5" />
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
           <Button type="button" variant="outline" onClick={handleReset} disabled={isSaving}>
-            <RotateCcw className="size-3.5" />
             Reset
           </Button>
-          <div className="flex-1" />
+          <Button type="button" onClick={handleSave} disabled={isSaving || isDeleting}>
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -621,18 +564,74 @@ function FlowchartEditor({
             onClick={handleDelete}
             disabled={isSaving || isDeleting}
           >
-            <Trash2 className="size-3.5" />
             {isDeleting ? "Deleting…" : "Delete"}
           </Button>
         </div>
+      </div>
 
-        {/* Steps */}
-        <StepList
-          config={configDraft}
-          onChange={setConfigDraft}
-          invalidStepIds={invalidStepIds}
-          otherFlowcharts={otherFlowcharts}
-        />
+      {message && (
+        <div className="mx-5 mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          {message}
+        </div>
+      )}
+      {error && (
+        <div className="mx-5 mt-4 whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Scrollable content */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-6 px-5 pt-5 pb-5">
+          {/* Flowchart name */}
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium text-gray-700">Name</h3>
+            <LocaleInlineEditor
+              value={{ en: meta.nameEn, ja: meta.nameJa }}
+              onChange={({ en, ja }) => {
+                setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
+                setMetaErrors((p) => ({ ...p, nameEn: undefined, nameJa: undefined }));
+              }}
+              displayClassName="text-sm font-medium"
+              required
+            />
+            {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
+            {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
+          </div>
+
+          {/* Slug */}
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium text-gray-700">
+              Slug <span className="font-normal text-gray-400">(optional)</span>
+            </h3>
+            <input
+              type="text"
+              value={meta.slug}
+              onChange={(e) => { setMeta((p) => ({ ...p, slug: e.target.value })); setSlugConflictError(null); }}
+              onBlur={() => checkSlugUniqueness(meta.slug)}
+              placeholder="/path/to/flowchart"
+              className={cn(
+                "rounded border px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-400",
+                slugConflictError ? "border-red-400" : "border-gray-200",
+              )}
+            />
+            {slugConflictError && <FieldError>{slugConflictError}</FieldError>}
+            {meta.slug.trim() && !slugConflictError && (
+              <p className="text-xs text-blue-600">
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium">entry point</span>
+                {" "}at <code className="font-mono">{meta.slug.trim()}</code>
+              </p>
+            )}
+          </div>
+
+          {/* Steps */}
+          <StepList
+            config={configDraft}
+            onChange={setConfigDraft}
+            invalidStepIds={invalidStepIds}
+            otherFlowcharts={otherFlowcharts}
+          />
+        </div>
       </div>
     </Card>
   );
