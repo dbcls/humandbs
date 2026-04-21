@@ -136,6 +136,7 @@
     "periodOfDataUse": "データ利用期間",
     "publicationTitle": "タイトル",
     "publicationDatasets": "データセット",
+    "platforms": "プラットフォーム",
     "controlledAccessUser": "制限公開データの利用者一覧",
     "datasetId": "データセット ID",
     "criteria": "アクセス制限",

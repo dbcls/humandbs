@@ -273,7 +273,7 @@ const columns = [
     header: (ctx) => (
       <SortHeader
         ctx={ctx}
-        label={ctx.table.options.meta?.t?.("date-published")}
+        label={ctx.table.options.meta?.t?.("datePublished")}
       />
     ),
     size: 10,
@@ -300,7 +300,7 @@ const columns = [
     header: (ctx) => (
       <SortHeader
         ctx={ctx}
-        label={ctx.table.options.meta?.t?.("date-modified")}
+        label={ctx.table.options.meta?.t?.("dateModified")}
       />
     ),
     cell: (ctx) => (
@@ -328,7 +328,7 @@ const columns = [
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
-    header: (ctx) => ctx.table.options.meta?.t("type-of-data"),
+    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
     cell: (ctx) => (
       <CollapsiblePreview
         items={ctx
@@ -358,7 +358,7 @@ const columns = [
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
-    header: (ctx) => ctx.table.options.meta?.t("data-provider"),
+    header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
     cell: (ctx) => (
       <CollapsiblePreview
         items={ctx
