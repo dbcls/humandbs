@@ -212,6 +212,7 @@ const StepComponent = ({
   linkedFlowchartNames,
   onOptionClick,
   isEnabled = true,
+  isCurrent = false,
   selectedOptionId,
 }: {
   step: NavigationFlowchartStep;
@@ -221,6 +222,7 @@ const StepComponent = ({
   linkedFlowchartNames: Record<string, string>;
   onOptionClick: (option: NavigationFlowchartOption, stepIndex: number) => void;
   isEnabled?: boolean;
+  isCurrent?: boolean;
   selectedOptionId?: string;
 }) => {
   const title = locale === "ja" ? step.titleJa : step.titleEn;
@@ -228,7 +230,7 @@ const StepComponent = ({
 
   return (
     <div className="relative">
-      <div className="bg-primary rounded-xl px-16 py-7">
+      <div className={cn("bg-primary rounded-xl px-16 py-7", isCurrent && "ring-4 ring-secondary-light")}>
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
           {title}
         </h2>
@@ -328,6 +330,7 @@ function NavigationChartInner({
     <div className="relative my-8 flex min-w-5xl flex-col items-center gap-8">
       {data.steps.map((step, index) => {
         const isEnabled = index <= enabledStepIndex;
+        const isCurrent = index === enabledStepIndex;
         return (
           <div
             key={step.id}
@@ -344,6 +347,7 @@ function NavigationChartInner({
               linkedFlowchartNames={linkedFlowchartNames}
               onOptionClick={handleOptionClick}
               isEnabled={isEnabled}
+              isCurrent={isCurrent}
               selectedOptionId={stepAnswers[step.id]}
             />
           </div>
