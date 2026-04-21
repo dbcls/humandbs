@@ -69,12 +69,14 @@ const OptionComponent = ({
   onOptionClick,
   isEnabled = true,
   isSelected = false,
+  showArrow = true,
 }: {
   option: NavigationFlowchartOption;
   locale?: Locale;
   onOptionClick: () => void;
   isEnabled?: boolean;
   isSelected?: boolean;
+  showArrow?: boolean;
 }) => {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [buttonHeight, setButtonHeight] = useState<number>(0);
@@ -129,8 +131,8 @@ const OptionComponent = ({
     );
   }
 
-  // Options with linkedFlowchartId or nextStep show arrow below
-  const hasArrow = !!(option.linkedFlowchartId || option.nextStep);
+  // Arrow shown only when the destination is the immediately next step
+  const hasArrow = showArrow && !!(option.linkedFlowchartId || option.nextStep);
 
   const arrow = hasArrow ? (
     <div
@@ -163,6 +165,7 @@ const OptionComponent = ({
 const StepComponent = ({
   step,
   stepIndex,
+  allSteps,
   locale,
   onOptionClick,
   isEnabled = true,
@@ -170,6 +173,7 @@ const StepComponent = ({
 }: {
   step: NavigationFlowchartStep;
   stepIndex: number;
+  allSteps: NavigationFlowchartStep[];
   locale?: Locale;
   onOptionClick: (option: NavigationFlowchartOption, stepIndex: number) => void;
   isEnabled?: boolean;
@@ -186,20 +190,31 @@ const StepComponent = ({
         </h2>
         <p className="m-auto mb-5 w-2/3 max-w-3xl">{text}</p>
         <div className="text-tetriary flex justify-center gap-8">
-          {step.options.map((option) => (
-            <div
-              key={option.id}
-              className="relative w-[25vw] max-w-xl min-w-sm text-center"
-            >
-              <OptionComponent
-                option={option}
-                locale={locale}
-                onOptionClick={() => onOptionClick(option, stepIndex)}
-                isEnabled={isEnabled}
-                isSelected={selectedOptionId === option.id}
-              />
-            </div>
-          ))}
+          {step.options.map((option) => {
+            // Show the downward arrow only when this option leads to the
+            // step that is immediately next in the list.
+            const targetIdx = option.nextStep
+              ? allSteps.findIndex((s) => s.id === option.nextStep)
+              : option.linkedFlowchartId
+                ? stepIndex + 1  // child flowchart: arrow to next position
+                : -1;
+            const showArrow = targetIdx === stepIndex + 1;
+            return (
+              <div
+                key={option.id}
+                className="relative w-[25vw] max-w-xl min-w-sm text-center"
+              >
+                <OptionComponent
+                  option={option}
+                  locale={locale}
+                  onOptionClick={() => onOptionClick(option, stepIndex)}
+                  isEnabled={isEnabled}
+                  isSelected={selectedOptionId === option.id}
+                  showArrow={showArrow}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -234,7 +249,8 @@ function NavigationChartInner({
       if (!selectedOptionId) break;
       const option = step.options.find((o) => o.id === selectedOptionId);
       if (option?.nextStep) {
-        idx = i + 1;
+        const targetIdx = data.steps.findIndex((s) => s.id === option.nextStep);
+        if (targetIdx !== -1) idx = targetIdx;
       }
     }
     return idx;
@@ -255,7 +271,8 @@ function NavigationChartInner({
     }
 
     if (option.nextStep) {
-      setEnabledStepIndex(stepIndex + 1);
+      const targetIdx = data.steps.findIndex((s) => s.id === option.nextStep);
+      setEnabledStepIndex(targetIdx !== -1 ? targetIdx : stepIndex + 1);
     }
   };
 
@@ -274,6 +291,7 @@ function NavigationChartInner({
             <StepComponent
               step={step}
               stepIndex={index}
+              allSteps={data.steps}
               locale={locale}
               onOptionClick={handleOptionClick}
               isEnabled={isEnabled}
@@ -399,6 +417,7 @@ function LegacyNavigationChart({
             <StepComponent
               step={step}
               stepIndex={index}
+              allSteps={newSteps}
               onOptionClick={handleOptionClick}
               isEnabled={isEnabled}
               selectedOptionId={selectedOptions[index]}
