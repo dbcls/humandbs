@@ -935,6 +935,8 @@ function StepCard({
 // OptionList + OptionRow
 // ---------------------------------------------------------------------------
 
+const OPTION_TYPE_PREFIX = "flowchart-option-";
+
 /**
  * Each step owns its own drag-and-drop context so options can only be reordered
  * within their parent step. The `optionType` is prefixed with the step ID to
