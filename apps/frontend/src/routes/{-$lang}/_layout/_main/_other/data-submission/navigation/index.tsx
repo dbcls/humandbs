@@ -51,25 +51,24 @@ function RouteComponent() {
     getNavigationFlowchartQueryOptions(ENTRY_POINT_SLUG, lang),
   );
 
-  // Load child flowchart by id when navigating into it
+  // Load child flowchart metadata (name only, for breadcrumb + caption)
   const { data: childData } = useQuery({
     ...getNavigationFlowchartByIdQueryOptions(childId ?? "", lang),
     enabled: !!childId,
   });
 
-  // The currently displayed slug: if childId resolved to a flowchart, use its slug
-  const displaySlug = childData?.slug ?? currentSlug;
-
-  // Build breadcrumb trail from answers keys that are not the currently displayed slug
+  // Build breadcrumb trail: any answer key that isn't the current context
+  const activeId = childId ?? null;
   const breadcrumbs: BreadcrumbItem[] = Object.keys(answers ?? {})
-    .filter((slug) => slug !== displaySlug)
+    .filter((slug) => {
+      // Exclude the slug that corresponds to what's currently displayed.
+      // When showing a child by id, the parent slug is the one to show as breadcrumb.
+      if (activeId) return slug !== (childData?.slug ?? null);
+      return slug !== currentSlug;
+    })
     .map((slug) => {
       if (slug === ENTRY_POINT_SLUG && entryPointData) {
-        return {
-          slug,
-          nameEn: entryPointData.nameEn,
-          nameJa: entryPointData.nameJa,
-        };
+        return { slug, nameEn: entryPointData.nameEn, nameJa: entryPointData.nameJa };
       }
       return { slug, nameEn: slug, nameJa: slug };
     });
@@ -99,16 +98,15 @@ function RouteComponent() {
   };
 
   const caption = childData
-    ? lang === "ja"
-      ? childData.nameJa
-      : childData.nameEn
+    ? lang === "ja" ? childData.nameJa : childData.nameEn
     : t("data-submission");
 
   return (
     <Card caption={caption} captionSize={"lg"}>
       <Breadcrumbs items={breadcrumbs} locale={lang} />
       <NavigationChart
-        slug={displaySlug}
+        slug={childId ? undefined : currentSlug}
+        flowchartId={childId}
         locale={lang}
         answers={answers ?? {}}
         onAnswerChange={handleAnswerChange}

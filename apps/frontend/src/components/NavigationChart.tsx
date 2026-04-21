@@ -27,12 +27,13 @@ export interface NavigationData {
 export type FlowchartAnswers = Record<string, Record<string, string>>;
 
 interface NavigationChartProps {
-  // New DB-backed props
+  // New DB-backed props — provide either slug (entry point) or flowchartId (child by uuid)
   slug?: string;
+  flowchartId?: string;
   locale?: Locale;
   answers?: FlowchartAnswers;
   onAnswerChange?: (slug: string, stepId: string, optionId: string) => void;
-  onNavigateToChild?: (childSlug: string) => void;
+  onNavigateToChild?: (childId: string) => void;
   // Legacy prop
   data?: NavigationData;
   navigate?: (options: { to: string }) => void;
@@ -337,6 +338,7 @@ function NavigationChartInner({
 
 function NavigationChart({
   slug,
+  flowchartId,
   locale,
   answers = {},
   onAnswerChange,
@@ -349,7 +351,21 @@ function NavigationChart({
     return <LegacyNavigationChart data={legacyData} navigate={navigate} />;
   }
 
-  if (!slug || !locale || !onAnswerChange || !onNavigateToChild) return null;
+  if (!locale || !onAnswerChange || !onNavigateToChild) return null;
+
+  if (flowchartId) {
+    return (
+      <NavigationChartByIdDB
+        flowchartId={flowchartId}
+        locale={locale}
+        answers={answers}
+        onAnswerChange={onAnswerChange}
+        onNavigateToChild={onNavigateToChild}
+      />
+    );
+  }
+
+  if (!slug) return null;
 
   return (
     <NavigationChartDB
@@ -406,6 +422,60 @@ function NavigationChartDB({
     <NavigationChartInner
       flowchartId={data.id}
       slug={data.slug}
+      data={data.data}
+      locale={locale}
+      answers={answers}
+      linkedFlowchartNames={linkedFlowchartNames}
+      onAnswerChange={onAnswerChange}
+      onNavigateToChild={onNavigateToChild}
+    />
+  );
+}
+
+function NavigationChartByIdDB({
+  flowchartId,
+  locale,
+  answers,
+  onAnswerChange,
+  onNavigateToChild,
+}: {
+  flowchartId: string;
+  locale: Locale;
+  answers: FlowchartAnswers;
+  onAnswerChange: (slug: string, stepId: string, optionId: string) => void;
+  onNavigateToChild: (childId: string) => void;
+}) {
+  const { data } = useQuery(getNavigationFlowchartByIdQueryOptions(flowchartId, locale));
+
+  const linkedIds = data
+    ? [
+        ...new Set(
+          data.data.steps
+            .flatMap((s) => s.options)
+            .map((o) => o.linkedFlowchartId)
+            .filter((id): id is string => !!id),
+        ),
+      ]
+    : [];
+
+  const { data: namesMap = {} } = useQuery(
+    getNavigationFlowchartNamesQueryOptions(linkedIds),
+  );
+
+  const linkedFlowchartNames: Record<string, string> = {};
+  for (const [id, names] of Object.entries(namesMap)) {
+    linkedFlowchartNames[id] = locale === "ja" ? names.nameJa : names.nameEn;
+  }
+
+  if (!data) return null;
+
+  // Use flowchartId as the slug key for answers when the flowchart has no public slug
+  const slugKey = data.slug ?? flowchartId;
+
+  return (
+    <NavigationChartInner
+      flowchartId={data.id}
+      slug={slugKey}
       data={data.data}
       locale={locale}
       answers={answers}
