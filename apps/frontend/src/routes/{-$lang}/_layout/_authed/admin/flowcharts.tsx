@@ -16,6 +16,7 @@ import {
 
 import { Card } from "@/components/Card";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
+import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -63,6 +64,13 @@ type EditorMode = "select" | "create" | "edit";
 function RouteComponent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("select");
+  const queryClient = useQueryClient();
+  const { openConfirmation } = useConfirmationStore();
+  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
+
+  const { mutateAsync: deleteFlowchart } = useMutation({
+    mutationFn: (id: string) => $deleteNavigationFlowchart({ data: { id } }),
+  });
 
   function handleSelect(id: string) {
     setSelectedId(id);
@@ -84,6 +92,32 @@ function RouteComponent() {
     setMode("select");
   }
 
+  function handleDeleteFlowchart(id: string) {
+    const fc = allFlowcharts.find((f) => f.id === id);
+    openConfirmation({
+      title: "Delete flowchart?",
+      description: `Are you sure you want to delete "${fc?.nameEn ?? id}"? This cannot be undone.`,
+      actionLabel: "Delete",
+      onAction: async () => {
+        const result = await deleteFlowchart(id);
+        if (!result.ok) {
+          if (result.code === "HAS_DEPENDENTS") {
+            const list = result.deps
+              .map(
+                (d) =>
+                  `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`,
+              )
+              .join("\n");
+            alert(`Cannot delete — referenced by:\n${list}\n\nRemove references first.`);
+          }
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] });
+        if (selectedId === id) handleDeleted();
+      },
+    });
+  }
+
   return (
     <>
       <Card
@@ -102,7 +136,7 @@ function RouteComponent() {
               New Flowchart
             </Button>
           </div>
-          <FlowchartList selectedId={selectedId} onSelect={handleSelect} />
+          <FlowchartList selectedId={selectedId} onSelect={handleSelect} onDelete={handleDeleteFlowchart} />
         </div>
       </Card>
 
@@ -112,7 +146,6 @@ function RouteComponent() {
         <EditFlowchartPanel
           key={selectedId}
           id={selectedId}
-          onDeleted={handleDeleted}
         />
       ) : (
         <Card className="flex flex-1 items-center justify-center text-gray-400">
@@ -138,9 +171,11 @@ function RouteComponent() {
 function FlowchartList({
   selectedId,
   onSelect,
+  onDelete,
 }: {
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const { data: flowcharts = [] } = useQuery(
     getNavigationFlowchartsQueryOptions(),
@@ -168,6 +203,12 @@ function FlowchartList({
               <StatusTag status={fc.status} />
             </div>
           </div>
+          <TrashButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(fc.id);
+            }}
+          />
         </ListItem>
       ))}
     </ul>
@@ -292,10 +333,8 @@ function CreateFlowchartPanel({
  */
 function EditFlowchartPanel({
   id,
-  onDeleted,
 }: {
   id: string;
-  onDeleted: () => void;
 }) {
   const {
     data: record,
@@ -325,7 +364,7 @@ function EditFlowchartPanel({
     );
   }
 
-  return <FlowchartEditor record={record} onDeleted={onDeleted} />;
+  return <FlowchartEditor record={record} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -361,10 +400,8 @@ interface FlowchartMeta {
  */
 function FlowchartEditor({
   record,
-  onDeleted,
 }: {
   record: NavigationFlowchartRecord;
-  onDeleted: () => void;
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
@@ -411,10 +448,6 @@ function FlowchartEditor({
           expectedRevision: revision,
         },
       }),
-  });
-
-  const { mutateAsync: deleteFlowchart, isPending: isDeleting } = useMutation({
-    mutationFn: () => $deleteNavigationFlowchart({ data: { id: record.id } }),
   });
 
   /** Returns IDs of EN steps that have fewer than 2 options (invalid for publishing). */
@@ -489,37 +522,6 @@ function FlowchartEditor({
     setError(null);
   }
 
-  async function handleDelete() {
-    openConfirmation({
-      title: "Delete flowchart?",
-      description: `Are you sure you want to delete "${record.nameEn}"? This cannot be undone.`,
-      actionLabel: "Delete",
-      onAction: async () => {
-        const result = await deleteFlowchart();
-        if (!result.ok) {
-          if (result.code === "HAS_DEPENDENTS") {
-            const list = result.deps
-              .map(
-                (d) =>
-                  `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`,
-              )
-              .join("\n");
-            setError(
-              `Cannot delete — referenced by:\n${list}\n\nRemove references first.`,
-            );
-          } else {
-            setError("Failed to delete.");
-          }
-          return;
-        }
-        await queryClient.invalidateQueries({
-          queryKey: ["navigation-flowcharts"],
-        });
-        onDeleted();
-      },
-    });
-  }
-
   const invalidStepIds = validateSteps(configDraft);
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
@@ -557,15 +559,6 @@ function FlowchartEditor({
           <Button
             type="button"
             variant="outline"
-            className="text-red-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-            onClick={handleDelete}
-            disabled={isSaving || isDeleting}
-          >
-            {isDeleting ? "Deleting…" : "Delete"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
             onClick={handleReset}
             disabled={!isDirty || isSaving}
           >
@@ -574,7 +567,7 @@ function FlowchartEditor({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={!isDirty || isSaving || isDeleting}
+            disabled={!isDirty || isSaving}
           >
             {isSaving ? "Saving…" : "Save"}
           </Button>
