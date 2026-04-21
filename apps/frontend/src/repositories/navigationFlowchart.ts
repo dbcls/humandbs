@@ -107,7 +107,10 @@ export function createNavigationFlowchartRepository(
 
     async getEntryPoint() {
       const row = await database.query.navigationFlowchart.findFirst({
-        where: eq(navigationFlowchart.isEntryPoint, true),
+        where: and(
+          eq(navigationFlowchart.isEntryPoint, true),
+          eq(navigationFlowchart.status, NAVIGATION_FLOWCHART_STATUS.PUBLISHED),
+        ),
       });
       if (!row) return null;
       return parseRecord(row);

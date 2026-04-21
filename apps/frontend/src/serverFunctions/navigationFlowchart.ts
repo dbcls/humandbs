@@ -111,7 +111,7 @@ export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
   .handler(async ({ data: { id, locale } }): Promise<NavigationFlowchartResponse | null> => {
     try {
       const record = await navigationFlowchartRepository.getById(id);
-      if (record) {
+      if (record && record.status === "published") {
         return {
           id: record.id,
           isEntryPoint: record.isEntryPoint,
