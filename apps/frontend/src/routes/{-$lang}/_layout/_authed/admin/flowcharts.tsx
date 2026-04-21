@@ -1115,7 +1115,7 @@ function OptionRow({
     <div
       ref={ref as Ref<HTMLDivElement>}
       className={cn(
-        "flex w-52 shrink-0 flex-col gap-2 rounded border border-gray-100 bg-gray-50 p-2 transition-opacity",
+        "flex w-64 shrink-0 flex-col gap-2 rounded border border-gray-100 bg-gray-50 p-2 transition-opacity",
         isDragSource ? "opacity-40" : "",
       )}
     >
@@ -1127,7 +1127,7 @@ function OptionRow({
         >
           <GripVertical className="size-3.5" />
         </button>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <LocaleInlineEditor
             value={{ en: option.titleEn, ja: option.titleJa }}
             onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
