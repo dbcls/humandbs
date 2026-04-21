@@ -1,13 +1,34 @@
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { move } from "@dnd-kit/helpers";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, GitBranch, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+  GripVertical,
+  Plus,
+  RotateCcw,
+  Save,
+  Trash2,
+} from "lucide-react";
 
 import { Card } from "@/components/Card";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { TextareaAutosize } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import {
   $createNavigationFlowchart,
@@ -20,6 +41,11 @@ import type {
   NavigationFlowchartRecord,
   NavigationFlowchartSummary,
 } from "@/repositories/navigationFlowchart";
+import type {
+  NavigationFlowchartConfig,
+  NavigationFlowchartOption,
+  NavigationFlowchartStep,
+} from "@/config/navigation-flowchart";
 import { cn } from "@/lib/utils";
 import useConfirmationStore from "@/stores/confirmationStore";
 
@@ -318,10 +344,10 @@ function EditFlowchartPanel({
 }
 
 // ---------------------------------------------------------------------------
-// FlowchartEditor
+// FlowchartEditor — metadata fields + step list
 // ---------------------------------------------------------------------------
 
-interface FlowchartDraft {
+interface FlowchartMeta {
   nameEn: string;
   nameJa: string;
   slug: string;
@@ -337,35 +363,33 @@ function FlowchartEditor({
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
+  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
 
-  const [draft, setDraft] = useState<FlowchartDraft>({
+  const [meta, setMeta] = useState<FlowchartMeta>({
     nameEn: record.nameEn,
     nameJa: record.nameJa,
     slug: record.slug ?? "",
     status: record.status,
   });
+  const [configDraft, setConfigDraft] = useState<NavigationFlowchartConfig>(record.config);
   const [revision, setRevision] = useState(record.revision);
-  const [errors, setErrors] = useState<Partial<FlowchartDraft>>({});
+  const [metaErrors, setMetaErrors] = useState<Partial<FlowchartMeta>>({});
+  const [slugConflictError, setSlugConflictError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Track the slug uniqueness error separately (checked on blur)
-  const [slugConflictError, setSlugConflictError] = useState<string | null>(null);
-  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
-
-  // Keep track of the original slug to detect clearing an entry point
   const originalSlugRef = useRef(record.slug);
 
   const { mutateAsync: saveFlowchart, isPending: isSaving } = useMutation({
-    mutationFn: (d: FlowchartDraft) =>
+    mutationFn: (payload: { meta: FlowchartMeta; config: NavigationFlowchartConfig }) =>
       $saveNavigationFlowchartConfig({
         data: {
           id: record.id,
-          nameEn: d.nameEn,
-          nameJa: d.nameJa,
-          slug: d.slug.trim() || null,
-          status: d.status,
-          config: record.config,
+          nameEn: payload.meta.nameEn,
+          nameJa: payload.meta.nameJa,
+          slug: payload.meta.slug.trim() || null,
+          status: payload.meta.status,
+          config: payload.config,
           expectedRevision: revision,
         },
       }),
@@ -375,45 +399,43 @@ function FlowchartEditor({
     mutationFn: () => $deleteNavigationFlowchart({ data: { id: record.id } }),
   });
 
-  function validateDraft(d: FlowchartDraft) {
-    const errs: Partial<FlowchartDraft> = {};
-    if (!d.nameEn.trim()) errs.nameEn = "English name is required.";
-    if (!d.nameJa.trim()) errs.nameJa = "Japanese name is required.";
-    return errs;
-  }
-
   function checkSlugUniqueness(slug: string) {
     const trimmed = slug.trim();
-    if (!trimmed) {
-      setSlugConflictError(null);
-      return;
-    }
-    const conflict = allFlowcharts.find(
-      (fc) => fc.id !== record.id && fc.slug === trimmed,
-    );
+    if (!trimmed) { setSlugConflictError(null); return; }
+    const conflict = allFlowcharts.find((fc) => fc.id !== record.id && fc.slug === trimmed);
     setSlugConflictError(
       conflict ? `Slug "${trimmed}" is already used by "${conflict.nameEn}".` : null,
     );
   }
 
-  async function commitSave(d: FlowchartDraft) {
+  function validateSteps(config: NavigationFlowchartConfig) {
+    return config.en.steps.filter((s) => s.options.length < 2).map((s) => s.id);
+  }
+
+  async function commitSave(currentMeta: FlowchartMeta) {
     setMessage(null);
     setError(null);
 
-    const errs = validateDraft(d);
-    setErrors(errs);
+    const errs: Partial<FlowchartMeta> = {};
+    if (!currentMeta.nameEn.trim()) errs.nameEn = "English name is required.";
+    if (!currentMeta.nameJa.trim()) errs.nameJa = "Japanese name is required.";
+    setMetaErrors(errs);
     if (Object.keys(errs).length > 0) return;
     if (slugConflictError) return;
 
-    const result = await saveFlowchart(d);
+    const invalidStepIds = validateSteps(configDraft);
+    if (invalidStepIds.length > 0) {
+      setError("Each step must have at least 2 options. Check highlighted steps.");
+      return;
+    }
+
+    const result = await saveFlowchart({ meta: currentMeta, config: configDraft });
     if (!result.ok) {
-      if (result.code === "CONFLICT") {
-        setError(
-          "This flowchart was modified by someone else. Reload the page to get the latest version.",
-        );
-      } else {
-        setError("Failed to save.");
-      }
+      setError(
+        result.code === "CONFLICT"
+          ? "This flowchart was modified by someone else. Reload to get the latest version."
+          : "Failed to save.",
+      );
       return;
     }
 
@@ -424,31 +446,23 @@ function FlowchartEditor({
   }
 
   async function handleSave() {
-    // If the slug is being cleared and the flowchart was previously an entry point,
-    // ask for confirmation first.
-    const isRemovingSlug =
-      originalSlugRef.current !== null && draft.slug.trim() === "";
-
+    const isRemovingSlug = originalSlugRef.current !== null && meta.slug.trim() === "";
     if (isRemovingSlug) {
       openConfirmation({
         title: "Remove entry point?",
-        description: `This flowchart is currently accessible at "${originalSlugRef.current}". Clearing the slug will make it a child-only flowchart and remove its public URL. Are you sure?`,
+        description: `This flowchart is currently at "${originalSlugRef.current}". Clearing the slug makes it child-only. Continue?`,
         actionLabel: "Remove slug and save",
-        onAction: () => commitSave(draft),
+        onAction: () => commitSave(meta),
       });
     } else {
-      await commitSave(draft);
+      await commitSave(meta);
     }
   }
 
   function handleReset() {
-    setDraft({
-      nameEn: record.nameEn,
-      nameJa: record.nameJa,
-      slug: record.slug ?? "",
-      status: record.status,
-    });
-    setErrors({});
+    setMeta({ nameEn: record.nameEn, nameJa: record.nameJa, slug: record.slug ?? "", status: record.status });
+    setConfigDraft(record.config);
+    setMetaErrors({});
     setSlugConflictError(null);
     setMessage(null);
     setError(null);
@@ -464,14 +478,9 @@ function FlowchartEditor({
         if (!result.ok) {
           if (result.code === "HAS_DEPENDENTS") {
             const list = result.deps
-              .map(
-                (d) =>
-                  `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`,
-              )
+              .map((d) => `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`)
               .join("\n");
-            setError(
-              `Cannot delete — this flowchart is referenced by:\n${list}\n\nRemove those references first.`,
-            );
+            setError(`Cannot delete — referenced by:\n${list}\n\nRemove references first.`);
           } else {
             setError("Failed to delete.");
           }
@@ -483,16 +492,12 @@ function FlowchartEditor({
     });
   }
 
-  const isDirty =
-    draft.nameEn !== record.nameEn ||
-    draft.nameJa !== record.nameJa ||
-    draft.slug !== (record.slug ?? "") ||
-    draft.status !== record.status;
+  const invalidStepIds = validateSteps(configDraft);
+  const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
   return (
     <Card className="flex flex-1 flex-col gap-0 overflow-y-auto" caption={record.nameEn}>
       <div className="flex flex-col gap-6 p-5">
-        {/* Status messages */}
         {message && (
           <div className="rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
             {message}
@@ -504,42 +509,32 @@ function FlowchartEditor({
           </div>
         )}
 
-        {/* Name */}
+        {/* Flowchart name */}
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-gray-700">Name</h3>
-          <div className="flex flex-col gap-1.5">
-            <FieldRow label="EN">
-              <LocaleInlineEditor
-                value={{ en: draft.nameEn, ja: draft.nameJa }}
-                onChange={({ en, ja }) => {
-                  setDraft((p) => ({ ...p, nameEn: en, nameJa: ja }));
-                  setErrors((p) => ({ ...p, nameEn: undefined, nameJa: undefined }));
-                }}
-                displayClassName="text-sm font-medium"
-                required
-              />
-            </FieldRow>
-            {errors.nameEn && <FieldError>{errors.nameEn}</FieldError>}
-            {errors.nameJa && <FieldError>{errors.nameJa}</FieldError>}
-          </div>
+          <LocaleInlineEditor
+            value={{ en: meta.nameEn, ja: meta.nameJa }}
+            onChange={({ en, ja }) => {
+              setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
+              setMetaErrors((p) => ({ ...p, nameEn: undefined, nameJa: undefined }));
+            }}
+            displayClassName="text-sm font-medium"
+            required
+          />
+          {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
+          {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
         </div>
 
         {/* Slug */}
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-gray-700">
-            Slug{" "}
-            <span className="font-normal text-gray-400">
-              (optional — leave blank for child flowchart)
-            </span>
+            Slug <span className="font-normal text-gray-400">(optional)</span>
           </h3>
           <input
             type="text"
-            value={draft.slug}
-            onChange={(e) => {
-              setDraft((p) => ({ ...p, slug: e.target.value }));
-              setSlugConflictError(null);
-            }}
-            onBlur={() => checkSlugUniqueness(draft.slug)}
+            value={meta.slug}
+            onChange={(e) => { setMeta((p) => ({ ...p, slug: e.target.value })); setSlugConflictError(null); }}
+            onBlur={() => checkSlugUniqueness(meta.slug)}
             placeholder="/path/to/flowchart"
             className={cn(
               "rounded border px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-400",
@@ -547,11 +542,10 @@ function FlowchartEditor({
             )}
           />
           {slugConflictError && <FieldError>{slugConflictError}</FieldError>}
-          {draft.slug.trim() && !slugConflictError && (
-            <p className="flex items-center gap-1 text-xs text-blue-600">
+          {meta.slug.trim() && !slugConflictError && (
+            <p className="text-xs text-blue-600">
               <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium">entry point</span>
-              This flowchart will be accessible at{" "}
-              <code className="font-mono">{draft.slug.trim()}</code>
+              {" "}at <code className="font-mono">{meta.slug.trim()}</code>
             </p>
           )}
         </div>
@@ -560,37 +554,26 @@ function FlowchartEditor({
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-medium text-gray-700">Published</h3>
           <Switch
-            checked={draft.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
+            checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
             onCheckedChange={(checked) =>
-              setDraft((p) => ({
+              setMeta((p) => ({
                 ...p,
-                status: checked
-                  ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED
-                  : NAVIGATION_FLOWCHART_STATUS.DRAFT,
+                status: checked ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED : NAVIGATION_FLOWCHART_STATUS.DRAFT,
               }))
             }
           />
           <span className="text-xs text-gray-500">
-            {draft.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
+            {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
           </span>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving || isDeleting || (!isDirty && !slugConflictError === false)}
-          >
+          <Button type="button" onClick={handleSave} disabled={isSaving || isDeleting}>
             <Save className="size-3.5" />
             {isSaving ? "Saving…" : "Save"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleReset}
-            disabled={!isDirty || isSaving}
-          >
+          <Button type="button" variant="outline" onClick={handleReset} disabled={isSaving}>
             <RotateCcw className="size-3.5" />
             Reset
           </Button>
@@ -607,12 +590,510 @@ function FlowchartEditor({
           </Button>
         </div>
 
-        {/* Steps placeholder */}
-        <div className="rounded border border-dashed border-gray-200 p-4 text-center text-sm text-gray-400">
-          Steps editor coming in Phase 5
-        </div>
+        {/* Steps */}
+        <StepList
+          config={configDraft}
+          onChange={setConfigDraft}
+          invalidStepIds={invalidStepIds}
+          otherFlowcharts={otherFlowcharts}
+        />
       </div>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StepList — dnd-kit sortable step cards
+// ---------------------------------------------------------------------------
+
+const STEP_TYPE = "flowchart-step";
+
+function StepList({
+  config,
+  onChange,
+  invalidStepIds,
+  otherFlowcharts,
+}: {
+  config: NavigationFlowchartConfig;
+  onChange: (c: NavigationFlowchartConfig) => void;
+  invalidStepIds: string[];
+  otherFlowcharts: NavigationFlowchartSummary[];
+}) {
+  const steps = config.en.steps;
+
+  function updateSteps(newEnSteps: NavigationFlowchartStep[]) {
+    const jaById = Object.fromEntries(config.ja.steps.map((s) => [s.id, s]));
+    const newJaSteps = newEnSteps.map((s) => jaById[s.id] ?? s);
+    onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
+  }
+
+  function handleAddStep() {
+    const newStep: NavigationFlowchartStep = {
+      id: crypto.randomUUID(),
+      titleEn: "",
+      titleJa: "",
+      textEn: "",
+      textJa: "",
+      options: [],
+    };
+    updateSteps([...steps, newStep]);
+  }
+
+  function handleDeleteStep(id: string) {
+    updateSteps(steps.filter((s) => s.id !== id));
+  }
+
+  function handleUpdateStep(id: string, patch: Partial<NavigationFlowchartStep>) {
+    // Apply the patch to both EN and JA steps. All bilingual fields
+    // (titleEn/titleJa, textEn/textJa) are included in the patch directly.
+    const applyPatch = (s: NavigationFlowchartStep) =>
+      s.id === id ? { ...s, ...patch } : s;
+    onChange({
+      en: { steps: steps.map(applyPatch) },
+      ja: { steps: config.ja.steps.map(applyPatch) },
+    });
+  }
+
+  function canDeleteStep(stepId: string) {
+    return !steps.some((s) => s.options.some((o) => o.nextStep === stepId));
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-medium text-gray-700">Steps</h3>
+      <DragDropProvider
+        onDragEnd={(event) => {
+          if (!event.operation.target) return;
+          const stepIds = steps.map((s) => s.id);
+          const record: Record<string, string[]> = { steps: stepIds };
+          const next = move(record, event);
+          if (!next) return;
+          const newOrder = next.steps as string[];
+          const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
+          updateSteps(newOrder.map((id) => byId[id]));
+        }}
+      >
+        <div className="flex flex-col gap-2">
+          {steps.map((step, index) => (
+            <StepCard
+              key={step.id}
+              step={step}
+              index={index}
+              jaStep={config.ja.steps.find((s) => s.id === step.id)}
+              isInvalid={invalidStepIds.includes(step.id)}
+              canDelete={canDeleteStep(step.id)}
+              allSteps={steps}
+              otherFlowcharts={otherFlowcharts}
+              onUpdate={(patch) => handleUpdateStep(step.id, patch)}
+              onDelete={() => handleDeleteStep(step.id)}
+            />
+          ))}
+        </div>
+      </DragDropProvider>
+      <Button type="button" variant="dashed" onClick={handleAddStep}>
+        <Plus className="size-3.5" />
+        Add step
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StepCard
+// ---------------------------------------------------------------------------
+
+function StepCard({
+  step,
+  index,
+  jaStep,
+  isInvalid,
+  canDelete,
+  allSteps,
+  otherFlowcharts,
+  onUpdate,
+  onDelete,
+}: {
+  step: NavigationFlowchartStep;
+  index: number;
+  jaStep?: NavigationFlowchartStep;
+  isInvalid: boolean;
+  canDelete: boolean;
+  allSteps: NavigationFlowchartStep[];
+  otherFlowcharts: NavigationFlowchartSummary[];
+  onUpdate: (patch: Partial<NavigationFlowchartStep>) => void;
+  onDelete: () => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const { ref, handleRef, isDragSource } = useSortable({
+    id: "step-" + step.id,
+    index,
+    type: STEP_TYPE,
+    accept: [STEP_TYPE],
+    data: { type: STEP_TYPE },
+  });
+
+  function handleAddOption() {
+    const newOpt: NavigationFlowchartOption = {
+      id: crypto.randomUUID(),
+      titleEn: "",
+      titleJa: "",
+    };
+    onUpdate({ options: [...step.options, newOpt] });
+  }
+
+  function handleDeleteOption(optId: string) {
+    onUpdate({ options: step.options.filter((o) => o.id !== optId) });
+  }
+
+  function handleUpdateOption(optId: string, patch: Partial<NavigationFlowchartOption>) {
+    onUpdate({
+      options: step.options.map((o) => (o.id === optId ? { ...o, ...patch } : o)),
+    });
+  }
+
+  function handleReorderOptions(newOptions: NavigationFlowchartOption[]) {
+    onUpdate({ options: newOptions });
+  }
+
+  return (
+    <div
+      ref={ref as Ref<HTMLDivElement>}
+      className={cn(
+        "rounded-md border bg-white shadow-sm transition-opacity",
+        isDragSource ? "opacity-40" : "",
+        isInvalid ? "border-red-300" : "border-gray-200",
+      )}
+    >
+      {/* Card header */}
+      <div className="flex items-center gap-1.5 px-3 py-2">
+        <button
+          type="button"
+          ref={handleRef as Ref<HTMLButtonElement>}
+          className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+        >
+          <GripVertical className="size-4 shrink-0" />
+        </button>
+        <button
+          type="button"
+          className="flex flex-1 items-center gap-1 text-left"
+          onClick={() => setExpanded((p) => !p)}
+        >
+          {expanded ? (
+            <ChevronDown className="size-3.5 shrink-0 text-gray-400" />
+          ) : (
+            <ChevronRight className="size-3.5 shrink-0 text-gray-400" />
+          )}
+          <LocaleInlineEditor
+            value={{ en: step.titleEn, ja: step.titleJa }}
+            onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
+            placeholder="Step title"
+            displayClassName="text-sm font-medium"
+          />
+          {isInvalid && (
+            <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
+              needs ≥2 options
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={!canDelete}
+          title={canDelete ? "Delete step" : "Cannot delete — another option references this step"}
+          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="flex flex-col gap-4 border-t border-gray-100 px-3 py-3">
+          {/* Body text */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-gray-500">Body text</span>
+            <div className="flex gap-2">
+              <div className="flex flex-1 flex-col gap-1">
+                <span className="text-xs text-gray-400">EN</span>
+                <TextareaAutosize
+                  minRows={3}
+                  value={step.textEn}
+                  onChange={(e) => onUpdate({ textEn: e.target.value })}
+                  placeholder="English body text"
+                  className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
+              <div className="flex flex-1 flex-col gap-1">
+                <span className="text-xs text-gray-400">JA</span>
+                <TextareaAutosize
+                  minRows={3}
+                  value={jaStep?.textJa ?? step.textJa}
+                  onChange={(e) => onUpdate({ textJa: e.target.value })}
+                  placeholder="Japanese body text"
+                  className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Options */}
+          <OptionList
+            options={step.options}
+            allSteps={allSteps}
+            currentStepId={step.id}
+            otherFlowcharts={otherFlowcharts}
+            onUpdate={handleUpdateOption}
+            onDelete={handleDeleteOption}
+            onReorder={handleReorderOptions}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// OptionList + OptionRow
+// ---------------------------------------------------------------------------
+
+const OPTION_TYPE_PREFIX = "flowchart-option-";
+
+function OptionList({
+  options,
+  allSteps,
+  currentStepId,
+  otherFlowcharts,
+  onUpdate,
+  onDelete,
+  onReorder,
+}: {
+  options: NavigationFlowchartOption[];
+  allSteps: NavigationFlowchartStep[];
+  currentStepId: string;
+  otherFlowcharts: NavigationFlowchartSummary[];
+  onUpdate: (id: string, patch: Partial<NavigationFlowchartOption>) => void;
+  onDelete: (id: string) => void;
+  onReorder: (newOptions: NavigationFlowchartOption[]) => void;
+}) {
+  const listKey = options.map((o) => o.id).join(",");
+  const optionType = OPTION_TYPE_PREFIX + currentStepId;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs font-medium text-gray-500">Options</span>
+      <DragDropProvider
+        key={listKey}
+        onDragEnd={(event) => {
+          if (!event.operation.target) return;
+          const optIds = options.map((o) => o.id);
+          const record: Record<string, string[]> = { opts: optIds };
+          const next = move(record, event);
+          if (!next) return;
+          const byId = Object.fromEntries(options.map((o) => [o.id, o]));
+          const newOrder = (next.opts as string[]).map((id) => byId[id]);
+          onReorder(newOrder);
+        }}
+      >
+        <div className="flex flex-col gap-1.5">
+          {options.map((opt, idx) => (
+            <OptionRow
+              key={opt.id}
+              option={opt}
+              index={idx}
+              optionType={optionType}
+              allSteps={allSteps}
+              currentStepId={currentStepId}
+              otherFlowcharts={otherFlowcharts}
+              onUpdate={(patch) => onUpdate(opt.id, patch)}
+              onDelete={() => onDelete(opt.id)}
+            />
+          ))}
+        </div>
+      </DragDropProvider>
+      <button
+        type="button"
+        onClick={() => {
+          const newOpt: NavigationFlowchartOption = {
+            id: crypto.randomUUID(),
+            titleEn: "",
+            titleJa: "",
+          };
+          onReorder([...options, newOpt]);
+        }}
+        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+      >
+        <Plus className="size-3" />
+        Add option
+      </button>
+    </div>
+  );
+}
+
+type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
+
+function getDestType(opt: NavigationFlowchartOption): DestType {
+  if (opt.nextStep) return "next-step";
+  if (opt.linkedFlowchartId) return "child-flowchart";
+  if (opt.link) return "external-link";
+  return "none";
+}
+
+function OptionRow({
+  option,
+  index,
+  optionType,
+  allSteps,
+  currentStepId,
+  otherFlowcharts,
+  onUpdate,
+  onDelete,
+}: {
+  option: NavigationFlowchartOption;
+  index: number;
+  optionType: string;
+  allSteps: NavigationFlowchartStep[];
+  currentStepId: string;
+  otherFlowcharts: NavigationFlowchartSummary[];
+  onUpdate: (patch: Partial<NavigationFlowchartOption>) => void;
+  onDelete: () => void;
+}) {
+  const { ref, handleRef, isDragSource } = useSortable({
+    id: "opt-" + option.id,
+    index,
+    type: optionType,
+    accept: [optionType],
+    data: { type: optionType },
+  });
+
+  const destType = getDestType(option);
+
+  function handleDestChange(newType: DestType) {
+    // Clear all dest fields first, then seed a placeholder for the new type
+    // so that getDestType() returns the correct value immediately.
+    const base: Partial<NavigationFlowchartOption> = {
+      nextStep: undefined,
+      linkedFlowchartId: undefined,
+      link: undefined,
+      linkTextEn: undefined,
+      linkTextJa: undefined,
+    };
+    if (newType === "next-step") {
+      onUpdate({ ...base, nextStep: otherSteps[0]?.id ?? "" });
+    } else if (newType === "child-flowchart") {
+      onUpdate({ ...base, linkedFlowchartId: otherFlowcharts[0]?.id ?? "" });
+    } else if (newType === "external-link") {
+      onUpdate({ ...base, link: "" });
+    } else {
+      onUpdate(base);
+    }
+  }
+
+  const otherSteps = allSteps.filter((s) => s.id !== currentStepId);
+
+  return (
+    <div
+      ref={ref as Ref<HTMLDivElement>}
+      className={cn(
+        "flex flex-col gap-2 rounded border border-gray-100 bg-gray-50 p-2 transition-opacity",
+        isDragSource ? "opacity-40" : "",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          ref={handleRef as Ref<HTMLButtonElement>}
+          className="cursor-grab touch-none text-gray-400 hover:text-gray-500"
+        >
+          <GripVertical className="size-3.5" />
+        </button>
+        <div className="flex-1">
+          <LocaleInlineEditor
+            value={{ en: option.titleEn, ja: option.titleJa }}
+            onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
+            placeholder="Option label"
+            displayClassName="text-xs"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+        >
+          <Trash2 className="size-3" />
+        </button>
+      </div>
+
+      {/* Destination selector */}
+      <div className="flex flex-col gap-1.5 pl-5">
+        <div className="flex items-center gap-3">
+          {(["next-step", "child-flowchart", "external-link"] as const).map((t) => (
+            <label key={t} className="flex cursor-pointer items-center gap-1 text-xs text-gray-600">
+              <input
+                type="radio"
+                name={"dest-" + option.id}
+                checked={destType === t}
+                onChange={() => handleDestChange(t)}
+                className="accent-blue-600"
+              />
+              {t === "next-step" ? "Next step" : t === "child-flowchart" ? "Child flowchart" : "External link"}
+            </label>
+          ))}
+        </div>
+
+        {destType === "next-step" && (
+          <Select
+            value={option.nextStep ?? ""}
+            onValueChange={(v) => onUpdate({ nextStep: v, linkedFlowchartId: undefined, link: undefined, linkTextEn: undefined, linkTextJa: undefined })}
+          >
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue placeholder="Select step…" />
+            </SelectTrigger>
+            <SelectContent>
+              {otherSteps.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.titleEn || s.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {destType === "child-flowchart" && (
+          <Select
+            value={option.linkedFlowchartId ?? ""}
+            onValueChange={(v) => onUpdate({ linkedFlowchartId: v, nextStep: undefined, link: undefined, linkTextEn: undefined, linkTextJa: undefined })}
+          >
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue placeholder="Select flowchart…" />
+            </SelectTrigger>
+            <SelectContent>
+              {otherFlowcharts.map((fc) => (
+                <SelectItem key={fc.id} value={fc.id}>
+                  {fc.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {destType === "external-link" && (
+          <div className="flex flex-col gap-1.5">
+            <input
+              type="text"
+              value={option.link ?? ""}
+              onChange={(e) => onUpdate({ link: e.target.value, nextStep: undefined, linkedFlowchartId: undefined })}
+              placeholder="https://…"
+              className="rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+            />
+            <LocaleInlineEditor
+              value={{ en: option.linkTextEn ?? "", ja: option.linkTextJa ?? "" }}
+              onChange={({ en, ja }) => onUpdate({ linkTextEn: en, linkTextJa: ja })}
+              placeholder="Link label"
+              displayClassName="text-xs"
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -620,13 +1101,7 @@ function FlowchartEditor({
 // Small helpers
 // ---------------------------------------------------------------------------
 
-function FieldRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
       <span className="w-6 shrink-0 text-xs font-medium uppercase text-gray-500">{label}</span>
