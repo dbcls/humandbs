@@ -43,6 +43,7 @@ interface BreadcrumbItem {
   slug: string;
   nameEn: string;
   nameJa: string;
+  onClick?: () => void;
 }
 
 interface BreadcrumbsProps {
@@ -54,12 +55,28 @@ function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
   if (items.length === 0) return null;
   return (
     <nav className="mb-4 flex items-center gap-2 text-sm text-gray-500">
-      {items.map((item, i) => (
-        <span key={item.slug} className="flex items-center gap-2">
-          {i > 0 && <span>›</span>}
-          <span>{locale === "ja" ? item.nameJa : item.nameEn}</span>
-        </span>
-      ))}
+      {items.map((item, i) => {
+        const name = locale === "ja" ? item.nameJa : item.nameEn;
+        const isLast = i === items.length - 1;
+        return (
+          <span key={item.slug} className="flex items-center gap-2">
+            {i > 0 && <span className="text-gray-300">›</span>}
+            {item.onClick && !isLast ? (
+              <button
+                type="button"
+                onClick={item.onClick}
+                className="hover:text-gray-800 hover:underline"
+              >
+                {name}
+              </button>
+            ) : (
+              <span className={isLast ? "font-medium text-gray-700" : ""}>
+                {name}
+              </span>
+            )}
+          </span>
+        );
+      })}
     </nav>
   );
 }
