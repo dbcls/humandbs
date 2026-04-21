@@ -126,6 +126,30 @@ export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
     return null;
   });
 
+export const $getNavigationFlowchartNames = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ ids: z.array(z.string()) }))
+  .handler(async ({ data: { ids } }): Promise<Record<string, { nameEn: string; nameJa: string }>> => {
+    const result: Record<string, { nameEn: string; nameJa: string }> = {};
+    for (const id of ids) {
+      try {
+        const record = await navigationFlowchartRepository.getById(id);
+        if (record) result[id] = { nameEn: record.nameEn, nameJa: record.nameJa };
+      } catch {
+        // skip
+      }
+    }
+    return result;
+  });
+
+export function getNavigationFlowchartNamesQueryOptions(ids: string[]) {
+  return queryOptions({
+    queryKey: ["navigation-flowchart", "names", ids.slice().sort().join(",")],
+    queryFn: () => $getNavigationFlowchartNames({ data: { ids } }),
+    staleTime: 1000 * 60 * 5,
+    enabled: ids.length > 0,
+  });
+}
+
 export function getNavigationFlowchartQueryOptions(slug: string, locale: Locale) {
   return queryOptions({
     queryKey: ["navigation-flowchart", "slug", slug, locale],

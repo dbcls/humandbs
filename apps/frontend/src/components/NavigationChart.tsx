@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavigationFlowchartData, NavigationFlowchartOption, NavigationFlowchartStep } from "@/config/navigation-flowchart";
-import { getNavigationFlowchartQueryOptions, getNavigationFlowchartByIdQueryOptions } from "@/serverFunctions/navigationFlowchart";
+import { getNavigationFlowchartQueryOptions, getNavigationFlowchartByIdQueryOptions, getNavigationFlowchartNamesQueryOptions } from "@/serverFunctions/navigationFlowchart";
 import type { Locale } from "@/config/i18n";
 
 // Legacy shape kept for backward compat with callers not yet migrated
@@ -70,6 +70,7 @@ const OptionComponent = ({
   isEnabled = true,
   isSelected = false,
   showArrow = true,
+  linkedFlowchartName,
 }: {
   option: NavigationFlowchartOption;
   locale?: Locale;
@@ -77,6 +78,7 @@ const OptionComponent = ({
   isEnabled?: boolean;
   isSelected?: boolean;
   showArrow?: boolean;
+  linkedFlowchartName?: string;
 }) => {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [buttonHeight, setButtonHeight] = useState<number>(0);
@@ -96,6 +98,28 @@ const OptionComponent = ({
 
   const optionBaseClasses =
     "border-tetriary w-full rounded-xl border-3 bg-white p-3 font-bold transition-colors text-3xl";
+
+  // Child flowchart: show title + navigation button (same layout as external link)
+  if (option.linkedFlowchartId) {
+    const buttonLabel = linkedFlowchartName ?? "Continue →";
+    return (
+      <div
+        className={cn(optionBaseClasses, "flex flex-col items-center gap-2", {
+          "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
+        })}
+      >
+        {title}
+        <Button
+          onClick={onOptionClick}
+          className="px-8 text-sm disabled:opacity-100"
+          size="slim"
+          disabled={!isEnabled || isSelected}
+        >
+          {buttonLabel} →
+        </Button>
+      </div>
+    );
+  }
 
   if (option.link) {
     const displayText = linkText ?? option.link;
@@ -131,8 +155,8 @@ const OptionComponent = ({
     );
   }
 
-  // Arrow shown only when the destination is the immediately next step
-  const hasArrow = showArrow && !!(option.linkedFlowchartId || option.nextStep);
+  // nextStep: arrow shown only when target is the immediately next step
+  const hasArrow = showArrow && !!option.nextStep;
 
   const arrow = hasArrow ? (
     <div
@@ -167,6 +191,7 @@ const StepComponent = ({
   stepIndex,
   allSteps,
   locale,
+  linkedFlowchartNames,
   onOptionClick,
   isEnabled = true,
   selectedOptionId,
@@ -175,6 +200,7 @@ const StepComponent = ({
   stepIndex: number;
   allSteps: NavigationFlowchartStep[];
   locale?: Locale;
+  linkedFlowchartNames: Record<string, string>;
   onOptionClick: (option: NavigationFlowchartOption, stepIndex: number) => void;
   isEnabled?: boolean;
   selectedOptionId?: string;
@@ -191,14 +217,15 @@ const StepComponent = ({
         <p className="m-auto mb-5 w-2/3 max-w-3xl">{text}</p>
         <div className="text-tetriary flex justify-center gap-8">
           {step.options.map((option) => {
-            // Show the downward arrow only when this option leads to the
-            // step that is immediately next in the list.
+            // Arrow only for nextStep pointing to the immediately following step.
+            // Child flowchart options never get an arrow.
             const targetIdx = option.nextStep
               ? allSteps.findIndex((s) => s.id === option.nextStep)
-              : option.linkedFlowchartId
-                ? stepIndex + 1  // child flowchart: arrow to next position
-                : -1;
+              : -1;
             const showArrow = targetIdx === stepIndex + 1;
+            const linkedName = option.linkedFlowchartId
+              ? linkedFlowchartNames[option.linkedFlowchartId]
+              : undefined;
             return (
               <div
                 key={option.id}
@@ -211,6 +238,7 @@ const StepComponent = ({
                   isEnabled={isEnabled}
                   isSelected={selectedOptionId === option.id}
                   showArrow={showArrow}
+                  linkedFlowchartName={linkedName}
                 />
               </div>
             );
@@ -227,6 +255,7 @@ function NavigationChartInner({
   data,
   locale,
   answers,
+  linkedFlowchartNames,
   onAnswerChange,
   onNavigateToChild,
 }: {
@@ -235,6 +264,7 @@ function NavigationChartInner({
   data: NavigationFlowchartData;
   locale?: Locale;
   answers: FlowchartAnswers;
+  linkedFlowchartNames: Record<string, string>;
   onAnswerChange: (slug: string, stepId: string, optionId: string) => void;
   onNavigateToChild: (childSlug: string) => void;
 }) {
@@ -293,6 +323,7 @@ function NavigationChartInner({
               stepIndex={index}
               allSteps={data.steps}
               locale={locale}
+              linkedFlowchartNames={linkedFlowchartNames}
               onOptionClick={handleOptionClick}
               isEnabled={isEnabled}
               selectedOptionId={stepAnswers[step.id]}
@@ -346,6 +377,29 @@ function NavigationChartDB({
   onNavigateToChild: (childId: string) => void;
 }) {
   const { data } = useQuery(getNavigationFlowchartQueryOptions(slug, locale));
+
+  // Collect all linkedFlowchartIds referenced in this flowchart's options
+  const linkedIds = data
+    ? [
+        ...new Set(
+          data.data.steps
+            .flatMap((s) => s.options)
+            .map((o) => o.linkedFlowchartId)
+            .filter((id): id is string => !!id),
+        ),
+      ]
+    : [];
+
+  const { data: namesMap = {} } = useQuery(
+    getNavigationFlowchartNamesQueryOptions(linkedIds),
+  );
+
+  // Build a locale-aware name map: id → display name
+  const linkedFlowchartNames: Record<string, string> = {};
+  for (const [id, names] of Object.entries(namesMap)) {
+    linkedFlowchartNames[id] = locale === "ja" ? names.nameJa : names.nameEn;
+  }
+
   if (!data) return null;
 
   return (
@@ -355,6 +409,7 @@ function NavigationChartDB({
       data={data.data}
       locale={locale}
       answers={answers}
+      linkedFlowchartNames={linkedFlowchartNames}
       onAnswerChange={onAnswerChange}
       onNavigateToChild={onNavigateToChild}
     />
@@ -418,6 +473,7 @@ function LegacyNavigationChart({
               step={step}
               stepIndex={index}
               allSteps={newSteps}
+              linkedFlowchartNames={{}}
               onOptionClick={handleOptionClick}
               isEnabled={isEnabled}
               selectedOptionId={selectedOptions[index]}
