@@ -8,11 +8,13 @@ import { Card } from "@/components/Card";
 import { NavigationChart, Breadcrumbs } from "@/components/NavigationChart";
 import type { FlowchartAnswers, BreadcrumbItem } from "@/components/NavigationChart";
 import {
-  getNavigationFlowchartQueryOptions,
+  getNavigationEntryPointQueryOptions,
   getNavigationFlowchartByIdQueryOptions,
 } from "@/serverFunctions/navigationFlowchart";
 
-const ENTRY_POINT_SLUG = "/data-submission/navigation";
+// Stable key used to namespace entry-point answers in the URL.
+// The entry point has no slug, so we use a fixed sentinel.
+const ENTRY_POINT_KEY = "entry-point";
 
 const answersSchema = z
   .record(z.string(), z.record(z.string(), z.string()))
@@ -33,7 +35,7 @@ export const Route = createFileRoute(
   component: RouteComponent,
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(
-      getNavigationFlowchartQueryOptions(ENTRY_POINT_SLUG, context.lang),
+      getNavigationEntryPointQueryOptions(context.lang),
     ),
 });
 
@@ -42,7 +44,7 @@ export const Route = createFileRoute(
  *
  * State is stored entirely in URL search params so the page is bookmarkable
  * and shareable:
- * - `answers`: nested map of { [slugOrId]: { [stepId]: optionId } }
+ * - `answers`: nested map of { [ENTRY_POINT_KEY | childUUID]: { [stepId]: optionId } }
  * - `chain`: ordered stack of child flowchart UUIDs navigated into; the last
  *   element is the currently displayed child.
  *
@@ -61,7 +63,7 @@ function RouteComponent() {
 
   // Load entry point metadata
   const { data: entryPointData } = useQuery(
-    getNavigationFlowchartQueryOptions(ENTRY_POINT_SLUG, lang),
+    getNavigationEntryPointQueryOptions(lang),
   );
 
   // Load metadata for every id in the chain (for breadcrumb names + caption)
@@ -75,7 +77,7 @@ function RouteComponent() {
   // The last item is the current location (non-clickable tip).
   const allItems: (BreadcrumbItem & { childDepth: number | null })[] = [
     {
-      slug: ENTRY_POINT_SLUG,
+      slug: ENTRY_POINT_KEY,
       nameEn: entryPointData?.nameEn ?? "Navigation",
       nameJa: entryPointData?.nameJa ?? "ナビゲーション",
       childDepth: null, // entry point = go back to no chain
@@ -111,7 +113,7 @@ function RouteComponent() {
           ...prev,
           // If the user re-answers a step in the parent while on a child, pop
           // back to just the parent (clear the chain) since the path may change.
-          chain: slug === ENTRY_POINT_SLUG && (prev.chain?.length ?? 0) > 0
+          chain: slug === ENTRY_POINT_KEY && (prev.chain?.length ?? 0) > 0
             ? []
             : prev.chain,
           answers: { ...(prev.answers ?? {}), [slug]: newSlugAnswers },
@@ -138,7 +140,7 @@ function RouteComponent() {
   const handleBreadcrumbClick = (childDepth: number | null) => {
     const newChain = childDepth === null ? [] : chain.slice(0, childDepth);
     // Keep only answers for flowcharts still in scope (entry point + newChain ids)
-    const keepKeys = new Set([ENTRY_POINT_SLUG, ...newChain]);
+    const keepKeys = new Set([ENTRY_POINT_KEY, ...newChain]);
     const newAnswers: FlowchartAnswers = {};
     for (const [key, val] of Object.entries(answers ?? {})) {
       if (keepKeys.has(key)) newAnswers[key] = val;
@@ -170,8 +172,9 @@ function RouteComponent() {
     <Card caption={caption} captionSize={"lg"}>
       <Breadcrumbs items={breadcrumbs} locale={lang} />
       <NavigationChart
-        slug={currentChildId ? undefined : ENTRY_POINT_SLUG}
-        flowchartId={currentChildId ?? undefined}
+        entryPoint={!currentChildId}
+        flowchartId={currentChildId ?? (entryPointData?.id ?? undefined)}
+        answerKey={currentChildId ? currentChildId : ENTRY_POINT_KEY}
         locale={lang}
         answers={answers ?? {}}
         onAnswerChange={handleAnswerChange}

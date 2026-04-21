@@ -129,31 +129,25 @@ function transformSteps(
 async function upsertFlowchart(
   db: ReturnType<typeof drizzle<typeof schema>>,
   params: {
-    slug: string | null;
+    isEntryPoint: boolean;
     nameEn: string;
     nameJa: string;
     config: NavigationFlowchartConfig;
   },
 ): Promise<string> {
-  // For child flowcharts (null slug), match by name instead
-  const existing = params.slug
-    ? await db.query.navigationFlowchart.findFirst({
-        where: eq(schema.navigationFlowchart.slug, params.slug),
-      })
-    : await db.query.navigationFlowchart.findFirst({
-        where: eq(schema.navigationFlowchart.nameEn, params.nameEn),
-      });
+  const existing = await db.query.navigationFlowchart.findFirst({
+    where: eq(schema.navigationFlowchart.nameEn, params.nameEn),
+  });
 
   if (existing) {
-    const label = params.slug ?? params.nameEn;
-    console.log(`  Skipping "${label}" — already exists.`);
+    console.log(`  Skipping "${params.nameEn}" — already exists.`);
     return existing.id;
   }
 
   const [created] = await db
     .insert(schema.navigationFlowchart)
     .values({
-      slug: params.slug,
+      isEntryPoint: params.isEntryPoint,
       nameEn: params.nameEn,
       nameJa: params.nameJa,
       config: params.config,
@@ -169,8 +163,7 @@ async function upsertFlowchart(
     createdBy: null,
   });
 
-  const label = params.slug ?? params.nameEn;
-  console.log(`  Inserted "${label}" (id: ${created.id}).`);
+  console.log(`  Inserted "${params.nameEn}" (id: ${created.id}).`);
   return created.id;
 }
 
@@ -205,15 +198,15 @@ async function seedNavigationFlowcharts() {
       null,
     );
 
-    // before-application is a child flowchart — no slug
+    // before-application is a child flowchart
     const beforeApplicationId = await upsertFlowchart(db, {
-      slug: null,
+      isEntryPoint: false,
       nameEn: "Before Application",
       nameJa: "申請システムの前に",
       config: { en: { steps: baEnSteps }, ja: { steps: baJaSteps } },
     });
 
-    // data-submission is the entry point — slug is its public URL path
+    // data-submission is the single entry point
     const { enSteps: dsEnSteps, jaSteps: dsJaSteps } = transformSteps(
       dataSubmissionEn.steps,
       dataSubmissionJa.steps,
@@ -221,7 +214,7 @@ async function seedNavigationFlowcharts() {
     );
 
     await upsertFlowchart(db, {
-      slug: "/data-submission/navigation",
+      isEntryPoint: true,
       nameEn: "Data Submission Navigation",
       nameJa: "データ登録ナビゲーション",
       config: { en: { steps: dsEnSteps }, ja: { steps: dsJaSteps } },

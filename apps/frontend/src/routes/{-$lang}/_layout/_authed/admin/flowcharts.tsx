@@ -161,7 +161,7 @@ function FlowchartList({
         >
           <div className="min-w-0 flex-1">
             <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-1 truncate text-xs">
-              {fc.slug ?? "child flowchart"}
+              {fc.isEntryPoint ? "entry point" : "child flowchart"}
             </div>
             <div className="flex min-w-0 items-center gap-2">
               <span className="truncate text-sm font-medium">{fc.nameEn}</span>
@@ -191,7 +191,6 @@ function CreateFlowchartPanel({
   const queryClient = useQueryClient();
   const [nameEn, setNameEn] = useState("");
   const [nameJa, setNameJa] = useState("");
-  const [slug, setSlug] = useState("");
   const [errors, setErrors] = useState<{ nameEn?: string; nameJa?: string }>(
     {},
   );
@@ -203,7 +202,6 @@ function CreateFlowchartPanel({
         data: {
           nameEn: nameEn.trim(),
           nameJa: nameJa.trim(),
-          slug: slug.trim() || null,
         },
       }),
   });
@@ -274,22 +272,6 @@ function CreateFlowchartPanel({
           {errors.nameJa && <FieldError>{errors.nameJa}</FieldError>}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-gray-700">
-            Slug{" "}
-            <span className="font-normal text-gray-400">
-              (optional — leave blank for child flowchart)
-            </span>
-          </h3>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="/path/to/flowchart"
-            className="rounded border border-gray-200 px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-400"
-          />
-        </div>
-
         <div className="flex gap-2">
           <Button type="button" onClick={handleSave} disabled={isPending}>
             Create
@@ -358,20 +340,20 @@ function EditFlowchartPanel({
 interface FlowchartMeta {
   nameEn: string;
   nameJa: string;
-  slug: string;
+  isEntryPoint: boolean;
   status: (typeof NAVIGATION_FLOWCHART_STATUS)[keyof typeof NAVIGATION_FLOWCHART_STATUS];
 }
 
 /**
  * Main editor for a single flowchart record. Manages local drafts for both the
- * metadata (name, slug, status) and the bilingual step config. Uses optimistic
- * locking (`revision`) to detect concurrent edits.
+ * metadata (name, isEntryPoint, status) and the bilingual step config. Uses
+ * optimistic locking (`revision`) to detect concurrent edits.
  *
  * Save flow:
- * 1. Validates EN/JA name and slug uniqueness.
+ * 1. Validates EN/JA name are non-empty.
  * 2. Validates that every step has at least 2 options.
- * 3. If the slug is being removed from an existing entry point, prompts for
- *    confirmation before proceeding.
+ * 3. If isEntryPoint is being enabled, warns that any existing entry point will
+ *    be demoted (the server enforces only one entry point at a time).
  * 4. Sends the full config + expectedRevision to the server; handles CONFLICT.
  *
  * Delete flow: checks for dependent flowcharts (options in other flowcharts
@@ -393,7 +375,7 @@ function FlowchartEditor({
   const [meta, setMeta] = useState<FlowchartMeta>({
     nameEn: record.nameEn,
     nameJa: record.nameJa,
-    slug: record.slug ?? "",
+    isEntryPoint: record.isEntryPoint,
     status: record.status,
   });
   const [configDraft, setConfigDraft] = useState<NavigationFlowchartConfig>(
@@ -401,18 +383,14 @@ function FlowchartEditor({
   );
   const [revision, setRevision] = useState(record.revision);
   const [metaErrors, setMetaErrors] = useState<Partial<FlowchartMeta>>({});
-  const [slugConflictError, setSlugConflictError] = useState<string | null>(
-    null,
-  );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const originalSlugRef = useRef(record.slug);
   // Tracks the last-saved values so isDirty can compare against them.
   const savedMetaRef = useRef<FlowchartMeta>({
     nameEn: record.nameEn,
     nameJa: record.nameJa,
-    slug: record.slug ?? "",
+    isEntryPoint: record.isEntryPoint,
     status: record.status,
   });
   const savedConfigRef = useRef<NavigationFlowchartConfig>(record.config);
@@ -427,7 +405,7 @@ function FlowchartEditor({
           id: record.id,
           nameEn: payload.meta.nameEn,
           nameJa: payload.meta.nameJa,
-          slug: payload.meta.slug.trim() || null,
+          isEntryPoint: payload.meta.isEntryPoint,
           status: payload.meta.status,
           config: payload.config,
           expectedRevision: revision,
@@ -438,23 +416,6 @@ function FlowchartEditor({
   const { mutateAsync: deleteFlowchart, isPending: isDeleting } = useMutation({
     mutationFn: () => $deleteNavigationFlowchart({ data: { id: record.id } }),
   });
-
-  /** Client-side uniqueness check against already-loaded flowchart list. */
-  function checkSlugUniqueness(slug: string) {
-    const trimmed = slug.trim();
-    if (!trimmed) {
-      setSlugConflictError(null);
-      return;
-    }
-    const conflict = allFlowcharts.find(
-      (fc) => fc.id !== record.id && fc.slug === trimmed,
-    );
-    setSlugConflictError(
-      conflict
-        ? `Slug "${trimmed}" is already used by "${conflict.nameEn}".`
-        : null,
-    );
-  }
 
   /** Returns IDs of EN steps that have fewer than 2 options (invalid for publishing). */
   function validateSteps(config: NavigationFlowchartConfig) {
@@ -470,7 +431,6 @@ function FlowchartEditor({
     if (!currentMeta.nameJa.trim()) errs.nameJa = "Japanese name is required.";
     setMetaErrors(errs);
     if (Object.keys(errs).length > 0) return;
-    if (slugConflictError) return;
 
     const invalidStepIds = validateSteps(configDraft);
     if (invalidStepIds.length > 0) {
@@ -494,8 +454,7 @@ function FlowchartEditor({
     }
 
     setRevision(result.data.revision);
-    originalSlugRef.current = result.data.slug;
-    savedMetaRef.current = { ...currentMeta, slug: currentMeta.slug.trim() };
+    savedMetaRef.current = currentMeta;
     savedConfigRef.current = configDraft;
     setMessage("Saved.");
     await queryClient.invalidateQueries({
@@ -504,13 +463,17 @@ function FlowchartEditor({
   }
 
   async function handleSave() {
-    const isRemovingSlug =
-      originalSlugRef.current !== null && meta.slug.trim() === "";
-    if (isRemovingSlug) {
+    const isPromotingToEntryPoint =
+      meta.isEntryPoint && !record.isEntryPoint;
+    const existingEntryPoint = allFlowcharts.find(
+      (fc) => fc.isEntryPoint && fc.id !== record.id,
+    );
+
+    if (isPromotingToEntryPoint && existingEntryPoint) {
       openConfirmation({
-        title: "Remove entry point?",
-        description: `This flowchart is currently at "${originalSlugRef.current}". Clearing the slug makes it child-only. Continue?`,
-        actionLabel: "Remove slug and save",
+        title: "Change entry point?",
+        description: `"${existingEntryPoint.nameEn}" is currently the entry point. Setting this flowchart as entry point will demote it. Continue?`,
+        actionLabel: "Set as entry point",
         onAction: () => commitSave(meta),
       });
     } else {
@@ -522,7 +485,6 @@ function FlowchartEditor({
     setMeta(savedMetaRef.current);
     setConfigDraft(savedConfigRef.current);
     setMetaErrors({});
-    setSlugConflictError(null);
     setMessage(null);
     setError(null);
   }
@@ -653,34 +615,20 @@ function FlowchartEditor({
             {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
           </div>
 
-          {/* Slug */}
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-gray-700">
-              Slug <span className="font-normal text-gray-400">(optional)</span>
-            </h3>
-            <input
-              type="text"
-              value={meta.slug}
-              onChange={(e) => {
-                setMeta((p) => ({ ...p, slug: e.target.value }));
-                setSlugConflictError(null);
-              }}
-              onBlur={() => checkSlugUniqueness(meta.slug)}
-              placeholder="/path/to/flowchart"
-              className={cn(
-                "rounded border px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-400",
-                slugConflictError ? "border-red-400" : "border-gray-200",
-              )}
+          {/* Entry point */}
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={meta.isEntryPoint}
+              onCheckedChange={(checked) =>
+                setMeta((p) => ({ ...p, isEntryPoint: checked }))
+              }
             />
-            {slugConflictError && <FieldError>{slugConflictError}</FieldError>}
-            {meta.slug.trim() && !slugConflictError && (
-              <p className="text-xs text-blue-600">
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium">
-                  entry point
-                </span>{" "}
-                at <code className="font-mono">{meta.slug.trim()}</code>
+            <div>
+              <span className="text-sm font-medium text-gray-700">Entry point</span>
+              <p className="text-xs text-gray-400">
+                The entry point flowchart is loaded on the public navigation page. Only one flowchart can be the entry point.
               </p>
-            )}
+            </div>
           </div>
 
           {/* Steps */}

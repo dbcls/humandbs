@@ -45,7 +45,7 @@ const saveInputSchema = z.object({
   id: z.string().uuid(),
   nameEn: z.string().min(1),
   nameJa: z.string().min(1),
-  slug: z.string().nullable(),
+  isEntryPoint: z.boolean(),
   status: z.enum([
     NAVIGATION_FLOWCHART_STATUS.DRAFT,
     NAVIGATION_FLOWCHART_STATUS.PUBLISHED,
@@ -69,7 +69,7 @@ export const $saveNavigationFlowchartConfig = createServerFn({ method: "POST" })
         data: await navigationFlowchartRepository.save(data.id, {
           nameEn: data.nameEn,
           nameJa: data.nameJa,
-          slug: data.slug,
+          isEntryPoint: data.isEntryPoint,
           status: data.status,
           config: data.config,
           expectedRevision: data.expectedRevision,
@@ -91,7 +91,6 @@ export const $saveNavigationFlowchartConfig = createServerFn({ method: "POST" })
 const createInputSchema = z.object({
   nameEn: z.string().min(1),
   nameJa: z.string().min(1),
-  slug: z.string().nullable(),
 });
 
 export const $createNavigationFlowchart = createServerFn({ method: "POST" })
@@ -106,7 +105,7 @@ export const $createNavigationFlowchart = createServerFn({ method: "POST" })
     return navigationFlowchartRepository.create({
       nameEn: data.nameEn,
       nameJa: data.nameJa,
-      slug: data.slug,
+      isEntryPoint: false,
       config: { en: { steps: [] }, ja: { steps: [] } },
       userId,
     });

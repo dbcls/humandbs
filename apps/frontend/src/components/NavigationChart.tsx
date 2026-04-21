@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavigationFlowchartData, NavigationFlowchartOption, NavigationFlowchartStep } from "@/config/navigation-flowchart";
-import { getNavigationFlowchartQueryOptions, getNavigationFlowchartByIdQueryOptions, getNavigationFlowchartNamesQueryOptions } from "@/serverFunctions/navigationFlowchart";
+import { getNavigationEntryPointQueryOptions, getNavigationFlowchartByIdQueryOptions, getNavigationFlowchartNamesQueryOptions } from "@/serverFunctions/navigationFlowchart";
 import type { Locale } from "@/config/i18n";
 
 // Legacy shape kept for backward compat with callers not yet migrated
@@ -23,13 +23,17 @@ export interface NavigationData {
   }>;
 }
 
-/** Answers keyed by flowchart slug (or UUID for child flowcharts), then by step ID. */
+/** Answers keyed by flowchart answer-key (ENTRY_POINT_KEY or UUID), then by step ID. */
 export type FlowchartAnswers = Record<string, Record<string, string>>;
 
 interface NavigationChartProps {
-  // New DB-backed props — provide either slug (entry point) or flowchartId (child by uuid)
-  slug?: string;
+  // DB-backed props
+  /** ID of the flowchart to display (UUID). Required unless `entryPoint` is true. */
   flowchartId?: string;
+  /** When true, fetches the entry-point flowchart (isEntryPoint = true) rather than by ID. */
+  entryPoint?: boolean;
+  /** The key used to namespace answers for this flowchart in the answers map. */
+  answerKey?: string;
   locale?: Locale;
   answers?: FlowchartAnswers;
   onAnswerChange?: (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
@@ -401,12 +405,13 @@ function NavigationChartInner({
  *
  * Routes to the correct data-fetching variant:
  * - `data` prop (legacy): static JSON, no DB.
- * - `flowchartId` prop: fetches a child flowchart by UUID (no public slug).
- * - `slug` prop: fetches the entry-point flowchart by its public slug.
+ * - `entryPoint=true`: fetches the single entry-point flowchart (isEntryPoint = true).
+ * - `flowchartId`: fetches a flowchart by UUID (used for child flowcharts).
  */
 function NavigationChart({
-  slug,
   flowchartId,
+  entryPoint = false,
+  answerKey,
   locale,
   answers = {},
   onAnswerChange,
@@ -421,10 +426,10 @@ function NavigationChart({
 
   if (!locale || !onAnswerChange || !onNavigateToChild) return null;
 
-  if (flowchartId) {
+  if (entryPoint) {
     return (
-      <NavigationChartByIdDB
-        flowchartId={flowchartId}
+      <NavigationChartEntryPointDB
+        answerKey={answerKey ?? "entry-point"}
         locale={locale}
         answers={answers}
         onAnswerChange={onAnswerChange}
@@ -433,11 +438,12 @@ function NavigationChart({
     );
   }
 
-  if (!slug) return null;
+  if (!flowchartId) return null;
 
   return (
-    <NavigationChartDB
-      slug={slug}
+    <NavigationChartByIdDB
+      flowchartId={flowchartId}
+      answerKey={answerKey ?? flowchartId}
       locale={locale}
       answers={answers}
       onAnswerChange={onAnswerChange}
@@ -447,26 +453,24 @@ function NavigationChart({
 }
 
 /**
- * Fetches a flowchart by its public slug and renders it via NavigationChartInner.
+ * Fetches the entry-point flowchart (isEntryPoint = true) and renders it.
  * Also fetches display names for any linked child flowcharts referenced by options.
  */
-function NavigationChartDB({
-  slug,
+function NavigationChartEntryPointDB({
+  answerKey,
   locale,
   answers,
   onAnswerChange,
   onNavigateToChild,
 }: {
-  slug: string;
+  answerKey: string;
   locale: Locale;
   answers: FlowchartAnswers;
-  onAnswerChange: (slug: string, stepId: string, optionId: string) => void;
-  // receives linkedFlowchartId (uuid) — parent resolves to slug
+  onAnswerChange: (answerKey: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
   onNavigateToChild: (childId: string) => void;
 }) {
-  const { data } = useQuery(getNavigationFlowchartQueryOptions(slug, locale));
+  const { data } = useQuery(getNavigationEntryPointQueryOptions(locale));
 
-  // Collect all linkedFlowchartIds referenced in this flowchart's options
   const linkedIds = data
     ? [
         ...new Set(
@@ -482,7 +486,6 @@ function NavigationChartDB({
     getNavigationFlowchartNamesQueryOptions(linkedIds),
   );
 
-  // Build a locale-aware name map: id → display name
   const linkedFlowchartNames: Record<string, string> = {};
   for (const [id, names] of Object.entries(namesMap)) {
     linkedFlowchartNames[id] = locale === "ja" ? names.nameJa : names.nameEn;
@@ -493,7 +496,7 @@ function NavigationChartDB({
   return (
     <NavigationChartInner
       flowchartId={data.id}
-      slug={data.slug}
+      slug={answerKey}
       data={data.data}
       locale={locale}
       answers={answers}
@@ -505,20 +508,22 @@ function NavigationChartDB({
 }
 
 /**
- * Fetches a child flowchart by UUID (used when the flowchart has no public slug).
- * Uses `flowchartId` as the answers namespace key when `data.slug` is null.
+ * Fetches a flowchart by UUID and renders it via NavigationChartInner.
+ * Uses `answerKey` as the answers namespace key (UUID for child flowcharts).
  */
 function NavigationChartByIdDB({
   flowchartId,
+  answerKey,
   locale,
   answers,
   onAnswerChange,
   onNavigateToChild,
 }: {
   flowchartId: string;
+  answerKey: string;
   locale: Locale;
   answers: FlowchartAnswers;
-  onAnswerChange: (slug: string, stepId: string, optionId: string) => void;
+  onAnswerChange: (answerKey: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
   onNavigateToChild: (childId: string) => void;
 }) {
   const { data } = useQuery(getNavigationFlowchartByIdQueryOptions(flowchartId, locale));
@@ -545,13 +550,10 @@ function NavigationChartByIdDB({
 
   if (!data) return null;
 
-  // Use flowchartId as the slug key for answers when the flowchart has no public slug
-  const slugKey = data.slug ?? flowchartId;
-
   return (
     <NavigationChartInner
       flowchartId={data.id}
-      slug={slugKey}
+      slug={answerKey}
       data={data.data}
       locale={locale}
       answers={answers}

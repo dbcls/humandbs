@@ -1,4 +1,4 @@
-import { eq, isNotNull } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
 import { parseNavigationFlowchartConfig } from "@/config/navigation-flowchart.schema";
@@ -19,8 +19,7 @@ export class NavigationFlowchartConflictError extends Error {
 
 export interface NavigationFlowchartRecord {
   id: string;
-  /** null for child flowcharts; public URL path for entry-point flowcharts */
-  slug: string | null;
+  isEntryPoint: boolean;
   nameEn: string;
   nameJa: string;
   config: NavigationFlowchartConfig;
@@ -32,7 +31,7 @@ export interface NavigationFlowchartRecord {
 
 export interface NavigationFlowchartSummary {
   id: string;
-  slug: string | null;
+  isEntryPoint: boolean;
   nameEn: string;
   nameJa: string;
   status: NavigationFlowchartStatus;
@@ -49,7 +48,7 @@ export interface NavigationFlowchartDependency {
 }
 
 interface CreateParams {
-  slug: string | null;
+  isEntryPoint: boolean;
   nameEn: string;
   nameJa: string;
   config: NavigationFlowchartConfig;
@@ -60,7 +59,7 @@ interface SaveParams {
   config: NavigationFlowchartConfig;
   nameEn: string;
   nameJa: string;
-  slug: string | null;
+  isEntryPoint: boolean;
   status: NavigationFlowchartStatus;
   expectedRevision: number;
   userId?: string;
@@ -78,9 +77,8 @@ function parseRecord(
 
 export interface NavigationFlowchartRepository {
   getAll: () => Promise<NavigationFlowchartSummary[]>;
-  getEntryPoints: () => Promise<NavigationFlowchartSummary[]>;
+  getEntryPoint: () => Promise<NavigationFlowchartRecord | null>;
   getById: (id: string) => Promise<NavigationFlowchartRecord | null>;
-  getBySlug: (slug: string) => Promise<NavigationFlowchartRecord | null>;
   create: (params: CreateParams) => Promise<NavigationFlowchartRecord>;
   save: (id: string, params: SaveParams) => Promise<NavigationFlowchartRecord>;
   delete: (id: string) => Promise<void>;
@@ -95,7 +93,7 @@ export function createNavigationFlowchartRepository(
       const rows = await database
         .select({
           id: navigationFlowchart.id,
-          slug: navigationFlowchart.slug,
+          isEntryPoint: navigationFlowchart.isEntryPoint,
           nameEn: navigationFlowchart.nameEn,
           nameJa: navigationFlowchart.nameJa,
           status: navigationFlowchart.status,
@@ -107,21 +105,12 @@ export function createNavigationFlowchartRepository(
       return rows;
     },
 
-    async getEntryPoints() {
-      const rows = await database
-        .select({
-          id: navigationFlowchart.id,
-          slug: navigationFlowchart.slug,
-          nameEn: navigationFlowchart.nameEn,
-          nameJa: navigationFlowchart.nameJa,
-          status: navigationFlowchart.status,
-          revision: navigationFlowchart.revision,
-        })
-        .from(navigationFlowchart)
-        .where(isNotNull(navigationFlowchart.slug))
-        .orderBy(navigationFlowchart.nameEn);
-
-      return rows;
+    async getEntryPoint() {
+      const row = await database.query.navigationFlowchart.findFirst({
+        where: eq(navigationFlowchart.isEntryPoint, true),
+      });
+      if (!row) return null;
+      return parseRecord(row);
     },
 
     async getById(id) {
@@ -132,22 +121,14 @@ export function createNavigationFlowchartRepository(
       return parseRecord(row);
     },
 
-    async getBySlug(slug) {
-      const row = await database.query.navigationFlowchart.findFirst({
-        where: eq(navigationFlowchart.slug, slug),
-      });
-      if (!row) return null;
-      return parseRecord(row);
-    },
-
-    async create({ slug, nameEn, nameJa, config, userId }) {
+    async create({ isEntryPoint, nameEn, nameJa, config, userId }) {
       const parsedConfig = parseNavigationFlowchartConfig(config);
 
       return await database.transaction(async (tx) => {
         const [created] = await tx
           .insert(navigationFlowchart)
           .values({
-            slug,
+            isEntryPoint,
             nameEn,
             nameJa,
             config: parsedConfig,
@@ -168,7 +149,7 @@ export function createNavigationFlowchartRepository(
       });
     },
 
-    async save(id, { config, nameEn, nameJa, slug, status, expectedRevision, userId }) {
+    async save(id, { config, nameEn, nameJa, isEntryPoint, status, expectedRevision, userId }) {
       const parsedConfig = parseNavigationFlowchartConfig(config);
       const current = await this.getById(id);
 
@@ -181,13 +162,21 @@ export function createNavigationFlowchartRepository(
       }
 
       return await database.transaction(async (tx) => {
+        // If promoting this flowchart to entry point, demote any other entry point first.
+        if (isEntryPoint) {
+          await tx
+            .update(navigationFlowchart)
+            .set({ isEntryPoint: false })
+            .where(and(eq(navigationFlowchart.isEntryPoint, true), ne(navigationFlowchart.id, id)));
+        }
+
         const [updated] = await tx
           .update(navigationFlowchart)
           .set({
             config: parsedConfig,
             nameEn,
             nameJa,
-            slug,
+            isEntryPoint,
             status,
             revision: current.revision + 1,
             updatedAt: new Date(),

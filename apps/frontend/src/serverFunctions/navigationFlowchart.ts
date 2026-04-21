@@ -55,18 +55,11 @@ function legacyToFlowchartData(
   return { steps };
 }
 
-async function getFallbackData(
-  slug: string,
+async function getFallbackEntryPoint(
   locale: Locale,
 ): Promise<NavigationFlowchartData | null> {
   try {
-    const typeMap: Record<string, string> = {
-      "/data-submission/navigation": "data-submission",
-      "/data-submission/navigation/before-application": "before-application",
-    };
-    const type = typeMap[slug];
-    if (!type) return null;
-    const file = Bun.file(`./src/config/navigation/${type}-${locale}.json`);
+    const file = Bun.file(`./src/config/navigation/data-submission-${locale}.json`);
     const legacy = (await file.json()) as LegacyNavigationData;
     return legacyToFlowchartData(legacy, locale);
   } catch {
@@ -76,34 +69,41 @@ async function getFallbackData(
 
 export interface NavigationFlowchartResponse {
   id: string;
-  slug: string | null;
+  isEntryPoint: boolean;
   nameEn: string;
   nameJa: string;
   data: NavigationFlowchartData;
 }
 
-export const $getNavigationFlowchartBySlug = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ slug: z.string(), locale: localeSchema }))
-  .handler(async ({ data: { slug, locale } }): Promise<NavigationFlowchartResponse | null> => {
+/** Fetches the single entry-point flowchart (isEntryPoint = true), with JSON fallback. */
+export const $getNavigationEntryPoint = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ locale: localeSchema }))
+  .handler(async ({ data: { locale } }): Promise<NavigationFlowchartResponse | null> => {
     try {
-      const record = await navigationFlowchartRepository.getBySlug(slug);
+      const record = await navigationFlowchartRepository.getEntryPoint();
       if (record) {
         return {
           id: record.id,
-          slug: record.slug,
+          isEntryPoint: true,
           nameEn: record.nameEn,
           nameJa: record.nameJa,
           data: locale === "ja" ? record.config.ja : record.config.en,
         };
       }
     } catch (error) {
-      console.error("Failed to load flowchart from DB, using fallback.", error);
+      console.error("Failed to load entry point flowchart from DB, using fallback.", error);
     }
 
-    const fallback = await getFallbackData(slug, locale);
+    const fallback = await getFallbackEntryPoint(locale);
     if (!fallback) return null;
 
-    return { id: slug, slug, nameEn: slug, nameJa: slug, data: fallback };
+    return {
+      id: "entry-point",
+      isEntryPoint: true,
+      nameEn: "Data Submission Navigation",
+      nameJa: "データ登録ナビゲーション",
+      data: fallback,
+    };
   });
 
 export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
@@ -114,7 +114,7 @@ export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
       if (record) {
         return {
           id: record.id,
-          slug: record.slug,
+          isEntryPoint: record.isEntryPoint,
           nameEn: record.nameEn,
           nameJa: record.nameJa,
           data: locale === "ja" ? record.config.ja : record.config.en,
@@ -150,10 +150,10 @@ export function getNavigationFlowchartNamesQueryOptions(ids: string[]) {
   });
 }
 
-export function getNavigationFlowchartQueryOptions(slug: string, locale: Locale) {
+export function getNavigationEntryPointQueryOptions(locale: Locale) {
   return queryOptions({
-    queryKey: ["navigation-flowchart", "slug", slug, locale],
-    queryFn: () => $getNavigationFlowchartBySlug({ data: { slug, locale } }),
+    queryKey: ["navigation-flowchart", "entry-point", locale],
+    queryFn: () => $getNavigationEntryPoint({ data: { locale } }),
     staleTime: 1000 * 60 * 5,
   });
 }
