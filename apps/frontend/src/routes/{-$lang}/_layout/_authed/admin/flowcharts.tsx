@@ -45,6 +45,7 @@ import type {
   NavigationFlowchartStep,
 } from "@/config/navigation-flowchart";
 import { cn } from "@/lib/utils";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 export const Route = createFileRoute(
@@ -83,7 +84,10 @@ function RouteComponent() {
 
   return (
     <>
-      <Card className="w-cms-list-panel flex h-full flex-col" caption="Flowcharts">
+      <Card
+        className="w-cms-list-panel flex h-full flex-col"
+        caption="Flowcharts"
+      >
         <div className="flex flex-col gap-2">
           <div className="px-1">
             <Button
@@ -136,7 +140,9 @@ function FlowchartList({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const { data: flowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
+  const { data: flowcharts = [] } = useQuery(
+    getNavigationFlowchartsQueryOptions(),
+  );
 
   if (flowcharts.length === 0) {
     return <p className="px-1 text-sm text-gray-400">No flowcharts yet.</p>;
@@ -165,7 +171,8 @@ function FlowchartListItem({
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  const isPublished = flowchart.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED;
+  const isPublished =
+    flowchart.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED;
 
   return (
     <button
@@ -180,7 +187,9 @@ function FlowchartListItem({
         <span
           className={cn(
             "rounded px-1.5 py-0.5 text-xs font-medium",
-            isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500",
+            isPublished
+              ? "bg-green-100 text-green-700"
+              : "bg-gray-100 text-gray-500",
           )}
         >
           {isPublished ? "published" : "draft"}
@@ -191,7 +200,9 @@ function FlowchartListItem({
           </span>
         )}
       </div>
-      <span className="text-xs text-gray-400">{flowchart.slug ?? "child flowchart"}</span>
+      <span className="text-xs text-gray-400">
+        {flowchart.slug ?? "child flowchart"}
+      </span>
     </button>
   );
 }
@@ -205,12 +216,18 @@ function FlowchartListItem({
  * optional slug. Leaving the slug blank creates a child-only flowchart that
  * can only be reached via a linked option in another flowchart.
  */
-function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }) {
+function CreateFlowchartPanel({
+  onCreated,
+}: {
+  onCreated: (id: string) => void;
+}) {
   const queryClient = useQueryClient();
   const [nameEn, setNameEn] = useState("");
   const [nameJa, setNameJa] = useState("");
   const [slug, setSlug] = useState("");
-  const [errors, setErrors] = useState<{ nameEn?: string; nameJa?: string }>({});
+  const [errors, setErrors] = useState<{ nameEn?: string; nameJa?: string }>(
+    {},
+  );
   const [serverError, setServerError] = useState<string | null>(null);
 
   const { mutateAsync: create, isPending } = useMutation({
@@ -234,7 +251,9 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
     setServerError(null);
     try {
       const created = await create();
-      await queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["navigation-flowcharts"],
+      });
       onCreated(created.id);
     } catch {
       setServerError("Failed to create flowchart.");
@@ -258,7 +277,8 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
               value={nameEn}
               onChange={(e) => {
                 setNameEn(e.target.value);
-                if (errors.nameEn) setErrors((p) => ({ ...p, nameEn: undefined }));
+                if (errors.nameEn)
+                  setErrors((p) => ({ ...p, nameEn: undefined }));
               }}
               placeholder="English name"
               className={cn(
@@ -274,7 +294,8 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
               value={nameJa}
               onChange={(e) => {
                 setNameJa(e.target.value);
-                if (errors.nameJa) setErrors((p) => ({ ...p, nameJa: undefined }));
+                if (errors.nameJa)
+                  setErrors((p) => ({ ...p, nameJa: undefined }));
               }}
               placeholder="Japanese name"
               className={cn(
@@ -289,7 +310,9 @@ function CreateFlowchartPanel({ onCreated }: { onCreated: (id: string) => void }
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-gray-700">
             Slug{" "}
-            <span className="font-normal text-gray-400">(optional — leave blank for child flowchart)</span>
+            <span className="font-normal text-gray-400">
+              (optional — leave blank for child flowchart)
+            </span>
           </h3>
           <input
             type="text"
@@ -346,7 +369,9 @@ function EditFlowchartPanel({
   if (isError || !record) {
     return (
       <Card className="flex flex-1 flex-col gap-0">
-        <div className="p-5 text-sm text-red-600">Failed to load flowchart.</div>
+        <div className="p-5 text-sm text-red-600">
+          Failed to load flowchart.
+        </div>
       </Card>
     );
   }
@@ -394,7 +419,9 @@ function FlowchartEditor({
 }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
-  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
+  const { data: allFlowcharts = [] } = useQuery(
+    getNavigationFlowchartsQueryOptions(),
+  );
 
   const [meta, setMeta] = useState<FlowchartMeta>({
     nameEn: record.nameEn,
@@ -402,17 +429,32 @@ function FlowchartEditor({
     slug: record.slug ?? "",
     status: record.status,
   });
-  const [configDraft, setConfigDraft] = useState<NavigationFlowchartConfig>(record.config);
+  const [configDraft, setConfigDraft] = useState<NavigationFlowchartConfig>(
+    record.config,
+  );
   const [revision, setRevision] = useState(record.revision);
   const [metaErrors, setMetaErrors] = useState<Partial<FlowchartMeta>>({});
-  const [slugConflictError, setSlugConflictError] = useState<string | null>(null);
+  const [slugConflictError, setSlugConflictError] = useState<string | null>(
+    null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const originalSlugRef = useRef(record.slug);
+  // Tracks the last-saved values so isDirty can compare against them.
+  const savedMetaRef = useRef<FlowchartMeta>({
+    nameEn: record.nameEn,
+    nameJa: record.nameJa,
+    slug: record.slug ?? "",
+    status: record.status,
+  });
+  const savedConfigRef = useRef<NavigationFlowchartConfig>(record.config);
 
   const { mutateAsync: saveFlowchart, isPending: isSaving } = useMutation({
-    mutationFn: (payload: { meta: FlowchartMeta; config: NavigationFlowchartConfig }) =>
+    mutationFn: (payload: {
+      meta: FlowchartMeta;
+      config: NavigationFlowchartConfig;
+    }) =>
       $saveNavigationFlowchartConfig({
         data: {
           id: record.id,
@@ -433,10 +475,17 @@ function FlowchartEditor({
   /** Client-side uniqueness check against already-loaded flowchart list. */
   function checkSlugUniqueness(slug: string) {
     const trimmed = slug.trim();
-    if (!trimmed) { setSlugConflictError(null); return; }
-    const conflict = allFlowcharts.find((fc) => fc.id !== record.id && fc.slug === trimmed);
+    if (!trimmed) {
+      setSlugConflictError(null);
+      return;
+    }
+    const conflict = allFlowcharts.find(
+      (fc) => fc.id !== record.id && fc.slug === trimmed,
+    );
     setSlugConflictError(
-      conflict ? `Slug "${trimmed}" is already used by "${conflict.nameEn}".` : null,
+      conflict
+        ? `Slug "${trimmed}" is already used by "${conflict.nameEn}".`
+        : null,
     );
   }
 
@@ -458,11 +507,16 @@ function FlowchartEditor({
 
     const invalidStepIds = validateSteps(configDraft);
     if (invalidStepIds.length > 0) {
-      setError("Each step must have at least 2 options. Check highlighted steps.");
+      setError(
+        "Each step must have at least 2 options. Check highlighted steps.",
+      );
       return;
     }
 
-    const result = await saveFlowchart({ meta: currentMeta, config: configDraft });
+    const result = await saveFlowchart({
+      meta: currentMeta,
+      config: configDraft,
+    });
     if (!result.ok) {
       setError(
         result.code === "CONFLICT"
@@ -474,12 +528,17 @@ function FlowchartEditor({
 
     setRevision(result.data.revision);
     originalSlugRef.current = result.data.slug;
+    savedMetaRef.current = { ...currentMeta, slug: currentMeta.slug.trim() };
+    savedConfigRef.current = configDraft;
     setMessage("Saved.");
-    await queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["navigation-flowcharts"],
+    });
   }
 
   async function handleSave() {
-    const isRemovingSlug = originalSlugRef.current !== null && meta.slug.trim() === "";
+    const isRemovingSlug =
+      originalSlugRef.current !== null && meta.slug.trim() === "";
     if (isRemovingSlug) {
       openConfirmation({
         title: "Remove entry point?",
@@ -493,8 +552,8 @@ function FlowchartEditor({
   }
 
   function handleReset() {
-    setMeta({ nameEn: record.nameEn, nameJa: record.nameJa, slug: record.slug ?? "", status: record.status });
-    setConfigDraft(record.config);
+    setMeta(savedMetaRef.current);
+    setConfigDraft(savedConfigRef.current);
     setMetaErrors({});
     setSlugConflictError(null);
     setMessage(null);
@@ -511,15 +570,22 @@ function FlowchartEditor({
         if (!result.ok) {
           if (result.code === "HAS_DEPENDENTS") {
             const list = result.deps
-              .map((d) => `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`)
+              .map(
+                (d) =>
+                  `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`,
+              )
               .join("\n");
-            setError(`Cannot delete — referenced by:\n${list}\n\nRemove references first.`);
+            setError(
+              `Cannot delete — referenced by:\n${list}\n\nRemove references first.`,
+            );
           } else {
             setError("Failed to delete.");
           }
           return;
         }
-        await queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] });
+        await queryClient.invalidateQueries({
+          queryKey: ["navigation-flowcharts"],
+        });
         onDeleted();
       },
     });
@@ -527,6 +593,10 @@ function FlowchartEditor({
 
   const invalidStepIds = validateSteps(configDraft);
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
+
+  const isDirty =
+    !deepEqual(meta, savedMetaRef.current) ||
+    !deepEqual(configDraft, savedConfigRef.current);
 
   return (
     <Card
@@ -542,21 +612,19 @@ function FlowchartEditor({
             onCheckedChange={(checked) =>
               setMeta((p) => ({
                 ...p,
-                status: checked ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED : NAVIGATION_FLOWCHART_STATUS.DRAFT,
+                status: checked
+                  ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED
+                  : NAVIGATION_FLOWCHART_STATUS.DRAFT,
               }))
             }
           />
           <span className="text-xs text-gray-500">
-            {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED ? "Published" : "Draft"}
+            {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED
+              ? "Published"
+              : "Draft"}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={handleReset} disabled={isSaving}>
-            Reset
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={isSaving || isDeleting}>
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
           <Button
             type="button"
             variant="outline"
@@ -565,6 +633,21 @@ function FlowchartEditor({
             disabled={isSaving || isDeleting}
           >
             {isDeleting ? "Deleting…" : "Delete"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            disabled={!isDirty || isSaving}
+          >
+            Reset
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={!isDirty || isSaving || isDeleting}
+          >
+            {isSaving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
@@ -590,7 +673,11 @@ function FlowchartEditor({
               value={{ en: meta.nameEn, ja: meta.nameJa }}
               onChange={({ en, ja }) => {
                 setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
-                setMetaErrors((p) => ({ ...p, nameEn: undefined, nameJa: undefined }));
+                setMetaErrors((p) => ({
+                  ...p,
+                  nameEn: undefined,
+                  nameJa: undefined,
+                }));
               }}
               displayClassName="text-sm font-medium"
               required
@@ -607,7 +694,10 @@ function FlowchartEditor({
             <input
               type="text"
               value={meta.slug}
-              onChange={(e) => { setMeta((p) => ({ ...p, slug: e.target.value })); setSlugConflictError(null); }}
+              onChange={(e) => {
+                setMeta((p) => ({ ...p, slug: e.target.value }));
+                setSlugConflictError(null);
+              }}
               onBlur={() => checkSlugUniqueness(meta.slug)}
               placeholder="/path/to/flowchart"
               className={cn(
@@ -618,8 +708,10 @@ function FlowchartEditor({
             {slugConflictError && <FieldError>{slugConflictError}</FieldError>}
             {meta.slug.trim() && !slugConflictError && (
               <p className="text-xs text-blue-600">
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium">entry point</span>
-                {" "}at <code className="font-mono">{meta.slug.trim()}</code>
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium">
+                  entry point
+                </span>{" "}
+                at <code className="font-mono">{meta.slug.trim()}</code>
               </p>
             )}
           </div>
@@ -687,7 +779,10 @@ function StepList({
     updateSteps(steps.filter((s) => s.id !== id));
   }
 
-  function handleUpdateStep(id: string, patch: Partial<NavigationFlowchartStep>) {
+  function handleUpdateStep(
+    id: string,
+    patch: Partial<NavigationFlowchartStep>,
+  ) {
     const newEnSteps = steps.map((s) => (s.id === id ? { ...s, ...patch } : s));
 
     // For the JA side, apply non-options fields directly (bilingual text/title
@@ -736,7 +831,9 @@ function StepList({
           const record: Record<string, string[]> = { steps: stepIds };
           const next = move(record, event);
           if (!next) return;
-          const newOrder = (next.steps as string[]).map((sid) => sid.replace("step-", ""));
+          const newOrder = (next.steps as string[]).map((sid) =>
+            sid.replace("step-", ""),
+          );
           const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
           updateSteps(newOrder.map((id) => byId[id]));
         }}
@@ -824,9 +921,14 @@ function StepCard({
     onUpdate({ options: step.options.filter((o) => o.id !== optId) });
   }
 
-  function handleUpdateOption(optId: string, patch: Partial<NavigationFlowchartOption>) {
+  function handleUpdateOption(
+    optId: string,
+    patch: Partial<NavigationFlowchartOption>,
+  ) {
     onUpdate({
-      options: step.options.map((o) => (o.id === optId ? { ...o, ...patch } : o)),
+      options: step.options.map((o) =>
+        o.id === optId ? { ...o, ...patch } : o,
+      ),
     });
   }
 
@@ -878,7 +980,11 @@ function StepCard({
           type="button"
           onClick={onDelete}
           disabled={!canDelete}
-          title={canDelete ? "Delete step" : "Cannot delete — another option references this step"}
+          title={
+            canDelete
+              ? "Delete step"
+              : "Cannot delete — another option references this step"
+          }
           className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Trash2 className="size-3.5" />
@@ -972,7 +1078,9 @@ function OptionList({
           const record: Record<string, string[]> = { opts: optIds };
           const next = move(record, event);
           if (!next) return;
-          const newOrder = (next.opts as string[]).map((oid) => oid.replace("opt-", ""));
+          const newOrder = (next.opts as string[]).map((oid) =>
+            oid.replace("opt-", ""),
+          );
           const byId = Object.fromEntries(options.map((o) => [o.id, o]));
           onReorder(newOrder.map((id) => byId[id]));
         }}
@@ -1127,24 +1235,41 @@ function OptionRow({
       {/* Destination selector */}
       <div className="flex flex-col gap-1.5 pl-5">
         <div className="flex items-center gap-3">
-          {(["next-step", "child-flowchart", "external-link"] as const).map((t) => (
-            <label key={t} className="flex cursor-pointer items-center gap-1 text-xs text-gray-600">
-              <input
-                type="radio"
-                name={"dest-" + option.id}
-                checked={destType === t}
-                onChange={() => handleDestChange(t)}
-                className="accent-blue-600"
-              />
-              {t === "next-step" ? "Next step" : t === "child-flowchart" ? "Child flowchart" : "External link"}
-            </label>
-          ))}
+          {(["next-step", "child-flowchart", "external-link"] as const).map(
+            (t) => (
+              <label
+                key={t}
+                className="flex cursor-pointer items-center gap-1 text-xs text-gray-600"
+              >
+                <input
+                  type="radio"
+                  name={"dest-" + option.id}
+                  checked={destType === t}
+                  onChange={() => handleDestChange(t)}
+                  className="accent-blue-600"
+                />
+                {t === "next-step"
+                  ? "Next step"
+                  : t === "child-flowchart"
+                    ? "Child flowchart"
+                    : "External link"}
+              </label>
+            ),
+          )}
         </div>
 
         {destType === "next-step" && (
           <Select
             value={option.nextStep ?? ""}
-            onValueChange={(v) => onUpdate({ nextStep: v, linkedFlowchartId: undefined, link: undefined, linkTextEn: undefined, linkTextJa: undefined })}
+            onValueChange={(v) =>
+              onUpdate({
+                nextStep: v,
+                linkedFlowchartId: undefined,
+                link: undefined,
+                linkTextEn: undefined,
+                linkTextJa: undefined,
+              })
+            }
           >
             <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select step…" />
@@ -1162,7 +1287,15 @@ function OptionRow({
         {destType === "child-flowchart" && (
           <Select
             value={option.linkedFlowchartId ?? ""}
-            onValueChange={(v) => onUpdate({ linkedFlowchartId: v, nextStep: undefined, link: undefined, linkTextEn: undefined, linkTextJa: undefined })}
+            onValueChange={(v) =>
+              onUpdate({
+                linkedFlowchartId: v,
+                nextStep: undefined,
+                link: undefined,
+                linkTextEn: undefined,
+                linkTextJa: undefined,
+              })
+            }
           >
             <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select flowchart…" />
@@ -1182,13 +1315,24 @@ function OptionRow({
             <input
               type="text"
               value={option.link ?? ""}
-              onChange={(e) => onUpdate({ link: e.target.value, nextStep: undefined, linkedFlowchartId: undefined })}
+              onChange={(e) =>
+                onUpdate({
+                  link: e.target.value,
+                  nextStep: undefined,
+                  linkedFlowchartId: undefined,
+                })
+              }
               placeholder="https://…"
               className="rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
             />
             <LocaleInlineEditor
-              value={{ en: option.linkTextEn ?? "", ja: option.linkTextJa ?? "" }}
-              onChange={({ en, ja }) => onUpdate({ linkTextEn: en, linkTextJa: ja })}
+              value={{
+                en: option.linkTextEn ?? "",
+                ja: option.linkTextJa ?? "",
+              }}
+              onChange={({ en, ja }) =>
+                onUpdate({ linkTextEn: en, linkTextJa: ja })
+              }
               placeholder="Link label"
               displayClassName="text-xs"
             />
@@ -1203,10 +1347,18 @@ function OptionRow({
 // Small helpers
 // ---------------------------------------------------------------------------
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-6 shrink-0 text-xs font-medium uppercase text-gray-500">{label}</span>
+      <span className="w-6 shrink-0 text-xs font-medium uppercase text-gray-500">
+        {label}
+      </span>
       {children}
     </div>
   );
