@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
   Cuboid,
   Files,
+  GitBranch,
   LibraryBig,
   PanelsTopLeft,
   Newspaper,
@@ -20,7 +21,8 @@ export const tabParamSchema = z.enum([
   "content",
   "researches",
   "assets",
-  "navigation",
+  "header-footer",
+  "flowcharts",
 ]);
 
 export type TabType = z.infer<typeof tabParamSchema>;
@@ -184,10 +186,19 @@ function NavPanel() {
               title={
                 <span>
                   <PanelsTopLeft className="mr-2 inline size-5 align-middle leading-normal" />
-                  Navigation
+                  Header & Footer
                 </span>
               }
-              tab="navigation"
+              tab="header-footer"
+            />
+            <PanelItem
+              title={
+                <span>
+                  <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
+                  Flowcharts
+                </span>
+              }
+              tab="flowcharts"
             />
           </div>
         </section>

@@ -56,7 +56,7 @@ import {
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/navigation",
+  "/{-$lang}/_layout/_authed/admin/header-footer",
 )({
   component: RouteComponent,
 });
