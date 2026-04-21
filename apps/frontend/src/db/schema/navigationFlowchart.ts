@@ -1,6 +1,5 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean,
   integer,
   jsonb,
   pgTable,
@@ -23,11 +22,11 @@ export type NavigationFlowchartStatus =
 
 export const navigationFlowchart = pgTable("navigation_flowchart", {
   id: uuid("id").primaryKey().defaultRandom(),
-  slug: text("slug").notNull().unique(),
+  // null for child flowcharts; set to the public URL path for entry-point flowcharts
+  slug: text("slug").unique(),
   nameEn: text("name_en").notNull(),
   nameJa: text("name_ja").notNull(),
   config: jsonb("config").$type<NavigationFlowchartConfig>().notNull(),
-  isEntryPoint: boolean("is_entry_point").notNull().default(false),
   status: text("status")
     .$type<NavigationFlowchartStatus>()
     .notNull()

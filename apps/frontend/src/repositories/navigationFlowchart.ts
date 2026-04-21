@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 
 import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
 import { parseNavigationFlowchartConfig } from "@/config/navigation-flowchart.schema";
@@ -19,11 +19,11 @@ export class NavigationFlowchartConflictError extends Error {
 
 export interface NavigationFlowchartRecord {
   id: string;
-  slug: string;
+  /** null for child flowcharts; public URL path for entry-point flowcharts */
+  slug: string | null;
   nameEn: string;
   nameJa: string;
   config: NavigationFlowchartConfig;
-  isEntryPoint: boolean;
   status: NavigationFlowchartStatus;
   revision: number;
   updatedAt: Date;
@@ -32,10 +32,9 @@ export interface NavigationFlowchartRecord {
 
 export interface NavigationFlowchartSummary {
   id: string;
-  slug: string;
+  slug: string | null;
   nameEn: string;
   nameJa: string;
-  isEntryPoint: boolean;
   status: NavigationFlowchartStatus;
   revision: number;
 }
@@ -50,7 +49,7 @@ export interface NavigationFlowchartDependency {
 }
 
 interface CreateParams {
-  slug: string;
+  slug: string | null;
   nameEn: string;
   nameJa: string;
   config: NavigationFlowchartConfig;
@@ -61,8 +60,7 @@ interface SaveParams {
   config: NavigationFlowchartConfig;
   nameEn: string;
   nameJa: string;
-  slug: string;
-  isEntryPoint: boolean;
+  slug: string | null;
   status: NavigationFlowchartStatus;
   expectedRevision: number;
   userId?: string;
@@ -80,6 +78,7 @@ function parseRecord(
 
 export interface NavigationFlowchartRepository {
   getAll: () => Promise<NavigationFlowchartSummary[]>;
+  getEntryPoints: () => Promise<NavigationFlowchartSummary[]>;
   getById: (id: string) => Promise<NavigationFlowchartRecord | null>;
   getBySlug: (slug: string) => Promise<NavigationFlowchartRecord | null>;
   create: (params: CreateParams) => Promise<NavigationFlowchartRecord>;
@@ -99,11 +98,27 @@ export function createNavigationFlowchartRepository(
           slug: navigationFlowchart.slug,
           nameEn: navigationFlowchart.nameEn,
           nameJa: navigationFlowchart.nameJa,
-          isEntryPoint: navigationFlowchart.isEntryPoint,
           status: navigationFlowchart.status,
           revision: navigationFlowchart.revision,
         })
         .from(navigationFlowchart)
+        .orderBy(navigationFlowchart.nameEn);
+
+      return rows;
+    },
+
+    async getEntryPoints() {
+      const rows = await database
+        .select({
+          id: navigationFlowchart.id,
+          slug: navigationFlowchart.slug,
+          nameEn: navigationFlowchart.nameEn,
+          nameJa: navigationFlowchart.nameJa,
+          status: navigationFlowchart.status,
+          revision: navigationFlowchart.revision,
+        })
+        .from(navigationFlowchart)
+        .where(isNotNull(navigationFlowchart.slug))
         .orderBy(navigationFlowchart.nameEn);
 
       return rows;
@@ -136,7 +151,6 @@ export function createNavigationFlowchartRepository(
             nameEn,
             nameJa,
             config: parsedConfig,
-            isEntryPoint: false,
             status: NAVIGATION_FLOWCHART_STATUS.DRAFT,
             revision: 1,
             updatedBy: userId,
@@ -154,7 +168,7 @@ export function createNavigationFlowchartRepository(
       });
     },
 
-    async save(id, { config, nameEn, nameJa, slug, isEntryPoint, status, expectedRevision, userId }) {
+    async save(id, { config, nameEn, nameJa, slug, status, expectedRevision, userId }) {
       const parsedConfig = parseNavigationFlowchartConfig(config);
       const current = await this.getById(id);
 
@@ -174,7 +188,6 @@ export function createNavigationFlowchartRepository(
             nameEn,
             nameJa,
             slug,
-            isEntryPoint,
             status,
             revision: current.revision + 1,
             updatedAt: new Date(),

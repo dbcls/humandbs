@@ -109,13 +109,15 @@ function FlowchartListItem({
         >
           {isPublished ? "published" : "draft"}
         </span>
-        {flowchart.isEntryPoint && (
+        {flowchart.slug && (
           <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
             entry point
           </span>
         )}
       </div>
-      <span className="text-xs text-gray-400">{flowchart.slug}</span>
+      <span className="text-xs text-gray-400">
+        {flowchart.slug ?? "child flowchart"}
+      </span>
     </button>
   );
 }

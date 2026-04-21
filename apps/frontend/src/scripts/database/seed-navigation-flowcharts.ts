@@ -129,19 +129,24 @@ function transformSteps(
 async function upsertFlowchart(
   db: ReturnType<typeof drizzle<typeof schema>>,
   params: {
-    slug: string;
+    slug: string | null;
     nameEn: string;
     nameJa: string;
     config: NavigationFlowchartConfig;
-    isEntryPoint: boolean;
   },
 ): Promise<string> {
-  const existing = await db.query.navigationFlowchart.findFirst({
-    where: eq(schema.navigationFlowchart.slug, params.slug),
-  });
+  // For child flowcharts (null slug), match by name instead
+  const existing = params.slug
+    ? await db.query.navigationFlowchart.findFirst({
+        where: eq(schema.navigationFlowchart.slug, params.slug),
+      })
+    : await db.query.navigationFlowchart.findFirst({
+        where: eq(schema.navigationFlowchart.nameEn, params.nameEn),
+      });
 
   if (existing) {
-    console.log(`  Skipping "${params.slug}" — already exists.`);
+    const label = params.slug ?? params.nameEn;
+    console.log(`  Skipping "${label}" — already exists.`);
     return existing.id;
   }
 
@@ -152,7 +157,6 @@ async function upsertFlowchart(
       nameEn: params.nameEn,
       nameJa: params.nameJa,
       config: params.config,
-      isEntryPoint: params.isEntryPoint,
       status: NAVIGATION_FLOWCHART_STATUS.PUBLISHED,
       revision: 1,
     })
@@ -165,7 +169,8 @@ async function upsertFlowchart(
     createdBy: null,
   });
 
-  console.log(`  Inserted "${params.slug}" (id: ${created.id}).`);
+  const label = params.slug ?? params.nameEn;
+  console.log(`  Inserted "${label}" (id: ${created.id}).`);
   return created.id;
 }
 
@@ -200,15 +205,15 @@ async function seedNavigationFlowcharts() {
       null,
     );
 
+    // before-application is a child flowchart — no slug
     const beforeApplicationId = await upsertFlowchart(db, {
-      slug: "/data-submission/navigation/before-application",
+      slug: null,
       nameEn: "Before Application",
       nameJa: "申請システムの前に",
       config: { en: { steps: baEnSteps }, ja: { steps: baJaSteps } },
-      isEntryPoint: false,
     });
 
-    // Seed data-submission, wiring before-application links to the DB id
+    // data-submission is the entry point — slug is its public URL path
     const { enSteps: dsEnSteps, jaSteps: dsJaSteps } = transformSteps(
       dataSubmissionEn.steps,
       dataSubmissionJa.steps,
@@ -220,7 +225,6 @@ async function seedNavigationFlowcharts() {
       nameEn: "Data Submission Navigation",
       nameJa: "データ登録ナビゲーション",
       config: { en: { steps: dsEnSteps }, ja: { steps: dsJaSteps } },
-      isEntryPoint: true,
     });
 
     console.log("Done.");
