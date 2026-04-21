@@ -980,52 +980,54 @@ function OptionList({
   return (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-medium text-gray-500">Options</span>
-      <DragDropProvider
-        key={listKey}
-        onDragEnd={(event) => {
-          if (!event.operation.target) return;
-          const optIds = options.map((o) => "opt-" + o.id);
-          const record: Record<string, string[]> = { opts: optIds };
-          const next = move(record, event);
-          if (!next) return;
-          const newOrder = (next.opts as string[]).map((oid) =>
-            oid.replace("opt-", ""),
-          );
-          const byId = Object.fromEntries(options.map((o) => [o.id, o]));
-          onReorder(newOrder.map((id) => byId[id]));
-        }}
-      >
-        <div className="flex flex-col gap-1.5">
-          {options.map((opt, idx) => (
-            <OptionRow
-              key={opt.id}
-              option={opt}
-              index={idx}
-              optionType={optionType}
-              allSteps={allSteps}
-              currentStepId={currentStepId}
-              otherFlowcharts={otherFlowcharts}
-              onUpdate={(patch) => onUpdate(opt.id, patch)}
-              onDelete={() => onDelete(opt.id)}
-            />
-          ))}
-        </div>
-      </DragDropProvider>
-      <button
-        type="button"
-        onClick={() => {
-          const newOpt: NavigationFlowchartOption = {
-            id: crypto.randomUUID(),
-            titleEn: "",
-            titleJa: "",
-          };
-          onReorder([...options, newOpt]);
-        }}
-        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-      >
-        <Plus className="size-3" />
-        Add option
-      </button>
+      <div className="overflow-x-auto pb-1">
+        <DragDropProvider
+          key={listKey}
+          onDragEnd={(event) => {
+            if (!event.operation.target) return;
+            const optIds = options.map((o) => "opt-" + o.id);
+            const record: Record<string, string[]> = { opts: optIds };
+            const next = move(record, event);
+            if (!next) return;
+            const newOrder = (next.opts as string[]).map((oid) =>
+              oid.replace("opt-", ""),
+            );
+            const byId = Object.fromEntries(options.map((o) => [o.id, o]));
+            onReorder(newOrder.map((id) => byId[id]));
+          }}
+        >
+          <div className="flex flex-row gap-2">
+            {options.map((opt, idx) => (
+              <OptionRow
+                key={opt.id}
+                option={opt}
+                index={idx}
+                optionType={optionType}
+                allSteps={allSteps}
+                currentStepId={currentStepId}
+                otherFlowcharts={otherFlowcharts}
+                onUpdate={(patch) => onUpdate(opt.id, patch)}
+                onDelete={() => onDelete(opt.id)}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const newOpt: NavigationFlowchartOption = {
+                  id: crypto.randomUUID(),
+                  titleEn: "",
+                  titleJa: "",
+                };
+                onReorder([...options, newOpt]);
+              }}
+              className="flex shrink-0 items-center gap-1 self-start rounded border border-dashed border-gray-300 px-3 py-2 text-xs text-blue-600 hover:border-blue-400 hover:text-blue-800"
+            >
+              <Plus className="size-3" />
+              Add option
+            </button>
+          </div>
+        </DragDropProvider>
+      </div>
     </div>
   );
 }
@@ -1113,7 +1115,7 @@ function OptionRow({
     <div
       ref={ref as Ref<HTMLDivElement>}
       className={cn(
-        "flex flex-col gap-2 rounded border border-gray-100 bg-gray-50 p-2 transition-opacity",
+        "flex w-52 shrink-0 flex-col gap-2 rounded border border-gray-100 bg-gray-50 p-2 transition-opacity",
         isDragSource ? "opacity-40" : "",
       )}
     >
