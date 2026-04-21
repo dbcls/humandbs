@@ -10,6 +10,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
+import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -163,11 +165,16 @@ function DocumentVersionContent({
   const { mutate: unpublishVersion, isPending: isUnpublishPending } =
     useUnpublishVersion(contentId, versionNumber);
 
+  const [baselineTranslations, setBaselineTranslations] = useState(
+    () => selectedVersionContent?.translations ?? {},
+  );
+
   const form = useDocumentVersionForm({
     initialValues: {
       lang,
-      translations: selectedVersionContent?.translations ?? {},
+      translations: baselineTranslations,
     },
+    setBaselineTranslations,
     contentId,
     versionNumber,
   });
@@ -313,12 +320,20 @@ function DocumentVersionContent({
                     onChangeDebounceMs: 800,
                   }}
                 >
-                  {(field) => (
-                    <field.ContentAreaField
-                      label="Content"
-                      assetFolder={contentId}
-                    />
-                  )}
+                  {(field) => {
+                    const isModified = isFieldModified(field);
+                    return (
+                      <field.ContentAreaField
+                        label={
+                          <span className="flex items-center gap-1">
+                            Content
+                            <ModifiedTag isModified={isModified} />
+                          </span>
+                        }
+                        assetFolder={contentId}
+                      />
+                    );
+                  }}
                 </form.AppField>
               </Suspense>
             </>
@@ -369,10 +384,12 @@ function DocumentVersionContent({
 
 function useDocumentVersionForm({
   initialValues,
+  setBaselineTranslations,
   contentId,
   versionNumber,
 }: {
   initialValues: FormData;
+  setBaselineTranslations: React.Dispatch<React.SetStateAction<FormData["translations"]>>;
   contentId: string;
   versionNumber: number;
 }) {
@@ -415,20 +432,18 @@ function useDocumentVersionForm({
               const publishedContent =
                 value.translations?.[value.lang]?.published?.content ?? "";
 
-              const resetValue = {
-                ...value,
-                translations: {
-                  ...value.translations,
-                  [value.lang]: {
-                    ...value.translations[value.lang],
-                    draft: {
-                      title: publishedTitle,
-                      content: publishedContent,
-                    },
+              const newTranslations = {
+                ...value.translations,
+                [value.lang]: {
+                  ...value.translations[value.lang],
+                  draft: {
+                    title: publishedTitle,
+                    content: publishedContent,
                   },
                 },
               };
-              formApi.reset(resetValue, { keepDefaultValues: true });
+              setBaselineTranslations(newTranslations);
+              formApi.reset({ ...value, translations: newTranslations });
             })
             .finally(() => {
               isIgnoreRef.current = false;
@@ -450,20 +465,18 @@ function useDocumentVersionForm({
 
           publishDraft({ locale: value.lang })
             .then(() => {
-              const newValue = {
-                ...value,
-                translations: {
-                  ...value.translations,
-                  [value.lang]: {
-                    ...value.translations[value.lang],
-                    published: {
-                      title: title ?? "",
-                      content: content ?? "",
-                    },
+              const newTranslations = {
+                ...value.translations,
+                [value.lang]: {
+                  ...value.translations[value.lang],
+                  published: {
+                    title: title ?? "",
+                    content: content ?? "",
                   },
                 },
               };
-              formApi.reset(newValue, { keepDefaultValues: true });
+              setBaselineTranslations(newTranslations);
+              formApi.reset({ ...value, translations: newTranslations });
             })
             .finally(() => {
               isIgnoreRef.current = false;
