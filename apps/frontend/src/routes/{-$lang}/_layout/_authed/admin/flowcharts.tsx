@@ -642,6 +642,8 @@ function FlowchartEditor({
 // StepList — dnd-kit sortable step cards
 // ---------------------------------------------------------------------------
 
+const STEP_TYPE = "flowchart-step";
+
 /**
  * Drag-and-drop sortable list of steps. Uses dnd-kit with prefixed IDs
  * (`"step-" + step.id`) so the `move()` helper matches sortable registrations
