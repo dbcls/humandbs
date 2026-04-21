@@ -869,10 +869,12 @@ function StepCard({
         >
           <GripVertical className="size-4 shrink-0" />
         </button>
-        <button
-          type="button"
-          className="flex flex-1 items-center gap-1 text-left"
+        <div
+          role="button"
+          tabIndex={0}
+          className="flex flex-1 cursor-pointer items-center gap-1 text-left"
           onClick={() => setExpanded((p) => !p)}
+          onKeyDown={(e) => e.key === "Enter" && setExpanded((p) => !p)}
         >
           {expanded ? (
             <ChevronDown className="size-3.5 shrink-0 text-gray-400" />
@@ -890,7 +892,7 @@ function StepCard({
               needs ≥2 options
             </span>
           )}
-        </button>
+        </div>
         <button
           type="button"
           onClick={onDelete}
