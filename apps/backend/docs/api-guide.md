@@ -329,6 +329,7 @@ Research 一覧画面のフィルタ UI では `countBy=research` を、Dataset 
 
 - 全文: `title`, `summary.aims.text`, `summary.methods.text`, `summary.targets.text`
 - ID 完全一致 / 前方一致: `humId` (例: `hum0001` で完全一致、`hum000` で前方一致)
+- `datasetId` による親 Research ヒット: 内部で Dataset index を引き、`datasetId` に完全一致 / 前方一致する Dataset の親 `humId` を経由して Research をヒットさせる (例: `JGAD000002` を入れると親の `hum0001` が返る)
 
 **Dataset 検索 (POST /dataset/search)**
 
@@ -336,6 +337,18 @@ Research 一覧画面のフィルタ UI では `countBy=research` を、Dataset 
 - ID 完全一致 / 前方一致: `humId`, `datasetId` (例: `JGAD000001` で完全一致、`JGAD00` で前方一致)
 
 ID マッチは大文字小文字を区別しない。完全一致は `boost` によりスコア最上位に並ぶ。`hum0001 cancer` のような複合入力では、ID 節は完全一致しないため空振りし、本文側の `cancer` がヒットする。
+
+#### 全文検索の fuzziness
+
+全文検索 (`multi_match`) には Elasticsearch の `fuzziness: "AUTO:5,12"` を設定する。トークン長に応じて許容する Levenshtein 距離 (typo の許容数) が次のように決まる:
+
+| トークン長 | 許容距離 |
+|-----------|---------|
+| 0-4 文字 | 0 (完全一致) |
+| 5-11 文字 | 1 (1 文字までの typo を許容) |
+| 12 文字以上 | 2 (2 文字までの typo を許容) |
+
+これは「英語自然語の typo 許容」と「長い ID 文字列 (例: `JGAD000002` 10 文字) が他の類似 ID と誤マッチしないこと」を両立するための設定。日本語本文は standard analyzer により CJK 1 文字単位に分割されるため、この設定の影響は実質的に受けない。ID 側 (`humId` / `datasetId`) は term / prefix マッチで完全一致経路を張っているため fuzziness の影響は受けない。
 
 #### Boolean フィルター
 

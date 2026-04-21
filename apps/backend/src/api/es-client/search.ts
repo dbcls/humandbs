@@ -601,6 +601,36 @@ const getHumIdsByDatasetFilters = async (
   return buckets.map(b => b.key)
 }
 
+// Research 全文検索で "JGAD000002" のような Dataset ID を入れても親 Research (hum0001) が返るように、
+// Dataset index に対して datasetId の term/prefix マッチを走らせて humId 集合を得る。
+// Research index に datasetIds フィールドを持たせないための迂回路。
+const getHumIdsByDatasetIdQuery = async (q: string): Promise<string[]> => {
+  interface HumIdAggs {
+    humIds: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
+  }
+
+  const res = await esClient.search<unknown, HumIdAggs>({
+    index: ES_INDEX.dataset,
+    size: 0,
+    query: {
+      bool: {
+        should: [
+          { term: { datasetId: { value: q, case_insensitive: true } } },
+          { prefix: { datasetId: { value: q, case_insensitive: true } } },
+        ],
+        minimum_should_match: 1,
+      },
+    },
+    aggs: {
+      humIds: { terms: { field: "humId", size: 10000 } },
+    },
+  })
+
+  const buckets = res.aggregations?.humIds.buckets
+  if (!Array.isArray(buckets)) return []
+  return buckets.map(b => b.key)
+}
+
 export const searchResearches = async (
   params: ResearchSearchQuery,
   authUser: AuthUser | null = null,
@@ -669,8 +699,15 @@ export const searchResearches = async (
   }
 
   // Full-text search
+  // multi_match (title/summary/humId) と、Dataset index で datasetId マッチから引いた humId 集合を
+  // OR 合流する。これで "JGAD000002" を入れても親 Research (hum0001) がヒットする。
   if (q) {
-    must.push(buildResearchMultiMatchQuery(q))
+    const datasetHumIds = await getHumIdsByDatasetIdQuery(q)
+    const qShould: estypes.QueryDslQueryContainer[] = [buildResearchMultiMatchQuery(q)]
+    if (datasetHumIds.length > 0) {
+      qShould.push({ terms: { humId: datasetHumIds } })
+    }
+    must.push({ bool: { should: qShould, minimum_should_match: 1 } })
   }
 
   // Date range filters

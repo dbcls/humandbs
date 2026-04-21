@@ -153,6 +153,12 @@ const postResearchSearchRoute = createRoute({
 
 **Full-text search targets:** title, summary.aims, summary.methods, summary.targets
 
+**ID match:**
+- \`humId\`: exact and prefix match (e.g., \`hum0001\`, \`hum000\`)
+- \`datasetId\`: a query like \`JGAD000002\` resolves the parent Research via the Dataset index (hits \`hum0001\`)
+
+**Fuzziness:** full-text matches use \`AUTO:5,12\` (0 typo for <5 chars, 1 typo for 5-11 chars, 2 typos for 12+ chars).
+
 **Filter modes:**
 - Array filters use OR logic (e.g., assayType: ["WGS", "WES"] matches either)
 - Multiple filters use AND logic (all conditions must match)
@@ -183,6 +189,10 @@ const postDatasetSearchRoute = createRoute({
   description: `Search Dataset resources with advanced filters and facets.
 
 **Full-text search targets:** typeOfData, experiments.searchable.targets
+
+**ID match:** \`humId\` and \`datasetId\` accept both exact and prefix match (e.g., \`JGAD000001\`, \`JGAD00\`).
+
+**Fuzziness:** full-text matches use \`AUTO:5,12\` (0 typo for <5 chars, 1 typo for 5-11 chars, 2 typos for 12+ chars).
 
 **Filter modes:**
 - Array filters use OR logic (e.g., assayType: ["WGS", "WES"] matches either)

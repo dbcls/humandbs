@@ -6,6 +6,7 @@ import {
   expectPagination,
   fetchJson,
   itLive,
+  itWithDataset,
   itWithResearch,
 } from "./helpers"
 
@@ -36,6 +37,41 @@ describe("Smoke: search & aggregations", () => {
     expect(status).toBe(200)
     expect(Array.isArray(body.data)).toBe(true)
     expectPagination(body.meta.pagination)
+  })
+
+  itWithResearch("POST /research/search with humId query -> 200, humId が先頭", async (humId) => {
+    const { status, body } = await fetchJson("/research/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ page: 1, limit: 5, lang: "ja", query: humId, sort: "relevance" }),
+    })
+
+    expect(status).toBe(200)
+    const hits = body.data as { humId: string }[]
+    expect(hits.length).toBeGreaterThan(0)
+    expect(hits[0]?.humId).toBe(humId)
+  })
+
+  itWithDataset("POST /research/search with datasetId query -> 200, 親 humId がヒットする", async (datasetId) => {
+    // datasetId の親 Research を取得する (data は配列で返る)
+    const parent = await fetchJson(`/dataset/${datasetId}/research`)
+    expect(parent.status).toBe(200)
+    const parentHumId = (parent.body.data as { humId?: string }[])[0]?.humId
+    if (typeof parentHumId !== "string" || parentHumId === "") {
+      throw new Error(`Expected parent humId for ${datasetId}, got: ${JSON.stringify(parent.body.data)}`)
+    }
+
+    // datasetId を Research 全文検索に入れると親 humId が結果に含まれること
+    // (Research index に datasetIds フィールドが無い迂回路のリグレッションテスト)
+    const { status, body } = await fetchJson("/research/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ page: 1, limit: 100, lang: "ja", query: datasetId }),
+    })
+
+    expect(status).toBe(200)
+    const hitHumIds = (body.data as { humId: string }[]).map(r => r.humId)
+    expect(hitHumIds).toContain(parentHumId)
   })
 
   itLive("POST /research/search with lang=en -> 200, english search", async () => {
