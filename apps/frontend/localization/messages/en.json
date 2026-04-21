@@ -104,6 +104,20 @@
     "experiments": "Experiments"
   },
   "Dataset": {},
+  "Person": {
+    "name": "Name",
+    "email": "Email",
+    "orcid": "ORCID",
+    "organization": "Organization",
+    "datasetIds": "Dataset IDs",
+    "researchTitle": "Research title",
+    "periodOfDataUse": "Period of data use"
+  },
+  "Organization": {
+    "name": "Name",
+    "address": "Address",
+    "country": "Country"
+  },
   "Research": {
     "research-id": "Research ID",
     "humId": "Research ID",
@@ -119,13 +133,18 @@
     "organization": "Organiation",
     "researchTitle": "Research title",
     "relatedPublication": "Related publications",
+    "periodOfDataUse": "Period of data use",
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
     "controlledAccessUser": "Controlled access users",
     "datasetId": "Dataset ID",
     "criteria": "Access type",
     "typeOfData": "Type of data",
-    "details": "Details"
+    "details": "Details",
+    "datePublished": "Date published",
+    "dateModified": "Date modified",
+    "versionReleaseDate": "Version release date",
+    "releaseNote": "Release note"
   },
   "DatasetVersionCard": {
     "releaseInfo": "Release info",

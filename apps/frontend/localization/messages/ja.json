@@ -85,6 +85,7 @@
     "organization": "所属機関",
     "researchTitle": "プロジェクト/研究グループ名",
     "relatedPublication": "関連論文",
+    "periodOfDataUse": "データ利用期間",
     "publicationTitle": "タイトル",
     "publicationDatasets": "データセット",
     "controlledAccessUser": "制限公開データの利用者一覧",
@@ -103,6 +104,20 @@
     "experiments": "実験一覧"
   },
   "Dataset": {},
+  "Person": {
+    "name": "名前",
+    "email": "メールアドレス",
+    "orcid": "ORCID",
+    "organization": "所属機関",
+    "datasetIds": "データセット ID",
+    "researchTitle": "研究題目",
+    "periodOfDataUse": "データ利用期間"
+  },
+  "Organization": {
+    "name": "名前",
+    "address": "住所",
+    "country": "国"
+  },
   "Research": {
     "research-id": "研究 ID",
     "humId": "研究 ID",
@@ -125,7 +140,11 @@
     "datasetId": "データセット ID",
     "criteria": "アクセス制限",
     "typeOfData": "データの種類",
-    "details": "詳細"
+    "details": "詳細",
+    "datePublished": "公開日",
+    "dateModified": "更新日",
+    "versionReleaseDate": "バージョン公開日",
+    "releaseNote": "リリースノート"
   },
   "DatasetVersionCard": {
     "releaseInfo": "リリース情報",
