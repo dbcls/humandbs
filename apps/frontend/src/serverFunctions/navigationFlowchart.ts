@@ -1,25 +1,143 @@
+import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import type { NavigationData } from "@/components/NavigationChart";
-import { localeSchema } from "@/config/i18n";
+import { localeSchema, type Locale } from "@/config/i18n";
+import type {
+  NavigationFlowchartData,
+  NavigationFlowchartOption,
+  NavigationFlowchartStep,
+} from "@/config/navigation-flowchart";
+import { navigationFlowchartRepository } from "@/repositories/navigationFlowchart";
 
-export const $getNavigationFlowchartData = createServerFn({
-  method: "GET",
-})
-  .inputValidator(
-    z.object({
-      type: z.union([
-        z.literal("data-submission"),
-        z.literal("before-application"),
-      ]),
-      locale: localeSchema,
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { type, locale } = data;
+// Legacy JSON shape (static fallback files)
+interface LegacyOption {
+  id: string;
+  title: string;
+  nextStep?: string;
+  link?: string;
+  linkText?: string;
+}
+interface LegacyStep {
+  id: string;
+  title: string;
+  text: string;
+  options: LegacyOption[];
+}
+interface LegacyNavigationData {
+  steps: LegacyStep[];
+}
 
+function legacyToFlowchartData(
+  legacy: LegacyNavigationData,
+  locale: Locale,
+): NavigationFlowchartData {
+  const steps: NavigationFlowchartStep[] = legacy.steps.map((s) => ({
+    id: s.id,
+    titleEn: s.title,
+    titleJa: s.title,
+    textEn: s.text,
+    textJa: s.text,
+    options: s.options.map(
+      (o): NavigationFlowchartOption => ({
+        id: o.id,
+        titleEn: o.title,
+        titleJa: o.title,
+        ...(o.nextStep ? { nextStep: o.nextStep } : {}),
+        ...(o.link && o.link !== "before-application"
+          ? { link: o.link, linkTextEn: o.linkText, linkTextJa: o.linkText }
+          : {}),
+      }),
+    ),
+  }));
+  // suppress unused locale in fallback path
+  void locale;
+  return { steps };
+}
+
+async function getFallbackData(
+  slug: string,
+  locale: Locale,
+): Promise<NavigationFlowchartData | null> {
+  try {
+    const typeMap: Record<string, string> = {
+      "/data-submission/navigation": "data-submission",
+      "/data-submission/navigation/before-application": "before-application",
+    };
+    const type = typeMap[slug];
+    if (!type) return null;
     const file = Bun.file(`./src/config/navigation/${type}-${locale}.json`);
+    const legacy = (await file.json()) as LegacyNavigationData;
+    return legacyToFlowchartData(legacy, locale);
+  } catch {
+    return null;
+  }
+}
 
-    return (await file.json()) as NavigationData;
+export interface NavigationFlowchartResponse {
+  id: string;
+  slug: string;
+  nameEn: string;
+  nameJa: string;
+  data: NavigationFlowchartData;
+}
+
+export const $getNavigationFlowchartBySlug = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ slug: z.string(), locale: localeSchema }))
+  .handler(async ({ data: { slug, locale } }): Promise<NavigationFlowchartResponse | null> => {
+    try {
+      const record = await navigationFlowchartRepository.getBySlug(slug);
+      if (record) {
+        return {
+          id: record.id,
+          slug: record.slug,
+          nameEn: record.nameEn,
+          nameJa: record.nameJa,
+          data: locale === "ja" ? record.config.ja : record.config.en,
+        };
+      }
+    } catch (error) {
+      console.error("Failed to load flowchart from DB, using fallback.", error);
+    }
+
+    const fallback = await getFallbackData(slug, locale);
+    if (!fallback) return null;
+
+    return { id: slug, slug, nameEn: slug, nameJa: slug, data: fallback };
   });
+
+export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ id: z.string(), locale: localeSchema }))
+  .handler(async ({ data: { id, locale } }): Promise<NavigationFlowchartResponse | null> => {
+    try {
+      const record = await navigationFlowchartRepository.getById(id);
+      if (record) {
+        return {
+          id: record.id,
+          slug: record.slug,
+          nameEn: record.nameEn,
+          nameJa: record.nameJa,
+          data: locale === "ja" ? record.config.ja : record.config.en,
+        };
+      }
+    } catch (error) {
+      console.error("Failed to load flowchart by id from DB.", error);
+    }
+    return null;
+  });
+
+export function getNavigationFlowchartQueryOptions(slug: string, locale: Locale) {
+  return queryOptions({
+    queryKey: ["navigation-flowchart", "slug", slug, locale],
+    queryFn: () => $getNavigationFlowchartBySlug({ data: { slug, locale } }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function getNavigationFlowchartByIdQueryOptions(id: string, locale: Locale) {
+  return queryOptions({
+    queryKey: ["navigation-flowchart", "id", id, locale],
+    queryFn: () => $getNavigationFlowchartById({ data: { id, locale } }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
