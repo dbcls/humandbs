@@ -14,6 +14,7 @@
     "db:seed-navigation": "bun ./src/scripts/database/seed-navigation.ts",
     "db:seed-news": "bun ./src/scripts/database/seed-news.ts",
     "db:seed-content": "bun ./src/scripts/database/seed-content.ts",
+    "db:seed-navigation-flowcharts": "bun ./src/scripts/database/seed-navigation-flowcharts.ts",
     "db:generate": "bunx --bun drizzle-kit generate",
     "db:migrate": "bunx --bun drizzle-kit migrate",
     "db:push": "bunx --bun drizzle-kit push"
