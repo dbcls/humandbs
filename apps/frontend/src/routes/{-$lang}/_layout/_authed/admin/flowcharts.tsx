@@ -46,6 +46,8 @@ import type {
 } from "@/config/navigation-flowchart";
 import { cn } from "@/lib/utils";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { ListItem } from "@/components/ListItem";
+import { StatusTag } from "@/components/StatusTag";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 export const Route = createFileRoute(
@@ -149,61 +151,26 @@ function FlowchartList({
   }
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <ul>
       {flowcharts.map((fc) => (
-        <FlowchartListItem
+        <ListItem
           key={fc.id}
-          flowchart={fc}
-          isSelected={selectedId === fc.id}
-          onSelect={() => onSelect(fc.id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function FlowchartListItem({
-  flowchart,
-  isSelected,
-  onSelect,
-}: {
-  flowchart: NavigationFlowchartSummary;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const isPublished =
-    flowchart.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED;
-
-  return (
-    <button
-      onClick={onSelect}
-      className={cn(
-        "flex w-full flex-col gap-1 rounded-md px-3 py-2 text-left text-sm transition-colors",
-        isSelected ? "bg-hover text-accent-foreground" : "hover:bg-hover/50",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className="font-medium">{flowchart.nameEn}</span>
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5 text-xs font-medium",
-            isPublished
-              ? "bg-green-100 text-green-700"
-              : "bg-gray-100 text-gray-500",
-          )}
+          className="mb-1 last:mb-0"
+          isActive={selectedId === fc.id}
+          onClick={() => onSelect(fc.id)}
         >
-          {isPublished ? "published" : "draft"}
-        </span>
-        {flowchart.slug && (
-          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-            entry point
-          </span>
-        )}
-      </div>
-      <span className="text-xs text-gray-400">
-        {flowchart.slug ?? "child flowchart"}
-      </span>
-    </button>
+          <div className="min-w-0 flex-1">
+            <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-1 truncate text-xs">
+              {fc.slug ?? "child flowchart"}
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-sm font-medium">{fc.nameEn}</span>
+              <StatusTag status={fc.status} />
+            </div>
+          </div>
+        </ListItem>
+      ))}
+    </ul>
   );
 }
 
