@@ -687,11 +687,11 @@ function StepList({
       <DragDropProvider
         onDragEnd={(event) => {
           if (!event.operation.target) return;
-          const stepIds = steps.map((s) => s.id);
+          const stepIds = steps.map((s) => "step-" + s.id);
           const record: Record<string, string[]> = { steps: stepIds };
           const next = move(record, event);
           if (!next) return;
-          const newOrder = next.steps as string[];
+          const newOrder = (next.steps as string[]).map((sid) => sid.replace("step-", ""));
           const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
           updateSteps(newOrder.map((id) => byId[id]));
         }}
@@ -907,13 +907,13 @@ function OptionList({
         key={listKey}
         onDragEnd={(event) => {
           if (!event.operation.target) return;
-          const optIds = options.map((o) => o.id);
+          const optIds = options.map((o) => "opt-" + o.id);
           const record: Record<string, string[]> = { opts: optIds };
           const next = move(record, event);
           if (!next) return;
+          const newOrder = (next.opts as string[]).map((oid) => oid.replace("opt-", ""));
           const byId = Object.fromEntries(options.map((o) => [o.id, o]));
-          const newOrder = (next.opts as string[]).map((id) => byId[id]);
-          onReorder(newOrder);
+          onReorder(newOrder.map((id) => byId[id]));
         }}
       >
         <div className="flex flex-col gap-1.5">
