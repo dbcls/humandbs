@@ -10,4 +10,4 @@ export { ResearchProjectField } from "./ResearchProjectField";
 export { TagInput } from "./TagInput";
 export { TextValueArrayField } from "./TextValueArrayField";
 export { UrlArrayField } from "./UrlArrayField";
-export { useFieldModified } from "./useFieldModified";
+export { useFieldModified, isFieldModified } from "./useFieldModified";

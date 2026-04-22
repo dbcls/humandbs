@@ -53,6 +53,28 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   return [...keys].every((key) => deepEqual(objA[key], objB[key]));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFieldApi = any;
+
+/**
+ * Returns whether a field's current value differs from its default value.
+ * Pass an optional `key` to compare a single top-level property of the field
+ * value (e.g. "en" or "ja" for bilingual fields).
+ */
+export function isFieldModified(field: AnyFieldApi, key?: string): boolean {
+  const currentValue =
+    key != null
+      ? (field.state.value as Record<string, unknown>)?.[key]
+      : field.state.value;
+
+  const defaultValue =
+    key != null
+      ? (getFieldDefaultValue(field) as Record<string, unknown>)?.[key]
+      : getFieldDefaultValue(field);
+
+  return !deepEqual(currentValue, defaultValue);
+}
+
 /**
  * Returns whether a form field's current value differs from its initial value.
  *
