@@ -1,6 +1,6 @@
 import { useRouteContext } from "@tanstack/react-router";
 
-import { i18n, type Locale } from "@/config/i18n";
+import { type Locale } from "@/config/i18n";
 
 import { Separator } from "./Separator";
 import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
@@ -8,18 +8,24 @@ import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 export function KeyValueCard({
   title,
   value,
+  children,
 }: {
   title: string;
-  value: React.ReactNode | null | undefined;
+  value?: string | null;
+  children?: React.ReactNode;
 }) {
-  if (!value) return null;
+  if (!value && !children) return null;
   return (
     <div className="break-inside-avoid">
-      <dt className="text-secondary mb-2 text-sm font-semibold">{title}</dt>
-      <dd
-        dangerouslySetInnerHTML={{ __html: value }}
-        className="wrap-break-word pl-4"
-      />
+      <dt className="text-secondary mb-2 text-sm font-normal">{title}</dt>
+      {children ? (
+        <dd className="wrap-break-word pl-4">{children}</dd>
+      ) : (
+        <dd
+          dangerouslySetInnerHTML={{ __html: value! }}
+          className="wrap-break-word pl-4"
+        />
+      )}
     </div>
   );
 }

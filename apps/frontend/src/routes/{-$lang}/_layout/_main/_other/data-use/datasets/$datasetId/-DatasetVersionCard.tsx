@@ -5,13 +5,14 @@ import { useLocale, useTranslations } from "use-intl";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
-import { KeyValueCard, ListOfKeyValues } from "@/components/KeyValueCard";
+import { KeyValueCard } from "@/components/KeyValueCard";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCart } from "@/hooks/useCart";
 import { Link } from "@/components/Link";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { FA_ICONS } from "@/lib/faIcons";
+import { Separator } from "@/components/Separator";
 
 export function DatasetVersionCard({
   versionData,
@@ -38,7 +39,6 @@ export function DatasetVersionCard({
 
   console.log("versionData", versionData);
   const infoKeyValues = {
-    [t("releaseDate")]: versionData.releaseDate,
     [t("typeOfData")]: versionData.typeOfData?.[lang] ?? "—",
     [t("criteria")]: versionData.criteria,
   };
@@ -53,23 +53,12 @@ export function DatasetVersionCard({
     [versionData.datasetId, versionData.version].filter(Boolean).join(".") ||
     "Preview";
 
-  console.log("versionData", versionData);
-
   return (
     <CardWithCaption
       size={"lg"}
       variant={"light"}
       caption={
         <div>
-          <Link
-            className="text-white"
-            to="/{-$lang}/data-use/research/$humId"
-            params={{ humId: versionData.humId }}
-          >
-            <TextWithIcon icon={FA_ICONS.books}>
-              {versionData.humId}
-            </TextWithIcon>
-          </Link>
           <CardCaption
             className="flex-1"
             title="NBDC Dataset ID:"
@@ -109,7 +98,35 @@ export function DatasetVersionCard({
     >
       <section>
         <ContentHeader>{t("info")}</ContentHeader>
-        <ListOfKeyValues keyValues={infoKeyValues} />
+        <dl className="columns-2">
+          <div className="break-inside-avoid-column">
+            <KeyValueCard title={t("releaseDate")}>
+              <div>
+                <p>{versionData.releaseDate}</p>
+
+                <Link
+                  to="/{-$lang}/data-use/research/$humId"
+                  params={{ humId: versionData.humId }}
+                >
+                  <TextWithIcon icon={FA_ICONS.books}>
+                    {versionData.humId}
+                  </TextWithIcon>
+                </Link>
+              </div>
+            </KeyValueCard>
+            <Separator show variant={"solid"} />
+          </div>
+
+          <div className="break-inside-avoid-column">
+            <KeyValueCard
+              title={t("typeOfData")}
+              value={versionData.typeOfData?.[lang] ?? "—"}
+            />
+            <Separator show variant={"solid"} />
+          </div>
+
+          <KeyValueCard title={t("criteria")} value={versionData.criteria} />
+        </dl>
         <ContentHeader>{t("experiments")}</ContentHeader>
         {versionData.experiments.map((e, i) => (
           <Experiment key={i} experiment={e} />
