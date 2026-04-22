@@ -100,7 +100,10 @@ export function createNavigationFlowchartRepository(
           revision: navigationFlowchart.revision,
         })
         .from(navigationFlowchart)
-        .orderBy(desc(navigationFlowchart.isEntryPoint), navigationFlowchart.nameEn);
+        .orderBy(
+          desc(navigationFlowchart.isEntryPoint),
+          navigationFlowchart.nameEn,
+        );
 
       return rows;
     },
@@ -152,7 +155,18 @@ export function createNavigationFlowchartRepository(
       });
     },
 
-    async save(id, { config, nameEn, nameJa, isEntryPoint, status, expectedRevision, userId }) {
+    async save(
+      id,
+      {
+        config,
+        nameEn,
+        nameJa,
+        isEntryPoint,
+        status,
+        expectedRevision,
+        userId,
+      },
+    ) {
       const parsedConfig = parseNavigationFlowchartConfig(config);
       const current = await this.getById(id);
 
@@ -170,7 +184,12 @@ export function createNavigationFlowchartRepository(
           await tx
             .update(navigationFlowchart)
             .set({ isEntryPoint: false })
-            .where(and(eq(navigationFlowchart.isEntryPoint, true), ne(navigationFlowchart.id, id)));
+            .where(
+              and(
+                eq(navigationFlowchart.isEntryPoint, true),
+                ne(navigationFlowchart.id, id),
+              ),
+            );
         }
 
         const [updated] = await tx

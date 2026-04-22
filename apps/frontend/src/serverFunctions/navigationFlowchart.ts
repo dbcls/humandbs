@@ -59,7 +59,9 @@ async function getFallbackEntryPoint(
   locale: Locale,
 ): Promise<NavigationFlowchartData | null> {
   try {
-    const file = Bun.file(`./src/config/navigation/data-submission-${locale}.json`);
+    const file = Bun.file(
+      `./src/config/navigation/data-submission-${locale}.json`,
+    );
     const legacy = (await file.json()) as LegacyNavigationData;
     return legacyToFlowchartData(legacy, locale);
   } catch {
@@ -78,68 +80,84 @@ export interface NavigationFlowchartResponse {
 /** Fetches the single entry-point flowchart (isEntryPoint = true), with JSON fallback. */
 export const $getNavigationEntryPoint = createServerFn({ method: "GET" })
   .inputValidator(z.object({ locale: localeSchema }))
-  .handler(async ({ data: { locale } }): Promise<NavigationFlowchartResponse | null> => {
-    try {
-      const record = await navigationFlowchartRepository.getEntryPoint();
-      if (record) {
-        return {
-          id: record.id,
-          isEntryPoint: true,
-          nameEn: record.nameEn,
-          nameJa: record.nameJa,
-          data: locale === "ja" ? record.config.ja : record.config.en,
-        };
+  .handler(
+    async ({
+      data: { locale },
+    }): Promise<NavigationFlowchartResponse | null> => {
+      try {
+        const record = await navigationFlowchartRepository.getEntryPoint();
+        if (record) {
+          return {
+            id: record.id,
+            isEntryPoint: true,
+            nameEn: record.nameEn,
+            nameJa: record.nameJa,
+            data: locale === "ja" ? record.config.ja : record.config.en,
+          };
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load entry point flowchart from DB, using fallback.",
+          error,
+        );
       }
-    } catch (error) {
-      console.error("Failed to load entry point flowchart from DB, using fallback.", error);
-    }
 
-    const fallback = await getFallbackEntryPoint(locale);
-    if (!fallback) return null;
+      const fallback = await getFallbackEntryPoint(locale);
+      if (!fallback) return null;
 
-    return {
-      id: "entry-point",
-      isEntryPoint: true,
-      nameEn: "Data Submission Navigation",
-      nameJa: "データ登録ナビゲーション",
-      data: fallback,
-    };
-  });
+      return {
+        id: "entry-point",
+        isEntryPoint: true,
+        nameEn: "Data Submission Navigation",
+        nameJa: "データ登録ナビゲーション",
+        data: fallback,
+      };
+    },
+  );
 
 export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
   .inputValidator(z.object({ id: z.string(), locale: localeSchema }))
-  .handler(async ({ data: { id, locale } }): Promise<NavigationFlowchartResponse | null> => {
-    try {
-      const record = await navigationFlowchartRepository.getById(id);
-      if (record && record.status === "published") {
-        return {
-          id: record.id,
-          isEntryPoint: record.isEntryPoint,
-          nameEn: record.nameEn,
-          nameJa: record.nameJa,
-          data: locale === "ja" ? record.config.ja : record.config.en,
-        };
+  .handler(
+    async ({
+      data: { id, locale },
+    }): Promise<NavigationFlowchartResponse | null> => {
+      try {
+        const record = await navigationFlowchartRepository.getById(id);
+        if (record && record.status === "published") {
+          return {
+            id: record.id,
+            isEntryPoint: record.isEntryPoint,
+            nameEn: record.nameEn,
+            nameJa: record.nameJa,
+            data: locale === "ja" ? record.config.ja : record.config.en,
+          };
+        }
+      } catch (error) {
+        console.error("Failed to load flowchart by id from DB.", error);
       }
-    } catch (error) {
-      console.error("Failed to load flowchart by id from DB.", error);
-    }
-    return null;
-  });
+      return null;
+    },
+  );
 
 export const $getNavigationFlowchartNames = createServerFn({ method: "GET" })
   .inputValidator(z.object({ ids: z.array(z.string()) }))
-  .handler(async ({ data: { ids } }): Promise<Record<string, { nameEn: string; nameJa: string }>> => {
-    const result: Record<string, { nameEn: string; nameJa: string }> = {};
-    for (const id of ids) {
-      try {
-        const record = await navigationFlowchartRepository.getById(id);
-        if (record) result[id] = { nameEn: record.nameEn, nameJa: record.nameJa };
-      } catch {
-        // skip
+  .handler(
+    async ({
+      data: { ids },
+    }): Promise<Record<string, { nameEn: string; nameJa: string }>> => {
+      const result: Record<string, { nameEn: string; nameJa: string }> = {};
+      for (const id of ids) {
+        try {
+          const record = await navigationFlowchartRepository.getById(id);
+          if (record)
+            result[id] = { nameEn: record.nameEn, nameJa: record.nameJa };
+        } catch {
+          // skip
+        }
       }
-    }
-    return result;
-  });
+      return result;
+    },
+  );
 
 export function getNavigationFlowchartNamesQueryOptions(ids: string[]) {
   return queryOptions({
@@ -158,7 +176,10 @@ export function getNavigationEntryPointQueryOptions(locale: Locale) {
   });
 }
 
-export function getNavigationFlowchartByIdQueryOptions(id: string, locale: Locale) {
+export function getNavigationFlowchartByIdQueryOptions(
+  id: string,
+  locale: Locale,
+) {
   return queryOptions({
     queryKey: ["navigation-flowchart", "id", id, locale],
     queryFn: () => $getNavigationFlowchartById({ data: { id, locale } }),
