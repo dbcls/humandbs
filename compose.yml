@@ -10,7 +10,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - cms-pgdata:/var/lib/postgresql/data
+      - cms-pgdata:/var/lib/postgresql/data:U
     networks:
       - humandbs-network
     healthcheck:
@@ -135,7 +135,7 @@ services:
       - ES_JAVA_OPTS=${HUMANDBS_ES_JAVA_OPTS}
       - path.repo=/usr/share/elasticsearch/backup
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/elasticsearch/data:U
       - ${HUMANDBS_ES_BACKUP_PATH}:/usr/share/elasticsearch/backup
     networks:
       - humandbs-network
