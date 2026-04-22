@@ -166,6 +166,11 @@ services:
   nginx:
     image: docker.io/library/nginx:1.27.0
     container_name: ${HUMANDBS_CONTAINER_PREFIX}-nginx
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
     environment:
       - TZ=${HUMANDBS_TZ}
     volumes:
