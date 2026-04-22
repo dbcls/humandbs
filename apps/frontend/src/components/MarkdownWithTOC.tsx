@@ -13,7 +13,7 @@ export function MarkdownWithTOC({
   afterContent,
   hideTOC,
 }: {
-  title: string | null;
+  title: React.ReactNode | string | null;
   markdownResult: MarkdownResult;
   previousVersions?: DocPublishedVersionListItemResponse[];
   afterContent?: React.ReactNode;

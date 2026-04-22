@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { MarkdownResult } from "@/utils/markdown";
 
 interface MarkdownProps {
-  title?: string | null;
+  title?: React.ReactNode | string | null;
   contentHtml: MarkdownResult;
   className?: string;
 }
@@ -78,7 +78,7 @@ export function Markdown({ contentHtml, className, title }: MarkdownProps) {
 
   return (
     <div className={cn("custom-prose", className)}>
-      {title ? <h1>{title}</h1> : null}
+      {typeof title === "string" ? <h1>{title}</h1> : !!title ? title : null}
       {parse(contentHtml.markup ?? "", options)}
     </div>
   );
