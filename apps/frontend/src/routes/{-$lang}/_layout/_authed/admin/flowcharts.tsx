@@ -67,7 +67,9 @@ function RouteComponent() {
   const [mode, setMode] = useState<EditorMode>("select");
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
-  const { data: allFlowcharts = [] } = useQuery(getNavigationFlowchartsQueryOptions());
+  const { data: allFlowcharts = [] } = useQuery(
+    getNavigationFlowchartsQueryOptions(),
+  );
 
   const { mutateAsync: deleteFlowchart } = useMutation({
     mutationFn: (id: string) => $deleteNavigationFlowchart({ data: { id } }),
@@ -109,12 +111,16 @@ function RouteComponent() {
                   `• ${d.flowchartNameEn} → ${d.stepTitleEn} → ${d.optionTitleEn}`,
               )
               .join("\n");
-            alert(`Cannot delete — referenced by:\n${list}\n\nRemove references first.`);
+            alert(
+              `Cannot delete — referenced by:\n${list}\n\nRemove references first.`,
+            );
           }
           return;
         }
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["navigation-flowcharts"],
+          }),
           queryClient.invalidateQueries({ queryKey: ["navigation-flowchart"] }),
         ]);
         if (selectedId === id) handleDeleted();
@@ -140,17 +146,18 @@ function RouteComponent() {
               New Flowchart
             </Button>
           </div>
-          <FlowchartList selectedId={selectedId} onSelect={handleSelect} onDelete={handleDeleteFlowchart} />
+          <FlowchartList
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            onDelete={handleDeleteFlowchart}
+          />
         </div>
       </Card>
 
       {mode === "create" ? (
         <CreateFlowchartPanel key="create" onCreated={handleCreated} />
       ) : mode === "edit" && selectedId ? (
-        <EditFlowchartPanel
-          key={selectedId}
-          id={selectedId}
-        />
+        <EditFlowchartPanel key={selectedId} id={selectedId} />
       ) : (
         <Card className="flex flex-1 items-center justify-center text-gray-400">
           <div className="flex flex-col items-center gap-3">
@@ -211,7 +218,10 @@ function FlowchartList({
             <Home className="size-3.5 shrink-0 text-blue-400 group-data-[active=true]:text-white/70" />
             <FlowchartListItemContent fc={ep} />
             <TrashButton
-              onClick={(e) => { e.stopPropagation(); onDelete(ep.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(ep.id);
+              }}
             />
           </ListItem>
           {ep.linkedFlowchartIds.length > 0 && (
@@ -227,7 +237,10 @@ function FlowchartList({
                   >
                     <FlowchartListItemContent fc={child} />
                     <TrashButton
-                      onClick={(e) => { e.stopPropagation(); onDelete(child.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(child.id);
+                      }}
                     />
                   </ListItem>
                 );
@@ -244,7 +257,10 @@ function FlowchartList({
         >
           <FlowchartListItemContent fc={fc} subtitle="unlinked" />
           <TrashButton
-            onClick={(e) => { e.stopPropagation(); onDelete(fc.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(fc.id);
+            }}
           />
         </ListItem>
       ))}
@@ -272,7 +288,9 @@ function FlowchartListItemContent({
           <StatusTag status={fc.status} />
         </li>
         <li className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm text-gray-500 group-data-[active=true]:text-white/70">{fc.nameJa}</span>
+          <span className="truncate text-sm text-gray-500 group-data-[active=true]:text-white/70">
+            {fc.nameJa}
+          </span>
         </li>
       </ul>
     </div>
@@ -395,11 +413,7 @@ function CreateFlowchartPanel({
  * Fetches a flowchart by ID and renders either a loading skeleton, an error
  * state, or the full `FlowchartEditor` once data is available.
  */
-function EditFlowchartPanel({
-  id,
-}: {
-  id: string;
-}) {
+function EditFlowchartPanel({ id }: { id: string }) {
   const {
     data: record,
     isPending,
@@ -462,11 +476,7 @@ interface FlowchartMeta {
  * Delete flow: checks for dependent flowcharts (options in other flowcharts
  * that link to this one) and surfaces them before allowing deletion.
  */
-function FlowchartEditor({
-  record,
-}: {
-  record: NavigationFlowchartRecord;
-}) {
+function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   const queryClient = useQueryClient();
   const { openConfirmation } = useConfirmationStore();
   const { data: allFlowcharts = [] } = useQuery(
@@ -561,8 +571,7 @@ function FlowchartEditor({
   }
 
   async function handleSave() {
-    const isPromotingToEntryPoint =
-      meta.isEntryPoint && !record.isEntryPoint;
+    const isPromotingToEntryPoint = meta.isEntryPoint && !record.isEntryPoint;
     const existingEntryPoint = allFlowcharts.find(
       (fc) => fc.isEntryPoint && fc.id !== record.id,
     );
@@ -682,9 +691,12 @@ function FlowchartEditor({
               }
             />
             <div>
-              <span className="text-sm font-medium text-gray-700">Entry point</span>
+              <span className="text-sm font-medium text-gray-700">
+                Entry point
+              </span>
               <p className="text-xs text-gray-400">
-                The entry point flowchart is loaded on the public navigation page. Only one flowchart can be the entry point.
+                The entry point flowchart is loaded on the public navigation
+                page. Only one flowchart can be the entry point.
               </p>
             </div>
           </div>
@@ -1079,8 +1091,7 @@ function OptionList({
             <Button
               type="button"
               variant="dashed"
-              size="slim"
-              className="self-start"
+              className="self-start w-fit"
               onClick={() => {
                 const newOpt: NavigationFlowchartOption = {
                   id: crypto.randomUUID(),
