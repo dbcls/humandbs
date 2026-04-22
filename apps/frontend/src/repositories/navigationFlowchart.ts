@@ -36,6 +36,7 @@ export interface NavigationFlowchartSummary {
   nameJa: string;
   status: NavigationFlowchartStatus;
   revision: number;
+  linkedFlowchartIds: string[];
 }
 
 export interface NavigationFlowchartDependency {
@@ -98,6 +99,7 @@ export function createNavigationFlowchartRepository(
           nameJa: navigationFlowchart.nameJa,
           status: navigationFlowchart.status,
           revision: navigationFlowchart.revision,
+          config: navigationFlowchart.config,
         })
         .from(navigationFlowchart)
         .orderBy(
@@ -105,7 +107,20 @@ export function createNavigationFlowchartRepository(
           navigationFlowchart.nameEn,
         );
 
-      return rows;
+      return rows.map((row) => {
+        const config = row.config as NavigationFlowchartConfig;
+        const linkedFlowchartIds = [
+          ...new Set(
+            config.en.steps
+              .flatMap((s) => s.options)
+              .map((o) => o.linkedFlowchartId)
+              .filter((id): id is string => !!id),
+          ),
+        ];
+        const { config: _config, ...summary } = row;
+        void _config;
+        return { ...summary, linkedFlowchartIds };
+      });
     },
 
     async getEntryPoint() {

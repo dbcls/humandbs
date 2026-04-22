@@ -10,6 +10,7 @@ import {
   ChevronRight,
   GitBranch,
   GripVertical,
+  Home,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -188,29 +189,80 @@ function FlowchartList({
     return <p className="px-1 text-sm text-gray-400">No flowcharts yet.</p>;
   }
 
+  // Build grouped list: each entry point followed by its direct children.
+  // Flowcharts not reachable from any entry point appear at the end.
+  const entryPoints = flowcharts.filter((fc) => fc.isEntryPoint);
+  const byId = Object.fromEntries(flowcharts.map((fc) => [fc.id, fc]));
+  const referencedIds = new Set(
+    entryPoints.flatMap((ep) => ep.linkedFlowchartIds),
+  );
+  const orphans = flowcharts.filter(
+    (fc) => !fc.isEntryPoint && !referencedIds.has(fc.id),
+  );
+
   return (
-    <ul>
-      {flowcharts.map((fc) => (
+    <ul className="flex flex-col gap-0.5">
+      {entryPoints.map((ep) => (
+        <li key={ep.id} className="flex flex-col gap-0.5">
+          <ListItem
+            isActive={selectedId === ep.id}
+            onClick={() => onSelect(ep.id)}
+          >
+            <Home className="size-3.5 shrink-0 text-blue-400 group-data-[active=true]:text-white/70" />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-semibold">{ep.nameEn}</span>
+                <StatusTag status={ep.status} />
+              </div>
+            </div>
+            <TrashButton
+              onClick={(e) => { e.stopPropagation(); onDelete(ep.id); }}
+            />
+          </ListItem>
+          {ep.linkedFlowchartIds.length > 0 && (
+            <ul className="flex flex-col gap-0.5 border-l-2 border-gray-200 ml-3 pl-2">
+              {ep.linkedFlowchartIds.map((childId) => {
+                const child = byId[childId];
+                if (!child) return null;
+                return (
+                  <ListItem
+                    key={child.id}
+                    isActive={selectedId === child.id}
+                    onClick={() => onSelect(child.id)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-sm">{child.nameEn}</span>
+                        <StatusTag status={child.status} />
+                      </div>
+                    </div>
+                    <TrashButton
+                      onClick={(e) => { e.stopPropagation(); onDelete(child.id); }}
+                    />
+                  </ListItem>
+                );
+              })}
+            </ul>
+          )}
+        </li>
+      ))}
+      {orphans.map((fc) => (
         <ListItem
           key={fc.id}
-          className="mb-1 last:mb-0"
           isActive={selectedId === fc.id}
           onClick={() => onSelect(fc.id)}
         >
           <div className="min-w-0 flex-1">
-            <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-1 truncate text-xs">
-              {fc.isEntryPoint ? "entry point" : "child flowchart"}
+            <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-0.5 truncate text-xs">
+              unlinked
             </div>
             <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm font-medium">{fc.nameEn}</span>
+              <span className="truncate text-sm">{fc.nameEn}</span>
               <StatusTag status={fc.status} />
             </div>
           </div>
           <TrashButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(fc.id);
-            }}
+            onClick={(e) => { e.stopPropagation(); onDelete(fc.id); }}
           />
         </ListItem>
       ))}
