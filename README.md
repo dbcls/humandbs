@@ -69,6 +69,9 @@ packages/
 # 環境ファイルをコピー
 cp env.development .env
 
+# Compose 差分ファイルを override に反映（Keycloak 追加）
+cp compose.dev.yml compose.override.yml
+
 # bind mount 用ディレクトリを作成
 mkdir -p humandbs-es-backup
 
@@ -121,11 +124,12 @@ Keycloak 管理設定は [docs/keycloak-admin.md](docs/keycloak-admin.md) を参
 
 ```bash
 cp env.staging .env  # or env.production
+cp compose.podman.yml compose.override.yml
 mkdir -p humandbs-es-backup
 podman-compose up -d --build
 ```
 
-`.env` に記載された `COMPOSE_FILE` によって `compose.yml` と `compose.podman.yml` が自動でマージされる。手動で `-f` を指定する必要はない。
+`compose.override.yml` は docker compose / podman-compose が自動マージするファイル名なので、`-f` の明示は不要。`compose.override.yml` は `.gitignore` で追跡対象外なので、環境ごとに中身を切り替えて使う。
 
 ### 環境ファイル
 
@@ -140,21 +144,20 @@ podman-compose up -d --build
 
 ### Compose ファイル構成
 
-役割を分離した 3 ファイルを `COMPOSE_FILE` で組み合わせる。`.env` をコピーするだけで対応する組み合わせが読み込まれる。
+`compose.yml` をベースに、環境別の差分ファイルを `compose.override.yml` にコピーして使う。`compose.override.yml` は docker compose / podman-compose の自動マージ対象。
 
-| ファイル | 役割 |
-|----------|------|
-| `compose.yml` | ベース定義（全サービス・ネットワーク・ボリューム） |
-| `compose.dev.yml` | 開発用の追加サービス（Keycloak） |
-| `compose.podman.yml` | Podman 用の差分（`userns_mode` のみ） |
+| ファイル | 役割 | 使い方 |
+|----------|------|--------|
+| `compose.yml` | ベース定義（全サービス・ネットワーク・ボリューム） | 常にロードされる |
+| `compose.dev.yml` | 開発用の追加サービス（Keycloak） | dev で `cp compose.dev.yml compose.override.yml` |
+| `compose.podman.yml` | Podman 用の差分（`userns_mode` のみ） | staging/production で `cp compose.podman.yml compose.override.yml` |
 
-`env.development` は `COMPOSE_FILE=compose.yml:compose.dev.yml`、`env.staging` / `env.production` は `COMPOSE_FILE=compose.yml:compose.podman.yml` を指定している。
+`compose.override.yml` 自体は `.gitignore` に入っており、環境ごとにローカルで切り替える運用。
 
 ### 環境変数
 
 | 変数名 | 説明 |
 |--------|------|
-| `COMPOSE_FILE` | 読み込む compose ファイルをコロン区切りで指定（例: `compose.yml:compose.podman.yml`） |
 | `HUMANDBS_ENV` | 環境識別子（`development` / `staging` / `production`）。container / network / volume 名はこの値から `humandbs-${HUMANDBS_ENV}-*` の形で自動生成される |
 | `HUMANDBS_NODE_ENV` | Node.js ランタイムモード（`development` / `production`）。コンテナ内の `NODE_ENV` に展開される。staging は `production` を指定する |
 | `HUMANDBS_TZ` | タイムゾーン |
