@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/Card";
+import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
+import { Breadcrumbs, NavigationChartInner, type BreadcrumbItem, type FlowchartAnswers } from "@/components/NavigationChart";
 import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -496,6 +498,8 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
   const [metaErrors, setMetaErrors] = useState<Partial<FlowchartMeta>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
+  const [previewLang, setPreviewLang] = useState<"en" | "ja">("ja");
 
   // Tracks the last-saved values so isDirty can compare against them.
   const savedMetaRef = useRef<FlowchartMeta>({
@@ -605,112 +609,261 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
   return (
     <Card
-      className="flex h-full flex-1 flex-col"
-      caption={record.nameEn}
+      className="flex h-full flex-1 flex-col overflow-hidden"
+      caption={
+        <>
+          {record.nameEn}
+          <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+            Preview
+            <Switch
+              checked={preview}
+              onCheckedChange={setPreview}
+              className="data-[state=checked]:bg-secondary"
+            />
+          </label>
+        </>
+      }
+      captionClassName="flex items-center"
       containerClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {/* Sticky action bar */}
-      <div className="flex items-center justify-between px-5 pt-5">
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
-            onCheckedChange={(checked) =>
-              setMeta((p) => ({
-                ...p,
-                status: checked
-                  ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED
-                  : NAVIGATION_FLOWCHART_STATUS.DRAFT,
-              }))
-            }
-          />
-          <span className="text-xs text-gray-500">
-            {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED
-              ? "Published"
-              : "Draft"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleReset}
-            disabled={!isDirty || isSaving}
-          >
-            Reset
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={!isDirty || isSaving}
-          >
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
-
-      {message && (
-        <div className="mx-5 mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div className="mx-5 mt-4 whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Scrollable content */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-6 px-5 pt-5 pb-5">
-          {/* Flowchart name */}
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-gray-700">Name</h3>
-            <LocaleInlineEditor
-              value={{ en: meta.nameEn, ja: meta.nameJa }}
-              onChange={({ en, ja }) => {
-                setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
-                setMetaErrors((p) => ({
-                  ...p,
-                  nameEn: undefined,
-                  nameJa: undefined,
-                }));
-              }}
-              displayClassName="text-sm font-medium"
-              required
-            />
-            {metaErrors.nameEn && <FieldError>{metaErrors.nameEn}</FieldError>}
-            {metaErrors.nameJa && <FieldError>{metaErrors.nameJa}</FieldError>}
-          </div>
-
-          {/* Entry point */}
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={meta.isEntryPoint}
-              onCheckedChange={(checked) =>
-                setMeta((p) => ({ ...p, isEntryPoint: checked }))
-              }
-            />
-            <div>
-              <span className="text-sm font-medium text-gray-700">
-                Entry point
+      {preview ? (
+        <FlowchartPreview
+          record={record}
+          configDraft={configDraft}
+          allFlowcharts={allFlowcharts}
+          lang={previewLang}
+          onLangChange={setPreviewLang}
+        />
+      ) : (
+        <>
+          {/* Sticky action bar */}
+          <div className="flex items-center justify-between px-5 pt-5">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED}
+                onCheckedChange={(checked) =>
+                  setMeta((p) => ({
+                    ...p,
+                    status: checked
+                      ? NAVIGATION_FLOWCHART_STATUS.PUBLISHED
+                      : NAVIGATION_FLOWCHART_STATUS.DRAFT,
+                  }))
+                }
+              />
+              <span className="text-xs text-gray-500">
+                {meta.status === NAVIGATION_FLOWCHART_STATUS.PUBLISHED
+                  ? "Published"
+                  : "Draft"}
               </span>
-              <p className="text-xs text-gray-400">
-                The entry point flowchart is loaded on the public navigation
-                page. Only one flowchart can be the entry point.
-              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={!isDirty || isSaving}
+              >
+                Reset
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={!isDirty || isSaving}
+              >
+                {isSaving ? "Saving…" : "Save"}
+              </Button>
             </div>
           </div>
 
-          {/* Steps */}
-          <StepList
-            config={configDraft}
-            onChange={setConfigDraft}
-            invalidStepIds={invalidStepIds}
-            otherFlowcharts={otherFlowcharts}
-          />
+          {message && (
+            <div className="mx-5 mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+              {message}
+            </div>
+          )}
+          {error && (
+            <div className="mx-5 mt-4 whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {/* Scrollable content */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="flex flex-col gap-6 px-5 pt-5 pb-5">
+              {/* Flowchart name */}
+              <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-medium text-gray-700">Name</h3>
+                <LocaleInlineEditor
+                  value={{ en: meta.nameEn, ja: meta.nameJa }}
+                  onChange={({ en, ja }) => {
+                    setMeta((p) => ({ ...p, nameEn: en, nameJa: ja }));
+                    setMetaErrors((p) => ({
+                      ...p,
+                      nameEn: undefined,
+                      nameJa: undefined,
+                    }));
+                  }}
+                  displayClassName="text-sm font-medium"
+                  required
+                />
+                {metaErrors.nameEn && (
+                  <FieldError>{metaErrors.nameEn}</FieldError>
+                )}
+                {metaErrors.nameJa && (
+                  <FieldError>{metaErrors.nameJa}</FieldError>
+                )}
+              </div>
+
+              {/* Entry point */}
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={meta.isEntryPoint}
+                  onCheckedChange={(checked) =>
+                    setMeta((p) => ({ ...p, isEntryPoint: checked }))
+                  }
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Entry point
+                  </span>
+                  <p className="text-xs text-gray-400">
+                    The entry point flowchart is loaded on the public navigation
+                    page. Only one flowchart can be the entry point.
+                  </p>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <StepList
+                config={configDraft}
+                onChange={setConfigDraft}
+                invalidStepIds={invalidStepIds}
+                otherFlowcharts={otherFlowcharts}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FlowchartPreview — interactive preview with child flowchart navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * Self-contained preview panel for a flowchart editor.
+ *
+ * - The root flowchart uses `configDraft` so unsaved changes are reflected.
+ * - Child flowcharts are fetched from the DB via the admin query.
+ * - Maintains a navigation stack so breadcrumbs work just like the public page.
+ * - `linkedFlowchartNames` is resolved from `allFlowcharts` for the current level.
+ */
+function FlowchartPreview({
+  record,
+  configDraft,
+  allFlowcharts,
+  lang,
+  onLangChange,
+}: {
+  record: NavigationFlowchartRecord;
+  configDraft: NavigationFlowchartConfig;
+  allFlowcharts: NavigationFlowchartSummary[];
+  lang: "en" | "ja";
+  onLangChange: (l: "en" | "ja") => void;
+}) {
+  // Stack of IDs navigated into: empty = showing root, ["childId"] = showing child, etc.
+  const [childStack, setChildStack] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<FlowchartAnswers>({});
+
+  const currentId = childStack.length > 0 ? childStack[childStack.length - 1] : null;
+
+  // Fetch current child if we've navigated into one
+  const { data: childRecord } = useQuery({
+    ...getNavigationFlowchartByIdQueryOptions(currentId ?? ""),
+    enabled: !!currentId,
+  });
+
+  // Build the data for the current level
+  const currentConfig = currentId ? childRecord?.config : configDraft;
+  const currentFlowchartId = currentId ?? record.id;
+  const currentSlug = currentFlowchartId;
+  const currentData = currentConfig
+    ? (lang === "ja" ? currentConfig.ja : currentConfig.en)
+    : null;
+
+  // linkedFlowchartNames for the current level
+  const linkedFlowchartNames: Record<string, string> = {};
+  for (const fc of allFlowcharts) {
+    linkedFlowchartNames[fc.id] = lang === "ja" ? fc.nameJa : fc.nameEn;
+  }
+  // Also include the current record itself in case it's referenced
+  linkedFlowchartNames[record.id] = lang === "ja" ? record.nameJa : record.nameEn;
+
+  // Build breadcrumb items. Index 0 is always the root record.
+  const breadcrumbItems: BreadcrumbItem[] = [
+    {
+      slug: record.id,
+      nameEn: record.nameEn,
+      nameJa: record.nameJa,
+      onClick: childStack.length > 0
+        ? () => { setChildStack([]); }
+        : undefined,
+    },
+    ...childStack.map((childId, i) => {
+      const fc = allFlowcharts.find((f) => f.id === childId);
+      return {
+        slug: childId,
+        nameEn: fc?.nameEn ?? childId,
+        nameJa: fc?.nameJa ?? childId,
+        onClick: i < childStack.length - 1
+          ? () => setChildStack((prev) => prev.slice(0, i + 1))
+          : undefined,
+      };
+    }),
+  ];
+
+  function handleAnswerChange(slug: string, stepId: string, optionId: string, clearStepIds?: string[]) {
+    setAnswers((prev) => {
+      const prevSlug = prev[slug] ?? {};
+      const next: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prevSlug)) {
+        if (!clearStepIds?.includes(k)) next[k] = v;
+      }
+      next[stepId] = optionId;
+      return { ...prev, [slug]: next };
+    });
+  }
+
+  function handleNavigateToChild(childId: string) {
+    setChildStack((prev) => [...prev, childId]);
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-2 px-5 pt-4 pb-2">
+        <LangSwitcherPill value={lang} onChange={onLangChange} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
+        <div className="min-w-max px-5 pb-5">
+          <Breadcrumbs items={breadcrumbItems} locale={lang} />
+          {currentData ? (
+            <NavigationChartInner
+              flowchartId={currentFlowchartId}
+              slug={currentSlug}
+              data={currentData}
+              locale={lang}
+              answers={answers}
+              linkedFlowchartNames={linkedFlowchartNames}
+              onAnswerChange={handleAnswerChange}
+              onNavigateToChild={handleNavigateToChild}
+            />
+          ) : (
+            <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
+          )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

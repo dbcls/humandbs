@@ -637,5 +637,5 @@ function LegacyNavigationChart({
   );
 }
 
-export { NavigationChart, Breadcrumbs };
+export { NavigationChart, Breadcrumbs, NavigationChartInner };
 export type { BreadcrumbItem };
