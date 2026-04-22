@@ -143,7 +143,7 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("controlledAccessUser")}</ContentHeader>
         <Table
-          columns={dataUsedByColumns}
+          columns={makeDataUsedByColumns(t)}
           data={versionData?.controlledAccessUser || []}
           meta={tableMeta}
         />
@@ -318,18 +318,33 @@ const dataUsedByColumnsHelper =
     ResearchDetailResponse["data"]["controlledAccessUser"][number]
   >();
 
-const dataUsedByColumns = [
-  dataUsedByColumnsHelper.accessor("name", {
-    id: "name",
-    header: "Name",
-    cell: (ctx) =>
-      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
-  }),
-  dataUsedByColumnsHelper.accessor("organization.name", {
-    id: "org.name",
-    header: "Organization name",
-    cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
-        ?.text,
-  }),
-];
+function makeDataUsedByColumns(
+  t: ReturnType<typeof useTranslations<"Person">>,
+) {
+  return [
+    dataUsedByColumnsHelper.accessor("name", {
+      id: "name",
+      header: t("name"),
+      cell: (ctx) =>
+        ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
+          ?.text,
+    }),
+    dataUsedByColumnsHelper.accessor("organization.name", {
+      id: "org.name",
+      header: t("organization"),
+      cell: (ctx) =>
+        ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
+          ?.text,
+    }),
+    dataUsedByColumnsHelper.accessor("periodOfDataUse", {
+      id: "periodOfDataUse",
+      header: t("periodOfDataUse"),
+      cell: (ctx) => {
+        const v = ctx.getValue();
+        if (!v) return null;
+        const format = (d: string) => d.replace(/-/g, "/");
+        return `${format(v.startDate || "")} - ${format(v.endDate || "")}`;
+      },
+    }),
+  ];
+}
