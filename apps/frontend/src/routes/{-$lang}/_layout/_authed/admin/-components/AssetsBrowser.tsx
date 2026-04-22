@@ -457,7 +457,7 @@ export function AssetsBrowser({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => copy(selectedItem.url)}
+                      onClick={() => copy(`${window.location.origin}${selectedItem.url}`)}
                     >
                       <CopyIcon className="mr-2 size-4" />
                       Copy URL
