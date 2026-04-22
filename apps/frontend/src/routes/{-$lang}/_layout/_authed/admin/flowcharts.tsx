@@ -1199,6 +1199,7 @@ function OptionRow({
             onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
             placeholder="Option label"
             displayClassName="text-xs"
+            displayLocale="ja"
           />
         </div>
         <button
