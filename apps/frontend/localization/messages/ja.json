@@ -92,7 +92,8 @@
     "datasetId": "データセット ID",
     "criteria": "アクセス制限",
     "typeOfData": "データの種類",
-    "details": "詳細"
+    "details": "詳細",
+    "investigator": "研究代表者"
   },
   "Dataset-list": {
     "dataset-list": "データセット一覧",
