@@ -112,7 +112,10 @@ function RouteComponent() {
           }
           return;
         }
-        await queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] }),
+          queryClient.invalidateQueries({ queryKey: ["navigation-flowchart"] }),
+        ]);
         if (selectedId === id) handleDeleted();
       },
     });
@@ -490,9 +493,10 @@ function FlowchartEditor({
     savedMetaRef.current = currentMeta;
     savedConfigRef.current = configDraft;
     setMessage("Saved.");
-    await queryClient.invalidateQueries({
-      queryKey: ["navigation-flowcharts"],
-    });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["navigation-flowcharts"] }),
+      queryClient.invalidateQueries({ queryKey: ["navigation-flowchart"] }),
+    ]);
   }
 
   async function handleSave() {
