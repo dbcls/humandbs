@@ -1076,8 +1076,11 @@ function OptionList({
                 onDelete={() => onDelete(opt.id)}
               />
             ))}
-            <button
+            <Button
               type="button"
+              variant="dashed"
+              size="slim"
+              className="self-start"
               onClick={() => {
                 const newOpt: NavigationFlowchartOption = {
                   id: crypto.randomUUID(),
@@ -1086,11 +1089,10 @@ function OptionList({
                 };
                 onReorder([...options, newOpt]);
               }}
-              className="flex shrink-0 items-center gap-1 self-start rounded border border-dashed border-gray-300 px-3 py-2 text-xs text-blue-600 hover:border-blue-400 hover:text-blue-800"
             >
               <Plus className="size-3" />
               Add option
-            </button>
+            </Button>
           </div>
         </DragDropProvider>
       </div>
