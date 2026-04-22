@@ -369,6 +369,18 @@ export type DatasetWithMetadata = z.infer<typeof DatasetWithMetadataSchema>
 // === Create Dataset for Research ===
 
 /**
+ * Experiment schema for draft initialization. Unlike ExperimentRequestSchema
+ * (used by Create/Update dataset), header and data both default so that
+ * frontend form init (e.g. "Add experiment" button) can post `{}`.
+ */
+const ExperimentForDraftSchema = z.object({
+  header: BilingualTextValueRequestSchema.default({ ja: null, en: null }),
+  data: z
+    .record(z.string(), BilingualTextValueRequestSchema.nullable())
+    .default({}),
+})
+
+/**
  * Create dataset request for POST /research/{humId}/dataset/new
  * All fields are optional - defaults will be used
  */
@@ -390,9 +402,11 @@ export const CreateDatasetForResearchRequestSchema = z.object({
     "Bilingual description of the data type",
   ),
   experiments: z
-    .array(ExperimentSchemaBase)
+    .array(ExperimentForDraftSchema)
     .optional()
-    .describe("Array of experiment records. Defaults to empty array."),
+    .describe(
+      "Array of experiment records. Defaults to []. Each element's header defaults to {ja:null,en:null} and data defaults to {}.",
+    ),
 })
 export type CreateDatasetForResearchRequest = z.infer<
   typeof CreateDatasetForResearchRequestSchema
