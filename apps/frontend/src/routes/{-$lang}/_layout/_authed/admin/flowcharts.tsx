@@ -18,7 +18,12 @@ import {
 import { Card } from "@/components/Card";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
-import { Breadcrumbs, NavigationChartInner, type BreadcrumbItem, type FlowchartAnswers } from "@/components/NavigationChart";
+import {
+  Breadcrumbs,
+  NavigationChartInner,
+  type BreadcrumbItem,
+  type FlowchartAnswers,
+} from "@/components/NavigationChart";
 import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -776,7 +781,8 @@ function FlowchartPreview({
   const [childStack, setChildStack] = useState<string[]>([]);
   const [answers, setAnswers] = useState<FlowchartAnswers>({});
 
-  const currentId = childStack.length > 0 ? childStack[childStack.length - 1] : null;
+  const currentId =
+    childStack.length > 0 ? childStack[childStack.length - 1] : null;
 
   // Fetch current child if we've navigated into one
   const { data: childRecord } = useQuery({
@@ -789,7 +795,9 @@ function FlowchartPreview({
   const currentFlowchartId = currentId ?? record.id;
   const currentSlug = currentFlowchartId;
   const currentData = currentConfig
-    ? (lang === "ja" ? currentConfig.ja : currentConfig.en)
+    ? lang === "ja"
+      ? currentConfig.ja
+      : currentConfig.en
     : null;
 
   // linkedFlowchartNames for the current level
@@ -798,7 +806,8 @@ function FlowchartPreview({
     linkedFlowchartNames[fc.id] = lang === "ja" ? fc.nameJa : fc.nameEn;
   }
   // Also include the current record itself in case it's referenced
-  linkedFlowchartNames[record.id] = lang === "ja" ? record.nameJa : record.nameEn;
+  linkedFlowchartNames[record.id] =
+    lang === "ja" ? record.nameJa : record.nameEn;
 
   // Build breadcrumb items. Index 0 is always the root record.
   const breadcrumbItems: BreadcrumbItem[] = [
@@ -806,9 +815,12 @@ function FlowchartPreview({
       slug: record.id,
       nameEn: record.nameEn,
       nameJa: record.nameJa,
-      onClick: childStack.length > 0
-        ? () => { setChildStack([]); }
-        : undefined,
+      onClick:
+        childStack.length > 0
+          ? () => {
+              setChildStack([]);
+            }
+          : undefined,
     },
     ...childStack.map((childId, i) => {
       const fc = allFlowcharts.find((f) => f.id === childId);
@@ -816,14 +828,20 @@ function FlowchartPreview({
         slug: childId,
         nameEn: fc?.nameEn ?? childId,
         nameJa: fc?.nameJa ?? childId,
-        onClick: i < childStack.length - 1
-          ? () => setChildStack((prev) => prev.slice(0, i + 1))
-          : undefined,
+        onClick:
+          i < childStack.length - 1
+            ? () => setChildStack((prev) => prev.slice(0, i + 1))
+            : undefined,
       };
     }),
   ];
 
-  function handleAnswerChange(slug: string, stepId: string, optionId: string, clearStepIds?: string[]) {
+  function handleAnswerChange(
+    slug: string,
+    stepId: string,
+    optionId: string,
+    clearStepIds?: string[],
+  ) {
     setAnswers((prev) => {
       const prevSlug = prev[slug] ?? {};
       const next: Record<string, string> = {};
@@ -859,7 +877,9 @@ function FlowchartPreview({
               onNavigateToChild={handleNavigateToChild}
             />
           ) : (
-            <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
+            <div className="py-8 text-center text-sm text-gray-400">
+              Loading…
+            </div>
           )}
         </div>
       </div>
