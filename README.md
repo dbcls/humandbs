@@ -67,7 +67,7 @@ packages/
 
 ```bash
 # 環境ファイルをコピー
-cp env.dev .env
+cp env.development .env
 
 # bind mount 用ディレクトリを作成
 mkdir -p humandbs-es-backup
@@ -121,29 +121,42 @@ Keycloak 管理設定は [docs/keycloak-admin.md](docs/keycloak-admin.md) を参
 
 ```bash
 cp env.staging .env  # or env.production
-cp compose.override.podman.yml compose.override.yml
 mkdir -p humandbs-es-backup
 podman-compose up -d --build
 ```
 
+`.env` に記載された `COMPOSE_FILE` によって `compose.yml` と `compose.podman.yml` が自動でマージされる。手動で `-f` を指定する必要はない。
+
 ### 環境ファイル
 
-| ファイル | 用途 |
-|---------|------|
-| `env.dev` | 開発環境（localhost） |
-| `env.staging` | ステージング環境 |
-| `env.production` | 本番環境 |
+| ファイル | 用途 | `HUMANDBS_ENV` | `HUMANDBS_NODE_ENV` |
+|---------|------|---------------|---------------------|
+| `env.development` | 開発環境（localhost） | `development` | `development` |
+| `env.staging` | ステージング環境 | `staging` | `production` |
+| `env.production` | 本番環境 | `production` | `production` |
 
 いずれかを `.env` にコピーして使用する。
 ステージング・本番環境では、コピー後に `HUMANDBS_POSTGRES_PASSWORD` などの認証情報を適切な値に編集する。
+
+### Compose ファイル構成
+
+役割を分離した 3 ファイルを `COMPOSE_FILE` で組み合わせる。`.env` をコピーするだけで対応する組み合わせが読み込まれる。
+
+| ファイル | 役割 |
+|----------|------|
+| `compose.yml` | ベース定義（全サービス・ネットワーク・ボリューム） |
+| `compose.dev.yml` | 開発用の追加サービス（Keycloak） |
+| `compose.podman.yml` | Podman 用の差分（`userns_mode` のみ） |
+
+`env.development` は `COMPOSE_FILE=compose.yml:compose.dev.yml`、`env.staging` / `env.production` は `COMPOSE_FILE=compose.yml:compose.podman.yml` を指定している。
 
 ### 環境変数
 
 | 変数名 | 説明 |
 |--------|------|
-| `HUMANDBS_CONTAINER_PREFIX` | コンテナ名のプレフィックス |
-| `HUMANDBS_NETWORK_NAME` | Docker ネットワーク名 |
-| `HUMANDBS_NODE_ENV` | 実行環境（development / production） |
+| `COMPOSE_FILE` | 読み込む compose ファイルをコロン区切りで指定（例: `compose.yml:compose.podman.yml`） |
+| `HUMANDBS_ENV` | 環境識別子（`development` / `staging` / `production`）。container / network / volume 名はこの値から `humandbs-${HUMANDBS_ENV}-*` の形で自動生成される |
+| `HUMANDBS_NODE_ENV` | Node.js ランタイムモード（`development` / `production`）。コンテナ内の `NODE_ENV` に展開される。staging は `production` を指定する |
 | `HUMANDBS_TZ` | タイムゾーン |
 | `HUMANDBS_NGINX_BIND_HOST` | Nginx ポートのバインドホスト |
 | `HUMANDBS_NGINX_PORT` | Nginx のポート番号 |
@@ -162,14 +175,16 @@ podman-compose up -d --build
 
 ### Docker ボリューム
 
-| ボリューム名 | 用途 |
-|--------------|------|
-| `node_modules` | ルートの node_modules |
-| `frontend_node_modules` | フロントエンドの node_modules |
-| `backend_node_modules` | バックエンドの node_modules |
-| `eslint_config_node_modules` | ESLint 設定の node_modules |
-| `cms-pgdata` | PostgreSQL データ |
-| `es-data` | Elasticsearch データ |
+named volume は `humandbs-${HUMANDBS_ENV}-<名前>` で命名されるため、環境ごとに分離される（例: `humandbs-staging-cms-pgdata`）。
+
+| キー | 用途 | 実ボリューム名の例（staging） |
+|------|------|-------------------------------|
+| `node_modules` | ルートの node_modules | `humandbs-staging-node-modules` |
+| `frontend_node_modules` | フロントエンドの node_modules | `humandbs-staging-frontend-node-modules` |
+| `backend_node_modules` | バックエンドの node_modules | `humandbs-staging-backend-node-modules` |
+| `eslint_config_node_modules` | ESLint 設定の node_modules | `humandbs-staging-eslint-config-node-modules` |
+| `cms-pgdata` | PostgreSQL データ | `humandbs-staging-cms-pgdata` |
+| `es-data` | Elasticsearch データ | `humandbs-staging-es-data` |
 
 ### 検証コマンド
 
