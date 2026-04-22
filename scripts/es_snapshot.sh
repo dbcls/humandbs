@@ -28,7 +28,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -h, --help  Show this help message"
       echo ""
       echo "Environment:"
-      echo "  Reads HUMANDBS_CONTAINER_PREFIX from .env"
+      echo "  Reads HUMANDBS_ENV from .env"
       echo ""
       echo "This script:"
       echo "  1. Registers snapshot repository if not exists (idempotent)"
@@ -64,12 +64,12 @@ source <(grep -v '^\s*#' "$ENV_FILE" | grep -v '^\s*$')
 set +a
 
 # Validate required variables
-if [[ -z "${HUMANDBS_CONTAINER_PREFIX:-}" ]]; then
-  echo "Error: HUMANDBS_CONTAINER_PREFIX is not set in .env" >&2
+if [[ -z "${HUMANDBS_ENV:-}" ]]; then
+  echo "Error: HUMANDBS_ENV is not set in .env" >&2
   exit 1
 fi
 
-ES_CONTAINER="${HUMANDBS_CONTAINER_PREFIX}-elasticsearch"
+ES_CONTAINER="humandbs-${HUMANDBS_ENV}-elasticsearch"
 
 # Check if container is running
 if ! docker ps --format '{{.Names}}' | grep -q "^${ES_CONTAINER}$"; then

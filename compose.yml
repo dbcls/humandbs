@@ -1,7 +1,7 @@
 services:
   cms-db:
     image: docker.io/postgres:17
-    container_name: ${HUMANDBS_CONTAINER_PREFIX}-cms-db
+    container_name: humandbs-${HUMANDBS_ENV}-cms-db
     environment:
       - TZ=${HUMANDBS_TZ}
       - POSTGRES_USER=${HUMANDBS_POSTGRES_USER}
@@ -10,7 +10,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - cms-pgdata:/var/lib/postgresql/data
+      - cms-pgdata:/var/lib/postgresql/data:U
     networks:
       - humandbs-network
     healthcheck:
@@ -35,8 +35,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${HUMANDBS_CONTAINER_PREFIX}-app
-    container_name: ${HUMANDBS_CONTAINER_PREFIX}-frontend
+    image: humandbs-${HUMANDBS_ENV}-app
+    container_name: humandbs-${HUMANDBS_ENV}-frontend
     depends_on:
       cms-db:
         condition: service_healthy
@@ -44,6 +44,7 @@ services:
         condition: service_started
     environment:
       - TZ=${HUMANDBS_TZ}
+      - HUMANDBS_ENV=${HUMANDBS_ENV}
       - NODE_ENV=${HUMANDBS_NODE_ENV}
       # Container network (fixed)
       - HUMANDBS_POSTGRES_HOST=cms-db
@@ -85,13 +86,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${HUMANDBS_CONTAINER_PREFIX}-app
-    container_name: ${HUMANDBS_CONTAINER_PREFIX}-backend
+    image: humandbs-${HUMANDBS_ENV}-app
+    container_name: humandbs-${HUMANDBS_ENV}-backend
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
       - TZ=${HUMANDBS_TZ}
+      - HUMANDBS_ENV=${HUMANDBS_ENV}
       - NODE_ENV=${HUMANDBS_NODE_ENV}
       # Container network (fixed)
       - HUMANDBS_ES_HOST=elasticsearch
@@ -125,7 +127,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.6
-    container_name: ${HUMANDBS_CONTAINER_PREFIX}-elasticsearch
+    container_name: humandbs-${HUMANDBS_ENV}-elasticsearch
     environment:
       - TZ=${HUMANDBS_TZ}
       - discovery.type=single-node
@@ -134,7 +136,7 @@ services:
       - ES_JAVA_OPTS=${HUMANDBS_ES_JAVA_OPTS}
       - path.repo=/usr/share/elasticsearch/backup
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/elasticsearch/data:U
       - ${HUMANDBS_ES_BACKUP_PATH}:/usr/share/elasticsearch/backup
     networks:
       - humandbs-network
@@ -166,7 +168,12 @@ services:
 
   nginx:
     image: docker.io/library/nginx:1.27.0
-    container_name: ${HUMANDBS_CONTAINER_PREFIX}-nginx
+    container_name: humandbs-${HUMANDBS_ENV}-nginx
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
     environment:
       - TZ=${HUMANDBS_TZ}
     volumes:
@@ -184,13 +191,19 @@ services:
     init: true
 
 volumes:
-  node_modules: {}
-  frontend_node_modules: {}
-  backend_node_modules: {}
-  eslint_config_node_modules: {}
-  cms-pgdata: {}
-  es-data: {}
+  node_modules:
+    name: humandbs-${HUMANDBS_ENV}-node-modules
+  frontend_node_modules:
+    name: humandbs-${HUMANDBS_ENV}-frontend-node-modules
+  backend_node_modules:
+    name: humandbs-${HUMANDBS_ENV}-backend-node-modules
+  eslint_config_node_modules:
+    name: humandbs-${HUMANDBS_ENV}-eslint-config-node-modules
+  cms-pgdata:
+    name: humandbs-${HUMANDBS_ENV}-cms-pgdata
+  es-data:
+    name: humandbs-${HUMANDBS_ENV}-es-data
 
 networks:
   humandbs-network:
-    name: ${HUMANDBS_NETWORK_NAME}
+    name: humandbs-${HUMANDBS_ENV}-network
