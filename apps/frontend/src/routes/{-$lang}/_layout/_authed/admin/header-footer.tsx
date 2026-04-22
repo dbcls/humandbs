@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/Card";
+import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -56,7 +57,7 @@ import {
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/navigation",
+  "/{-$lang}/_layout/_authed/admin/header-footer",
 )({
   component: RouteComponent,
 });
@@ -1567,9 +1568,6 @@ function NavbarGroupColumn({
   onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
   onDeleteGroup: (groupId: string) => void;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editEn, setEditEn] = useState("");
-  const [editJa, setEditJa] = useState("");
   const [showLinkedAddLink, setShowLinkedAddLink] = useState(false);
   const [showSubAddLink, setShowSubAddLink] = useState(false);
   const [linkedUrl, setLinkedUrl] = useState("");
@@ -1578,9 +1576,6 @@ function NavbarGroupColumn({
   const [subUrl, setSubUrl] = useState("");
   const [subEn, setSubEn] = useState("");
   const [subJa, setSubJa] = useState("");
-  const editFormRef = useRef<HTMLDivElement | null>(null);
-  const editEnInputRef = useRef<HTMLInputElement | null>(null);
-
   const { ref: linkedDropRef, isDropTarget: isLinkedDropTarget } = useDroppable({
     id: getNavbarGroupLinkedSlotId(g.group.id),
     accept: [
@@ -1610,48 +1605,8 @@ function NavbarGroupColumn({
     data: { type: NAVBAR_GROUP_TYPE },
   });
 
-  const groupLabel = g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
   const priority = g.group.priority ?? "important";
   const canEnableGroup = g.linkedItem !== undefined;
-
-  function startEditing() {
-    setEditEn(g.group.label["en"] ?? "");
-    setEditJa(g.group.label["ja"] ?? "");
-    setIsEditing(true);
-  }
-
-  function confirmEdit() {
-    const en = editEn.trim();
-    const ja = editJa.trim();
-    if (!en) return;
-    onRenameGroup(g.group.id, { en, ja: ja || en });
-    setIsEditing(false);
-  }
-
-  function cancelEdit() {
-    setIsEditing(false);
-  }
-
-  const confirmEditRef = useRef(confirmEdit);
-  confirmEditRef.current = confirmEdit;
-
-  useEffect(() => {
-    if (!isEditing) return;
-    editEnInputRef.current?.focus();
-    editEnInputRef.current?.select();
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (!isEditing) return;
-    function handlePointerDown(event: MouseEvent) {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (editFormRef.current?.contains(target)) return;
-      confirmEditRef.current();
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isEditing]);
 
   function updateCurrentGroup(
     updater: (group: NavbarGroupWithItems) => NavbarGroupWithItems,
@@ -1738,88 +1693,54 @@ function NavbarGroupColumn({
       ].join(" ")}
     >
       {/* Group header */}
-      {isEditing ? (
-        <div ref={editFormRef} className="border-b border-gray-100 px-3 py-2">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
-              <input
-                ref={editEnInputRef}
-                type="text"
-                value={editEn}
-                onChange={(e) => setEditEn(e.target.value)}
-                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmEdit();
-                  if (e.key === "Escape") cancelEdit();
-                }}
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
-              <input
-                type="text"
-                value={editJa}
-                onChange={(e) => setEditJa(e.target.value)}
-                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmEdit();
-                  if (e.key === "Escape") cancelEdit();
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              ref={groupHandleRef as Ref<HTMLButtonElement>}
-              className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-            >
-              <GripVertical className="size-4 shrink-0" />
-            </button>
-            <button
-              type="button"
-              onClick={startEditing}
-              className="flex-1 truncate text-left text-xs font-semibold uppercase text-gray-500 hover:text-gray-800"
-              title="Click to rename"
-            >
-              {groupLabel}
-            </button>
-            <Switch
-              checked={g.group.enabled}
-              disabled={!canEnableGroup}
-              onCheckedChange={(checked) =>
-                onToggleGroupEnabled(g.group.id, checked)
-              }
-              className="shrink-0 scale-75"
-            />
-            <button
-              type="button"
-              onClick={() => onDeleteGroup(g.group.id)}
-              className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-              title="Delete group"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
-          <Select
-            value={priority}
-            onValueChange={(value) => onChangePriority(g.group.id, value as NavPriority)}
+      <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <button
+            type="button"
+            ref={groupHandleRef as Ref<HTMLButtonElement>}
+            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
           >
-            <SelectTrigger className="h-7 w-full text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="important">Important</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="optional">Optional</SelectItem>
-            </SelectContent>
-          </Select>
+            <GripVertical className="size-4 shrink-0" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <LocaleInlineEditor
+              value={{ en: g.group.label["en"] ?? "", ja: g.group.label["ja"] ?? "" }}
+              onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
+              displayClassName="text-xs font-semibold uppercase text-gray-500"
+              required
+            />
+          </div>
+          <Switch
+            checked={g.group.enabled}
+            disabled={!canEnableGroup}
+            onCheckedChange={(checked) =>
+              onToggleGroupEnabled(g.group.id, checked)
+            }
+            className="shrink-0 scale-75"
+          />
+          <button
+            type="button"
+            onClick={() => onDeleteGroup(g.group.id)}
+            className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+            title="Delete group"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
-      )}
+        <Select
+          value={priority}
+          onValueChange={(value) => onChangePriority(g.group.id, value as NavPriority)}
+        >
+          <SelectTrigger className="h-7 w-full text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="important">Important</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="optional">Optional</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div
         ref={linkedDropRef as Ref<HTMLDivElement>}
@@ -3157,16 +3078,10 @@ function FooterGroupColumn({
   onRemoveItem: (itemId: string) => void;
   onToggleItemEnabled: (itemId: string, enabled: boolean) => void;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editEn, setEditEn] = useState("");
-  const [editJa, setEditJa] = useState("");
   const [showAddLink, setShowAddLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkEn, setLinkEn] = useState("");
   const [linkJa, setLinkJa] = useState("");
-  const editFormRef = useRef<HTMLDivElement | null>(null);
-  const editEnInputRef = useRef<HTMLInputElement | null>(null);
-
   const { ref: groupDropRef, isDropTarget } = useDroppable({
     id: getFooterGroupItemsId(g.group.id),
     accept: [
@@ -3184,48 +3099,6 @@ function FooterGroupColumn({
     accept: [FOOTER_GROUP_TYPE],
     data: { type: FOOTER_GROUP_TYPE },
   });
-
-  const groupLabel =
-    g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
-
-  function startEditing() {
-    setEditEn(g.group.label["en"] ?? "");
-    setEditJa(g.group.label["ja"] ?? "");
-    setIsEditing(true);
-  }
-
-  function confirmEdit() {
-    const en = editEn.trim();
-    const ja = editJa.trim();
-    if (!en) return;
-    onRenameGroup(g.group.id, { en, ja: ja || en });
-    setIsEditing(false);
-  }
-
-  function cancelEdit() {
-    setIsEditing(false);
-  }
-
-  const confirmEditRef = useRef(confirmEdit);
-  confirmEditRef.current = confirmEdit;
-
-  useEffect(() => {
-    if (!isEditing) return;
-    editEnInputRef.current?.focus();
-    editEnInputRef.current?.select();
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (!isEditing) return;
-    function handlePointerDown(event: MouseEvent) {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (editFormRef.current?.contains(target)) return;
-      confirmEditRef.current();
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isEditing]);
 
   function confirmAddLink() {
     const url = linkUrl.trim();
@@ -3257,72 +3130,38 @@ function FooterGroupColumn({
       ].join(" ")}
     >
       {/* Group header */}
-      {isEditing ? (
-        <div ref={editFormRef} className="border-b border-gray-100 px-3 py-2">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
-              <input
-                ref={editEnInputRef}
-                type="text"
-                value={editEn}
-                onChange={(e) => setEditEn(e.target.value)}
-                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmEdit();
-                  if (e.key === "Escape") cancelEdit();
-                }}
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
-              <input
-                type="text"
-                value={editJa}
-                onChange={(e) => setEditJa(e.target.value)}
-                className="flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs font-semibold uppercase outline-none focus:ring-1 focus:ring-blue-400"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmEdit();
-                  if (e.key === "Escape") cancelEdit();
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
-          <button
-            type="button"
-            ref={groupHandleRef as Ref<HTMLButtonElement>}
-            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-          >
-            <GripVertical className="size-4 shrink-0" />
-          </button>
-          <button
-            type="button"
-            onClick={startEditing}
-            className="flex-1 truncate text-left text-xs font-semibold uppercase text-gray-500 hover:text-gray-800"
-            title="Click to rename"
-          >
-            {groupLabel}
-          </button>
-          <Switch
-            checked={g.group.enabled}
-            onCheckedChange={(checked) =>
-              onToggleGroupEnabled(g.group.id, checked)
-            }
-            className="shrink-0 scale-75"
+      <div className="flex min-w-0 items-center gap-1 border-b border-gray-100 px-3 py-2">
+        <button
+          type="button"
+          ref={groupHandleRef as Ref<HTMLButtonElement>}
+          className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+        >
+          <GripVertical className="size-4 shrink-0" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <LocaleInlineEditor
+            value={{ en: g.group.label["en"] ?? "", ja: g.group.label["ja"] ?? "" }}
+            onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
+            displayClassName="text-xs font-semibold uppercase text-gray-500"
+            required
           />
-          <button
-            type="button"
-            onClick={() => onDeleteGroup(g.group.id)}
-            className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-            title="Delete group"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
         </div>
-      )}
+        <Switch
+          checked={g.group.enabled}
+          onCheckedChange={(checked) =>
+            onToggleGroupEnabled(g.group.id, checked)
+          }
+          className="shrink-0 scale-75"
+        />
+        <button
+          type="button"
+          onClick={() => onDeleteGroup(g.group.id)}
+          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+          title="Delete group"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
 
       <ul
         ref={groupDropRef as Ref<HTMLUListElement>}

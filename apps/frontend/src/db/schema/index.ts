@@ -7,3 +7,4 @@ export * from "./newsItem";
 export * from "./alert";
 export * from "./newsTag";
 export * from "./siteNavigation";
+export * from "./navigationFlowchart";
