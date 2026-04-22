@@ -866,18 +866,18 @@ function StepCard({
         >
           <GripVertical className="size-4 shrink-0" />
         </button>
-        <div
-          role="button"
-          tabIndex={0}
-          className="flex flex-1 cursor-pointer items-center gap-1 text-left"
+        <button
+          type="button"
+          className="cursor-pointer text-gray-400 hover:text-gray-600"
           onClick={() => setExpanded((p) => !p)}
-          onKeyDown={(e) => e.key === "Enter" && setExpanded((p) => !p)}
         >
           {expanded ? (
-            <ChevronDown className="size-3.5 shrink-0 text-gray-400" />
+            <ChevronDown className="size-3.5 shrink-0" />
           ) : (
-            <ChevronRight className="size-3.5 shrink-0 text-gray-400" />
+            <ChevronRight className="size-3.5 shrink-0" />
           )}
+        </button>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           <LocaleInlineEditor
             value={{ en: step.titleEn, ja: step.titleJa }}
             onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
@@ -885,7 +885,7 @@ function StepCard({
             displayClassName="text-sm font-medium"
           />
           {isInvalid && (
-            <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
+            <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
               needs ≥2 options
             </span>
           )}
