@@ -14,6 +14,8 @@ interface LocaleInlineEditorProps {
   displayClassName?: string;
   /** If true, EN field is required (won't commit with empty EN) */
   required?: boolean;
+  /** Which locale to show in display (non-editing) mode. Defaults to "en". */
+  displayLocale?: "en" | "ja";
 }
 
 /**
@@ -30,6 +32,7 @@ export function LocaleInlineEditor({
   placeholder = "Click to edit",
   displayClassName,
   required = false,
+  displayLocale = "en",
 }: LocaleInlineEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editEn, setEditEn] = useState("");
@@ -118,7 +121,7 @@ export function LocaleInlineEditor({
       )}
       title="Click to edit"
     >
-      <span>{value.en || placeholder}</span>
+      <span>{(displayLocale === "ja" ? value.ja : value.en) || placeholder}</span>
       <Pencil className="size-3 shrink-0 opacity-0 group-hover:opacity-50" />
     </button>
   );

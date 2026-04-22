@@ -268,7 +268,7 @@ function FlowchartListItemContent({
       )}
       <ul className="space-y-0.5">
         <li className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium">{fc.nameEn}</span>
+          <span className="truncate text-sm">{fc.nameEn}</span>
           <StatusTag status={fc.status} />
         </li>
         <li className="flex min-w-0 items-center gap-2">
@@ -944,6 +944,7 @@ function StepCard({
             onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
             placeholder="Step title"
             displayClassName="text-sm font-medium"
+            displayLocale="ja"
           />
           {isInvalid && (
             <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
