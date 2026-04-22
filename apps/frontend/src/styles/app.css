@@ -5,7 +5,7 @@
 @plugin "@tailwindcss/typography";
 
 .front-stats {
-  padding: 22px 16px 30px;
+  padding: 22px 0 30px;
   color: #172133;
   background: transparent;
 }
@@ -261,7 +261,7 @@
 
 @media (max-width: 900px) {
   .front-stats {
-    padding: 14px 10px 18px;
+    padding: 14px 0 18px;
   }
 
   .front-stats__loader {
@@ -314,6 +314,8 @@
   --cms-list-panel-width: 30rem;
   --filter-panel-width: 30rem;
 
+  --content-max-width: 128rem;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -353,16 +355,13 @@
   --spacing-cms-list-panel: var(--cms-list-panel-width);
   --spacing-filter-panel: var(--filter-panel-width);
 
-  --spacing-content-max-width: 90rem;
-  --spacing-content-min-width:
-    10rem --font-sans: i-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --spacing-content-max-width: var(--content-max-width);
+  --spacing-content-min-width: 20rem;
+  --font-sans:
+    i-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
   --font-fontawesome: "FontAwesome6";
 }
-
-/*@utility prose {
-  @apply max-w-content-max-width min-w-content-min-width;
-}*/
 
 @layer base {
   html {
@@ -400,6 +399,11 @@
 }
 
 @layer components {
+  .main-content {
+    max-width: calc(var(--content-max-width) + 2.5rem);
+    @apply mx-auto px-10;
+  }
+
   .main-bg {
     background-image:
       linear-gradient(
@@ -553,7 +557,8 @@
     a {
       @apply text-secondary visited:text-neutral-400 font-medium;
     }
-    @apply prose prose-h1:text-secondary text-base prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words;
+
+    @apply prose max-w-none min-w-0 prose-h1:text-secondary text-base prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words;
 
     h1,
     h2,

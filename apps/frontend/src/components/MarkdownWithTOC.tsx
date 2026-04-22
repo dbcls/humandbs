@@ -19,24 +19,26 @@ export function MarkdownWithTOC({
   afterContent?: React.ReactNode;
   hideTOC?: boolean;
 }) {
+  const showTOC = markdownResult.headings.length > 0 && !hideTOC;
   return (
     <Card
-      className="w-full py-6"
-      containerClassName="py-10 mx-auto flex justify-center gap-5 "
+      className="w-full py-6 min-w-0"
+      containerClassName="main-content mt-8 min-w-0"
     >
-      <div>
-        <Markdown contentHtml={markdownResult} title={title} />
-        {previousVersions && (
-          <PreviousVersionsList
-            versions={previousVersions}
-            slug="/{-$lang}/guidelines"
-          />
-        )}
-        {afterContent}
+      <div className="flex gap-8">
+        {showTOC ? <TOC headings={markdownResult.headings} /> : null}
+        <div className="flex-1">
+          <Markdown contentHtml={markdownResult} title={title} />
+          {previousVersions && (
+            <PreviousVersionsList
+              versions={previousVersions}
+              slug="/{-$lang}/guidelines"
+            />
+          )}
+
+          {afterContent}
+        </div>
       </div>
-      {markdownResult.headings.length > 0 && !hideTOC ? (
-        <TOC headings={markdownResult.headings} />
-      ) : null}
     </Card>
   );
 }
