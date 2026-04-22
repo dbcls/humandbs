@@ -179,6 +179,13 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ${HUMANDBS_FILES_DIR}:/var/www/files:ro
+    # Run nginx worker as root so that bind-mounted files on lustre (owned by the
+    # host user that runs rootless podman) are readable. The default nginx worker
+    # is uid 101, which rootless podman maps to a subuid outside the file owner,
+    # and lustre rejects that access.
+    command: >
+      sh -c "sed -i 's/^user  *nginx;/user root;/' /etc/nginx/nginx.conf &&
+             exec /docker-entrypoint.sh nginx -g 'daemon off;'"
     ports:
       - ${HUMANDBS_NGINX_BIND_HOST}:${HUMANDBS_NGINX_PORT}:80
     networks:
