@@ -319,12 +319,12 @@ const dataUsedByColumnsHelper =
   >();
 
 function makeDataUsedByColumns(
-  t: ReturnType<typeof useTranslations<"VersionCard">>,
+  t: ReturnType<typeof useTranslations<"Person">>,
 ) {
   return [
     dataUsedByColumnsHelper.accessor("name", {
       id: "name",
-      header: t("investigator"),
+      header: t("name"),
       cell: (ctx) =>
         ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
           ?.text,

@@ -82,7 +82,7 @@
     "datasets": "Datasets",
     "dataProvider": "Data provider",
     "representative": "Representative",
-    "organization": "Affiliation",
+    "organization": "Organization",
     "researchTitle": "Project / research group name",
     "relatedPublication": "Related publications",
     "periodOfDataUse": "Period of data use",
@@ -92,8 +92,7 @@
     "datasetId": "Dataset ID",
     "criteria": "Access type",
     "typeOfData": "Type of data",
-    "details": "Details",
-    "investigator": "Principal Investigator"
+    "details": "Details"
   },
   "Dataset-list": {
     "dataset-list": "Dataset List",
