@@ -209,18 +209,13 @@ function FlowchartList({
             onClick={() => onSelect(ep.id)}
           >
             <Home className="size-3.5 shrink-0 text-blue-400 group-data-[active=true]:text-white/70" />
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-semibold">{ep.nameEn}</span>
-                <StatusTag status={ep.status} />
-              </div>
-            </div>
+            <FlowchartListItemContent fc={ep} />
             <TrashButton
               onClick={(e) => { e.stopPropagation(); onDelete(ep.id); }}
             />
           </ListItem>
           {ep.linkedFlowchartIds.length > 0 && (
-            <ul className="flex flex-col gap-0.5 border-l-2 border-gray-200 ml-3 pl-2">
+            <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
               {ep.linkedFlowchartIds.map((childId) => {
                 const child = byId[childId];
                 if (!child) return null;
@@ -230,12 +225,7 @@ function FlowchartList({
                     isActive={selectedId === child.id}
                     onClick={() => onSelect(child.id)}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-sm">{child.nameEn}</span>
-                        <StatusTag status={child.status} />
-                      </div>
-                    </div>
+                    <FlowchartListItemContent fc={child} />
                     <TrashButton
                       onClick={(e) => { e.stopPropagation(); onDelete(child.id); }}
                     />
@@ -252,21 +242,40 @@ function FlowchartList({
           isActive={selectedId === fc.id}
           onClick={() => onSelect(fc.id)}
         >
-          <div className="min-w-0 flex-1">
-            <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-0.5 truncate text-xs">
-              unlinked
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm">{fc.nameEn}</span>
-              <StatusTag status={fc.status} />
-            </div>
-          </div>
+          <FlowchartListItemContent fc={fc} subtitle="unlinked" />
           <TrashButton
             onClick={(e) => { e.stopPropagation(); onDelete(fc.id); }}
           />
         </ListItem>
       ))}
     </ul>
+  );
+}
+
+function FlowchartListItemContent({
+  fc,
+  subtitle,
+}: {
+  fc: NavigationFlowchartSummary;
+  subtitle?: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      {subtitle && (
+        <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-1 truncate text-xs">
+          {subtitle}
+        </div>
+      )}
+      <ul className="space-y-0.5">
+        <li className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium">{fc.nameEn}</span>
+          <StatusTag status={fc.status} />
+        </li>
+        <li className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm text-gray-500 group-data-[active=true]:text-white/70">{fc.nameJa}</span>
+        </li>
+      </ul>
+    </div>
   );
 }
 
