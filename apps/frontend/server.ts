@@ -69,6 +69,8 @@ import path from "node:path";
 const SERVER_PORT = Number(process.env.PORT ?? 3000);
 const CLIENT_DIRECTORY = "./dist/client";
 const SERVER_ENTRY_POINT = "./dist/server/server.js";
+const PUBLIC_FILES_SUBDIR = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+const PUBLIC_FILES_DIR = path.resolve(CLIENT_DIRECTORY, PUBLIC_FILES_SUBDIR);
 
 // Logging utilities for professional output
 const log = {
@@ -530,15 +532,12 @@ async function initializeServer() {
 
       // Serve uploaded user assets dynamically (not pre-scanned at startup).
       // Uses path.resolve + prefix check to prevent path traversal attacks.
-      "/files/*": (req: Request) => {
+      [`/${PUBLIC_FILES_SUBDIR}/*`]: (req: Request) => {
         const url = new URL(req.url);
-        const UPLOADS_DIR = path.resolve(CLIENT_DIRECTORY, "files");
-        const filePath = path.resolve(
-          CLIENT_DIRECTORY,
-          decodeURIComponent(url.pathname).slice(1),
-        );
+        const relativePath = decodeURIComponent(url.pathname).replace(new RegExp(`^\\/${PUBLIC_FILES_SUBDIR}\\/`), "");
+        const filePath = path.resolve(PUBLIC_FILES_DIR, relativePath);
 
-        if (!filePath.startsWith(UPLOADS_DIR + path.sep) && filePath !== UPLOADS_DIR) {
+        if (!filePath.startsWith(PUBLIC_FILES_DIR + path.sep) && filePath !== PUBLIC_FILES_DIR) {
           return new Response("Not Found", { status: 404 });
         }
 

@@ -11,6 +11,7 @@
     "db:reset": "bun ./src/scripts/database/reset-db.ts",
     "db:clear": "bun ./src/scripts/database/clear-db.ts",
     "db:seed-documents": "bun ./src/scripts/database/seed-documents.ts",
+    "db:seed-files": "bun ./src/scripts/database/seed-files.ts",
     "db:seed-navigation": "bun ./src/scripts/database/seed-navigation.ts",
     "db:seed-news": "bun ./src/scripts/database/seed-news.ts",
     "db:seed-content": "bun ./src/scripts/database/seed-content.ts",

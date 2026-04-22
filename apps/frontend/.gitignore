@@ -12,7 +12,7 @@ yarn.lock
 /api/
 /server/build
 /public/build
-/public/files/
+/public/public-files/
 # Sentry Config File
 .env.sentry-build-plugin
 /test-results/
