@@ -104,6 +104,20 @@
     "experiments": "Experiments"
   },
   "Dataset": {},
+  "Person": {
+    "name": "Name",
+    "email": "Email",
+    "orcid": "ORCID",
+    "organization": "Organization",
+    "datasetIds": "Dataset IDs",
+    "researchTitle": "Research title",
+    "periodOfDataUse": "Period of data use"
+  },
+  "Organization": {
+    "name": "Name",
+    "address": "Address",
+    "country": "Country"
+  },
   "Research": {
     "research-id": "Research ID",
     "humId": "Research ID",
@@ -119,13 +133,19 @@
     "organization": "Organiation",
     "researchTitle": "Research title",
     "relatedPublication": "Related publications",
+    "periodOfDataUse": "Period of data use",
     "publicationTitle": "Title",
     "publicationDatasets": "Datasets",
+    "platforms": "Platforms",
     "controlledAccessUser": "Controlled access users",
     "datasetId": "Dataset ID",
     "criteria": "Access type",
     "typeOfData": "Type of data",
-    "details": "Details"
+    "details": "Details",
+    "datePublished": "Date published",
+    "dateModified": "Date modified",
+    "versionReleaseDate": "Version release date",
+    "releaseNote": "Release note"
   },
   "DatasetVersionCard": {
     "releaseInfo": "Release info",
@@ -166,9 +186,9 @@
     "hasPhenotypeData": "Has Phenotype Data",
     "releaseDate": "Release Date",
     "subjectCount": "Subject Count",
-    "readLength": "Read Length",
-    "sequencingDepth": "Sequencing Depth",
-    "targetCoverage": "Target Coverage",
+    "readLength": "Read Length (bp)",
+    "sequencingDepth": "Sequencing Depth (x)",
+    "targetCoverage": "Target Coverage (%)",
     "dataVolumeGb": "Data Volume (GB)",
     "variantSnv": "SNV Count",
     "variantIndel": "Indel Count",
@@ -180,7 +200,13 @@
     "panel-reset-all": "Reset all",
     "panel-reset": "Reset",
     "panel-search": "Search",
-    "datasetFilters": "Dataset filters"
+    "datasetFilters": "Dataset filters",
+    "experiment-overview": "Experiment Overview",
+    "subjects": "Subjects",
+    "platform-method": "Platform & Method",
+    "sequencing-quality": "Sequencing Quality",
+    "data-format": "Data Format",
+    "policy": "Policy"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",

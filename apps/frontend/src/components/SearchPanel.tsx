@@ -40,6 +40,7 @@ export type RangeFacetConfig = {
     type: "range";
     id: K;
     groupKey?: string;
+    uiGroup?: string;
     value: RangeFilter;
   };
 }[RangeKeys<DatasetFilters>];
@@ -49,6 +50,7 @@ export type DateRangeFacetConfig = {
     type: "date-range";
     id: K;
     groupKey?: string;
+    uiGroup?: string;
     value: RangeFilter;
   };
 }[RangeKeys<DatasetFilters>];
@@ -79,6 +81,7 @@ export type CheckboxFacetConfig = {
     type: "checkbox";
     id: K;
     groupKey?: string;
+    uiGroup?: string;
     value: NonNullable<DatasetFilters[K]>;
     options: string[];
   };
@@ -89,6 +92,7 @@ export type TextFacetConfig = {
     type: "text";
     id: K;
     groupKey?: string;
+    uiGroup?: string;
     value: NonNullable<DatasetFilters[K]>;
   };
 }[StringKeys<DatasetFilters>];
@@ -98,6 +102,7 @@ export type BooleanFacetConfig = {
     type: "boolean";
     id: K;
     groupKey?: string;
+    uiGroup?: string;
     value: DatasetFilters[K];
   };
 }[BooleanKeys<DatasetFilters>];
@@ -107,6 +112,7 @@ export type TextListFacetConfig = {
     type: "text-list";
     id: K;
     groupKey?: string;
+    uiGroup?: string;
     value: NonNullable<DatasetFilters[K]>;
   };
 }[StringArrayKeys<DatasetFilters>];
@@ -285,17 +291,10 @@ export function SearchPanel({
   };
 
   const groupedSections = sections.reduce((acc, curr) => {
-    if (isNestedConfig(curr)) {
-      if (!acc[curr.groupKey]) {
-        acc[curr.groupKey] = [];
-      }
-      acc[curr.groupKey].push(curr);
-    } else {
-      if (!acc["top-level"]) {
-        acc["top-level"] = [];
-      }
-      acc["top-level"].push(curr);
-    }
+    const displayKey =
+      "uiGroup" in curr && curr.uiGroup ? curr.uiGroup : "top-level";
+    if (!acc[displayKey]) acc[displayKey] = [];
+    acc[displayKey].push(curr);
     return acc;
   }, {} as GroupedSections);
 

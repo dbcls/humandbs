@@ -12,12 +12,18 @@ export function SearchCaption({
   onQueryChange,
   onFilterClick,
   isPanelOpen,
+  onCopy,
+  onCsv,
+  onExcel,
 }: {
   title: string;
   committedQuery: string;
   onQueryChange: (query: string | undefined) => void;
   onFilterClick: () => void;
   isPanelOpen: boolean;
+  onCopy?: () => void;
+  onCsv?: () => void;
+  onExcel?: () => void;
 }) {
   const t = useTranslations("common");
   const [inputValue, setInputValue] = useState(committedQuery);
@@ -32,11 +38,18 @@ export function SearchCaption({
 
       <div className="flex items-stretch gap-4">
         <div className="flex gap-1">
-          <Button variant={"tableAction"} size={"tableAction"}>
+          <Button variant={"tableAction"} size={"tableAction"} onClick={onCopy}>
             {t("copy")}
           </Button>
-          <Button variant={"tableAction"} size={"tableAction"}>
+          <Button variant={"tableAction"} size={"tableAction"} onClick={onCsv}>
             CSV
+          </Button>
+          <Button
+            variant={"tableAction"}
+            size={"tableAction"}
+            onClick={onExcel}
+          >
+            Excel
           </Button>
         </div>
 

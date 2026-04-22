@@ -31,6 +31,7 @@ import {
   type AssetHierarchyFile,
   type AssetHierarchyItem,
 } from "@/serverFunctions/assets";
+import { $getLocationOrigin } from "@/utils/clientOnly";
 
 function isImageFile(item: Extract<AssetHierarchyItem, { type: "file" }>) {
   if (item.mimeType.startsWith("image/")) return true;
@@ -457,7 +458,9 @@ export function AssetsBrowser({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => copy(selectedItem.url)}
+                      onClick={() =>
+                        copy(`${$getLocationOrigin() ?? ""}${selectedItem.url}`)
+                      }
                     >
                       <CopyIcon className="mr-2 size-4" />
                       Copy URL

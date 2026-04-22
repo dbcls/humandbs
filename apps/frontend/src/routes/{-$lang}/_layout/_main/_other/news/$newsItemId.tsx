@@ -4,6 +4,7 @@ import { Card } from "@/components/Card";
 import { Markdown } from "@/components/Merkdown";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
 import { renderMarkdown } from "@/utils/markdown";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/news/$newsItemId",
@@ -34,13 +35,17 @@ function RouteComponent() {
 
   return (
     <Card className="min-w-0 flex-1">
-      <div className="prose mx-auto prose-a:text-secondary-light prose-a:visited:text-secondary-lighter prose-h1:mt-8 prose-h1:mb-16 prose-h1:font-medium prose-h1:text-secondary">
-        <h1>
-          {title}
-          <p className="text-xs text-foreground-light">{publishedAt}</p>
-        </h1>
-        <Markdown contentHtml={contentHtml} />
-      </div>
+      {/*<p className="text-xs text-foreground-light">{publishedAt}</p>*/}
+
+      <MarkdownWithTOC
+        title={
+          <div className="custom-prose">
+            <h1>{title}</h1>
+            <span className="text-xs text-foreground-light">{publishedAt}</span>
+          </div>
+        }
+        markdownResult={contentHtml}
+      />
     </Card>
   );
 }

@@ -6,10 +6,12 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Save } from "lucide-react";
-import { Suspense, useRef } from "react";
+import { Suspense, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
+import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -46,15 +48,15 @@ interface FormData {
   translation: ContentItem["translations"];
 }
 
-// use custom hook to suport resetting to not default values
 function useContentItemDetailsForm({
   initialValues,
+  setBaselineTranslation,
   id,
 }: {
   initialValues: FormData;
+  setBaselineTranslation: React.Dispatch<React.SetStateAction<FormData["translation"]>>;
   id: string;
 }) {
-  // const [defaultValues, setDefaultValues] = useState(initialValues);
 
   const { mutate: saveDraft } = useSaveDraft(id);
 
@@ -98,21 +100,18 @@ function useContentItemDetailsForm({
             const publishedContent =
               value.translation?.[value.lang]?.published?.content ?? "";
 
-            const resetValue = {
-              ...value,
-              translation: {
-                ...value.translation,
-                [value.lang]: {
-                  ...value.translation[value.lang],
-                  draft: {
-                    title: publishedTitle,
-                    content: publishedContent,
-                  },
+            const newTranslation = {
+              ...value.translation,
+              [value.lang]: {
+                ...value.translation[value.lang],
+                draft: {
+                  title: publishedTitle,
+                  content: publishedContent,
                 },
               },
             };
-            // setDefaultValues(resetValue);
-            formApi.reset(resetValue, { keepDefaultValues: true });
+            setBaselineTranslation(newTranslation);
+            formApi.reset({ ...value, translation: newTranslation });
           } finally {
             isIgnoreRef.current = false;
           }
@@ -134,21 +133,18 @@ function useContentItemDetailsForm({
           try {
             await publishDraft({ lang: value.lang });
 
-            const newValue = {
-              ...value,
-              translation: {
-                ...value.translation,
-                [value.lang]: {
-                  ...value.translation[value.lang],
-                  published: {
-                    title: title ?? "",
-                    content: content ?? "",
-                  },
+            const newTranslation = {
+              ...value.translation,
+              [value.lang]: {
+                ...value.translation[value.lang],
+                published: {
+                  title: title ?? "",
+                  content: content ?? "",
                 },
               },
             };
-
-            formApi.reset(newValue, { keepDefaultValues: true });
+            setBaselineTranslation(newTranslation);
+            formApi.reset({ ...value, translation: newTranslation });
           } finally {
             isIgnoreRef.current = false;
           }
@@ -176,11 +172,16 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
   const { mutate: unpublishDraft, isPending: isUnpublishPending } =
     useUnpublishDraft(id);
 
+  const [baselineTranslation, setBaselineTranslation] = useState(
+    () => data.translations,
+  );
+
   const form = useContentItemDetailsForm({
     initialValues: {
       lang: i18n.defaultLocale,
-      translation: data.translations,
+      translation: baselineTranslation,
     },
+    setBaselineTranslation,
     id,
   });
 
@@ -333,9 +334,20 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                         onChangeDebounceMs: 800,
                       }}
                     >
-                      {(field) => (
-                        <field.ContentAreaField label="Content" assetFolder={id} />
-                      )}
+                      {(field) => {
+                        const isModified = isFieldModified(field);
+                        return (
+                          <field.ContentAreaField
+                            label={
+                              <span className="flex items-center gap-1">
+                                Content
+                                <ModifiedTag isModified={isModified} />
+                              </span>
+                            }
+                            assetFolder={id}
+                          />
+                        );
+                      }}
                     </form.AppField>
                   </Suspense>
                 </>

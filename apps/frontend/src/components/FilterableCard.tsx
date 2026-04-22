@@ -32,7 +32,10 @@ export function FilterableCard({
         isOpen: panelOpen,
       })}
       captionSize={captionSize}
-      containerClassName="relative overflow-hidden flex flex-col flex-1"
+      containerClassName={cn(
+        "relative overflow-x-clip flex flex-col flex-1",
+        panelOpen && "min-h-screen",
+      )}
     >
       <Suspense fallback={<SkeletonLoading />}>
         {renderChildren({ panelOpen })}
@@ -40,7 +43,7 @@ export function FilterableCard({
 
       <div
         className={cn(
-          "absolute inset-y-0 right-0 z-10 min-w-96 overflow-y-auto border-l border-l-primary-translucent bg-white shadow-lg",
+          "absolute top-0 right-0 z-10 min-w-96 max-h-full overflow-y-auto border-l border-l-primary-translucent bg-white shadow-lg",
           "transition-transform duration-300 ease-in-out",
           panelOpen ? "translate-x-0" : "translate-x-full",
         )}

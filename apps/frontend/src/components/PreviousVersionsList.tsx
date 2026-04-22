@@ -26,8 +26,10 @@ export function PreviousVersionsList({
   const lang = useLocale();
 
   return (
-    <div className="prose mx-auto mt-5 w-[65ch] text-base">
-      <h2>{tCommon("previous-versions", { documentName })}</h2>
+    <div>
+      <h2 className="text-md font-bold text-neutral-800">
+        {tCommon("previous-versions", { documentName })}
+      </h2>
       <ul>
         {versions.map((version) => (
           <li className="flex gap-2" key={version.versionNumber}>

@@ -86,7 +86,7 @@ export function ContentList({
     <>
       <AddNewDialog />
 
-      <ul>
+      <ul className="overflow-y-auto">
         {contents.map((content) => {
           const isActive = content.id === selectedContentId;
 

@@ -13,6 +13,8 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { startTransition, useMemo } from "react";
 import { useTranslations } from "use-intl";
 
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
+
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -58,7 +60,40 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const t = useTranslations("Dataset-list");
   const search = Route.useSearch();
+  const { lang } = Route.useRouteContext();
   const { setFilters } = useFilters(Route.id);
+
+  const { data } = useQuery(
+    getDatasetsPaginatedQueryOptions({
+      ...search,
+      lang,
+    }),
+  );
+
+  const exportData = useMemo(() => {
+    type Row = DatasetSearchResponse["data"][number];
+    const columns: { header: string; value: (row: Row) => string }[] = [
+      { header: t("dataset-id"), value: (row) => row.datasetId },
+      { header: t("release-date"), value: (row) => row.releaseDate ?? "" },
+      {
+        header: t("type-of-data"),
+        value: (row) => row.typeOfData?.[lang] ?? "",
+      },
+      {
+        header: t("experiments"),
+        value: (row) =>
+          row.experiments
+            .map((e) => e.header?.[lang]?.text ?? "")
+            .filter(Boolean)
+            .join("; "),
+      },
+      { header: t("criteria"), value: (row) => row.criteria ?? "" },
+    ];
+    return {
+      headers: columns.map((c) => c.header),
+      rows: (data?.data ?? []).map((row) => columns.map((c) => c.value(row))),
+    };
+  }, [data, lang, t]);
 
   return (
     <FilterableCard
@@ -72,6 +107,9 @@ function RouteComponent() {
           }}
           isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
+          onCopy={() => copyTableData(exportData)}
+          onCsv={() => downloadCsv(exportData, "dataset-list")}
+          onExcel={() => downloadExcel(exportData, "dataset-list")}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}

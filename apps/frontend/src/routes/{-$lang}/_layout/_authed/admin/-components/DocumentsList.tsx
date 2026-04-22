@@ -201,7 +201,7 @@ export function DocumentsList({
         </DialogContent>
       </Dialog>
 
-      <ul className="max-h-full overflow-y-auto">
+      <ul className="overflow-y-auto">
         {documents.map((doc) => {
           const isActive = doc.contentId === selectedContentId;
           return (

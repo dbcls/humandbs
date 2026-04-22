@@ -81,7 +81,7 @@ function RootDocument() {
       <head>
         <HeadContent />
       </head>
-      <body className="font-family-sans main-bg text-foreground relative min-h-screen h-fit flex flex-col">
+      <body className="font-family-sans main-bg text-foreground relative min-h-screen flex flex-col">
         <Outlet />
         <TanStackRouterDevtools position="bottom-left" />
         <SessionRefreshHandler session={session} />

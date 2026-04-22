@@ -11,17 +11,21 @@ import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(
   {
     component: RouteComponent,
-  }
+  },
 );
 
 function RouteComponent() {
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
-    null
+    null,
   );
 
   return (
     <>
-      <Card className="w-cms-list-panel flex h-full flex-col" caption="Content">
+      <Card
+        className="w-cms-list-panel flex h-full flex-col"
+        caption="Content"
+        containerClassName="flex-1 flex flex-col"
+      >
         <p className="mb-5 text-sm">"Oprhan pages" list</p>
         <Suspense fallback={<Skeleton />}>
           <ContentList

@@ -1,5 +1,5 @@
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { useFieldContext } from "@/components/form-context/FormContext";
-import { deepEqual, getFieldDefaultValue } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/Input";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -18,9 +18,8 @@ export default function BilingualTextField({
   variant?: "text" | "textarea";
 }) {
   const field = useFieldContext<BilingualText>();
-  const initial = getFieldDefaultValue(field) as BilingualText | undefined;
-  const isEnModified = !deepEqual(field.state.value.en, initial?.en);
-  const isJaModified = !deepEqual(field.state.value.ja, initial?.ja);
+  const isEnModified = isFieldModified(field, "en");
+  const isJaModified = isFieldModified(field, "ja");
 
   return (
     <Label className="flex w-full flex-col items-stretch gap-2">

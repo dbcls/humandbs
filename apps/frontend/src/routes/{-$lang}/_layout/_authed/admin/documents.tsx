@@ -8,7 +8,7 @@ import { DocumentsList } from "./-components/DocumentsList";
 import { DocumentVersion } from "./-components/DocumentVersion";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/documents"
+  "/{-$lang}/_layout/_authed/admin/documents",
 )({
   component: RouteComponent,
 });
@@ -21,7 +21,7 @@ function RouteComponent() {
       <Card
         className="w-cms-list-panel flex h-full flex-col"
         caption="Documents"
-        containerClassName="overflow-auto flex-1 max-h-full"
+        containerClassName="flex-1 flex flex-col"
       >
         <Suspense fallback={<Skeleton />}>
           <DocumentsList

@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
+import { isFieldModified } from "./fields/useFieldModified";
 import { useFieldContext } from "./FormContext";
-import { deepEqual, getFieldDefaultValue } from "./fields/useFieldModified";
 
 export default function TextField({
   label,
@@ -18,7 +18,7 @@ export default function TextField({
   afterField?: React.ReactNode;
 }) {
   const field = useFieldContext<string>();
-  const isModified = !deepEqual(field.state.value, getFieldDefaultValue(field));
+  const isModified = isFieldModified(field);
 
   return (
     <Label

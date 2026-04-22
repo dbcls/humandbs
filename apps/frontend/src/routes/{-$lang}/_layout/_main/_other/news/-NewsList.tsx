@@ -27,7 +27,7 @@ import {
 } from "@/serverFunctions/news";
 import { cn } from "@/lib/utils";
 
-const routeApi = getRouteApi("/{-$lang}/_layout/_main/_other/news");
+const routeApi = getRouteApi("/{-$lang}/_layout/_main/_other/news/");
 
 export function NewsList({
   selectedNewsItemId,
@@ -94,151 +94,91 @@ export function NewsList({
   return (
     <Card
       caption={t("all-news")}
-      className="w-cms-list-panel flex-shrink-0"
+      className="flex-1 h-auto w-full"
+      containerClassName="main-content gap-2 flex flex-col gap-2"
     >
-      <div className="shrink-0">
-        <div className="mb-3 flex flex-col gap-2">
-          <FilterSearchInput
-            value={search.q}
-            onChange={(q) => setFilters({ q })}
-            placeholder="Search by title or content…"
-          />
-          <DateRangePicker
-            value={
-              search.publishedFrom || search.publishedTo
-                ? { from: search.publishedFrom, to: search.publishedTo }
-                : undefined
-            }
-            onSelect={(range) =>
-              setFilters({ publishedFrom: range.from, publishedTo: range.to })
-            }
-            onClear={() =>
-              setFilters({ publishedFrom: undefined, publishedTo: undefined })
-            }
-          />
-          <TagFilter
-            value={search.tagIds ?? []}
-            onChange={(tagIds) =>
-              setFilters({ tagIds: tagIds.length > 0 ? tagIds : undefined })
-            }
-          />
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="slim"
-              className="self-start text-xs text-muted-foreground"
-              onClick={handleClearAll}
-            >
-              <XIcon className="mr-1 size-3" />
-              Clear filters
-            </Button>
-          )}
-        </div>
-      </div>
+      <div className="mb-3 flex flex-col gap-2">
+        <FilterSearchInput
+          value={search.q}
+          onChange={(q) => setFilters({ q })}
+          placeholder="Search by title or content…"
+        />
+        <DateRangePicker
+          value={
+            search.publishedFrom || search.publishedTo
+              ? { from: search.publishedFrom, to: search.publishedTo }
+              : undefined
+          }
+          onSelect={(range) =>
+            setFilters({ publishedFrom: range.from, publishedTo: range.to })
+          }
+          onClear={() =>
+            setFilters({ publishedFrom: undefined, publishedTo: undefined })
+          }
+        />
 
-      <div className="relative">
-        {isPending ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
-          </div>
-        ) : (
-          <ul
-            className={cn(
-              isFetching && !isFetchingNextPage && "opacity-60 transition-opacity",
-            )}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="slim"
+            className="self-start text-xs text-muted-foreground"
+            onClick={handleClearAll}
           >
-            {newsItems.map((item) => {
-              const isActive = item.id === selectedNewsItemId;
-              return (
-                <li key={item.id}>
-                  <Link
-                    to="/{-$lang}/news/$newsItemId"
-                    params={{ lang: item.locale, newsItemId: item.id }}
-                    search={search}
-                    data-active={isActive}
-                    className={cn(
-                      "flex cursor-pointer flex-col gap-0.5 rounded-sm px-3 py-2 text-sm transition-colors",
-                      "data-[active=true]:bg-secondary-light data-[active=true]:text-white",
-                      "data-[active=false]:hover:bg-hover",
-                    )}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="font-mono text-xs opacity-70">
-                        {item.publishedAt ?? "No date"}
-                      </span>
-                      {item.alert && (
-                        <LucideBell className="text-accent inline size-3" />
-                      )}
-                    </div>
-                    <span className="block min-w-0 truncate text-xs">
-                      {item.title}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-            {newsItems.length === 0 && (
-              <li className="text-muted-foreground py-4 text-center text-sm">
-                No news items found
-              </li>
-            )}
-            <div ref={sentinelRef} className="h-4 shrink-0">
-              {isFetchingNextPage && (
-                <span className="text-muted-foreground block py-2 text-center text-xs">
-                  Loading more…
-                </span>
-              )}
-            </div>
-          </ul>
+            <XIcon className="mr-1 size-3" />
+            Clear filters
+          </Button>
         )}
       </div>
-    </Card>
-  );
-}
 
-function TagFilter({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (tagIds: string[]) => void;
-}) {
-  const { data: allTags = [] } = useQuery(getPublicTagsQueryOptions());
-  const anchor = useComboboxAnchor();
+      {isPending ? (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+          <Skeleton className="h-8" />
+        </div>
+      ) : (
+        <ul
+          className={cn("flex-1 overflow-y-auto", {
+            "opacity-60 transition-opacity": isFetching && !isFetchingNextPage,
+          })}
+        >
+          {newsItems.map((item) => {
+            const isActive = item.id === selectedNewsItemId;
+            return (
+              <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2 ">
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs opacity-70">
+                    {item.publishedAt ?? "No date"}
+                  </span>
+                  {item.alert && (
+                    <LucideBell className="text-accent inline size-3" />
+                  )}
+                </div>
 
-  return (
-    <Combobox multiple value={value} onValueChange={onChange}>
-      <ComboboxChips ref={anchor} className="min-h-8 text-sm">
-        {value.map((id) => {
-          const tag = allTags.find((t) => t.id === id);
-          if (!tag) return null;
-          return (
-            <ComboboxChip key={id} color={tag.color}>
-              {tag.name}
-            </ComboboxChip>
-          );
-        })}
-        <ComboboxChipsInput
-          placeholder={value.length === 0 ? "Filter by tag…" : ""}
-        />
-      </ComboboxChips>
-      <ComboboxContent anchor={anchor}>
-        <ComboboxList>
-          {allTags.length === 0 ? (
-            <div className="py-2 text-center text-sm text-muted-foreground">
-              No tags found
-            </div>
-          ) : (
-            allTags.map((tag) => (
-              <ComboboxItem key={tag.id} value={tag.id}>
-                <TagPill color={tag.color}>{tag.name}</TagPill>
-              </ComboboxItem>
-            ))
+                <Link
+                  to="/{-$lang}/news/$newsItemId"
+                  params={{ lang: item.locale, newsItemId: item.id }}
+                  search={search}
+                >
+                  {item.title}
+                </Link>
+              </li>
+            );
+          })}
+          {newsItems.length === 0 && (
+            <li className="text-muted-foreground py-4 text-center text-sm">
+              No news items found
+            </li>
           )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+          <div ref={sentinelRef} className="h-4 shrink-0">
+            {isFetchingNextPage && (
+              <span className="text-muted-foreground block py-2 text-center text-xs">
+                Loading more…
+              </span>
+            )}
+          </div>
+        </ul>
+      )}
+    </Card>
   );
 }

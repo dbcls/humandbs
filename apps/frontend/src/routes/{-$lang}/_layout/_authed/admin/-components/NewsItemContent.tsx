@@ -7,6 +7,7 @@ import { type Locale, useLocale } from "use-intl";
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import {
   Combobox,
@@ -382,20 +383,23 @@ function NewsItemForm({
       </div>
 
       <form.AppField name="tags">
-        {(field) => (
-          <div className="flex items-center gap-2">
-            <Label className="flex flex-col gap-2 items-stretch">
-              <span>Tags</span>
-              <TagPicker
-                allTags={allTags}
-                selectedTagIds={field.state.value}
-                onChange={field.handleChange}
-                onCreateTag={createTag}
-              />
-            </Label>
-            <ModifiedTag isModified={field.state.meta.isDirty} />
-          </div>
-        )}
+        {(field) => {
+          const isModified = isFieldModified(field);
+          return (
+            <div className="flex items-center gap-2">
+              <Label className="flex flex-col gap-2 items-stretch">
+                <span>Tags</span>
+                <TagPicker
+                  allTags={allTags}
+                  selectedTagIds={field.state.value}
+                  onChange={field.handleChange}
+                  onCreateTag={createTag}
+                />
+              </Label>
+              <ModifiedTag isModified={isModified} />
+            </div>
+          );
+        }}
       </form.AppField>
 
       {/* Item-level fields */}
@@ -491,7 +495,7 @@ function NewsItemForm({
             </form.AppField>
             <form.AppField name={`translations.${loc}.content`}>
               {(field) => {
-                const isDirty = field.state.meta.isDirty;
+                const isDirty = isFieldModified(field);
                 return (
                   <Suspense fallback={<div>Loading...</div>}>
                     <field.ContentAreaField

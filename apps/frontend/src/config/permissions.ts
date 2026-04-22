@@ -1,4 +1,4 @@
-import type { Asset, Document, DocumentVersion } from "@/db/schema";
+import type { Document, DocumentVersion } from "@/db/schema";
 import type { Alert, ContentItem, NewsItem } from "@/db/types";
 import type { ResearchDetail } from "@humandbs/backend/types";
 import { type SessionUser } from "@/utils/jwt-helpers";
@@ -41,7 +41,7 @@ export interface Permissions {
     action: "view" | "publish" | "update" | "create" | "delete" | "list";
   };
   assets: {
-    dataType: Asset;
+    dataType: { path: string };
     action: "view" | "list" | "create" | "delete";
   };
   news: {

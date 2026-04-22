@@ -30,7 +30,7 @@ function RouteComponent() {
 
   return (
     // All that after the Navbar component
-    <section className="flex flex-col gap-8 max-w-content-max-width mx-auto">
+    <section className="flex flex-col items-stretch gap-8 main-content">
       <section className="flex h-fit items-start justify-between gap-8">
         <div className="flex flex-1 flex-col items-center  prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16">
           <Outlet />
@@ -62,7 +62,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <Card caption={"News"} className="w-96 shrink-0">
+        <Card caption={"News"} className="w-[30rem] shrink-0">
           <News />
         </Card>
       </section>

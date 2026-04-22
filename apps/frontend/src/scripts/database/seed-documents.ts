@@ -1,15 +1,15 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { copyFile, mkdir, readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
-import { CONTENT_IDS, type ContentId } from "@/config/content-config";
 import { i18n, type Locale } from "@/config/i18n";
 import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { buildDatabaseUrl } from "./utils";
 
 const DOCUMENTS_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -18,186 +18,13 @@ const DOCUMENTS_DIR = path.join(
   "documents",
 );
 
-const PUBLIC_ASSETS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "..",
-  "public",
-  "assets",
-);
-
-const PUBLIC_FILES_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "..",
-  "public",
-  "files",
-);
-
 const SUPPORTED_LOCALES = i18n.locales;
-
-const VALID_DOCUMENT_IDS = new Set(Object.values(CONTENT_IDS).flat());
 
 type DocumentLocaleMap = Map<
   string,
   Map<Locale, { content: string; dir: string }>
 >;
 
-function buildDatabaseUrl(): string {
-  const {
-    HUMANDBS_POSTGRES_USER,
-    HUMANDBS_POSTGRES_PASSWORD,
-    HUMANDBS_POSTGRES_HOST,
-    HUMANDBS_POSTGRES_PORT,
-    HUMANDBS_POSTGRES_DB,
-  } = process.env;
-
-  if (
-    !HUMANDBS_POSTGRES_USER ||
-    !HUMANDBS_POSTGRES_PASSWORD ||
-    !HUMANDBS_POSTGRES_HOST ||
-    !HUMANDBS_POSTGRES_PORT ||
-    !HUMANDBS_POSTGRES_DB
-  ) {
-    throw new Error("Missing required Postgres environment variables.");
-  }
-
-  return `postgres://${HUMANDBS_POSTGRES_USER}:${HUMANDBS_POSTGRES_PASSWORD}@${HUMANDBS_POSTGRES_HOST}:${HUMANDBS_POSTGRES_PORT}/${HUMANDBS_POSTGRES_DB}`;
-}
-
-function extractImageFilenames(content: string): string[] {
-  const results = new Set<string>();
-  const pattern = /!\[[^\]]*]\(([^)]+)\)/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(content)) !== null) {
-    const raw = match[1]?.trim();
-    if (!raw) continue;
-
-    const cleaned = raw.split(/\s+/)[0]?.replace(/^<|>$/g, "");
-    if (
-      !cleaned ||
-      cleaned.startsWith("http://") ||
-      cleaned.startsWith("https://")
-    ) {
-      continue;
-    }
-
-    results.add(path.basename(cleaned));
-  }
-
-  return Array.from(results);
-}
-
-function extractFileFilenames(content: string): string[] {
-  const results = new Set<string>();
-  const pattern = /\[([^\]]*)\]\(([^)]+)\)/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(content)) !== null) {
-    const raw = match[2]?.trim();
-    if (!raw) continue;
-
-    const cleaned = raw.split(/\s+/)[0]?.replace(/^<|>$/g, "");
-    if (
-      !cleaned ||
-      cleaned.startsWith("http://") ||
-      cleaned.startsWith("https://") ||
-      cleaned.startsWith("/") ||
-      cleaned.startsWith("#")
-    ) {
-      continue;
-    }
-
-    const ext = path.extname(cleaned).toLowerCase();
-    const downloadableExts = [
-      ".pdf",
-      ".doc",
-      ".docx",
-      ".xls",
-      ".xlsx",
-      ".ppt",
-      ".pptx",
-      ".zip",
-      ".tar",
-      ".gz",
-      ".rar",
-      ".7z",
-      ".txt",
-      ".csv",
-      ".json",
-      ".xml",
-    ];
-
-    if (downloadableExts.includes(ext)) {
-      results.add(path.basename(cleaned));
-    }
-  }
-
-  return Array.from(results);
-}
-
-function rewriteImageReferences(
-  content: string,
-  availableAssets: Set<string>,
-): string {
-  const pattern = /!\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g;
-
-  return content.replace(pattern, (full, alt, url, rest) => {
-    if (typeof url !== "string") return full;
-    const trimmed = url.trim().replace(/^<|>$/g, "");
-    if (
-      trimmed.startsWith("/") ||
-      trimmed.startsWith("http://") ||
-      trimmed.startsWith("https://")
-    ) {
-      return full;
-    }
-
-    const fileName = path.basename(trimmed);
-    if (!availableAssets.has(fileName)) return full;
-
-    return `![${alt}](/assets/${fileName}${rest ?? ""})`;
-  });
-}
-
-function rewriteFileReferences(
-  content: string,
-  availableAssets: Set<string>,
-): string {
-  const pattern = /\[([^\]]*)\]\(([^)\s]+)([^)]*)\)/g;
-
-  return content.replace(pattern, (full, text, url, rest) => {
-    if (typeof url !== "string") return full;
-    const trimmed = url.trim().replace(/^<|>$/g, "");
-    if (
-      trimmed.startsWith("/") ||
-      trimmed.startsWith("http://") ||
-      trimmed.startsWith("https://") ||
-      trimmed.startsWith("#")
-    ) {
-      return full;
-    }
-
-    // Skip images
-    if (/\.(png|jpe?g|gif|svg|webp)$/i.test(trimmed)) {
-      return full;
-    }
-
-    const fileName = path.basename(trimmed);
-    if (!availableAssets.has(fileName)) return full;
-
-    return `[${text}](/assets/${fileName}${rest ?? ""})`;
-  });
-}
-
-/**
- * Extracts the title from markdown content.
- * First checks for YAML frontmatter title, then falls back to first # heading.
- * Returns both the title and the content with frontmatter/title heading removed.
- */
 function extractTitle(content: string): {
   title: string | null;
   content: string;
@@ -232,38 +59,6 @@ function extractTitle(content: string): {
   }
 
   return { title, content: workingContent };
-}
-
-function getMimeType(fileName: string): string {
-  const ext = path.extname(fileName).toLowerCase();
-  const mimeTypes: Record<string, string> = {
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".svg": "image/svg+xml",
-    ".webp": "image/webp",
-    ".pdf": "application/pdf",
-    ".doc": "application/msword",
-    ".docx":
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ".xls": "application/vnd.ms-excel",
-    ".xlsx":
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ".ppt": "application/vnd.ms-powerpoint",
-    ".pptx":
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ".zip": "application/zip",
-    ".tar": "application/x-tar",
-    ".gz": "application/gzip",
-    ".rar": "application/vnd.rar",
-    ".7z": "application/x-7z-compressed",
-    ".txt": "text/plain",
-    ".csv": "text/csv",
-    ".json": "application/json",
-    ".xml": "application/xml",
-  };
-  return mimeTypes[ext] || "application/octet-stream";
 }
 
 async function ensureSystemUser(
@@ -376,14 +171,7 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const documentId = entry.name as ContentId;
-
-      if (!VALID_DOCUMENT_IDS.has(documentId)) {
-        console.warn(
-          `Skipping document '${documentId}' - not found in CONTENT_IDS configuration`,
-        );
-        continue;
-      }
+      const documentId = entry.name;
 
       const contentPath = path.join(localeDir, documentId, "content.md");
 
@@ -415,131 +203,6 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
   return documents;
 }
 
-async function copyAssets(documents: DocumentLocaleMap): Promise<Set<string>> {
-  const copiedAssets = new Set<string>();
-  let assetsDirReady = false;
-
-  for (const [documentId, localeMap] of documents) {
-    for (const [locale, { content, dir }] of localeMap) {
-      const images = extractImageFilenames(content);
-      const files = extractFileFilenames(content);
-      const allReferencedAssets = [...new Set([...images, ...files])];
-
-      for (const assetName of allReferencedAssets) {
-        if (copiedAssets.has(assetName)) continue;
-
-        const sourcePath = path.join(dir, assetName);
-
-        try {
-          await stat(sourcePath);
-        } catch (error: unknown) {
-          if ((error as { code?: unknown })?.code === "ENOENT") {
-            console.warn(
-              `Asset not found: ${sourcePath} (referenced in ${locale}/${documentId})`,
-            );
-            continue;
-          }
-          throw error;
-        }
-
-        if (!assetsDirReady) {
-          await mkdir(PUBLIC_ASSETS_DIR, { recursive: true });
-          assetsDirReady = true;
-          console.log(`Created assets directory: ${PUBLIC_ASSETS_DIR}`);
-        }
-
-        const destPath = path.join(PUBLIC_ASSETS_DIR, assetName);
-        await copyFile(sourcePath, destPath);
-        copiedAssets.add(assetName);
-        console.log(`Copied asset: ${assetName}`);
-      }
-    }
-  }
-
-  return copiedAssets;
-}
-
-async function seedAssets(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-  copiedAssets: Set<string>,
-  documents: DocumentLocaleMap,
-): Promise<void> {
-  for (const assetName of copiedAssets) {
-    const [existingAsset] = await db
-      .select({ id: schema.asset.id })
-      .from(schema.asset)
-      .where(eq(schema.asset.name, assetName))
-      .limit(1)
-      .execute();
-
-    if (!existingAsset) {
-      let docId = "unknown";
-      outer: for (const [documentId, localeMap] of documents) {
-        for (const [, { content }] of localeMap) {
-          if (content.includes(assetName)) {
-            docId = documentId;
-            break outer;
-          }
-        }
-      }
-
-      await db
-        .insert(schema.asset)
-        .values({
-          name: assetName,
-          url: `/assets/${assetName}`,
-          description: `Seeded asset for ${docId}`,
-          mimeType: getMimeType(assetName),
-        })
-        .execute();
-
-      console.log(`Created asset record: ${assetName}`);
-    }
-  }
-}
-
-/**
- * Copies non-content.md files from each document folder to public/files/<documentId>/.
- * Only copies from the first locale that has the file (files are shared across locales).
- */
-async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<void> {
-  const copiedByDocumentId = new Map<string, Set<string>>();
-
-  for (const [documentId, localeMap] of documents) {
-    for (const [locale, { dir }] of localeMap) {
-      let entries;
-      try {
-        entries = await readdir(dir, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-
-      const filesToCopy = entries.filter(
-        (e) => e.isFile() && e.name !== "content.md",
-      );
-
-      if (filesToCopy.length === 0) continue;
-
-      const destDir = path.join(PUBLIC_FILES_DIR, documentId);
-      await mkdir(destDir, { recursive: true });
-
-      if (!copiedByDocumentId.has(documentId)) {
-        copiedByDocumentId.set(documentId, new Set());
-      }
-      const copied = copiedByDocumentId.get(documentId)!;
-
-      for (const entry of filesToCopy) {
-        if (copied.has(entry.name)) continue;
-        const src = path.join(dir, entry.name);
-        const dest = path.join(destDir, entry.name);
-        await copyFile(src, dest);
-        copied.add(entry.name);
-        console.log(`Copied file: ${locale}/${documentId}/${entry.name} → public/files/${documentId}/${entry.name}`);
-      }
-    }
-  }
-}
-
 const NAV_CONFIG_ID = "global";
 
 async function seedNavigation(
@@ -558,7 +221,9 @@ async function seedNavigation(
     .execute();
 
   if (existing && !overwrite) {
-    console.log("Navigation config already exists, skipping (use --overwrite to replace).");
+    console.log(
+      "Navigation config already exists, skipping (use --overwrite to replace).",
+    );
     return;
   }
 
@@ -598,16 +263,6 @@ async function seedDocuments(overwrite = false) {
       console.log("No documents to seed.");
       return;
     }
-
-    console.log("\nCopying assets...");
-    const copiedAssets = await copyAssets(documents);
-    console.log(`Copied ${copiedAssets.size} asset(s)`);
-
-    console.log("\nCopying document files...");
-    await copyDocumentFiles(documents);
-
-    console.log("\nSeeding asset records...");
-    await seedAssets(db, copiedAssets, documents);
 
     console.log("\nResolving author...");
     const authorId = await resolveAuthorId(db);
@@ -652,23 +307,13 @@ async function seedDocuments(overwrite = false) {
         // Extract title from content
         const { title, content: contentWithoutTitle } = extractTitle(content);
 
-        // Rewrite asset references
-        let processedContent = rewriteImageReferences(
-          contentWithoutTitle,
-          copiedAssets,
-        );
-        processedContent = rewriteFileReferences(
-          processedContent,
-          copiedAssets,
-        );
-
         const values = {
           contentId: documentId,
           versionNumber,
           locale,
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
           title: title ?? documentId,
-          content: processedContent,
+          content: contentWithoutTitle,
           translatedBy: authorId,
         };
 
