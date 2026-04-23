@@ -246,17 +246,24 @@ const columns = [
     cell: (ctx) => {
       return (
         <CollapsiblePreview
-          items={ctx.row.original.datasetIds.map((id) => ({
-            id,
-            content: () => (
-              <Route.Link
-                to="../datasets/$datasetId"
-                params={{ datasetId: id }}
-              >
-                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
-              </Route.Link>
-            ),
-          }))}
+          items={[...ctx.row.original.datasetIds]
+            .sort((a, b) =>
+              a.localeCompare(b, undefined, {
+                sensitivity: "base",
+                numeric: true,
+              }),
+            )
+            .map((id) => ({
+              id,
+              content: () => (
+                <Route.Link
+                  to="../datasets/$datasetId"
+                  params={{ datasetId: id }}
+                >
+                  <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
+                </Route.Link>
+              ),
+            }))}
         />
       );
     },
