@@ -290,20 +290,36 @@ function makePublicationColumns(
     publicationsColumnHelper.accessor("doi", {
       id: "DOI",
       header: "DOI",
-      cell: (info) => (
-        <span className="break-all text-sm">{info.getValue()}</span>
-      ),
+      cell: (info) => {
+        const doi = info.getValue();
+        if (!doi) return null;
+        return (
+          <a
+            href={doi}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all text-sm text-secondary underline"
+          >
+            {doi}
+          </a>
+        );
+      },
     }),
     publicationsColumnHelper.accessor("datasetIds", {
       id: "datasetIDs",
       header: t("publicationDatasets"),
       cell: (info) => (
         <ul>
-          {info.getValue()?.map((datasetId) => (
-            <li key={datasetId}>
-              <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-                {datasetId}
-              </TextWithIcon>
+          {info.getValue()?.map((datasetId, i) => (
+            <li key={`${datasetId}-${i}`}>
+              <Link
+                to="/{-$lang}/data-use/datasets/$datasetId"
+                params={{ datasetId }}
+              >
+                <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+                  {datasetId}
+                </TextWithIcon>
+              </Link>
             </li>
           ))}
         </ul>
