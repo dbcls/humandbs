@@ -463,8 +463,7 @@ function resolveItemLinkOptions(
   if (item.type === "document" && item.contentId) {
     const reg = navigationRegistry.get(item.contentId);
     if (reg) return reg.getLinkOptions(lang);
-    // Unknown document — link to root as safe fallback
-    return { to: "/{-$lang}", params: { lang } };
+    return { to: "/{-$lang}/$", params: { lang, _splat: item.contentId } };
   }
   // Link type — use the url directly
   const url = item.url ?? "/";
