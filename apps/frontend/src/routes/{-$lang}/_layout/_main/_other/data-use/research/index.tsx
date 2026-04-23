@@ -48,7 +48,7 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
-  const t = useTranslations("Research-list");
+  const t = useTranslations("Research");
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
   const { setFilters } = useFilters(Route.id);
@@ -64,22 +64,22 @@ function RouteComponent() {
       { header: t("datasets"), value: (row) => row.datasetIds.join(", ") },
       { header: t("title"), value: (row) => row.title[lang] ?? "" },
       {
-        header: t("date-published"),
+        header: t("datePublished"),
         value: (row) =>
           `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
       },
       {
-        header: t("date-modified"),
+        header: t("dateModified"),
         value: (row) =>
           `${row.versions.at(-1)?.releaseDate ?? ""} (${row.versions.at(-1)?.version ?? ""})`,
       },
       { header: t("methods"), value: (row) => row.methods ?? "" },
-      { header: t("type-of-data"), value: (row) => row.typeOfData.join(", ") },
+      { header: t("typeOfData"), value: (row) => row.typeOfData.join(", ") },
       { header: t("platforms"), value: (row) => row.platforms.join(", ") },
       { header: t("targets"), value: (row) => row.targets },
       { header: t("criteria"), value: (row) => row.criteria },
       {
-        header: t("data-provider"),
+        header: t("dataProvider"),
         value: (row) => row.dataProvider.join(", "),
       },
     ];
@@ -154,6 +154,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       isFetching={isFetching}
       facetCounts={searchResults?.facets}
+      //@ts-ignore TODO fix types
       onSetFilters={setFilters}
       sections={sections}
     />
@@ -355,6 +356,8 @@ const columns = [
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    // @ts-ignore TODO fix types
+    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",

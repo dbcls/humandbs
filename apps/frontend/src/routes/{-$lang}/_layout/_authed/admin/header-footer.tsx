@@ -1484,12 +1484,14 @@ function NavbarPoolDocCard({
     >
       <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
       <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
-      <span className="min-w-0 flex-1 break-words">{getDocumentLabel(doc, lang)}</span>
-      {isAssigned && (
-        <span className="ml-auto shrink-0 rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
-          {groupName ?? "assigned"}
-        </span>
-      )}
+      <div className="min-w-0 flex-1">
+        <span className="break-words">{getDocumentLabel(doc, lang)}</span>
+        {isAssigned && (
+          <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
+            {groupName ?? "assigned"}
+          </span>
+        )}
+      </div>
     </li>
   );
 }
@@ -2862,12 +2864,14 @@ function FooterPoolDocCard({
     >
       <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
       <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
-      <span className="min-w-0 flex-1 break-words">{label}</span>
-      {isAssigned && (
-        <span className="ml-auto shrink-0 rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
-          {groupName ?? "assigned"}
-        </span>
-      )}
+      <div className="min-w-0 flex-1">
+        <span className="break-words">{label}</span>
+        {isAssigned && (
+          <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
+            {groupName ?? "assigned"}
+          </span>
+        )}
+      </div>
     </li>
   );
 }

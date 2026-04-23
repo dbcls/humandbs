@@ -35,7 +35,7 @@ export function DatasetVersionCard({
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const { user } = useRouteContext({ from: "__root__" });
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
-  const t = useTranslations("DatasetVersionCard");
+  const t = useTranslations("Dataset");
 
   console.log("versionData", versionData);
   const infoKeyValues = {
@@ -70,7 +70,7 @@ export function DatasetVersionCard({
                   params={{ datasetId: versionData.datasetId }}
                   className="no-underline text-white"
                 >
-                  {t("releaseInfo")}
+                  {t("release-info")}
                 </Link>
               ) : null
             }
@@ -85,7 +85,7 @@ export function DatasetVersionCard({
                       add(versionData as DatasetDoc);
                     }}
                   >
-                    {isInCart ? t("alreadyInCart") : t("addToCart")}
+                    {isInCart ? t("already-in-cart") : t("add-to-cart")}
                   </Button>
                 </div>
               ) : null
@@ -97,7 +97,6 @@ export function DatasetVersionCard({
       }
     >
       <section>
-        <ContentHeader>{t("info")}</ContentHeader>
         <dl className="columns-2">
           <div className="break-inside-avoid-column">
             <KeyValueCard title={t("releaseDate")}>
@@ -125,7 +124,7 @@ export function DatasetVersionCard({
             <Separator show variant={"solid"} />
           </div>
 
-          <KeyValueCard title={t("criteria")} value={versionData.criteria} />
+          <KeyValueCard title={t("criteria")} value={t(versionData.criteria)} />
         </dl>
         <ContentHeader>{t("experiments")}</ContentHeader>
         {versionData.experiments.map((e, i) => (

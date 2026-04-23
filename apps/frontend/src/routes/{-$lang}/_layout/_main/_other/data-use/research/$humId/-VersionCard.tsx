@@ -4,7 +4,7 @@ import {
 } from "@humandbs/backend/types";
 import { useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { useTranslations } from "use-intl";
+import { useTranslations, useMessages } from "use-intl";
 
 import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
@@ -33,12 +33,14 @@ export function VersionCard({
   lang?: "ja" | "en";
 }) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const tableT = useTranslations();
-  const t = useTranslations("VersionCard");
+  const t = useTranslations("Research");
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
+  const messages = useMessages();
+
   const tableMeta = {
     lang,
-    t: tableT,
+    t,
+    messages,
   };
 
   return (
@@ -88,7 +90,7 @@ export function VersionCard({
         )}
         {versionData?.datasets.length > 0 && (
           <Table
-            columns={makeDatasetColumns(t)}
+            columns={datasetColumns}
             data={versionData.datasets}
             className="mt-4"
             meta={tableMeta}
@@ -143,7 +145,7 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("controlledAccessUser")}</ContentHeader>
         <Table
-          columns={makeDataUsedByColumns(t)}
+          columns={dataUsedByColumns}
           data={versionData?.controlledAccessUser || []}
           meta={tableMeta}
         />
@@ -209,11 +211,12 @@ function DatasetCaption({
 }: DatasetCaptionProps) {
   const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const resolvedLang = lang ?? routeLang;
+  const t = useTranslations("Dataset");
   return (
     <div className="flex justify-between px-3 py-2 from bg-linear-to-r rounded-md text-white from-secondary to-secondary-light">
       <div className="flex items-center gap-5">
         <TextWithIcon icon={FA_ICONS.dataset}> {datasetId} </TextWithIcon>
-        <span className="text-xs">{criteria}</span>
+        <span className="text-xs">{t(criteria)}</span>
         <span className="text-xs">
           {typeOfData[resolvedLang ?? i18n.defaultLocale]}
         </span>
@@ -234,41 +237,37 @@ function DatasetCaption({
 const datasetColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["datasets"][number]>();
 
-function makeDatasetColumns(
-  t: ReturnType<typeof useTranslations<"VersionCard">>,
-) {
-  return [
-    datasetColumnHelper.accessor("datasetId", {
-      id: "datasetId",
-      header: t("datasetId"),
-      cell: (ctx) => (
-        <Link
-          to="/{-$lang}/data-use/datasets/$datasetId"
-          params={{ datasetId: ctx.getValue() }}
-        >
-          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-        </Link>
-      ),
-      maxSize: 12,
-    }),
-    datasetColumnHelper.accessor("criteria", {
-      id: "criteria",
-      header: t("criteria"),
-      cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
-      maxSize: 10,
-    }),
-    datasetColumnHelper.accessor("typeOfData", {
-      id: "typeOfData",
-      header: t("typeOfData"),
-      cell: (ctx) => (
-        <span className="text-sm">
-          {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
-        </span>
-      ),
-      maxSize: 14,
-    }),
-  ];
-}
+const datasetColumns = [
+  datasetColumnHelper.accessor("datasetId", {
+    id: "datasetId",
+    header: (ctx) => ctx.table.options.meta?.t("datasetId"),
+    cell: (ctx) => (
+      <Link
+        to="/{-$lang}/data-use/datasets/$datasetId"
+        params={{ datasetId: ctx.getValue() }}
+      >
+        <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+      </Link>
+    ),
+    maxSize: 12,
+  }),
+  datasetColumnHelper.accessor("criteria", {
+    id: "criteria",
+    header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
+    maxSize: 10,
+  }),
+  datasetColumnHelper.accessor("typeOfData", {
+    id: "typeOfData",
+    header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
+    cell: (ctx) => (
+      <span className="text-sm">
+        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
+      </span>
+    ),
+    maxSize: 14,
+  }),
+];
 
 const publicationsColumnHelper =
   createColumnHelper<
@@ -318,33 +317,28 @@ const dataUsedByColumnsHelper =
     ResearchDetailResponse["data"]["controlledAccessUser"][number]
   >();
 
-function makeDataUsedByColumns(
-  t: ReturnType<typeof useTranslations<"Person">>,
-) {
-  return [
-    dataUsedByColumnsHelper.accessor("name", {
-      id: "name",
-      header: t("name"),
-      cell: (ctx) =>
-        ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
-          ?.text,
-    }),
-    dataUsedByColumnsHelper.accessor("organization.name", {
-      id: "org.name",
-      header: t("organization"),
-      cell: (ctx) =>
-        ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
-          ?.text,
-    }),
-    dataUsedByColumnsHelper.accessor("periodOfDataUse", {
-      id: "periodOfDataUse",
-      header: t("periodOfDataUse"),
-      cell: (ctx) => {
-        const v = ctx.getValue();
-        if (!v) return null;
-        const format = (d: string) => d.replace(/-/g, "/");
-        return `${format(v.startDate || "")} - ${format(v.endDate || "")}`;
-      },
-    }),
-  ];
-}
+const dataUsedByColumns = [
+  dataUsedByColumnsHelper.accessor("name", {
+    id: "name",
+    header: (ctx) => ctx.table.options.meta?.messages?.Person.name,
+    cell: (ctx) =>
+      ctx.getValue()[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text,
+  }),
+  dataUsedByColumnsHelper.accessor("organization.name", {
+    id: "org.name",
+    header: (ctx) => ctx.table.options.meta?.t("organization"),
+    cell: (ctx) =>
+      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]
+        ?.text,
+  }),
+  dataUsedByColumnsHelper.accessor("periodOfDataUse", {
+    id: "periodOfDataUse",
+    header: (ctx) => ctx.table.options.meta?.t("periodOfDataUse"),
+    cell: (ctx) => {
+      const v = ctx.getValue();
+      if (!v) return null;
+      const format = (d: string) => d.replace(/-/g, "/");
+      return `${format(v.startDate || "")} - ${format(v.endDate || "")}`;
+    },
+  }),
+];
