@@ -114,7 +114,7 @@ function RouteComponent() {
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-      renderChildren={({ panelOpen }) => <CardContent panelOpen={panelOpen} />}
+      renderChildren={({ panelOpen }) => <CardContent />}
     ></FilterableCard>
   );
 }
