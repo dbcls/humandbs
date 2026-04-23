@@ -92,7 +92,7 @@ export function VersionCard({
           <Table
             columns={datasetColumns}
             data={versionData.datasets}
-            className="mt-4"
+            className="mt-4 [&_td]:text-sm"
             meta={tableMeta}
             variant="darker"
           />
@@ -154,86 +154,6 @@ export function VersionCard({
   );
 }
 
-function DatasetInfo({
-  dataset,
-  lang,
-}: {
-  dataset: DatasetDoc;
-  lang: "ja" | "en" | undefined;
-}) {
-  return (
-    <CardWithCaption
-      caption={
-        <DatasetCaption
-          datasetId={dataset.datasetId}
-          criteria={dataset.criteria}
-          typeOfData={dataset.typeOfData}
-          lang={lang}
-        />
-      }
-      className="border-foreground-light border"
-    >
-      <Accordion type="multiple">
-        {dataset.experiments.map((ex, i) => (
-          <AccordionItem
-            key={i}
-            className="border-b-foreground-light border-dashed py-2"
-            value={`item-${dataset.datasetId}-${i}`}
-          >
-            <AccordionTrigger className="flex items-center">
-              <h3 className="text-secondary text-sm font-bold">
-                {extractStringFromPossiblyMultilingualValue(
-                  ex.data?.["Experimental Method"],
-                  lang,
-                )}
-              </h3>
-            </AccordionTrigger>
-            <AccordionContent className="pt-5">
-              <ListOfKeyValues keyValues={ex.data} />
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </CardWithCaption>
-  );
-}
-
-type DatasetCaptionProps = Pick<
-  DatasetDoc,
-  "datasetId" | "criteria" | "typeOfData"
-> & { lang: "ja" | "en" | undefined };
-
-function DatasetCaption({
-  datasetId,
-  criteria,
-  typeOfData,
-  lang,
-}: DatasetCaptionProps) {
-  const { lang: routeLang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const resolvedLang = lang ?? routeLang;
-  const t = useTranslations("Dataset");
-  return (
-    <div className="flex justify-between px-3 py-2 from bg-linear-to-r rounded-md text-white from-secondary to-secondary-light">
-      <div className="flex items-center gap-5">
-        <TextWithIcon icon={FA_ICONS.dataset}> {datasetId} </TextWithIcon>
-        <span className="text-xs">{t(criteria)}</span>
-        <span className="text-xs">
-          {typeOfData[resolvedLang ?? i18n.defaultLocale]}
-        </span>
-      </div>
-
-      <Link
-        to={"/{-$lang}/data-use/datasets/$datasetId"}
-        params={{ datasetId }}
-        className="link-button"
-      >
-        <span>Details</span>
-        <ArrowIcon className="block" />
-      </Link>
-    </div>
-  );
-}
-
 const datasetColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["datasets"][number]>();
 
@@ -254,17 +174,16 @@ const datasetColumns = [
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => <span className="text-sm">{ctx.getValue()}</span>,
+    //@ts-ignore TODO fix types
+    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()), //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
   }),
   datasetColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
-    cell: (ctx) => (
-      <span className="text-sm">
-        {ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]}
-      </span>
-    ),
+    cell: (ctx) =>
+      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale],
+
     maxSize: 14,
   }),
 ];
@@ -290,36 +209,22 @@ function makePublicationColumns(
     publicationsColumnHelper.accessor("doi", {
       id: "DOI",
       header: "DOI",
-      cell: (info) => {
-        const doi = info.getValue();
-        if (!doi) return null;
-        return (
-          <a
-            href={doi}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="break-all text-sm text-secondary underline"
-          >
-            {doi}
-          </a>
-        );
-      },
+      cell: (info) => (
+        <a href={info.getValue() ?? undefined} className="break-all text-sm">
+          {info.renderValue()}
+        </a>
+      ),
     }),
     publicationsColumnHelper.accessor("datasetIds", {
       id: "datasetIDs",
       header: t("publicationDatasets"),
       cell: (info) => (
         <ul>
-          {info.getValue()?.map((datasetId, i) => (
-            <li key={`${datasetId}-${i}`}>
-              <Link
-                to="/{-$lang}/data-use/datasets/$datasetId"
-                params={{ datasetId }}
-              >
-                <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-                  {datasetId}
-                </TextWithIcon>
-              </Link>
+          {info.getValue()?.map((datasetId) => (
+            <li key={datasetId}>
+              <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+                {datasetId}
+              </TextWithIcon>
             </li>
           ))}
         </ul>
@@ -353,8 +258,8 @@ const dataUsedByColumns = [
     cell: (ctx) => {
       const v = ctx.getValue();
       if (!v) return null;
-      const format = (d: string) => d.replace(/-/g, "/");
-      return `${format(v.startDate || "")} - ${format(v.endDate || "")}`;
+
+      return `${v.startDate} — ${v.endDate || ""}`;
     },
   }),
 ];

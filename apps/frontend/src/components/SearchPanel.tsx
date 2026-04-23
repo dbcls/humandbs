@@ -299,7 +299,7 @@ export function SearchPanel({
   }, {} as GroupedSections);
 
   return (
-    <div className="flex min-h-full w-filter-panel min-w-filter-panel max-w-filter-panel flex-col overflow-x-hidden">
+    <div className="flex h-full w-filter-panel min-w-filter-panel max-w-filter-panel flex-col overflow-x-hidden">
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onResetAll={handleResetAll}

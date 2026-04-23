@@ -4,6 +4,11 @@ import { Card } from "@/components/Card";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { cn } from "@/lib/utils";
 
+/**
+ * Card wrapper component with filter panel.
+ * Used by /researches and by /datasets.
+ *
+ */
 export function FilterableCard({
   caption,
   captionSize,
@@ -32,20 +37,26 @@ export function FilterableCard({
         isOpen: panelOpen,
       })}
       captionSize={captionSize}
-      containerClassName={cn(
-        "relative overflow-x-clip flex flex-col flex-1",
-        panelOpen && "min-h-screen",
-      )}
+      containerClassName={"relative overflow-hidden flex-1 min-h-[50vh]"}
     >
       <Suspense fallback={<SkeletonLoading />}>
-        {renderChildren({ panelOpen })}
+        <div
+          className={cn("min-h-[inherit] flex flex-col", {
+            "pr-filter-panel": panelOpen,
+          })}
+        >
+          {renderChildren({ panelOpen })}
+        </div>
       </Suspense>
 
+      {/*Filters side panel */}
       <div
         className={cn(
-          "absolute top-0 right-0 z-10 min-w-96 max-h-full overflow-y-auto border-l border-l-primary-translucent bg-white shadow-lg",
+          "absolute top-0 right-0 w-filter-panel h-full border-l border-l-primary-translucent z-50 bg-white overflow-y-auto shadow-lg",
           "transition-transform duration-300 ease-in-out",
-          panelOpen ? "translate-x-0" : "translate-x-full",
+          {
+            "translate-x-full shadow-none": !panelOpen,
+          },
         )}
       >
         {panelOpen ? (

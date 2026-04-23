@@ -1482,15 +1482,20 @@ function NavbarPoolDocCard({
       ].join(" ")}
       title={isAssigned ? `Assigned to: ${groupName ?? "navbar"}` : undefined}
     >
-      <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
-      <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
-      <div className="min-w-0 flex-1">
-        <span className="break-words">{getDocumentLabel(doc, lang)}</span>
-        {isAssigned && (
-          <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
-            {groupName ?? "assigned"}
-          </span>
-        )}
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-2xs text-gray-400 font-mono leading-none">{doc.contentId}</span>
+        <div className="flex items-start gap-1.5">
+          <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
+          <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
+          <div className="min-w-0 flex-1">
+            <span className="break-words">{getDocumentLabel(doc, lang)}</span>
+            {isAssigned && (
+              <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-2xs text-gray-500">
+                {groupName ?? "assigned"}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </li>
   );
@@ -1754,7 +1759,7 @@ function NavbarGroupColumn({
           isLinkedDropTarget ? "border-blue-400 bg-blue-50" : "",
         ].join(" ")}
       >
-        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">
+        <p className="mb-1 text-2xs font-semibold uppercase text-gray-400">
           Linked item
         </p>
         {g.linkedItem ? (
@@ -1814,7 +1819,7 @@ function NavbarGroupColumn({
       </div>
 
       <div className="border-t border-gray-100 px-2 py-2">
-        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">
+        <p className="mb-1 text-2xs font-semibold uppercase text-gray-400">
           Sub-groups
         </p>
         <ul
@@ -1926,21 +1931,26 @@ function NavbarLinkedItemRow({
         isDragSource ? "opacity-40" : "",
       ].join(" ")}
     >
-      <button
-        type="button"
-        ref={handleRef as Ref<HTMLButtonElement>}
-        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-      >
-        <GripVertical className="size-3 shrink-0" />
-      </button>
-      <NavigationItemLeadingIcon item={item} />
-      <EditableLinkLabel
-        item={item}
-        lang={lang}
-        documentTitleByContentId={documentTitleByContentId}
-        className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
-        onSave={onSave}
-      />
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-2xs text-gray-400 font-mono leading-none">{item.contentId ?? item.url}</span>
+        <div className="flex items-start gap-1">
+          <button
+            type="button"
+            ref={handleRef as Ref<HTMLButtonElement>}
+            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          >
+            <GripVertical className="size-3 shrink-0" />
+          </button>
+          <NavigationItemLeadingIcon item={item} />
+          <EditableLinkLabel
+            item={item}
+            lang={lang}
+            documentTitleByContentId={documentTitleByContentId}
+            className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
+            onSave={onSave}
+          />
+        </div>
+      </div>
       <button
         type="button"
         onClick={onRemove}
@@ -1992,21 +2002,26 @@ function NavbarSubItemRow({
         !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
-      <button
-        type="button"
-        ref={handleRef as Ref<HTMLButtonElement>}
-        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-      >
-        <GripVertical className="size-3 shrink-0" />
-      </button>
-      <NavigationItemLeadingIcon item={item} />
-      <EditableLinkLabel
-        item={item}
-        lang={lang}
-        documentTitleByContentId={documentTitleByContentId}
-        className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
-        onSave={onSave}
-      />
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-2xs text-gray-400 font-mono leading-none">{item.contentId ?? item.url}</span>
+        <div className="flex items-start gap-1">
+          <button
+            type="button"
+            ref={handleRef as Ref<HTMLButtonElement>}
+            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          >
+            <GripVertical className="size-3 shrink-0" />
+          </button>
+          <NavigationItemLeadingIcon item={item} />
+          <EditableLinkLabel
+            item={item}
+            lang={lang}
+            documentTitleByContentId={documentTitleByContentId}
+            className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
+            onSave={onSave}
+          />
+        </div>
+      </div>
       <Switch
         checked={enabled}
         onCheckedChange={onToggleEnabled}
@@ -2148,7 +2163,7 @@ function NavbarGroupOverlay({
         )}
       </ul>
       <div className="border-t border-gray-100 px-2 py-2">
-        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Sub-groups</p>
+        <p className="mb-1 text-2xs font-semibold uppercase text-gray-400">Sub-groups</p>
         <ul className="flex flex-col gap-1">
         {g.subItems.map(({ item, enabled }) => (
           <li key={item.id} className="flex items-start gap-1 rounded px-1 py-1">
@@ -2156,7 +2171,7 @@ function NavbarGroupOverlay({
             <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
               {getEditorItemLabel(item, lang, documentTitleByContentId)}
             </span>
-            {!enabled ? <span className="text-[10px] text-gray-400">off</span> : null}
+            {!enabled ? <span className="text-2xs text-gray-400">off</span> : null}
           </li>
         ))}
         {g.subItems.length === 0 && (
@@ -2179,10 +2194,15 @@ function NavbarItemOverlay({
 }) {
   return (
     <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
-      <NavigationItemLeadingIcon item={item} />
-      <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
-        {getEditorItemLabel(item, lang, documentTitleByContentId)}
-      </span>
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-2xs text-gray-400 font-mono leading-none">{item.contentId ?? item.url}</span>
+        <div className="flex items-start gap-1">
+          <NavigationItemLeadingIcon item={item} />
+          <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
+            {getEditorItemLabel(item, lang, documentTitleByContentId)}
+          </span>
+        </div>
+      </div>
     </li>
   );
 }
@@ -2862,15 +2882,20 @@ function FooterPoolDocCard({
       ].join(" ")}
       title={isAssigned ? `Assigned to: ${groupName ?? "a group"}` : undefined}
     >
-      <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
-      <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
-      <div className="min-w-0 flex-1">
-        <span className="break-words">{label}</span>
-        {isAssigned && (
-          <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-[10px] text-gray-500">
-            {groupName ?? "assigned"}
-          </span>
-        )}
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-2xs text-gray-400 font-mono leading-none">{doc.contentId}</span>
+        <div className="flex items-start gap-1.5">
+          <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
+          <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
+          <div className="min-w-0 flex-1">
+            <span className="break-words">{label}</span>
+            {isAssigned && (
+              <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-2xs text-gray-500">
+                {groupName ?? "assigned"}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </li>
   );
@@ -3313,21 +3338,26 @@ function FooterItemRow({
         !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
-      <button
-        type="button"
-        ref={handleRef as Ref<HTMLButtonElement>}
-        className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
-      >
-        <GripVertical className="size-3 shrink-0" />
-      </button>
-      <NavigationItemLeadingIcon item={item} />
-      <EditableLinkLabel
-        item={item}
-        lang={lang}
-        documentTitleByContentId={documentTitleByContentId}
-        className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
-        onSave={(value) => onUpdateLinkLabel(item.id, value)}
-      />
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-2xs text-gray-400 font-mono leading-none">{item.contentId ?? item.url}</span>
+        <div className="flex items-start gap-1">
+          <button
+            type="button"
+            ref={handleRef as Ref<HTMLButtonElement>}
+            className="cursor-grab touch-none text-gray-400 hover:text-gray-600"
+          >
+            <GripVertical className="size-3 shrink-0" />
+          </button>
+          <NavigationItemLeadingIcon item={item} />
+          <EditableLinkLabel
+            item={item}
+            lang={lang}
+            documentTitleByContentId={documentTitleByContentId}
+            className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
+            onSave={(value) => onUpdateLinkLabel(item.id, value)}
+          />
+        </div>
+      </div>
       <Switch
         checked={enabled}
         onCheckedChange={(checked) => onToggleEnabled(item.id, checked)}
@@ -3384,7 +3414,7 @@ function FooterGroupOverlay({
               {getEditorItemLabel(item, lang, documentTitleByContentId)}
             </span>
             {!enabled ? (
-              <span className="text-[10px] text-gray-400">off</span>
+              <span className="text-2xs text-gray-400">off</span>
             ) : null}
           </li>
         ))}

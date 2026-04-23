@@ -8,9 +8,10 @@ import {
   createColumnHelper,
   functionalUpdate,
   type SortingState,
+  type Updater,
 } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { startTransition, useMemo } from "react";
+import { startTransition, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
 
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
@@ -158,7 +159,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CardContent({ panelOpen }: { panelOpen: boolean }) {
+function CardContent() {
   const search = Route.useSearch();
 
   const { lang } = Route.useRouteContext();
@@ -171,36 +172,44 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
 
   const { filters, setFilters } = useFilters(Route.id);
 
-  const sortingState: SortingState = [
-    { id: filters.sort ?? "datasetId", desc: filters.order === "desc" },
-  ];
-
   const t = useTranslations("Dataset");
+
+  const sorting = useMemo((): SortingState => {
+    if (!filters.sort) return [];
+    return [{ id: filters.sort, desc: filters.order === "desc" }];
+  }, [filters.sort, filters.order]);
+
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const sortingState: SortingState = [
+        { id: filters.sort ?? "datasetId", desc: filters.order === "desc" },
+      ];
+
+      const newState = functionalUpdate(updater, sortingState);
+
+      startTransition(() => {
+        setFilters({
+          sort: newState[0]?.id,
+          order: newState[0]?.desc ? "desc" : "asc",
+        });
+      });
+    },
+    [setFilters, filters],
+  );
 
   return (
     <>
-      <div className="overflow-x-auto min-h-">
+      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
-          className={cn("mt-4 text-sm transition-[margin]", {
-            "mr-filter-panel": panelOpen,
-          })}
-          onSortingChange={(updater) => {
-            const newState = functionalUpdate(updater, sortingState);
-
-            startTransition(() => {
-              setFilters({
-                sort: newState[0]?.id,
-                order: newState[0]?.desc ? "desc" : "asc",
-              });
-            });
-          }}
-          sorting={sortingState}
+          className={cn("mt-4 w-max text-sm min-h-full flex-1")}
+          onSortingChange={handleSortingChange}
+          sorting={sorting}
           meta={{ t, lang }}
           columns={datasetsColumns}
           data={data.data}
         />
       </div>
-      <Pagination pagination={data.meta.pagination} />
+      <Pagination className="pr-5" pagination={data.meta.pagination} />
     </>
   );
 }

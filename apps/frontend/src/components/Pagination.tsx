@@ -79,11 +79,13 @@ export const getVisiblePages = (currentPage: number, totalPages: number) => {
 interface PaginationProps {
   pagination: APIPagination;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
+  className?: string;
 }
 
 export function Pagination({
   pagination,
   onItemsPerPageChange,
+  className,
 }: PaginationProps) {
   const navigate = useNavigate();
   const t = useTranslations("Pagination");
@@ -104,7 +106,12 @@ export function Pagination({
   };
 
   return (
-    <div className="mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row">
+    <div
+      className={cn(
+        "mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row",
+        className,
+      )}
+    >
       <PaginationBase>
         <PaginationContent>
           <PaginationItem>
@@ -163,7 +170,9 @@ export function Pagination({
       </PaginationBase>
 
       <div className="flex items-center gap-2 whitespace-nowrap">
-        <span className="text-muted-foreground text-sm">{t("itemsPerPage")}:</span>
+        <span className="text-muted-foreground text-sm">
+          {t("itemsPerPage")}:
+        </span>
         <Select
           value={pagination.limit.toString()}
           onValueChange={handleItemsPerPageChange}

@@ -154,8 +154,7 @@
     "datePublished": "Date published",
     "dateModified": "Date modified",
     "versionReleaseDate": "Version release date",
-    "releaseNote": "Release note",
-    "totalResults": "{count} results"
+    "releaseNote": "Release note"
   },
   "DatasetVersionCard": {
     "releaseInfo": "Release info",

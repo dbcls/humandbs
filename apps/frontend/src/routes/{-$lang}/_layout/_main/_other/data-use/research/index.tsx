@@ -109,7 +109,7 @@ function RouteComponent() {
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-      renderChildren={({ panelOpen }) => <CardContent panelOpen={panelOpen} />}
+      renderChildren={() => <CardContent />}
     ></FilterableCard>
   );
 }
@@ -161,7 +161,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CardContent({ panelOpen }: { panelOpen: boolean }) {
+function CardContent() {
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
@@ -171,7 +171,7 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
     getResearchesQueryOptions({ ...search, lang }),
   );
 
-  const sorting = useMemo(() => {
+  const sorting = useMemo((): SortingState => {
     if (!search.sort) return [];
     return [{ id: search.sort, desc: search.order === "desc" }];
   }, [search.sort, search.order]);
@@ -197,17 +197,9 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
 
   return (
     <>
-      <div className="overflow-x-auto flex flex-col flex-1 relative">
-        <p className="text-sm text-muted-foreground">
-          {t("totalResults", { count: researchesData.meta.pagination.total })}
-        </p>
+      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
-          className={cn(
-            "mt-2 text-sm flex-1 transition-[margin] z-10 relative",
-            {
-              "mr-filter-panel": panelOpen,
-            },
-          )}
+          className={cn("mt-4 w-max text-sm min-h-full flex-1")}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}
@@ -215,8 +207,10 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
           meta={{ t, lang }}
         />
       </div>
-
-      <Pagination pagination={researchesData.meta.pagination} />
+      <Pagination
+        className="pr-5"
+        pagination={researchesData.meta.pagination}
+      />
     </>
   );
 }
@@ -246,24 +240,17 @@ const columns = [
     cell: (ctx) => {
       return (
         <CollapsiblePreview
-          items={[...ctx.row.original.datasetIds]
-            .sort((a, b) =>
-              a.localeCompare(b, undefined, {
-                sensitivity: "base",
-                numeric: true,
-              }),
-            )
-            .map((id) => ({
-              id,
-              content: () => (
-                <Route.Link
-                  to="../datasets/$datasetId"
-                  params={{ datasetId: id }}
-                >
-                  <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
-                </Route.Link>
-              ),
-            }))}
+          items={ctx.row.original.datasetIds.map((id) => ({
+            id,
+            content: () => (
+              <Route.Link
+                to="../datasets/$datasetId"
+                params={{ datasetId: id }}
+              >
+                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
+              </Route.Link>
+            ),
+          }))}
         />
       );
     },
