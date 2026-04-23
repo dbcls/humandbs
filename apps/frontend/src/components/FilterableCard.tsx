@@ -13,7 +13,7 @@ export function FilterableCard({
   caption,
   captionSize,
   className,
-  renderChildren,
+  children,
   renderPanel,
 }: {
   caption: (props: {
@@ -22,7 +22,7 @@ export function FilterableCard({
   }) => React.ReactNode;
   captionSize?: "lg";
   className?: string;
-  renderChildren: (props: { panelOpen: boolean }) => React.ReactNode;
+  children?: React.ReactNode;
   renderPanel: (props: { onClose: () => void }) => React.ReactNode;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
@@ -45,7 +45,7 @@ export function FilterableCard({
             "pr-filter-panel": panelOpen,
           })}
         >
-          {renderChildren({ panelOpen })}
+          {children}
         </div>
       </Suspense>
 

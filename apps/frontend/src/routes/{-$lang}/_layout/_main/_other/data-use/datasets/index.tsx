@@ -114,8 +114,9 @@ function RouteComponent() {
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-      renderChildren={({ panelOpen }) => <CardContent />}
-    ></FilterableCard>
+    >
+      <CardContent />
+    </FilterableCard>
   );
 }
 
@@ -173,6 +174,7 @@ function CardContent() {
   const { filters, setFilters } = useFilters(Route.id);
 
   const t = useTranslations("Dataset");
+  const tCommon = useTranslations("common");
 
   const sorting = useMemo((): SortingState => {
     if (!filters.sort) return [];
@@ -199,6 +201,9 @@ function CardContent() {
 
   return (
     <>
+      <p className="text-sm text-muted-foreground">
+        {tCommon("total-results", { count: data.meta.pagination.total })}
+      </p>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
           className={cn("mt-4 w-max min-w-full text-sm min-h-full flex-1")}

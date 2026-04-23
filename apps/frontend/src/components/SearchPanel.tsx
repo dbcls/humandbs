@@ -286,7 +286,7 @@ export function SearchPanel({
   }, {} as GroupedSections);
 
   return (
-    <div className="flex h-full flex-col overflow-x-hidden">
+    <div className="flex h-full flex-col">
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onReset={handleResetAll}
@@ -295,61 +295,56 @@ export function SearchPanel({
         onClose={onClose}
       />
 
-      {Object.entries(groupedSections).map(([key, val]) => {
-        if (key === "top-level") {
-          return (
-            <Accordion
-              className="px-3 pb-2"
-              type="multiple"
-              key={key}
-              defaultValue={val
-                .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-                .map((s) => s.id)}
-            >
-              {val.map((v, i) => (
-                <AccordionFilterItem
-                  key={`${v.groupKey}-${i}`}
-                  section={v}
-                  facetCounts={facetCounts}
-                  updateDraftField={updateDraftField}
-                  isFetching={isFetching}
-                  draft={draft}
-                />
-              ))}
-            </Accordion>
-          );
-        } else {
-          return (
-            <Accordion
-              className="px-3 pb-2 mt-6"
-              type="multiple"
-              key={key}
-              defaultValue={val
-                .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-                .map((s) => s.id)}
-            >
-              <p className="text-sm font-medium py-3">{t(key)}</p>
-              {val.map((v) => (
-                <AccordionFilterItem
-                  key={v.id}
-                  section={v}
-                  facetCounts={facetCounts}
-                  updateDraftField={updateDraftField}
-                  isFetching={isFetching}
-                  draft={draft}
-                />
-              ))}
-            </Accordion>
-          );
-        }
-      })}
-      <Accordion
-        className="px-3 pb-2"
-        type="multiple"
-        defaultValue={sections
-          .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-          .map((s) => s.id)}
-      ></Accordion>
+      <div className="flex-1 overflow-y-auto">
+        {Object.entries(groupedSections).map(([key, val]) => {
+          if (key === "top-level") {
+            return (
+              <Accordion
+                className="px-3 pb-2"
+                type="multiple"
+                key={key}
+                defaultValue={val
+                  .filter((s) => normalizeValue(draft[s.id]) !== undefined)
+                  .map((s) => s.id)}
+              >
+                {val.map((v, i) => (
+                  <AccordionFilterItem
+                    key={`${v.groupKey}-${i}`}
+                    section={v}
+                    facetCounts={facetCounts}
+                    updateDraftField={updateDraftField}
+                    isFetching={isFetching}
+                    draft={draft}
+                  />
+                ))}
+              </Accordion>
+            );
+          } else {
+            return (
+              <Accordion
+                className="px-3 pb-2 mt-6"
+                type="multiple"
+                key={key}
+                defaultValue={val
+                  .filter((s) => normalizeValue(draft[s.id]) !== undefined)
+                  .map((s) => s.id)}
+              >
+                <p className="text-sm font-medium py-3">{t(key)}</p>
+                {val.map((v) => (
+                  <AccordionFilterItem
+                    key={v.id}
+                    section={v}
+                    facetCounts={facetCounts}
+                    updateDraftField={updateDraftField}
+                    isFetching={isFetching}
+                    draft={draft}
+                  />
+                ))}
+              </Accordion>
+            );
+          }
+        })}
+      </div>
     </div>
   );
 }

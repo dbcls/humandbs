@@ -109,8 +109,9 @@ function RouteComponent() {
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
-      renderChildren={() => <CardContent />}
-    ></FilterableCard>
+    >
+      <CardContent />
+    </FilterableCard>
   );
 }
 
@@ -166,6 +167,7 @@ function CardContent() {
   const { lang } = Route.useRouteContext();
 
   const t = useTranslations("Research");
+  const tCommon = useTranslations("common");
 
   const { data: researchesData } = useSuspenseQuery(
     getResearchesQueryOptions({ ...search, lang }),
@@ -197,9 +199,14 @@ function CardContent() {
 
   return (
     <>
+      <p className="text-sm text-muted-foreground">
+        {tCommon("total-results", {
+          count: researchesData.meta.pagination.total,
+        })}
+      </p>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
-          className={cn("mt-4 w-max text-sm min-h-full flex-1")}
+          className={cn("mt-4 w-max min-w-full text-sm min-h-full flex-1")}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}

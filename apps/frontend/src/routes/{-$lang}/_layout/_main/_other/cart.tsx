@@ -39,7 +39,7 @@ const cartDatasetColumns = [
 
 function RouteComponent() {
   const { cart } = useCart();
-  const t = useTranslations("Dataset-list");
+  const t = useTranslations("Dataset");
   const locale = useLocale();
 
   function handleSubmit() {
@@ -60,14 +60,16 @@ function RouteComponent() {
         <p className="text-center text-gray-400">Cart is empty</p>
       ) : (
         <>
-        <Button
-          className="ml-auto mb-4"
-          onClick={handleSubmit}
-        >
-          Copy Cart Contents
-        </Button>
-        <Table columns={cartDatasetColumns} data={cart} meta={{ t }} />
-      </>)}
+          <Button className="ml-auto mb-4" onClick={handleSubmit}>
+            Copy Cart Contents
+          </Button>
+          <Table
+            columns={cartDatasetColumns}
+            data={cart}
+            meta={{ t, lang: locale }}
+          />
+        </>
+      )}
     </CardWithCaption>
   );
 }
