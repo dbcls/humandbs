@@ -58,7 +58,7 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
-  const t = useTranslations("Dataset-list");
+  const t = useTranslations("Dataset");
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
   const { setFilters } = useFilters(Route.id);
@@ -73,10 +73,10 @@ function RouteComponent() {
   const exportData = useMemo(() => {
     type Row = DatasetSearchResponse["data"][number];
     const columns: { header: string; value: (row: Row) => string }[] = [
-      { header: t("dataset-id"), value: (row) => row.datasetId },
-      { header: t("release-date"), value: (row) => row.releaseDate ?? "" },
+      { header: t("datasetId"), value: (row) => row.datasetId },
+      { header: t("releaseDate"), value: (row) => row.releaseDate ?? "" },
       {
-        header: t("type-of-data"),
+        header: t("typeOfData"),
         value: (row) => row.typeOfData?.[lang] ?? "",
       },
       {
@@ -175,7 +175,7 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
     { id: filters.sort ?? "datasetId", desc: filters.order === "desc" },
   ];
 
-  const t = useTranslations("Dataset-list");
+  const t = useTranslations("Dataset");
 
   return (
     <>
@@ -212,7 +212,7 @@ export const datasetsColumns = [
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("dataset-id")} />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
     ),
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
@@ -229,14 +229,14 @@ export const datasetsColumns = [
     header: (ctx) => (
       <SortHeader
         ctx={ctx}
-        label={ctx.table.options.meta?.t?.("release-date")}
+        label={ctx.table.options.meta?.t?.("releaseDate")}
       />
     ),
   }),
   datasetsColumnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => {
-      return <p>{ctx.table.options.meta?.t?.("type-of-data")}</p>;
+      return <p>{ctx.table.options.meta?.t?.("typeOfData")}</p>;
     },
     cell: (ctx) =>
       ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ??
@@ -265,6 +265,7 @@ export const datasetsColumns = [
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => ctx.renderValue(),
+    //@ts-ignore TODO fix types`
+    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 ];

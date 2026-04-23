@@ -12,6 +12,7 @@ declare module "use-intl" {
 declare module "@tanstack/react-table" {
   interface TableMeta<TData extends RowData> {
     t: ReturnType<typeof useTranslations>;
+    messages?: Messages;
     lang: Locale;
   }
 }

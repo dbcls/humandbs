@@ -94,16 +94,21 @@
     "typeOfData": "Type of data",
     "details": "Details"
   },
-  "Dataset-list": {
-    "dataset-list": "Dataset List",
-    "dataset-id": "Dataset ID",
+  "Dataset": {
+    "datasetId": "Dataset ID",
+    "release-info": "Release info",
+    "dataset-list": "Dataset list",
+    "already-in-cart": "Already in cart",
+    "add-to-cart": "Add to cart",
     "version": "Version",
-    "release-date": "Release date",
-    "type-of-data": "Type of data",
+    "releaseDate": "Release date",
+    "typeOfData": "Type of data",
     "criteria": "Access type",
-    "experiments": "Experiments"
+    "experiments": "Experiments",
+    "Unrestricted-access": "Open (no restrictions)",
+    "Controlled-access (Type I)": "Type I (restrictions apply)",
+    "Controlled-access (Type II)": "Type II (restrictions apply)"
   },
-  "Dataset": {},
   "Person": {
     "name": "Name",
     "email": "Email",
@@ -120,6 +125,7 @@
   },
   "Research": {
     "research-id": "Research ID",
+    "research-list": "List of researches",
     "humId": "Research ID",
     "datasets": "Datasets",
     "releaseInfo": "Release info",
@@ -131,6 +137,9 @@
     "dataProvider": "Data provider",
     "representative": "Representative",
     "organization": "Organiation",
+    "Unrestricted-access": "Open (no restrictions)",
+    "Controlled-access (Type I)": "Type I (restrictions apply)",
+    "Controlled-access (Type II)": "Type II (restrictions apply)",
     "researchTitle": "Research title",
     "relatedPublication": "Related publications",
     "periodOfDataUse": "Period of data use",
