@@ -154,7 +154,8 @@
     "datePublished": "公開日",
     "dateModified": "更新日",
     "versionReleaseDate": "バージョン公開日",
-    "releaseNote": "リリースノート"
+    "releaseNote": "リリースノート",
+    "totalResults": "全{count}件"
   },
   "DatasetVersionCard": {
     "releaseInfo": "リリース情報",

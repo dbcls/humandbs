@@ -198,9 +198,12 @@ function CardContent({ panelOpen }: { panelOpen: boolean }) {
   return (
     <>
       <div className="overflow-x-auto flex flex-col flex-1 relative">
+        <p className="text-sm text-muted-foreground">
+          {t("totalResults", { count: researchesData.meta.pagination.total })}
+        </p>
         <Table
           className={cn(
-            "mt-4 text-sm flex-1 transition-[margin] z-10 relative",
+            "mt-2 text-sm flex-1 transition-[margin] z-10 relative",
             {
               "mr-filter-panel": panelOpen,
             },
