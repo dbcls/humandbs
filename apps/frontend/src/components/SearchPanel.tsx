@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
-import { Separator } from "@base-ui/react";
 
 // === Section config types ===
 
@@ -130,22 +129,10 @@ export type SectionConfig =
 
 // === Helper: check if a section has a groupKey (facet configs do, top-level filters don't) ===
 
-type FacetConfig =
-  | CheckboxFacetConfig
-  | TextFacetConfig
-  | BooleanFacetConfig
-  | TextListFacetConfig
-  | RangeFacetConfig
-  | DateRangeFacetConfig;
-
 function isNestedConfig(
   section: SectionConfig,
 ): section is SectionConfig & { groupKey: string } {
   return "groupKey" in section;
-}
-
-function isTopLevelConfig(section: SectionConfig): section is SectionConfig {
-  return !("groupKey" in section);
 }
 
 // === Props ===
@@ -299,13 +286,14 @@ export function SearchPanel({
   }, {} as GroupedSections);
 
   return (
-    <div className="flex h-full w-filter-panel min-w-filter-panel max-w-filter-panel flex-col overflow-x-hidden">
+    <div className="flex h-full flex-col overflow-x-hidden">
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
-        onResetAll={handleResetAll}
+        onReset={handleResetAll}
+        onResetAndApply={handleResetAndApply}
+        onSearch={handleSearch}
         onClose={onClose}
       />
-      <PanelFooter onSearch={handleSearch} onReset={handleResetAndApply} />
 
       {Object.entries(groupedSections).map(([key, val]) => {
         if (key === "top-level") {
@@ -370,30 +358,48 @@ export function SearchPanel({
 
 function PanelHeader({
   hasAnyFilter,
-  onResetAll,
   onClose,
+  onSearch,
+  onReset,
+  onResetAndApply,
 }: {
+  onResetAndApply: () => void;
+  onSearch: () => void;
+  onReset: () => void;
   hasAnyFilter: boolean;
-  onResetAll: () => void;
   onClose: () => void;
 }) {
   const t = useTranslations("Filters");
   return (
-    <div className="flex items-center justify-between p-3">
-      <span className="text-sm font-medium">{t("panel-title")}</span>
-      <div className="flex items-center gap-1">
-        {hasAnyFilter && (
-          <Button
-            variant="outline"
-            size="slim"
-            className="text-2xs text-muted-foreground py-0"
-            onClick={onResetAll}
-          >
-            {t("panel-reset-all")}
+    <div className="p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">{t("panel-title")}</span>
+        <div className="flex items-center gap-1">
+          {hasAnyFilter && (
+            <Button
+              variant="outline"
+              size="slim"
+              className="text-2xs text-muted-foreground py-0"
+              onClick={onReset}
+            >
+              {t("panel-reset-all")}
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <XIcon className="size-4" />
           </Button>
-        )}
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <XIcon className="size-4" />
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2 p-3">
+        <Button variant="outline" onClick={onResetAndApply}>
+          {t("panel-reset")}
+        </Button>
+        <Button
+          variant="accent"
+          className="flex-1 text-center block"
+          onClick={onSearch}
+        >
+          {t("panel-search")}
         </Button>
       </div>
     </div>
@@ -490,32 +496,6 @@ function AccordionFilterItem({
     default:
       return null;
   }
-}
-
-function PanelFooter({
-  onSearch,
-  onReset,
-}: {
-  onSearch: () => void;
-  onReset: () => void;
-}) {
-  const t = useTranslations("Filters");
-  return (
-    <div className="sticky bottom-0 z-10 border-t border-t-primary-translucent bg-white p-3">
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={onReset}>
-          {t("panel-reset")}
-        </Button>
-        <Button
-          variant="accent"
-          className="flex-1 text-center block"
-          onClick={onSearch}
-        >
-          {t("panel-search")}
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 function FacetItemWrapper({

@@ -199,7 +199,7 @@ function CardContent() {
     <>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
-          className={cn("mt-4 min-w-full w-max text-sm min-h-full flex-1")}
+          className={cn("mt-4 w-max text-sm min-h-full flex-1")}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}
