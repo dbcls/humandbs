@@ -1,5 +1,6 @@
 {
   "name": "@humandbs/frontend",
+  "version": "0.1",
   "private": true,
   "sideEffects": false,
   "type": "module",

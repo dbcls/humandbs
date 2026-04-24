@@ -17,6 +17,7 @@ export const Route = createFileRoute(
 
     return { data };
   },
+
   component: RouteComponent,
 });
 

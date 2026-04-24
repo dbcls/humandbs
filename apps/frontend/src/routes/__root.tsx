@@ -34,6 +34,10 @@ export const Route = createRootRouteWithContext<Context>()({
         name: "viewport",
         content: "width=device-width, initial-scale=1",
       },
+      {
+        name: "version",
+        content: VITE_APP_VER,
+      },
       ...seo({
         title: "HumanDBS",
         description: `HumanDBs - databases of researches`,

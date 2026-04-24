@@ -6,32 +6,40 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import svgr from "vite-plugin-svgr";
 
-export default defineConfig({
-  server: {
-    port: 3000,
-    allowedHosts: ["frontend"],
-  },
-  resolve: {
-    alias: {
-      "@humandbs/backend/types": fileURLToPath(
-        new URL("../backend/types/shared-types.ts", import.meta.url),
-      ),
+export default defineConfig(async () => {
+  const ver = (await Bun.file("./package.json").json()).version;
+
+  console.log("ver", ver);
+  return {
+    server: {
+      port: 3000,
+      allowedHosts: ["frontend"],
     },
-  },
-  plugins: [
-    tanstackStart({
-      srcDirectory: "src",
-      server: {
-        build: {
-          staticNodeEnv: false, // for Runtime environment detection for understand, where to save asset files
-        },
+    resolve: {
+      alias: {
+        "@humandbs/backend/types": fileURLToPath(
+          new URL("../backend/types/shared-types.ts", import.meta.url),
+        ),
       },
-    }),
-    tailwindcss(),
-    tsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
-    svgr(),
-    viteReact(),
-  ],
+    },
+    plugins: [
+      tanstackStart({
+        srcDirectory: "src",
+        server: {
+          build: {
+            staticNodeEnv: false, // for Runtime environment detection for understand, where to save asset files
+          },
+        },
+      }),
+      tailwindcss(),
+      tsConfigPaths({
+        projects: ["./tsconfig.json"],
+      }),
+      svgr(),
+      viteReact(),
+    ],
+    define: {
+      VITE_APP_VER: JSON.stringify(`v${ver}`),
+    },
+  };
 });

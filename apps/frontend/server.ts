@@ -504,7 +504,8 @@ async function initializeStaticRoutes(
  * Initialize the server
  */
 async function initializeServer() {
-  log.header("Starting Production Server");
+  const { version } = await Bun.file("./package.json").json() as { version: string };
+  log.header(`Starting Production Server v${version}`);
 
   // Load TanStack Start server handler
   let handler: { fetch: (request: Request) => Response | Promise<Response> };
