@@ -60,7 +60,7 @@ function RouteComponent() {
         <p className="text-center text-gray-400">Cart is empty</p>
       ) : (
         <>
-          <Button className="ml-auto mb-4" onClick={handleSubmit}>
+          <Button className="mb-4 ml-auto" onClick={handleSubmit}>
             Copy Cart Contents
           </Button>
           <Table

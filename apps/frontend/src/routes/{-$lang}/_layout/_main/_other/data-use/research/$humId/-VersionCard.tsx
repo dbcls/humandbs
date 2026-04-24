@@ -1,29 +1,18 @@
-import {
-  type DatasetDoc,
-  type ResearchDetailResponse,
-} from "@humandbs/backend/types";
+import { type ResearchDetailResponse } from "@humandbs/backend/types";
 import { useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { useTranslations, useMessages } from "use-intl";
+import { useMessages, useTranslations } from "use-intl";
 
-import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
-import { KeyValueCard, ListOfKeyValues } from "@/components/KeyValueCard";
+import { KeyValueCard } from "@/components/KeyValueCard";
+import { Link } from "@/components/Link";
 import { Separator } from "@/components/Separator";
 import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
-import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
-import { Link } from "@/components/Link";
 
 export function VersionCard({
   versionData,
@@ -54,7 +43,7 @@ export function VersionCard({
           badge={
             <Link
               to="/{-$lang}/data-use/research/$humId/versions"
-              className="no-underline text-white"
+              className="text-white no-underline"
               params={{ humId: versionData.humId }}
             >
               {t("releaseInfo")}
@@ -210,7 +199,7 @@ function makePublicationColumns(
       id: "DOI",
       header: "DOI",
       cell: (info) => (
-        <a href={info.getValue() ?? undefined} className="break-all text-sm">
+        <a href={info.getValue() ?? undefined} className="text-sm break-all">
           {info.renderValue()}
         </a>
       ),

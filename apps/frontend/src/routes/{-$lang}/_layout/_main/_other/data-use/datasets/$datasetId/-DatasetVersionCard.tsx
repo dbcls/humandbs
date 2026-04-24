@@ -89,7 +89,7 @@ export function DatasetVersionCard({
                 <Link
                   to="/{-$lang}/data-use/datasets/$datasetId/versions"
                   params={{ datasetId: versionData.datasetId }}
-                  className="no-underline text-white"
+                  className="text-white no-underline"
                 >
                   {t("release-info")}
                 </Link>
@@ -166,11 +166,11 @@ function Experiment({
   const lang = useLocale();
   return (
     <section>
-      <h2 className="bg-linear-to-r rounded-t-md text-white from-secondary-light to-secondary-lighter px-7 pb-4 pt-5">
+      <h2 className="from-secondary-light to-secondary-lighter rounded-t-md bg-linear-to-r px-7 pt-5 pb-4 text-white">
         {experiment.header[lang]?.text}
       </h2>
 
-      <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
+      <dl className="columns-2 space-y-6 border-x border-b border-gray-300 p-6">
         {Object.entries(experiment.data).map(([title, content]) => (
           <KeyValueCard
             key={title}

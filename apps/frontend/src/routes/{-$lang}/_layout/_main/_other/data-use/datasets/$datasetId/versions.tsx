@@ -50,7 +50,7 @@ function RouteComponent() {
 function DatasetVersionInfo({ version }: { version: DatasetVersionItem }) {
   return (
     <section>
-      <div className="flex gap-2 justify-between">
+      <div className="flex justify-between gap-2">
         <h3 className="inline">
           <Route.Link
             className="text-secondary font-semibold"
