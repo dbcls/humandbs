@@ -50,10 +50,8 @@ import { Route as Char123LangChar125LayoutMainOtherGuidelinesRevisionRevisionRou
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
 import { Route as Char123LangChar125LayoutMainOtherDataUseResearchHumIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/research/$humId/route'
 import { Route as Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/route'
-import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/route'
 import { Route as Char123LangChar125LayoutMainOtherDataUseResearchHumIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/research/$humId/index'
 import { Route as Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/index'
-import { Route as Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/index'
 import { Route as Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionsRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/research/$humId/versions'
 import { Route as Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/research/$humId/$version'
 import { Route as Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdVersionsRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/versions'
@@ -318,15 +316,6 @@ const Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRoute =
         Char123LangChar125LayoutMainOtherDataUseDatasetsRouteRoute,
     } as any,
   )
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute =
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport.update(
-    {
-      id: '/before-application',
-      path: '/before-application',
-      getParentRoute: () =>
-        Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute,
-    } as any,
-  )
 const Char123LangChar125LayoutMainOtherDataUseResearchHumIdIndexRoute =
   Char123LangChar125LayoutMainOtherDataUseResearchHumIdIndexRouteImport.update({
     id: '/',
@@ -341,15 +330,6 @@ const Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdIndexRoute =
       path: '/',
       getParentRoute: () =>
         Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRoute,
-    } as any,
-  )
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute =
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport.update(
-    {
-      id: '/',
-      path: '/',
-      getParentRoute: () =>
-        Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute,
     } as any,
   )
 const Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionsRoute =
@@ -420,7 +400,6 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/data-use/': typeof Char123LangChar125LayoutMainOtherDataUseIndexRoute
   '/{-$lang}/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
   '/{-$lang}/news/': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
-  '/{-$lang}/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
   '/{-$lang}/data-use/datasets/$datasetId': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRouteWithChildren
   '/{-$lang}/data-use/research/$humId': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdRouteRouteWithChildren
   '/{-$lang}/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
@@ -432,7 +411,6 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/data-use/datasets/$datasetId/versions': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdVersionsRoute
   '/{-$lang}/data-use/research/$humId/$version': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionRoute
   '/{-$lang}/data-use/research/$humId/versions': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionsRoute
-  '/{-$lang}/data-submission/navigation/before-application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
   '/{-$lang}/data-use/datasets/$datasetId/': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdIndexRoute
   '/{-$lang}/data-use/research/$humId/': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdIndexRoute
 }
@@ -468,7 +446,6 @@ export interface FileRoutesByTo {
   '/{-$lang}/data-use/datasets/$datasetId/versions': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdVersionsRoute
   '/{-$lang}/data-use/research/$humId/$version': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionRoute
   '/{-$lang}/data-use/research/$humId/versions': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionsRoute
-  '/{-$lang}/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
   '/{-$lang}/data-use/datasets/$datasetId': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdIndexRoute
   '/{-$lang}/data-use/research/$humId': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdIndexRoute
 }
@@ -508,7 +485,6 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/data-use/': typeof Char123LangChar125LayoutMainOtherDataUseIndexRoute
   '/{-$lang}/_layout/_main/_other/guidelines/': typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
   '/{-$lang}/_layout/_main/_other/news/': typeof Char123LangChar125LayoutMainOtherNewsIndexRoute
-  '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/data-use/research/$humId': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision': typeof Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute
@@ -520,7 +496,6 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/versions': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdVersionsRoute
   '/{-$lang}/_layout/_main/_other/data-use/research/$humId/$version': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionRoute
   '/{-$lang}/_layout/_main/_other/data-use/research/$humId/versions': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdVersionsRoute
-  '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/': typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
   '/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/': typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdIndexRoute
   '/{-$lang}/_layout/_main/_other/data-use/research/$humId/': typeof Char123LangChar125LayoutMainOtherDataUseResearchHumIdIndexRoute
 }
@@ -557,7 +532,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-use/'
     | '/{-$lang}/guidelines/'
     | '/{-$lang}/news/'
-    | '/{-$lang}/data-submission/navigation/before-application'
     | '/{-$lang}/data-use/datasets/$datasetId'
     | '/{-$lang}/data-use/research/$humId'
     | '/{-$lang}/data-submission/revision/$revision'
@@ -569,7 +543,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-use/datasets/$datasetId/versions'
     | '/{-$lang}/data-use/research/$humId/$version'
     | '/{-$lang}/data-use/research/$humId/versions'
-    | '/{-$lang}/data-submission/navigation/before-application/'
     | '/{-$lang}/data-use/datasets/$datasetId/'
     | '/{-$lang}/data-use/research/$humId/'
   fileRoutesByTo: FileRoutesByTo
@@ -605,7 +578,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/data-use/datasets/$datasetId/versions'
     | '/{-$lang}/data-use/research/$humId/$version'
     | '/{-$lang}/data-use/research/$humId/versions'
-    | '/{-$lang}/data-submission/navigation/before-application'
     | '/{-$lang}/data-use/datasets/$datasetId'
     | '/{-$lang}/data-use/research/$humId'
   id:
@@ -644,7 +616,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/data-use/'
     | '/{-$lang}/_layout/_main/_other/guidelines/'
     | '/{-$lang}/_layout/_main/_other/news/'
-    | '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application'
     | '/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId'
     | '/{-$lang}/_layout/_main/_other/data-use/research/$humId'
     | '/{-$lang}/_layout/_main/_other/data-submission/revision/$revision'
@@ -656,7 +627,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/versions'
     | '/{-$lang}/_layout/_main/_other/data-use/research/$humId/$version'
     | '/{-$lang}/_layout/_main/_other/data-use/research/$humId/versions'
-    | '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/'
     | '/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/'
     | '/{-$lang}/_layout/_main/_other/data-use/research/$humId/'
   fileRoutesById: FileRoutesById
@@ -958,13 +928,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataUseDatasetsRouteRoute
     }
-    '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application': {
-      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application'
-      path: '/before-application'
-      fullPath: '/{-$lang}/data-submission/navigation/before-application'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRoute
-    }
     '/{-$lang}/_layout/_main/_other/data-use/research/$humId/': {
       id: '/{-$lang}/_layout/_main/_other/data-use/research/$humId/'
       path: '/'
@@ -978,13 +941,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$lang}/data-use/datasets/$datasetId/'
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdIndexRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherDataUseDatasetsDatasetIdRouteRoute
-    }
-    '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/': {
-      id: '/{-$lang}/_layout/_main/_other/data-submission/navigation/before-application/'
-      path: '/'
-      fullPath: '/{-$lang}/data-submission/navigation/before-application/'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute
     }
     '/{-$lang}/_layout/_main/_other/data-use/research/$humId/versions': {
       id: '/{-$lang}/_layout/_main/_other/data-use/research/$humId/versions'
@@ -1083,30 +1039,12 @@ const Char123LangChar125LayoutMainHomeRouteWithChildren =
     Char123LangChar125LayoutMainHomeRouteChildren,
   )
 
-interface Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren {
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute
-}
-
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren =
-  {
-    Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute:
-      Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationIndexRoute,
-  }
-
-const Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren =
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute._addFileChildren(
-    Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteChildren,
-  )
-
 interface Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren {
-  Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren
   Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute: typeof Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute
 }
 
 const Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren: Char123LangChar125LayoutMainOtherDataSubmissionNavigationRouteRouteChildren =
   {
-    Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRoute:
-      Char123LangChar125LayoutMainOtherDataSubmissionNavigationBeforeApplicationRouteRouteWithChildren,
     Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute:
       Char123LangChar125LayoutMainOtherDataSubmissionNavigationIndexRoute,
   }

@@ -3,8 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { NavigationFlowchartData, NavigationFlowchartOption, NavigationFlowchartStep } from "@/config/navigation-flowchart";
-import { getNavigationEntryPointQueryOptions, getNavigationFlowchartByIdQueryOptions, getNavigationFlowchartNamesQueryOptions } from "@/serverFunctions/navigationFlowchart";
+import type {
+  NavigationFlowchartData,
+  NavigationFlowchartOption,
+  NavigationFlowchartStep,
+} from "@/config/navigation-flowchart";
+import {
+  getNavigationEntryPointQueryOptions,
+  getNavigationFlowchartByIdQueryOptions,
+  getNavigationFlowchartNamesQueryOptions,
+} from "@/serverFunctions/navigationFlowchart";
 import type { Locale } from "@/config/i18n";
 
 // Legacy shape kept for backward compat with callers not yet migrated
@@ -36,7 +44,12 @@ interface NavigationChartProps {
   answerKey?: string;
   locale?: Locale;
   answers?: FlowchartAnswers;
-  onAnswerChange?: (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
+  onAnswerChange?: (
+    slug: string,
+    stepId: string,
+    optionId: string,
+    clearStepIds?: string[],
+  ) => void;
   onNavigateToChild?: (childId: string) => void;
   // Legacy prop
   data?: NavigationData;
@@ -71,13 +84,14 @@ function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
           <span key={item.slug} className="flex items-center gap-2">
             {i > 0 && <span className="text-gray-300">›</span>}
             {item.onClick && !isLast ? (
-              <button
-                type="button"
+              <Button
+                variant={"ghost"}
+                size={"icon"}
                 onClick={item.onClick}
-                className="hover:text-gray-800 hover:underline"
+                className="hover:text-gray-800 hover:underline font-medium inline"
               >
                 {name}
-              </button>
+              </Button>
             ) : (
               <span className={isLast ? "font-medium text-gray-700" : ""}>
                 {name}
@@ -122,7 +136,10 @@ const OptionComponent = ({
   const [buttonHeight, setButtonHeight] = useState<number>(0);
 
   const title = locale === "ja" ? option.titleJa : option.titleEn;
-  const linkText = locale === "ja" ? (option.linkTextJa ?? option.linkTextEn) : (option.linkTextEn ?? option.linkTextJa);
+  const linkText =
+    locale === "ja"
+      ? (option.linkTextJa ?? option.linkTextEn)
+      : (option.linkTextEn ?? option.linkTextJa);
 
   function updateHeight() {
     if (buttonRef.current) setButtonHeight(buttonRef.current.offsetHeight);
@@ -257,7 +274,12 @@ const StepComponent = ({
 
   return (
     <div className="relative">
-      <div className={cn("bg-primary rounded-xl px-16 py-7", isCurrent && "ring-4 ring-secondary-light")}>
+      <div
+        className={cn(
+          "bg-primary rounded-xl px-16 py-7",
+          isCurrent && "ring-4 ring-secondary-light",
+        )}
+      >
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
           {title}
         </h2>
@@ -321,7 +343,12 @@ function NavigationChartInner({
   locale?: Locale;
   answers: FlowchartAnswers;
   linkedFlowchartNames: Record<string, string>;
-  onAnswerChange: (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
+  onAnswerChange: (
+    slug: string,
+    stepId: string,
+    optionId: string,
+    clearStepIds?: string[],
+  ) => void;
   onNavigateToChild: (childSlug: string) => void;
 }) {
   const stepAnswers = answers[slug] ?? {};
@@ -344,7 +371,10 @@ function NavigationChartInner({
 
   const [enabledStepIndex, setEnabledStepIndex] = useState(computeEnabledIndex);
 
-  const handleOptionClick = (option: NavigationFlowchartOption, stepIndex: number) => {
+  const handleOptionClick = (
+    option: NavigationFlowchartOption,
+    stepIndex: number,
+  ) => {
     const step = data.steps[stepIndex];
     if (!step) return;
     // Allow clicking any step that is currently enabled (answered or current).
@@ -466,7 +496,12 @@ function NavigationChartEntryPointDB({
   answerKey: string;
   locale: Locale;
   answers: FlowchartAnswers;
-  onAnswerChange: (answerKey: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
+  onAnswerChange: (
+    answerKey: string,
+    stepId: string,
+    optionId: string,
+    clearStepIds?: string[],
+  ) => void;
   onNavigateToChild: (childId: string) => void;
 }) {
   const { data } = useQuery(getNavigationEntryPointQueryOptions(locale));
@@ -523,10 +558,17 @@ function NavigationChartByIdDB({
   answerKey: string;
   locale: Locale;
   answers: FlowchartAnswers;
-  onAnswerChange: (answerKey: string, stepId: string, optionId: string, clearStepIds?: string[]) => void;
+  onAnswerChange: (
+    answerKey: string,
+    stepId: string,
+    optionId: string,
+    clearStepIds?: string[],
+  ) => void;
   onNavigateToChild: (childId: string) => void;
 }) {
-  const { data } = useQuery(getNavigationFlowchartByIdQueryOptions(flowchartId, locale));
+  const { data } = useQuery(
+    getNavigationFlowchartByIdQueryOptions(flowchartId, locale),
+  );
 
   const linkedIds = data
     ? [
@@ -577,7 +619,9 @@ function LegacyNavigationChart({
   navigate?: (options: { to: string }) => void;
 }) {
   const [enabledStepIndex, setEnabledStepIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, string>>({});
+  const [selectedOptions, setSelectedOptions] = useState<
+    Record<number, string>
+  >({});
 
   // Convert legacy steps to new shape for rendering
   const newSteps: NavigationFlowchartStep[] = data.steps.map((s) => ({
@@ -597,8 +641,15 @@ function LegacyNavigationChart({
     })),
   }));
 
-  const handleOptionClick = (option: NavigationFlowchartOption, stepIndex: number) => {
-    if (stepIndex > enabledStepIndex || selectedOptions[stepIndex] === option.id) return;
+  const handleOptionClick = (
+    option: NavigationFlowchartOption,
+    stepIndex: number,
+  ) => {
+    if (
+      stepIndex > enabledStepIndex ||
+      selectedOptions[stepIndex] === option.id
+    )
+      return;
     if (option.link && !option.link.startsWith("http")) {
       navigate?.({ to: option.link });
       return;

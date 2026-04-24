@@ -6,7 +6,10 @@ import { z } from "zod";
 
 import { Card } from "@/components/Card";
 import { NavigationChart, Breadcrumbs } from "@/components/NavigationChart";
-import type { FlowchartAnswers, BreadcrumbItem } from "@/components/NavigationChart";
+import type {
+  FlowchartAnswers,
+  BreadcrumbItem,
+} from "@/components/NavigationChart";
 import {
   getNavigationEntryPointQueryOptions,
   getNavigationFlowchartByIdQueryOptions,
@@ -33,6 +36,7 @@ export const Route = createFileRoute(
 )({
   validateSearch: zodValidator(navigationSearchSchema),
   component: RouteComponent,
+
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(
       getNavigationEntryPointQueryOptions(context.lang),
@@ -53,7 +57,7 @@ export const Route = createFileRoute(
  * one truncates the chain to that depth and discards downstream answers.
  */
 function RouteComponent() {
-  const navigate = useNavigate({ from: Route.fullPath });
+  const navigate = Route.useNavigate();
   const { lang } = Route.useRouteContext();
   const { answers, chain } = Route.useSearch();
   const t = useTranslations("Data-submission");
@@ -99,7 +103,12 @@ function RouteComponent() {
    * changes an earlier selection. Also resets the chain when re-answering a step
    * on the parent while viewing a child, since the chosen path may have changed.
    */
-  const handleAnswerChange = (slug: string, stepId: string, optionId: string, clearStepIds?: string[]) => {
+  const handleAnswerChange = (
+    slug: string,
+    stepId: string,
+    optionId: string,
+    clearStepIds?: string[],
+  ) => {
     navigate({
       search: (prev) => {
         const prevSlugAnswers = (prev.answers ?? {})[slug] ?? {};
@@ -113,12 +122,14 @@ function RouteComponent() {
           ...prev,
           // If the user re-answers a step in the parent while on a child, pop
           // back to just the parent (clear the chain) since the path may change.
-          chain: slug === ENTRY_POINT_KEY && (prev.chain?.length ?? 0) > 0
-            ? []
-            : prev.chain,
+          chain:
+            slug === ENTRY_POINT_KEY && (prev.chain?.length ?? 0) > 0
+              ? []
+              : prev.chain,
           answers: { ...(prev.answers ?? {}), [slug]: newSlugAnswers },
         };
       },
+      resetScroll: false,
     });
   };
 
@@ -155,9 +166,10 @@ function RouteComponent() {
     slug: item.slug,
     nameEn: item.nameEn,
     nameJa: item.nameJa,
-    onClick: idx < allItems.length - 1
-      ? () => handleBreadcrumbClick(item.childDepth)
-      : undefined,
+    onClick:
+      idx < allItems.length - 1
+        ? () => handleBreadcrumbClick(item.childDepth)
+        : undefined,
   }));
 
   const currentData = currentChildId
@@ -165,7 +177,9 @@ function RouteComponent() {
     : null;
 
   const caption = currentData
-    ? lang === "ja" ? currentData.nameJa : currentData.nameEn
+    ? lang === "ja"
+      ? currentData.nameJa
+      : currentData.nameEn
     : t("data-submission");
 
   return (
@@ -173,7 +187,7 @@ function RouteComponent() {
       <Breadcrumbs items={breadcrumbs} locale={lang} />
       <NavigationChart
         entryPoint={!currentChildId}
-        flowchartId={currentChildId ?? (entryPointData?.id ?? undefined)}
+        flowchartId={currentChildId ?? entryPointData?.id ?? undefined}
         answerKey={currentChildId ? currentChildId : ENTRY_POINT_KEY}
         locale={lang}
         answers={answers ?? {}}
