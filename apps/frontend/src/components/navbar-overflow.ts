@@ -64,7 +64,15 @@ export function getNavbarOverflowLayout({
 
   const shown = new Set(allIndices);
   for (const index of getNavbarOverflowDropOrder(items)) {
-    if (fitsWithOverflow(shown, itemWidths, containerWidth, overflowTriggerWidth, gap)) {
+    if (
+      fitsWithOverflow(
+        shown,
+        itemWidths,
+        containerWidth,
+        overflowTriggerWidth,
+        gap,
+      )
+    ) {
       break;
     }
 
@@ -103,6 +111,9 @@ function getItemsWidth(indices: number[], itemWidths: number[], gap: number) {
     return 0;
   }
 
-  const itemsWidth = indices.reduce((total, index) => total + itemWidths[index]!, 0);
+  const itemsWidth = indices.reduce(
+    (total, index) => total + itemWidths[index]!,
+    0,
+  );
   return itemsWidth + gap * (indices.length - 1);
 }

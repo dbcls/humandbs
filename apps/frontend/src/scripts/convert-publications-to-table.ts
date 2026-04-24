@@ -54,7 +54,10 @@ if (paragraphs.slice(0, 5).join("\n") === HEADER.join("\n")) {
   startIndex = 5;
 } else if (HEADER.includes(paragraphs[0])) {
   // partial match — skip however many header labels appear
-  while (startIndex < paragraphs.length && HEADER.includes(paragraphs[startIndex])) {
+  while (
+    startIndex < paragraphs.length &&
+    HEADER.includes(paragraphs[startIndex])
+  ) {
     startIndex++;
   }
 }

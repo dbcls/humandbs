@@ -43,7 +43,7 @@ export function TagInput({
   return (
     <div className="flex flex-col gap-1">
       {label && <Label className="text-sm">{label}</Label>}
-      <div className="flex flex-wrap items-center gap-1 rounded border border-gray-300 px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
+      <div className="focus-within:ring-ring flex flex-wrap items-center gap-1 rounded border border-gray-300 px-2 py-1.5 focus-within:ring-1">
         {value.map((tag, i) => (
           <span
             key={i}

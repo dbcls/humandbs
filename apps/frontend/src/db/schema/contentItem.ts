@@ -33,7 +33,7 @@ export const contentTranslation = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.contentId, table.lang, table.status] }),
-  ]
+  ],
 );
 
 export const contentTranslationRelations = relations(
@@ -43,5 +43,5 @@ export const contentTranslationRelations = relations(
       fields: [contentTranslation.contentId],
       references: [contentItem.id],
     }),
-  })
+  }),
 );

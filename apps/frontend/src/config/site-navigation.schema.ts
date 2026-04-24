@@ -102,7 +102,11 @@ export const siteNavigationConfigSchema = z
           });
         }
 
-        if (zoneName !== "navbar" && group.parentGroupId && !groupIds.has(group.parentGroupId)) {
+        if (
+          zoneName !== "navbar" &&
+          group.parentGroupId &&
+          !groupIds.has(group.parentGroupId)
+        ) {
           ctx.addIssue({
             code: "custom",
             message: `Unknown parentGroupId "${group.parentGroupId}" in group "${group.id}" in zone "${zoneName}".`,

@@ -387,7 +387,7 @@ function NewsItemForm({
           const isModified = isFieldModified(field);
           return (
             <div className="flex items-center gap-2">
-              <Label className="flex flex-col gap-2 items-stretch">
+              <Label className="flex flex-col items-stretch gap-2">
                 <span>Tags</span>
                 <TagPicker
                   allTags={allTags}

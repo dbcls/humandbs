@@ -374,7 +374,7 @@
   }
 
   a {
-    @apply underline text-secondary hover:text-secondary-light visited:text-neutral-500;
+    @apply text-secondary hover:text-secondary-light underline visited:text-neutral-500;
   }
 
   @font-face {
@@ -555,10 +555,10 @@
 @layer utilities {
   .custom-prose {
     a {
-      @apply text-secondary visited:text-neutral-400 font-medium;
+      @apply text-secondary font-medium visited:text-neutral-400;
     }
 
-    @apply prose max-w-none min-w-0 prose-h1:text-secondary text-base prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit break-words;
+    @apply prose prose-h1:text-secondary prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base break-words;
 
     h1,
     h2,

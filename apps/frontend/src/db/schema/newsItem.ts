@@ -44,7 +44,7 @@ export const newsTranslation = pgTable(
     updatedAt: timestamp("updated_at"),
     content: text("content").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.newsId, table.lang] })]
+  (table) => [primaryKey({ columns: [table.newsId, table.lang] })],
 );
 
 export const newsTranslationRelations = relations(
@@ -54,5 +54,5 @@ export const newsTranslationRelations = relations(
       fields: [newsTranslation.newsId],
       references: [newsItem.id],
     }),
-  })
+  }),
 );

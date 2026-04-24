@@ -19,11 +19,11 @@ export function KeyValueCard({
     <div className="break-inside-avoid">
       <dt className="text-secondary mb-2 text-sm font-normal">{title}</dt>
       {children ? (
-        <dd className="wrap-break-word pl-4">{children}</dd>
+        <dd className="pl-4 wrap-break-word">{children}</dd>
       ) : (
         <dd
           dangerouslySetInnerHTML={{ __html: value! }}
-          className="wrap-break-word pl-4"
+          className="pl-4 wrap-break-word"
         />
       )}
     </div>

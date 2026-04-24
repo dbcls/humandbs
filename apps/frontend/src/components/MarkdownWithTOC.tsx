@@ -22,7 +22,7 @@ export function MarkdownWithTOC({
   const showTOC = markdownResult.headings.length > 0 && !hideTOC;
   return (
     <Card
-      className="w-full py-6 min-w-0"
+      className="w-full min-w-0 py-6"
       containerClassName="main-content mt-8 min-w-0"
     >
       <div className="flex gap-8">

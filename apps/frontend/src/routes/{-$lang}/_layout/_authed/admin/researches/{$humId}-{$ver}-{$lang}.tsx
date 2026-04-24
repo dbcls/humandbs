@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}"
+  "/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}",
 )({
   component: RouteComponent,
   loader: ({ params }) => {},

@@ -33,32 +33,33 @@ export const $getDocuments = createServerFn({
     documents.map(async (doc) => {
       const translations = await Promise.all(
         i18n.locales.map(async (locale) => {
-          const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
-            db.query.documentVersion.findFirst({
-              where: (table, { and, eq }) =>
-                and(
-                  eq(table.contentId, doc.contentId),
-                  eq(table.locale, locale),
-                  eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-                ),
-              orderBy: (table, { desc }) => desc(table.versionNumber),
-              columns: {
-                title: true,
-              },
-            }),
-            db.query.documentVersion.findFirst({
-              where: (table, { and, eq }) =>
-                and(
-                  eq(table.contentId, doc.contentId),
-                  eq(table.locale, locale),
-                  eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-                ),
-              orderBy: (table, { desc }) => desc(table.versionNumber),
-              columns: {
-                title: true,
-              },
-            }),
-          ]);
+          const [latestPublishedVersion, latestDraftVersion] =
+            await Promise.all([
+              db.query.documentVersion.findFirst({
+                where: (table, { and, eq }) =>
+                  and(
+                    eq(table.contentId, doc.contentId),
+                    eq(table.locale, locale),
+                    eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+                  ),
+                orderBy: (table, { desc }) => desc(table.versionNumber),
+                columns: {
+                  title: true,
+                },
+              }),
+              db.query.documentVersion.findFirst({
+                where: (table, { and, eq }) =>
+                  and(
+                    eq(table.contentId, doc.contentId),
+                    eq(table.locale, locale),
+                    eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                  ),
+                orderBy: (table, { desc }) => desc(table.versionNumber),
+                columns: {
+                  title: true,
+                },
+              }),
+            ]);
 
           return {
             lang: locale,
@@ -107,7 +108,10 @@ export const $createDocument = createServerFn({ method: "POST" })
 
     const doc = await db.insert(document).values(data).returning();
 
-    await documentVersionRepo.createVersionFromPublished(data.contentId, userId);
+    await documentVersionRepo.createVersionFromPublished(
+      data.contentId,
+      userId,
+    );
 
     return doc;
   });

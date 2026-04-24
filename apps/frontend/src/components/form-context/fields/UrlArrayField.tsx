@@ -50,7 +50,7 @@ export const UrlArrayField = withForm({
                     {enItems.map((_: unknown, i: number) => (
                       <div key={i} className="flex items-start gap-2">
                         {/* En: text + url */}
-                        <div className="flex-1 flex flex-col gap-1">
+                        <div className="flex flex-1 flex-col gap-1">
                           <form.AppField
                             name={`${baseName}.en[${i}].text` as AnyName}
                           >
@@ -63,7 +63,7 @@ export const UrlArrayField = withForm({
                           </form.AppField>
                         </div>
                         {/* Ja: text + url */}
-                        <div className="flex-1 flex flex-col gap-1">
+                        <div className="flex flex-1 flex-col gap-1">
                           <form.AppField
                             name={`${baseName}.ja[${i}].text` as AnyName}
                           >

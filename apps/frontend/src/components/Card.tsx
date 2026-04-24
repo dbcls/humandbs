@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface CardProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof cardCaptionVariants> {
   caption?: ReactNode;
   captionClassName?: string;
@@ -24,7 +25,7 @@ const cardCaptionVariants = cva(
     defaultVariants: {
       captionSize: "default",
     },
-  }
+  },
 );
 
 function Card({
@@ -52,7 +53,7 @@ function Card({
             "mt-10": !!caption && captionSize === "lg",
             "mt-4": !!caption && captionSize === "default",
           },
-          containerClassName
+          containerClassName,
         )}
       >
         {children}
@@ -78,7 +79,7 @@ const cardWithColorCaptionVariants = cva(
       size: "sm",
       variant: "light",
     },
-  }
+  },
 );
 
 const contentVariants = cva("text-inherit flex flex-col", {
@@ -94,8 +95,7 @@ const contentVariants = cva("text-inherit flex flex-col", {
 });
 
 interface CardWithCaptionProps
-  extends CardProps,
-    VariantProps<typeof cardWithColorCaptionVariants> {}
+  extends CardProps, VariantProps<typeof cardWithColorCaptionVariants> {}
 
 function CardWithCaption({
   children,
@@ -113,7 +113,7 @@ function CardWithCaption({
         <div
           className={cn(
             cardWithColorCaptionVariants({ size, variant }),
-            captionClassName
+            captionClassName,
           )}
         >
           {caption}

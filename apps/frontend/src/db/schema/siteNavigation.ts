@@ -14,9 +14,7 @@ import { user } from "./auth-schema";
 
 export const siteNavigationConfig = pgTable("site_navigation_config", {
   id: text("id").primaryKey(),
-  config: jsonb("config")
-    .$type<SiteNavigationConfig>()
-    .notNull(),
+  config: jsonb("config").$type<SiteNavigationConfig>().notNull(),
   revision: integer("revision").notNull().default(1),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   updatedBy: text("updated_by").references(() => user.id),
@@ -29,9 +27,7 @@ export const siteNavigationConfigRevision = pgTable(
     configId: text("config_id")
       .notNull()
       .references(() => siteNavigationConfig.id, { onDelete: "cascade" }),
-    config: jsonb("config")
-      .$type<SiteNavigationConfig>()
-      .notNull(),
+    config: jsonb("config").$type<SiteNavigationConfig>().notNull(),
     revision: integer("revision").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     createdBy: text("created_by").references(() => user.id),

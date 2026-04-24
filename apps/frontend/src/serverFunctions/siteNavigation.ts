@@ -22,7 +22,9 @@ import {
  * Fetches all published document titles for a given locale and returns
  * a DocumentLabelResolver that the navigation builder can use.
  */
-async function buildDocumentLabelResolver(lang: Locale): Promise<DocumentLabelResolver> {
+async function buildDocumentLabelResolver(
+  lang: Locale,
+): Promise<DocumentLabelResolver> {
   // DISTINCT ON contentId, ordered by contentId ASC, versionNumber DESC
   // → picks the highest version number per contentId
   const rows = await db
@@ -37,7 +39,10 @@ async function buildDocumentLabelResolver(lang: Locale): Promise<DocumentLabelRe
         eq(documentVersion.locale, lang),
       ),
     )
-    .orderBy(asc(documentVersion.contentId), desc(documentVersion.versionNumber));
+    .orderBy(
+      asc(documentVersion.contentId),
+      desc(documentVersion.versionNumber),
+    );
 
   const titleMap = new Map(
     rows

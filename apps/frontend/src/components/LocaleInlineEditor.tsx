@@ -87,7 +87,7 @@ export function LocaleInlineEditor({
       <div ref={formRef} className="flex min-w-0 flex-col gap-1.5">
         {(["en", "ja"] as const).map((locale) => (
           <div key={locale} className="flex min-w-0 items-center gap-2">
-            <label className="w-6 shrink-0 text-xs font-medium uppercase text-gray-500">
+            <label className="w-6 shrink-0 text-xs font-medium text-gray-500 uppercase">
               {locale}
             </label>
             <input
@@ -95,7 +95,9 @@ export function LocaleInlineEditor({
               type="text"
               value={locale === "en" ? editEn : editJa}
               onChange={(e) =>
-                locale === "en" ? setEditEn(e.target.value) : setEditJa(e.target.value)
+                locale === "en"
+                  ? setEditEn(e.target.value)
+                  : setEditJa(e.target.value)
               }
               placeholder={locale === "en" ? "English" : "日本語"}
               className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
@@ -121,7 +123,9 @@ export function LocaleInlineEditor({
       )}
       title="Click to edit"
     >
-      <span>{(displayLocale === "ja" ? value.ja : value.en) || placeholder}</span>
+      <span>
+        {(displayLocale === "ja" ? value.ja : value.en) || placeholder}
+      </span>
       <Pencil className="size-3 shrink-0 opacity-0 group-hover:opacity-50" />
     </button>
   );

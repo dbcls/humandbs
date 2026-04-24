@@ -190,7 +190,7 @@ export function DatasetEditView(props: DatasetEditViewProps) {
     <div className="flex min-h-0 flex-1 flex-col">
       <Suspense
         fallback={
-          <div className="px-5 pt-5 text-sm text-gray-400 animate-pulse">
+          <div className="animate-pulse px-5 pt-5 text-sm text-gray-400">
             Loading dataset…
           </div>
         }

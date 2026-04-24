@@ -17,7 +17,7 @@ export const BilingualUrlValueField = withForm({
       <fieldset className="flex flex-col gap-1">
         <Label className="text-sm">{label}</Label>
         <div className="flex gap-2">
-          <div className="flex-1 flex flex-col gap-1">
+          <div className="flex flex-1 flex-col gap-1">
             <form.AppField name={`${baseName}.en.text` as AnyName}>
               {(f) => <f.TextField type="col" label="En Text" />}
             </form.AppField>
@@ -25,7 +25,7 @@ export const BilingualUrlValueField = withForm({
               {(f) => <f.TextField type="col" label="En URL" />}
             </form.AppField>
           </div>
-          <div className="flex-1 flex flex-col gap-1">
+          <div className="flex flex-1 flex-col gap-1">
             <form.AppField name={`${baseName}.ja.text` as AnyName}>
               {(f) => <f.TextField type="col" label="Ja Text" />}
             </form.AppField>

@@ -22,14 +22,14 @@ export function URLInputPair({
         type="text"
         placeholder="Title"
         value={value.text}
-        className="rounded-b-none rounded-t-lg h-9"
+        className="h-9 rounded-t-lg rounded-b-none"
         onChange={(e) => onChange({ ...value, text: e.target.value })}
       />
       <Input
         type="text"
         placeholder="URL"
         value={value.url}
-        className="rounded-t-none rounded-b-lg h-9 text-xs"
+        className="h-9 rounded-t-none rounded-b-lg text-xs"
         onChange={(e) => onChange({ ...value, url: e.target.value })}
       />
     </div>

@@ -1,5 +1,8 @@
 import { useFieldContext } from "@/components/form-context/FormContext";
-import { deepEqual, getFieldDefaultValue } from "@/components/form-context/fields/useFieldModified";
+import {
+  deepEqual,
+  getFieldDefaultValue,
+} from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/Input";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { ResearchDetailSchema } from "@humandbs/backend/types";
@@ -22,8 +25,14 @@ export default function BilingualTextValueField({
 }) {
   const field = useFieldContext<BilingualTextValue>();
   const initial = getFieldDefaultValue(field) as BilingualTextValue | undefined;
-  const isEnModified = !deepEqual(field.state.value?.en?.text, initial?.en?.text);
-  const isJaModified = !deepEqual(field.state.value?.ja?.text, initial?.ja?.text);
+  const isEnModified = !deepEqual(
+    field.state.value?.en?.text,
+    initial?.en?.text,
+  );
+  const isJaModified = !deepEqual(
+    field.state.value?.ja?.text,
+    initial?.ja?.text,
+  );
 
   return (
     <div className="flex flex-col items-start gap-2">

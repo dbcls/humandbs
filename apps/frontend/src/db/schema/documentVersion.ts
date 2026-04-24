@@ -50,7 +50,7 @@ export const documentVersion = pgTable(
         table.status,
       ],
     }),
-  ]
+  ],
 );
 
 export type DocumentVersion = typeof documentVersion.$inferSelect;
@@ -66,5 +66,5 @@ export const documentVersionRelations = relations(
       fields: [documentVersion.translatedBy],
       references: [user.id],
     }),
-  })
+  }),
 );

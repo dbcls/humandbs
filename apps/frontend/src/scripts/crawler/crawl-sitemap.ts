@@ -39,7 +39,7 @@ async function crawlPage(page: PageInfo): Promise<void> {
   const crawlerScript = path.resolve(import.meta.dir, "crawl-page.ts");
 
   console.log(
-    `Crawling: ${page.title} (${page.language}) -> ${outputDir}/${page.documentId}`
+    `Crawling: ${page.title} (${page.language}) -> ${outputDir}/${page.documentId}`,
   );
 
   try {
@@ -60,7 +60,7 @@ async function crawlPage(page: PageInfo): Promise<void> {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(
-      `❌ Failed to crawl ${page.title} (${page.language}): ${errorMessage}`
+      `❌ Failed to crawl ${page.title} (${page.language}): ${errorMessage}`,
     );
   }
 }
@@ -80,18 +80,18 @@ async function main(): Promise<void> {
           acc[page.language].push(page);
           return acc;
         },
-        {} as Record<string, PageInfo[]>
+        {} as Record<string, PageInfo[]>,
       );
 
       Object.entries(pagesByLanguage).forEach(([language, langPages]) => {
         console.log(
-          `\n📄 ${language.toUpperCase()} Pages (${langPages.length}):`
+          `\n📄 ${language.toUpperCase()} Pages (${langPages.length}):`,
         );
         langPages.forEach((page) => {
           console.log(`  • ${page.title}`);
           console.log(`    URL: ${page.url}`);
           console.log(
-            `    Output: documents/${page.language}/${page.documentId}`
+            `    Output: documents/${page.language}/${page.documentId}`,
           );
           console.log("");
         });
@@ -112,7 +112,7 @@ async function main(): Promise<void> {
     console.log("\n🎉 Sitemap crawl completed!");
     console.log(`Total pages processed: ${pages.length}`);
     console.log(
-      "Output saved to: ./output/documents/[language]/[document-id]/"
+      "Output saved to: ./output/documents/[language]/[document-id]/",
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);

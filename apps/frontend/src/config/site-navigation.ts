@@ -297,24 +297,98 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
 
 const defaultSiteNavigationConfig: SiteNavigationConfig = {
   items: [
-    { id: "00000000-0000-4000-8000-000000000001", type: "document", contentId: "home" },
-    { id: "00000000-0000-4000-8000-000000000002", type: "document", contentId: "data-submission" },
-    { id: "00000000-0000-4000-8000-000000000003", type: "document", contentId: "guidelines" },
-    { id: "00000000-0000-4000-8000-000000000004", type: "document", contentId: "data-sharing-guidelines" },
-    { id: "00000000-0000-4000-8000-000000000005", type: "document", contentId: "security-guidelines-for-users" },
-    { id: "00000000-0000-4000-8000-000000000006", type: "document", contentId: "security-guidelines-for-submitters" },
-    { id: "00000000-0000-4000-8000-000000000007", type: "document", contentId: "security-guidelines-for-dbcenters" },
-    { id: "00000000-0000-4000-8000-000000000008", type: "document", contentId: "data-usage" },
-    { id: "00000000-0000-4000-8000-000000000009", type: "link", url: "/data-use/research", label: { en: "Research List", ja: "研究一覧" } },
-    { id: "00000000-0000-4000-8000-000000000010", type: "link", url: "/data-use/datasets", label: { en: "Dataset List", ja: "データセット一覧" } },
-    { id: "00000000-0000-4000-8000-000000000011", type: "document", contentId: "data-processing" },
-    { id: "00000000-0000-4000-8000-000000000012", type: "document", contentId: "off-premise-server" },
-    { id: "00000000-0000-4000-8000-000000000013", type: "document", contentId: "dac" },
-    { id: "00000000-0000-4000-8000-000000000014", type: "document", contentId: "publications" },
-    { id: "00000000-0000-4000-8000-000000000015", type: "document", contentId: "violation" },
-    { id: "00000000-0000-4000-8000-000000000016", type: "document", contentId: "privacy-policy" },
-    { id: "00000000-0000-4000-8000-000000000017", type: "document", contentId: "faq" },
-    { id: "00000000-0000-4000-8000-000000000018", type: "document", contentId: "supported-browsers" },
+    {
+      id: "00000000-0000-4000-8000-000000000001",
+      type: "document",
+      contentId: "home",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000002",
+      type: "document",
+      contentId: "data-submission",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000003",
+      type: "document",
+      contentId: "guidelines",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000004",
+      type: "document",
+      contentId: "data-sharing-guidelines",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000005",
+      type: "document",
+      contentId: "security-guidelines-for-users",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000006",
+      type: "document",
+      contentId: "security-guidelines-for-submitters",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000007",
+      type: "document",
+      contentId: "security-guidelines-for-dbcenters",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000008",
+      type: "document",
+      contentId: "data-usage",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000009",
+      type: "link",
+      url: "/data-use/research",
+      label: { en: "Research List", ja: "研究一覧" },
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000010",
+      type: "link",
+      url: "/data-use/datasets",
+      label: { en: "Dataset List", ja: "データセット一覧" },
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000011",
+      type: "document",
+      contentId: "data-processing",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000012",
+      type: "document",
+      contentId: "off-premise-server",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000013",
+      type: "document",
+      contentId: "dac",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000014",
+      type: "document",
+      contentId: "publications",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000015",
+      type: "document",
+      contentId: "violation",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000016",
+      type: "document",
+      contentId: "privacy-policy",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000017",
+      type: "document",
+      contentId: "faq",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000018",
+      type: "document",
+      contentId: "supported-browsers",
+    },
   ],
   zones: {
     footer: {
@@ -376,16 +450,89 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     },
     navbar: {
       groups: [
-        { id: "00000000-0000-4002-8000-000000000001", label: { en: "Data Submission", ja: "データの提供" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000002" }] },
-        { id: "00000000-0000-4002-8000-000000000002", label: { en: "Guidelines", ja: "ガイドライン" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000003" }, { id: "00000000-0000-4000-8000-000000000004" }, { id: "00000000-0000-4000-8000-000000000005" }, { id: "00000000-0000-4000-8000-000000000006" }, { id: "00000000-0000-4000-8000-000000000007" }] },
-        { id: "00000000-0000-4002-8000-000000000003", label: { en: "Data Usage", ja: "データの利用" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000008" }, { id: "00000000-0000-4000-8000-000000000009" }, { id: "00000000-0000-4000-8000-000000000010" }] },
-        { id: "00000000-0000-4002-8000-000000000004", label: { en: "Data Processing", ja: "加工データ" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000011" }] },
-        { id: "00000000-0000-4002-8000-000000000005", label: { en: "Off-premise Server", ja: "機関外サーバ" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000012" }] },
-        { id: "00000000-0000-4002-8000-000000000006", label: { en: "Human Data Review Committee", ja: "ヒトデータ審査委員会" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000013" }] },
-        { id: "00000000-0000-4002-8000-000000000007", label: { en: "Publications", ja: "成果発表" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000014" }] },
-        { id: "00000000-0000-4002-8000-000000000008", label: { en: "Guideline Violation", ja: "ガイドライン違反" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000015" }] },
-        { id: "00000000-0000-4002-8000-000000000009", label: { en: "Privacy Policy", ja: "プライバシーポリシー" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000016" }] },
-        { id: "00000000-0000-4002-8000-000000000010", label: { en: "FAQ", ja: "FAQ" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000017" }] },
+        {
+          id: "00000000-0000-4002-8000-000000000001",
+          label: { en: "Data Submission", ja: "データの提供" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000002" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000002",
+          label: { en: "Guidelines", ja: "ガイドライン" },
+          enabled: true,
+          priority: "important",
+          items: [
+            { id: "00000000-0000-4000-8000-000000000003" },
+            { id: "00000000-0000-4000-8000-000000000004" },
+            { id: "00000000-0000-4000-8000-000000000005" },
+            { id: "00000000-0000-4000-8000-000000000006" },
+            { id: "00000000-0000-4000-8000-000000000007" },
+          ],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000003",
+          label: { en: "Data Usage", ja: "データの利用" },
+          enabled: true,
+          priority: "important",
+          items: [
+            { id: "00000000-0000-4000-8000-000000000008" },
+            { id: "00000000-0000-4000-8000-000000000009" },
+            { id: "00000000-0000-4000-8000-000000000010" },
+          ],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000004",
+          label: { en: "Data Processing", ja: "加工データ" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000011" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000005",
+          label: { en: "Off-premise Server", ja: "機関外サーバ" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000012" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000006",
+          label: {
+            en: "Human Data Review Committee",
+            ja: "ヒトデータ審査委員会",
+          },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000013" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000007",
+          label: { en: "Publications", ja: "成果発表" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000014" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000008",
+          label: { en: "Guideline Violation", ja: "ガイドライン違反" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000015" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000009",
+          label: { en: "Privacy Policy", ja: "プライバシーポリシー" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000016" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000010",
+          label: { en: "FAQ", ja: "FAQ" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000017" }],
+        },
       ],
     },
   },
@@ -478,29 +625,29 @@ function buildNavbarItems(
   return deriveNavbarCommittedGroups(config)
     .filter((group) => group.group.enabled && group.linkedItem)
     .map((groupWithItems) => {
-    const { group, linkedItem, subItems } = groupWithItems;
-    if (!linkedItem) {
-      return null;
-    }
+      const { group, linkedItem, subItems } = groupWithItems;
+      if (!linkedItem) {
+        return null;
+      }
 
-    const label = group.label[lang] ?? group.label["en"] ?? "";
-    const children = subItems
-      .filter((subItem) => subItem.enabled)
-      .map(({ item }) => ({
-        id: item.id,
-        label: resolveItemLabel(item, lang, resolveDocumentLabel),
-        linkOptions: resolveItemLinkOptions(item, lang),
-      }));
+      const label = group.label[lang] ?? group.label["en"] ?? "";
+      const children = subItems
+        .filter((subItem) => subItem.enabled)
+        .map(({ item }) => ({
+          id: item.id,
+          label: resolveItemLabel(item, lang, resolveDocumentLabel),
+          linkOptions: resolveItemLinkOptions(item, lang),
+        }));
 
-    return {
-      id: group.id,
-      label,
-      linkOptions: resolveItemLinkOptions(linkedItem.item, lang),
-      priority: group.priority ?? "important",
-      ...(children.length > 0 ? { children } : {}),
-    };
-  })
-  .filter((item): item is ResolvedNavbarItem => item !== null);
+      return {
+        id: group.id,
+        label,
+        linkOptions: resolveItemLinkOptions(linkedItem.item, lang),
+        priority: group.priority ?? "important",
+        ...(children.length > 0 ? { children } : {}),
+      };
+    })
+    .filter((item): item is ResolvedNavbarItem => item !== null);
 }
 
 function buildFooterGroups(

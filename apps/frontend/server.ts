@@ -69,7 +69,8 @@ import path from "node:path";
 const SERVER_PORT = Number(process.env.PORT ?? 3000);
 const CLIENT_DIRECTORY = "./dist/client";
 const SERVER_ENTRY_POINT = "./dist/server/server.js";
-const PUBLIC_FILES_SUBDIR = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+const PUBLIC_FILES_SUBDIR =
+  process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
 const PUBLIC_FILES_DIR = path.resolve(CLIENT_DIRECTORY, PUBLIC_FILES_SUBDIR);
 
 // Logging utilities for professional output
@@ -504,7 +505,9 @@ async function initializeStaticRoutes(
  * Initialize the server
  */
 async function initializeServer() {
-  const { version } = await Bun.file("./package.json").json() as { version: string };
+  const { version } = (await Bun.file("./package.json").json()) as {
+    version: string;
+  };
   log.header(`Starting Production Server v${version}`);
 
   // Load TanStack Start server handler
@@ -535,10 +538,16 @@ async function initializeServer() {
       // Uses path.resolve + prefix check to prevent path traversal attacks.
       [`/${PUBLIC_FILES_SUBDIR}/*`]: (req: Request) => {
         const url = new URL(req.url);
-        const relativePath = decodeURIComponent(url.pathname).replace(new RegExp(`^\\/${PUBLIC_FILES_SUBDIR}\\/`), "");
+        const relativePath = decodeURIComponent(url.pathname).replace(
+          new RegExp(`^\\/${PUBLIC_FILES_SUBDIR}\\/`),
+          "",
+        );
         const filePath = path.resolve(PUBLIC_FILES_DIR, relativePath);
 
-        if (!filePath.startsWith(PUBLIC_FILES_DIR + path.sep) && filePath !== PUBLIC_FILES_DIR) {
+        if (
+          !filePath.startsWith(PUBLIC_FILES_DIR + path.sep) &&
+          filePath !== PUBLIC_FILES_DIR
+        ) {
           return new Response("Not Found", { status: 404 });
         }
 

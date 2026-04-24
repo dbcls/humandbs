@@ -77,7 +77,10 @@ export function DateRangePicker({
     setOpen(next);
   };
 
-  const handleSelect = (nextRange: DateRange | undefined, selectedDay: Date) => {
+  const handleSelect = (
+    nextRange: DateRange | undefined,
+    selectedDay: Date,
+  ) => {
     // If a complete (non-trivial) range already exists, the user is starting a new selection.
     const hasCompleteRange =
       draftRange?.from &&
@@ -99,37 +102,37 @@ export function DateRangePicker({
 
   return (
     <div className="flex items-center gap-1">
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size={"slim"} className="font-normal">
-          {value ? `${value.from} - ${value.to}` : "Select date range"}
-          <ChevronDownIcon className="inline-block size-5" />
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size={"slim"} className="font-normal">
+            {value ? `${value.from} - ${value.to}` : "Select date range"}
+            <ChevronDownIcon className="inline-block size-5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-auto overflow-hidden bg-white p-0"
+          align="start"
+        >
+          <Calendar
+            numberOfMonths={2}
+            mode="range"
+            selected={draftRange}
+            defaultMonth={draftRange?.from}
+            captionLayout="dropdown"
+            onSelect={handleSelect}
+          />
+        </PopoverContent>
+      </Popover>
+      {onClear && value && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-foreground size-7"
+          onClick={onClear}
+        >
+          <XIcon className="size-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto overflow-hidden bg-white p-0"
-        align="start"
-      >
-        <Calendar
-          numberOfMonths={2}
-          mode="range"
-          selected={draftRange}
-          defaultMonth={draftRange?.from}
-          captionLayout="dropdown"
-          onSelect={handleSelect}
-        />
-      </PopoverContent>
-    </Popover>
-    {onClear && value && (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7 text-muted-foreground hover:text-foreground"
-        onClick={onClear}
-      >
-        <XIcon className="size-4" />
-      </Button>
-    )}
+      )}
     </div>
   );
 }

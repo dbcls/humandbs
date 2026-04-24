@@ -1,9 +1,11 @@
-import { useLoaderData, useRouteContext, useRouter } from "@tanstack/react-router";
+import {
+  useLoaderData,
+  useRouteContext,
+  useRouter,
+} from "@tanstack/react-router";
 import { LucideX } from "lucide-react";
 
-import {
-  $saveHiddenAlertIds,
-} from "@/serverFunctions/alert";
+import { $saveHiddenAlertIds } from "@/serverFunctions/alert";
 
 import { Link } from "./Link";
 import { Button } from "./ui/button";
@@ -11,9 +13,9 @@ import { Button } from "./ui/button";
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });
 
-  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" })
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" });
 
-  const router = useRouter()
+  const router = useRouter();
 
   async function handleHideAlert(newsId: string) {
     await $saveHiddenAlertIds({ data: { newsId, locale: lang } });
@@ -26,7 +28,13 @@ export function Alerts() {
   return (
     <ul className="flex flex-col gap-2">
       {alerts.map((alert) => (
-        <AlertMessage key={alert.newsId} {...alert} onHide={(alertId) => {handleHideAlert(alertId)}} />
+        <AlertMessage
+          key={alert.newsId}
+          {...alert}
+          onHide={(alertId) => {
+            handleHideAlert(alertId);
+          }}
+        />
       ))}
     </ul>
   );
@@ -37,11 +45,11 @@ export function AlertMessage({
   title,
   onHide,
 }: {
-    onHide?: (alertId: string) => void;
-    newsId: string;
-    title: string;
+  onHide?: (alertId: string) => void;
+  newsId: string;
+  title: string;
 }) {
-  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" })
+  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" });
 
   return (
     <div className="border-secondary text-foreground-dark flex items-center justify-between gap-2 rounded-sm border bg-white px-4 py-2">

@@ -285,7 +285,7 @@ function FlowchartListItemContent({
   return (
     <div className="min-w-0 flex-1">
       {subtitle && (
-        <div className="text-foreground-light group-data-[active=true]:text-white/80 mb-1 truncate text-xs">
+        <div className="text-foreground-light mb-1 truncate text-xs group-data-[active=true]:text-white/80">
           {subtitle}
         </div>
       )}
@@ -686,7 +686,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
             </div>
           )}
           {error && (
-            <div className="mx-5 mt-4 whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="mx-5 mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm whitespace-pre-wrap text-red-700">
               {error}
             </div>
           )}
@@ -1264,7 +1264,7 @@ function OptionList({
             <Button
               type="button"
               variant="dashed"
-              className="self-start w-fit"
+              className="w-fit self-start"
               onClick={() => {
                 const newOpt: NavigationFlowchartOption = {
                   id: crypto.randomUUID(),
@@ -1512,7 +1512,7 @@ function FieldRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-6 shrink-0 text-xs font-medium uppercase text-gray-500">
+      <span className="w-6 shrink-0 text-xs font-medium text-gray-500 uppercase">
         {label}
       </span>
       {children}

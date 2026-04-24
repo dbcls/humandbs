@@ -41,7 +41,7 @@ export function FilterableCard({
     >
       <Suspense fallback={<SkeletonLoading />}>
         <div
-          className={cn("min-h-[inherit] flex flex-col", {
+          className={cn("flex min-h-[inherit] flex-col", {
             "pr-filter-panel": panelOpen,
           })}
         >
@@ -52,7 +52,7 @@ export function FilterableCard({
       {/*Filters side panel */}
       <div
         className={cn(
-          "absolute top-0 right-0 w-filter-panel h-full border-l border-l-primary-translucent z-50 bg-white overflow-y-auto shadow-lg",
+          "w-filter-panel border-l-primary-translucent absolute top-0 right-0 z-50 h-full overflow-y-auto border-l bg-white shadow-lg",
           "transition-transform duration-300 ease-in-out",
           {
             "translate-x-full shadow-none": !panelOpen,

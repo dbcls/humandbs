@@ -19,11 +19,12 @@ const statusTagVariants = cva(
     defaultVariants: {
       status: DOCUMENT_VERSION_STATUS.DRAFT,
     },
-  }
+  },
 );
 
 interface StatusProps
-  extends VariantProps<typeof statusTagVariants>,
+  extends
+    VariantProps<typeof statusTagVariants>,
     React.HTMLProps<HTMLDivElement> {}
 
 export function StatusTag({ className, ...props }: StatusProps) {
@@ -32,7 +33,7 @@ export function StatusTag({ className, ...props }: StatusProps) {
       className={cn(
         statusTagVariants({ status: props.status }),
         "group-data-[active=true]:border-white group-data-[active=true]:text-white",
-        className
+        className,
       )}
       {...props}
     >
@@ -47,10 +48,10 @@ const researchTagVariants = cva(
   {
     variants: {
       status: {
-        draft:     "text-gray-500 border-gray-400 bg-gray-50",
-        review:    "text-yellow-700 border-yellow-400 bg-yellow-50",
+        draft: "text-gray-500 border-gray-400 bg-gray-50",
+        review: "text-yellow-700 border-yellow-400 bg-yellow-50",
         published: "text-secondary border-secondary bg-blue-50",
-        deleted:   "text-gray-400 border-gray-300 bg-gray-50",
+        deleted: "text-gray-400 border-gray-300 bg-gray-50",
       },
       size: {
         sm: "px-2 py-0 text-2xs",
@@ -61,7 +62,7 @@ const researchTagVariants = cva(
       status: "draft",
       size: "sm",
     },
-  }
+  },
 );
 
 type ResearchTagProps = {

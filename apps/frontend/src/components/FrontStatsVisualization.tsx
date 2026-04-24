@@ -273,9 +273,15 @@ function PlanetChart({ stats }: { stats: NormalizedStats }) {
       const grad = defs
         .append("radialGradient")
         .attr("id", `front-stats-planet-grad-${i}`);
-      grad.append("stop").attr("offset", "0%").attr("stop-color", palette.light);
+      grad
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", palette.light);
       grad.append("stop").attr("offset", "62%").attr("stop-color", palette.mid);
-      grad.append("stop").attr("offset", "100%").attr("stop-color", palette.dark);
+      grad
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", palette.dark);
     });
 
     root
@@ -464,7 +470,11 @@ function PlanetChart({ stats }: { stats: NormalizedStats }) {
         .append("circle")
         .attr("r", hubRadius)
         .attr("fill", `url(#front-stats-planet-grad-${paletteIndex})`)
-        .attr("stroke", d3.color(palettes[paletteIndex]!.dark)?.darker(0.35)?.toString() ?? palettes[paletteIndex]!.dark)
+        .attr(
+          "stroke",
+          d3.color(palettes[paletteIndex]!.dark)?.darker(0.35)?.toString() ??
+            palettes[paletteIndex]!.dark,
+        )
         .attr("stroke-opacity", 0.25)
         .on("mousemove", (event: MouseEvent) => {
           const researchTotal = d3.sum(
@@ -701,7 +711,11 @@ export function FrontStatsVisualization() {
   return (
     <section className="front-stats">
       {loading ? <StatsLoader /> : null}
-      {error && <p className="front-stats__message front-stats__message--error">{error}</p>}
+      {error && (
+        <p className="front-stats__message front-stats__message--error">
+          {error}
+        </p>
+      )}
       {stats ? <PlanetChart stats={stats} /> : null}
     </section>
   );
@@ -709,7 +723,10 @@ export function FrontStatsVisualization() {
 
 function StatsLoader() {
   return (
-    <div className="front-stats__loader" aria-label="Loading stats visualization">
+    <div
+      className="front-stats__loader"
+      aria-label="Loading stats visualization"
+    >
       <div className="front-stats__loader-space">
         <div className="front-stats__loader-core">
           <span className="front-stats__loader-core-count">...</span>

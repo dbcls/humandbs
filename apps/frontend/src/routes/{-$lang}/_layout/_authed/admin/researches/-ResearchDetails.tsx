@@ -407,7 +407,11 @@ export function ResearchDetails({
       topLevelFields.map((field) => [
         field,
         Object.entries(state.fieldMeta).some(
-          ([key, meta]) => (key === field || key.startsWith(`${field}.`) || key.startsWith(`${field}[`)) && meta.isDirty,
+          ([key, meta]) =>
+            (key === field ||
+              key.startsWith(`${field}.`) ||
+              key.startsWith(`${field}[`)) &&
+            meta.isDirty,
         ),
       ]),
     ) as Record<(typeof topLevelFields)[number], boolean>;
@@ -415,7 +419,7 @@ export function ResearchDetails({
 
   return (
     <Card
-      className="flex h-full flex-1 flex-col min-w-0"
+      className="flex h-full min-w-0 flex-1 flex-col"
       caption={
         <>
           <span>{researchValues.humId}</span>
@@ -443,7 +447,7 @@ export function ResearchDetails({
       containerClassName="flex flex-1 flex-col min-h-0"
     >
       {error && (
-        <div className="mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+        <div className="text-danger mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm">
           {error}
         </div>
       )}
@@ -470,7 +474,7 @@ export function ResearchDetails({
           preview ? "flex" : "hidden",
         )}
       >
-        <div className="px-5 pt-3 pb-2 shrink-0 flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 px-5 pt-3 pb-2">
           <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
@@ -481,14 +485,14 @@ export function ResearchDetails({
         </div>
       </div>
 
-      <div className={cn("min-h-0 flex-1 flex flex-col", preview && "hidden")}>
+      <div className={cn("flex min-h-0 flex-1 flex-col", preview && "hidden")}>
         <Tabs
           defaultValue="metadata"
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as "metadata" | "datasets")}
-          className="min-h-0 flex-1 flex flex-col"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="px-5 pt-5 shrink-0">
+          <div className="shrink-0 px-5 pt-5">
             <TabsList variant="line">
               <TabsTrigger variant="line" value="metadata">
                 <TabLabel dirty={Object.values(dirtyFields).some(Boolean)}>
@@ -503,10 +507,10 @@ export function ResearchDetails({
 
           <TabsContent
             value="metadata"
-            className="min-h-0 flex-1 flex flex-col max-h-full"
+            className="flex max-h-full min-h-0 flex-1 flex-col"
           >
             {/* Workflow action row */}
-            <div className="mx-5 mt-5 shrink-0 flex items-center gap-2">
+            <div className="mx-5 mt-5 flex shrink-0 items-center gap-2">
               <div className="ml-auto flex items-center gap-2">
                 {canDelete && (
                   <Button type="button" size="lg" onClick={handleDelete}>
@@ -575,7 +579,7 @@ export function ResearchDetails({
                     {(field) => (
                       <fieldset className="flex flex-col gap-2">
                         <Label>User IDs (uids)</Label>
-                        <div className="nested-form flex flex-col gap-1 w-full">
+                        <div className="nested-form flex w-full flex-col gap-1">
                           {field.state.value?.map((_, i) => (
                             <div key={i} className="flex items-center gap-1">
                               <form.AppField name={`uids[${i}]`}>
@@ -606,7 +610,7 @@ export function ResearchDetails({
               )}
 
               <Tabs defaultValue="title" className="mt-5 flex flex-col">
-                <div className="overflow-x-auto px-5 shrink-0">
+                <div className="shrink-0 overflow-x-auto px-5">
                   <TabsList variant="line">
                     <TabsTrigger variant="line" value="title">
                       <TabLabel dirty={dirtyFields.title}>Title</TabLabel>
@@ -676,7 +680,7 @@ export function ResearchDetails({
           <TabsContent
             forceMount
             value="datasets"
-            className="min-h-0 flex-1 flex flex-col max-h-full"
+            className="flex max-h-full min-h-0 flex-1 flex-col"
           >
             {datasetView === null ? (
               <TabContentLayout
@@ -753,7 +757,7 @@ function ReleaseNoteDisplay({
     <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
       {en && (
         <div className="flex-1">
-          <p className="mb-1 text-xs font-medium uppercase text-gray-400">
+          <p className="mb-1 text-xs font-medium text-gray-400 uppercase">
             Release note (En)
           </p>
           <p className="whitespace-pre-wrap text-gray-700">{en}</p>
@@ -761,7 +765,7 @@ function ReleaseNoteDisplay({
       )}
       {ja && (
         <div className="flex-1">
-          <p className="mb-1 text-xs font-medium uppercase text-gray-400">
+          <p className="mb-1 text-xs font-medium text-gray-400 uppercase">
             Release note (Ja)
           </p>
           <p className="whitespace-pre-wrap text-gray-700">{ja}</p>

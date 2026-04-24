@@ -201,12 +201,12 @@ function CardContent() {
 
   return (
     <>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {tCommon("total-results", { count: data.meta.pagination.total })}
       </p>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
-          className={cn("mt-4 w-max min-w-full text-sm min-h-full flex-1")}
+          className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
           onSortingChange={handleSortingChange}
           sorting={sorting}
           meta={{ t, lang }}

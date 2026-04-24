@@ -199,14 +199,14 @@ function CardContent() {
 
   return (
     <>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {tCommon("total-results", {
           count: researchesData.meta.pagination.total,
         })}
       </p>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
-          className={cn("mt-4 w-max min-w-full text-sm min-h-full flex-1")}
+          className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
           columns={columns}
           data={researchesData.data}
           sorting={sorting}
@@ -288,7 +288,7 @@ const columns = [
 
         <Route.Link
           to="$humId/$version"
-          className="whitespace-nowrap inline-block ml-2"
+          className="ml-2 inline-block whitespace-nowrap"
           params={{
             humId: ctx.row.original.humId,
             version: ctx.getValue().version,
@@ -314,7 +314,7 @@ const columns = [
 
         <Route.Link
           to="$humId/$version"
-          className="whitespace-nowrap inline-block ml-2"
+          className="ml-2 inline-block whitespace-nowrap"
           params={{
             humId: ctx.row.original.humId,
             version: ctx.getValue().version,

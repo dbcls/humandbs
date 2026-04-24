@@ -17,7 +17,9 @@ export const TEST_DB = "humandbs_test";
 const adminUrl = `postgres://${user}:${password}@${host}:${port}/postgres`;
 export const testDbUrl = `postgres://${user}:${password}@${host}:${port}/${TEST_DB}`;
 
-async function withAdminClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+async function withAdminClient<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
   const pool = new Pool({ connectionString: adminUrl });
   const client = await pool.connect();
   try {
@@ -71,6 +73,8 @@ export async function clearTables(
   db: ReturnType<typeof drizzle<typeof schema>>,
 ): Promise<void> {
   await db.execute(sql`SET session_replication_role = replica`);
-  await db.execute(sql`TRUNCATE TABLE content_translation, content_item, "user" RESTART IDENTITY CASCADE`);
+  await db.execute(
+    sql`TRUNCATE TABLE content_translation, content_item, "user" RESTART IDENTITY CASCADE`,
+  );
   await db.execute(sql`SET session_replication_role = DEFAULT`);
 }

@@ -14,14 +14,14 @@ export function Footer() {
         <h3 className="font-semibold">{tFooter("sitemap")}</h3>
         <div className="mt-4 flex flex-wrap gap-8">
           {siteNavigation.footer.map((group) => (
-            <section key={group.id} className="min-w-40 max-w-96">
+            <section key={group.id} className="max-w-96 min-w-40">
               <h4 className="font-semibold uppercase">{group.label}</h4>
               <ul className="mt-3 flex flex-col gap-2">
                 {group.items.map((item) => (
                   <li key={item.id} className="min-w-0">
                     <Link
                       {...item.linkOptions}
-                      className="text-xs break-words no-underline hover:text-secondary-light"
+                      className="hover:text-secondary-light text-xs break-words no-underline"
                     >
                       {item.label}
                     </Link>

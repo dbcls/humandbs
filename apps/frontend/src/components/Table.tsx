@@ -77,8 +77,8 @@ function Table<T extends Record<string, unknown>>({
   });
 
   return (
-    <table className={cn("w-full table-fixed align-top relative ", className)}>
-      <thead className="text-white z-10 relative">
+    <table className={cn("relative w-full table-fixed align-top", className)}>
+      <thead className="relative z-10 text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
             <tr
@@ -144,7 +144,7 @@ function Table<T extends Record<string, unknown>>({
       </tfoot>
       {data.length === 0 ? (
         <div className="absolute inset-0 z-0">
-          <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-neutral-400">
+          <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-neutral-400">
             {t("no-data")}
           </p>
         </div>

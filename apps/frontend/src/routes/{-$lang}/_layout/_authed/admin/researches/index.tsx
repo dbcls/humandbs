@@ -70,7 +70,7 @@ function RouteComponent() {
           />
         </Suspense>
       ) : (
-        <div className="flex flex-1 items-center justify-center text-foreground-light">
+        <div className="text-foreground-light flex flex-1 items-center justify-center">
           No research selected
         </div>
       )}

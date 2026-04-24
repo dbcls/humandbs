@@ -14,9 +14,24 @@ describe("deriveNavbarCommittedGroups", () => {
   test("treats the first group item as linked and the rest as submenu items", () => {
     const config: SiteNavigationConfig = {
       items: [
-        { id: "item-top", type: "link", url: "/top", label: { en: "Top", ja: "Top" } },
-        { id: "item-sub-1", type: "link", url: "/sub-1", label: { en: "Sub 1", ja: "Sub 1" } },
-        { id: "item-sub-2", type: "link", url: "/sub-2", label: { en: "Sub 2", ja: "Sub 2" } },
+        {
+          id: "item-top",
+          type: "link",
+          url: "/top",
+          label: { en: "Top", ja: "Top" },
+        },
+        {
+          id: "item-sub-1",
+          type: "link",
+          url: "/sub-1",
+          label: { en: "Sub 1", ja: "Sub 1" },
+        },
+        {
+          id: "item-sub-2",
+          type: "link",
+          url: "/sub-2",
+          label: { en: "Sub 2", ja: "Sub 2" },
+        },
       ],
       zones: {
         footer: { groups: [] },
@@ -41,7 +56,9 @@ describe("deriveNavbarCommittedGroups", () => {
     const [group] = deriveNavbarCommittedGroups(config);
 
     expect(group?.linkedItem?.item.id).toBe("item-top");
-    expect(group?.subItems.map(({ item, enabled }) => ({ id: item.id, enabled }))).toEqual([
+    expect(
+      group?.subItems.map(({ item, enabled }) => ({ id: item.id, enabled })),
+    ).toEqual([
       { id: "item-sub-1", enabled: true },
       { id: "item-sub-2", enabled: false },
     ]);
@@ -98,13 +115,13 @@ describe("mergeCommittedNavbarGroups", () => {
         enabled: true,
         priority: "important",
         parentGroupId: undefined,
-        items: [
-          { id: "item-top" },
-          { id: "item-sub", enabled: false },
-        ],
+        items: [{ id: "item-top" }, { id: "item-sub", enabled: false }],
       },
     ]);
-    expect(result.items.map((item) => item.id)).toEqual(["item-top", "item-sub"]);
+    expect(result.items.map((item) => item.id)).toEqual([
+      "item-top",
+      "item-sub",
+    ]);
   });
 
   test("auto-disables groups whose linked slot is empty", () => {
@@ -137,9 +154,24 @@ describe("buildSiteNavigation", () => {
   test("uses the first navbar item as the link target and the remaining items as dropdown children", () => {
     const config: SiteNavigationConfig = {
       items: [
-        { id: "item-top", type: "link", url: "/top", label: { en: "Top", ja: "Top" } },
-        { id: "item-sub-1", type: "link", url: "/sub-1", label: { en: "Sub 1", ja: "Sub 1" } },
-        { id: "item-sub-2", type: "link", url: "/sub-2", label: { en: "Sub 2", ja: "Sub 2" } },
+        {
+          id: "item-top",
+          type: "link",
+          url: "/top",
+          label: { en: "Top", ja: "Top" },
+        },
+        {
+          id: "item-sub-1",
+          type: "link",
+          url: "/sub-1",
+          label: { en: "Sub 1", ja: "Sub 1" },
+        },
+        {
+          id: "item-sub-2",
+          type: "link",
+          url: "/sub-2",
+          label: { en: "Sub 2", ja: "Sub 2" },
+        },
       ],
       zones: {
         footer: { groups: [] },

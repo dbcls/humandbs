@@ -195,7 +195,7 @@ export function ResearchesList({
         ) : (
           <div
             className={cn(
-              "h-full overflow-y-auto overflow-x-hidden transition-opacity",
+              "h-full overflow-x-hidden overflow-y-auto transition-opacity",
               isFetching && !isFetchingNextPage && "opacity-60",
             )}
           >
@@ -215,7 +215,7 @@ export function ResearchesList({
                     role="menuitem"
                     onClick={() => onSelectResearch(research.humId)}
                     isActive={isActive}
-                    className={cn("flex-1 flex-col gap-1 items-start", {
+                    className={cn("flex-1 flex-col items-start gap-1", {
                       "border border-dashed": isDummy,
                     })}
                   >
@@ -250,7 +250,7 @@ export function ResearchesList({
 
         {isFetching && !isFetchingNextPage && data ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-            <div className="mx-2 h-1 rounded-full bg-primary/20">
+            <div className="bg-primary/20 mx-2 h-1 rounded-full">
               <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
             </div>
           </div>

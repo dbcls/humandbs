@@ -18,7 +18,7 @@ export function ListItem({
         "group flex cursor-pointer items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm transition-colors",
         "data-[active=true]:bg-secondary-light data-[active=true]:text-white",
         "data-[active=false]:hover:bg-hover",
-        className
+        className,
       )}
       {...rest}
     >

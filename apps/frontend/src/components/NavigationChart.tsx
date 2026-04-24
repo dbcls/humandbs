@@ -88,7 +88,7 @@ function Breadcrumbs({ items, locale }: BreadcrumbsProps) {
                 variant={"ghost"}
                 size={"icon"}
                 onClick={item.onClick}
-                className="hover:text-gray-800 hover:underline font-medium inline"
+                className="inline font-medium hover:text-gray-800 hover:underline"
               >
                 {name}
               </Button>
@@ -277,7 +277,7 @@ const StepComponent = ({
       <div
         className={cn(
           "bg-primary rounded-xl px-16 py-7",
-          isCurrent && "ring-4 ring-secondary-light",
+          isCurrent && "ring-secondary-light ring-4",
         )}
       >
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">

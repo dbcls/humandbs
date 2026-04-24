@@ -121,7 +121,7 @@ export function ResearchDatasetsTab({
   return (
     <div className="flex flex-col gap-4">
       {deleteError && (
-        <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+        <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
           {deleteError}
         </div>
       )}

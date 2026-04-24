@@ -145,7 +145,7 @@ function NavPanel() {
       {canViewCms && (
         <section className="flex flex-col gap-5 text-sm">
           <span>Static Pages</span>
-          <div className="flex flex-col gap-5 pl-5 items-stretch">
+          <div className="flex flex-col items-stretch gap-5 pl-5">
             <PanelItem
               title={
                 <span>
@@ -223,7 +223,7 @@ function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
   return (
     <Link
       variant={"nav"}
-      className="w-auto rounded-sm data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground py-2 px-4"
+      className="data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground w-auto rounded-sm px-4 py-2"
       to={`/{-$lang}/admin/${tab}`}
       params={{ lang }}
     >

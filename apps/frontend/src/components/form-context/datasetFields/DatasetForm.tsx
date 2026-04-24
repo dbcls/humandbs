@@ -188,7 +188,7 @@ export function DatasetForm({
       className="flex flex-col gap-5"
     >
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+        <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
           {error}
         </div>
       )}

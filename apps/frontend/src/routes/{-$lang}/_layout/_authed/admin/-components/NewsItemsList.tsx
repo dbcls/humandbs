@@ -185,7 +185,7 @@ export function NewsItemsList({
                   isActive={isActive}
                   className={cn({ "border border-dashed": isDraft })}
                 >
-                  <div className="flex flex-col gap-1 items-start min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <div className="flex items-center gap-2">
                       <span className="block font-mono text-xs">
                         {item.publishedAt || "No date"}
@@ -207,7 +207,7 @@ export function NewsItemsList({
                         ([lang, tr], index) => (
                           <div
                             key={`${lang}-${index}`}
-                            className="flex items-center gap-1 w-full"
+                            className="flex w-full items-center gap-1"
                           >
                             <Tag tag={lang} isActive={isActive} />
                             <span className="block min-w-0 truncate text-xs opacity-70">
@@ -249,7 +249,7 @@ export function NewsItemsList({
 
         {isFetching && !isFetchingNextPage && data ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-            <div className="mx-2 h-1 rounded-full bg-primary/20">
+            <div className="bg-primary/20 mx-2 h-1 rounded-full">
               <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
             </div>
           </div>

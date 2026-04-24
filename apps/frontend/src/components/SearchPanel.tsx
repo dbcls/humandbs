@@ -322,14 +322,14 @@ export function SearchPanel({
           } else {
             return (
               <Accordion
-                className="px-3 pb-2 mt-6"
+                className="mt-6 px-3 pb-2"
                 type="multiple"
                 key={key}
                 defaultValue={val
                   .filter((s) => normalizeValue(draft[s.id]) !== undefined)
                   .map((s) => s.id)}
               >
-                <p className="text-sm font-medium py-3">{t(key)}</p>
+                <p className="py-3 text-sm font-medium">{t(key)}</p>
                 {val.map((v) => (
                   <AccordionFilterItem
                     key={v.id}
@@ -391,7 +391,7 @@ function PanelHeader({
         </Button>
         <Button
           variant="accent"
-          className="flex-1 text-center block"
+          className="block flex-1 text-center"
           onClick={onSearch}
         >
           {t("panel-search")}
@@ -514,7 +514,7 @@ function FacetItemWrapper({
         <Button
           variant={"outline"}
           size={"slim"}
-          className="absolute right-0 top-1 py-0 z-10 text-2xs text-muted-foreground"
+          className="text-2xs text-muted-foreground absolute top-1 right-0 z-10 py-0"
           onPointerDown={(e) => {
             e.stopPropagation();
           }}
@@ -526,7 +526,7 @@ function FacetItemWrapper({
           {t("panel-reset")}
         </Button>
       )}
-      <AccordionContent className="pl-5 py-1">{children}</AccordionContent>
+      <AccordionContent className="py-1 pl-5">{children}</AccordionContent>
     </AccordionItem>
   );
 }
@@ -561,7 +561,7 @@ function CheckboxFacetItem({
         onUpdate(id, undefined);
       }}
     >
-      <ul className="space-y-2 max-h-80 overflow-y-auto">
+      <ul className="max-h-80 space-y-2 overflow-y-auto">
         {options.map((optionValue) => {
           const isChecked = selectedValues.includes(optionValue);
           const count =
@@ -569,7 +569,7 @@ function CheckboxFacetItem({
 
           return (
             <li key={`${id}-${optionValue}`}>
-              <Label className="flex justify-between items-start text-xs">
+              <Label className="flex items-start justify-between text-xs">
                 <div className="flex gap-2">
                   <Checkbox
                     checked={isChecked}
@@ -745,7 +745,7 @@ function TextListFacetItem({
                 handleChange(index, e.target.value);
               }}
               placeholder={`${id}...`}
-              className={cn("h-7 text-sm flex-1")}
+              className={cn("h-7 flex-1 text-sm")}
             />
             <Button
               variant="ghost"
@@ -762,10 +762,10 @@ function TextListFacetItem({
         <Button
           variant="ghost"
           size="slim"
-          className="text-xs text-muted-foreground"
+          className="text-muted-foreground text-xs"
           onClick={handleAdd}
         >
-          <Plus className="size-3.5 mr-1" />
+          <Plus className="mr-1 size-3.5" />
           Add
         </Button>
       </div>

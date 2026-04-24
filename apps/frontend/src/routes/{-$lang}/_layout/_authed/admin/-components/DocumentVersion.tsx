@@ -198,7 +198,7 @@ function DocumentVersionContent({
 
   return (
     <Tabs
-      className="flex-1 min-h-0"
+      className="min-h-0 flex-1"
       defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
     >
       <TabsList>
@@ -354,7 +354,7 @@ function DocumentVersionContent({
 
             return (
               <>
-                <div className="border-b flex justify-end border-foreground-light pb-2">
+                <div className="border-foreground-light flex justify-end border-b pb-2">
                   <Button
                     variant={"outline"}
                     size={"lg"}
@@ -389,7 +389,9 @@ function useDocumentVersionForm({
   versionNumber,
 }: {
   initialValues: FormData;
-  setBaselineTranslations: React.Dispatch<React.SetStateAction<FormData["translations"]>>;
+  setBaselineTranslations: React.Dispatch<
+    React.SetStateAction<FormData["translations"]>
+  >;
   contentId: string;
   versionNumber: number;
 }) {

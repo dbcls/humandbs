@@ -9,7 +9,11 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DOCUMENTS_DIR = path.join(SCRIPT_DIR, "..", "seed-data", "documents");
 
 const PUBLIC_FILES_DIR = path.join(
-  SCRIPT_DIR, "..", "..", "..", "public",
+  SCRIPT_DIR,
+  "..",
+  "..",
+  "..",
+  "public",
   process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files",
 );
 
@@ -58,7 +62,9 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
   return documents;
 }
 
-async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<number> {
+async function copyDocumentFiles(
+  documents: DocumentLocaleMap,
+): Promise<number> {
   const copiedByDocumentId = new Map<string, Set<string>>();
   let totalCopied = 0;
 

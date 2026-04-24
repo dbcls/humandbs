@@ -30,9 +30,9 @@ function RouteComponent() {
 
   return (
     // All that after the Navbar component
-    <section className="flex flex-col items-stretch gap-8 main-content">
+    <section className="main-content flex flex-col items-stretch gap-8">
       <section className="flex h-fit items-start justify-between gap-8">
-        <div className="flex flex-1 flex-col items-center  prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16">
+        <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16 flex flex-1 flex-col items-center">
           <Outlet />
           <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
             <Button
@@ -41,23 +41,23 @@ function RouteComponent() {
                 navigate({ to: "/{-$lang}/data-submission" });
               }}
               size={"xl"}
-              className="w-[27rem] h-[6.8rem] block text-center relative"
+              className="relative block h-[6.8rem] w-[27rem] text-center"
             >
               <span>{t("data-submission-button")}</span>
 
-              <SubmitDataIcon className="absolute right-2 w-40 h-auto bottom-2" />
+              <SubmitDataIcon className="absolute right-2 bottom-2 h-auto w-40" />
             </Button>
 
             <Button
               variant={"action"}
               size={"xl"}
-              className="w-[27rem] h-[6.8rem] block text-center relative"
+              className="relative block h-[6.8rem] w-[27rem] text-center"
               onClick={() => {
                 navigate({ to: "/{-$lang}/data-use" });
               }}
             >
               <span>{t("data-usage-button")}</span>
-              <UseDataIcon className="absolute left-0 w-40 h-auto bottom-2" />
+              <UseDataIcon className="absolute bottom-2 left-0 h-auto w-40" />
             </Button>
           </div>
         </div>
@@ -66,7 +66,7 @@ function RouteComponent() {
           <News />
         </Card>
       </section>
-      <Card className="overflow-hidden p-0 bg-transparent">
+      <Card className="overflow-hidden bg-transparent p-0">
         <FrontStatsVisualization />
       </Card>
     </section>

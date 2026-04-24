@@ -97,13 +97,13 @@ function DataEntriesTable({
       <span className="text-xs font-medium text-gray-500">Data entries</span>
 
       {entries.length > 0 && (
-        <table className="w-full text-xs border-collapse">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-gray-100 text-left text-gray-400">
-              <th className="pb-2 pr-3 font-medium w-48">Key</th>
-              <th className="pb-2 pr-3 font-medium">En</th>
-              <th className="pb-2 pr-3 font-medium">Ja</th>
-              <th className="pb-2 w-6" />
+              <th className="w-48 pr-3 pb-2 font-medium">Key</th>
+              <th className="pr-3 pb-2 font-medium">En</th>
+              <th className="pr-3 pb-2 font-medium">Ja</th>
+              <th className="w-6 pb-2" />
             </tr>
           </thead>
           <tbody>
@@ -247,9 +247,9 @@ function ExperimentItemForm({
   );
 
   return (
-    <div className="flex flex-col gap-3 items-start">
+    <div className="flex flex-col items-start gap-3">
       {/* Header — bilingual, binding to .text subfields */}
-      <Label className="flex flex-col w-full items-start gap-2">
+      <Label className="flex w-full flex-col items-start gap-2">
         <span className="text-xs font-medium text-gray-500">Header</span>
         <div className="flex w-full gap-2">
           <form.AppField name={`experiments[${index}].header.en.text`}>

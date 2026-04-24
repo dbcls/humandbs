@@ -54,10 +54,11 @@ function useContentItemDetailsForm({
   id,
 }: {
   initialValues: FormData;
-  setBaselineTranslation: React.Dispatch<React.SetStateAction<FormData["translation"]>>;
+  setBaselineTranslation: React.Dispatch<
+    React.SetStateAction<FormData["translation"]>
+  >;
   id: string;
 }) {
-
   const { mutate: saveDraft } = useSaveDraft(id);
 
   const { mutateAsync: publishDraft } = usePublishDraft(id);
@@ -211,7 +212,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
       }
     >
       <Tabs
-        className="flex-1 min-h-0"
+        className="min-h-0 flex-1"
         defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
       >
         <TabsList>
@@ -367,7 +368,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
 
               return (
                 <>
-                  <div className="border-b flex justify-end border-foreground-light pb-2">
+                  <div className="border-foreground-light flex justify-end border-b pb-2">
                     <Button
                       variant={"outline"}
                       size={"lg"}
