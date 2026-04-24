@@ -3,7 +3,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { type Locale } from "use-intl";
 import { z } from "zod";
 
-import { type ContentId } from "@/config/content-config";
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import { type DocVersionStatus } from "@/db/schema";
@@ -16,7 +15,7 @@ import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
   createDocumentVersionRepository,
   type DocVersionListItemResponseRaw,
-  type DocVersionResponseRaw,
+  type DocAnyVersionResponseRaw,
 } from "@/repositories/documentVersion";
 import { $getContentItemTranslation } from "./contentItem";
 
@@ -175,7 +174,7 @@ export const getDocumentVersionQueryOptions = ({
  * @returns grouped result
  */
 export function groupDocVersion(
-  rawVersion: DocVersionResponseRaw[],
+  rawVersion: DocAnyVersionResponseRaw[],
 ): DocVersionResponse {
   if (rawVersion.length === 0) {
     return {

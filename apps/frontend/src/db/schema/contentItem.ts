@@ -18,7 +18,7 @@ export const contentItem = pgTable("content_item", {
 
   authorId: text("author_id").notNull(),
 
-  hideTOC: boolean(),
+  hideTOC: boolean("hide_toc").default(true),
 });
 
 export const contentItemRelations = relations(contentItem, ({ many, one }) => ({

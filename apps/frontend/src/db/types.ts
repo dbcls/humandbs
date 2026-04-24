@@ -14,6 +14,7 @@ export const insertDocumentSchema = createInsertSchema(schema.document);
 
 export const documentSelectSchema = createSelectSchema(schema.document).omit({
   createdAt: true,
+  hideTOC: true,
 });
 
 export const documentVersionSelectSchema = createSelectSchema(
