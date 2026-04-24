@@ -1,5 +1,11 @@
 import { relations } from "drizzle-orm";
-import { pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 import { user } from "./auth-schema";
 import { documentVersionStatus } from "./documentVersion";
@@ -7,8 +13,12 @@ import { documentVersionStatus } from "./documentVersion";
 export const contentItem = pgTable("content_item", {
   id: text("id").notNull().primaryKey(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
   publishedAt: text("published_at"),
+
   authorId: text("author_id").notNull(),
+
+  hideTOC: boolean(),
 });
 
 export const contentItemRelations = relations(contentItem, ({ many, one }) => ({

@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { i18n, type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
@@ -9,46 +9,31 @@ import {
 } from "@/db/schema";
 import { buildConflictUpdateColumns } from "@/db/utils";
 
-export interface DocPublishedVersionListItemResponse {
-  title: string | null;
-  versionNumber: number;
+interface BaseDoc {
   contentId: string;
+  versionNumber: number;
+  title: string | null;
   locale: Locale;
+}
+
+export interface DocPublishedVersionListItemResponse extends BaseDoc {
   createdAt: Date;
 }
 
-export interface DocPublishedResponseRaw {
-  contentId: string;
-  versionNumber: number;
-  locale: Locale;
-  title: string | null;
-  content: string | null;
+export interface DocVersionListItemResponseRaw extends BaseDoc {
+  status: DocVersionStatus;
 }
 
-export interface DocPublishedVersionResponseRaw {
-  contentId: string;
-  versionNumber: number;
-  locale: Locale;
-  title: string | null;
+export interface DocPublishedVersionResponseRaw extends BaseDoc {
   content: string | null;
+  hideTOC: boolean;
   updatedAt: Date;
 }
 
-export interface DocVersionListItemResponseRaw {
-  title: string | null;
-  versionNumber: number;
-  contentId: string;
-  locale: Locale;
-  status: DocVersionStatus;
-}
-
-export interface DocVersionResponseRaw {
-  versionNumber: number;
-  contentId: string;
-  locale: Locale;
-  status: DocVersionStatus;
+export interface DocAnyVersionResponseRaw extends BaseDoc {
   content: string | null;
-  title: string | null;
+  hideTOC: boolean;
+  status: DocVersionStatus;
 }
 
 interface DocumentVersionRepo {
@@ -71,7 +56,7 @@ interface DocumentVersionRepo {
   getLatestPublishedForLocale: (
     contentId: string,
     locale: Locale,
-  ) => Promise<DocPublishedResponseRaw | undefined>;
+  ) => Promise<DocPublishedVersionResponseRaw | undefined>;
 
   /**
    * Public
@@ -103,7 +88,7 @@ interface DocumentVersionRepo {
   getVersion: (
     contentId: string,
     versionNumber: number,
-  ) => Promise<DocVersionResponseRaw[]>;
+  ) => Promise<DocAnyVersionResponseRaw[]>;
 
   /**
    * Private
@@ -171,90 +156,168 @@ interface DocumentVersionRepo {
   ) => Promise<{ versionNumber: number }>;
 }
 
+const contentIdPlaceholder = sql.placeholder("contentId");
+const versionNumberPlaceholder = sql.placeholder("versionNumber");
+const langPlaceholder = sql.placeholder("lang");
+
 export function createDocumentVersionRepository(
   database: typeof db,
 ): DocumentVersionRepo {
+  const publishedListForLocaleQuery = database.query.documentVersion
+    .findMany({
+      where: (table, { and, eq }) =>
+        and(
+          eq(table.contentId, contentIdPlaceholder),
+          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+          eq(table.locale, langPlaceholder),
+        ),
+      columns: {
+        title: true,
+        versionNumber: true,
+        contentId: true,
+        locale: true,
+        createdAt: true,
+      },
+      orderBy: [desc(documentVersion.versionNumber)],
+    })
+    .prepare("publishedListForLocale");
+
+  const latestPublishedForLocaleQuery = database.query.documentVersion
+    .findFirst({
+      where: (table, { and, eq }) =>
+        and(
+          eq(table.contentId, contentIdPlaceholder),
+          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+          eq(table.locale, langPlaceholder),
+        ),
+      with: {
+        document: {
+          columns: {
+            hideTOC: true,
+          },
+        },
+      },
+      columns: {
+        title: true,
+        content: true,
+        contentId: true,
+        versionNumber: true,
+        locale: true,
+        updatedAt: true,
+      },
+      orderBy: [desc(documentVersion.versionNumber)],
+    })
+    .prepare("latestPublishedForLocale");
+
+  const versionListQuery = database.query.documentVersion
+    .findMany({
+      where: (table, { eq }) => eq(table.contentId, contentIdPlaceholder),
+      columns: {
+        title: true,
+        versionNumber: true,
+        contentId: true,
+        locale: true,
+        status: true,
+      },
+    })
+    .prepare("versionList");
+
+  const publishedForVersionNumberAndLocaleQuery = database.query.documentVersion
+    .findFirst({
+      where: (table, { and, eq }) =>
+        and(
+          eq(table.contentId, contentIdPlaceholder),
+          eq(table.versionNumber, versionNumberPlaceholder),
+          eq(table.locale, langPlaceholder),
+          eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+        ),
+      with: {
+        document: {
+          columns: {
+            hideTOC: true,
+          },
+        },
+      },
+      columns: {
+        title: true,
+        content: true,
+        contentId: true,
+        versionNumber: true,
+        locale: true,
+        status: true,
+        updatedAt: true,
+      },
+    })
+    .prepare("publishedForVersionNumberAndLocale");
+
+  const getVersionQuery = database.query.documentVersion
+    .findMany({
+      where: (table, { and, eq }) =>
+        and(
+          eq(table.contentId, contentIdPlaceholder),
+          eq(table.versionNumber, versionNumberPlaceholder),
+        ),
+      with: {
+        document: {
+          columns: {
+            hideTOC: true,
+          },
+        },
+      },
+      columns: {
+        title: true,
+        content: true,
+        contentId: true,
+        status: true,
+        locale: true,
+        versionNumber: true,
+      },
+    })
+    .prepare("getVersion");
+
   return {
     getPublishedListForLocale: (contentId, lang) =>
-      database.query.documentVersion.findMany({
-        where: (table, { and, eq }) =>
-          and(
-            eq(table.contentId, contentId),
-            eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-            eq(table.locale, lang),
-          ),
-        columns: {
-          title: true,
-          versionNumber: true,
-          contentId: true,
-          locale: true,
-          createdAt: true,
-        },
-        orderBy: [desc(documentVersion.versionNumber)],
-      }),
-    getLatestPublishedForLocale: (contentId, locale) =>
-      database.query.documentVersion.findFirst({
-        where: (table, { and, eq }) =>
-          and(
-            eq(table.contentId, contentId),
-            eq(table.locale, locale),
-            eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-          ),
-        orderBy: (t, { desc }) => desc(t.versionNumber),
-        columns: {
-          contentId: true,
-          versionNumber: true,
-          locale: true,
-          title: true,
-          content: true,
-        },
-      }),
-    getVersionList: (contentId) =>
-      database.query.documentVersion.findMany({
-        where: (table, { eq }) => eq(table.contentId, contentId),
-        columns: {
-          title: true,
-          versionNumber: true,
-          contentId: true,
-          locale: true,
-          status: true,
-        },
-      }),
-    getPublishedForVersionNumberAndLocale: (contentId, versionNumber, locale) =>
-      database.query.documentVersion.findFirst({
-        where: (t, { and, eq }) =>
-          and(
-            eq(t.contentId, contentId),
-            eq(t.versionNumber, versionNumber),
-            eq(t.locale, locale),
-            eq(t.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-          ),
-        columns: {
-          title: true,
-          content: true,
-          contentId: true,
-          versionNumber: true,
-          locale: true,
-          status: true,
-          updatedAt: true,
-        },
-      }),
-    getVersion: (contentId, versionNumber) =>
-      database.query.documentVersion.findMany({
-        where: (table, { and, eq }) =>
-          and(
-            eq(table.contentId, contentId),
-            eq(table.versionNumber, versionNumber),
-          ),
-        columns: {
-          title: true,
-          content: true,
-          contentId: true,
-          status: true,
-          locale: true,
-          versionNumber: true,
-        },
-      }),
+      publishedListForLocaleQuery.execute({ contentId, lang }),
+    getLatestPublishedForLocale: async (contentId, lang) => {
+      const row = await latestPublishedForLocaleQuery.execute({
+        contentId,
+        lang,
+      });
+
+      if (!row) return undefined;
+      return { ...row, hideTOC: row.document.hideTOC ?? false };
+    },
+
+    getVersionList: (contentId) => versionListQuery.execute({ contentId }),
+
+    getPublishedForVersionNumberAndLocale: async (
+      contentId,
+      versionNumber,
+      lang,
+    ) => {
+      const row = await publishedForVersionNumberAndLocaleQuery.execute({
+        contentId,
+        versionNumber,
+        lang,
+      });
+
+      if (!row) return undefined;
+
+      return { ...row, hideTOC: row.document.hideTOC ?? false };
+    },
+
+    getVersion: async (contentId, versionNumber) => {
+      const rows = await getVersionQuery.execute({
+        contentId,
+        versionNumber,
+      });
+
+      return rows.map((row) => ({
+        ...row,
+        hideTOC: row.document.hideTOC ?? false,
+      }));
+    },
+
     saveDraft: (contentId, versionNumber, lang, data) =>
       database
         .insert(documentVersion)
@@ -277,6 +340,7 @@ export function createDocumentVersionRepository(
             "title",
           ]),
         }),
+
     publish: (contentId, versionNumber, locale) =>
       database.transaction(async (tx) => {
         const draft = await tx.query.documentVersion.findFirst({
