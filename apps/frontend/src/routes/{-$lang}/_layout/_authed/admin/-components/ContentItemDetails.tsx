@@ -12,9 +12,12 @@ import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, type Locale } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
@@ -23,6 +26,7 @@ import {
   $resetContentItemTranslationDraft,
   $saveContentItemTranslationDraft,
   $unpublishContentItemTranslation,
+  $updateContentItemHideTOC,
   getContentQueryOptions,
   getContentsListQueryOptions,
   type ContentItemResponse,
@@ -36,7 +40,7 @@ import { UnpublishedDot } from "./UnpublishedDot";
 type ContentItem = NonNullable<ContentItemResponse>;
 
 interface FormMeta {
-  submitAction: "saveDraft" | "publish" | "resetDraft" | null;
+  submitAction: "saveDraft" | "publish" | "publishAll" | "resetDraft" | null;
 }
 
 const defaultMeta: FormMeta = {
@@ -46,6 +50,10 @@ const defaultMeta: FormMeta = {
 interface FormData {
   lang: Locale;
   translation: ContentItem["translations"];
+}
+
+function normalizeTextValue(value: string | undefined) {
+  return value ?? "";
 }
 
 function useContentItemDetailsForm({
@@ -60,11 +68,8 @@ function useContentItemDetailsForm({
   id: string;
 }) {
   const { mutate: saveDraft } = useSaveDraft(id);
-
   const { mutateAsync: publishDraft } = usePublishDraft(id);
-
   const { mutateAsync: resetDraft } = useResetDraft(id);
-
   const isIgnoreRef = useRef(false);
 
   const form = useAppForm({
@@ -72,7 +77,6 @@ function useContentItemDetailsForm({
     onSubmitMeta: defaultMeta,
     onSubmit: async ({ value, meta, formApi }) => {
       if (isIgnoreRef.current) {
-        console.log("skipping save");
         return;
       }
 
@@ -81,7 +85,6 @@ function useContentItemDetailsForm({
 
       switch (meta.submitAction) {
         case "saveDraft":
-          // dont save draft if only switched to empty editor
           if (title || content) {
             saveDraft({
               lang: value.lang,
@@ -92,10 +95,11 @@ function useContentItemDetailsForm({
             });
           }
           break;
+
         case "resetDraft":
           isIgnoreRef.current = true;
           try {
-            await resetDraft(value);
+            await resetDraft({ lang: value.lang });
             const publishedTitle =
               value.translation?.[value.lang]?.published?.title ?? "";
             const publishedContent =
@@ -116,7 +120,6 @@ function useContentItemDetailsForm({
           } finally {
             isIgnoreRef.current = false;
           }
-
           break;
 
         case "publish": {
@@ -141,6 +144,8 @@ function useContentItemDetailsForm({
                 published: {
                   title: title ?? "",
                   content: content ?? "",
+                  status: "published" as const,
+                  updatedAt: new Date(),
                 },
               },
             };
@@ -149,7 +154,58 @@ function useContentItemDetailsForm({
           } finally {
             isIgnoreRef.current = false;
           }
+          break;
+        }
 
+        case "publishAll": {
+          isIgnoreRef.current = true;
+          const dirtyLocs = i18n.locales.filter((loc) => {
+            const draft = value.translation[loc]?.draft;
+            const published = value.translation[loc]?.published;
+            return (
+              normalizeTextValue(draft?.content) !==
+                normalizeTextValue(published?.content) ||
+              normalizeTextValue(draft?.title) !==
+                normalizeTextValue(published?.title)
+            );
+          });
+
+          Promise.all(
+            dirtyLocs.map(async (loc) => {
+              const locTitle = value.translation[loc]?.draft?.title ?? "";
+              const locContent = value.translation[loc]?.draft?.content ?? "";
+              if (locTitle || locContent) {
+                saveDraft({
+                  lang: loc,
+                  translationDraft: { title: locTitle, content: locContent },
+                });
+              }
+              await publishDraft({ lang: loc });
+              return { loc, locTitle, locContent };
+            }),
+          )
+            .then((results) => {
+              const newTranslation = { ...value.translation };
+              for (const { loc, locTitle, locContent } of results) {
+                newTranslation[loc] = {
+                  ...newTranslation[loc],
+                  published: {
+                    title: locTitle,
+                    content: locContent,
+                    status: "published" as const,
+                    updatedAt: new Date(),
+                  },
+                };
+              }
+              setBaselineTranslation(newTranslation);
+              formApi.reset({ ...value, translation: newTranslation });
+            })
+            .finally(() => {
+              isIgnoreRef.current = false;
+            })
+            .catch(() => {
+              formApi.reset();
+            });
           break;
         }
       }
@@ -186,15 +242,25 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
     id,
   });
 
-  const isDraftChanged = useStore(form.store, (state) => {
-    return (
-      state.isValid &&
-      (state.values.translation[state.values.lang]?.draft?.content !==
-        state.values.translation[state.values.lang]?.published?.content ||
-        state.values.translation[state.values.lang]?.draft?.title !==
-          state.values.translation[state.values.lang]?.published?.title)
-    );
-  });
+  const dirtyLocales = useStore(
+    form.store,
+    (state) =>
+      Object.fromEntries(
+        i18n.locales.map((loc) => {
+          const draft = state.values.translation[loc]?.draft;
+          const published = state.values.translation[loc]?.published;
+          const changed =
+            state.isValid &&
+            (normalizeTextValue(draft?.content) !==
+              normalizeTextValue(published?.content) ||
+              normalizeTextValue(draft?.title) !==
+                normalizeTextValue(published?.title));
+          return [loc, changed];
+        }),
+      ) as Record<Locale, boolean>,
+  );
+
+  const anyDirty = Object.values(dirtyLocales).some(Boolean);
 
   return (
     <Card
@@ -204,114 +270,135 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
       caption={
         <span className="flex items-center gap-5">
           <span>Details</span>
-
-          {/*<form.AppField name="lang">
-            {(field) => <field.LocaleSwitchField />}
-          </form.AppField>*/}
+          <Suspense>
+            <ShowTOCCheckbox id={id} />
+          </Suspense>
         </span>
       }
     >
-      <Tabs
-        className="min-h-0 flex-1"
-        defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
-      >
-        <TabsList>
-          <TabsTrigger
-            className="flex items-center gap-2"
-            value={DOCUMENT_VERSION_STATUS.DRAFT}
-          >
-            <Pencil /> <span>Editor</span>
-            {isDraftChanged ? <UnpublishedDot /> : null}
-            <div className="w-4">
-              {savingStatuses.at(-1) === "pending" && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
-            </div>
-          </TabsTrigger>
-          <TabsTrigger
-            className="flex items-center gap-2"
-            value={DOCUMENT_VERSION_STATUS.PUBLISHED}
-          >
-            <span>Live</span>
-            <div className="w-4">
-              {(isPublishPending || isUnpublishPending) && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
-            </div>
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent
-          className="flex flex-1 flex-col gap-2"
-          value={DOCUMENT_VERSION_STATUS.DRAFT}
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <Tabs
+          defaultValue={i18n.defaultLocale}
+          onValueChange={(val) => form.setFieldValue("lang", val as Locale)}
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => (
-              <div className="flex items-center justify-between gap-4 pb-2">
-                <form.Subscribe
-                  selector={(state) => ({
-                    draftContent:
-                      state.values.translation[lang]?.draft?.content ?? "",
-                    draftTitle:
-                      state.values.translation[lang]?.draft?.title ?? "",
-                  })}
+          <div className="flex items-center justify-end gap-2 pb-1">
+            <form.Subscribe selector={(state) => state.values.lang}>
+              {(lang) => (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={!dirtyLocales[lang]}
+                  onClick={() =>
+                    form.handleSubmit({ submitAction: "resetDraft" })
+                  }
                 >
-                  {({ draftContent, draftTitle }) => (
-                    <MarkdownFileActions
-                      filename={`${id}-${lang}`}
-                      content={draftContent}
-                      title={draftTitle}
-                      lang={lang}
-                      onUpload={(text, uploadedTitle) => {
-                        form.setFieldValue(
-                          `translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
-                          text,
-                        );
-                        if (uploadedTitle !== undefined) {
-                          form.setFieldValue(
-                            `translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
-                            uploadedTitle,
-                          );
-                        }
-                        form.handleSubmit({ submitAction: "saveDraft" });
-                      }}
-                    />
-                  )}
-                </form.Subscribe>
-                <div className="flex gap-2">
-                  <Button
-                    variant={"outline"}
-                    size={"lg"}
-                    disabled={!isDraftChanged}
-                    onClick={() => {
-                      form.handleSubmit({ submitAction: "resetDraft" });
-                    }}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    type="submit"
-                    onClick={() => {
-                      form.handleSubmit({ submitAction: "publish" });
-                    }}
-                    className="gap-1 self-end"
-                    size={"lg"}
-                    variant={"accent"}
-                    disabled={!isDraftChanged}
-                  >
-                    <Save className="size-5" />
-                    Publish
-                  </Button>
-                </div>
-              </div>
-            )}
-          </form.Subscribe>
+                  Reset
+                </Button>
+              )}
+            </form.Subscribe>
 
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => {
-              return (
-                <>
+            <Button
+              type="submit"
+              size="lg"
+              variant="accent"
+              disabled={!anyDirty || isPublishPending}
+              onClick={() => form.handleSubmit({ submitAction: "publishAll" })}
+              className="gap-1"
+            >
+              {isPublishPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-5" />
+              )}
+              Publish
+            </Button>
+          </div>
+
+          <TabsList variant="line">
+            {i18n.locales.map((loc) => (
+              <TabsTrigger key={loc} value={loc} variant="line">
+                <TabLabel dirty={dirtyLocales[loc]}>
+                  {loc.toUpperCase()}
+                </TabLabel>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {i18n.locales.map((loc) => (
+            <TabsContent
+              key={loc}
+              value={loc}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <Tabs
+                className="flex min-h-0 flex-1 flex-col"
+                defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+              >
+                <TabsList variant="line">
+                  <TabsTrigger
+                    variant="line"
+                    className="flex items-center gap-2"
+                    value={DOCUMENT_VERSION_STATUS.DRAFT}
+                  >
+                    <Pencil /> <span>Editor</span>
+                    {dirtyLocales[loc] && <UnpublishedDot />}
+                    <div className="w-4">
+                      {savingStatuses.at(-1) === "pending" && (
+                        <Loader2 className="size-4 animate-spin" />
+                      )}
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    variant="line"
+                    className="flex items-center gap-2"
+                    value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+                  >
+                    <span>Live</span>
+                    <div className="w-4">
+                      {(isPublishPending || isUnpublishPending) && (
+                        <Loader2 className="size-4 animate-spin" />
+                      )}
+                    </div>
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent
+                  className="flex min-h-0 flex-1 flex-col gap-2"
+                  value={DOCUMENT_VERSION_STATUS.DRAFT}
+                >
+                  <form.Subscribe
+                    selector={(state) => ({
+                      draftContent:
+                        state.values.translation[loc]?.draft?.content ?? "",
+                      draftTitle:
+                        state.values.translation[loc]?.draft?.title ?? "",
+                    })}
+                  >
+                    {({ draftContent, draftTitle }) => (
+                      <MarkdownFileActions
+                        filename={`${id}-${loc}`}
+                        content={draftContent}
+                        title={draftTitle}
+                        lang={loc}
+                        onUpload={(text, uploadedTitle) => {
+                          form.setFieldValue(
+                            `translation.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
+                            text,
+                          );
+                          if (uploadedTitle !== undefined) {
+                            form.setFieldValue(
+                              `translation.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
+                              uploadedTitle,
+                            );
+                          }
+                          form.handleSubmit({ submitAction: "saveDraft" });
+                        }}
+                      />
+                    )}
+                  </form.Subscribe>
                   <form.AppField
-                    name={`translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
+                    name={`translation.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
                     listeners={{
                       onChange: ({ fieldApi }) => {
                         fieldApi.form.handleSubmit({
@@ -325,7 +412,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                   </form.AppField>
                   <Suspense fallback={<SkeletonLoading />}>
                     <form.AppField
-                      name={`translation.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
+                      name={`translation.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
                       listeners={{
                         onChange: ({ fieldApi }) => {
                           fieldApi.form.handleSubmit({
@@ -351,53 +438,84 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                       }}
                     </form.AppField>
                   </Suspense>
-                </>
-              );
-            }}
-          </form.Subscribe>
-        </TabsContent>
-        <TabsContent
-          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
-          value={DOCUMENT_VERSION_STATUS.PUBLISHED}
-        >
-          <form.Subscribe selector={(state) => state.values.lang}>
-            {(lang) => {
-              if (!data.translations[lang]?.published?.content) {
-                return <div> No published content</div>;
-              }
+                </TabsContent>
 
-              return (
-                <>
-                  <div className="border-foreground-light flex justify-end border-b pb-2">
-                    <Button
-                      variant={"outline"}
-                      size={"lg"}
-                      onClick={() => {
-                        unpublishDraft({ lang });
-                      }}
-                      disabled={isUnpublishPending}
-                    >
-                      Unpublish
-                    </Button>
-                  </div>
-
-                  <MarkdownClientPreview
-                    source={data.translations[lang]?.published?.content}
-                  />
-                </>
-              );
-            }}
-          </form.Subscribe>
-        </TabsContent>
-      </Tabs>
+                <TabsContent
+                  className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
+                  value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+                >
+                  {!data.translations[loc]?.published?.content ? (
+                    <div>No published content</div>
+                  ) : (
+                    <>
+                      <div className="border-foreground-light flex justify-end border-b pb-2">
+                        <Button
+                          variant={"outline"}
+                          size={"lg"}
+                          onClick={() => unpublishDraft({ lang: loc })}
+                          disabled={isUnpublishPending}
+                        >
+                          Unpublish
+                        </Button>
+                      </div>
+                      <MarkdownClientPreview
+                        source={data.translations[loc]?.published?.content}
+                      />
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
     </Card>
   );
 };
 
+function ShowTOCCheckbox({ id }: { id: string }) {
+  const queryClient = useQueryClient();
+  const contentItemQO = getContentQueryOptions(id);
+  const { data } = useSuspenseQuery(contentItemQO);
+
+  const { mutate: updateHideTOC, isPending } = useMutation({
+    mutationFn: (hideTOC: boolean) =>
+      $updateContentItemHideTOC({ data: { id, hideTOC } }),
+    onMutate: async (hideTOC) => {
+      await queryClient.cancelQueries(contentItemQO);
+      const prev = queryClient.getQueryData(contentItemQO.queryKey);
+      queryClient.setQueryData(
+        contentItemQO.queryKey,
+        (old: typeof data | undefined) => (old ? { ...old, hideTOC } : old),
+      );
+      return { prev };
+    },
+    onError: (_, __, context) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(contentItemQO.queryKey, context.prev);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries(contentItemQO),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-toc-content"
+        checked={!(data?.hideTOC ?? true)}
+        disabled={isPending}
+        onCheckedChange={(checked) => updateHideTOC(!checked)}
+      />
+      <Label htmlFor="show-toc-content" className="cursor-pointer font-normal">
+        Show table of contents
+      </Label>
+    </div>
+  );
+}
+
 function usePublishDraft(id: string) {
   const contentItemQO = getContentQueryOptions(id);
   const contentsListQO = getContentsListQueryOptions();
-
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -416,10 +534,7 @@ function usePublishDraft(id: string) {
       );
 
       queryClient.setQueryData(contentItemQO.queryKey, (old) => {
-        if (!old) {
-          return old;
-        }
-
+        if (!old) return old;
         return {
           ...old,
           translations: {
@@ -444,17 +559,13 @@ function usePublishDraft(id: string) {
       );
 
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
-        if (!old) {
-          return old;
-        }
-
+        if (!old) return old;
         return old.map((item) => {
           if (item.id === id) {
             return {
               ...item,
               translations: item.translations.map((tr) => {
                 if (tr.lang === data.lang) {
-                  // Mark this translation as published
                   return {
                     ...tr,
                     status: DOCUMENT_VERSION_STATUS.PUBLISHED,
@@ -494,7 +605,6 @@ function usePublishDraft(id: string) {
 function useSaveDraft(id: string) {
   const contentItemQO = getContentQueryOptions(id);
   const contentsListQO = getContentsListQueryOptions();
-
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -507,18 +617,13 @@ function useSaveDraft(id: string) {
       translationDraft: UpsertContentItemData;
     }) =>
       $saveContentItemTranslationDraft({
-        data: {
-          id,
-          lang,
-          translation: translationDraft,
-        },
+        data: { id, lang, translation: translationDraft },
       }),
 
     onMutate: async (data) => {
       await queryClient.cancelQueries(contentItemQO);
 
       const prevContent = queryClient.getQueryData(contentItemQO.queryKey);
-
       const prevList = queryClient.getQueryData(contentsListQO.queryKey);
 
       queryClient.setQueryData(contentItemQO.queryKey, (old) => {
@@ -526,6 +631,7 @@ function useSaveDraft(id: string) {
         if (!old)
           return {
             author: newAuthor,
+            hideTOC: true,
             translations: {
               [data.lang]: { draft: data.translationDraft },
             },
@@ -533,6 +639,7 @@ function useSaveDraft(id: string) {
 
         return {
           author: newAuthor,
+          hideTOC: old.hideTOC,
           translations: {
             ...old.translations,
             [data.lang]: {
@@ -543,12 +650,8 @@ function useSaveDraft(id: string) {
         };
       });
 
-      // update list content items query data
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
-        if (!old) {
-          return old;
-        }
-
+        if (!old) return old;
         return old.map((item) => {
           if (item.id === id) {
             return {
@@ -666,7 +769,6 @@ function useUnpublishDraft(id: string) {
 function useResetDraft(id: string) {
   const contentItemQO = getContentQueryOptions(id);
   const contentsListQO = getContentsListQueryOptions();
-
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -681,10 +783,7 @@ function useResetDraft(id: string) {
       const prevList = queryClient.getQueryData(contentsListQO.queryKey);
 
       queryClient.setQueryData(contentItemQO.queryKey, (old) => {
-        if (!old) {
-          return old;
-        }
-
+        if (!old) return old;
         return {
           ...old,
           translations: {
@@ -701,10 +800,7 @@ function useResetDraft(id: string) {
       });
 
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
-        if (!old) {
-          return old;
-        }
-
+        if (!old) return old;
         return old.map((item) => {
           if (item.id === id) {
             return {
