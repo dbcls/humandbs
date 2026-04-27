@@ -223,9 +223,17 @@ export const $getContentItemTranslation = createServerFn({
           eq(table.lang, lang),
           eq(table.status, status),
         ),
+      with: {
+        contentItem: {
+          columns: {
+            hideTOC: true,
+          },
+        },
+      },
       columns: {
         title: true,
         content: true,
+        lang: true,
       },
     });
 
@@ -235,12 +243,9 @@ export const $getContentItemTranslation = createServerFn({
       );
     }
 
-    // const { content, toc } = transformMarkdoc({
-    //   rawContent: translation?.content || "",
-    //   generateTOC: true,
-    // });
+    const { contentItem, ...rest } = translation;
 
-    return translation;
+    return { ...rest, hideTOC: translation.contentItem.hideTOC };
   });
 
 export const $isExistingContentItemSplat = createServerFn({ method: "GET" })

@@ -77,7 +77,7 @@ export default function ContentAreaField({
           Attach asset
         </Button>
       </div>
-      <div ref={editorContainerRef} data-color-mode="light" className="flex-1">
+      <div ref={editorContainerRef} data-color-mode="light" className="min-h-0 flex-1">
         <MDEditor
           highlightEnable={true}
           value={field.state.value ?? ""}

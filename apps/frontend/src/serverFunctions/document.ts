@@ -126,6 +126,41 @@ export const $validateDocumentContentId = createServerFn({ method: "POST" })
     return !!existingDoc;
   });
 
+/** Get a single document by contentId */
+export const $getDocument = createServerFn({ method: "GET" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(documentSelectSchema)
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "view");
+
+    const doc = await db.query.document.findFirst({
+      where: eq(document.contentId, data.contentId),
+    });
+
+    return doc ?? null;
+  });
+
+export function getDocumentQueryOptions(contentId: string) {
+  return queryOptions({
+    queryKey: ["documents", contentId],
+    queryFn: () => $getDocument({ data: { contentId } }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** Update hideTOC flag for a document */
+export const $updateDocumentHideTOC = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ contentId: z.string(), hideTOC: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    await db
+      .update(document)
+      .set({ hideTOC: data.hideTOC })
+      .where(eq(document.contentId, data.contentId));
+  });
+
 /**
  * Delete document by contentId
  */

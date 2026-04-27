@@ -31,7 +31,12 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 
     const contentHtml = await renderMarkdown(data.content ?? "");
 
-    return { contentHtml, title: data.title, crumb: data.title };
+    return {
+      contentHtml,
+      title: data.title,
+      crumb: data.title,
+      hideTOC: !!data.hideTOC,
+    };
   },
   errorComponent: ({ error }) => (
     <div>
@@ -42,7 +47,13 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 });
 
 function RouteComponent() {
-  const { contentHtml, title } = Route.useLoaderData();
+  const { contentHtml, title, hideTOC } = Route.useLoaderData();
 
-  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
+  return (
+    <MarkdownWithTOC
+      title={title}
+      markdownResult={contentHtml}
+      hideTOC={hideTOC}
+    />
+  );
 }
