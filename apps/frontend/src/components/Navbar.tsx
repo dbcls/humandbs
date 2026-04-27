@@ -308,12 +308,16 @@ function UserMenu() {
   const { user } = useRouteContext({ from: "__root__" });
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
   const navigate = useNavigate();
-  const currentLocation = useLocation();
+  const router = useRouter();
 
   async function login() {
+    const mypageHref = router.buildLocation({
+      to: "/{-$lang}/admin",
+      params: { lang },
+    }).href;
     await navigate({
       to: "/auth/login",
-      search: { redirect: currentLocation.href },
+      search: { redirect: mypageHref },
       reloadDocument: true,
     });
   }
