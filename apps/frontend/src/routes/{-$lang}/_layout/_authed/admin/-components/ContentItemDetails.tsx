@@ -341,7 +341,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                     className="flex items-center gap-2"
                     value={DOCUMENT_VERSION_STATUS.DRAFT}
                   >
-                    <Pencil /> <span>Editor</span>
+                    <Pencil /> <span>Draft</span>
                     {dirtyLocales[loc] && <UnpublishedDot />}
                     <div className="w-4">
                       {savingStatuses.at(-1) === "pending" && (
@@ -354,7 +354,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                     className="flex items-center gap-2"
                     value={DOCUMENT_VERSION_STATUS.PUBLISHED}
                   >
-                    <span>Live</span>
+                    <span>Published</span>
                     <div className="w-4">
                       {(isPublishPending || isUnpublishPending) && (
                         <Loader2 className="size-4 animate-spin" />
@@ -441,7 +441,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                 </TabsContent>
 
                 <TabsContent
-                  className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
+                  className="flex min-h-0 flex-1 flex-col gap-2"
                   value={DOCUMENT_VERSION_STATUS.PUBLISHED}
                 >
                   {!data.translations[loc]?.published?.content ? (
@@ -458,9 +458,11 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                           Unpublish
                         </Button>
                       </div>
-                      <MarkdownClientPreview
-                        source={data.translations[loc]?.published?.content}
-                      />
+                      <div className="min-h-0 flex-1 overflow-y-auto">
+                        <MarkdownClientPreview
+                          source={data.translations[loc]?.published?.content}
+                        />
+                      </div>
                     </>
                   )}
                 </TabsContent>

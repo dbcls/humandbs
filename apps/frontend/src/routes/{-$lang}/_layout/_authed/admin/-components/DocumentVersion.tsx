@@ -265,7 +265,7 @@ function DocumentVersionContent({
                   className="flex items-center gap-2"
                   value={DOCUMENT_VERSION_STATUS.DRAFT}
                 >
-                  <Pencil /> <span>Editor</span>
+                  <Pencil /> <span>Draft</span>
                   {dirtyLocales[loc] && <UnpublishedDot />}
                   <div className="w-4">
                     {savingStatuses.at(-1) === "pending" && (
@@ -278,7 +278,7 @@ function DocumentVersionContent({
                   className="flex items-center gap-2"
                   value={DOCUMENT_VERSION_STATUS.PUBLISHED}
                 >
-                  <span>Live</span>
+                  <span>Published</span>
                   <div className="w-4">
                     {(isPublishPending || isUnpublishPending) && (
                       <Loader2 className="size-4 animate-spin" />
