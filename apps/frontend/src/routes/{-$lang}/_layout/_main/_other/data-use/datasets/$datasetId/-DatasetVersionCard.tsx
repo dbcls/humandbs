@@ -41,7 +41,6 @@ export function DatasetVersionCard({
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
   const t = useTranslations("Dataset");
 
-  console.log("versionData", versionData);
   const infoKeyValues = {
     [t("typeOfData")]: versionData.typeOfData?.[lang] ?? "—",
     [t("criteria")]: versionData.criteria,

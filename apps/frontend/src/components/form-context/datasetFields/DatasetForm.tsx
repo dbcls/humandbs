@@ -13,6 +13,7 @@ import {
   entriesToExperimentData,
   type ExperimentItem,
 } from "./ExperimentsArrayField";
+import { useTranslations } from "use-intl";
 
 const CRITERIA_OPTIONS = [
   "Controlled-access (Type I)",
@@ -160,6 +161,8 @@ export function DatasetForm({
     },
   });
 
+  const t = useTranslations("Dataset");
+
   const values = useStore(form.store, (state) => state.values);
   const isDirty = useStore(form.store, (state) => state.isDirty);
 
@@ -214,7 +217,9 @@ export function DatasetForm({
         {/* Read-only fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs text-gray-500">Research Version</Label>
+            <Label className="text-xs text-gray-500">
+              {t("research-version")}
+            </Label>
             <span className="font-mono text-sm">
               {defaultValues.humVersionId || "—"}
             </span>
@@ -232,29 +237,29 @@ export function DatasetForm({
 
         {/* Release Date */}
         <form.AppField name="releaseDate">
-          {(field) => <field.DateField label="Release Date" />}
+          {(field) => <field.DateField label={t("releaseDate")} />}
         </form.AppField>
 
         {/* Criteria */}
         <form.AppField name="criteria">
           {(field) => (
             <field.SelectField
-              label="Criteria"
+              label={t("criteria")}
               type="col"
-              items={[...CRITERIA_OPTIONS]}
+              items={CRITERIA_OPTIONS.map((option) => t(option))}
             />
           )}
         </form.AppField>
 
         {/* Type of Data */}
         <form.AppField name="typeOfData">
-          {(field) => <field.BilingualTextField label="Type of Data" />}
+          {(field) => <field.BilingualTextField label={t("typeOfData")} />}
         </form.AppField>
 
         {/* Experiments */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <Label>Experiments</Label>
+            <Label>{t("experiments")}</Label>
             <ModifiedTag isModified={isExperimentsModified} />
           </div>
           <ExperimentsArrayField

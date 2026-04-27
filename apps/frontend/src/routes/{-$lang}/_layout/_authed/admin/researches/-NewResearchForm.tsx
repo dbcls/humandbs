@@ -23,9 +23,9 @@ const defaultValues: CreateResearchRequest = {
   humId: undefined,
   title: { ja: "", en: "" },
   summary: {
-    aims: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
-    methods: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
-    targets: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
+    aims: { ja: { text: "" }, en: { text: "" } },
+    methods: { ja: { text: "" }, en: { text: "" } },
+    targets: { ja: { text: "" }, en: { text: "" } },
     url: { ja: [], en: [] },
   },
   dataProvider: [],
@@ -34,8 +34,8 @@ const defaultValues: CreateResearchRequest = {
   relatedPublication: [],
   uids: [],
   initialReleaseNote: {
-    ja: { text: "", rawHtml: "" },
-    en: { text: "", rawHtml: "" },
+    ja: { text: "" },
+    en: { text: "" },
   },
 };
 
@@ -117,12 +117,12 @@ export function NewResearchForm({
             </div>
           )}
 
-          <div className="mx-5 mt-5 flex items-center gap-2">
+          <div className="mx-5 mt-5 flex justify-end gap-2">
             <Button
               type="submit"
               variant="accent"
+              size={"lg"}
               disabled={isPending}
-              size="slim"
             >
               {isPending ? "Creating…" : "Create"}
             </Button>

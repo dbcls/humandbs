@@ -26,6 +26,7 @@ export function VersionCard({
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
   const messages = useMessages();
 
+  console.log("lang", lang);
   const tableMeta = {
     lang,
     t,

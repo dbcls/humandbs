@@ -53,6 +53,8 @@ import {
   BreadcrumbPage,
 } from "@/components/Breadcrumb";
 import { cn } from "@/lib/utils";
+import { IntlProvider } from "use-intl";
+import { messages } from "@/config/messages";
 
 export function ResearchDetails({
   humId,
@@ -478,10 +480,12 @@ export function ResearchDetails({
           <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-          <VersionCard
-            versionData={previewValues as ResearchDetailResponse["data"]}
-            lang={previewLang}
-          />
+          <IntlProvider locale={previewLang} messages={messages[previewLang]}>
+            <VersionCard
+              versionData={previewValues as ResearchDetailResponse["data"]}
+              lang={previewLang}
+            />
+          </IntlProvider>
         </div>
       </div>
 
