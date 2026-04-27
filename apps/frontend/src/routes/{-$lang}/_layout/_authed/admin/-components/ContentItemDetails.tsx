@@ -205,9 +205,9 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
         <span className="flex items-center gap-5">
           <span>Details</span>
 
-          <form.AppField name="lang">
+          {/*<form.AppField name="lang">
             {(field) => <field.LocaleSwitchField />}
-          </form.AppField>
+          </form.AppField>*/}
         </span>
       }
     >

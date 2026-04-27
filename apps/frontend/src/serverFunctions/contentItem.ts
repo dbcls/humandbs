@@ -103,6 +103,7 @@ export type ContentTranslationResponse = Omit<
 
 export interface ContentItemResponse {
   author?: Pick<User, "name" | "email">;
+  hideTOC: boolean;
   translations: Partial<
     Record<
       Locale,
@@ -136,6 +137,10 @@ export const $getContentItem = createServerFn({ method: "GET" })
       },
       columns: {
         authorId: false,
+        hideTOC: true,
+        id: true,
+        createdAt: false,
+        publishedAt: false,
       },
     });
 
@@ -168,8 +173,22 @@ export const $getContentItem = createServerFn({ method: "GET" })
 
     return {
       author: content?.author,
+      hideTOC: content?.hideTOC ?? true,
       translations,
     };
+  });
+
+/** Update hideTOC flag for a content item */
+export const $updateContentItemHideTOC = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ id: z.string(), hideTOC: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("contents", "update");
+
+    await db
+      .update(contentItem)
+      .set({ hideTOC: data.hideTOC })
+      .where(eq(contentItem.id, data.id));
   });
 
 export function getContentTranslationQueryOptions(data: {
