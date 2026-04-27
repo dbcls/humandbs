@@ -1,5 +1,9 @@
 import { type DatasetDoc } from "@humandbs/backend/types";
-import { useRouteContext } from "@tanstack/react-router";
+import {
+  useLocation,
+  useNavigate,
+  useRouteContext,
+} from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
@@ -43,11 +47,28 @@ export function DatasetVersionCard({
     [t("criteria")]: versionData.criteria,
   };
 
+  const navigate = useNavigate();
+  const currentLocation = useLocation();
+
   const { add, cart } = useCart();
 
   const isInCart = cart.some(
     (item) => item.datasetId === versionData.datasetId,
   );
+
+  const handleAddToCart = () => {
+    if (!user) {
+      void navigate({
+        to: "/auth/login",
+        search: {
+          redirect: `${currentLocation.href}${currentLocation.searchStr ? "&" : "?"}addToCart=${versionData.datasetId}`,
+        },
+        reloadDocument: true,
+      });
+      return;
+    }
+    add(versionData as DatasetDoc);
+  };
 
   const identifier =
     [versionData.datasetId, versionData.version].filter(Boolean).join(".") ||
@@ -75,17 +96,19 @@ export function DatasetVersionCard({
               ) : null
             }
             right={
-              showPublicActions && user ? (
+              showPublicActions ? (
                 <div className="flex gap-5">
                   <Button
                     variant={"accent"}
                     className="rounded-full"
-                    disabled={isInCart}
-                    onClick={() => {
-                      add(versionData as DatasetDoc);
-                    }}
+                    disabled={!!user && isInCart}
+                    onClick={handleAddToCart}
                   >
-                    {isInCart ? t("already-in-cart") : t("add-to-cart")}
+                    {user
+                      ? isInCart
+                        ? t("already-in-cart")
+                        : t("add-to-cart")
+                      : t("login-to-add")}
                   </Button>
                 </div>
               ) : null
