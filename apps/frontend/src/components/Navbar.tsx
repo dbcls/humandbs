@@ -2,6 +2,7 @@ import {
   useLocation,
   useNavigate,
   useRouteContext,
+  useRouter,
 } from "@tanstack/react-router";
 import {
   ChevronsRight,
@@ -38,7 +39,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 export function Navbar() {
   const tCommon = useTranslations("common");
 
-  const { user } = useRouteContext({ from: "__root__" });
   const { lang, siteNavigation } = useRouteContext({
     from: "/{-$lang}/_layout",
   });
@@ -160,7 +160,7 @@ export function Navbar() {
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
-        {user ? <ShoppingCartButton /> : null}
+        <ShoppingCartButton />
         <UserMenu />
       </div>
     </header>
@@ -377,15 +377,33 @@ function UserMenu() {
 
 function ShoppingCartButton() {
   const { cart } = useCart();
+  const { user } = useRouteContext({ from: "__root__" });
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const navigate = useNavigate({ from: "/{-$lang}" });
+  const navigate = useNavigate();
+  const router = useRouter();
+
+  function handleClick() {
+    if (!user) {
+      const cartHref = router.buildLocation({
+        to: "/{-$lang}/cart",
+        params: { lang },
+      }).href;
+      void navigate({
+        to: "/auth/login",
+        search: { redirect: cartHref },
+        reloadDocument: true,
+      });
+    } else {
+      void navigate({ to: "/{-$lang}/cart", params: { lang } });
+    }
+  }
 
   return (
     <Button
       variant={"plain"}
       className="relative"
       size="icon"
-      onClick={() => navigate({ to: "/{-$lang}/cart", params: { lang } })}
+      onClick={handleClick}
     >
       {cart.length > 0 ? (
         <span className="bg-accent absolute top-0 left-0 text-xs text-white rounded-full min-w-8 w-fit p-0.5">

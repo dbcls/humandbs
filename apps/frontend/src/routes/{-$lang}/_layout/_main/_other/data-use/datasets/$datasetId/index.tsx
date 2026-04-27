@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { useAutoAddToCart } from "@/hooks/useCart";
 import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
 
 import { DatasetVersionCard } from "./-DatasetVersionCard";
@@ -26,6 +27,8 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { data } = Route.useLoaderData();
+
+  useAutoAddToCart(data);
 
   return <DatasetVersionCard versionData={data} />;
 }
