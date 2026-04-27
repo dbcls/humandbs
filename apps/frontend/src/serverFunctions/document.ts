@@ -116,16 +116,6 @@ export const $createDocument = createServerFn({ method: "POST" })
     return doc;
   });
 
-export const $validateDocumentContentId = createServerFn({ method: "POST" })
-  .inputValidator(z.string())
-  .handler(async ({ data }) => {
-    const existingDoc = await db.query.document.findFirst({
-      where: eq(document.contentId, data),
-    });
-
-    return !!existingDoc;
-  });
-
 /** Get a single document by contentId */
 export const $getDocument = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])

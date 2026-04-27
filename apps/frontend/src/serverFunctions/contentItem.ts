@@ -4,7 +4,6 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { i18n, type Locale, localeSchema } from "@/config/i18n";
-import { getNavConfig } from "@/config/navbar-config";
 import { db } from "@/db/database";
 import {
   contentItem,
@@ -257,22 +256,6 @@ export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
     });
 
     return !!content;
-  });
-
-export const $validateContentId = createServerFn({ method: "GET" })
-  .inputValidator(z.string())
-  .handler(async ({ data }): Promise<boolean> => {
-    const contentId = data;
-
-    const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map(
-      (c) => c.id,
-    ) as string[];
-
-    const content = await db.query.contentItem.findFirst({
-      where: (content, { eq }) => eq(content.id, contentId),
-    });
-
-    return !content && !reservedPathPrefixes.includes(contentId.split("/")[0]);
   });
 
 export const $createContentItem = createServerFn({ method: "POST" })

@@ -25,6 +25,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       });
     }
 
+    // TODO - segregate - fetch document OR content based on id
     const data = await $getLatestDocumentOrContent({
       data: { id: params._splat, lang: context.lang },
     });

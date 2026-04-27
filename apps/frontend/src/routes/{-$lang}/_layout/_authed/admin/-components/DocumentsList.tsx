@@ -19,7 +19,6 @@ import { type ContentId } from "@/config/content-config";
 import {
   $createDocument,
   $deleteDocument,
-  $validateDocumentContentId,
   type DocumentsListItemResponse,
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
@@ -28,6 +27,7 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { Button } from "@/components/ui/button";
+import { $validateEntityId } from "@/serverFunctions/validate";
 
 export function DocumentsList({
   onSelectDoc,
@@ -156,7 +156,7 @@ export function DocumentsList({
                   if (value.length > 100) {
                     return "Content ID must be 100 characters or less";
                   }
-                  const isExisting = await $validateDocumentContentId({
+                  const isExisting = await $validateEntityId({
                     data: value as ContentId,
                   });
                   if (isExisting) {

@@ -22,13 +22,13 @@ import { localeSchema } from "@/config/i18n";
 import {
   $createContentItem,
   $deleteContentItem,
-  $validateContentId,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
+import { $validateEntityId } from "@/serverFunctions/validate";
 
 export function ContentList({
   selectedContentId,
@@ -165,7 +165,7 @@ function AddNewDialog() {
     },
   });
 
-  const validateContentId = useServerFn($validateContentId);
+  const validateContentId = useServerFn($validateEntityId);
 
   return (
     <Dialog

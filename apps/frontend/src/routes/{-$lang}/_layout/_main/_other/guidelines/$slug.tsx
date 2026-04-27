@@ -21,6 +21,7 @@ export const Route = createFileRoute(
 
     return {
       contentHtml,
+      hideTOC: data.hideTOC,
       title: context.messages?.Navbar?.[params.slug] ?? null,
       crumb: data?.title,
     };
@@ -28,7 +29,13 @@ export const Route = createFileRoute(
 });
 
 function RouteComponent() {
-  const { contentHtml, title } = Route.useLoaderData();
+  const { contentHtml, title, hideTOC } = Route.useLoaderData();
 
-  return <MarkdownWithTOC title={title} markdownResult={contentHtml} />;
+  return (
+    <MarkdownWithTOC
+      title={title}
+      hideTOC={hideTOC}
+      markdownResult={contentHtml}
+    />
+  );
 }
