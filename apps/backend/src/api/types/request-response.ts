@@ -12,7 +12,7 @@ import { z } from "zod"
 import {
   DsApplicationTransformedSchema,
   DuApplicationTransformedSchema,
-} from "@/crawler/types/jga-shinsei"
+} from "../../crawler/types/jga-shinsei"
 
 // Import from es/types
 import {

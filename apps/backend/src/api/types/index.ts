@@ -85,11 +85,11 @@ export type {
 export {
   DsApplicationTransformedSchema,
   DuApplicationTransformedSchema,
-} from "@/crawler/types/jga-shinsei"
+} from "../../crawler/types/jga-shinsei"
 export type {
   DsApplicationTransformed,
   DuApplicationTransformed,
-} from "@/crawler/types/jga-shinsei"
+} from "../../crawler/types/jga-shinsei"
 
 // === API View Models ===
 export {
