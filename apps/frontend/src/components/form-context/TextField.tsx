@@ -3,7 +3,11 @@ import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-import { isFieldModified } from "./fields/useFieldModified";
+import { ResetFieldButton } from "./fields/ResetFieldButton";
+import {
+  getFieldDefaultValue,
+  isFieldModified,
+} from "./fields/useFieldModified";
 import { useFieldContext } from "./FormContext";
 
 export default function TextField({
@@ -27,13 +31,22 @@ export default function TextField({
       })}
     >
       {label ? <span className="whitespace-nowrap">{label}</span> : null}
-      <div className="flex w-full items-center gap-1">
+      <div className="relative flex w-full items-center gap-1">
         <Input
           value={field.state.value ?? ""}
           onChange={(e) => field.handleChange(e.target.value)}
           onBlur={() => field.handleBlur()}
-          className={isModified ? "bg-yellow-50" : undefined}
+          className={isModified ? "modified-field" : undefined}
         />
+        {isModified && (
+          <ResetFieldButton
+            onClick={() =>
+              field.handleChange(
+                (getFieldDefaultValue(field) as string) ?? null,
+              )
+            }
+          />
+        )}
         {afterField}
       </div>
     </Label>

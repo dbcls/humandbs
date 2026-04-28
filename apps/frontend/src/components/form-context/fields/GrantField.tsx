@@ -3,7 +3,9 @@ import { Label } from "@/components/ui/label";
 import { withForm } from "../FormContext";
 
 import { BilingualTextField } from "./BilingualTextField";
+import { ResetFieldButton } from "./ResetFieldButton";
 import { TagInput } from "./TagInput";
+import { getFieldDefaultValue, isFieldModified } from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyName = any;
@@ -29,13 +31,25 @@ export const GrantField = withForm({
 
         {/* IDs — TagInput */}
         <form.AppField name={`${baseName}.id` as AnyName} mode="array">
-          {(field: AnyName) => (
-            <TagInput
-              label="IDs"
-              value={field.state.value ?? []}
-              onChange={(newValue) => field.setValue(newValue)}
-            />
-          )}
+          {(field: AnyName) => {
+            const modified = isFieldModified(field);
+            const defaultVal = getFieldDefaultValue(field) as AnyName;
+            return (
+              <div className="relative">
+                <TagInput
+                  label="IDs"
+                  value={field.state.value ?? []}
+                  onChange={(newValue) => field.setValue(newValue)}
+                />
+                {modified && (
+                  <ResetFieldButton
+                    className="top-0"
+                    onClick={() => field.setValue(defaultVal ?? [])}
+                  />
+                )}
+              </div>
+            );
+          }}
         </form.AppField>
 
         {/* Agency */}

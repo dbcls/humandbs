@@ -613,6 +613,10 @@
     @apply border-secondary rounded border p-2;
   }
 
+  .modified-field {
+    @apply !bg-yellow-50 pr-8;
+  }
+
   /* Tailwind utilities */
   .animate-spin {
     animation: var(--animate-spin); /* spin 1s linear infinite */

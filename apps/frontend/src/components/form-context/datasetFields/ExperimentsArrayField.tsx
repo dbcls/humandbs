@@ -18,12 +18,17 @@ import { Download, Trash2, Upload } from "lucide-react";
 import { useId, useRef } from "react";
 
 import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import {
+  deepEqual,
+  getFieldDefaultValue,
+  isFieldModified,
+} from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { SortableItem } from "../researchFields/SortableItem";
 import { Button } from "@/components/ui/button";
+import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import type { DeepOmit } from "@/utils/typeUtils";
 
 import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
@@ -36,6 +41,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import useConfirmationStore from "@/stores/confirmationStore";
+
 type AnyForm = any;
 
 /**
@@ -198,17 +204,6 @@ function DataEntriesTable({
               const isKnown = (
                 ALLOWED_MOLDATA_KEYS as readonly string[]
               ).includes(entry.key);
-              const initialEntry = initialEntries.find(
-                (e) => e.key === entry.key,
-              );
-              const isEnModified = !deepEqual(
-                entry.en?.text ?? null,
-                initialEntry?.en?.text ?? null,
-              );
-              const isJaModified = !deepEqual(
-                entry.ja?.text ?? null,
-                initialEntry?.ja?.text ?? null,
-              );
 
               return (
                 <tr
@@ -236,13 +231,24 @@ function DataEntriesTable({
                       name={`experiments[${experimentIndex}].data[${di}].en.text`}
                     >
                       {(f: AnyForm) => (
-                        <Input
-                          value={f.state.value ?? ""}
-                          onChange={(e) => f.handleChange(e.target.value)}
-                          onBlur={() => f.handleBlur()}
-                          placeholder="En"
-                          className={`h-8 ${isEnModified ? "bg-yellow-50" : ""}`}
-                        />
+                        <div className="relative flex items-center">
+                          <Input
+                            value={f.state.value ?? ""}
+                            onChange={(e) => f.handleChange(e.target.value)}
+                            onBlur={() => f.handleBlur()}
+                            placeholder="En"
+                            className={`h-8 ${isFieldModified(f) ? "modified-field" : ""}`}
+                          />
+                          {isFieldModified(f) && (
+                            <ResetFieldButton
+                              onClick={() =>
+                                f.handleChange(
+                                  (getFieldDefaultValue(f) as string) ?? null,
+                                )
+                              }
+                            />
+                          )}
+                        </div>
                       )}
                     </form.AppField>
                   </td>
@@ -251,13 +257,24 @@ function DataEntriesTable({
                       name={`experiments[${experimentIndex}].data[${di}].ja.text`}
                     >
                       {(f: AnyForm) => (
-                        <Input
-                          value={f.state.value ?? ""}
-                          onChange={(e) => f.handleChange(e.target.value)}
-                          onBlur={() => f.handleBlur()}
-                          placeholder="Ja"
-                          className={`h-8 ${isJaModified ? "bg-yellow-50" : ""}`}
-                        />
+                        <div className="relative flex items-center">
+                          <Input
+                            value={f.state.value ?? ""}
+                            onChange={(e) => f.handleChange(e.target.value)}
+                            onBlur={() => f.handleBlur()}
+                            placeholder="Ja"
+                            className={`h-8 ${isFieldModified(f) ? "modified-field" : ""}`}
+                          />
+                          {isFieldModified(f) && (
+                            <ResetFieldButton
+                              onClick={() =>
+                                f.handleChange(
+                                  (getFieldDefaultValue(f) as string) ?? null,
+                                )
+                              }
+                            />
+                          )}
+                        </div>
                       )}
                     </form.AppField>
                   </td>

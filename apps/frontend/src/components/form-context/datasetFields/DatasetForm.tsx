@@ -2,6 +2,7 @@ import { useStore } from "@tanstack/react-form";
 import { useEffect } from "react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -155,29 +156,31 @@ export function DatasetForm({
     defaultValues,
     onSubmit: async ({ value, formApi }) => {
       await onSubmit(value);
+      formApi.options.defaultValues = value;
       formApi.reset(value);
     },
   });
 
-  console.log("defaultValues.experiments", defaultValues.experiments);
   const t = useTranslations("Dataset");
 
   const values = useStore(form.store, (state) => state.values);
-  const isDirty = useStore(form.store, (state) => state.isDirty);
+  const isModified = useStore(
+    form.store,
+    (state) => !deepEqual(state.values, defaultValues),
+  );
 
   // Notify parent when dirty state changes
   useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+    onDirtyChange?.(isModified);
+  }, [isModified, onDirtyChange]);
 
   useEffect(() => {
     onValuesChange?.(values);
   }, [onValuesChange, values]);
 
-  const isExperimentsModified = useStore(form.store, (state) =>
-    Object.entries(state.fieldMeta).some(
-      ([key, meta]) => key.startsWith("experiments") && meta?.isDirty,
-    ),
+  const isExperimentsModified = useStore(
+    form.store,
+    (state) => !deepEqual(state.values.experiments, defaultValues.experiments),
   );
 
   return (

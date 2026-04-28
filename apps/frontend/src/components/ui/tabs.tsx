@@ -29,7 +29,7 @@ function TabsList({
       data-variant={variant ?? "pill"}
       className={cn(
         variant === "line"
-          ? "flex items-end gap-x-0.5 border-b border-gray-300"
+          ? "flex w-full min-w-fit items-end gap-x-0.5 border-b border-gray-300"
           : "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
         className,
       )}

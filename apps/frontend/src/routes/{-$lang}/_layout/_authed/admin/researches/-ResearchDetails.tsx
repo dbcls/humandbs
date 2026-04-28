@@ -35,6 +35,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { useAppForm } from "@/components/form-context/FormContext";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { SummaryForm } from "@/components/form-context/researchFields/SummaryForm";
 import { DataProviderArrayField } from "@/components/form-context/researchFields/DataProviderArrayField";
 import { ResearchProjectArrayField } from "@/components/form-context/researchFields/ResearchProjectArrayField";
@@ -361,14 +362,18 @@ export function ResearchDetails({
     });
   }
 
+  const [defaultValues, setDefaultValues] = useState(() => researchValues);
+
   const form = useAppForm({
-    defaultValues: researchValues,
+    defaultValues,
     onSubmit: async ({ value, formApi }) => {
       setError(null);
       setIsConflict(false);
       const result = await updateResearch(value);
       if (result?.ok) {
+        formApi.options.defaultValues = value;
         formApi.reset(value);
+        setDefaultValues(value);
       }
     },
   });
@@ -403,21 +408,18 @@ export function ResearchDetails({
     "controlledAccessUser",
   ] as const;
 
-  // Per-tab dirty state: a tab is dirty if any of its fields (or nested fields) are dirty
-  const dirtyFields = useStore(form.store, (state) => {
-    return Object.fromEntries(
-      topLevelFields.map((field) => [
-        field,
-        Object.entries(state.fieldMeta).some(
-          ([key, meta]) =>
-            (key === field ||
-              key.startsWith(`${field}.`) ||
-              key.startsWith(`${field}[`)) &&
-            meta?.isDirty,
-        ),
-      ]),
-    ) as Record<(typeof topLevelFields)[number], boolean>;
-  });
+  // Per-tab dirty state: a tab is dirty if the field value differs from initial
+  const formValues = useStore(form.store, (state) => state.values);
+  const dirtyFields = Object.fromEntries(
+    topLevelFields.map((field) => [
+      field,
+      !deepEqual(
+        (formValues as Record<string, unknown>)[field],
+        (defaultValues as Record<string, unknown>)[field],
+      ),
+    ]),
+  ) as Record<(typeof topLevelFields)[number], boolean>;
+  const isModified = Object.values(dirtyFields).some(Boolean);
 
   return (
     <Card
@@ -562,7 +564,7 @@ export function ResearchDetails({
                   <Button
                     size="lg"
                     onClick={() => form.handleSubmit()}
-                    disabled={isSaving}
+                    disabled={isSaving || !isModified}
                   >
                     {isSaving ? "Saving…" : "Save draft"}
                   </Button>

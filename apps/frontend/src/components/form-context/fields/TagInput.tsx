@@ -55,7 +55,7 @@ export function TagInput({
               onClick={() => removeTag(i)}
               className="text-gray-400 hover:text-gray-600"
             >
-              <X className="size-3" />
+              <X className="size-4" />
             </button>
           </span>
         ))}
