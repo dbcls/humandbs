@@ -11,7 +11,7 @@ import {
   getDsApplication,
   listDuApplications,
   getDuApplication,
-} from "@/api/es-client/jga-shinsei"
+} from "@/api/db-client/jga-shinsei"
 import { listResponse, singleReadOnlyResponse } from "@/api/helpers/response"
 import { requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"

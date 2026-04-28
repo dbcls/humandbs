@@ -9,8 +9,12 @@
  */
 import { z } from "zod"
 
-// Import from es/types
+import {
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
+} from "@/crawler/types/jga-shinsei"
 
+// Import from es/types
 import {
   BilingualTextSchema,
   BilingualTextValueSchema,
@@ -22,11 +26,7 @@ import {
   ResearchVersionSchema,
 } from "../../es/types"
 
-import {
-  EsDatasetSchema,
-  DsApplicationTransformedSchema,
-  DuApplicationTransformedSchema,
-} from "./es-docs"
+import { EsDatasetSchema } from "./es-docs"
 import { FacetsMapSchema } from "./facets"
 import { ResearchSummarySchema } from "./query-params"
 import {

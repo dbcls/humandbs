@@ -147,7 +147,7 @@ Only admins can approve/reject submissions and unpublish content.
       },
       {
         name: "JGA Shinsei",
-        description: "JGA 申請データ (DS: データ提供申請 / DU: データ利用申請) の read-only API。全エンドポイントに admin 認証が必要。",
+        description: "Read-only API for JGA application data (DS: data submission applications / DU: data use applications). All endpoints require admin authentication. Backed by per-request queries against the JGA PostgreSQL.",
       },
     ],
   })
