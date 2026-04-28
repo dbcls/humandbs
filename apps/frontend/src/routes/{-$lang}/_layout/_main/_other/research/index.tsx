@@ -250,10 +250,7 @@ const columns = [
           items={ctx.row.original.datasetIds.map((id) => ({
             id,
             content: () => (
-              <Route.Link
-                to="../datasets/$datasetId"
-                params={{ datasetId: id }}
-              >
+              <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
               </Route.Link>
             ),

@@ -7,12 +7,33 @@ import { renderMarkdown } from "@/utils/markdown";
 
 const humIdPathSchema = z.string().regex(/^hum\d+$/i);
 
+const humIdWithVersion = z
+  .string()
+  .regex(/^hum\d+-(v\d+)$/i)
+  .transform((val) => {
+    const [humId, version] = val.split("-");
+    return { humId, version };
+  });
+
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
   component: RouteComponent,
   params: z.object({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
+    const parsedHumIdWithVer = humIdWithVersion.safeParse(params._splat);
+
+    if (parsedHumIdWithVer.success) {
+      throw redirect({
+        to: "/{-$lang}/research/$humId/$version",
+        params: {
+          lang: context.lang,
+          humId: parsedHumIdWithVer.data.humId,
+          version: parsedHumIdWithVer.data.version,
+        },
+      });
+    }
+
     const parsedHumId = humIdPathSchema.safeParse(params._splat);
 
     if (parsedHumId.success) {

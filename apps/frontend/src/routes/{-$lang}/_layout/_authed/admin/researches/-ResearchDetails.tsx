@@ -18,7 +18,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
 import { Tag } from "@/components/StatusTag";
-import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-use/research/$humId/-VersionCard";
+import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type {
   ResearchDetailResponse,
   ResearchStatus,
