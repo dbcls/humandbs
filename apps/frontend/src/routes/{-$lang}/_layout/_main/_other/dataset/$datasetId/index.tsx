@@ -6,7 +6,7 @@ import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
 import { DatasetVersionCard } from "./-DatasetVersionCard";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/",
+  "/{-$lang}/_layout/_main/_other/dataset/$datasetId/",
 )({
   component: RouteComponent,
   loader: async ({ context, params }) => {

@@ -7,4 +7,6 @@ export const RESERVED_SEGMENTS = [
   "navigation",
   "revision",
   "news",
+  "dataset",
+  "research",
 ];

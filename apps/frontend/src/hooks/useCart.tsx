@@ -58,7 +58,7 @@ export function useCart() {
 export function useAutoAddToCart(data: DatasetDoc) {
   const { user } = useRouteContext({ from: "__root__" });
   const navigate = useNavigate({
-    from: "/{-$lang}/data-use/datasets/$datasetId",
+    from: "/{-$lang}/dataset/$datasetId",
   });
   const { add } = useCart();
   const { addToCart } = useSearch({ strict: false });

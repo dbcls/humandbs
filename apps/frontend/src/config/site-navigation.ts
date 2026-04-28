@@ -200,7 +200,7 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     "dataset-list",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/data-use/datasets",
+        to: "/{-$lang}/dataset",
         params: { lang },
       }),
       defaultLabel: { en: "Dataset List", ja: "データセット一覧" },
@@ -346,7 +346,7 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     {
       id: "00000000-0000-4000-8000-000000000010",
       type: "link",
-      url: "/data-use/datasets",
+      url: "/dataset",
       label: { en: "Dataset List", ja: "データセット一覧" },
     },
     {

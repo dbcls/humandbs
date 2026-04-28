@@ -98,7 +98,7 @@ export function DatasetVersionCard({
             badge={
               showPublicActions ? (
                 <Link
-                  to="/{-$lang}/data-use/datasets/$datasetId/versions"
+                  to="/{-$lang}/dataset/$datasetId/versions"
                   params={{ datasetId: versionData.datasetId }}
                   className="text-white no-underline"
                 >

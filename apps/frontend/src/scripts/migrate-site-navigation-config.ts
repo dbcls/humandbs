@@ -122,7 +122,7 @@ const LINK_ITEMS: Record<
     label: { en: "Research List", ja: "研究一覧" },
   },
   "dataset-list": {
-    url: "/data-use/datasets",
+    url: "/dataset",
     label: { en: "Dataset List", ja: "データセット一覧" },
   },
 };

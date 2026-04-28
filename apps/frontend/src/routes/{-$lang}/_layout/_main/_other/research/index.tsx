@@ -27,7 +27,7 @@ import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-use/research/",
+  "/{-$lang}/_layout/_main/_other/research/",
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,

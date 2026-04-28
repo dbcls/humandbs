@@ -153,7 +153,7 @@ const datasetColumns = [
     header: (ctx) => ctx.table.options.meta?.t("datasetId"),
     cell: (ctx) => (
       <Link
-        to="/{-$lang}/data-use/datasets/$datasetId"
+        to="/{-$lang}/dataset/$datasetId"
         params={{ datasetId: ctx.getValue() }}
       >
         <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>

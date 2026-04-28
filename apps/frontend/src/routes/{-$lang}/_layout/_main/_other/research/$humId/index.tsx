@@ -5,17 +5,17 @@ import { getResearchQueryOptions } from "@/serverFunctions/researches";
 import { VersionCard } from "./-VersionCard";
 
 export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-use/research/$humId/$version",
+  "/{-$lang}/_layout/_main/_other/research/$humId/",
 )({
-  loader: async ({ params, context }) => {
-    const researchInfo = await context.queryClient.ensureQueryData(
+  loader: async ({ context, params }) => {
+    const data = await context.queryClient.ensureQueryData(
       getResearchQueryOptions({
-        humId: params.humId,
-        version: params.version,
         lang: context.lang,
+        humId: params.humId,
       }),
     );
-    return { crumb: params.version, data: researchInfo.data };
+
+    return { data };
   },
 
   component: RouteComponent,
@@ -24,5 +24,5 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { data } = Route.useLoaderData();
 
-  return <VersionCard versionData={data} />;
+  return <VersionCard versionData={data.data} />;
 }
