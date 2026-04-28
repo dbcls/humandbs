@@ -14,12 +14,10 @@ import type {
   Head,
   Lang,
   Member,
-  OffPremiseServer,
   Pi,
   RawDsApplication,
   RawDuApplication,
   RawStatusHistoryEntry,
-  ServerLocation,
   StatusCode,
   StatusHistoryEntry,
   Submitter,
@@ -66,7 +64,8 @@ export const createHelpers = (components: Component[]): ComponentHelpers => {
   }
 
   return {
-    getValue: (key: string): string | null => map.get(key)?.[0] ?? null,
+    // 空文字列も null として扱う（DB の EAV 値が空の行を「無し」と同じ意味で扱うため）
+    getValue: (key: string): string | null => emptyToNull(map.get(key)?.[0]),
     getValues: (key: string): string[] => map.get(key) ?? [],
   }
 }
@@ -87,6 +86,22 @@ export const toBooleanOrNull = (
 
   return null
 }
+
+/**
+ * postgres-js が返す timestamptz は Date オブジェクトなので、Schema が期待する
+ * string に変換する。null/undefined のときは空文字を返す（Schema が z.string() を期待しているため）。
+ */
+export const toIsoStringOrEmpty = (
+  value: Date | string | null | undefined,
+): string => {
+  if (value == null) return ""
+  if (value instanceof Date) return value.toISOString()
+  return value
+}
+
+/** 空文字列を null に正規化する。enum 型の値で空 → null として扱うために使う。 */
+const emptyToNull = (value: string | null | undefined): string | null =>
+  value == null || value === "" ? null : value
 
 // === Nested object builders ===
 
@@ -207,12 +222,12 @@ export const buildCollaborators = (
   const result: Collaborator[] = []
   for (let i = 0; i < maxLen; i++) {
     result.push({
-      name: names[i] ?? null,
-      division: divisions[i] ?? null,
-      job: jobs[i] ?? null,
-      eradid: eradids[i] ?? null,
-      orcid: orcids[i] ?? null,
-      seminar: (seminars[i] ?? null) as YesNo | null,
+      name: emptyToNull(names[i]),
+      division: emptyToNull(divisions[i]),
+      job: emptyToNull(jobs[i]),
+      eradid: emptyToNull(eradids[i]),
+      orcid: emptyToNull(orcids[i]),
+      seminar: emptyToNull(seminars[i]) as YesNo | null,
     })
   }
 
@@ -261,12 +276,12 @@ export const buildDataGroup = (
   const result: DataEntry[] = []
   for (let i = 0; i < maxLen; i++) {
     result.push({
-      dataAccess: (dataAccess[i] ?? null) as DataAccess | null,
-      studyType: studyType[i] ?? null,
-      studyTypeOther: studyTypeOther[i] ?? null,
-      target: targets[i] ?? null,
-      fileFormat: fileFormat[i] ?? null,
-      fileSize: fileSize[i] ?? null,
+      dataAccess: emptyToNull(dataAccess[i]) as DataAccess | null,
+      studyType: emptyToNull(studyType[i]),
+      studyTypeOther: emptyToNull(studyTypeOther[i]),
+      target: emptyToNull(targets[i]),
+      fileFormat: emptyToNull(fileFormat[i]),
+      fileSize: emptyToNull(fileSize[i]),
     })
   }
 
@@ -405,7 +420,7 @@ export const transformDsApplication = (
       companyUseStatus: getValue("company_use_status"),
       multicenterCollaborativeStudyStatus: getValue(
         "multicenter_collaborative_study_status",
-      ) as "yes" | "no" | "piinstitution" | null,
+      ),
       nbdcDataProcessingStatus: getValue("nbdc_data_processing_status"),
       nbdcDataProcessingReason: getValue("nbdc_data_processing_reason"),
       nbdcGuidelineStatus: getValue("nbdc_guideline_status") as YesNo | null,
@@ -421,8 +436,8 @@ export const transformDsApplication = (
     control: buildControl(getValue),
 
     statusHistory: buildStatusHistory(raw.status_history),
-    submitDate: raw.submit_date,
-    createDate: raw.create_date,
+    submitDate: toIsoStringOrEmpty(raw.submit_date),
+    createDate: toIsoStringOrEmpty(raw.create_date),
   }
 }
 
@@ -458,10 +473,11 @@ export const transformDuApplication = (
     },
 
     server: {
-      status: getValue("server_status") as ServerLocation | null,
-      offPremiseStatus: getValues(
-        "off_premise_server_status",
-      ) as OffPremiseServer[],
+      status: getValue("server_status"),
+      // 配列の生値には空文字列が混じるため除外する
+      offPremiseStatus: getValues("off_premise_server_status").filter(
+        (v) => v !== "",
+      ),
       isOffPremiseStatement: toBooleanOrNull(
         getValue("is_off_premise_server_statement"),
       ),
@@ -516,7 +532,7 @@ export const transformDuApplication = (
     control: buildControl(getValue),
 
     statusHistory: buildStatusHistory(raw.status_history),
-    submitDate: raw.submit_date,
-    createDate: raw.create_date,
+    submitDate: toIsoStringOrEmpty(raw.submit_date),
+    createDate: toIsoStringOrEmpty(raw.create_date),
   }
 }

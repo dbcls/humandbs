@@ -34,12 +34,20 @@ export type YesNo = z.infer<typeof YesNoSchema>
 export const DataAccessSchema = z.enum(["submission_open", "submission_type1", "submission_type2"])
 export type DataAccess = z.infer<typeof DataAccessSchema>
 
-/** データ解析サーバーの設置場所 (J-DU) */
-export const ServerLocationSchema = z.enum(["onpre", "offpre", "both"])
+/** データ解析サーバーの設置場所 (J-DU)
+ *
+ * 既知の DB 値: "onpre" | "offpre" | "both" | "na" | (空)
+ * DB ドメイン側の値追加に強くするため、Schema は string で受ける。
+ */
+export const ServerLocationSchema = z.string()
 export type ServerLocation = z.infer<typeof ServerLocationSchema>
 
-/** オフプレミス解析サーバー (J-DU) */
-export const OffPremiseServerSchema = z.enum(["nig", "tombo", "hgc", "kog", "oasis"])
+/** オフプレミス解析サーバー (J-DU)
+ *
+ * 既知の DB 値: "nig" | "tommo" | "hgc" | "kog" | "kyudai" | (空)
+ * DB ドメイン側の値追加に強くするため、Schema は string で受ける。
+ */
+export const OffPremiseServerSchema = z.string()
 export type OffPremiseServer = z.infer<typeof OffPremiseServerSchema>
 
 /** 倫理審査ステータス (J-DU) */
@@ -68,8 +76,8 @@ export interface RawDsApplication {
   jga_ids: string[]
   components: Component[]
   status_history: RawStatusHistoryEntry[]
-  submit_date: string
-  create_date: string
+  submit_date: string | Date | null
+  create_date: string | Date | null
 }
 
 /** DB 由来の J-DU (データ利用申請) レコード */
@@ -80,8 +88,8 @@ export interface RawDuApplication {
   hum_ids: string[]
   components: Component[]
   status_history: RawStatusHistoryEntry[]
-  submit_date: string
-  create_date: string
+  submit_date: string | Date | null
+  create_date: string | Date | null
 }
 
 // === Output types - Common ===
@@ -205,11 +213,12 @@ export const ReviewSchema = z.object({
   submissionStatus: z.string().nullable(),
   submissionDate: z.string().nullable(),
   companyUseStatus: z.string().nullable(),
-  multicenterCollaborativeStudyStatus: z.union([
-    z.literal("yes"),
-    z.literal("no"),
-    z.literal("piinstitution"),
-  ]).nullable(),
+  /** multicenterCollaborativeStudyStatus
+   *
+   * 既知の DB 値: "yes" | "no" | "piinstitution" | "nocollaborator" | "na" | (空)
+   * DB ドメイン側の値追加に強くするため、Schema は string で受ける。
+   */
+  multicenterCollaborativeStudyStatus: z.string().nullable(),
   nbdcDataProcessingStatus: z.string().nullable(),
   nbdcDataProcessingReason: z.string().nullable(),
   nbdcGuidelineStatus: YesNoSchema.nullable(),
