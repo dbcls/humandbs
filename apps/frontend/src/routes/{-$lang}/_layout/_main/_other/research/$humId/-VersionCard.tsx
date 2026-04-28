@@ -212,9 +212,9 @@ function makePublicationColumns(
         <ul>
           {info.getValue()?.map((datasetId) => (
             <li key={datasetId}>
-              <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-                {datasetId}
-              </TextWithIcon>
+              <Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId }}>
+                <TextWithIcon icon={FA_ICONS.dataset}>{datasetId}</TextWithIcon>
+              </Link>
             </li>
           ))}
         </ul>
