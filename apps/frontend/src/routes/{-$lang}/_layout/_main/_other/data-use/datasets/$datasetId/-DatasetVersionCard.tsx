@@ -41,10 +41,22 @@ export function DatasetVersionCard({
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
   const t = useTranslations("Dataset");
 
-  const infoKeyValues = {
-    [t("typeOfData")]: versionData.typeOfData?.[lang] ?? "—",
-    [t("criteria")]: versionData.criteria,
-  };
+  const infoKeyValues = [
+    { title: t("releaseDate"), value: versionData.releaseDate },
+    {
+      title: t("research"),
+      value: (
+        <Link
+          to="/{-$lang}/data-use/research/$humId"
+          params={{ humId: versionData.humId }}
+        >
+          <TextWithIcon icon={FA_ICONS.books}>{versionData.humId}</TextWithIcon>
+        </Link>
+      ),
+    },
+    { title: t("typeOfData"), value: versionData.typeOfData?.[lang] ?? "—" },
+    { title: t("criteria"), value: versionData.criteria },
+  ];
 
   const navigate = useNavigate();
   const currentLocation = useLocation();
@@ -119,22 +131,12 @@ export function DatasetVersionCard({
       }
     >
       <section>
-        <dl className="columns-2 mb-7">
-          <div className="break-inside-avoid-column">
-            <KeyValueCard title={t("releaseDate")}>
-              <div>
-                <p>{versionData.releaseDate}</p>
-
-                <Link
-                  to="/{-$lang}/data-use/research/$humId"
-                  params={{ humId: versionData.humId }}
-                >
-                  <TextWithIcon icon={FA_ICONS.books}>
-                    {versionData.humId}
-                  </TextWithIcon>
-                </Link>
-              </div>
-            </KeyValueCard>
+        <dl className="mb-7 columns-2">
+          {/*<div className="break-inside-avoid-column">
+            <KeyValueCard
+              title={t("releaseDate")}
+              value={versionData.releaseDate}
+            ></KeyValueCard>
             <Separator show variant={"solid"} />
           </div>
 
@@ -150,7 +152,13 @@ export function DatasetVersionCard({
             <Separator show variant={"solid"} />
           </div>
 
-          <KeyValueCard title={t("criteria")} value={t(versionData.criteria)} />
+          <KeyValueCard title={t("criteria")} value={t(versionData.criteria)} />*/}
+          {infoKeyValues.map((info) => (
+            <div key={info.title} className="break-inside-avoid-column">
+              <KeyValueCard title={info.title} value={info.value} />
+              <Separator show variant={"solid"} />
+            </div>
+          ))}
         </dl>
         <ContentHeader>{t("experiments")}</ContentHeader>
         {versionData.experiments.map((e, i) => (

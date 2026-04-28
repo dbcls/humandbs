@@ -8,18 +8,17 @@ import { extractStringFromPossiblyMultilingualValue } from "@/utils/i18n";
 export function KeyValueCard({
   title,
   value,
-  children,
 }: {
   title: string;
-  value?: string | null;
-  children?: React.ReactNode;
+  value?: React.ReactNode | null;
 }) {
-  if (!value && !children) return null;
+  if (!value) return null;
+
   return (
     <div className="break-inside-avoid">
       <dt className="text-secondary mb-2 text-sm font-normal">{title}</dt>
-      {children ? (
-        <dd className="pl-4 wrap-break-word">{children}</dd>
+      {typeof value === "object" || typeof value === "function" ? (
+        <dd className="pl-4 wrap-break-word">{value}</dd>
       ) : (
         <dd
           dangerouslySetInnerHTML={{ __html: value! }}
