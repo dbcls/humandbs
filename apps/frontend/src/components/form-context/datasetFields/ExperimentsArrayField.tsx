@@ -14,37 +14,29 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useStore } from "@tanstack/react-form";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2, Upload } from "lucide-react";
 import { useId, useRef } from "react";
 
 import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { SortableItem } from "../researchFields/SortableItem";
 import { Button } from "@/components/ui/button";
+import type { DeepOmit } from "@/utils/typeUtils";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import useConfirmationStore from "@/stores/confirmationStore";
 type AnyForm = any;
-
-export const ALLOWED_EXPERIMENT_KEYS = [
-  "Materials and Participants",
-  "Experimental Method",
-  "Platform",
-  "Sample Description",
-  "Library Construction",
-  "Fragmentation",
-  "Read Type",
-] as const;
 
 /**
  * Experiment data entry: a key-value pair where value is bilingual.
@@ -52,16 +44,16 @@ export const ALLOWED_EXPERIMENT_KEYS = [
  */
 export type ExperimentDataEntry = {
   key: string;
-  ja: { text: string; rawHtml: string } | null;
-  en: { text: string; rawHtml: string } | null;
+  ja: { text: string } | null;
+  en: { text: string } | null;
 };
 
 export type ExperimentItem = {
   header: {
-    ja: { text: string; rawHtml: string } | null;
-    en: { text: string; rawHtml: string } | null;
+    ja: { text: string } | null;
+    en: { text: string } | null;
   };
-  data: ExperimentDataEntry[];
+  data: DeepOmit<ExperimentDataEntry[], "rawHtml">;
 };
 
 const EMPTY_EXPERIMENT: ExperimentItem = {
@@ -86,15 +78,110 @@ function DataEntriesTable({
 }) {
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
   const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
-  const availableKeys = ALLOWED_EXPERIMENT_KEYS.filter((k) => !usedKeys.has(k));
+  const availableKeys = ALLOWED_MOLDATA_KEYS.filter((k) => !usedKeys.has(k));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
 
   function handleAddKey(key: string) {
     dataField.pushValue(newDataEntry(key));
   }
 
+  function handleDownload() {
+    const keys = entries.map((e: ExperimentDataEntry) => e.key);
+    const blob = new Blob([JSON.stringify(keys, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "moldata-keys.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function applyKeys(keys: string[]) {
+    form.setFieldValue(
+      `experiments[${experimentIndex}].data`,
+      keys.map(newDataEntry),
+    );
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(event.target?.result as string);
+      } catch {
+        return;
+      }
+      if (
+        !Array.isArray(parsed) ||
+        !parsed.every((v) => typeof v === "string")
+      ) {
+        return;
+      }
+      const validKeys = parsed.filter((k) =>
+        (ALLOWED_MOLDATA_KEYS as readonly string[]).includes(k),
+      );
+
+      const currentEntries: ExperimentDataEntry[] =
+        form.store.state.values?.experiments?.[experimentIndex]?.data ?? [];
+      if (currentEntries.length > 0) {
+        openConfirmation({
+          title: "Reset moldata entries?",
+          description:
+            "There are existing entries in this list. Are you sure you want to reset existing entries?",
+          actionLabel: "Reset",
+          onAction: () => applyKeys(validKeys),
+        });
+      } else {
+        applyKeys(validKeys);
+      }
+    };
+    reader.readAsText(file);
+  }
+
   return (
     <div className="flex w-full flex-col gap-2">
-      <span className="text-xs font-medium text-gray-500">Data entries</span>
+      <div className="flex items-center gap-1">
+        <span className="flex-1 text-xs font-medium text-gray-500">
+          Moldata entries
+        </span>
+        {entries.length > 0 && (
+          <Button
+            type="button"
+            variant={"ghost"}
+            size={"icon"}
+            onClick={handleDownload}
+            className="text-gray-400 hover:text-gray-600"
+            title="Download keys as JSON"
+          >
+            <Download className="size-4" />
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant={"ghost"}
+          size={"icon"}
+          onClick={() => fileInputRef.current?.click()}
+          className="text-gray-400 hover:text-gray-600"
+          title="Upload keys from JSON"
+        >
+          <Upload className="size-4" />
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </div>
 
       {entries.length > 0 && (
         <table className="w-full border-collapse text-xs">
@@ -109,7 +196,7 @@ function DataEntriesTable({
           <tbody>
             {entries.map((entry, di) => {
               const isKnown = (
-                ALLOWED_EXPERIMENT_KEYS as readonly string[]
+                ALLOWED_MOLDATA_KEYS as readonly string[]
               ).includes(entry.key);
               const initialEntry = initialEntries.find(
                 (e) => e.key === entry.key,
@@ -191,25 +278,23 @@ function DataEntriesTable({
       )}
 
       {availableKeys.length > 0 && (
-        <Select
-          value=""
-          onValueChange={(key) => {
-            if (key) handleAddKey(key);
-          }}
+        <Combobox
+          items={availableKeys}
+          value={null}
+          onValueChange={(key: string | null) => key && handleAddKey(key)}
         >
-          <SelectTrigger size="sm" className="w-52">
-            <SelectValue placeholder="+ Add row…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {availableKeys.map((key) => (
-                <SelectItem key={key} value={key}>
-                  {key}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+          <ComboboxInput placeholder="Add a moldata key..." />
+          <ComboboxContent>
+            <ComboboxEmpty>No items found.</ComboboxEmpty>
+            <ComboboxList>
+              {(item) => (
+                <ComboboxItem key={item} value={item}>
+                  {item}
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
       )}
     </div>
   );
@@ -292,7 +377,6 @@ function ExperimentItemForm({
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ExperimentsSortableList({
   form,
   field,
@@ -312,10 +396,8 @@ function ExperimentsSortableList({
   );
 
   const items: ExperimentItem[] = field.state.value ?? [];
-  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
-    items.length,
-    dndId,
-  );
+  const { itemIds, moveItemId, removeItemId, insertItemId } =
+    useStableSortableIds(items.length, dndId);
 
   function handleDragEnd(event: DragEndEvent) {
     if (fieldsetRef.current?.disabled) return;
@@ -349,6 +431,10 @@ function ExperimentsSortableList({
                 index={i}
                 title={item?.header?.en?.text ?? item?.header?.ja?.text ?? ""}
                 isModified={isModified}
+                onDuplicate={() => {
+                  insertItemId(i + 1);
+                  field.insertValue(i + 1, structuredClone(item));
+                }}
                 onRemove={() => {
                   removeItemId(i);
                   field.removeValue(i);
@@ -375,7 +461,6 @@ function ExperimentsSortableList({
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function ExperimentsArrayField({
   form,
   initialItems,
@@ -421,8 +506,8 @@ export function experimentDataToEntries(
 export function entriesToExperimentData(entries: ExperimentDataEntry[]): Record<
   string,
   {
-    ja: { text: string; rawHtml: string } | null;
-    en: { text: string; rawHtml: string } | null;
+    ja: { text: string } | null;
+    en: { text: string } | null;
   } | null
 > {
   return Object.fromEntries(

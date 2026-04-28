@@ -1,3 +1,4 @@
+import type { DeepOmit } from "@/utils/typeUtils";
 import {
   type DatasetIdParams,
   type DatasetListingQuery,
@@ -54,6 +55,7 @@ async function request<T>(
   options: RequestInit & { params?: Record<string, unknown> } = {},
 ): Promise<T> {
   const { params, ...init } = options;
+
   const baseUrl = getBackendBaseUrl();
   const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
   const url = new URL(path.replace(/^\//, ""), base);
@@ -86,6 +88,7 @@ async function request<T>(
     console.error(`API Error: ${method} ${path} - ${res.status}`, {
       status: res.status,
       data,
+      body: init?.body,
       url: path,
     });
     throw new APIError(res.status, method, path, data);
@@ -193,7 +196,7 @@ interface APIService {
   ): Promise<WorkflowResponse>;
   createDatasetForResearch(
     humId: string,
-    body: CreateDatasetForResearchRequest,
+    body: DeepOmit<CreateDatasetForResearchRequest, "rawHtml">,
     accessToken: string,
   ): Promise<DatasetCreateResponse>;
   updateDataset(

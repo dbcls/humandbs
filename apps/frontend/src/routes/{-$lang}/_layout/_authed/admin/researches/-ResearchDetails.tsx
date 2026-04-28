@@ -413,7 +413,7 @@ export function ResearchDetails({
             (key === field ||
               key.startsWith(`${field}.`) ||
               key.startsWith(`${field}[`)) &&
-            meta.isDirty,
+            meta?.isDirty,
         ),
       ]),
     ) as Record<(typeof topLevelFields)[number], boolean>;

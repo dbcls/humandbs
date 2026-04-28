@@ -1,6 +1,6 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import { GripVertical, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Trash2 } from "lucide-react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 
@@ -10,6 +10,7 @@ export function SortableItem({
   title,
   isModified,
   onRemove,
+  onDuplicate,
   children,
 }: {
   id: string;
@@ -17,6 +18,7 @@ export function SortableItem({
   title: string;
   isModified?: boolean;
   onRemove: () => void;
+  onDuplicate?: () => void;
   children: React.ReactNode;
 }) {
   const {
@@ -53,6 +55,15 @@ export function SortableItem({
           #{index + 1} {title}
         </span>
         <ModifiedTag isModified={isModified ?? false} />
+        {onDuplicate && (
+          <button
+            type="button"
+            onClick={onDuplicate}
+            className="text-gray-400 hover:text-gray-600 in-disabled:hidden"
+          >
+            <Copy className="size-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onRemove}

@@ -14,12 +14,10 @@ import {
   type ExperimentItem,
 } from "./ExperimentsArrayField";
 import { useTranslations } from "use-intl";
+import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";
+import type { DeepOmit } from "@/utils/typeUtils";
 
-const CRITERIA_OPTIONS = [
-  "Controlled-access (Type I)",
-  "Controlled-access (Type II)",
-  "Unrestricted-access",
-] as const;
+const CRITERIA_OPTIONS = CriteriaCanonicalSchema.options;
 
 export type DatasetFormValues = {
   datasetId: string;
@@ -28,7 +26,7 @@ export type DatasetFormValues = {
   releaseDate: string;
   criteria: string;
   typeOfData: { ja: string | null; en: string | null };
-  experiments: ExperimentItem[];
+  experiments: DeepOmit<ExperimentItem[], "rawHtml">;
 };
 
 export function datasetToFormValues(
@@ -99,7 +97,7 @@ export function datasetFormValuesToPreviewDataset(
   | "humId"
 > {
   return {
-    criteria: values.criteria,
+    criteria: values.criteria as DatasetDoc["criteria"],
     datasetId: values.datasetId || options?.datasetId || "",
     releaseDate: values.releaseDate,
     typeOfData: {
@@ -161,6 +159,7 @@ export function DatasetForm({
     },
   });
 
+  console.log("defaultValues.experiments", defaultValues.experiments);
   const t = useTranslations("Dataset");
 
   const values = useStore(form.store, (state) => state.values);
@@ -177,7 +176,7 @@ export function DatasetForm({
 
   const isExperimentsModified = useStore(form.store, (state) =>
     Object.entries(state.fieldMeta).some(
-      ([key, meta]) => key.startsWith("experiments") && meta.isDirty,
+      ([key, meta]) => key.startsWith("experiments") && meta?.isDirty,
     ),
   );
 
@@ -246,7 +245,10 @@ export function DatasetForm({
             <field.SelectField
               label={t("criteria")}
               type="col"
-              items={CRITERIA_OPTIONS.map((option) => t(option))}
+              items={CRITERIA_OPTIONS.map((option) => ({
+                label: t(option),
+                value: option,
+              }))}
             />
           )}
         </form.AppField>
