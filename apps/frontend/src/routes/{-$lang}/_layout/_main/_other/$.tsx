@@ -5,6 +5,7 @@ import { Card } from "@/components/Card";
 import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { PreviousVersionsList } from "@/components/PreviousVersionsList";
 import {
+  $getDocumentBreadcrumbs,
   $getLatestDocumentOrContent,
   $getLatestPublishedDocumentVersion,
   $getPublishedDocumentVersion,
@@ -65,13 +66,13 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       if (!Number.isInteger(versionNumber) || versionNumber < 1) {
         throw new Error("Invalid revision number");
       }
-      const [data, docLatest] = await Promise.all([
+      const [data, docCrumbs] = await Promise.all([
         $getPublishedDocumentVersion({
           data: { contentId: docId, locale: context.lang, versionNumber },
         }),
-        $getLatestPublishedDocumentVersion({
+        $getDocumentBreadcrumbs({
           data: { contentId: docId, locale: context.lang },
-        }).catch(() => undefined),
+        }),
       ]);
       if (!data) throw new Error("Revision not found");
       const contentHtml = await renderMarkdown(data.content ?? "");
@@ -80,7 +81,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         contentHtml,
         title: data.title,
         crumbs: [
-          { label: docLatest?.title ?? docId, href: `/${docId}` },
+          ...docCrumbs,
           { label: "Revisions", href: `/${docId}/revision` },
           { label: String(versionNumber), href: `/${docId}/revision/${versionNumber}` },
         ],
@@ -93,13 +94,13 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     const revisionListMatch = revisionListPattern.exec(params._splat);
     if (revisionListMatch) {
       const docId = revisionListMatch[1];
-      const [versions, docLatest] = await Promise.all([
+      const [versions, docCrumbs] = await Promise.all([
         $getPublishedDocumentVersionList({
           data: { contentId: docId, locale: context.lang },
         }),
-        $getLatestPublishedDocumentVersion({
+        $getDocumentBreadcrumbs({
           data: { contentId: docId, locale: context.lang },
-        }).catch(() => undefined),
+        }),
       ]);
       if (!versions.length) throw new Error("No revisions found");
       return {
@@ -107,7 +108,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         contentHtml: null,
         title: null,
         crumbs: [
-          { label: docLatest?.title ?? docId, href: `/${docId}` },
+          ...docCrumbs,
           { label: "Revisions", href: `/${docId}/revision` },
         ],
         hideTOC: false,
@@ -122,17 +123,21 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     }).catch(() => undefined);
 
     if (docData) {
-      const [contentHtml, versions] = await Promise.all([
+      const [contentHtml, versions, crumbs] = await Promise.all([
         renderMarkdown(docData.content ?? ""),
         $getPublishedDocumentVersionList({
           data: { contentId: params._splat, locale: context.lang },
         }),
+        $getDocumentBreadcrumbs({
+          data: { contentId: params._splat, locale: context.lang },
+        }),
       ]);
+
       return {
         kind: "page" as const,
         contentHtml,
         title: docData.title,
-        crumb: docData.title,
+        crumbs,
         hideTOC: !!docData.hideTOC,
         previousVersions: versions.length ? versions : undefined,
         revisionsBasePath: versions.length ? params._splat : undefined,

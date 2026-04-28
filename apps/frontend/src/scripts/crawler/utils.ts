@@ -70,13 +70,15 @@ export function slugify(text: string): string {
 }
 
 /**
- * Extract document ID from URL and title
+ * Extract document ID from URL and title.
+ * Multi-segment paths (e.g. /en/guidelines/security-guidelines-for-submitters)
+ * produce a multi-segment ID (guidelines/security-guidelines-for-submitters).
  */
 export function extractDocumentId(url: string, title: string): string {
   const urlObj = new URL(url);
   const pathname = urlObj.pathname;
 
-  // Special case for home pages - check first
+  // Special case for home pages
   if (
     pathname === "/" ||
     pathname === "/en/" ||
@@ -87,22 +89,17 @@ export function extractDocumentId(url: string, title: string): string {
     return "home";
   }
 
-  // Remove language prefix if present
+  // Strip language prefix
   const cleanPath = pathname.replace(/^\/(en|ja)\//, "/");
-
-  // Extract meaningful path segments
   const segments = cleanPath.split("/").filter(Boolean);
 
-  if (segments.length > 0) {
-    // Use the last segment if it's meaningful, otherwise construct from title
-    const lastSegment = segments[segments.length - 1];
-    if (lastSegment && lastSegment !== "index") {
-      return lastSegment;
-    }
-  }
+  if (segments.length === 0) return slugify(title);
 
-  // Fallback to slugified title
-  return slugify(title);
+  const last = segments[segments.length - 1];
+  if (last === "index") segments.pop();
+  if (segments.length === 0) return slugify(title);
+
+  return segments.join("/");
 }
 
 /**

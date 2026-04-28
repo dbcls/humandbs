@@ -23,7 +23,7 @@ export function AdminListItem({
   return (
     <>
       <div className="min-w-0 flex-1">
-        <div className="text-foreground-light mb-1 truncate text-xs group-data-[active=true]:text-white/80">
+        <div className="text-foreground-light mb-1 text-xs group-data-[active=true]:text-white/80">
           {id}
         </div>
         <ul className="space-y-0.5">

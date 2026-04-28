@@ -42,7 +42,6 @@ import { Route as Char123LangChar125LayoutMainOtherDataUseIndexRouteImport } fro
 import { Route as Char123LangChar125LayoutMainOtherDataSubmissionIndexRouteImport } from './routes/{-$lang}/_layout/_main/_other/data-submission/index'
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesIndexRouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/index'
 import { Route as Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport } from './routes/{-$lang}/_layout/_main/_other/news/$newsItemId'
-import { Route as Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport } from './routes/{-$lang}/_layout/_main/_other/guidelines/$slug'
 import { Route as Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport } from './routes/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
 import { Route as Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/research/$humId/route'
 import { Route as Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteImport } from './routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/route'
@@ -247,12 +246,6 @@ const Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute =
     path: '/$newsItemId',
     getParentRoute: () => Char123LangChar125LayoutMainOtherNewsRouteRoute,
   } as any)
-const Char123LangChar125LayoutMainOtherGuidelinesSlugRoute =
-  Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport.update({
-    id: '/$slug',
-    path: '/$slug',
-    getParentRoute: () => Char123LangChar125LayoutMainOtherGuidelinesRouteRoute,
-  } as any)
 const Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route =
   Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125RouteImport.update(
     {
@@ -369,7 +362,6 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteWithChildren
   '/{-$lang}/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteWithChildren
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
-  '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
@@ -403,7 +395,6 @@ export interface FileRoutesByTo {
   '/{-$lang}/$': typeof Char123LangChar125LayoutMainOtherSplatRoute
   '/{-$lang}/cart': typeof Char123LangChar125LayoutMainOtherCartRoute
   '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
-  '/{-$lang}/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/admin/researches': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/data-submission': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
@@ -452,7 +443,6 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_main/_other/dataset/$datasetId': typeof Char123LangChar125LayoutMainOtherDatasetDatasetIdRouteRouteWithChildren
   '/{-$lang}/_layout/_main/_other/research/$humId': typeof Char123LangChar125LayoutMainOtherResearchHumIdRouteRouteWithChildren
   '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': typeof Char123LangChar125LayoutAuthedAdminResearchesChar123humIdChar125Char123verChar125Char123langChar125Route
-  '/{-$lang}/_layout/_main/_other/guidelines/$slug': typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   '/{-$lang}/_layout/_main/_other/news/$newsItemId': typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRoute
   '/{-$lang}/_layout/_authed/admin/researches/': typeof Char123LangChar125LayoutAuthedAdminResearchesIndexRoute
   '/{-$lang}/_layout/_main/_other/data-submission/': typeof Char123LangChar125LayoutMainOtherDataSubmissionIndexRoute
@@ -498,7 +488,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/dataset/$datasetId'
     | '/{-$lang}/research/$humId'
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
-    | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches/'
     | '/{-$lang}/data-submission/'
@@ -532,7 +521,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/$'
     | '/{-$lang}/cart'
     | '/{-$lang}/admin/researches/{$humId}-{$ver}-{$lang}'
-    | '/{-$lang}/guidelines/$slug'
     | '/{-$lang}/news/$newsItemId'
     | '/{-$lang}/admin/researches'
     | '/{-$lang}/data-submission'
@@ -580,7 +568,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_main/_other/dataset/$datasetId'
     | '/{-$lang}/_layout/_main/_other/research/$humId'
     | '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
-    | '/{-$lang}/_layout/_main/_other/guidelines/$slug'
     | '/{-$lang}/_layout/_main/_other/news/$newsItemId'
     | '/{-$lang}/_layout/_authed/admin/researches/'
     | '/{-$lang}/_layout/_main/_other/data-submission/'
@@ -840,13 +827,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125LayoutMainOtherNewsNewsItemIdRouteImport
       parentRoute: typeof Char123LangChar125LayoutMainOtherNewsRouteRoute
     }
-    '/{-$lang}/_layout/_main/_other/guidelines/$slug': {
-      id: '/{-$lang}/_layout/_main/_other/guidelines/$slug'
-      path: '/$slug'
-      fullPath: '/{-$lang}/guidelines/$slug'
-      preLoaderRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRouteImport
-      parentRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesRouteRoute
-    }
     '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}': {
       id: '/{-$lang}/_layout/_authed/admin/researches/{$humId}-{$ver}-{$lang}'
       path: '/researches/{$humId}-{$ver}-{$lang}'
@@ -1091,14 +1071,11 @@ const Char123LangChar125LayoutMainOtherDatasetRouteRouteWithChildren =
   )
 
 interface Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren {
-  Char123LangChar125LayoutMainOtherGuidelinesSlugRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesSlugRoute
   Char123LangChar125LayoutMainOtherGuidelinesIndexRoute: typeof Char123LangChar125LayoutMainOtherGuidelinesIndexRoute
 }
 
 const Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren: Char123LangChar125LayoutMainOtherGuidelinesRouteRouteChildren =
   {
-    Char123LangChar125LayoutMainOtherGuidelinesSlugRoute:
-      Char123LangChar125LayoutMainOtherGuidelinesSlugRoute,
     Char123LangChar125LayoutMainOtherGuidelinesIndexRoute:
       Char123LangChar125LayoutMainOtherGuidelinesIndexRoute,
   }

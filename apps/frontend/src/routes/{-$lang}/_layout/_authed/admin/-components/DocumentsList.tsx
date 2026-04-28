@@ -4,7 +4,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ListItem } from "@/components/ListItem";
 import {
@@ -129,6 +129,20 @@ export function DocumentsList({
 
   const [open, setOpen] = useState(false);
 
+  const groupedDocs = useMemo(() => {
+    const groups = new Map<string, DocumentsListItemResponse[]>();
+    for (const doc of documents) {
+      const topSegment = doc.contentId.split("/")[0];
+      if (!groups.has(topSegment)) groups.set(topSegment, []);
+      groups.get(topSegment)!.push(doc);
+    }
+    // Within each group sort: parent first, then children alphabetically
+    for (const docs of groups.values()) {
+      docs.sort((a, b) => a.contentId.localeCompare(b.contentId));
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [documents]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -203,30 +217,67 @@ export function DocumentsList({
       </Dialog>
 
       <ul className="overflow-y-auto">
-        {documents.map((doc) => {
-          const isActive = doc.contentId === selectedContentId;
-          return (
-            <ListItem
-              key={doc.contentId}
-              role="menuitem"
-              className="mb-2 last:mb-0"
-              onClick={() => {
-                onSelectDoc(doc.contentId);
-              }}
-              isActive={isActive}
-            >
-              <AdminListItem
-                id={doc.contentId}
-                translations={doc.translations}
-                onClickDelete={(e) => {
-                  e.stopPropagation();
-                  handleClickDeleteDoc(doc.contentId);
-                }}
-                hideDelete={PROTECTED_DOC_IDS.includes(doc.contentId as (typeof PROTECTED_DOC_IDS)[number])}
-              />
-            </ListItem>
-          );
-        })}
+        {groupedDocs.map(([topSegment, docs], groupIndex) => (
+          <li key={topSegment}>
+            <ul>
+              {docs.filter((doc) => !doc.contentId.includes("/")).map((doc) => {
+                const isActive = doc.contentId === selectedContentId;
+                return (
+                  <ListItem
+                    key={doc.contentId}
+                    role="menuitem"
+                    className="mb-2"
+                    onClick={() => onSelectDoc(doc.contentId)}
+                    isActive={isActive}
+                  >
+                    <AdminListItem
+                      id={doc.contentId}
+                      translations={doc.translations}
+                      onClickDelete={(e) => {
+                        e.stopPropagation();
+                        handleClickDeleteDoc(doc.contentId);
+                      }}
+                      hideDelete={PROTECTED_DOC_IDS.includes(
+                        doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+                      )}
+                    />
+                  </ListItem>
+                );
+              })}
+              {docs.some((doc) => doc.contentId.includes("/")) && (
+                <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
+                  {docs.filter((doc) => doc.contentId.includes("/")).map((doc) => {
+                    const isActive = doc.contentId === selectedContentId;
+                    return (
+                      <ListItem
+                        key={doc.contentId}
+                        role="menuitem"
+                        className="mb-2"
+                        onClick={() => onSelectDoc(doc.contentId)}
+                        isActive={isActive}
+                      >
+                        <AdminListItem
+                          id={doc.contentId}
+                          translations={doc.translations}
+                          onClickDelete={(e) => {
+                            e.stopPropagation();
+                            handleClickDeleteDoc(doc.contentId);
+                          }}
+                          hideDelete={PROTECTED_DOC_IDS.includes(
+                            doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+                          )}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </ul>
+              )}
+            </ul>
+            {groupIndex < groupedDocs.length - 1 && (
+              <hr className="my-2 border-gray-200" />
+            )}
+          </li>
+        ))}
       </ul>
     </>
   );

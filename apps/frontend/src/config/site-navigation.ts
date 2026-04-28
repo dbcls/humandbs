@@ -125,11 +125,11 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "data-sharing-guidelines",
+    "guidelines/data-sharing-guidelines",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "data-sharing-guidelines" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "guidelines/data-sharing-guidelines" },
       }),
       defaultLabel: {
         en: "NBDC Guidelines for Human Data Sharing",
@@ -138,11 +138,11 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "security-guidelines-for-users",
+    "guidelines/security-guidelines-for-users",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "security-guidelines-for-users" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "guidelines/security-guidelines-for-users" },
       }),
       defaultLabel: {
         en: "NBDC Security Guidelines for Human Data (for Data Users)",
@@ -151,11 +151,14 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "security-guidelines-for-submitters",
+    "guidelines/security-guidelines-for-submitters",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "security-guidelines-for-submitters" },
+        to: "/{-$lang}/$",
+        params: {
+          lang,
+          _splat: "guidelines/security-guidelines-for-submitters",
+        },
       }),
       defaultLabel: {
         en: "NBDC Security Guidelines for Human Data (for Data Submitters)",
@@ -164,11 +167,14 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "security-guidelines-for-dbcenters",
+    "guidelines/security-guidelines-for-dbcenters",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "security-guidelines-for-dbcenters" },
+        to: "/{-$lang}/$",
+        params: {
+          lang,
+          _splat: "guidelines/security-guidelines-for-dbcenters",
+        },
       }),
       defaultLabel: {
         en: "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and Off-Premise-Server Operation Managers)",
@@ -315,22 +321,22 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     {
       id: "00000000-0000-4000-8000-000000000004",
       type: "document",
-      contentId: "data-sharing-guidelines",
+      contentId: "guidelines/data-sharing-guidelines",
     },
     {
       id: "00000000-0000-4000-8000-000000000005",
       type: "document",
-      contentId: "security-guidelines-for-users",
+      contentId: "guidelines/security-guidelines-for-users",
     },
     {
       id: "00000000-0000-4000-8000-000000000006",
       type: "document",
-      contentId: "security-guidelines-for-submitters",
+      contentId: "guidelines/security-guidelines-for-submitters",
     },
     {
       id: "00000000-0000-4000-8000-000000000007",
       type: "document",
-      contentId: "security-guidelines-for-dbcenters",
+      contentId: "guidelines/security-guidelines-for-dbcenters",
     },
     {
       id: "00000000-0000-4000-8000-000000000008",

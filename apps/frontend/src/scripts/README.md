@@ -6,23 +6,32 @@ This directory contains all utility scripts for the NBDC Human Database project,
 
 ```
 scripts/
-├── README.md              # This file
-├── database/              # Database management scripts
+├── README.md                           # This file
+├── migrate-guidelines-content-ids.ts   # One-time: rename flat → nested doc IDs
+├── migrate-site-navigation-config.ts   # One-time: nav config shape migration
+├── database/                           # Database management scripts
 │   ├── README.md
-│   ├── reset-db.ts        # Database reset utility
-│   └── seed-documents.ts  # Document and asset seeding
-├── crawler/               # Web crawling and scraping
+│   ├── reset-db.ts                     # Database reset utility
+│   └── seed-documents.ts              # Document seeding (recursive folders)
+├── crawler/                            # Web crawling and scraping
 │   ├── README.md
-│   ├── crawl-page.ts     # HTML to markdown converter
-│   └── output/            # Generated crawler output (git-ignored)
-│       ├── *.md          # Converted markdown files
-│       └── *_files/      # Downloaded assets
-└── seed-data/             # Structured data for seeding
+│   ├── crawl-page.ts                  # HTML to markdown converter
+│   ├── crawl-sitemap.ts               # Bulk sitemap crawler
+│   ├── aggregate-attachments.ts        # Attachment inventory generator
+│   └── output/                         # Generated crawler output (git-ignored)
+│       ├── *.md                       # Converted markdown files
+│       └── *_files/                   # Downloaded assets
+└── seed-data/                          # Structured data for seeding
     ├── README.md
-    ├── .gitignore        # Only tracks .md files
-    └── documents/        # Organized content by locale
-        ├── en/           # English content
-        └── ja/           # Japanese content
+    ├── .gitignore                      # Only tracks .md files
+    └── documents/                      # Organized content by locale
+        ├── en/                         # English content
+        │   ├── guidelines/             # Parent doc; children are subdirectories
+        │   │   ├── content.md
+        │   │   ├── data-sharing-guidelines/
+        │   │   └── security-guidelines-for-*/
+        │   └── ...
+        └── ja/                         # Japanese content (mirrors en/)
 ```
 
 ## Quick Start
@@ -43,9 +52,13 @@ bun run db:seed-documents --overwrite
 ### Web Crawling
 
 ```bash
-# Single page conversion
-bun crawler/crawl-page.ts -u "https://example.com" -o documents
-# Saves to: crawler/output/documents/example/content.md
+# Single page conversion (flat doc)
+bun crawler/crawl-page.ts -u "https://example.com/page" -o documents/en
+# Saves to: crawler/output/documents/en/page/content.md
+
+# Single page conversion (nested doc — pass parent segments as -o)
+bun crawler/crawl-page.ts -u "https://example.com/guidelines/page" -o documents/en/guidelines
+# Saves to: crawler/output/documents/en/guidelines/page/content.md
 
 # Bulk sitemap crawling (recommended)
 bun run crawl:sitemap --dry-run          # Preview what would be crawled
@@ -113,7 +126,7 @@ Structured content and assets for database seeding.
 
 - Multi-language support (en/ja)
 - Git-managed markdown content
-- Organized asset structure
+- Nested folder structure — subdirectories produce multi-segment document IDs (e.g. `guidelines/data-sharing-guidelines`)
 - Frontmatter metadata support
 
 ## Workflow
@@ -144,13 +157,18 @@ bun crawler/crawl-page.ts -u "https://source.com/page" -o temp/en
 # Review crawled output
 ls crawler/output/
 
-# For sitemap crawl - move entire language directories
+# For sitemap crawl - move entire language directories (nested structure preserved)
 mv crawler/output/documents/en/* seed-data/documents/en/
 mv crawler/output/documents/ja/* seed-data/documents/ja/
 
-# For single page - move individual directory
-mv crawler/output/temp/en/page seed-data/documents/en/
-# This moves the entire directory with content.md and assets
+# For a flat doc - move individual directory
+mv crawler/output/documents/en/page seed-data/documents/en/
+
+# For a nested doc - ensure parent directory exists first
+mkdir -p seed-data/documents/en/guidelines
+mv crawler/output/documents/en/guidelines/page seed-data/documents/en/guidelines/
+# seed-documents.ts discovers nested folders recursively,
+# so guidelines/page becomes document ID "guidelines/page"
 ```
 
 ### 3. Database Integration

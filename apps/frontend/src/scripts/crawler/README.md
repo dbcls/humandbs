@@ -113,6 +113,8 @@ bun crawl-sitemap.ts --concurrency 5 --files-only
 
 #### Output Structure for Sitemap Crawl
 
+Multi-segment URLs produce nested directories matching the document ID path:
+
 ```
 output/
 └── documents/
@@ -122,13 +124,19 @@ output/
     │   │   └── assets...
     │   ├── guidelines/
     │   │   ├── content.md
-    │   │   └── assets...
+    │   │   ├── data-sharing-guidelines/
+    │   │   │   ├── content.md
+    │   │   │   └── assets...
+    │   │   ├── security-guidelines-for-users/
+    │   │   └── ...
     │   └── data-submission/
     │       ├── content.md
     │       └── assets...
     └── ja/                   # Japanese pages
         ├── home/
         ├── guidelines/
+        │   ├── data-sharing-guidelines/
+        │   └── ...
         └── data-submission/
 ```
 
@@ -137,12 +145,13 @@ output/
 The script automatically:
 
 - Detects language from URL (`/en/` prefix = English, otherwise Japanese)
-- Extracts document IDs from URL paths or page titles
-- Creates organized directory structure by language
+- Extracts document IDs from all URL path segments after the language prefix
+- Creates nested directory structure matching the document ID
 
 **Examples:**
 
 - `https://humandbs.dbcls.jp/en/guidelines` → `documents/en/guidelines/`
+- `https://humandbs.dbcls.jp/en/guidelines/security-guidelines-for-users` → `documents/en/guidelines/security-guidelines-for-users/`
 - `https://humandbs.dbcls.jp/data-submission` → `documents/ja/data-submission/`
 
 ## Output Directory
@@ -223,11 +232,11 @@ The generated CSV contains the following columns:
 ### Crawling individual pages
 
 ```bash
-# Crawl security guidelines page
+# Crawl security guidelines page (pass parent path as -o)
 bun crawl-page.ts \
-  -u "https://humandbs.dbcls.jp/en/security-guidelines-for-users" \
-  -o documents
-# Output: ./output/documents/security-guidelines-for-users/content.md
+  -u "https://humandbs.dbcls.jp/en/guidelines/security-guidelines-for-users" \
+  -o documents/en/guidelines
+# Output: ./output/documents/en/guidelines/security-guidelines-for-users/content.md
 
 # Download only assets from guidelines page
 bun crawl-page.ts \

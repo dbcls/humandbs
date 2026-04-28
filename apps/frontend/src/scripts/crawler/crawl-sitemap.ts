@@ -3,7 +3,11 @@ import * as path from "path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { fetchSitemapPages, processPagesConcurrently, PageInfo } from "./utils";
+import {
+  fetchSitemapPages,
+  processPagesConcurrently,
+  type PageInfo,
+} from "./utils";
 
 interface ParsedArguments {
   "dry-run": boolean;
@@ -35,11 +39,16 @@ const argv = yargs(hideBin(process.argv))
   .parseSync() as ParsedArguments;
 
 async function crawlPage(page: PageInfo): Promise<void> {
-  const outputDir = `documents/${page.language}`;
+  // For multi-segment IDs like "guidelines/security-guidelines-for-submitters",
+  // pass the parent path as -o so crawl-page appends only the final segment.
+  const segments = page.documentId.split("/");
+  const outputDir = ["documents", page.language, ...segments.slice(0, -1)].join(
+    "/",
+  );
   const crawlerScript = path.resolve(import.meta.dir, "crawl-page.ts");
 
   console.log(
-    `Crawling: ${page.title} (${page.language}) -> ${outputDir}/${page.documentId}`,
+    `Crawling: ${page.title} (${page.language}) -> ${outputDir}/${segments.at(-1)}`,
   );
 
   try {

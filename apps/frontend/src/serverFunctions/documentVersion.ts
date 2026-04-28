@@ -427,6 +427,34 @@ export const $getPublishedDocumentVersionList = createServerFn({
     return versions;
   });
 
+// === GET BREADCRUMBS FOR A DOCUMENT PATH
+
+/**
+ * Resolves a crumb label for each prefix segment of a multi-segment contentId.
+ * e.g. "guidelines/data-sharing-guidelines" →
+ *   [{ label: "Guidelines", href: "/guidelines" },
+ *    { label: "Data Sharing Guidelines", href: "/guidelines/data-sharing-guidelines" }]
+ */
+export const $getDocumentBreadcrumbs = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ contentId: z.string(), locale: localeSchema }))
+  .handler(async ({ data }) => {
+    const { contentId, locale } = data;
+    const segments = contentId.split("/");
+
+    const crumbs = await Promise.all(
+      segments.map(async (_, i) => {
+        const path = segments.slice(0, i + 1).join("/");
+        const doc = await documentVersionRepo.getLatestPublishedForLocale(
+          path,
+          locale,
+        );
+        return { label: doc?.title ?? path, href: `/${path}` };
+      }),
+    );
+
+    return crumbs;
+  });
+
 export const getDocumentPublishedVersionsListQueryOptions = ({
   contentId,
   locale,

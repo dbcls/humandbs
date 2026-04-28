@@ -151,53 +151,55 @@ async function resolveAuthorId(
   return ensureSystemUser(db);
 }
 
+async function collectDocumentPaths(
+  dir: string,
+  prefix: string,
+  documents: DocumentLocaleMap,
+  locale: Locale,
+): Promise<void> {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error: unknown) {
+    if ((error as { code?: unknown })?.code === "ENOENT") {
+      console.warn(`Missing folder: ${dir}`);
+      return;
+    }
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const segmentId = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const entryPath = path.join(dir, entry.name);
+    const contentPath = path.join(entryPath, "content.md");
+
+    let content: string | undefined;
+    try {
+      content = await readFile(contentPath, "utf8");
+    } catch (error: unknown) {
+      if ((error as { code?: unknown })?.code !== "ENOENT") throw error;
+      // No content.md here — treat as namespace folder and recurse
+    }
+
+    if (content !== undefined) {
+      if (!documents.has(segmentId)) documents.set(segmentId, new Map());
+      documents.get(segmentId)!.set(locale, { content, dir: entryPath });
+      console.log(`Loaded ${locale} content for document: ${segmentId}`);
+    }
+
+    // Always recurse to find nested documents
+    await collectDocumentPaths(entryPath, segmentId, documents, locale);
+  }
+}
+
 async function loadDocuments(): Promise<DocumentLocaleMap> {
   const documents: DocumentLocaleMap = new Map();
 
   for (const locale of SUPPORTED_LOCALES) {
     const localeDir = path.join(DOCUMENTS_DIR, locale);
-    let entries;
-
-    try {
-      console.log(`Reading locale folder: ${localeDir}`);
-      entries = await readdir(localeDir, { withFileTypes: true });
-    } catch (error: unknown) {
-      if ((error as { code: unknown })?.code === "ENOENT") {
-        console.warn(`Missing locale folder: ${localeDir}`);
-        continue;
-      }
-      throw error;
-    }
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const documentId = entry.name;
-
-      const contentPath = path.join(localeDir, documentId, "content.md");
-
-      let content: string;
-      try {
-        content = await readFile(contentPath, "utf8");
-      } catch (error: unknown) {
-        if ((error as { code?: unknown })?.code === "ENOENT") {
-          console.warn(`Missing content file: ${contentPath}`);
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (!documents.has(documentId)) {
-        documents.set(documentId, new Map());
-      }
-
-      documents.get(documentId)!.set(locale, {
-        content,
-        dir: path.join(localeDir, documentId),
-      });
-
-      console.log(`Loaded ${locale} content for document: ${documentId}`);
-    }
+    console.log(`Reading locale folder: ${localeDir}`);
+    await collectDocumentPaths(localeDir, "", documents, locale);
   }
 
   return documents;
