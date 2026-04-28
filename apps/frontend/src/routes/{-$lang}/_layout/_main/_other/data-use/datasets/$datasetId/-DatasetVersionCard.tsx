@@ -120,7 +120,7 @@ export function DatasetVersionCard({
       }
     >
       <section>
-        <dl className="columns-2">
+        <dl className="columns-2 mb-7">
           <div className="break-inside-avoid-column">
             <KeyValueCard title={t("releaseDate")}>
               <div>
@@ -138,6 +138,10 @@ export function DatasetVersionCard({
             </KeyValueCard>
             <Separator show variant={"solid"} />
           </div>
+
+          <KeyValueCard title={t("date-modified")}>
+            <p>{versionData.releaseDate}</p>
+          </KeyValueCard>
 
           <div className="break-inside-avoid-column">
             <KeyValueCard

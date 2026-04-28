@@ -104,6 +104,7 @@
     "login-to-add": "ログインしてカートに追加",
     "version": "バージョン",
     "releaseDate": "公開日付",
+    "date-modified": "更新日",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
     "experiments": "実験一覧",
