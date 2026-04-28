@@ -118,7 +118,7 @@ const LINK_ITEMS: Record<
   { url: string; label: Record<string, string> }
 > = {
   "research-list": {
-    url: "/data-use/research",
+    url: "/research",
     label: { en: "Research List", ja: "研究一覧" },
   },
   "dataset-list": {

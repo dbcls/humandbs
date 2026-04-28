@@ -47,7 +47,7 @@ export function DatasetVersionCard({
       title: t("research"),
       value: (
         <Link
-          to="/{-$lang}/data-use/research/$humId"
+          to="/{-$lang}/research/$humId"
           params={{ humId: versionData.humId }}
         >
           <TextWithIcon icon={FA_ICONS.books}>{versionData.humId}</TextWithIcon>

@@ -43,7 +43,7 @@ export function VersionCard({
           icon="books"
           badge={
             <Link
-              to="/{-$lang}/data-use/research/$humId/versions"
+              to="/{-$lang}/research/$humId/versions"
               className="text-white no-underline"
               params={{ humId: versionData.humId }}
             >

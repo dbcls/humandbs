@@ -190,7 +190,7 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     "research-list",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/data-use/research",
+        to: "/{-$lang}/research",
         params: { lang },
       }),
       defaultLabel: { en: "Research List", ja: "研究一覧" },
@@ -340,7 +340,7 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     {
       id: "00000000-0000-4000-8000-000000000009",
       type: "link",
-      url: "/data-use/research",
+      url: "/research",
       label: { en: "Research List", ja: "研究一覧" },
     },
     {
