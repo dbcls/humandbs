@@ -2,7 +2,7 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
-import { FrontStatsVisualization } from "@/components/FrontStatsVisualization";
+
 import { Button } from "@/components/ui/button";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
@@ -10,6 +10,7 @@ import { News } from "../../-components/FrontNews";
 import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import SubmitDataIcon from "@/assets/submit-data.svg?react";
 import UseDataIcon from "@/assets/use-data.svg?react";
+import { lazy } from "react";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
@@ -67,8 +68,12 @@ function RouteComponent() {
         </Card>
       </section>
       <Card className="overflow-hidden bg-transparent p-0">
-        <FrontStatsVisualization />
+        <LazyFrontStats />
       </Card>
     </section>
   );
 }
+
+const LazyFrontStats = lazy(
+  () => import("@/components/FrontStatsVisualization"),
+);

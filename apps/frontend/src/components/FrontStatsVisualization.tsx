@@ -705,7 +705,7 @@ function PlanetChart({ stats }: { stats: NormalizedStats }) {
   );
 }
 
-export function FrontStatsVisualization() {
+export default function FrontStatsVisualization() {
   const { loading, error, stats } = useStats();
 
   return (
