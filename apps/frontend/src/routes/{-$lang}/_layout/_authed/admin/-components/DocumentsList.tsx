@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type ContentId } from "@/config/content-config";
+import { PROTECTED_DOC_IDS } from "@/config/routing-config";
 import {
   $createDocument,
   $deleteDocument,
@@ -221,6 +222,7 @@ export function DocumentsList({
                   e.stopPropagation();
                   handleClickDeleteDoc(doc.contentId);
                 }}
+                hideDelete={PROTECTED_DOC_IDS.includes(doc.contentId as (typeof PROTECTED_DOC_IDS)[number])}
               />
             </ListItem>
           );

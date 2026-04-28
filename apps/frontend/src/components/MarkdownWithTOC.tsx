@@ -10,12 +10,14 @@ export function MarkdownWithTOC({
   title,
   markdownResult,
   previousVersions,
+  revisionsBasePath,
   afterContent,
   hideTOC,
 }: {
   title: React.ReactNode | string | null;
   markdownResult: MarkdownResult;
   previousVersions?: DocPublishedVersionListItemResponse[];
+  revisionsBasePath?: string;
   afterContent?: React.ReactNode;
   hideTOC?: boolean;
 }) {
@@ -29,10 +31,10 @@ export function MarkdownWithTOC({
         {showTOC ? <TOC headings={markdownResult.headings} /> : null}
         <div className="flex-1">
           <Markdown contentHtml={markdownResult} title={title} />
-          {previousVersions && (
+          {previousVersions && revisionsBasePath && (
             <PreviousVersionsList
               versions={previousVersions}
-              slug="/{-$lang}/guidelines"
+              revisionsBasePath={revisionsBasePath}
             />
           )}
 

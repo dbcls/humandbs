@@ -2,28 +2,20 @@ import { Link } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
 import type { DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
-import type { FileRoutesByTo } from "@/routeTree.gen";
-
-type LinksWithVersionLists = keyof Pick<
-  FileRoutesByTo,
-  "/{-$lang}/data-submission" | "/{-$lang}/guidelines"
->;
 
 export function PreviousVersionsList({
-  slug,
+  revisionsBasePath,
   versions,
 }: {
-  slug: LinksWithVersionLists;
+  revisionsBasePath: string;
   versions: DocPublishedVersionListItemResponse[];
 }) {
   const tCommon = useTranslations("common");
-  const docId = slug.split("/").at(-1)!;
-
   const tNav = useTranslations("Navbar");
-
-  const documentName = tNav(docId ?? "");
-
   const lang = useLocale();
+
+  const docId = revisionsBasePath.split("/").at(-1)!;
+  const documentName = tNav(docId ?? "");
 
   return (
     <div>
@@ -35,10 +27,10 @@ export function PreviousVersionsList({
           <li className="flex gap-2" key={version.versionNumber}>
             <span>v. {version.versionNumber}</span>
             <Link
-              to={`${slug}/revision/$revision`}
+              to="/{-$lang}/$"
               params={{
                 lang,
-                revision: version.versionNumber.toString(),
+                _splat: `${revisionsBasePath}/revision/${version.versionNumber}`,
               }}
               className="text-secondary"
             >

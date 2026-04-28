@@ -10,3 +10,9 @@ export const RESERVED_SEGMENTS = [
   "dataset",
   "research",
 ];
+
+export const PROTECTED_DOC_IDS = [
+  "home",
+  "data-use",
+  "data-submission",
+] as const;

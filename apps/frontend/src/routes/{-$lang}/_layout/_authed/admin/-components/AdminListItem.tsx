@@ -13,10 +13,12 @@ export function AdminListItem({
   id,
   translations,
   onClickDelete,
+  hideDelete,
 }: {
   id: string;
   translations: AdminListItemTranslation[];
   onClickDelete: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  hideDelete?: boolean;
 }) {
   return (
     <>
@@ -46,7 +48,7 @@ export function AdminListItem({
           })}
         </ul>
       </div>
-      <TrashButton onClick={onClickDelete} />
+      {!hideDelete && <TrashButton onClick={onClickDelete} />}
     </>
   );
 }

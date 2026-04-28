@@ -111,23 +111,32 @@ export interface BreadcroumbsPath {
   href: keyof FileRoutesByTo;
 }
 
+interface CrumbEntry {
+  label: string;
+  href: string;
+}
+
 function Breadcrumbs() {
   const matches = useMatches();
 
   const crumbs = React.useMemo(() => {
-    return matches
-      .filter((match) => isMatch(match, "loaderData.crumb"))
-      .map((match) => ({
-        label: match.loaderData?.crumb ?? "",
-        href: match.fullPath,
-      }));
+    const result: CrumbEntry[] = [];
+    for (const match of matches) {
+      if (isMatch(match, "loaderData.crumbs")) {
+        const multi = match.loaderData?.crumbs as CrumbEntry[];
+        result.push(...multi);
+      } else if (isMatch(match, "loaderData.crumb")) {
+        result.push({ label: match.loaderData?.crumb ?? "", href: match.fullPath });
+      }
+    }
+    return result;
   }, [matches]);
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {crumbs.map(({ label, href }, index) => (
-          <React.Fragment key={href}>
+          <React.Fragment key={`${href}-${index}`}>
             <BreadcrumbItem>
               <Link
                 //@ts-expect-error

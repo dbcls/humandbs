@@ -40,6 +40,7 @@ function RouteComponent() {
       title={title}
       markdownResult={contentHtml}
       previousVersions={versions}
+      revisionsBasePath="guidelines"
     />
   );
 }
