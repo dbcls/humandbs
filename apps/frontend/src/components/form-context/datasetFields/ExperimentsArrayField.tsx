@@ -41,6 +41,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { useTranslations } from "use-intl";
 
 type AnyForm = any;
 
@@ -84,7 +85,9 @@ function DataEntriesTable({
 }) {
   const entries: ExperimentDataEntry[] = dataField.state.value ?? [];
   const usedKeys = new Set(entries.map((e: ExperimentDataEntry) => e.key));
+
   const availableKeys = ALLOWED_MOLDATA_KEYS.filter((k) => !usedKeys.has(k));
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openConfirmation = useConfirmationStore((s) => s.openConfirmation);
 

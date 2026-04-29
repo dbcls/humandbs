@@ -174,6 +174,7 @@ function Experiment({
 }: {
   experiment: DatasetDoc["experiments"][number];
 }) {
+  const t = useTranslations("Dataset");
   const lang = useLocale();
   return (
     <section>
@@ -185,7 +186,8 @@ function Experiment({
         {Object.entries(experiment.data).map(([title, content]) => (
           <KeyValueCard
             key={title}
-            title={title}
+            // @ts-ignore
+            title={t(title)}
             value={content?.[lang]?.rawHtml}
           />
         ))}
