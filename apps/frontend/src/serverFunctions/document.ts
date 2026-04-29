@@ -6,12 +6,13 @@ import { z } from "zod";
 import { type ContentId } from "@/config/content-config";
 import { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
-import { DOCUMENT_VERSION_STATUS, document } from "@/db/schema";
+import { document, documentVersion, DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
 
 export interface DocumentsListItemResponse {
+  id: string;
   createdAt: Date;
   contentId: ContentId;
   translations: {
@@ -33,32 +34,33 @@ export const $getDocuments = createServerFn({
     documents.map(async (doc) => {
       const translations = await Promise.all(
         i18n.locales.map(async (locale) => {
-          const [latestPublishedVersion, latestDraftVersion] = await Promise.all([
-            db.query.documentVersion.findFirst({
-              where: (table, { and, eq }) =>
-                and(
-                  eq(table.contentId, doc.contentId),
-                  eq(table.locale, locale),
-                  eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-                ),
-              orderBy: (table, { desc }) => desc(table.versionNumber),
-              columns: {
-                title: true,
-              },
-            }),
-            db.query.documentVersion.findFirst({
-              where: (table, { and, eq }) =>
-                and(
-                  eq(table.contentId, doc.contentId),
-                  eq(table.locale, locale),
-                  eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-                ),
-              orderBy: (table, { desc }) => desc(table.versionNumber),
-              columns: {
-                title: true,
-              },
-            }),
-          ]);
+          const [latestPublishedVersion, latestDraftVersion] =
+            await Promise.all([
+              db.query.documentVersion.findFirst({
+                where: (table, { and, eq }) =>
+                  and(
+                    eq(table.documentId, doc.id),
+                    eq(table.locale, locale),
+                    eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+                  ),
+                orderBy: (table, { desc }) => desc(table.versionNumber),
+                columns: {
+                  title: true,
+                },
+              }),
+              db.query.documentVersion.findFirst({
+                where: (table, { and, eq }) =>
+                  and(
+                    eq(table.documentId, doc.id),
+                    eq(table.locale, locale),
+                    eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                  ),
+                orderBy: (table, { desc }) => desc(table.versionNumber),
+                columns: {
+                  title: true,
+                },
+              }),
+            ]);
 
           return {
             lang: locale,
@@ -107,19 +109,47 @@ export const $createDocument = createServerFn({ method: "POST" })
 
     const doc = await db.insert(document).values(data).returning();
 
-    await documentVersionRepo.createVersionFromPublished(data.contentId, userId);
+    await documentVersionRepo.createVersionFromPublished(
+      data.contentId,
+      userId,
+    );
 
     return doc;
   });
 
-export const $validateDocumentContentId = createServerFn({ method: "POST" })
-  .inputValidator(z.string())
-  .handler(async ({ data }) => {
-    const existingDoc = await db.query.document.findFirst({
-      where: eq(document.contentId, data),
+/** Get a single document by contentId */
+export const $getDocument = createServerFn({ method: "GET" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(documentSelectSchema)
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "view");
+
+    const doc = await db.query.document.findFirst({
+      where: eq(document.contentId, data.contentId),
     });
 
-    return !!existingDoc;
+    return doc ?? null;
+  });
+
+export function getDocumentQueryOptions(contentId: string) {
+  return queryOptions({
+    queryKey: ["documents", contentId],
+    queryFn: () => $getDocument({ data: { contentId } }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** Update hideTOC flag for a document */
+export const $updateDocumentHideTOC = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ contentId: z.string(), hideTOC: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    await db
+      .update(document)
+      .set({ hideTOC: data.hideTOC })
+      .where(eq(document.contentId, data.contentId));
   });
 
 /**
@@ -137,4 +167,20 @@ export const $deleteDocument = createServerFn({ method: "POST" })
       .returning();
 
     return doc;
+  });
+
+/**
+ * Change Id of document
+ *
+ */
+export const $changeIdOfDocument = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ oldId: z.string(), newId: z.string() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    await db
+      .update(document)
+      .set({ contentId: data.newId })
+      .where(eq(document.contentId, data.oldId));
   });

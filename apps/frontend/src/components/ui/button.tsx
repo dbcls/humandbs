@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  " cursor-pointer whitespace-nowrap flex text-foreground items-center rounded font-semibold disabled:opacity-30 disabled:cursor-default",
+  " cursor-pointer whitespace-nowrap flex text-foreground transition-colors items-center rounded font-semibold disabled:opacity-30 disabled:cursor-default",
   {
     variants: {
       size: {
@@ -18,12 +18,13 @@ export const buttonVariants = cva(
       },
       variant: {
         accent:
-          "bg-linear-to-r  text-white  from-accent to-accent-light hover:from-accent/80 hover:saturate-150 active:saturate-100 transition-colors",
+          "bg-linear-to-r  text-white  from-accent to-accent-light hover:from-accent/80 hover:saturate-150 active:saturate-100 transition-[filter]",
         action:
-          " bg-linear-to-r text-white  from-secondary to-secondary-light hover:saturate-150 active:saturate-100 transition-colors",
+          " bg-linear-to-r text-white  from-secondary to-secondary-light transition-[filter] hover:saturate-150 active:saturate-100",
         outline:
           "border border-tetriary bg-transparent enabled:hover:bg-white/50",
-        tableAction: "bg-secondary-light  text-white  rounded-full ",
+        tableAction:
+          "bg-secondary-light  text-white rounded-full transition-[filter] hover:saturate-150 active:saturate-100",
         plain: "bg-none",
         "cms-table-action":
           "bg-none rounded-xs enabled:hover:bg-hover active:bg-foreground-light/30",

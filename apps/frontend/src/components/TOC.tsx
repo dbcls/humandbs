@@ -35,13 +35,13 @@ export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
   }, [headingsToShow.map((h) => h.id).join(",")]);
 
   return (
-    <div className="static not-prose flex w-96 min-w-44 shrink-0 flex-col gap-4 rounded p-2 md:sticky md:top-4 md:mt-6 md:max-h-[calc(100vh-2rem)] md:overflow-y-auto">
+    <div className="not-prose static flex w-96 min-w-44 shrink-0 flex-col gap-4 rounded p-2 md:sticky md:top-4 md:mt-6 md:max-h-[calc(100vh-2rem)] md:overflow-y-auto">
       {headingsToShow.map((heading) => (
         <a
           key={heading.id}
           href={`#${heading.id}`}
           className={cn(
-            "text-sm no-underline hover:text-neutral-800 text-neutral-500 font-medium",
+            "text-sm font-medium text-neutral-500 no-underline hover:text-neutral-800",
             {
               "font-bold text-neutral-900": activeId === heading.id,
             },

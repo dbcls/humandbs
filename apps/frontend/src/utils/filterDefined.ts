@@ -5,7 +5,7 @@ type FilterDefined<T extends Record<string, unknown>> = {
 };
 
 export function filterDefined<T extends Record<string, unknown>>(
-  obj: T
+  obj: T,
 ): FilterDefined<T> {
   const result = {} as FilterDefined<T>;
 

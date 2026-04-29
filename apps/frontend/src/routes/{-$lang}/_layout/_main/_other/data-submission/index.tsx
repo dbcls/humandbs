@@ -42,6 +42,7 @@ function RouteComponent() {
       title={title}
       markdownResult={contentHtml}
       previousVersions={versions}
+      revisionsBasePath="data-submission"
       afterContent={
         <div className="my-5 flex justify-center">
           <Button

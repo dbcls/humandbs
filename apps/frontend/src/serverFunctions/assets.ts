@@ -7,7 +7,8 @@ import { z } from "zod";
 
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
-const FILES_SUBDIR = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+const FILES_SUBDIR =
+  process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
 const ASSET_DIR = path.resolve(
   process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
   FILES_SUBDIR,
@@ -247,4 +248,3 @@ export function assetHierarchyQueryOptions() {
     queryFn: () => $getAssetHierarchy(),
   });
 }
-

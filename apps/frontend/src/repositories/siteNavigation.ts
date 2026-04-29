@@ -1,6 +1,9 @@
 import { eq } from "drizzle-orm";
 
-import { type SiteNavigationConfig, getDefaultSiteNavigationConfig } from "@/config/site-navigation";
+import {
+  type SiteNavigationConfig,
+  getDefaultSiteNavigationConfig,
+} from "@/config/site-navigation";
 import { parseSiteNavigationConfig } from "@/config/site-navigation.schema";
 import { db } from "@/db/database";
 import {
@@ -131,9 +134,7 @@ export function createSiteNavigationRepository(
           updatedAt: new Date(),
           updatedBy: userId,
         })
-        .where(
-          eq(siteNavigationConfig.id, GLOBAL_SITE_NAVIGATION_CONFIG_ID),
-        )
+        .where(eq(siteNavigationConfig.id, GLOBAL_SITE_NAVIGATION_CONFIG_ID))
         .returning();
 
       await database.insert(siteNavigationConfigRevision).values({

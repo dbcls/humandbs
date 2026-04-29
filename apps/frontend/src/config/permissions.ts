@@ -119,22 +119,22 @@ export const roles = Object.keys(ROLES) as (keyof RolesWithPermissions)[];
 export interface AccessResources {
   researches: {
     action:
-      | "create"        // POST /research/new                  — admin only
-      | "update"        // PUT  /research/{humId}/update       — owner (draft) or admin
-      | "delete"        // POST /research/{humId}/delete       — admin only (logical delete)
-      | "submit"        // POST /research/{humId}/submit       — owner or admin (draft → review)
-      | "approve"       // POST /research/{humId}/approve      — admin only (review → published)
-      | "reject"        // POST /research/{humId}/reject       — admin only (review → draft)
-      | "unpublish"     // POST /research/{humId}/unpublish    — admin only (published → draft)
-      | "versions/new"  // POST /research/{humId}/versions/new — owner or admin (published → draft)
-      | "update-uids";  // PUT  /research/{humId}/uids          — admin only
+      | "create" // POST /research/new                  — admin only
+      | "update" // PUT  /research/{humId}/update       — owner (draft) or admin
+      | "delete" // POST /research/{humId}/delete       — admin only (logical delete)
+      | "submit" // POST /research/{humId}/submit       — owner or admin (draft → review)
+      | "approve" // POST /research/{humId}/approve      — admin only (review → published)
+      | "reject" // POST /research/{humId}/reject       — admin only (review → draft)
+      | "unpublish" // POST /research/{humId}/unpublish    — admin only (published → draft)
+      | "versions/new" // POST /research/{humId}/versions/new — owner or admin (published → draft)
+      | "update-uids"; // PUT  /research/{humId}/uids          — admin only
     params?: { research?: Pick<ResearchDetail, "uids" | "status"> };
   };
   datasets: {
     // Dataset has no status of its own — all operations require parent research to be draft
     action:
-      | "create"  // POST /research/{humId}/dataset/new  — owner or admin (research draft only)
-      | "update"  // PUT  /dataset/{datasetId}/update    — owner or admin (research draft only)
+      | "create" // POST /research/{humId}/dataset/new  — owner or admin (research draft only)
+      | "update" // PUT  /dataset/{datasetId}/update    — owner or admin (research draft only)
       | "delete"; // POST /dataset/{datasetId}/delete    — admin only (research draft only)
     params?: { research?: Pick<ResearchDetail, "uids" | "status"> };
   };
@@ -162,32 +162,46 @@ export function can<R extends keyof AccessResources>(
   const isAuthed = !!user;
 
   if (resource === "researches") {
-    const research = (params as AccessResources["researches"]["params"])?.research;
+    const research = (params as AccessResources["researches"]["params"])
+      ?.research;
     const isOwner = isAuthed && !!research && research.uids.includes(user!.id);
     const status = research?.status;
 
     switch (action as AccessResources["researches"]["action"]) {
-      case "create":       return { can: isAdmin };
-      case "delete":       return { can: isAdmin };
-      case "update":       return { can: (isAdmin || isOwner) && status === "draft" };
-      case "submit":       return { can: (isAdmin || isOwner) && status === "draft" };
-      case "approve":      return { can: isAdmin && status === "review" };
-      case "reject":       return { can: isAdmin && status === "review" };
-      case "unpublish":    return { can: isAdmin && status === "published" };
-      case "versions/new": return { can: (isAdmin || isOwner) && status === "published" };
-      case "update-uids":  return { can: isAdmin };
+      case "create":
+        return { can: isAdmin };
+      case "delete":
+        return { can: isAdmin };
+      case "update":
+        return { can: (isAdmin || isOwner) && status === "draft" };
+      case "submit":
+        return { can: (isAdmin || isOwner) && status === "draft" };
+      case "approve":
+        return { can: isAdmin && status === "review" };
+      case "reject":
+        return { can: isAdmin && status === "review" };
+      case "unpublish":
+        return { can: isAdmin && status === "published" };
+      case "versions/new":
+        return { can: (isAdmin || isOwner) && status === "published" };
+      case "update-uids":
+        return { can: isAdmin };
     }
   }
 
   if (resource === "datasets") {
-    const research = (params as AccessResources["datasets"]["params"])?.research;
+    const research = (params as AccessResources["datasets"]["params"])
+      ?.research;
     const isOwner = isAuthed && !!research && research.uids.includes(user!.id);
     const isDraft = research?.status === "draft";
 
     switch (action as AccessResources["datasets"]["action"]) {
-      case "create": return { can: (isAdmin || isOwner) && isDraft };
-      case "update": return { can: (isAdmin || isOwner) && isDraft };
-      case "delete": return { can: isAdmin && isDraft };
+      case "create":
+        return { can: (isAdmin || isOwner) && isDraft };
+      case "update":
+        return { can: (isAdmin || isOwner) && isDraft };
+      case "delete":
+        return { can: isAdmin && isDraft };
     }
   }
 
@@ -202,7 +216,7 @@ export function hasPermission<Resource extends keyof Permissions>(
   user: SessionUser | null,
   resource: Resource,
   action: Permissions[Resource]["action"],
-  data?: Permissions[Resource]["dataType"]
+  data?: Permissions[Resource]["dataType"],
 ) {
   const permission = (ROLES as RolesWithPermissions)[
     user?.role || USER_ROLES.USER

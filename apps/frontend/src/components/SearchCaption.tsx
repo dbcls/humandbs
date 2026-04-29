@@ -66,7 +66,7 @@ export function SearchCaption({
               <Button
                 variant={"plain"}
                 size={"icon"}
-                className={"pointer-events-auto text-secondary-light"}
+                className={"text-secondary-light pointer-events-auto"}
                 disabled={!committedQuery}
                 onClick={() => {
                   setInputValue("");
@@ -82,7 +82,7 @@ export function SearchCaption({
                 variant={"plain"}
                 size={"icon"}
                 className={cn(
-                  "pointer-events-auto text-secondary-light hover:opacity-80",
+                  "text-secondary-light pointer-events-auto hover:opacity-80",
                   {
                     "opacity-50": !isPanelOpen,
                   },

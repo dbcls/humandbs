@@ -70,13 +70,15 @@ export function slugify(text: string): string {
 }
 
 /**
- * Extract document ID from URL and title
+ * Extract document ID from URL and title.
+ * Multi-segment paths (e.g. /en/guidelines/security-guidelines-for-submitters)
+ * produce a multi-segment ID (guidelines/security-guidelines-for-submitters).
  */
 export function extractDocumentId(url: string, title: string): string {
   const urlObj = new URL(url);
   const pathname = urlObj.pathname;
 
-  // Special case for home pages - check first
+  // Special case for home pages
   if (
     pathname === "/" ||
     pathname === "/en/" ||
@@ -87,22 +89,17 @@ export function extractDocumentId(url: string, title: string): string {
     return "home";
   }
 
-  // Remove language prefix if present
+  // Strip language prefix
   const cleanPath = pathname.replace(/^\/(en|ja)\//, "/");
-
-  // Extract meaningful path segments
   const segments = cleanPath.split("/").filter(Boolean);
 
-  if (segments.length > 0) {
-    // Use the last segment if it's meaningful, otherwise construct from title
-    const lastSegment = segments[segments.length - 1];
-    if (lastSegment && lastSegment !== "index") {
-      return lastSegment;
-    }
-  }
+  if (segments.length === 0) return slugify(title);
 
-  // Fallback to slugified title
-  return slugify(title);
+  const last = segments[segments.length - 1];
+  if (last === "index") segments.pop();
+  if (segments.length === 0) return slugify(title);
+
+  return segments.join("/");
 }
 
 /**
@@ -194,7 +191,7 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
           !SKIP_TITLES.includes(title) &&
           !pages.some((p) => p.url === fullUrl) &&
           !pages.some(
-            (p) => p.documentId === documentId && p.language === language
+            (p) => p.documentId === documentId && p.language === language,
           )
         ) {
           pages.push({
@@ -209,7 +206,8 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
 
     // Remove duplicates based on URL
     const uniquePages = pages.filter(
-      (page, index, self) => index === self.findIndex((p) => p.url === page.url)
+      (page, index, self) =>
+        index === self.findIndex((p) => p.url === page.url),
     );
 
     console.log(`Found ${uniquePages.length} unique pages`);
@@ -224,7 +222,7 @@ export async function fetchSitemapPages(): Promise<PageInfo[]> {
  * Extract attachments from a single page
  */
 export async function extractAttachmentsFromPage(
-  page: PageInfo
+  page: PageInfo,
 ): Promise<AttachmentInfo[]> {
   try {
     const response = await axios.get<string>(page.url);
@@ -283,7 +281,7 @@ export async function extractAttachmentsFromPage(
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(
-      `Failed to process ${page.title} (${page.language}): ${errorMessage}`
+      `Failed to process ${page.title} (${page.language}): ${errorMessage}`,
     );
     return [];
   }
@@ -296,7 +294,7 @@ export async function processPagesConcurrently<T, U>(
   items: T[],
   processFn: (item: T) => Promise<U>,
   concurrency = DEFAULT_CONCURRENCY,
-  delay = DEFAULT_DELAY_MS
+  delay = DEFAULT_DELAY_MS,
 ): Promise<U[]> {
   console.log(`Starting processing with concurrency: ${concurrency}`);
   const results: U[] = [];
@@ -305,7 +303,7 @@ export async function processPagesConcurrently<T, U>(
     const batch = items.slice(i, i + concurrency);
 
     console.log(
-      `\n--- Processing batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(items.length / concurrency)} ---`
+      `\n--- Processing batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(items.length / concurrency)} ---`,
     );
 
     const batchPromises = batch.map(processFn);
@@ -334,10 +332,10 @@ export async function processPagesConcurrently<T, U>(
 export async function processAttachmentsConcurrently(
   pages: PageInfo[],
   concurrency = DEFAULT_CONCURRENCY,
-  delay = DEFAULT_DELAY_MS
+  delay = DEFAULT_DELAY_MS,
 ): Promise<AttachmentInfo[]> {
   console.log(
-    `Starting attachment processing with concurrency: ${concurrency}`
+    `Starting attachment processing with concurrency: ${concurrency}`,
   );
   const allAttachments: AttachmentInfo[] = [];
 
@@ -345,7 +343,7 @@ export async function processAttachmentsConcurrently(
     const batch = pages.slice(i, i + concurrency);
 
     console.log(
-      `\n--- Processing batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(pages.length / concurrency)} ---`
+      `\n--- Processing batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(pages.length / concurrency)} ---`,
     );
 
     const batchPromises = batch.map(extractAttachmentsFromPage);
@@ -429,12 +427,12 @@ export function getFileNameFromUrl(url: string): string {
  */
 export function displayAttachmentsSummary(
   attachments: AttachmentInfo[],
-  totalPages: number
+  totalPages: number,
 ): void {
   // Remove duplicates based on URL (same file might be linked from multiple pages)
   const uniqueAttachments = attachments.filter(
     (attachment, index, self) =>
-      index === self.findIndex((a) => a.url === attachment.url)
+      index === self.findIndex((a) => a.url === attachment.url),
   );
 
   console.log(`\n📊 Results Summary:`);
@@ -454,7 +452,7 @@ export function displayAttachmentsSummary(
       acc[attachment.language]++;
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   console.log(`By language:`);

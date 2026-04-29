@@ -9,7 +9,11 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DOCUMENTS_DIR = path.join(SCRIPT_DIR, "..", "seed-data", "documents");
 
 const PUBLIC_FILES_DIR = path.join(
-  SCRIPT_DIR, "..", "..", "..", "public",
+  SCRIPT_DIR,
+  "..",
+  "..",
+  "..",
+  "public",
   process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files",
 );
 
@@ -17,48 +21,58 @@ const SUPPORTED_LOCALES = i18n.locales;
 
 type DocumentLocaleMap = Map<string, Map<Locale, { dir: string }>>;
 
+async function collectDocumentPaths(
+  dir: string,
+  prefix: string,
+  documents: DocumentLocaleMap,
+  locale: Locale,
+): Promise<void> {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error: unknown) {
+    if ((error as { code?: unknown })?.code === "ENOENT") {
+      console.warn(`Missing folder: ${dir}`);
+      return;
+    }
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+
+    const segmentId = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const entryPath = path.join(dir, entry.name);
+    const contentPath = path.join(entryPath, "content.md");
+
+    try {
+      await readFile(contentPath, "utf-8");
+      if (!documents.has(segmentId)) documents.set(segmentId, new Map());
+      documents.get(segmentId)!.set(locale, { dir: entryPath });
+    } catch (error: unknown) {
+      if ((error as { code?: unknown })?.code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    await collectDocumentPaths(entryPath, segmentId, documents, locale);
+  }
+}
+
 async function loadDocuments(): Promise<DocumentLocaleMap> {
   const documents: DocumentLocaleMap = new Map();
 
   for (const locale of SUPPORTED_LOCALES) {
     const localeDir = path.join(DOCUMENTS_DIR, locale);
-
-    let entries;
-    try {
-      entries = await readdir(localeDir, { withFileTypes: true });
-    } catch (error: unknown) {
-      if ((error as { code?: unknown })?.code === "ENOENT") {
-        console.warn(`Missing locale folder: ${localeDir}`);
-        continue;
-      }
-      throw error;
-    }
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-
-      const contentPath = path.join(localeDir, entry.name, "content.md");
-      try {
-        await readFile(contentPath, "utf-8");
-      } catch (error: unknown) {
-        if ((error as { code?: unknown })?.code === "ENOENT") {
-          console.warn(`Missing content.md: ${contentPath}`);
-          continue;
-        }
-        throw error;
-      }
-
-      if (!documents.has(entry.name)) documents.set(entry.name, new Map());
-      documents.get(entry.name)!.set(locale, {
-        dir: path.join(localeDir, entry.name),
-      });
-    }
+    await collectDocumentPaths(localeDir, "", documents, locale);
   }
 
   return documents;
 }
 
-async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<number> {
+async function copyDocumentFiles(
+  documents: DocumentLocaleMap,
+): Promise<number> {
   const copiedByDocumentId = new Map<string, Set<string>>();
   let totalCopied = 0;
 

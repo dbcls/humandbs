@@ -7,7 +7,7 @@ import { Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 
-import { datasetsColumnHelper, datasetsColumns } from "./data-use/datasets";
+import { datasetsColumnHelper, datasetsColumns } from "./dataset";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
@@ -39,7 +39,7 @@ const cartDatasetColumns = [
 
 function RouteComponent() {
   const { cart } = useCart();
-  const t = useTranslations("Dataset-list");
+  const t = useTranslations("Dataset");
   const locale = useLocale();
 
   function handleSubmit() {
@@ -60,14 +60,16 @@ function RouteComponent() {
         <p className="text-center text-gray-400">Cart is empty</p>
       ) : (
         <>
-        <Button
-          className="ml-auto mb-4"
-          onClick={handleSubmit}
-        >
-          Copy Cart Contents
-        </Button>
-        <Table columns={cartDatasetColumns} data={cart} meta={{ t }} />
-      </>)}
+          <Button className="mb-4 ml-auto" onClick={handleSubmit}>
+            Copy Cart Contents
+          </Button>
+          <Table
+            columns={cartDatasetColumns}
+            data={cart}
+            meta={{ t, lang: locale }}
+          />
+        </>
+      )}
     </CardWithCaption>
   );
 }

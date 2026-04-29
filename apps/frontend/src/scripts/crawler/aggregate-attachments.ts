@@ -46,7 +46,7 @@ async function main(): Promise<void> {
 
     if (argv["dry-run"]) {
       console.log(
-        "\n🔍 DRY RUN - Pages that would be processed for attachments:"
+        "\n🔍 DRY RUN - Pages that would be processed for attachments:",
       );
       console.log("=".repeat(80));
 
@@ -57,12 +57,12 @@ async function main(): Promise<void> {
           acc[page.language].push(page);
           return acc;
         },
-        {} as Record<string, PageInfo[]>
+        {} as Record<string, PageInfo[]>,
       );
 
       Object.entries(pagesByLanguage).forEach(([language, langPages]) => {
         console.log(
-          `\n📄 ${language.toUpperCase()} Pages (${langPages.length}):`
+          `\n📄 ${language.toUpperCase()} Pages (${langPages.length}):`,
         );
         langPages.forEach((page) => {
           console.log(`  • ${page.title}`);
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
     // Process all pages and extract attachments
     const allAttachments = await processAttachmentsConcurrently(
       pages,
-      argv.concurrency
+      argv.concurrency,
     );
 
     // Display summary statistics

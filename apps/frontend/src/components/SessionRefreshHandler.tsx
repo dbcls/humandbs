@@ -5,9 +5,7 @@ type SessionRefreshHandlerProps = {
   session: SessionMeta | null | undefined;
 };
 
-export function SessionRefreshHandler({
-  session,
-}: SessionRefreshHandlerProps) {
+export function SessionRefreshHandler({ session }: SessionRefreshHandlerProps) {
   useSessionRefresh({ session });
   return null;
 }

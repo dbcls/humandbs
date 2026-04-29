@@ -6,7 +6,8 @@ import { ResearchDetailSchema } from "@humandbs/backend/types";
 import { z } from "zod";
 
 import { useFieldContext } from "../FormContext";
-import { URLInputPair } from "./URLInputPair";
+import { getFieldDefaultValue } from "../fields/useFieldModified";
+import { URLInputPair, type UrlItem } from "./URLInputPair";
 
 const urlArraySchema = ResearchDetailSchema.shape.summary.shape.url;
 
@@ -19,6 +20,7 @@ export default function BilingualURLArrayField({
 }) {
   const field = useFieldContext<BilingualURLArray>();
   const enItems = field.state.value?.en ?? [];
+  const defaultValue = getFieldDefaultValue(field) as BilingualURLArray | undefined;
 
   function updateItem(
     lang: "en" | "ja",
@@ -28,6 +30,15 @@ export default function BilingualURLArrayField({
     field.handleChange((prev) => {
       const copy = [...prev[lang]];
       copy[i] = next;
+      return { ...prev, [lang]: copy };
+    });
+  }
+
+  function resetItem(lang: "en" | "ja", i: number) {
+    const def = defaultValue?.[lang]?.[i] ?? null;
+    field.handleChange((prev) => {
+      const copy = [...prev[lang]];
+      copy[i] = def ?? { text: "", url: "" };
       return { ...prev, [lang]: copy };
     });
   }
@@ -53,13 +64,17 @@ export default function BilingualURLArrayField({
           <div className="flex-1">
             <URLInputPair
               value={field.state.value?.en[i] ?? { text: "", url: "" }}
+              defaultValue={defaultValue?.en?.[i] as UrlItem | undefined}
               onChange={(next) => updateItem("en", i, next)}
+              onReset={defaultValue?.en?.[i] !== undefined ? () => resetItem("en", i) : undefined}
             />
           </div>
           <div className="flex-1">
             <URLInputPair
               value={field.state.value?.ja[i] ?? { text: "", url: "" }}
+              defaultValue={defaultValue?.ja?.[i] as UrlItem | undefined}
               onChange={(next) => updateItem("ja", i, next)}
+              onReset={defaultValue?.ja?.[i] !== undefined ? () => resetItem("ja", i) : undefined}
             />
           </div>
           <button

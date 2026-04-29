@@ -70,7 +70,7 @@ export function NewsFiltersBar() {
         <Button
           variant="ghost"
           size="slim"
-          className="self-start text-xs text-muted-foreground"
+          className="text-muted-foreground self-start text-xs"
           onClick={handleClearAll}
         >
           <XIcon className="mr-1 size-3" />
@@ -176,7 +176,7 @@ function TagFilter({
       <ComboboxContent anchor={anchor}>
         <ComboboxList>
           {allTags.length === 0 ? (
-            <div className="py-2 text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground py-2 text-center text-sm">
               No tags found
             </div>
           ) : (

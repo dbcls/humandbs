@@ -94,7 +94,7 @@ export function NewsList({
   return (
     <Card
       caption={t("all-news")}
-      className="flex-1 h-auto w-full"
+      className="h-auto w-full flex-1"
       containerClassName="main-content gap-2 flex flex-col gap-2"
     >
       <div className="mb-3 flex flex-col gap-2">
@@ -121,7 +121,7 @@ export function NewsList({
           <Button
             variant="ghost"
             size="slim"
-            className="self-start text-xs text-muted-foreground"
+            className="text-muted-foreground self-start text-xs"
             onClick={handleClearAll}
           >
             <XIcon className="mr-1 size-3" />
@@ -145,7 +145,7 @@ export function NewsList({
           {newsItems.map((item) => {
             const isActive = item.id === selectedNewsItemId;
             return (
-              <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2 ">
+              <li key={item.id} className="flex flex-col gap-0.5 px-3 py-2">
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-xs opacity-70">
                     {item.publishedAt ?? "No date"}

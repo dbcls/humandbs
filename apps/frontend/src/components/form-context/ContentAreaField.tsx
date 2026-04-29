@@ -1,5 +1,6 @@
 import MDEditor from "@uiw/react-md-editor";
-import { PaperclipIcon } from "lucide-react";
+import GithubSlugger from "github-slugger";
+import { ListIcon, PaperclipIcon } from "lucide-react";
 import { Suspense, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,25 @@ export default function ContentAreaField({
     null,
   );
 
+  function generateTOC() {
+    const currentValue = field.state.value ?? "";
+    const slugger = new GithubSlugger();
+    const headingRegex = /^(#{1,6})\s+(.+)$/gm;
+    const allHeadings: { level: number; text: string }[] = [];
+    let match: RegExpExecArray | null;
+    match = headingRegex.exec(currentValue);
+    while (match) {
+      allHeadings.push({ level: match[1].length, text: match[2].trim() });
+      match = headingRegex.exec(currentValue);
+    }
+    if (allHeadings.length === 0) return;
+    const topLevel = Math.min(...allHeadings.map((h) => h.level));
+    const lines = allHeadings
+      .filter((h) => h.level === topLevel)
+      .map((h) => `- [${h.text}](#${slugger.slug(h.text)})`);
+    field.handleChange(lines.join("\n") + "\n\n" + currentValue);
+  }
+
   function insertAssetMarkdown(asset: AssetHierarchyFile) {
     const markdown = buildAssetMarkdown(asset);
     const currentValue = field.state.value ?? "";
@@ -68,16 +88,26 @@ export default function ContentAreaField({
     <div className="flex w-full flex-1 flex-col gap-2 text-sm font-medium">
       <div className="flex items-center justify-between gap-2">
         <span>{label}</span>
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => setDialogOpen(true)}
-        >
-          <PaperclipIcon className="mr-2 size-4" />
-          Attach asset
-        </Button>
+        <div className="flex items-center gap-5">
+          <Button variant="outline" type="button" onClick={generateTOC}>
+            <ListIcon className="mr-2 size-4" />
+            Append TOC to the top
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => setDialogOpen(true)}
+          >
+            <PaperclipIcon className="mr-2 size-4" />
+            Attach asset
+          </Button>
+        </div>
       </div>
-      <div ref={editorContainerRef} data-color-mode="light" className="flex-1">
+      <div
+        ref={editorContainerRef}
+        data-color-mode="light"
+        className="min-h-0 flex-1"
+      >
         <MDEditor
           highlightEnable={true}
           value={field.state.value ?? ""}

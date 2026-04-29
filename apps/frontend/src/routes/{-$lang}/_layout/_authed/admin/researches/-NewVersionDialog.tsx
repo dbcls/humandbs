@@ -79,37 +79,38 @@ export function NewVersionDialog({
         </DialogHeader>
 
         {error && (
-          <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+          <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
             {error}
           </div>
         )}
 
         <div className="flex flex-col gap-3">
           <p className="text-sm text-gray-500">
-            Optionally add a bilingual release note describing what changed in this version.
+            Optionally add a bilingual release note describing what changed in
+            this version.
           </p>
           <div className="flex gap-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs font-medium uppercase text-gray-400">
+              <label className="text-xs font-medium text-gray-400 uppercase">
                 En
               </label>
               <TextareaAutosize
                 minRows={4}
                 maxRows={8}
-                className="w-full resize-none rounded-lg bg-primary px-3 py-2 text-sm"
+                className="bg-primary w-full resize-none rounded-lg px-3 py-2 text-sm"
                 placeholder="Release note (English)"
                 value={enText}
                 onChange={(e) => setEnText(e.target.value)}
               />
             </div>
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs font-medium uppercase text-gray-400">
+              <label className="text-xs font-medium text-gray-400 uppercase">
                 Ja
               </label>
               <TextareaAutosize
                 minRows={4}
                 maxRows={8}
-                className="w-full resize-none rounded-lg bg-primary px-3 py-2 text-sm"
+                className="bg-primary w-full resize-none rounded-lg px-3 py-2 text-sm"
                 placeholder="リリースノート（日本語）"
                 value={jaText}
                 onChange={(e) => setJaText(e.target.value)}

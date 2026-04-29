@@ -1,33 +1,26 @@
-import { useForm } from "@tanstack/react-form";
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { type ContentId } from "@/config/content-config";
+import { PROTECTED_DOC_IDS } from "@/config/routing-config";
 import {
+  $changeIdOfDocument,
   $createDocument,
   $deleteDocument,
-  $validateDocumentContentId,
   type DocumentsListItemResponse,
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
+import { $validateEntityId } from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
-import { Button } from "@/components/ui/button";
 
 export function DocumentsList({
   onSelectDoc,
@@ -43,7 +36,9 @@ export function DocumentsList({
 
   const { openConfirmation } = useConfirmationStore();
 
-  const { mutate: createDocument } = useMutation({
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+
+  const { mutateAsync: createDocument } = useMutation({
     mutationFn: (contentId: ContentId) =>
       $createDocument({ data: { contentId: contentId } }),
 
@@ -57,6 +52,7 @@ export function DocumentsList({
         (oldData: DocumentsListItemResponse[] | undefined) => {
           const optimisticDocument: DocumentsListItemResponse = {
             contentId,
+            id: "optimistic-id-" + contentId,
             createdAt: new Date(),
             translations: [],
           };
@@ -105,6 +101,31 @@ export function DocumentsList({
     },
   });
 
+  const { mutateAsync: changeIdOfDocument } = useMutation({
+    mutationFn: (data: { oldId: string; newId: string }) =>
+      $changeIdOfDocument({ data }),
+    onMutate: async ({ oldId, newId }) => {
+      await queryClient.cancelQueries(documentsListQO);
+      const prevDocList = queryClient.getQueryData(documentsListQO.queryKey);
+
+      queryClient.setQueryData(documentsListQO.queryKey, (oldData) => {
+        if (!oldData) return [];
+        return oldData.map((doc) =>
+          doc.contentId === oldId ? { ...doc, contentId: newId } : doc,
+        );
+      });
+      return { prevDocList };
+    },
+    onError: (_, __, context) => {
+      if (context?.prevDocList) {
+        queryClient.setQueryData(documentsListQO.queryKey, context.prevDocList);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(documentsListQO);
+    },
+  });
+
   function handleClickDeleteDoc(contentId: string) {
     openConfirmation({
       title: "Delete Document",
@@ -116,115 +137,144 @@ export function DocumentsList({
     });
   }
 
-  const form = useForm({
-    defaultValues: {
-      contentId: "",
-    },
+  async function handleRenameSubmit(newId: string) {
+    if (!renamingId) return;
+    const oldId = renamingId;
+    openConfirmation({
+      title: "Change ID of the document",
+      description: `Are you sure you want to change ID "${oldId}" to "${newId}"?`,
+      actionLabel: "Rename",
+      onAction: () => {
+        changeIdOfDocument({ oldId, newId });
+      },
+    });
+  }
 
-    onSubmit: async ({ value }) => {
-      createDocument(value.contentId as ContentId);
-    },
-  });
-
-  const [open, setOpen] = useState(false);
+  const groupedDocs = useMemo(() => {
+    const groups = new Map<string, DocumentsListItemResponse[]>();
+    for (const doc of documents) {
+      const topSegment = doc.contentId.split("/")[0];
+      if (!groups.has(topSegment)) groups.set(topSegment, []);
+      groups.get(topSegment)!.push(doc);
+    }
+    for (const docs of groups.values()) {
+      docs.sort((a, b) => a.contentId.localeCompare(b.contentId));
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [documents]);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <AddNewButton className="mb-5" />
-        </DialogTrigger>
-        <DialogContent>
-          <DialogTitle className="text-base">Add Document</DialogTitle>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit();
-              setOpen(false);
-            }}
-            className="flex flex-col gap-2"
-          >
-            <form.Field
-              name="contentId"
-              validators={{
-                onChangeAsyncDebounceMs: 500,
-                onChangeAsync: async ({ value }) => {
-                  if (!value || value.length < 1) {
-                    return "Content ID is required";
-                  }
-                  if (value.length > 100) {
-                    return "Content ID must be 100 characters or less";
-                  }
-                  const isExisting = await $validateDocumentContentId({
-                    data: value as ContentId,
-                  });
-                  if (isExisting) {
-                    return "Document with this contentId already exists";
-                  }
-                  return undefined;
-                },
-              }}
-            >
-              {(field) => {
-                return (
-                  <Label className="block space-y-2">
-                    <span>Content ID</span>
-                    <Input
-                      name={field.name}
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value);
-                      }}
-                    />
-                    {!field.state.meta.isValid && (
-                      <em role="alert" className="text-danger text-xs">
-                        {field.state.meta.errors.join(", ")}
-                      </em>
-                    )}
-                  </Label>
-                );
-              }}
-            </form.Field>
-            <form.Subscribe selector={(state) => state.canSubmit}>
-              {(canSubmit) => (
-                <Button
-                  type="submit"
-                  className="self-end"
-                  disabled={!canSubmit}
-                >
-                  Submit
-                </Button>
-              )}
-            </form.Subscribe>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <InputDialog
+        title="Add Document"
+        label="Content ID"
+        trigger={<AddNewButton className="mb-5" />}
+        validateAsync={async (value) => {
+          if (!value || value.length < 1) return "Content ID is required";
+          if (value.length > 100)
+            return "Content ID must be 100 characters or less";
+          const isExisting = await $validateEntityId({
+            data: value as ContentId,
+          });
+          if (isExisting) return "Document with this contentId already exists";
+          return undefined;
+        }}
+        onSubmit={(id) => createDocument(id as ContentId)}
+      />
+
+      <InputDialog
+        title="Change Document ID"
+        description={renamingId ? `Current ID: ${renamingId}` : undefined}
+        label="New ID"
+        trigger={<span />}
+        open={renamingId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenamingId(null);
+        }}
+        validateAsync={async (value) => {
+          if (!value || value.length < 1) return "ID is required";
+          if (value.length > 100) return "ID must be 100 characters or less";
+          const isOk = await $validateEntityId({
+            data: value,
+          });
+
+          if (!isOk) return "A document with this ID already exists";
+          return undefined;
+        }}
+        onSubmit={handleRenameSubmit}
+      />
 
       <ul className="overflow-y-auto">
-        {documents.map((doc) => {
-          const isActive = doc.contentId === selectedContentId;
-          return (
-            <ListItem
-              key={doc.contentId}
-              role="menuitem"
-              className="mb-2 last:mb-0"
-              onClick={() => {
-                onSelectDoc(doc.contentId);
-              }}
-              isActive={isActive}
-            >
-              <AdminListItem
-                id={doc.contentId}
-                translations={doc.translations}
-                onClickDelete={(e) => {
-                  e.stopPropagation();
-                  handleClickDeleteDoc(doc.contentId);
-                }}
-              />
-            </ListItem>
-          );
-        })}
+        {groupedDocs.map(([topSegment, docs], groupIndex) => (
+          <li key={topSegment}>
+            <ul>
+              {docs
+                .filter((doc) => !doc.contentId.includes("/"))
+                .map((doc) => {
+                  const isActive = doc.contentId === selectedContentId;
+                  const isProtected = PROTECTED_DOC_IDS.includes(
+                    doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+                  );
+
+                  return (
+                    <ListItem
+                      key={doc.contentId}
+                      role="menuitem"
+                      className="mb-2"
+                      onClick={() => onSelectDoc(doc.contentId)}
+                      isActive={isActive}
+                    >
+                      <AdminListItem
+                        id={doc.contentId}
+                        translations={doc.translations}
+                        onClickDelete={() =>
+                          handleClickDeleteDoc(doc.contentId)
+                        }
+                        onClickRename={() => setRenamingId(doc.contentId)}
+                        hideDelete={isProtected}
+                        hideRename={isProtected}
+                      />
+                    </ListItem>
+                  );
+                })}
+              {docs.some((doc) => doc.contentId.includes("/")) && (
+                <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
+                  {docs
+                    .filter((doc) => doc.contentId.includes("/"))
+                    .map((doc) => {
+                      const isActive = doc.contentId === selectedContentId;
+                      const isProtected = PROTECTED_DOC_IDS.includes(
+                        doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+                      );
+                      return (
+                        <ListItem
+                          key={doc.contentId}
+                          role="menuitem"
+                          className="mb-2"
+                          onClick={() => onSelectDoc(doc.contentId)}
+                          isActive={isActive}
+                        >
+                          <AdminListItem
+                            id={doc.contentId}
+                            translations={doc.translations}
+                            onClickDelete={() =>
+                              handleClickDeleteDoc(doc.contentId)
+                            }
+                            onClickRename={() => setRenamingId(doc.contentId)}
+                            hideDelete={isProtected}
+                            hideRename={isProtected}
+                          />
+                        </ListItem>
+                      );
+                    })}
+                </ul>
+              )}
+            </ul>
+            {groupIndex < groupedDocs.length - 1 && (
+              <hr className="my-2 border-gray-200" />
+            )}
+          </li>
+        ))}
       </ul>
     </>
   );

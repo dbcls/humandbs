@@ -12,9 +12,12 @@ import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -24,9 +27,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ContentId } from "@/config/content-config";
 import { i18n, type Locale } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
+import {
+  getDocumentQueryOptions,
+  $updateDocumentHideTOC,
+} from "@/serverFunctions/document";
 import {
   type DocVersionListItemResponse,
   type DocVersionResponse,
@@ -41,12 +47,11 @@ import {
 import { waitUntilNoMutations } from "@/utils/mutations";
 
 import { StatusTag, Tag } from "@/components/StatusTag";
-import { LocaleSwitcher } from "./LocaleSwitcher";
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
 
 interface FormMeta {
-  submitAction: "saveDraft" | "publish" | "resetDraft" | null;
+  submitAction: "saveDraft" | "publish" | "publishAll" | "resetDraft" | null;
 }
 
 const defaultMeta: FormMeta = {
@@ -65,8 +70,6 @@ function normalizeDocTextValue(value: string | undefined) {
 export function DocumentVersion({ contentId }: { contentId: string }) {
   const { selectedVersionNumber, setSelectedVersionNumber, versions } =
     useDocVersionsList(contentId);
-
-  const [lang, setLang] = useState<Locale>(i18n.defaultLocale);
 
   const { mutate: createVersion, isPending: isCreatingVersion } =
     useCreateVersion(contentId);
@@ -113,7 +116,9 @@ export function DocumentVersion({ contentId }: { contentId: string }) {
             onSelect={setSelectedVersionNumber}
             contentId={contentId}
           />
-          <LocaleSwitcher locale={lang} onSwitchLocale={setLang} />
+          <Suspense>
+            <ShowTOCCheckbox contentId={contentId} />
+          </Suspense>
         </span>
       }
     >
@@ -122,7 +127,6 @@ export function DocumentVersion({ contentId }: { contentId: string }) {
           key={selectedVersionNumber}
           contentId={contentId}
           versionNumber={selectedVersionNumber!}
-          lang={lang}
         />
       </Suspense>
     </Card>
@@ -132,11 +136,9 @@ export function DocumentVersion({ contentId }: { contentId: string }) {
 function DocumentVersionContent({
   contentId,
   versionNumber,
-  lang,
 }: {
   contentId: string;
   versionNumber: number;
-  lang: Locale;
 }) {
   const docVersionQO = getDocumentVersionQueryOptions({
     contentId,
@@ -171,7 +173,7 @@ function DocumentVersionContent({
 
   const form = useDocumentVersionForm({
     initialValues: {
-      lang,
+      lang: i18n.defaultLocale,
       translations: baselineTranslations,
     },
     setBaselineTranslations,
@@ -179,206 +181,259 @@ function DocumentVersionContent({
     versionNumber,
   });
 
-  useEffect(() => {
-    form.setFieldValue("lang", lang);
-  }, [lang]);
+  const dirtyLocales = useStore(
+    form.store,
+    (state) =>
+      Object.fromEntries(
+        i18n.locales.map((loc) => {
+          const draft = state.values.translations[loc]?.draft;
+          const published = state.values.translations[loc]?.published;
+          const changed =
+            state.isValid &&
+            (normalizeDocTextValue(draft?.content) !==
+              normalizeDocTextValue(published?.content) ||
+              normalizeDocTextValue(draft?.title) !==
+                normalizeDocTextValue(published?.title));
+          return [loc, changed];
+        }),
+      ) as Record<Locale, boolean>,
+  );
 
-  const isDraftChanged = useStore(form.store, (state) => {
-    const draft = state.values.translations[state.values.lang]?.draft;
-    const published = state.values.translations[state.values.lang]?.published;
-
-    return (
-      state.isValid &&
-      (normalizeDocTextValue(draft?.content) !==
-        normalizeDocTextValue(published?.content) ||
-        normalizeDocTextValue(draft?.title) !==
-          normalizeDocTextValue(published?.title))
-    );
-  });
+  const anyDirty = Object.values(dirtyLocales).some(Boolean);
 
   return (
-    <Tabs
-      className="flex-1 min-h-0"
-      defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
-    >
-      <TabsList>
-        <TabsTrigger
-          className="flex items-center gap-2"
-          value={DOCUMENT_VERSION_STATUS.DRAFT}
-        >
-          <Pencil /> <span>Editor</span>
-          {isDraftChanged && <UnpublishedDot />}
-          <div className="w-4">
-            {savingStatuses.at(-1) === "pending" && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
-          </div>
-        </TabsTrigger>
-        <TabsTrigger
-          className="flex items-center gap-2"
-          value={DOCUMENT_VERSION_STATUS.PUBLISHED}
-        >
-          <span>Live</span>
-          <div className="w-4">
-            {(isPublishPending || isUnpublishPending) && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
-          </div>
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent
-        className="flex flex-1 flex-col gap-2"
-        value={DOCUMENT_VERSION_STATUS.DRAFT}
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <Tabs
+        defaultValue={i18n.defaultLocale}
+        onValueChange={(val) => form.setFieldValue("lang", val as Locale)}
+        className="flex min-h-0 flex-1 flex-col"
       >
-        <form.Subscribe selector={(state) => state.values.lang}>
-          {(lang) => (
-            <div className="flex items-center justify-between gap-4 pb-2">
-              <form.Subscribe
-                selector={(state) => ({
-                  draftContent:
-                    state.values.translations[lang]?.draft?.content ?? "",
-                  draftTitle:
-                    state.values.translations[lang]?.draft?.title ?? "",
-                })}
+        <div className="flex items-center justify-end gap-2 pb-1">
+          <form.Subscribe selector={(state) => state.values.lang}>
+            {(lang) => (
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={!dirtyLocales[lang]}
+                onClick={() =>
+                  form.handleSubmit({ submitAction: "resetDraft" })
+                }
               >
-                {({ draftContent, draftTitle }) => (
-                  <MarkdownFileActions
-                    filename={`${contentId}-${lang}-v${versionNumber}`}
-                    content={draftContent}
-                    title={draftTitle}
-                    lang={lang}
-                    onUpload={(text, uploadedTitle) => {
-                      form.setFieldValue(
-                        `translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
-                        text,
-                      );
-                      if (uploadedTitle !== undefined) {
-                        form.setFieldValue(
-                          `translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
-                          uploadedTitle,
-                        );
-                      }
-                      form.handleSubmit({ submitAction: "saveDraft" });
-                    }}
-                  />
-                )}
-              </form.Subscribe>
-              <div className="flex gap-2">
-                <Button
-                  variant={"outline"}
-                  size={"lg"}
-                  disabled={!isDraftChanged}
-                  onClick={() => {
-                    form.handleSubmit({ submitAction: "resetDraft" });
-                  }}
-                >
-                  Reset
-                </Button>
-                <Button
-                  type="submit"
-                  onClick={() => {
-                    form.handleSubmit({ submitAction: "publish" });
-                  }}
-                  className="gap-1 self-end"
-                  size={"lg"}
-                  variant={"accent"}
-                  disabled={!isDraftChanged}
-                >
-                  <Save className="size-5" />
-                  Publish
-                </Button>
-              </div>
-            </div>
-          )}
-        </form.Subscribe>
+                Reset
+              </Button>
+            )}
+          </form.Subscribe>
 
-        <form.Subscribe selector={(state) => state.values.lang}>
-          {(lang) => (
-            <>
-              <form.AppField
-                name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
-                listeners={{
-                  onChange: ({ fieldApi }) => {
-                    fieldApi.form.handleSubmit({
-                      submitAction: "saveDraft",
-                    });
-                  },
-                  onChangeDebounceMs: 800,
-                }}
+          <Button
+            type="submit"
+            size="lg"
+            variant="accent"
+            disabled={!anyDirty || isPublishPending}
+            onClick={() => form.handleSubmit({ submitAction: "publishAll" })}
+            className="gap-1"
+          >
+            {isPublishPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-5" />
+            )}
+            Publish
+          </Button>
+        </div>
+        {/*<div className="flex items-end justify-between gap-4">*/}
+        <TabsList variant="line">
+          {i18n.locales.map((loc) => (
+            <TabsTrigger key={loc} value={loc} variant="line">
+              <TabLabel dirty={dirtyLocales[loc]}>{loc.toUpperCase()}</TabLabel>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {i18n.locales.map((loc) => (
+          <TabsContent
+            key={loc}
+            value={loc}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <Tabs
+              className="flex min-h-0 flex-1 flex-col"
+              defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
+            >
+              <TabsList variant="line">
+                <TabsTrigger
+                  variant="line"
+                  className="flex items-center gap-2"
+                  value={DOCUMENT_VERSION_STATUS.DRAFT}
+                >
+                  <Pencil /> <span>Draft</span>
+                  {dirtyLocales[loc] && <UnpublishedDot />}
+                  <div className="w-4">
+                    {savingStatuses.at(-1) === "pending" && (
+                      <Loader2 className="size-4 animate-spin" />
+                    )}
+                  </div>
+                </TabsTrigger>
+                <TabsTrigger
+                  variant="line"
+                  className="flex items-center gap-2"
+                  value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+                >
+                  <span>Published</span>
+                  <div className="w-4">
+                    {(isPublishPending || isUnpublishPending) && (
+                      <Loader2 className="size-4 animate-spin" />
+                    )}
+                  </div>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent
+                className="flex min-h-0 flex-1 flex-col gap-2"
+                value={DOCUMENT_VERSION_STATUS.DRAFT}
               >
-                {(field) => <field.TextField label="Title" />}
-              </form.AppField>
-              <Suspense fallback={<SkeletonLoading />}>
+                <form.Subscribe
+                  selector={(state) => ({
+                    draftContent:
+                      state.values.translations[loc]?.draft?.content ?? "",
+                    draftTitle:
+                      state.values.translations[loc]?.draft?.title ?? "",
+                  })}
+                >
+                  {({ draftContent, draftTitle }) => (
+                    <MarkdownFileActions
+                      filename={`${contentId}-${loc}-v${versionNumber}`}
+                      content={draftContent}
+                      title={draftTitle}
+                      lang={loc}
+                      onUpload={(text, uploadedTitle) => {
+                        form.setFieldValue(
+                          `translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`,
+                          text,
+                        );
+                        if (uploadedTitle !== undefined) {
+                          form.setFieldValue(
+                            `translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`,
+                            uploadedTitle,
+                          );
+                        }
+                        form.handleSubmit({ submitAction: "saveDraft" });
+                      }}
+                    />
+                  )}
+                </form.Subscribe>
                 <form.AppField
-                  name={`translations.${lang}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
+                  name={`translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.title`}
                   listeners={{
                     onChange: ({ fieldApi }) => {
-                      fieldApi.form.handleSubmit({
-                        submitAction: "saveDraft",
-                      });
+                      fieldApi.form.handleSubmit({ submitAction: "saveDraft" });
                     },
                     onChangeDebounceMs: 800,
                   }}
                 >
-                  {(field) => {
-                    const isModified = isFieldModified(field);
-                    return (
-                      <field.ContentAreaField
-                        label={
-                          <span className="flex items-center gap-1">
-                            Content
-                            <ModifiedTag isModified={isModified} />
-                          </span>
-                        }
-                        assetFolder={contentId}
-                      />
-                    );
-                  }}
+                  {(field) => <field.TextField label="Title" />}
                 </form.AppField>
-              </Suspense>
-            </>
-          )}
-        </form.Subscribe>
-      </TabsContent>
-      <TabsContent
-        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
-        value={DOCUMENT_VERSION_STATUS.PUBLISHED}
-      >
-        <form.Subscribe selector={(state) => state.values.lang}>
-          {(lang) => {
-            if (
-              !selectedVersionContent.translations[lang]?.published?.content
-            ) {
-              return <div>No published content</div>;
-            }
-
-            return (
-              <>
-                <div className="border-b flex justify-end border-foreground-light pb-2">
-                  <Button
-                    variant={"outline"}
-                    size={"lg"}
-                    onClick={() => {
-                      unpublishVersion({ locale: lang });
+                <Suspense fallback={<SkeletonLoading />}>
+                  <form.AppField
+                    name={`translations.${loc}.${DOCUMENT_VERSION_STATUS.DRAFT}.content`}
+                    listeners={{
+                      onChange: ({ fieldApi }) => {
+                        fieldApi.form.handleSubmit({
+                          submitAction: "saveDraft",
+                        });
+                      },
+                      onChangeDebounceMs: 800,
                     }}
-                    disabled={isUnpublishPending}
                   >
-                    Unpublish
-                  </Button>
-                </div>
+                    {(field) => {
+                      const isModified = isFieldModified(field);
+                      return (
+                        <field.ContentAreaField
+                          label={
+                            <span className="flex items-center gap-1">
+                              Content
+                              <ModifiedTag isModified={isModified} />
+                            </span>
+                          }
+                          assetFolder={contentId}
+                        />
+                      );
+                    }}
+                  </form.AppField>
+                </Suspense>
+              </TabsContent>
+              <TabsContent
+                className="flex min-h-0 flex-1 flex-col gap-2"
+                value={DOCUMENT_VERSION_STATUS.PUBLISHED}
+              >
+                {!selectedVersionContent.translations[loc]?.published
+                  ?.content ? (
+                  <div>No published content</div>
+                ) : (
+                  <>
+                    <div className="border-foreground-light flex justify-end border-b pb-2">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => unpublishVersion({ locale: loc })}
+                        disabled={isUnpublishPending}
+                      >
+                        Unpublish
+                      </Button>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                      <MarkdownClientPreview
+                        source={
+                          selectedVersionContent.translations[loc]?.published
+                            ?.content ?? ""
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
 
-                <MarkdownClientPreview
-                  source={
-                    selectedVersionContent.translations[lang]?.published
-                      ?.content ?? ""
-                  }
-                />
-              </>
-            );
-          }}
-        </form.Subscribe>
-      </TabsContent>
-    </Tabs>
+function ShowTOCCheckbox({ contentId }: { contentId: string }) {
+  const queryClient = useQueryClient();
+  const docQO = getDocumentQueryOptions(contentId);
+  const { data: doc } = useSuspenseQuery(docQO);
+
+  const { mutate: updateHideTOC, isPending } = useMutation({
+    mutationFn: (hideTOC: boolean) =>
+      $updateDocumentHideTOC({ data: { contentId, hideTOC } }),
+    onMutate: async (hideTOC) => {
+      await queryClient.cancelQueries(docQO);
+      const prev = queryClient.getQueryData(docQO.queryKey);
+      queryClient.setQueryData(docQO.queryKey, (old: typeof doc | undefined) =>
+        old ? { ...old, hideTOC } : old,
+      );
+      return { prev };
+    },
+    onError: (_, __, context) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(docQO.queryKey, context.prev);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries(docQO),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-toc"
+        checked={!(doc?.hideTOC ?? true)}
+        disabled={isPending}
+        onCheckedChange={(checked) => updateHideTOC(!checked)}
+      />
+      <Label htmlFor="show-toc" className="cursor-pointer font-normal">
+        Show table of contents
+      </Label>
+    </div>
   );
 }
 
@@ -389,7 +444,9 @@ function useDocumentVersionForm({
   versionNumber,
 }: {
   initialValues: FormData;
-  setBaselineTranslations: React.Dispatch<React.SetStateAction<FormData["translations"]>>;
+  setBaselineTranslations: React.Dispatch<
+    React.SetStateAction<FormData["translations"]>
+  >;
   contentId: string;
   versionNumber: number;
 }) {
@@ -485,6 +542,54 @@ function useDocumentVersionForm({
               formApi.reset();
             });
           break;
+
+        case "publishAll": {
+          isIgnoreRef.current = true;
+          const dirtyLocs = i18n.locales.filter((loc) => {
+            const draft = value.translations[loc]?.draft;
+            const published = value.translations[loc]?.published;
+            return (
+              normalizeDocTextValue(draft?.content) !==
+                normalizeDocTextValue(published?.content) ||
+              normalizeDocTextValue(draft?.title) !==
+                normalizeDocTextValue(published?.title)
+            );
+          });
+
+          Promise.all(
+            dirtyLocs.map(async (loc) => {
+              const locTitle = value.translations[loc]?.draft?.title ?? "";
+              const locContent = value.translations[loc]?.draft?.content ?? "";
+              if (locTitle || locContent) {
+                saveDraft({
+                  locale: loc,
+                  title: locTitle,
+                  content: locContent,
+                });
+              }
+              await publishDraft({ locale: loc });
+              return { loc, locTitle, locContent };
+            }),
+          )
+            .then((results) => {
+              const newTranslations = { ...value.translations };
+              for (const { loc, locTitle, locContent } of results) {
+                newTranslations[loc] = {
+                  ...newTranslations[loc],
+                  published: { title: locTitle, content: locContent },
+                };
+              }
+              setBaselineTranslations(newTranslations);
+              formApi.reset({ ...value, translations: newTranslations });
+            })
+            .finally(() => {
+              isIgnoreRef.current = false;
+            })
+            .catch(() => {
+              formApi.reset();
+            });
+          break;
+        }
       }
     },
   });

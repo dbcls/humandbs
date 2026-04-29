@@ -29,7 +29,7 @@ export function getFieldDefaultValue(field: any): unknown {
 // Treat null and undefined as equivalent (optional fields may be absent in
 // server responses but present as null in form state, or vice versa).
 function normalize(v: unknown): unknown {
-  return v == null ? undefined : v;
+  return v == null || v === "" ? undefined : v;
 }
 
 export function deepEqual(a: unknown, b: unknown): boolean {
@@ -55,6 +55,16 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFieldApi = any;
+
+export function resetFieldKeyToDefault(field: AnyFieldApi, key: string): void {
+  const defaultValue = (
+    getFieldDefaultValue(field) as Record<string, unknown>
+  )?.[key];
+  field.handleChange((prev: Record<string, unknown>) => ({
+    ...prev,
+    [key]: defaultValue ?? null,
+  }));
+}
 
 /**
  * Returns whether a field's current value differs from its default value.

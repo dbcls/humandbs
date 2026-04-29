@@ -61,7 +61,9 @@ export function mergeCommittedNavbarGroups(
   current: SiteNavigationConfig,
   navGroups: NavbarCommittedGroup[],
 ): SiteNavigationConfig {
-  const currentItemsById = new Map(current.items.map((item) => [item.id, item]));
+  const currentItemsById = new Map(
+    current.items.map((item) => [item.id, item]),
+  );
 
   for (const group of navGroups) {
     if (group.linkedItem) {
@@ -73,18 +75,20 @@ export function mergeCommittedNavbarGroups(
     }
   }
 
-  const nextNavbarGroups: NavigationGroup[] = navGroups.map(({ group, linkedItem, subItems }) => ({
-    ...group,
-    parentGroupId: undefined,
-    enabled: linkedItem ? group.enabled : false,
-    items: [
-      ...(linkedItem ? [{ id: linkedItem.item.id }] : []),
-      ...subItems.map(({ item, enabled }) => ({
-        id: item.id,
-        enabled,
-      })),
-    ],
-  }));
+  const nextNavbarGroups: NavigationGroup[] = navGroups.map(
+    ({ group, linkedItem, subItems }) => ({
+      ...group,
+      parentGroupId: undefined,
+      enabled: linkedItem ? group.enabled : false,
+      items: [
+        ...(linkedItem ? [{ id: linkedItem.item.id }] : []),
+        ...subItems.map(({ item, enabled }) => ({
+          id: item.id,
+          enabled,
+        })),
+      ],
+    }),
+  );
 
   return {
     ...current,

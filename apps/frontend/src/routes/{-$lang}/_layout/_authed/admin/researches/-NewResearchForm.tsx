@@ -23,9 +23,9 @@ const defaultValues: CreateResearchRequest = {
   humId: undefined,
   title: { ja: "", en: "" },
   summary: {
-    aims: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
-    methods: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
-    targets: { ja: { text: "", rawHtml: "" }, en: { text: "", rawHtml: "" } },
+    aims: { ja: { text: "" }, en: { text: "" } },
+    methods: { ja: { text: "" }, en: { text: "" } },
+    targets: { ja: { text: "" }, en: { text: "" } },
     url: { ja: [], en: [] },
   },
   dataProvider: [],
@@ -34,8 +34,8 @@ const defaultValues: CreateResearchRequest = {
   relatedPublication: [],
   uids: [],
   initialReleaseNote: {
-    ja: { text: "", rawHtml: "" },
-    en: { text: "", rawHtml: "" },
+    ja: { text: "" },
+    en: { text: "" },
   },
 };
 
@@ -99,7 +99,7 @@ export function NewResearchForm({
 
   return (
     <Card
-      className="flex h-full flex-1 flex-col min-w-0"
+      className="flex h-full min-w-0 flex-1 flex-col"
       caption="New Research"
       containerClassName="flex flex-1 flex-col min-h-0"
     >
@@ -109,26 +109,26 @@ export function NewResearchForm({
             e.preventDefault();
             form.handleSubmit();
           }}
-          className="flex flex-1 flex-col min-h-0"
+          className="flex min-h-0 flex-1 flex-col"
         >
           {error && (
-            <div className="mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+            <div className="text-danger mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm">
               {error}
             </div>
           )}
 
-          <div className="mx-5 mt-5 flex items-center gap-2">
+          <div className="mx-5 mt-5 flex justify-end gap-2">
             <Button
               type="submit"
               variant="accent"
+              size={"lg"}
               disabled={isPending}
-              size="slim"
             >
               {isPending ? "Creating…" : "Create"}
             </Button>
           </div>
 
-          <div className="flex flex-col gap-4 px-5 pt-5 shrink-0">
+          <div className="flex shrink-0 flex-col gap-4 px-5 pt-5">
             <form.AppField name="humId">
               {(field) => (
                 <div className="flex flex-col gap-1">
@@ -148,7 +148,7 @@ export function NewResearchForm({
               {(field) => (
                 <fieldset className="flex flex-col gap-2">
                   <Label>User IDs (uids)</Label>
-                  <div className="nested-form flex flex-col gap-1 w-full">
+                  <div className="nested-form flex w-full flex-col gap-1">
                     {field.state.value?.map((_, i) => (
                       <div key={i} className="flex items-center gap-1">
                         <form.AppField name={`uids[${i}]`}>
@@ -188,9 +188,9 @@ export function NewResearchForm({
 
           <Tabs
             defaultValue="title"
-            className="mt-4 flex flex-col flex-1 min-h-0"
+            className="mt-4 flex min-h-0 flex-1 flex-col"
           >
-            <div className="overflow-x-auto px-5 shrink-0">
+            <div className="shrink-0 overflow-x-auto px-5">
               <TabsList variant="line">
                 <TabsTrigger variant="line" value="title">
                   Title

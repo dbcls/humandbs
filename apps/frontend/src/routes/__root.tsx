@@ -34,6 +34,10 @@ export const Route = createRootRouteWithContext<Context>()({
         name: "viewport",
         content: "width=device-width, initial-scale=1",
       },
+      {
+        name: "version",
+        content: VITE_APP_VER,
+      },
       ...seo({
         title: "HumanDBS",
         description: `HumanDBs - databases of researches`,
@@ -81,7 +85,7 @@ function RootDocument() {
       <head>
         <HeadContent />
       </head>
-      <body className="font-family-sans main-bg text-foreground relative min-h-screen flex flex-col">
+      <body className="font-family-sans main-bg text-foreground relative flex min-h-screen flex-col">
         <Outlet />
         <TanStackRouterDevtools position="bottom-left" />
         <SessionRefreshHandler session={session} />

@@ -11,7 +11,7 @@ async function resetDatabase(tables?: string[]) {
 
   const db = drizzle(
     `postgres://${process.env.HUMANDBS_POSTGRES_USER}:${process.env.HUMANDBS_POSTGRES_PASSWORD}@${process.env.HUMANDBS_POSTGRES_HOST}:${process.env.HUMANDBS_POSTGRES_PORT}/${process.env.HUMANDBS_POSTGRES_DB}`,
-    { schema }
+    { schema },
   );
 
   try {
@@ -33,7 +33,9 @@ async function resetDatabase(tables?: string[]) {
       if (tableNames.length > 0) {
         for (const tablename of tableNames) {
           console.log(`🗑️  Dropping table: ${tablename}`);
-          await tx.execute(sql.raw(`DROP TABLE IF EXISTS "${tablename}" CASCADE;`));
+          await tx.execute(
+            sql.raw(`DROP TABLE IF EXISTS "${tablename}" CASCADE;`),
+          );
         }
         console.log("✨ Tables dropped");
       } else {
@@ -52,7 +54,10 @@ if (import.meta.main) {
   const yes = process.argv.includes("-y");
   const tablesArg = process.argv.find((a) => a.startsWith("--tables="));
   const tables = tablesArg
-    ? tablesArg.replace("--tables=", "").split(",").map((t) => t.trim())
+    ? tablesArg
+        .replace("--tables=", "")
+        .split(",")
+        .map((t) => t.trim())
     : undefined;
 
   const warning = tables

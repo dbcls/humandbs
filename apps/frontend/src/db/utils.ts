@@ -13,7 +13,7 @@ export const buildConflictUpdateColumns = <
   Q extends keyof T["_"]["columns"],
 >(
   table: T,
-  columns: Q[]
+  columns: Q[],
 ) => {
   const cls = getTableColumns(table);
   return columns.reduce(
@@ -22,6 +22,6 @@ export const buildConflictUpdateColumns = <
       acc[column] = sql.raw(`excluded.${colName}`);
       return acc;
     },
-    {} as Record<Q, SQL>
+    {} as Record<Q, SQL>,
   );
 };

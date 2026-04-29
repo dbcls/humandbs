@@ -50,7 +50,7 @@ export function FilterSearchInput({
           <Button
             variant="plain"
             size="icon"
-            className="pointer-events-auto text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground pointer-events-auto"
             onClick={handleClear}
           >
             <XIcon size={14} />

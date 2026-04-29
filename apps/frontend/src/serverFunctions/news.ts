@@ -71,11 +71,18 @@ const PUBLIC_NEWS_PAGE_SIZE = 20;
 
 export const $getPublishedNewsTitles = createServerFn({ method: "GET" })
   .inputValidator(
-    z.object({
-      locale: z.string(),
-      limit: z.number().min(1).max(100).optional().default(PUBLIC_NEWS_PAGE_SIZE),
-      offset: z.number().min(0).optional().default(0),
-    }).merge(publicNewsTitlesFiltersSchema),
+    z
+      .object({
+        locale: z.string(),
+        limit: z
+          .number()
+          .min(1)
+          .max(100)
+          .optional()
+          .default(PUBLIC_NEWS_PAGE_SIZE),
+        offset: z.number().min(0).optional().default(0),
+      })
+      .merge(publicNewsTitlesFiltersSchema),
   )
   .handler(async ({ data }): Promise<NewsTitleResponse[]> => {
     return newsItemRepository.listPublishedTitles({
@@ -205,10 +212,12 @@ const newsItemFiltersSchema = z.object({
 export const $getNewsItems = createServerFn({ method: "GET" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(
-    z.object({
-      limit: z.number().min(1).max(100).optional().default(5),
-      offset: z.number().min(0).optional().default(0),
-    }).merge(newsItemFiltersSchema),
+    z
+      .object({
+        limit: z.number().min(1).max(100).optional().default(5),
+        offset: z.number().min(0).optional().default(0),
+      })
+      .merge(newsItemFiltersSchema),
   )
   .handler(async ({ data, context }) => {
     context.checkPermission("news", "view");

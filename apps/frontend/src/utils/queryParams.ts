@@ -51,4 +51,6 @@ export const newsPublicSearchParamsSchema = z.object({
   tagIds: z.array(z.string()).optional(),
 });
 
-export type NewsPublicSearchParams = z.infer<typeof newsPublicSearchParamsSchema>;
+export type NewsPublicSearchParams = z.infer<
+  typeof newsPublicSearchParamsSchema
+>;

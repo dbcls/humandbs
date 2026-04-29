@@ -50,5 +50,14 @@ export function useStableSortableIds(itemCount: number, prefix: string) {
     setItemIds((previousIds) => previousIds.filter((_, i) => i !== index));
   };
 
-  return { itemIds, moveItemId, removeItemId };
+  const insertItemId = (index: number) => {
+    setItemIds((previousIds) => {
+      const newId = `${prefix}-${nextIdRef.current++}`;
+      const next = [...previousIds];
+      next.splice(index, 0, newId);
+      return next;
+    });
+  };
+
+  return { itemIds, moveItemId, removeItemId, insertItemId };
 }

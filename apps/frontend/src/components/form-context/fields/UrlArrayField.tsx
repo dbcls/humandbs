@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
+import { ResetFieldButton } from "./ResetFieldButton";
+import {
+  getFieldDefaultValue,
+  isFieldModified,
+} from "./useFieldModified";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyName = any;
@@ -50,31 +55,77 @@ export const UrlArrayField = withForm({
                     {enItems.map((_: unknown, i: number) => (
                       <div key={i} className="flex items-start gap-2">
                         {/* En: text + url */}
-                        <div className="flex-1 flex flex-col gap-1">
-                          <form.AppField
-                            name={`${baseName}.en[${i}].text` as AnyName}
-                          >
-                            {(f: AnyName) => <f.TextField label="Text" />}
-                          </form.AppField>
-                          <form.AppField
-                            name={`${baseName}.en[${i}].url` as AnyName}
-                          >
-                            {(f: AnyName) => <f.TextField label="URL" />}
-                          </form.AppField>
-                        </div>
+                        <form.AppField
+                          name={`${baseName}.en[${i}]` as AnyName}
+                        >
+                          {(f: AnyName) => {
+                            const modified = isFieldModified(f);
+                            const defaultVal =
+                              getFieldDefaultValue(f) as AnyName;
+                            return (
+                              <div className="relative flex flex-1 flex-col gap-1">
+                                <form.AppField
+                                  name={`${baseName}.en[${i}].text` as AnyName}
+                                >
+                                  {(tf: AnyName) => (
+                                    <tf.TextField label="Text" />
+                                  )}
+                                </form.AppField>
+                                <form.AppField
+                                  name={`${baseName}.en[${i}].url` as AnyName}
+                                >
+                                  {(tf: AnyName) => (
+                                    <tf.TextField label="URL" />
+                                  )}
+                                </form.AppField>
+                                {modified && (
+                                  <ResetFieldButton
+                                    className="-top-1"
+                                    onClick={() =>
+                                      f.handleChange(defaultVal ?? null)
+                                    }
+                                  />
+                                )}
+                              </div>
+                            );
+                          }}
+                        </form.AppField>
                         {/* Ja: text + url */}
-                        <div className="flex-1 flex flex-col gap-1">
-                          <form.AppField
-                            name={`${baseName}.ja[${i}].text` as AnyName}
-                          >
-                            {(f: AnyName) => <f.TextField label="Text" />}
-                          </form.AppField>
-                          <form.AppField
-                            name={`${baseName}.ja[${i}].url` as AnyName}
-                          >
-                            {(f: AnyName) => <f.TextField label="URL" />}
-                          </form.AppField>
-                        </div>
+                        <form.AppField
+                          name={`${baseName}.ja[${i}]` as AnyName}
+                        >
+                          {(f: AnyName) => {
+                            const modified = isFieldModified(f);
+                            const defaultVal =
+                              getFieldDefaultValue(f) as AnyName;
+                            return (
+                              <div className="relative flex flex-1 flex-col gap-1">
+                                <form.AppField
+                                  name={`${baseName}.ja[${i}].text` as AnyName}
+                                >
+                                  {(tf: AnyName) => (
+                                    <tf.TextField label="Text" />
+                                  )}
+                                </form.AppField>
+                                <form.AppField
+                                  name={`${baseName}.ja[${i}].url` as AnyName}
+                                >
+                                  {(tf: AnyName) => (
+                                    <tf.TextField label="URL" />
+                                  )}
+                                </form.AppField>
+                                {modified && (
+                                  <ResetFieldButton
+                                    className="-top-1"
+                                    onClick={() =>
+                                      f.handleChange(defaultVal ?? null)
+                                    }
+                                  />
+                                )}
+                              </div>
+                            );
+                          }}
+                        </form.AppField>
                         {/* Trash */}
                         <button
                           type="button"

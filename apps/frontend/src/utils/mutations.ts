@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 export function waitUntilNoMutations(
   client: QueryClient,
-  filters?: Parameters<QueryClient["isMutating"]>[0]
+  filters?: Parameters<QueryClient["isMutating"]>[0],
 ): Promise<void> {
   return new Promise((resolve) => {
     if (client.isMutating(filters) === 0) {

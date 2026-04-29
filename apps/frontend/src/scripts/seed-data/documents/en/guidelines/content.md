@@ -15,7 +15,6 @@ title: Guidelines
   　[NBDC Security Guidelines for Human Data (for Database Center Operation Managers and “Off-Premise-Server” Operation Managers)](/en/guidelines/security-guidelines-for-dbcenters)
 
   Revision of Guidelines
-
   1.  [June 10, 2019](/en/guideline-revision)
 
   2.  [June 22, 2021](/en/guideline-revision-2)

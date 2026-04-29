@@ -26,7 +26,7 @@ export function useSessionRefresh({
   onUnauthorized,
 }: UseSessionRefreshOptions) {
   const [expiresAt, setExpiresAt] = useState<string | null>(
-    session?.expires_at ?? null
+    session?.expires_at ?? null,
   );
   const timeoutRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);

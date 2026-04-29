@@ -6,6 +6,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 import type { Locale } from "@/config/i18n";
@@ -29,8 +30,8 @@ export const documentVersionStatus = pgEnum("document_version_status", [
 export const documentVersion = pgTable(
   "document_version",
   {
-    contentId: text("content_id")
-      .references(() => document.contentId, { onDelete: "cascade" })
+    documentId: uuid("document_id")
+      .references(() => document.id, { onDelete: "cascade" })
       .notNull(),
     versionNumber: integer("version_number").notNull(),
     status: documentVersionStatus("status").notNull().default("draft"),
@@ -44,13 +45,13 @@ export const documentVersion = pgTable(
   (table) => [
     primaryKey({
       columns: [
-        table.contentId,
+        table.documentId,
         table.versionNumber,
         table.locale,
         table.status,
       ],
     }),
-  ]
+  ],
 );
 
 export type DocumentVersion = typeof documentVersion.$inferSelect;
@@ -59,12 +60,12 @@ export const documentVersionRelations = relations(
   documentVersion,
   ({ one }) => ({
     document: one(document, {
-      fields: [documentVersion.contentId],
-      references: [document.contentId],
+      fields: [documentVersion.documentId],
+      references: [document.id],
     }),
     author: one(user, {
       fields: [documentVersion.translatedBy],
       references: [user.id],
     }),
-  })
+  }),
 );

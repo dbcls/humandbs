@@ -19,6 +19,7 @@ import { z } from "zod";
 import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import type { DeepOmit } from "@/utils/typeUtils";
 
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
@@ -129,29 +130,26 @@ export function getDatasetVersionsQueryOptions(query: DatasetVersionsQuery) {
  */
 export const $createDatasetForResearch = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { humId: string; body: CreateDatasetForResearchRequest }) => data,
+    (data: {
+      humId: string;
+      body: DeepOmit<CreateDatasetForResearchRequest, "rawHtml">;
+    }) => data,
   )
-  .handler<Promise<CreateDatasetForResearchResult>>(
-    async ({
-      data,
-    }: {
-      data: { humId: string; body: CreateDatasetForResearchRequest };
-    }) => {
-      const accessToken = $$getJWT();
-      if (!accessToken) throw new Error("Unauthorized");
+  .handler<Promise<CreateDatasetForResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
 
-      try {
-        const created = await api.createDatasetForResearch(
-          data.humId,
-          data.body,
-          accessToken,
-        );
-        return { ok: true, data: created };
-      } catch (error) {
-        return mapApiError(error, "Failed to create dataset.");
-      }
-    },
-  );
+    try {
+      const created = await api.createDatasetForResearch(
+        data.humId,
+        data.body,
+        accessToken,
+      );
+      return { ok: true, data: created };
+    } catch (error) {
+      return mapApiError(error, "Failed to create dataset.");
+    }
+  });
 
 /**
  * Updates a dataset. Trusts backend validation,

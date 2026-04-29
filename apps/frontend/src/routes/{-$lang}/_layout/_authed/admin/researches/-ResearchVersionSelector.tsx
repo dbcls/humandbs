@@ -114,7 +114,7 @@ export function ResearchVersionSelector(props: {
   return (
     <Suspense
       fallback={
-        <div className="h-7 w-40 animate-pulse rounded bg-muted text-xs" />
+        <div className="bg-muted h-7 w-40 animate-pulse rounded text-xs" />
       }
     >
       <VersionSelectorInner {...props} />
@@ -126,7 +126,7 @@ function ResearchSelectorItem({ item, compact }: ResearchSelectorItemProps) {
   const isDraft = item.v.version === item.draftVersion;
 
   return (
-    <div className="text-left text-xs group-focus:text-white inline-flex gap-2">
+    <div className="inline-flex gap-2 text-left text-xs group-focus:text-white">
       {item.v.version}
       {!compact && (
         <div className="text-foreground-light group-focus:text-white">

@@ -27,8 +27,7 @@ const linkVariants = cva("text-secondary underline", {
 });
 
 export interface LinkProps
-  extends LinkComponentProps,
-    VariantProps<typeof linkVariants> {}
+  extends LinkComponentProps, VariantProps<typeof linkVariants> {}
 
 export function Link({ className, variant, ...rest }: LinkProps) {
   return (

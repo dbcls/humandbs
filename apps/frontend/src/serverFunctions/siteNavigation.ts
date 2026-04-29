@@ -6,11 +6,12 @@ import {
   buildSiteNavigation,
   getDefaultSiteNavigationConfig,
   type DocumentLabelResolver,
+  type DocumentPathResolver,
 } from "@/config/site-navigation";
 import { localeSchema, type Locale } from "@/config/i18n";
 import { siteNavigationConfigUpdateSchema } from "@/db/types";
 import { db } from "@/db/database";
-import { documentVersion, DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import { document, documentVersion, DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
@@ -18,47 +19,58 @@ import {
   SiteNavigationConfigConflictError,
 } from "@/repositories/siteNavigation";
 
-/**
- * Fetches all published document titles for a given locale and returns
- * a DocumentLabelResolver that the navigation builder can use.
- */
-async function buildDocumentLabelResolver(lang: Locale): Promise<DocumentLabelResolver> {
-  // DISTINCT ON contentId, ordered by contentId ASC, versionNumber DESC
-  // → picks the highest version number per contentId
-  const rows = await db
-    .selectDistinctOn([documentVersion.contentId], {
-      contentId: documentVersion.contentId,
-      title: documentVersion.title,
-    })
-    .from(documentVersion)
-    .where(
-      and(
-        eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-        eq(documentVersion.locale, lang),
-      ),
-    )
-    .orderBy(asc(documentVersion.contentId), desc(documentVersion.versionNumber));
+async function buildResolvers(lang: Locale): Promise<{
+  labelResolver: DocumentLabelResolver;
+  pathResolver: DocumentPathResolver;
+}> {
+  const [docRows, versionRows] = await Promise.all([
+    db.select({ id: document.id, contentId: document.contentId }).from(document),
+    db
+      .selectDistinctOn([documentVersion.documentId], {
+        documentId: documentVersion.documentId,
+        title: documentVersion.title,
+      })
+      .from(documentVersion)
+      .where(
+        and(
+          eq(documentVersion.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+          eq(documentVersion.locale, lang),
+        ),
+      )
+      .orderBy(asc(documentVersion.documentId), desc(documentVersion.versionNumber)),
+  ]);
 
+  // documentId → contentId (path)
+  const pathMap = new Map(docRows.map((d) => [d.id, d.contentId]));
+
+  // contentId → published title
   const titleMap = new Map(
-    rows
-      .filter((row) => row.title !== null)
-      .map((row) => [row.contentId, row.title as string]),
+    versionRows
+      .filter((r) => r.title !== null)
+      .map((r) => {
+        const contentId = pathMap.get(r.documentId);
+        return contentId ? ([contentId, r.title as string] as const) : null;
+      })
+      .filter((r): r is [string, string] => r !== null),
   );
 
-  return (contentId, _lang) => titleMap.get(contentId);
+  return {
+    pathResolver: (documentId) => pathMap.get(documentId),
+    labelResolver: (contentId) => titleMap.get(contentId),
+  };
 }
 
 export const $getSiteNavigation = createServerFn({ method: "GET" })
   .inputValidator(localeSchema)
   .handler(async ({ data: lang }) => {
     try {
-      const [active, resolver] = await Promise.all([
+      const [active, { labelResolver, pathResolver }] = await Promise.all([
         siteNavigationRepository.getActive(),
-        buildDocumentLabelResolver(lang),
+        buildResolvers(lang),
       ]);
 
       const config = active?.config ?? getDefaultSiteNavigationConfig();
-      return buildSiteNavigation(lang, config, resolver);
+      return buildSiteNavigation(lang, config, labelResolver, pathResolver);
     } catch (error) {
       console.error(
         "Failed to load persisted site navigation config, using fallback.",

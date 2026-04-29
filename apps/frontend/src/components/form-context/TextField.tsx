@@ -3,8 +3,13 @@ import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-import { isFieldModified } from "./fields/useFieldModified";
+import { ResetFieldButton } from "./fields/ResetFieldButton";
+import {
+  getFieldDefaultValue,
+  isFieldModified,
+} from "./fields/useFieldModified";
 import { useFieldContext } from "./FormContext";
+import { useStore } from "@tanstack/react-form";
 
 export default function TextField({
   label,
@@ -20,22 +25,52 @@ export default function TextField({
   const field = useFieldContext<string>();
   const isModified = isFieldModified(field);
 
+  const [isValid, errors] = useStore(field.store, (s) => [
+    s.meta.isValid,
+    s.meta.errors,
+  ]);
+
   return (
-    <Label
-      className={cn("flex items-center", className, {
-        "flex-col items-stretch": type === "col",
-      })}
-    >
-      {label ? <span className="whitespace-nowrap">{label}</span> : null}
-      <div className="flex w-full items-center gap-1">
-        <Input
-          value={field.state.value ?? ""}
-          onChange={(e) => field.handleChange(e.target.value)}
-          onBlur={() => field.handleBlur()}
-          className={isModified ? "bg-yellow-50" : undefined}
-        />
+    <Label className="flex-col items-stretch">
+      <div
+        className={cn("flex items-center gap-2", className, {
+          "flex-col items-stretch": type === "col",
+        })}
+      >
+        {label ? <span className="whitespace-nowrap">{label}</span> : null}
+        <div className="relative flex w-full items-center gap-1">
+          <Input
+            value={field.state.value ?? ""}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={() => field.handleBlur()}
+            className={isModified ? "modified-field" : undefined}
+          />
+          {isModified && (
+            <ResetFieldButton
+              onClick={() =>
+                field.handleChange(
+                  (getFieldDefaultValue(field) as string) ?? null,
+                )
+              }
+            />
+          )}
+        </div>
         {afterField}
       </div>
+      {!isValid && (
+        <em
+          role="alert"
+          className="text-danger inline-block space-y-1.5 text-xs"
+        >
+          {errors.map((e, i) => {
+            const msg =
+              e && typeof e === "object" && "message" in e
+                ? (e as { message: string }).message
+                : String(e);
+            return <p key={i}>{msg}</p>;
+          })}
+        </em>
+      )}
     </Label>
   );
 }

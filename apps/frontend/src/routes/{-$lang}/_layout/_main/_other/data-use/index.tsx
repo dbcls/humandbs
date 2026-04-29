@@ -13,7 +13,7 @@ export const Route = createFileRoute(
   loader: async ({ context }) => {
     const data = await $getLatestPublishedDocumentVersion({
       data: {
-        contentId: "data-usage",
+        contentId: "data-use",
         locale: context.lang,
       },
     });
@@ -42,7 +42,7 @@ function RouteComponent() {
             variant={"action"}
             size={"lg"}
             onClick={() => {
-              navigate({ to: "./researches" });
+              navigate({ to: "./research" });
             }}
           >
             {t("data-usage-button")}

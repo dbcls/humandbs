@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
 import { i18n, type Locale } from "@/config/i18n";
-import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { buildDatabaseUrl } from "./utils";
@@ -151,99 +150,58 @@ async function resolveAuthorId(
   return ensureSystemUser(db);
 }
 
+async function collectDocumentPaths(
+  dir: string,
+  prefix: string,
+  documents: DocumentLocaleMap,
+  locale: Locale,
+): Promise<void> {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error: unknown) {
+    if ((error as { code?: unknown })?.code === "ENOENT") {
+      console.warn(`Missing folder: ${dir}`);
+      return;
+    }
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const segmentId = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const entryPath = path.join(dir, entry.name);
+    const contentPath = path.join(entryPath, "content.md");
+
+    let content: string | undefined;
+    try {
+      content = await readFile(contentPath, "utf8");
+    } catch (error: unknown) {
+      if ((error as { code?: unknown })?.code !== "ENOENT") throw error;
+      // No content.md here — treat as namespace folder and recurse
+    }
+
+    if (content !== undefined) {
+      if (!documents.has(segmentId)) documents.set(segmentId, new Map());
+      documents.get(segmentId)!.set(locale, { content, dir: entryPath });
+      console.log(`Loaded ${locale} content for document: ${segmentId}`);
+    }
+
+    // Always recurse to find nested documents
+    await collectDocumentPaths(entryPath, segmentId, documents, locale);
+  }
+}
+
 async function loadDocuments(): Promise<DocumentLocaleMap> {
   const documents: DocumentLocaleMap = new Map();
 
   for (const locale of SUPPORTED_LOCALES) {
     const localeDir = path.join(DOCUMENTS_DIR, locale);
-    let entries;
-
-    try {
-      console.log(`Reading locale folder: ${localeDir}`);
-      entries = await readdir(localeDir, { withFileTypes: true });
-    } catch (error: unknown) {
-      if ((error as { code: unknown })?.code === "ENOENT") {
-        console.warn(`Missing locale folder: ${localeDir}`);
-        continue;
-      }
-      throw error;
-    }
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const documentId = entry.name;
-
-      const contentPath = path.join(localeDir, documentId, "content.md");
-
-      let content: string;
-      try {
-        content = await readFile(contentPath, "utf8");
-      } catch (error: unknown) {
-        if ((error as { code?: unknown })?.code === "ENOENT") {
-          console.warn(`Missing content file: ${contentPath}`);
-          continue;
-        }
-
-        throw error;
-      }
-
-      if (!documents.has(documentId)) {
-        documents.set(documentId, new Map());
-      }
-
-      documents.get(documentId)!.set(locale, {
-        content,
-        dir: path.join(localeDir, documentId),
-      });
-
-      console.log(`Loaded ${locale} content for document: ${documentId}`);
-    }
+    console.log(`Reading locale folder: ${localeDir}`);
+    await collectDocumentPaths(localeDir, "", documents, locale);
   }
 
   return documents;
-}
-
-const NAV_CONFIG_ID = "global";
-
-async function seedNavigation(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-  overwrite = false,
-): Promise<void> {
-  console.log("\nSeeding navigation config...");
-
-  const config = getDefaultSiteNavigationConfig();
-
-  const [existing] = await db
-    .select({ id: schema.siteNavigationConfig.id })
-    .from(schema.siteNavigationConfig)
-    .where(eq(schema.siteNavigationConfig.id, NAV_CONFIG_ID))
-    .limit(1)
-    .execute();
-
-  if (existing && !overwrite) {
-    console.log(
-      "Navigation config already exists, skipping (use --overwrite to replace).",
-    );
-    return;
-  }
-
-  await db
-    .insert(schema.siteNavigationConfig)
-    .values({
-      id: NAV_CONFIG_ID,
-      config,
-      revision: 1,
-    })
-    .onConflictDoUpdate({
-      target: schema.siteNavigationConfig.id,
-      set: {
-        config,
-        updatedAt: new Date(),
-      },
-    })
-    .execute();
-
-  console.log(`Navigation config seeded (id: "${NAV_CONFIG_ID}").`);
 }
 
 async function seedDocuments(overwrite = false) {
@@ -256,8 +214,6 @@ async function seedDocuments(overwrite = false) {
     console.log("Loading documents from disk...");
     const documents = await loadDocuments();
     console.log(`Found ${documents.size} document(s) to seed`);
-
-    await seedNavigation(db, overwrite);
 
     if (documents.size === 0) {
       console.log("No documents to seed.");
@@ -280,19 +236,30 @@ async function seedDocuments(overwrite = false) {
         .limit(1)
         .execute();
 
+      let docUuid: string;
       if (!existingDocument) {
-        await db
+        const [inserted] = await db
           .insert(schema.document)
           .values({ contentId: documentId })
+          .returning({ id: schema.document.id })
           .execute();
+        docUuid = inserted.id;
         console.log(`Created document: ${documentId}`);
+      } else {
+        const [found] = await db
+          .select({ id: schema.document.id })
+          .from(schema.document)
+          .where(eq(schema.document.contentId, documentId))
+          .limit(1)
+          .execute();
+        docUuid = found.id;
       }
 
       // Find the latest version number for this document
       const existingVersions = await db
         .select({ versionNumber: schema.documentVersion.versionNumber })
         .from(schema.documentVersion)
-        .where(eq(schema.documentVersion.contentId, documentId))
+        .where(eq(schema.documentVersion.documentId, docUuid))
         .execute();
 
       const maxVersion =
@@ -308,7 +275,7 @@ async function seedDocuments(overwrite = false) {
         const { title, content: contentWithoutTitle } = extractTitle(content);
 
         const values = {
-          contentId: documentId,
+          documentId: docUuid,
           versionNumber,
           locale,
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
@@ -323,7 +290,7 @@ async function seedDocuments(overwrite = false) {
           await query
             .onConflictDoUpdate({
               target: [
-                schema.documentVersion.contentId,
+                schema.documentVersion.documentId,
                 schema.documentVersion.versionNumber,
                 schema.documentVersion.locale,
                 schema.documentVersion.status,

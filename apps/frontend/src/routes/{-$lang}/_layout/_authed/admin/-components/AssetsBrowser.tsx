@@ -215,7 +215,7 @@ export function AssetsBrowser({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4 items-stretch max-w-full">
+    <section className="flex min-h-0 max-w-full flex-1 flex-col items-stretch gap-4">
       <Card className="p-4" caption="Actions" captionSize="sm">
         <div className="grid gap-4 md:grid-cols-2">
           <form
@@ -311,9 +311,9 @@ export function AssetsBrowser({
         ) : null}
       </Card>
 
-      <div className="flex min-h-0 flex-1 gap-4 max-w-full">
+      <div className="flex min-h-0 max-w-full flex-1 gap-4">
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex min-h-0 h-full gap-3 flex-1 overflow-x-auto">
+          <div className="flex h-full min-h-0 flex-1 gap-3 overflow-x-auto">
             {columns.map((folder) => (
               <Card
                 key={folder.path || "__root__"}
@@ -396,11 +396,11 @@ export function AssetsBrowser({
                 </div>
                 <dl className="space-y-2">
                   <div>
-                    <dt className="text-xs uppercase text-gray-500">Path</dt>
+                    <dt className="text-xs text-gray-500 uppercase">Path</dt>
                     <dd className="break-all">{selectedItem.path}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs uppercase text-gray-500">Items</dt>
+                    <dt className="text-xs text-gray-500 uppercase">Items</dt>
                     <dd>{selectedItem.children.length}</dd>
                   </div>
                 </dl>
@@ -437,19 +437,19 @@ export function AssetsBrowser({
                   <div className="font-medium">{selectedItem.name}</div>
                   <dl className="space-y-2">
                     <div>
-                      <dt className="text-xs uppercase text-gray-500">Type</dt>
+                      <dt className="text-xs text-gray-500 uppercase">Type</dt>
                       <dd>{selectedItem.mimeType || "Unknown"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs uppercase text-gray-500">URL</dt>
+                      <dt className="text-xs text-gray-500 uppercase">URL</dt>
                       <dd className="break-all">{selectedItem.url}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs uppercase text-gray-500">Path</dt>
+                      <dt className="text-xs text-gray-500 uppercase">Path</dt>
                       <dd className="break-all">{selectedItem.path}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs uppercase text-gray-500">Size</dt>
+                      <dt className="text-xs text-gray-500 uppercase">Size</dt>
                       <dd>
                         {Intl.NumberFormat().format(selectedItem.size)} bytes
                       </dd>

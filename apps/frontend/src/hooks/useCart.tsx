@@ -1,6 +1,10 @@
 import { type DatasetDoc } from "@humandbs/backend/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouteContext } from "@tanstack/react-router";
+import {
+  useNavigate,
+  useRouteContext,
+  useSearch,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
@@ -27,30 +31,45 @@ export function useCart() {
 
   const setCart = (updater: (prev: CartItem[]) => CartItem[]) => {
     queryClient.setQueryData<CartItem[]>(["cart", user?.id], (prev) =>
-      updater(prev ?? [])
+      updater(prev ?? []),
     );
   };
 
   return {
     cart,
-    add(dataset: CartItem) {
+    add: (dataset: CartItem) => {
       setCart((prev) =>
         prev.some((item) => item.datasetId === dataset.datasetId)
           ? prev
-          : [...prev, dataset]
+          : [...prev, dataset],
       );
     },
-    remove(dataset: CartItem) {
+    remove: (dataset: CartItem) => {
       setCart((prev) =>
-        prev.filter((item) => {
-          const filter = item.datasetId !== dataset.datasetId;
-
-          return filter;
-        })
+        prev.filter((item) => item.datasetId !== dataset.datasetId),
       );
     },
-    clear() {
+    clear: () => {
       setCart(() => []);
     },
   };
+}
+
+export function useAutoAddToCart(data: DatasetDoc) {
+  const { user } = useRouteContext({ from: "__root__" });
+  const navigate = useNavigate({
+    from: "/{-$lang}/dataset/$datasetId",
+  });
+  const { add } = useCart();
+  const { addToCart } = useSearch({ strict: false });
+
+  useEffect(() => {
+    if (!addToCart || !user) return;
+    add(data);
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, addToCart: undefined }),
+      replace: true,
+    });
+  }, [addToCart, user?.id]);
 }

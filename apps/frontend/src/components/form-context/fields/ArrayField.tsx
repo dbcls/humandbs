@@ -172,9 +172,7 @@ export function ArrayField<T>({
                       index={i}
                       icon={icon}
                       title={
-                        getItemTitle
-                          ? getItemTitle(_item, i)
-                          : `Item ${i + 1}`
+                        getItemTitle ? getItemTitle(_item, i) : `Item ${i + 1}`
                       }
                       isModified={isItemModified}
                       onRemove={() => {

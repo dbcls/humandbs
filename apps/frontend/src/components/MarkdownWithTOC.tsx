@@ -10,29 +10,33 @@ export function MarkdownWithTOC({
   title,
   markdownResult,
   previousVersions,
+  revisionsBasePath,
   afterContent,
   hideTOC,
 }: {
   title: React.ReactNode | string | null;
   markdownResult: MarkdownResult;
   previousVersions?: DocPublishedVersionListItemResponse[];
+  revisionsBasePath?: string;
+  documentName?: string | null;
   afterContent?: React.ReactNode;
   hideTOC?: boolean;
 }) {
   const showTOC = markdownResult.headings.length > 0 && !hideTOC;
   return (
     <Card
-      className="w-full py-6 min-w-0"
+      className="w-full min-w-0 py-6"
       containerClassName="main-content mt-8 min-w-0"
     >
       <div className="flex gap-8">
         {showTOC ? <TOC headings={markdownResult.headings} /> : null}
         <div className="flex-1">
           <Markdown contentHtml={markdownResult} title={title} />
-          {previousVersions && (
+          {previousVersions && revisionsBasePath && (
             <PreviousVersionsList
               versions={previousVersions}
-              slug="/{-$lang}/guidelines"
+              revisionsBasePath={revisionsBasePath}
+              documentName={typeof title === "string" ? title : undefined}
             />
           )}
 

@@ -1,5 +1,3 @@
-import { type LinkOptions } from "@tanstack/react-router";
-
 import { deriveNavbarCommittedGroups } from "@/config/site-navigation-admin";
 import { type Locale } from "@/config/i18n";
 
@@ -19,7 +17,9 @@ export type NavigationItemType = "document" | "link";
 export interface NavigationItem {
   id: string; // UUID
   type: NavigationItemType;
-  // For type === "document": the contentId from the document table
+  // For type === "document": stable UUID from document.id — never changes on rename
+  documentId?: string;
+  // For type === "document": denormalized path — kept for the default config and fallback
   contentId?: string;
   // For type === "link": the internal URL path
   url?: string;
@@ -60,15 +60,24 @@ export interface SiteNavigationConfig {
 // Resolved output types (used by Navbar, Footer, MobileNav components)
 // ---------------------------------------------------------------------------
 
+/** Serializable subset of LinkOptions — safe to pass through server functions. */
+export interface ResolvedLinkOptions {
+  to: string;
+  params?: Record<string, string>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const asLinkProps = (opts: ResolvedLinkOptions): any => opts;
+
 export interface ResolvedNavbarItem {
   id: string;
   label: string;
-  linkOptions: LinkOptions;
+  linkOptions: ResolvedLinkOptions;
   priority: NavPriority;
   children?: Array<{
     id: string;
     label: string;
-    linkOptions: LinkOptions;
+    linkOptions: ResolvedLinkOptions;
   }>;
 }
 
@@ -78,7 +87,7 @@ export interface ResolvedFooterGroup {
   items: Array<{
     id: string;
     label: string;
-    linkOptions: LinkOptions;
+    linkOptions: ResolvedLinkOptions;
   }>;
 }
 
@@ -92,7 +101,7 @@ export interface ResolvedSiteNavigation {
 // ---------------------------------------------------------------------------
 
 interface NavigationItemRegistry {
-  getLinkOptions: (lang: Locale) => LinkOptions;
+  getLinkOptions: (lang: Locale) => ResolvedLinkOptions;
   defaultLabel: Record<string, string>; // fallback labels
 }
 
@@ -125,11 +134,11 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "data-sharing-guidelines",
+    "guidelines/data-sharing-guidelines",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "data-sharing-guidelines" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "guidelines/data-sharing-guidelines" },
       }),
       defaultLabel: {
         en: "NBDC Guidelines for Human Data Sharing",
@@ -138,11 +147,11 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "security-guidelines-for-users",
+    "guidelines/security-guidelines-for-users",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "security-guidelines-for-users" },
+        to: "/{-$lang}/$",
+        params: { lang, _splat: "guidelines/security-guidelines-for-users" },
       }),
       defaultLabel: {
         en: "NBDC Security Guidelines for Human Data (for Data Users)",
@@ -151,11 +160,14 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "security-guidelines-for-submitters",
+    "guidelines/security-guidelines-for-submitters",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "security-guidelines-for-submitters" },
+        to: "/{-$lang}/$",
+        params: {
+          lang,
+          _splat: "guidelines/security-guidelines-for-submitters",
+        },
       }),
       defaultLabel: {
         en: "NBDC Security Guidelines for Human Data (for Data Submitters)",
@@ -164,11 +176,14 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
-    "security-guidelines-for-dbcenters",
+    "guidelines/security-guidelines-for-dbcenters",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/guidelines/$slug",
-        params: { lang, slug: "security-guidelines-for-dbcenters" },
+        to: "/{-$lang}/$",
+        params: {
+          lang,
+          _splat: "guidelines/security-guidelines-for-dbcenters",
+        },
       }),
       defaultLabel: {
         en: "NBDC Security Guidelines for Human Data (for Database Center Operation Managers and Off-Premise-Server Operation Managers)",
@@ -190,7 +205,7 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     "research-list",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/data-use/research",
+        to: "/{-$lang}/research",
         params: { lang },
       }),
       defaultLabel: { en: "Research List", ja: "研究一覧" },
@@ -200,7 +215,7 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     "dataset-list",
     {
       getLinkOptions: (lang) => ({
-        to: "/{-$lang}/data-use/datasets",
+        to: "/{-$lang}/dataset",
         params: { lang },
       }),
       defaultLabel: { en: "Dataset List", ja: "データセット一覧" },
@@ -297,24 +312,98 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
 
 const defaultSiteNavigationConfig: SiteNavigationConfig = {
   items: [
-    { id: "00000000-0000-4000-8000-000000000001", type: "document", contentId: "home" },
-    { id: "00000000-0000-4000-8000-000000000002", type: "document", contentId: "data-submission" },
-    { id: "00000000-0000-4000-8000-000000000003", type: "document", contentId: "guidelines" },
-    { id: "00000000-0000-4000-8000-000000000004", type: "document", contentId: "data-sharing-guidelines" },
-    { id: "00000000-0000-4000-8000-000000000005", type: "document", contentId: "security-guidelines-for-users" },
-    { id: "00000000-0000-4000-8000-000000000006", type: "document", contentId: "security-guidelines-for-submitters" },
-    { id: "00000000-0000-4000-8000-000000000007", type: "document", contentId: "security-guidelines-for-dbcenters" },
-    { id: "00000000-0000-4000-8000-000000000008", type: "document", contentId: "data-usage" },
-    { id: "00000000-0000-4000-8000-000000000009", type: "link", url: "/data-use/research", label: { en: "Research List", ja: "研究一覧" } },
-    { id: "00000000-0000-4000-8000-000000000010", type: "link", url: "/data-use/datasets", label: { en: "Dataset List", ja: "データセット一覧" } },
-    { id: "00000000-0000-4000-8000-000000000011", type: "document", contentId: "data-processing" },
-    { id: "00000000-0000-4000-8000-000000000012", type: "document", contentId: "off-premise-server" },
-    { id: "00000000-0000-4000-8000-000000000013", type: "document", contentId: "dac" },
-    { id: "00000000-0000-4000-8000-000000000014", type: "document", contentId: "publications" },
-    { id: "00000000-0000-4000-8000-000000000015", type: "document", contentId: "violation" },
-    { id: "00000000-0000-4000-8000-000000000016", type: "document", contentId: "privacy-policy" },
-    { id: "00000000-0000-4000-8000-000000000017", type: "document", contentId: "faq" },
-    { id: "00000000-0000-4000-8000-000000000018", type: "document", contentId: "supported-browsers" },
+    {
+      id: "00000000-0000-4000-8000-000000000001",
+      type: "document",
+      contentId: "home",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000002",
+      type: "document",
+      contentId: "data-submission",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000003",
+      type: "document",
+      contentId: "guidelines",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000004",
+      type: "document",
+      contentId: "guidelines/data-sharing-guidelines",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000005",
+      type: "document",
+      contentId: "guidelines/security-guidelines-for-users",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000006",
+      type: "document",
+      contentId: "guidelines/security-guidelines-for-submitters",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000007",
+      type: "document",
+      contentId: "guidelines/security-guidelines-for-dbcenters",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000008",
+      type: "document",
+      contentId: "data-usage",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000009",
+      type: "link",
+      url: "/research",
+      label: { en: "Research List", ja: "研究一覧" },
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000010",
+      type: "link",
+      url: "/dataset",
+      label: { en: "Dataset List", ja: "データセット一覧" },
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000011",
+      type: "document",
+      contentId: "data-processing",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000012",
+      type: "document",
+      contentId: "off-premise-server",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000013",
+      type: "document",
+      contentId: "dac",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000014",
+      type: "document",
+      contentId: "publications",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000015",
+      type: "document",
+      contentId: "violation",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000016",
+      type: "document",
+      contentId: "privacy-policy",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000017",
+      type: "document",
+      contentId: "faq",
+    },
+    {
+      id: "00000000-0000-4000-8000-000000000018",
+      type: "document",
+      contentId: "supported-browsers",
+    },
   ],
   zones: {
     footer: {
@@ -376,16 +465,89 @@ const defaultSiteNavigationConfig: SiteNavigationConfig = {
     },
     navbar: {
       groups: [
-        { id: "00000000-0000-4002-8000-000000000001", label: { en: "Data Submission", ja: "データの提供" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000002" }] },
-        { id: "00000000-0000-4002-8000-000000000002", label: { en: "Guidelines", ja: "ガイドライン" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000003" }, { id: "00000000-0000-4000-8000-000000000004" }, { id: "00000000-0000-4000-8000-000000000005" }, { id: "00000000-0000-4000-8000-000000000006" }, { id: "00000000-0000-4000-8000-000000000007" }] },
-        { id: "00000000-0000-4002-8000-000000000003", label: { en: "Data Usage", ja: "データの利用" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000008" }, { id: "00000000-0000-4000-8000-000000000009" }, { id: "00000000-0000-4000-8000-000000000010" }] },
-        { id: "00000000-0000-4002-8000-000000000004", label: { en: "Data Processing", ja: "加工データ" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000011" }] },
-        { id: "00000000-0000-4002-8000-000000000005", label: { en: "Off-premise Server", ja: "機関外サーバ" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000012" }] },
-        { id: "00000000-0000-4002-8000-000000000006", label: { en: "Human Data Review Committee", ja: "ヒトデータ審査委員会" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000013" }] },
-        { id: "00000000-0000-4002-8000-000000000007", label: { en: "Publications", ja: "成果発表" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000014" }] },
-        { id: "00000000-0000-4002-8000-000000000008", label: { en: "Guideline Violation", ja: "ガイドライン違反" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000015" }] },
-        { id: "00000000-0000-4002-8000-000000000009", label: { en: "Privacy Policy", ja: "プライバシーポリシー" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000016" }] },
-        { id: "00000000-0000-4002-8000-000000000010", label: { en: "FAQ", ja: "FAQ" }, enabled: true, priority: "important", items: [{ id: "00000000-0000-4000-8000-000000000017" }] },
+        {
+          id: "00000000-0000-4002-8000-000000000001",
+          label: { en: "Data Submission", ja: "データの提供" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000002" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000002",
+          label: { en: "Guidelines", ja: "ガイドライン" },
+          enabled: true,
+          priority: "important",
+          items: [
+            { id: "00000000-0000-4000-8000-000000000003" },
+            { id: "00000000-0000-4000-8000-000000000004" },
+            { id: "00000000-0000-4000-8000-000000000005" },
+            { id: "00000000-0000-4000-8000-000000000006" },
+            { id: "00000000-0000-4000-8000-000000000007" },
+          ],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000003",
+          label: { en: "Data Usage", ja: "データの利用" },
+          enabled: true,
+          priority: "important",
+          items: [
+            { id: "00000000-0000-4000-8000-000000000008" },
+            { id: "00000000-0000-4000-8000-000000000009" },
+            { id: "00000000-0000-4000-8000-000000000010" },
+          ],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000004",
+          label: { en: "Data Processing", ja: "加工データ" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000011" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000005",
+          label: { en: "Off-premise Server", ja: "機関外サーバ" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000012" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000006",
+          label: {
+            en: "Human Data Review Committee",
+            ja: "ヒトデータ審査委員会",
+          },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000013" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000007",
+          label: { en: "Publications", ja: "成果発表" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000014" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000008",
+          label: { en: "Guideline Violation", ja: "ガイドライン違反" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000015" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000009",
+          label: { en: "Privacy Policy", ja: "プライバシーポリシー" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000016" }],
+        },
+        {
+          id: "00000000-0000-4002-8000-000000000010",
+          label: { en: "FAQ", ja: "FAQ" },
+          enabled: true,
+          priority: "important",
+          items: [{ id: "00000000-0000-4000-8000-000000000017" }],
+        },
       ],
     },
   },
@@ -398,6 +560,12 @@ export function getDefaultSiteNavigationConfig(): SiteNavigationConfig {
 // ---------------------------------------------------------------------------
 // Build resolved navigation for rendering
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolves a document UUID to its current contentId (URL path).
+ * Returns undefined if the document is not found.
+ */
+export type DocumentPathResolver = (documentId: string) => string | undefined;
 
 /**
  * Optional resolver for document-backed item labels.
@@ -413,10 +581,21 @@ export function buildSiteNavigation(
   lang: Locale,
   config: SiteNavigationConfig,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedSiteNavigation {
   return {
-    navbar: buildNavbarItems(lang, config, resolveDocumentLabel),
-    footer: buildFooterGroups(lang, config, resolveDocumentLabel),
+    navbar: buildNavbarItems(
+      lang,
+      config,
+      resolveDocumentLabel,
+      resolveDocumentPath,
+    ),
+    footer: buildFooterGroups(
+      lang,
+      config,
+      resolveDocumentLabel,
+      resolveDocumentPath,
+    ),
   };
 }
 
@@ -428,30 +607,42 @@ export function getFooterSitemapGroups(lang: Locale): ResolvedFooterGroup[] {
   return buildFooterGroups(lang, getDefaultSiteNavigationConfig());
 }
 
+function resolveItemContentId(
+  item: NavigationItem,
+  resolveDocumentPath?: DocumentPathResolver,
+): string | undefined {
+  if (item.type !== "document") return undefined;
+  // Live DB path takes priority (reflects renames)
+  if (item.documentId && resolveDocumentPath) {
+    const resolved = resolveDocumentPath(item.documentId);
+    if (resolved) return resolved;
+  }
+  // Fall back to the stored contentId (default config, or items without documentId yet)
+  return item.contentId;
+}
+
 function resolveItemLabel(
   item: NavigationItem,
   lang: Locale,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): string {
   // Explicit label override on the item takes priority
   if (item.label) {
-    return (
-      item.label[lang] ??
-      item.label["en"] ??
-      item.contentId ??
-      item.url ??
-      item.id
-    );
+    return item.label[lang] ?? item.label["en"] ?? item.url ?? item.id;
   }
   // Document items: try DB-resolved title first, then registry default
-  if (item.type === "document" && item.contentId) {
-    const dbLabel = resolveDocumentLabel?.(item.contentId, lang);
-    if (dbLabel) return dbLabel;
-    const reg = navigationRegistry.get(item.contentId);
-    if (reg) {
-      return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? item.contentId;
+  if (item.type === "document") {
+    const contentId = resolveItemContentId(item, resolveDocumentPath);
+    if (contentId) {
+      const dbLabel = resolveDocumentLabel?.(contentId, lang);
+      if (dbLabel) return dbLabel;
+      const reg = navigationRegistry.get(contentId);
+      if (reg) {
+        return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? contentId;
+      }
+      return contentId;
     }
-    return item.contentId;
   }
   return item.url ?? item.id;
 }
@@ -459,54 +650,69 @@ function resolveItemLabel(
 function resolveItemLinkOptions(
   item: NavigationItem,
   lang: Locale,
-): LinkOptions {
-  if (item.type === "document" && item.contentId) {
-    const reg = navigationRegistry.get(item.contentId);
-    if (reg) return reg.getLinkOptions(lang);
-    return { to: "/{-$lang}/$", params: { lang, _splat: item.contentId } };
+  resolveDocumentPath?: DocumentPathResolver,
+): ResolvedLinkOptions {
+  if (item.type === "document") {
+    const contentId = resolveItemContentId(item, resolveDocumentPath);
+    if (contentId) {
+      const reg = navigationRegistry.get(contentId);
+      if (reg) return reg.getLinkOptions(lang);
+      return { to: "/{-$lang}/$", params: { lang, _splat: contentId } };
+    }
   }
   // Link type — use the url directly
   const url = item.url ?? "/";
-  return { to: `/{-$lang}${url}` as never, params: { lang } };
+  return { to: `/{-$lang}${url}`, params: { lang } };
 }
 
 function buildNavbarItems(
   lang: Locale,
   config: SiteNavigationConfig,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedNavbarItem[] {
   return deriveNavbarCommittedGroups(config)
     .filter((group) => group.group.enabled && group.linkedItem)
     .map((groupWithItems) => {
-    const { group, linkedItem, subItems } = groupWithItems;
-    if (!linkedItem) {
-      return null;
-    }
+      const { group, linkedItem, subItems } = groupWithItems;
+      if (!linkedItem) {
+        return null;
+      }
 
-    const label = group.label[lang] ?? group.label["en"] ?? "";
-    const children = subItems
-      .filter((subItem) => subItem.enabled)
-      .map(({ item }) => ({
-        id: item.id,
-        label: resolveItemLabel(item, lang, resolveDocumentLabel),
-        linkOptions: resolveItemLinkOptions(item, lang),
-      }));
+      const label = group.label[lang] ?? group.label["en"] ?? "";
+      const children = subItems
+        .filter((subItem) => subItem.enabled)
+        .map(({ item }) => ({
+          id: item.id,
+          label: resolveItemLabel(
+            item,
+            lang,
+            resolveDocumentLabel,
+            resolveDocumentPath,
+          ),
+          linkOptions: resolveItemLinkOptions(item, lang, resolveDocumentPath),
+        }));
 
-    return {
-      id: group.id,
-      label,
-      linkOptions: resolveItemLinkOptions(linkedItem.item, lang),
-      priority: group.priority ?? "important",
-      ...(children.length > 0 ? { children } : {}),
-    };
-  })
-  .filter((item): item is ResolvedNavbarItem => item !== null);
+      return {
+        id: group.id,
+        label,
+        linkOptions: resolveItemLinkOptions(
+          linkedItem.item,
+          lang,
+          resolveDocumentPath,
+        ),
+        priority: group.priority ?? "important",
+        ...(children.length > 0 ? { children } : {}),
+      };
+    })
+    .filter((item): item is ResolvedNavbarItem => item !== null);
 }
 
 function buildFooterGroups(
   lang: Locale,
   config: SiteNavigationConfig,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedFooterGroup[] {
   const itemById = new Map(config.items.map((i) => [i.id, i]));
 
@@ -521,8 +727,13 @@ function buildFooterGroups(
         .filter((item): item is NavigationItem => item !== undefined)
         .map((item) => ({
           id: item.id,
-          label: resolveItemLabel(item, lang, resolveDocumentLabel),
-          linkOptions: resolveItemLinkOptions(item, lang),
+          label: resolveItemLabel(
+            item,
+            lang,
+            resolveDocumentLabel,
+            resolveDocumentPath,
+          ),
+          linkOptions: resolveItemLinkOptions(item, lang, resolveDocumentPath),
         })),
     }))
     .filter((group) => group.items.length > 0);

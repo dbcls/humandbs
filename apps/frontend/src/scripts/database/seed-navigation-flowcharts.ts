@@ -42,7 +42,10 @@ function transformSteps(
   const transformOptions = (
     enOptions: LegacyOption[],
     jaOptions: LegacyOption[],
-  ): { enOptions: NavigationFlowchartOption[]; jaOptions: NavigationFlowchartOption[] } => {
+  ): {
+    enOptions: NavigationFlowchartOption[];
+    jaOptions: NavigationFlowchartOption[];
+  } => {
     const newEnOptions: NavigationFlowchartOption[] = [];
     const newJaOptions: NavigationFlowchartOption[] = [];
 

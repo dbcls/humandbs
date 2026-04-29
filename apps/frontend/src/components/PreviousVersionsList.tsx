@@ -2,43 +2,35 @@ import { Link } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
 import type { DocPublishedVersionListItemResponse } from "@/repositories/documentVersion";
-import type { FileRoutesByTo } from "@/routeTree.gen";
-
-type LinksWithVersionLists = keyof Pick<
-  FileRoutesByTo,
-  "/{-$lang}/data-submission" | "/{-$lang}/guidelines"
->;
 
 export function PreviousVersionsList({
-  slug,
+  revisionsBasePath,
   versions,
+  documentName,
 }: {
-  slug: LinksWithVersionLists;
+  revisionsBasePath: string;
   versions: DocPublishedVersionListItemResponse[];
+  documentName?: string | null;
 }) {
   const tCommon = useTranslations("common");
-  const docId = slug.split("/").at(-1)!;
-
-  const tNav = useTranslations("Navbar");
-
-  const documentName = tNav(docId ?? "");
-
   const lang = useLocale();
+
+  const name = documentName ?? versions[0]?.title ?? revisionsBasePath;
 
   return (
     <div>
       <h2 className="text-md font-bold text-neutral-800">
-        {tCommon("previous-versions", { documentName })}
+        {tCommon("previous-versions", { documentName: name })}
       </h2>
       <ul>
         {versions.map((version) => (
           <li className="flex gap-2" key={version.versionNumber}>
             <span>v. {version.versionNumber}</span>
             <Link
-              to={`${slug}/revision/$revision`}
+              to="/{-$lang}/$"
               params={{
                 lang,
-                revision: version.versionNumber.toString(),
+                _splat: `${revisionsBasePath}/revision/${version.versionNumber}`,
               }}
               className="text-secondary"
             >

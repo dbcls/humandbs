@@ -2,6 +2,7 @@ import {
   useLocation,
   useNavigate,
   useRouteContext,
+  useRouter,
 } from "@tanstack/react-router";
 import {
   ChevronsRight,
@@ -22,6 +23,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { asLinkProps } from "@/config/site-navigation";
 import type {
   ResolvedNavbarItem,
   ResolvedSiteNavigation,
@@ -38,7 +40,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 export function Navbar() {
   const tCommon = useTranslations("common");
 
-  const { user } = useRouteContext({ from: "__root__" });
   const { lang, siteNavigation } = useRouteContext({
     from: "/{-$lang}/_layout",
   });
@@ -117,7 +118,7 @@ export function Navbar() {
       <NavigationMenu
         ref={navContainerRef}
         viewport={false}
-        className="hidden md:flex relative flex-1 max-w-none w-full min-w-0 justify-start"
+        className="relative hidden w-full max-w-none min-w-0 flex-1 justify-start md:flex"
       >
         <NavigationMenuList
           ref={navListRef}
@@ -136,7 +137,7 @@ export function Navbar() {
 
       <div
         aria-hidden="true"
-        className="pointer-events-none overflow-hidden fixed top-0 left-0 -z-10 opacity-0"
+        className="pointer-events-none fixed top-0 left-0 -z-10 overflow-hidden opacity-0"
       >
         <NavigationMenu viewport={false}>
           <NavigationMenuList className="flex flex-nowrap items-center justify-start gap-8">
@@ -160,7 +161,7 @@ export function Navbar() {
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
-        {user ? <ShoppingCartButton /> : null}
+        <ShoppingCartButton />
         <UserMenu />
       </div>
     </header>
@@ -176,7 +177,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             <Link
               variant="nav"
               className="whitespace-nowrap"
-              {...item.linkOptions}
+              {...asLinkProps(item.linkOptions)}
             >
               {item.label}
             </Link>
@@ -186,7 +187,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
               {item.children.map((child) => (
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
-                    <Link variant="nav" {...child.linkOptions}>
+                    <Link variant="nav" {...asLinkProps(child.linkOptions)}>
                       {child.label}
                     </Link>
                   </NavigationMenuLink>
@@ -200,7 +201,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
           <Link
             variant="nav"
             className="whitespace-nowrap"
-            {...item.linkOptions}
+            {...asLinkProps(item.linkOptions)}
           >
             {item.label}
           </Link>
@@ -269,7 +270,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
       <NavigationMenuLink asChild>
         <Link
           variant="nav"
-          {...item.linkOptions}
+          {...asLinkProps(item.linkOptions)}
           className="w-full rounded-sm px-2 py-2"
         >
           {item.label}
@@ -282,7 +283,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
               <NavigationMenuLink asChild>
                 <Link
                   variant="nav"
-                  {...child.linkOptions}
+                  {...asLinkProps(child.linkOptions)}
                   className="w-full rounded-sm px-2 py-2 text-sm"
                 >
                   {child.label}
@@ -320,7 +321,7 @@ function UserMenu() {
   if (!user) {
     return (
       <Button
-        className="rounded-full flex justify-center w-14 h-14 text-center"
+        className="flex h-14 w-14 justify-center rounded-full text-center"
         size={"icon"}
         variant={"action"}
         onClick={login}
@@ -343,7 +344,7 @@ function UserMenu() {
         <Button
           size={"icon"}
           variant={"outline"}
-          className="rounded-full flex justify-center w-14 h-14 text-center"
+          className="flex h-14 w-14 justify-center rounded-full text-center"
         >
           <span>{userInitials}</span>
         </Button>
@@ -351,21 +352,21 @@ function UserMenu() {
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="bg-white flex flex-col gap-2"
+        className="flex flex-col gap-2 bg-white"
       >
         <div>{user.name}</div>
         <form method="post" action={"/auth/logout"}>
           <Button
             variant={"plain"}
             type="button"
-            className="block w-full text-left text-inherit hover:bg-hover"
+            className="hover:bg-hover block w-full text-left text-inherit"
             onClick={() =>
               navigate({ to: "/{-$lang}/admin", params: { lang } })
             }
           >
             My Page
           </Button>
-          <Button type="submit" className="justify-self-end mt-3">
+          <Button type="submit" className="mt-3 justify-self-end">
             Logout
             <LucideLogOut className="ml-2 size-8" />
           </Button>
@@ -377,18 +378,36 @@ function UserMenu() {
 
 function ShoppingCartButton() {
   const { cart } = useCart();
+  const { user } = useRouteContext({ from: "__root__" });
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout" });
-  const navigate = useNavigate({ from: "/{-$lang}" });
+  const navigate = useNavigate();
+  const router = useRouter();
+
+  function handleClick() {
+    if (!user) {
+      const cartHref = router.buildLocation({
+        to: "/{-$lang}/cart",
+        params: { lang },
+      }).href;
+      void navigate({
+        to: "/auth/login",
+        search: { redirect: cartHref },
+        reloadDocument: true,
+      });
+    } else {
+      void navigate({ to: "/{-$lang}/cart", params: { lang } });
+    }
+  }
 
   return (
     <Button
       variant={"plain"}
       className="relative"
       size="icon"
-      onClick={() => navigate({ to: "/{-$lang}/cart", params: { lang } })}
+      onClick={handleClick}
     >
       {cart.length > 0 ? (
-        <span className="bg-accent absolute top-0 left-0 text-xs text-white rounded-full min-w-8 w-fit p-0.5">
+        <span className="bg-accent absolute top-0 left-0 w-fit min-w-8 rounded-full p-0.5 text-xs text-white">
           {cart.length}
         </span>
       ) : null}

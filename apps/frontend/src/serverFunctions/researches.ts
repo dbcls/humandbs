@@ -95,6 +95,7 @@ export const $updateResearch = createServerFn({ method: "POST" })
         data.body,
         accessToken,
       );
+
       return { ok: true, data: result };
     } catch (error) {
       return mapApiError(error, "Failed to update research.");

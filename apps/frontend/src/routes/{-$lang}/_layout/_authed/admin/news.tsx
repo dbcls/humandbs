@@ -18,7 +18,9 @@ function RouteComponent() {
   // selectedId leads the URL: set synchronously on click for instant highlight
   // and skeleton, then the URL catches up asynchronously via setFilters.
   // When the URL changes externally (browser back/forward), sync back to it.
-  const [selectedId, setSelectedId] = useState<string | undefined>(urlSelectedId);
+  const [selectedId, setSelectedId] = useState<string | undefined>(
+    urlSelectedId,
+  );
   if (selectedId !== urlSelectedId && urlSelectedId !== undefined) {
     setSelectedId(urlSelectedId);
   }

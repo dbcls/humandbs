@@ -24,7 +24,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { useState, Suspense } from "react";
-import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/data-use/datasets/$datasetId/-DatasetVersionCard";
+import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
 import { TabContentLayout } from "./-TabContentLayout";
@@ -78,7 +78,7 @@ function DatasetEditViewInner({
       const body = formValuesToDatasetUpdate(values, seqNo, primaryTerm);
       return $updateDataset({ data: { datasetId, body } });
     },
-    onSuccess: (result) => {
+    onSuccess: (result, submittedValues) => {
       if (!result.ok) {
         if (result.code === "CONFLICT") {
           setConflictError(true);
@@ -90,6 +90,7 @@ function DatasetEditViewInner({
       }
       setSeqNo(result.data.meta._seq_no);
       setPrimaryTerm(result.data.meta._primary_term);
+      setDefaultValues(submittedValues);
       setError(null);
       setConflictError(false);
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -103,14 +104,16 @@ function DatasetEditViewInner({
     setConflictError(false);
   }
 
-  const defaultValues = datasetToFormValues({
-    humId: dataset.humId,
-    humVersionId: dataset.humVersionId,
-    releaseDate: dataset.releaseDate,
-    criteria: dataset.criteria,
-    typeOfData: dataset.typeOfData,
-    experiments: dataset.experiments,
-  });
+  const [defaultValues, setDefaultValues] = useState<DatasetFormValues>(() =>
+    datasetToFormValues({
+      humId: dataset.humId,
+      humVersionId: dataset.humVersionId,
+      releaseDate: dataset.releaseDate,
+      criteria: dataset.criteria,
+      typeOfData: dataset.typeOfData,
+      experiments: dataset.experiments,
+    }),
+  );
   const [previewLang, setPreviewLang] = useState<"ja" | "en">(lang);
   const [previewValues, setPreviewValues] = useState(defaultValues);
 
@@ -190,7 +193,7 @@ export function DatasetEditView(props: DatasetEditViewProps) {
     <div className="flex min-h-0 flex-1 flex-col">
       <Suspense
         fallback={
-          <div className="px-5 pt-5 text-sm text-gray-400 animate-pulse">
+          <div className="animate-pulse px-5 pt-5 text-sm text-gray-400">
             Loading dataset…
           </div>
         }

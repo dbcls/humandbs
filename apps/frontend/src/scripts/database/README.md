@@ -15,6 +15,7 @@ bun run db:seed-documents
 - Reads from `../seed-data/documents/{locale}/{document}/`
 - Supports EN/JP locales, document versioning, and Type I/II security levels
 - Only seeds document IDs listed in `CONTENT_IDS` config
+- Does not modify site navigation; run `bun run db:seed-navigation` separately if nav should be rebuilt
 
 **Expected directory structure:**
 
@@ -32,25 +33,31 @@ bun run db:seed-documents
 
 ### `seed-files.ts`
 
-Copies non-`content.md` files from each document's seed folder to `public/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>/<documentId>/` (defaults to `public/public-files/<documentId>/`).
+Copies non-`content.md` files from each document's seed folder to `public/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>/<contentId>/` (defaults to `public/public-files/<contentId>/`).
 
 ```bash
 bun run db:seed-files
 ```
 
 - No DB writes — filesystem only
+- Supports nested document paths such as `guidelines/data-sharing-guidelines`
 - Skips files already copied (deduplicates across locales per document)
 
 ### `seed-navigation.ts`
 
-Resets and reseeds the site navigation config to the current default.
+Resets and reseeds the site navigation config from the current documents in the database.
 
 ```bash
 bun run db:seed-navigation
 ```
 
 - Deletes current navigation config rows and revisions
-- Seeds active config as `global` (matches the runtime repository key)
+- Rebuilds document-backed navbar/footer items from current document `contentId` structure
+- Uses document UUIDs as canonical navigation item IDs for document entries
+- Root segment grouping rule:
+  - navbar: `a`, `a/b`, and `a/b/c` all belong to the `a` group
+  - footer: same grouping rule
+- Reuses static link items and default group labels where available
 - Inserts a fresh revision `1` snapshot
 
 ### `seed-news.ts`
@@ -137,14 +144,37 @@ SEED_AUTHOR_NAME="System Seed"
 
 ```bash
 # Full reset and reseed
-bun run db:fresh  # db:reset && db:push && db:seed-documents
+bun run db:reset -y
+bun run db:push
+bun run db:seed-all
 
 # Quick data refresh
-bun run db:clear && bun run db:seed-documents
+bun run db:clear
+bun run db:seed-documents
+bun run db:seed-files
+bun run db:seed-navigation
 
 # Reset navigation only
 bun run db:seed-navigation
 
+# Documents only
+bun run db:seed-documents
+
+# Documents changed, then rebuild nav from them
+bun run db:seed-documents
+bun run db:seed-navigation
+
 # Schema updates only
 bun run db:push
+```
+
+`db:seed-all` currently runs in this order:
+
+```bash
+bun run db:seed-documents
+bun run db:seed-files
+bun run db:seed-navigation
+bun run db:seed-news
+bun run db:seed-content
+bun run db:seed-navigation-flowcharts
 ```

@@ -88,7 +88,8 @@ function normalizeCalloutFences(content: string): string {
 }
 
 function getMdastText(node: Node): string {
-  if (node.type === "text") return (node as unknown as { value: string }).value ?? "";
+  if (node.type === "text")
+    return (node as unknown as { value: string }).value ?? "";
   const parent = node as Parent;
   if (!parent.children) return "";
   return parent.children.map(getMdastText).join("");
@@ -96,8 +97,7 @@ function getMdastText(node: Node): string {
 
 function isClosingMarker(node: Node): boolean {
   return (
-    node.type === "paragraph" &&
-    /^:::\s*$/.test(getMdastText(node).trim())
+    node.type === "paragraph" && /^:::\s*$/.test(getMdastText(node).trim())
   );
 }
 
@@ -134,11 +134,17 @@ function processCalloutChildren(children: Node[]): void {
   let i = 0;
   while (i < children.length) {
     const node = children[i];
-    if (node.type !== "paragraph") { i++; continue; }
+    if (node.type !== "paragraph") {
+      i++;
+      continue;
+    }
 
     const paraText = getMdastText(node).trim();
     const openMatch = /^:::\s*callout\s*(.*)$/i.exec(paraText);
-    if (!openMatch) { i++; continue; }
+    if (!openMatch) {
+      i++;
+      continue;
+    }
 
     const attrStr = openMatch[1].trim();
 
@@ -165,7 +171,9 @@ function processCalloutChildren(children: Node[]): void {
       removeClosingMarker(inner[inner.length - 1]);
     }
 
-    children.splice(i, 0,
+    children.splice(
+      i,
+      0,
       {
         type: "callout",
         data: { hName: "callout", hProperties: parseTagAttributes(attrStr) },

@@ -4,7 +4,6 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { i18n, type Locale, localeSchema } from "@/config/i18n";
-import { getNavConfig } from "@/config/navbar-config";
 import { db } from "@/db/database";
 import {
   contentItem,
@@ -104,6 +103,7 @@ export type ContentTranslationResponse = Omit<
 
 export interface ContentItemResponse {
   author?: Pick<User, "name" | "email">;
+  hideTOC: boolean;
   translations: Partial<
     Record<
       Locale,
@@ -137,6 +137,10 @@ export const $getContentItem = createServerFn({ method: "GET" })
       },
       columns: {
         authorId: false,
+        hideTOC: true,
+        id: true,
+        createdAt: false,
+        publishedAt: false,
       },
     });
 
@@ -169,8 +173,22 @@ export const $getContentItem = createServerFn({ method: "GET" })
 
     return {
       author: content?.author,
+      hideTOC: content?.hideTOC ?? true,
       translations,
     };
+  });
+
+/** Update hideTOC flag for a content item */
+export const $updateContentItemHideTOC = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ id: z.string(), hideTOC: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("contents", "update");
+
+    await db
+      .update(contentItem)
+      .set({ hideTOC: data.hideTOC })
+      .where(eq(contentItem.id, data.id));
   });
 
 export function getContentTranslationQueryOptions(data: {
@@ -223,9 +241,17 @@ export const $getContentItemTranslation = createServerFn({
           eq(table.lang, lang),
           eq(table.status, status),
         ),
+      with: {
+        contentItem: {
+          columns: {
+            hideTOC: true,
+          },
+        },
+      },
       columns: {
         title: true,
         content: true,
+        lang: true,
       },
     });
 
@@ -235,12 +261,9 @@ export const $getContentItemTranslation = createServerFn({
       );
     }
 
-    // const { content, toc } = transformMarkdoc({
-    //   rawContent: translation?.content || "",
-    //   generateTOC: true,
-    // });
+    const { contentItem, ...rest } = translation;
 
-    return translation;
+    return { ...rest, hideTOC: translation.contentItem.hideTOC };
   });
 
 export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
@@ -252,22 +275,6 @@ export const $isExistingContentItemSplat = createServerFn({ method: "GET" })
     });
 
     return !!content;
-  });
-
-export const $validateContentId = createServerFn({ method: "GET" })
-  .inputValidator(z.string())
-  .handler(async ({ data }): Promise<boolean> => {
-    const contentId = data;
-
-    const reservedPathPrefixes = getNavConfig(i18n.defaultLocale).map(
-      (c) => c.id,
-    ) as string[];
-
-    const content = await db.query.contentItem.findFirst({
-      where: (content, { eq }) => eq(content.id, contentId),
-    });
-
-    return !content && !reservedPathPrefixes.includes(contentId.split("/")[0]);
   });
 
 export const $createContentItem = createServerFn({ method: "POST" })

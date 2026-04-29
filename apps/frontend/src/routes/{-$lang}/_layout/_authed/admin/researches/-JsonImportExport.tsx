@@ -65,7 +65,12 @@ export function JsonImportExport({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-2">
-        <Button type="button" variant="outline" size="slim" onClick={handleDownload}>
+        <Button
+          type="button"
+          variant="outline"
+          size="slim"
+          onClick={handleDownload}
+        >
           Download JSON
         </Button>
         <Button
@@ -84,9 +89,7 @@ export function JsonImportExport({
           onChange={handleFileChange}
         />
       </div>
-      {importError && (
-        <p className="text-danger text-xs">{importError}</p>
-      )}
+      {importError && <p className="text-danger text-xs">{importError}</p>}
     </div>
   );
 }

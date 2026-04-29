@@ -19,7 +19,7 @@ export default function SelectField({
 }: {
   label?: string;
   type?: "inline" | "col";
-  items?: string[];
+  items?: string[] | { label: React.ReactNode; value: string }[];
 }) {
   const field = useFieldContext<string>();
 
@@ -30,16 +30,21 @@ export default function SelectField({
         value={field.state.value ?? ""}
         onValueChange={(value) => field.handleChange(value)}
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-fit min-w-[180px]">
           <SelectValue placeholder={`Select ${label}`} />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            {items.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
-              </SelectItem>
-            ))}
+            {items?.map((item) => {
+              const isSimpleItem = typeof item === "string";
+              const label = isSimpleItem ? item : item.label;
+              const value = isSimpleItem ? item : item.value;
+              return (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              );
+            })}
           </SelectGroup>
         </SelectContent>
       </Select>

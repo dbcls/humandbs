@@ -1,3 +1,4 @@
+import type { DeepOmit } from "@/utils/typeUtils";
 import {
   type DatasetIdParams,
   type DatasetListingQuery,
@@ -54,6 +55,7 @@ async function request<T>(
   options: RequestInit & { params?: Record<string, unknown> } = {},
 ): Promise<T> {
   const { params, ...init } = options;
+
   const baseUrl = getBackendBaseUrl();
   const base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
   const url = new URL(path.replace(/^\//, ""), base);
@@ -86,6 +88,7 @@ async function request<T>(
     console.error(`API Error: ${method} ${path} - ${res.status}`, {
       status: res.status,
       data,
+      body: init?.body,
       url: path,
     });
     throw new APIError(res.status, method, path, data);
@@ -193,7 +196,7 @@ interface APIService {
   ): Promise<WorkflowResponse>;
   createDatasetForResearch(
     humId: string,
-    body: CreateDatasetForResearchRequest,
+    body: DeepOmit<CreateDatasetForResearchRequest, "rawHtml">,
     accessToken: string,
   ): Promise<DatasetCreateResponse>;
   updateDataset(
@@ -201,10 +204,7 @@ interface APIService {
     body: UpdateDatasetRequest,
     accessToken: string,
   ): Promise<DatasetUpdateResponse>;
-  deleteDataset(
-    datasetId: string,
-    accessToken: string,
-  ): Promise<void>;
+  deleteDataset(datasetId: string, accessToken: string): Promise<void>;
 }
 
 export const FixedPaginationSchema =
@@ -379,7 +379,11 @@ const api: APIService = {
 
 export { api };
 
-type StandardErrorCode = "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+type StandardErrorCode =
+  | "CONFLICT"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "UNAUTHORIZED";
 
 export function mapApiError<C extends string = never>(
   error: unknown,
@@ -391,10 +395,14 @@ export function mapApiError<C extends string = never>(
       (error.data as { detail?: string } | undefined)?.detail ?? fallback;
     const extra = extraMappings?.[error.status];
     if (extra !== undefined) return { ok: false, error: detail, code: extra };
-    if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
-    if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
-    if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
-    if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
+    if (error.status === 409)
+      return { ok: false, error: detail, code: "CONFLICT" };
+    if (error.status === 403)
+      return { ok: false, error: detail, code: "FORBIDDEN" };
+    if (error.status === 404)
+      return { ok: false, error: detail, code: "NOT_FOUND" };
+    if (error.status === 401)
+      return { ok: false, error: detail, code: "UNAUTHORIZED" };
   }
   throw error;
 }

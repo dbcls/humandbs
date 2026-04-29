@@ -41,7 +41,7 @@ function RouteComponent() {
         title={
           <div className="custom-prose">
             <h1>{title}</h1>
-            <span className="text-xs text-foreground-light">{publishedAt}</span>
+            <span className="text-foreground-light text-xs">{publishedAt}</span>
           </div>
         }
         markdownResult={contentHtml}

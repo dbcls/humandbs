@@ -2,6 +2,7 @@ import { useStore } from "@tanstack/react-form";
 import { useEffect } from "react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,12 +14,11 @@ import {
   entriesToExperimentData,
   type ExperimentItem,
 } from "./ExperimentsArrayField";
+import { useTranslations } from "use-intl";
+import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";
+import type { DeepOmit } from "@/utils/typeUtils";
 
-const CRITERIA_OPTIONS = [
-  "Controlled-access (Type I)",
-  "Controlled-access (Type II)",
-  "Unrestricted-access",
-] as const;
+const CRITERIA_OPTIONS = CriteriaCanonicalSchema.options;
 
 export type DatasetFormValues = {
   datasetId: string;
@@ -27,7 +27,7 @@ export type DatasetFormValues = {
   releaseDate: string;
   criteria: string;
   typeOfData: { ja: string | null; en: string | null };
-  experiments: ExperimentItem[];
+  experiments: DeepOmit<ExperimentItem[], "rawHtml">;
 };
 
 export function datasetToFormValues(
@@ -98,7 +98,7 @@ export function datasetFormValuesToPreviewDataset(
   | "humId"
 > {
   return {
-    criteria: values.criteria,
+    criteria: values.criteria as DatasetDoc["criteria"],
     datasetId: values.datasetId || options?.datasetId || "",
     releaseDate: values.releaseDate,
     typeOfData: {
@@ -156,26 +156,31 @@ export function DatasetForm({
     defaultValues,
     onSubmit: async ({ value, formApi }) => {
       await onSubmit(value);
+      formApi.options.defaultValues = value;
       formApi.reset(value);
     },
   });
 
+  const t = useTranslations("Dataset");
+
   const values = useStore(form.store, (state) => state.values);
-  const isDirty = useStore(form.store, (state) => state.isDirty);
+  const isModified = useStore(
+    form.store,
+    (state) => !deepEqual(state.values, defaultValues),
+  );
 
   // Notify parent when dirty state changes
   useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+    onDirtyChange?.(isModified);
+  }, [isModified, onDirtyChange]);
 
   useEffect(() => {
     onValuesChange?.(values);
   }, [onValuesChange, values]);
 
-  const isExperimentsModified = useStore(form.store, (state) =>
-    Object.entries(state.fieldMeta).some(
-      ([key, meta]) => key.startsWith("experiments") && meta.isDirty,
-    ),
+  const isExperimentsModified = useStore(
+    form.store,
+    (state) => !deepEqual(state.values.experiments, defaultValues.experiments),
   );
 
   return (
@@ -188,7 +193,7 @@ export function DatasetForm({
       className="flex flex-col gap-5"
     >
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-danger">
+        <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
           {error}
         </div>
       )}
@@ -214,7 +219,9 @@ export function DatasetForm({
         {/* Read-only fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs text-gray-500">Research Version</Label>
+            <Label className="text-xs text-gray-500">
+              {t("research-version")}
+            </Label>
             <span className="font-mono text-sm">
               {defaultValues.humVersionId || "—"}
             </span>
@@ -232,29 +239,32 @@ export function DatasetForm({
 
         {/* Release Date */}
         <form.AppField name="releaseDate">
-          {(field) => <field.DateField label="Release Date" />}
+          {(field) => <field.DateField label={t("releaseDate")} />}
         </form.AppField>
 
         {/* Criteria */}
         <form.AppField name="criteria">
           {(field) => (
             <field.SelectField
-              label="Criteria"
+              label={t("criteria")}
               type="col"
-              items={[...CRITERIA_OPTIONS]}
+              items={CRITERIA_OPTIONS.map((option) => ({
+                label: t(option),
+                value: option,
+              }))}
             />
           )}
         </form.AppField>
 
         {/* Type of Data */}
         <form.AppField name="typeOfData">
-          {(field) => <field.BilingualTextField label="Type of Data" />}
+          {(field) => <field.BilingualTextField label={t("typeOfData")} />}
         </form.AppField>
 
         {/* Experiments */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <Label>Experiments</Label>
+            <Label>{t("experiments")}</Label>
             <ModifiedTag isModified={isExperimentsModified} />
           </div>
           <ExperimentsArrayField

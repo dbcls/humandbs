@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Link } from "./Link";
+import { asLinkProps } from "@/config/site-navigation";
 import type { ResolvedSiteNavigation } from "@/config/site-navigation";
 
 export function MobileNav() {
@@ -50,7 +51,7 @@ export function MobileNav() {
                           <Link
                             key={child.id}
                             variant="nav"
-                            {...child.linkOptions}
+                            {...asLinkProps(child.linkOptions)}
                             onClick={() => setOpen(false)}
                             className="block py-2 text-sm"
                           >
@@ -67,7 +68,7 @@ export function MobileNav() {
                 <div key={item.id} className="border-b py-3 last:border-b-0">
                   <Link
                     variant="nav"
-                    {...item.linkOptions}
+                    {...asLinkProps(item.linkOptions)}
                     onClick={() => setOpen(false)}
                     className="block text-base font-medium"
                   >

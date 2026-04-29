@@ -31,7 +31,7 @@ async function basicExample() {
     // Extract attachments from all pages (using concurrency of 2 for this example)
     const attachments = await processAttachmentsConcurrently(
       pages,
-      2 // Lower concurrency for example
+      2, // Lower concurrency for example
     );
 
     // Display summary
@@ -62,17 +62,17 @@ async function filterExample() {
 
     // Filter PDF files only
     const pdfFiles = allAttachments.filter((attachment) =>
-      attachment.filename.toLowerCase().endsWith(".pdf")
+      attachment.filename.toLowerCase().endsWith(".pdf"),
     );
 
     // Filter Excel files
     const excelFiles = allAttachments.filter((attachment) =>
-      attachment.filename.toLowerCase().match(/\.(xlsx?|xls)$/i)
+      attachment.filename.toLowerCase().match(/\.(xlsx?|xls)$/i),
     );
 
     // Filter images
     const images = allAttachments.filter(
-      (attachment) => attachment.type === "image"
+      (attachment) => attachment.type === "image",
     );
 
     console.log(`📊 Filtered Results:`);
@@ -112,10 +112,10 @@ async function languageAnalysis() {
 
     // Group by language
     const englishAttachments = allAttachments.filter(
-      (a) => a.language === "en"
+      (a) => a.language === "en",
     );
     const japaneseAttachments = allAttachments.filter(
-      (a) => a.language === "ja"
+      (a) => a.language === "ja",
     );
 
     console.log(`📊 Language Distribution:`);
@@ -128,10 +128,10 @@ async function languageAnalysis() {
 
     const sharedFiles = [...englishUrls].filter((url) => japaneseUrls.has(url));
     const englishOnlyFiles = [...englishUrls].filter(
-      (url) => !japaneseUrls.has(url)
+      (url) => !japaneseUrls.has(url),
     );
     const japaneseOnlyFiles = [...japaneseUrls].filter(
-      (url) => !englishUrls.has(url)
+      (url) => !englishUrls.has(url),
     );
 
     console.log(`\n📋 File Sharing Analysis:`);
@@ -255,10 +255,10 @@ async function summaryReport() {
     console.log(`  Total Attachments: ${report.totalAttachments}`);
     console.log(`  Unique Files: ${report.uniqueAttachments}`);
     console.log(
-      `  Files: ${report.byType.files}, Images: ${report.byType.images}`
+      `  Files: ${report.byType.files}, Images: ${report.byType.images}`,
     );
     console.log(
-      `  English: ${report.byLanguage.english}, Japanese: ${report.byLanguage.japanese}`
+      `  English: ${report.byLanguage.english}, Japanese: ${report.byLanguage.japanese}`,
     );
 
     console.log("\n📄 Full report saved to: attachment-summary-report.json");
@@ -275,7 +275,7 @@ async function main() {
   console.log("🚀 Attachment Aggregation Examples");
   console.log("=".repeat(80));
   console.log(
-    "This script demonstrates various ways to use attachment aggregation.\n"
+    "This script demonstrates various ways to use attachment aggregation.\n",
   );
 
   // You can run individual examples or all of them

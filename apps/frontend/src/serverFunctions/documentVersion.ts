@@ -3,20 +3,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { type Locale } from "use-intl";
 import { z } from "zod";
 
-import { type ContentId } from "@/config/content-config";
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import { type DocVersionStatus } from "@/db/schema";
 import {
   documentSelectSchema,
-  documentVersionSelectSchema,
   type DocumentVersionStatus,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
   createDocumentVersionRepository,
   type DocVersionListItemResponseRaw,
-  type DocVersionResponseRaw,
+  type DocAnyVersionResponseRaw,
 } from "@/repositories/documentVersion";
 import { $getContentItemTranslation } from "./contentItem";
 
@@ -127,9 +125,9 @@ export interface DocVersionResponse {
   >;
 }
 
-const docVersionRequestSchema = documentVersionSelectSchema.pick({
-  contentId: true,
-  versionNumber: true,
+const docVersionRequestSchema = z.object({
+  contentId: z.string(),
+  versionNumber: z.number().int(),
 });
 
 export const $getDocumentVersion = createServerFn({
@@ -175,7 +173,7 @@ export const getDocumentVersionQueryOptions = ({
  * @returns grouped result
  */
 export function groupDocVersion(
-  rawVersion: DocVersionResponseRaw[],
+  rawVersion: DocAnyVersionResponseRaw[],
 ): DocVersionResponse {
   if (rawVersion.length === 0) {
     return {
@@ -342,9 +340,9 @@ export const $createDocumentVersion = createServerFn({
 
 // === GET LATEST DOCUMENT VERSION
 
-const docPublishedVersionsRequestSchema = documentVersionSelectSchema.pick({
-  contentId: true,
-  locale: true,
+const docPublishedVersionsRequestSchema = z.object({
+  contentId: z.string(),
+  locale: localeSchema,
 });
 
 export const $getLatestDocumentOrContent = createServerFn()
@@ -426,6 +424,34 @@ export const $getPublishedDocumentVersionList = createServerFn({
     );
 
     return versions;
+  });
+
+// === GET BREADCRUMBS FOR A DOCUMENT PATH
+
+/**
+ * Resolves a crumb label for each prefix segment of a multi-segment contentId.
+ * e.g. "guidelines/data-sharing-guidelines" →
+ *   [{ label: "Guidelines", href: "/guidelines" },
+ *    { label: "Data Sharing Guidelines", href: "/guidelines/data-sharing-guidelines" }]
+ */
+export const $getDocumentBreadcrumbs = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ contentId: z.string(), locale: localeSchema }))
+  .handler(async ({ data }) => {
+    const { contentId, locale } = data;
+    const segments = contentId.split("/");
+
+    const crumbs = await Promise.all(
+      segments.map(async (_, i) => {
+        const path = segments.slice(0, i + 1).join("/");
+        const doc = await documentVersionRepo.getLatestPublishedForLocale(
+          path,
+          locale,
+        );
+        return { label: doc?.title ?? path, href: `/${path}` };
+      }),
+    );
+
+    return crumbs;
   });
 
 export const getDocumentPublishedVersionsListQueryOptions = ({
