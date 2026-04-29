@@ -1,34 +1,24 @@
-import { useForm } from "@tanstack/react-form";
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
 import { z } from "zod";
 
-import { Input } from "@/components/Input";
+import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { localeSchema } from "@/config/i18n";
 import {
   $createContentItem,
   $deleteContentItem,
   getContentsListQueryOptions,
 } from "@/serverFunctions/contentItem";
+import { $validateEntityId } from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
-import { $validateEntityId } from "@/serverFunctions/validate";
 
 export function ContentList({
   selectedContentId,
@@ -44,31 +34,49 @@ export function ContentList({
 
   const { openConfirmation } = useConfirmationStore();
 
+  const { mutateAsync: createContent } = useMutation({
+    mutationFn: (id: string) => $createContentItem({ data: { id } }),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries(contentsListQO);
+      const prevContentItems = queryClient.getQueryData(contentsListQO.queryKey);
+      queryClient.setQueryData(contentsListQO.queryKey, (old) => {
+        if (!old) return [];
+        return [...old, { id, translations: [] }];
+      });
+      return { prevContentItems };
+    },
+    onError: (_, __, context) => {
+      if (context?.prevContentItems) {
+        queryClient.setQueryData(contentsListQO.queryKey, context.prevContentItems);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries(contentsListQO);
+    },
+  });
+
   const { mutate: deleteContent } = useMutation({
     mutationFn: (id: string) => $deleteContentItem({ data: { id } }),
     onMutate: async (id) => {
       await queryClient.cancelQueries(contentsListQO);
       const prevContentList = queryClient.getQueryData(contentsListQO.queryKey);
-
       queryClient.setQueryData(contentsListQO.queryKey, (oldData) => {
         if (!oldData) return [];
         return oldData.filter((content) => content.id !== id);
       });
-
       return { prevContentList };
     },
     onError: (_, __, context) => {
       if (context?.prevContentList) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context.prevContentList,
-        );
+        queryClient.setQueryData(contentsListQO.queryKey, context.prevContentList);
       }
     },
     onSettled: () => {
       queryClient.invalidateQueries(contentsListQO);
     },
   });
+
+  const validateContentId = useServerFn($validateEntityId);
 
   function handleClickDeleteContentItem(id: string) {
     openConfirmation({
@@ -84,7 +92,27 @@ export function ContentList({
 
   return (
     <>
-      <AddNewDialog />
+      <InputDialog
+        title="Add Content"
+        label="Content ID"
+        trigger={<AddNewButton className="mb-5" />}
+        submitSchema={z
+          .string()
+          .min(3)
+          .refine(
+            (val) => !localeSchema.safeParse(val.split("/")?.[0]).success,
+            {
+              message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
+            },
+          )}
+        validateAsync={async (val) => {
+          const exists = await validateContentId({ data: val });
+          if (exists) return "Content with this contentId already exists";
+          return undefined;
+        }}
+        transformValue={(val) => val.replace(/^\/+|\/+$/g, "")}
+        onSubmit={createContent}
+      />
 
       <ul className="overflow-y-auto">
         {contents.map((content) => {
@@ -105,143 +133,13 @@ export function ContentList({
                   lang: tr.lang,
                   statuses: tr.statuses,
                 }))}
-                onClickDelete={(e) => {
-                  e.stopPropagation();
-                  handleClickDeleteContentItem(content.id);
-                }}
+                onClickDelete={() => handleClickDeleteContentItem(content.id)}
+                hideRename={true}
               />
             </ListItem>
           );
         })}
       </ul>
     </>
-  );
-}
-
-function AddNewDialog() {
-  const [open, setOpen] = useState(false);
-
-  const queryClient = useQueryClient();
-  const contentsListQO = getContentsListQueryOptions();
-
-  const { mutateAsync: createContent } = useMutation({
-    mutationFn: (id: string) => $createContentItem({ data: { id } }),
-
-    onMutate: async (id) => {
-      await queryClient.cancelQueries(contentsListQO);
-
-      const prevContentItems = queryClient.getQueryData(
-        contentsListQO.queryKey,
-      );
-
-      queryClient.setQueryData(contentsListQO.queryKey, (old) => {
-        if (!old) return [];
-        return [...old, { id, translations: [] }];
-      });
-
-      return { prevContentItems };
-    },
-    onError: (_, __, context) => {
-      if (context?.prevContentItems) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context?.prevContentItems,
-        );
-      }
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries(contentsListQO);
-    },
-  });
-
-  const form = useForm({
-    defaultValues: {
-      contentId: "",
-    },
-
-    onSubmit: async ({ value }) => {
-      await createContent(value.contentId.trim().replace(/^\/+|\/+$/g, ""));
-      setOpen(false);
-    },
-  });
-
-  const validateContentId = useServerFn($validateEntityId);
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(open) => {
-        if (!open) form.reset();
-        setOpen(open);
-      }}
-    >
-      <DialogTrigger asChild>
-        <AddNewButton className="mb-5" />
-      </DialogTrigger>
-      <DialogContent>
-        <DialogTitle className="text-base">Add Content</DialogTitle>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            form.handleSubmit();
-          }}
-          className="flex flex-col gap-2"
-        >
-          <form.Field
-            name="contentId"
-            validators={{
-              onSubmit: z
-                .string()
-                .min(3)
-                .refine(
-                  (val) => !localeSchema.safeParse(val.split("/")?.[0]).success,
-                  {
-                    message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
-                  },
-                ),
-
-              onChangeAsyncDebounceMs: 500,
-              onChangeAsync: z
-                .string()
-                .refine((val) => validateContentId({ data: val }), {
-                  message: "Content with this contentId already exists",
-                }),
-            }}
-          >
-            {(field) => {
-              return (
-                <Label className="block space-y-2">
-                  <span>Content ID</span>
-                  <Input
-                    name={field.name}
-                    value={field.state.value}
-                    onChange={(e) => {
-                      field.handleChange(e.target.value.trim());
-                    }}
-                  />
-                  {!field.state.meta.isValid && (
-                    <em
-                      role="alert"
-                      className="text-danger space-y-1.5 text-xs"
-                    >
-                      {field.state.meta.errors.map((e) => (
-                        <p key={e?.message}>{e?.message}</p>
-                      ))}
-                    </em>
-                  )}
-                </Label>
-              );
-            }}
-          </form.Field>
-          <form.Subscribe selector={(state) => state.canSubmit}>
-            {(canSubmit) => (
-              <Button type="submit" className="self-end" disabled={!canSubmit}>
-                Submit
-              </Button>
-            )}
-          </form.Subscribe>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }

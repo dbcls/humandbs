@@ -6,7 +6,11 @@ import { z } from "zod";
 import { type ContentId } from "@/config/content-config";
 import { i18n } from "@/config/i18n";
 import { db } from "@/db/database";
-import { DOCUMENT_VERSION_STATUS, document } from "@/db/schema";
+import {
+  DOCUMENT_VERSION_STATUS,
+  document,
+  documentVersion,
+} from "@/db/schema";
 import { documentSelectSchema, insertDocumentSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import { createDocumentVersionRepository } from "@/repositories/documentVersion";
@@ -166,4 +170,41 @@ export const $deleteDocument = createServerFn({ method: "POST" })
       .returning();
 
     return doc;
+  });
+
+/**
+ * Change Id of document
+ *
+ */
+export const $changeIdOfDocument = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ oldId: z.string(), newId: z.string() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    const { oldId, newId } = data;
+
+    await db.transaction(async (tx) => {
+      // Copy document row under new PK
+      const [existing] = await tx
+        .select()
+        .from(document)
+        .where(eq(document.contentId, oldId));
+      if (!existing) throw new Error("Document not found");
+
+      await tx.insert(document).values({
+        contentId: newId,
+        createdAt: existing.createdAt,
+        hideTOC: existing.hideTOC ?? false,
+      });
+
+      // Re-point all version rows
+      await tx
+        .update(documentVersion)
+        .set({ contentId: newId })
+        .where(eq(documentVersion.contentId, oldId));
+
+      // Delete old document row (versions already re-pointed, no cascade needed)
+      await tx.delete(document).where(eq(document.contentId, oldId));
+    });
   });

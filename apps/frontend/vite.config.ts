@@ -1,15 +1,16 @@
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import svgr from "vite-plugin-svgr";
+import packageJson from "./package.json";
 
 export default defineConfig(async () => {
-  const ver = (await Bun.file("./package.json").json()).version;
+  console.log("ver", packageJson.version);
 
-  console.log("ver", ver);
   return {
     server: {
       port: 3000,
@@ -39,7 +40,7 @@ export default defineConfig(async () => {
       viteReact(),
     ],
     define: {
-      VITE_APP_VER: JSON.stringify(`v${ver}`),
+      VITE_APP_VER: JSON.stringify(`v${packageJson.version}`),
     },
   };
 });
