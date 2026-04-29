@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /**
  * One-time staging migration. Run once after deploying the new code.
+ * Run this only after `bun run db:migrate` has completed successfully.
  * Safe to run multiple times — each step detects and skips already-applied changes.
  *
  * Steps:
