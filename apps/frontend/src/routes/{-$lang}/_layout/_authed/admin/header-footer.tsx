@@ -43,7 +43,10 @@ import {
   type NavbarCommittedGroup,
 } from "@/config/site-navigation-admin";
 import { type Locale } from "@/config/i18n";
-import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
+import {
+  normalizeSiteNavigationConfig,
+  siteNavigationConfigSchema,
+} from "@/config/site-navigation.schema";
 import {
   $resetSiteNavigationConfig,
   $saveSiteNavigationConfig,
@@ -111,8 +114,10 @@ function getEditorItemLabel(
   lang: Locale,
   documentTitleByContentId: Map<string, string>,
 ): string {
-  if (item.type === "document" && item.contentId) {
-    return documentTitleByContentId.get(item.contentId) ?? item.contentId;
+  if (item.type === "document") {
+    // Prefer lookup by stable UUID so renames are reflected immediately
+    const key = item.documentId ?? item.contentId;
+    if (key) return documentTitleByContentId.get(key) ?? item.contentId ?? key;
   }
 
   if (item.label) {
@@ -120,6 +125,20 @@ function getEditorItemLabel(
   }
 
   return item.url ?? item.id;
+}
+
+function getEditorItemPath(
+  item: NavigationItem,
+  documentPathById: Map<string, string>,
+): string | undefined {
+  if (item.type === "document") {
+    if (item.documentId) {
+      return documentPathById.get(item.documentId) ?? item.contentId;
+    }
+    return item.contentId;
+  }
+
+  return item.url;
 }
 
 function NavigationItemLeadingIcon({ item }: { item: NavigationItem }) {
@@ -153,7 +172,7 @@ function RouteComponent() {
 
   useEffect(() => {
     if (!data || draft) return;
-    setDraft(data.config);
+    setDraft(normalizeSiteNavigationConfig(data.config));
     setRevision(data.revision);
   }, [data, draft]);
 
@@ -217,7 +236,10 @@ function RouteComponent() {
     );
   }
 
-  const isDirty = !deepEqual(draft, data.config);
+  const isDirty = !deepEqual(
+    normalizeSiteNavigationConfig(draft),
+    normalizeSiteNavigationConfig(data.config),
+  );
 
   async function refreshNavigation() {
     await queryClient.invalidateQueries({ queryKey: ["site-navigation"] });
@@ -228,19 +250,20 @@ function RouteComponent() {
     if (!draft) return;
     setMessage(null);
     setError(null);
-    const validation = siteNavigationConfigSchema.safeParse(draft);
+    const normalizedDraft = normalizeSiteNavigationConfig(draft);
+    const validation = siteNavigationConfigSchema.safeParse(normalizedDraft);
     if (!validation.success) {
       setError(
         validation.error.issues[0]?.message ?? "Navigation config is invalid.",
       );
       return;
     }
-    const result = await saveConfig(draft);
+    const result = await saveConfig(normalizedDraft);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setDraft(result.data.config);
+    setDraft(normalizeSiteNavigationConfig(result.data.config));
     setRevision(result.data.revision);
     setMessage("Navigation saved.");
     await refreshNavigation();
@@ -254,7 +277,7 @@ function RouteComponent() {
       setError(result.error);
       return;
     }
-    setDraft(result.data.config);
+    setDraft(normalizeSiteNavigationConfig(result.data.config));
     setRevision(result.data.revision);
     setMessage("Navigation reset to default.");
     await refreshNavigation();
@@ -262,7 +285,7 @@ function RouteComponent() {
 
   function handleResetToSaved() {
     if (!data) return;
-    setDraft(data.config);
+    setDraft(normalizeSiteNavigationConfig(data.config));
     setRevision(data.revision);
     setMessage(null);
     setError(null);
@@ -363,18 +386,42 @@ function RouteComponent() {
     }));
   }
 
-  function assignDocumentToNavbarGroup(contentId: string, groupId: string) {
+  function assignDocumentToNavbarGroup(
+    contentId: string,
+    groupId: string,
+    documentId?: string,
+  ) {
+    const resolvedDocumentId =
+      documentId ?? documents.find((d) => d.contentId === contentId)?.id;
     updateDraft((current) => {
       const existingItem = current.items.find(
-        (i) => i.type === "document" && i.contentId === contentId,
+        (i) =>
+          i.type === "document" &&
+          ((resolvedDocumentId && i.documentId === resolvedDocumentId) ||
+            i.contentId === contentId),
       );
       const itemId = existingItem?.id ?? crypto.randomUUID();
 
       const newItems = existingItem
-        ? current.items
+        ? current.items.map((item) =>
+            item.id === existingItem.id
+              ? {
+                  ...item,
+                  ...(resolvedDocumentId
+                    ? { documentId: resolvedDocumentId }
+                    : { contentId }),
+                }
+              : item,
+          )
         : [
             ...current.items,
-            { id: itemId, type: "document" as const, contentId },
+            {
+              id: itemId,
+              type: "document" as const,
+              ...(resolvedDocumentId
+                ? { documentId: resolvedDocumentId }
+                : { contentId }),
+            },
           ];
 
       // Remove from any navbar group
@@ -554,19 +601,43 @@ function RouteComponent() {
     }));
   }
 
-  function assignDocumentToGroup(contentId: string, groupId: string) {
+  function assignDocumentToGroup(
+    contentId: string,
+    groupId: string,
+    documentId?: string,
+  ) {
+    const resolvedDocumentId =
+      documentId ?? documents.find((d) => d.contentId === contentId)?.id;
     updateDraft((current) => {
       // Find existing NavigationItem for this document, or create one
       const existingItem = current.items.find(
-        (i) => i.type === "document" && i.contentId === contentId,
+        (i) =>
+          i.type === "document" &&
+          ((resolvedDocumentId && i.documentId === resolvedDocumentId) ||
+            i.contentId === contentId),
       );
       const itemId = existingItem?.id ?? crypto.randomUUID();
 
       let newItems = existingItem
-        ? current.items
+        ? current.items.map((item) =>
+            item.id === existingItem.id
+              ? {
+                  ...item,
+                  ...(resolvedDocumentId
+                    ? { documentId: resolvedDocumentId }
+                    : { contentId }),
+                }
+              : item,
+          )
         : [
             ...current.items,
-            { id: itemId, type: "document" as const, contentId },
+            {
+              id: itemId,
+              type: "document" as const,
+              ...(resolvedDocumentId
+                ? { documentId: resolvedDocumentId }
+                : { contentId }),
+            },
           ];
 
       // Remove from any group that currently has this item
@@ -974,19 +1045,29 @@ function NavbarPreview({
     ]),
   );
 
+  const documentPathById = new Map(
+    documents.map((doc) => [doc.id, doc.contentId] as const),
+  );
+
   const docItemMap = new Map<string, NavigationItem>(
     allItems
-      .filter((item) => item.type === "document" && item.contentId)
-      .map((item) => [item.contentId!, item]),
+      .filter((item) => item.type === "document")
+      .flatMap((item) => [
+        ...(item.documentId ? ([[item.documentId, item]] as const) : []),
+        ...(item.contentId ? ([[item.contentId, item]] as const) : []),
+      ]),
   );
 
   const unassignedLinkItems = allItems.filter(
     (item) => item.type === "link" && !assignedItemIds.has(item.id),
   );
 
-  const documentTitleByContentId = new Map(
-    documents.map((doc) => [doc.contentId, getDocumentLabel(doc, lang)]),
-  );
+  const documentTitleByContentId = new Map([
+    ...documents.map(
+      (doc) => [doc.contentId, getDocumentLabel(doc, lang)] as const,
+    ),
+    ...documents.map((doc) => [doc.id, getDocumentLabel(doc, lang)] as const),
+  ]);
 
   function normalizeGroups(
     nextGroups: NavbarGroupWithItems[],
@@ -1182,13 +1263,17 @@ function NavbarPreview({
               return;
             }
 
-            const existingItem = docItemMap.get(String(src.data.contentId));
+            const existingItem =
+              docItemMap.get(String(src.data.documentId ?? "")) ??
+              docItemMap.get(String(src.data.contentId));
             const item =
               existingItem ??
               ({
                 id: crypto.randomUUID(),
                 type: "document",
-                contentId: String(src.data.contentId),
+                ...(src.data.documentId
+                  ? { documentId: String(src.data.documentId) }
+                  : { contentId: String(src.data.contentId) }),
               } satisfies NavigationItem);
 
             const nextGroups = snapshotRef.current.map((group) => {
@@ -1297,6 +1382,7 @@ function NavbarPreview({
                   key={g.group.id}
                   g={g}
                   groupIndex={groupIndex}
+                  documentPathById={documentPathById}
                   documentTitleByContentId={documentTitleByContentId}
                   isDragging={draggingGroupId === g.group.id}
                   lang={lang}
@@ -1317,12 +1403,14 @@ function NavbarPreview({
             <NavbarGroupOverlay
               g={draggingGroup}
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
             />
           ) : draggingItem ? (
             <NavbarItemOverlay
               item={draggingItem.item}
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
             />
           ) : draggingDocContentId ? (
@@ -1346,6 +1434,7 @@ function NavbarPreview({
                 )!
               }
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
             />
           ) : null}
@@ -1481,7 +1570,8 @@ function NavbarUnassignedPool({
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
           {documents.map((doc) => {
-            const navItem = docItemMap.get(doc.contentId);
+            const navItem =
+              docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
             const isAssigned = navItem
               ? assignedItemIds.has(navItem.id)
               : false;
@@ -1495,6 +1585,7 @@ function NavbarUnassignedPool({
                 lang={lang}
                 isAssigned={isAssigned}
                 groupName={groupName}
+                documentId={doc.id}
               />
             );
           })}
@@ -1529,18 +1620,24 @@ function NavbarPoolDocCard({
   lang,
   isAssigned,
   groupName,
+  documentId,
 }: {
   doc: DocumentsListItemResponse;
   lang: Locale;
   isAssigned: boolean;
   groupName: string | undefined;
+  documentId: string;
 }) {
   const { ref, isDragSource } = useSortable({
     id: "navbar-doc-" + doc.contentId,
     index: 0,
     type: NAVBAR_UNASSIGNED_DOC_TYPE,
     disabled: isAssigned,
-    data: { type: NAVBAR_UNASSIGNED_DOC_TYPE, contentId: doc.contentId },
+    data: {
+      type: NAVBAR_UNASSIGNED_DOC_TYPE,
+      contentId: doc.contentId,
+      documentId,
+    },
   });
 
   return (
@@ -1628,6 +1725,7 @@ function NavbarPoolLinkCard({
 function NavbarGroupColumn({
   g,
   groupIndex,
+  documentPathById,
   documentTitleByContentId,
   lang,
   isDragging,
@@ -1640,6 +1738,7 @@ function NavbarGroupColumn({
 }: {
   g: NavbarGroupWithItems;
   groupIndex: number;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
   lang: Locale;
   isDragging: boolean;
@@ -1850,6 +1949,7 @@ function NavbarGroupColumn({
             item={g.linkedItem.item}
             groupId={g.group.id}
             lang={lang}
+            documentPathById={documentPathById}
             documentTitleByContentId={documentTitleByContentId}
             onSave={(value) =>
               updateCurrentGroup((group) => ({
@@ -1923,6 +2023,7 @@ function NavbarGroupColumn({
               itemIndex={itemIndex}
               groupId={g.group.id}
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
               onSave={(value) =>
                 onCommit(
@@ -1996,6 +2097,7 @@ function NavbarLinkedItemRow({
   item,
   groupId,
   lang,
+  documentPathById,
   documentTitleByContentId,
   onSave,
   onRemove,
@@ -2003,6 +2105,7 @@ function NavbarLinkedItemRow({
   item: NavigationItem;
   groupId: string;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
   onSave: (value: { url: string; label: { en: string; ja: string } }) => void;
   onRemove: () => void;
@@ -2016,6 +2119,8 @@ function NavbarLinkedItemRow({
     data: { type: NAVBAR_ASSIGNED_ITEM_TYPE },
   });
 
+  const itemPath = getEditorItemPath(item, documentPathById);
+
   return (
     <li
       ref={ref as Ref<HTMLLIElement>}
@@ -2026,7 +2131,7 @@ function NavbarLinkedItemRow({
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-2xs font-mono leading-none text-gray-400">
-          {item.contentId ?? item.url}
+          {itemPath}
         </span>
         <div className="flex items-start gap-1">
           <button
@@ -2064,6 +2169,7 @@ function NavbarSubItemRow({
   itemIndex,
   groupId,
   lang,
+  documentPathById,
   documentTitleByContentId,
   onSave,
   onRemove,
@@ -2074,6 +2180,7 @@ function NavbarSubItemRow({
   itemIndex: number;
   groupId: string;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
   onSave: (value: { url: string; label: { en: string; ja: string } }) => void;
   onRemove: () => void;
@@ -2088,6 +2195,8 @@ function NavbarSubItemRow({
     data: { type: NAVBAR_ASSIGNED_ITEM_TYPE },
   });
 
+  const itemPath = getEditorItemPath(item, documentPathById);
+
   return (
     <li
       ref={ref as Ref<HTMLLIElement>}
@@ -2099,7 +2208,7 @@ function NavbarSubItemRow({
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-2xs font-mono leading-none text-gray-400">
-          {item.contentId ?? item.url}
+          {itemPath}
         </span>
         <div className="flex items-start gap-1">
           <button
@@ -2229,10 +2338,12 @@ function NavbarAddLinkForm({
 function NavbarGroupOverlay({
   g,
   lang,
+  documentPathById: _documentPathById,
   documentTitleByContentId,
 }: {
   g: NavbarGroupWithItems;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
   const groupLabel =
@@ -2304,17 +2415,21 @@ function NavbarGroupOverlay({
 function NavbarItemOverlay({
   item,
   lang,
+  documentPathById,
   documentTitleByContentId,
 }: {
   item: NavigationItem;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
+  const itemPath = getEditorItemPath(item, documentPathById);
+
   return (
     <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-2xs font-mono leading-none text-gray-400">
-          {item.contentId ?? item.url}
+          {itemPath}
         </span>
         <div className="flex items-start gap-1">
           <NavigationItemLeadingIcon item={item} />
@@ -2378,7 +2493,11 @@ function FooterPreview({
   onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
   onDeleteGroup: (groupId: string) => void;
   onAddGroup: (label: { en: string; ja: string }) => void;
-  onAssignDocument: (contentId: string, groupId: string) => void;
+  onAssignDocument: (
+    contentId: string,
+    groupId: string,
+    documentId?: string,
+  ) => void;
   onAddLinkToGroup: (
     groupId: string,
     url: string,
@@ -2432,20 +2551,29 @@ function FooterPreview({
     groups.flatMap((g) => g.items.map((i) => i.item.id)),
   );
 
-  // For each document, find its NavigationItem if it exists
+  const documentPathById = new Map(
+    documents.map((doc) => [doc.id, doc.contentId] as const),
+  );
+
   const docItemMap = new Map<string, NavigationItem>(
     allItems
-      .filter((i) => i.type === "document" && i.contentId)
-      .map((i) => [i.contentId!, i]),
+      .filter((i) => i.type === "document")
+      .flatMap((item) => [
+        ...(item.documentId ? ([[item.documentId, item]] as const) : []),
+        ...(item.contentId ? ([[item.contentId, item]] as const) : []),
+      ]),
   );
 
   // Unassigned link items: type === "link" and not currently in any group
   const unassignedLinkItems = allItems.filter(
     (i) => i.type === "link" && !assignedItemIds.has(i.id),
   );
-  const documentTitleByContentId = new Map(
-    documents.map((doc) => [doc.contentId, getDocumentLabel(doc, lang)]),
-  );
+  const documentTitleByContentId = new Map([
+    ...documents.map(
+      (doc) => [doc.contentId, getDocumentLabel(doc, lang)] as const,
+    ),
+    ...documents.map((doc) => [doc.id, getDocumentLabel(doc, lang)] as const),
+  ]);
 
   function buildItemsRecord(gs: FooterGroupWithItems[]): ItemsRecord {
     const record: ItemsRecord = {
@@ -2557,7 +2685,11 @@ function FooterPreview({
               const groupId = parseFooterGroupItemsId(destId);
               // Only commit if it's a real group id
               if (groupId) {
-                onAssignDocument(contentId, groupId);
+                onAssignDocument(
+                  contentId,
+                  groupId,
+                  src.data.documentId ? String(src.data.documentId) : undefined,
+                );
               }
             }
             setGroups(snapshotRef.current);
@@ -2638,6 +2770,7 @@ function FooterPreview({
                   key={g.group.id}
                   g={g}
                   groupIndex={groupIndex}
+                  documentPathById={documentPathById}
                   documentTitleByContentId={documentTitleByContentId}
                   isDragging={draggingGroupId === g.group.id}
                   onToggleGroupEnabled={onToggleGroupEnabled}
@@ -2659,12 +2792,14 @@ function FooterPreview({
             <FooterGroupOverlay
               g={draggingGroup}
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
             />
           ) : draggingItem ? (
             <FooterItemOverlay
               item={draggingItem.item}
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
             />
           ) : draggingLinkItemId ? (
@@ -2675,6 +2810,7 @@ function FooterPreview({
                 )!
               }
               lang={lang}
+              documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
             />
           ) : draggingDocContentId ? (
@@ -2846,7 +2982,8 @@ function FooterUnassignedPool({
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
           {documents.map((doc) => {
-            const navItem = docItemMap.get(doc.contentId);
+            const navItem =
+              docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
             const isAssigned = navItem
               ? assignedItemIds.has(navItem.id)
               : false;
@@ -2860,6 +2997,7 @@ function FooterUnassignedPool({
                 lang={lang}
                 isAssigned={isAssigned}
                 groupName={groupName}
+                documentId={doc.id}
               />
             );
           })}
@@ -2974,18 +3112,24 @@ function FooterPoolDocCard({
   lang,
   isAssigned,
   groupName,
+  documentId,
 }: {
   doc: DocumentsListItemResponse;
   lang: Locale;
   isAssigned: boolean;
   groupName: string | undefined;
+  documentId: string;
 }) {
   const { ref, isDragSource } = useSortable({
     id: "pool-doc-" + doc.contentId,
     index: 0,
     type: FOOTER_UNASSIGNED_DOC_TYPE,
     disabled: isAssigned,
-    data: { type: FOOTER_UNASSIGNED_DOC_TYPE, contentId: doc.contentId },
+    data: {
+      type: FOOTER_UNASSIGNED_DOC_TYPE,
+      contentId: doc.contentId,
+      documentId,
+    },
   });
 
   const label = getDocumentLabel(doc, lang);
@@ -3198,6 +3342,7 @@ function EditableLinkLabel({
 function FooterGroupColumn({
   g,
   groupIndex,
+  documentPathById,
   documentTitleByContentId,
   lang,
   isDragging,
@@ -3211,6 +3356,7 @@ function FooterGroupColumn({
 }: {
   g: FooterGroupWithItems;
   groupIndex: number;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
   lang: Locale;
   isDragging: boolean;
@@ -3329,6 +3475,7 @@ function FooterGroupColumn({
             itemIndex={itemIndex}
             groupId={g.group.id}
             lang={lang}
+            documentPathById={documentPathById}
             documentTitleByContentId={documentTitleByContentId}
             onUpdateLinkLabel={onUpdateLinkLabel}
             onRemoveItem={onRemoveItem}
@@ -3427,6 +3574,7 @@ function FooterItemRow({
   itemIndex,
   groupId,
   lang,
+  documentPathById,
   documentTitleByContentId,
   onUpdateLinkLabel,
   onRemoveItem,
@@ -3437,6 +3585,7 @@ function FooterItemRow({
   itemIndex: number;
   groupId: string;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
   onUpdateLinkLabel: (
     itemId: string,
@@ -3454,6 +3603,8 @@ function FooterItemRow({
     data: { type: FOOTER_ITEM_TYPE },
   });
 
+  const itemPath = getEditorItemPath(item, documentPathById);
+
   return (
     <li
       ref={ref as Ref<HTMLLIElement>}
@@ -3465,7 +3616,7 @@ function FooterItemRow({
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-2xs font-mono leading-none text-gray-400">
-          {item.contentId ?? item.url}
+          {itemPath}
         </span>
         <div className="flex items-start gap-1">
           <button
@@ -3509,10 +3660,12 @@ function FooterItemRow({
 function FooterGroupOverlay({
   g,
   lang,
+  documentPathById: _documentPathById,
   documentTitleByContentId,
 }: {
   g: FooterGroupWithItems;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
   const groupLabel =
@@ -3556,18 +3709,29 @@ function FooterGroupOverlay({
 function FooterItemOverlay({
   item,
   lang,
+  documentPathById,
   documentTitleByContentId,
 }: {
   item: NavigationItem;
   lang: Locale;
+  documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
+  const itemPath = getEditorItemPath(item, documentPathById);
+
   return (
     <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
-      <NavigationItemLeadingIcon item={item} />
-      <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
-        {getEditorItemLabel(item, lang, documentTitleByContentId)}
-      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-2xs font-mono leading-none text-gray-400">
+          {itemPath}
+        </span>
+        <div className="flex items-start gap-1">
+          <NavigationItemLeadingIcon item={item} />
+          <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
+            {getEditorItemLabel(item, lang, documentTitleByContentId)}
+          </span>
+        </div>
+      </div>
     </li>
   );
 }

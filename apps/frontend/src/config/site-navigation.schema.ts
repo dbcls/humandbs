@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import type { SiteNavigationConfig } from "@/config/site-navigation";
+import type {
+  NavigationItem,
+  SiteNavigationConfig,
+} from "@/config/site-navigation";
 
 const localizedLabelValueSchema = z.string().trim().min(1);
 const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);
@@ -27,20 +30,77 @@ const navigationZoneSchema = z.object({
 const navigationItemSchema = z.object({
   id: z.string().uuid(),
   type: z.enum(["document", "link"]),
+  documentId: z.string().uuid().optional(),
   contentId: z.string().optional(),
   url: z.string().optional(),
   label: multilingualLabelSchema.optional(),
 });
 
-export const siteNavigationConfigSchema = z
-  .object({
-    items: z.array(navigationItemSchema),
-    zones: z.object({
-      footer: navigationZoneSchema,
-      navbar: navigationZoneSchema,
-    }),
-  })
-  .superRefine((config, ctx) => {
+const siteNavigationConfigBaseSchema = z.object({
+  items: z.array(navigationItemSchema),
+  zones: z.object({
+    footer: navigationZoneSchema,
+    navbar: navigationZoneSchema,
+  }),
+});
+
+function stripDocumentContentId(item: NavigationItem): NavigationItem {
+  if (item.type !== "document" || !item.documentId) return item;
+  const { contentId: _contentId, ...rest } = item;
+  return rest;
+}
+
+export function normalizeSiteNavigationConfig(
+  config: SiteNavigationConfig,
+): SiteNavigationConfig {
+  const itemIdMap = new Map<string, string>();
+  const normalizedItems = new Map<string, NavigationItem>();
+
+  for (const item of config.items) {
+    if (item.type === "document" && item.documentId) {
+      const canonicalId = item.documentId;
+      itemIdMap.set(item.id, canonicalId);
+      normalizedItems.set(
+        canonicalId,
+        stripDocumentContentId({
+          ...normalizedItems.get(canonicalId),
+          ...item,
+          id: canonicalId,
+        }),
+      );
+      continue;
+    }
+
+    normalizedItems.set(item.id, item);
+  }
+
+  const rewriteGroupRefs = (
+    groups: SiteNavigationConfig["zones"]["footer"]["groups"],
+  ) =>
+    groups.map((group) => ({
+      ...group,
+      items: group.items.map((ref) => ({
+        ...ref,
+        id: itemIdMap.get(ref.id) ?? ref.id,
+      })),
+    }));
+
+  return {
+    ...config,
+    items: [...normalizedItems.values()],
+    zones: {
+      footer: {
+        groups: rewriteGroupRefs(config.zones.footer.groups),
+      },
+      navbar: {
+        groups: rewriteGroupRefs(config.zones.navbar.groups),
+      },
+    },
+  };
+}
+
+export const siteNavigationConfigSchema =
+  siteNavigationConfigBaseSchema.superRefine((config, ctx) => {
     const itemIds = new Set(config.items.map((item) => item.id));
 
     // Item IDs must be unique
@@ -51,12 +111,12 @@ export const siteNavigationConfigSchema = z
       });
     }
 
-    // Document items must have contentId; link items must have url and label
+    // Document items must have documentId; link items must have url and label
     for (const item of config.items) {
-      if (item.type === "document" && !item.contentId) {
+      if (item.type === "document" && !item.documentId && !item.contentId) {
         ctx.addIssue({
           code: "custom",
-          message: `Document item "${item.id}" must have a contentId.`,
+          message: `Document item "${item.id}" must have a documentId.`,
         });
       }
       if (item.type === "link" && !item.url) {
@@ -158,7 +218,7 @@ export const siteNavigationConfigSchema = z
       }
     }
 
-    // Home item must be visible somewhere
+    // Home item must be visible somewhere ("home" is a reserved path that never changes)
     const homeItem = config.items.find(
       (item) => item.type === "document" && item.contentId === "home",
     );
@@ -187,5 +247,10 @@ export type SiteNavigationConfigOutput = z.output<
 >;
 
 export function parseSiteNavigationConfig(data: unknown): SiteNavigationConfig {
-  return siteNavigationConfigSchema.parse(data) as SiteNavigationConfig;
+  const config = siteNavigationConfigBaseSchema.parse(
+    data,
+  ) as SiteNavigationConfig;
+  return siteNavigationConfigSchema.parse(
+    normalizeSiteNavigationConfig(config),
+  ) as SiteNavigationConfig;
 }

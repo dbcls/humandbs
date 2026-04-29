@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
 import { i18n, type Locale } from "@/config/i18n";
-import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import * as schema from "@/db/schema";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
 import { buildDatabaseUrl } from "./utils";
@@ -205,49 +204,6 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
   return documents;
 }
 
-const NAV_CONFIG_ID = "global";
-
-async function seedNavigation(
-  db: ReturnType<typeof drizzle<typeof schema>>,
-  overwrite = false,
-): Promise<void> {
-  console.log("\nSeeding navigation config...");
-
-  const config = getDefaultSiteNavigationConfig();
-
-  const [existing] = await db
-    .select({ id: schema.siteNavigationConfig.id })
-    .from(schema.siteNavigationConfig)
-    .where(eq(schema.siteNavigationConfig.id, NAV_CONFIG_ID))
-    .limit(1)
-    .execute();
-
-  if (existing && !overwrite) {
-    console.log(
-      "Navigation config already exists, skipping (use --overwrite to replace).",
-    );
-    return;
-  }
-
-  await db
-    .insert(schema.siteNavigationConfig)
-    .values({
-      id: NAV_CONFIG_ID,
-      config,
-      revision: 1,
-    })
-    .onConflictDoUpdate({
-      target: schema.siteNavigationConfig.id,
-      set: {
-        config,
-        updatedAt: new Date(),
-      },
-    })
-    .execute();
-
-  console.log(`Navigation config seeded (id: "${NAV_CONFIG_ID}").`);
-}
-
 async function seedDocuments(overwrite = false) {
   console.log("Starting document seed...");
 
@@ -258,8 +214,6 @@ async function seedDocuments(overwrite = false) {
     console.log("Loading documents from disk...");
     const documents = await loadDocuments();
     console.log(`Found ${documents.size} document(s) to seed`);
-
-    await seedNavigation(db, overwrite);
 
     if (documents.size === 0) {
       console.log("No documents to seed.");
@@ -282,19 +236,30 @@ async function seedDocuments(overwrite = false) {
         .limit(1)
         .execute();
 
+      let docUuid: string;
       if (!existingDocument) {
-        await db
+        const [inserted] = await db
           .insert(schema.document)
           .values({ contentId: documentId })
+          .returning({ id: schema.document.id })
           .execute();
+        docUuid = inserted.id;
         console.log(`Created document: ${documentId}`);
+      } else {
+        const [found] = await db
+          .select({ id: schema.document.id })
+          .from(schema.document)
+          .where(eq(schema.document.contentId, documentId))
+          .limit(1)
+          .execute();
+        docUuid = found.id;
       }
 
       // Find the latest version number for this document
       const existingVersions = await db
         .select({ versionNumber: schema.documentVersion.versionNumber })
         .from(schema.documentVersion)
-        .where(eq(schema.documentVersion.contentId, documentId))
+        .where(eq(schema.documentVersion.documentId, docUuid))
         .execute();
 
       const maxVersion =
@@ -310,7 +275,7 @@ async function seedDocuments(overwrite = false) {
         const { title, content: contentWithoutTitle } = extractTitle(content);
 
         const values = {
-          contentId: documentId,
+          documentId: docUuid,
           versionNumber,
           locale,
           status: DOCUMENT_VERSION_STATUS.PUBLISHED,
@@ -325,7 +290,7 @@ async function seedDocuments(overwrite = false) {
           await query
             .onConflictDoUpdate({
               target: [
-                schema.documentVersion.contentId,
+                schema.documentVersion.documentId,
                 schema.documentVersion.versionNumber,
                 schema.documentVersion.locale,
                 schema.documentVersion.status,

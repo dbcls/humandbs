@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 
 import DBCLSLogo from "@/assets/DBCLS_Logo.png";
 import { Link } from "@/components/Link";
+import { asLinkProps } from "@/config/site-navigation";
 
 export function Footer() {
   const { siteNavigation } = useRouteContext({ from: "/{-$lang}/_layout" });
@@ -20,7 +21,7 @@ export function Footer() {
                 {group.items.map((item) => (
                   <li key={item.id} className="min-w-0">
                     <Link
-                      {...item.linkOptions}
+                      {...asLinkProps(item.linkOptions)}
                       className="hover:text-secondary-light text-xs break-words no-underline"
                     >
                       {item.label}

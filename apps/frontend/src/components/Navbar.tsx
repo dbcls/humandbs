@@ -23,6 +23,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { asLinkProps } from "@/config/site-navigation";
 import type {
   ResolvedNavbarItem,
   ResolvedSiteNavigation,
@@ -176,7 +177,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             <Link
               variant="nav"
               className="whitespace-nowrap"
-              {...item.linkOptions}
+              {...asLinkProps(item.linkOptions)}
             >
               {item.label}
             </Link>
@@ -186,7 +187,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
               {item.children.map((child) => (
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
-                    <Link variant="nav" {...child.linkOptions}>
+                    <Link variant="nav" {...asLinkProps(child.linkOptions)}>
                       {child.label}
                     </Link>
                   </NavigationMenuLink>
@@ -200,7 +201,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
           <Link
             variant="nav"
             className="whitespace-nowrap"
-            {...item.linkOptions}
+            {...asLinkProps(item.linkOptions)}
           >
             {item.label}
           </Link>
@@ -269,7 +270,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
       <NavigationMenuLink asChild>
         <Link
           variant="nav"
-          {...item.linkOptions}
+          {...asLinkProps(item.linkOptions)}
           className="w-full rounded-sm px-2 py-2"
         >
           {item.label}
@@ -282,7 +283,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
               <NavigationMenuLink asChild>
                 <Link
                   variant="nav"
-                  {...child.linkOptions}
+                  {...asLinkProps(child.linkOptions)}
                   className="w-full rounded-sm px-2 py-2 text-sm"
                 >
                   {child.label}

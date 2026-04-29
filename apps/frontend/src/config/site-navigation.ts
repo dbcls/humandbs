@@ -1,5 +1,3 @@
-import { type LinkOptions } from "@tanstack/react-router";
-
 import { deriveNavbarCommittedGroups } from "@/config/site-navigation-admin";
 import { type Locale } from "@/config/i18n";
 
@@ -19,7 +17,9 @@ export type NavigationItemType = "document" | "link";
 export interface NavigationItem {
   id: string; // UUID
   type: NavigationItemType;
-  // For type === "document": the contentId from the document table
+  // For type === "document": stable UUID from document.id — never changes on rename
+  documentId?: string;
+  // For type === "document": denormalized path — kept for the default config and fallback
   contentId?: string;
   // For type === "link": the internal URL path
   url?: string;
@@ -60,15 +60,24 @@ export interface SiteNavigationConfig {
 // Resolved output types (used by Navbar, Footer, MobileNav components)
 // ---------------------------------------------------------------------------
 
+/** Serializable subset of LinkOptions — safe to pass through server functions. */
+export interface ResolvedLinkOptions {
+  to: string;
+  params?: Record<string, string>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const asLinkProps = (opts: ResolvedLinkOptions): any => opts;
+
 export interface ResolvedNavbarItem {
   id: string;
   label: string;
-  linkOptions: LinkOptions;
+  linkOptions: ResolvedLinkOptions;
   priority: NavPriority;
   children?: Array<{
     id: string;
     label: string;
-    linkOptions: LinkOptions;
+    linkOptions: ResolvedLinkOptions;
   }>;
 }
 
@@ -78,7 +87,7 @@ export interface ResolvedFooterGroup {
   items: Array<{
     id: string;
     label: string;
-    linkOptions: LinkOptions;
+    linkOptions: ResolvedLinkOptions;
   }>;
 }
 
@@ -92,7 +101,7 @@ export interface ResolvedSiteNavigation {
 // ---------------------------------------------------------------------------
 
 interface NavigationItemRegistry {
-  getLinkOptions: (lang: Locale) => LinkOptions;
+  getLinkOptions: (lang: Locale) => ResolvedLinkOptions;
   defaultLabel: Record<string, string>; // fallback labels
 }
 
@@ -553,6 +562,12 @@ export function getDefaultSiteNavigationConfig(): SiteNavigationConfig {
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolves a document UUID to its current contentId (URL path).
+ * Returns undefined if the document is not found.
+ */
+export type DocumentPathResolver = (documentId: string) => string | undefined;
+
+/**
  * Optional resolver for document-backed item labels.
  * The server function passes in published document titles from the DB;
  * without it, the registry default labels are used as fallback.
@@ -566,10 +581,21 @@ export function buildSiteNavigation(
   lang: Locale,
   config: SiteNavigationConfig,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedSiteNavigation {
   return {
-    navbar: buildNavbarItems(lang, config, resolveDocumentLabel),
-    footer: buildFooterGroups(lang, config, resolveDocumentLabel),
+    navbar: buildNavbarItems(
+      lang,
+      config,
+      resolveDocumentLabel,
+      resolveDocumentPath,
+    ),
+    footer: buildFooterGroups(
+      lang,
+      config,
+      resolveDocumentLabel,
+      resolveDocumentPath,
+    ),
   };
 }
 
@@ -581,30 +607,42 @@ export function getFooterSitemapGroups(lang: Locale): ResolvedFooterGroup[] {
   return buildFooterGroups(lang, getDefaultSiteNavigationConfig());
 }
 
+function resolveItemContentId(
+  item: NavigationItem,
+  resolveDocumentPath?: DocumentPathResolver,
+): string | undefined {
+  if (item.type !== "document") return undefined;
+  // Live DB path takes priority (reflects renames)
+  if (item.documentId && resolveDocumentPath) {
+    const resolved = resolveDocumentPath(item.documentId);
+    if (resolved) return resolved;
+  }
+  // Fall back to the stored contentId (default config, or items without documentId yet)
+  return item.contentId;
+}
+
 function resolveItemLabel(
   item: NavigationItem,
   lang: Locale,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): string {
   // Explicit label override on the item takes priority
   if (item.label) {
-    return (
-      item.label[lang] ??
-      item.label["en"] ??
-      item.contentId ??
-      item.url ??
-      item.id
-    );
+    return item.label[lang] ?? item.label["en"] ?? item.url ?? item.id;
   }
   // Document items: try DB-resolved title first, then registry default
-  if (item.type === "document" && item.contentId) {
-    const dbLabel = resolveDocumentLabel?.(item.contentId, lang);
-    if (dbLabel) return dbLabel;
-    const reg = navigationRegistry.get(item.contentId);
-    if (reg) {
-      return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? item.contentId;
+  if (item.type === "document") {
+    const contentId = resolveItemContentId(item, resolveDocumentPath);
+    if (contentId) {
+      const dbLabel = resolveDocumentLabel?.(contentId, lang);
+      if (dbLabel) return dbLabel;
+      const reg = navigationRegistry.get(contentId);
+      if (reg) {
+        return reg.defaultLabel[lang] ?? reg.defaultLabel["en"] ?? contentId;
+      }
+      return contentId;
     }
-    return item.contentId;
   }
   return item.url ?? item.id;
 }
@@ -612,21 +650,26 @@ function resolveItemLabel(
 function resolveItemLinkOptions(
   item: NavigationItem,
   lang: Locale,
-): LinkOptions {
-  if (item.type === "document" && item.contentId) {
-    const reg = navigationRegistry.get(item.contentId);
-    if (reg) return reg.getLinkOptions(lang);
-    return { to: "/{-$lang}/$", params: { lang, _splat: item.contentId } };
+  resolveDocumentPath?: DocumentPathResolver,
+): ResolvedLinkOptions {
+  if (item.type === "document") {
+    const contentId = resolveItemContentId(item, resolveDocumentPath);
+    if (contentId) {
+      const reg = navigationRegistry.get(contentId);
+      if (reg) return reg.getLinkOptions(lang);
+      return { to: "/{-$lang}/$", params: { lang, _splat: contentId } };
+    }
   }
   // Link type — use the url directly
   const url = item.url ?? "/";
-  return { to: `/{-$lang}${url}` as never, params: { lang } };
+  return { to: `/{-$lang}${url}`, params: { lang } };
 }
 
 function buildNavbarItems(
   lang: Locale,
   config: SiteNavigationConfig,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedNavbarItem[] {
   return deriveNavbarCommittedGroups(config)
     .filter((group) => group.group.enabled && group.linkedItem)
@@ -641,14 +684,23 @@ function buildNavbarItems(
         .filter((subItem) => subItem.enabled)
         .map(({ item }) => ({
           id: item.id,
-          label: resolveItemLabel(item, lang, resolveDocumentLabel),
-          linkOptions: resolveItemLinkOptions(item, lang),
+          label: resolveItemLabel(
+            item,
+            lang,
+            resolveDocumentLabel,
+            resolveDocumentPath,
+          ),
+          linkOptions: resolveItemLinkOptions(item, lang, resolveDocumentPath),
         }));
 
       return {
         id: group.id,
         label,
-        linkOptions: resolveItemLinkOptions(linkedItem.item, lang),
+        linkOptions: resolveItemLinkOptions(
+          linkedItem.item,
+          lang,
+          resolveDocumentPath,
+        ),
         priority: group.priority ?? "important",
         ...(children.length > 0 ? { children } : {}),
       };
@@ -660,6 +712,7 @@ function buildFooterGroups(
   lang: Locale,
   config: SiteNavigationConfig,
   resolveDocumentLabel?: DocumentLabelResolver,
+  resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedFooterGroup[] {
   const itemById = new Map(config.items.map((i) => [i.id, i]));
 
@@ -674,8 +727,13 @@ function buildFooterGroups(
         .filter((item): item is NavigationItem => item !== undefined)
         .map((item) => ({
           id: item.id,
-          label: resolveItemLabel(item, lang, resolveDocumentLabel),
-          linkOptions: resolveItemLinkOptions(item, lang),
+          label: resolveItemLabel(
+            item,
+            lang,
+            resolveDocumentLabel,
+            resolveDocumentPath,
+          ),
+          linkOptions: resolveItemLinkOptions(item, lang, resolveDocumentPath),
         })),
     }))
     .filter((group) => group.items.length > 0);

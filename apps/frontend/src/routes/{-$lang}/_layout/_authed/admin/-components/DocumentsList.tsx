@@ -52,6 +52,7 @@ export function DocumentsList({
         (oldData: DocumentsListItemResponse[] | undefined) => {
           const optimisticDocument: DocumentsListItemResponse = {
             contentId,
+            id: "optimistic-id-" + contentId,
             createdAt: new Date(),
             translations: [],
           };

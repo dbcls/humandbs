@@ -8,7 +8,6 @@ import { db } from "@/db/database";
 import { type DocVersionStatus } from "@/db/schema";
 import {
   documentSelectSchema,
-  documentVersionSelectSchema,
   type DocumentVersionStatus,
 } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
@@ -126,9 +125,9 @@ export interface DocVersionResponse {
   >;
 }
 
-const docVersionRequestSchema = documentVersionSelectSchema.pick({
-  contentId: true,
-  versionNumber: true,
+const docVersionRequestSchema = z.object({
+  contentId: z.string(),
+  versionNumber: z.number().int(),
 });
 
 export const $getDocumentVersion = createServerFn({
@@ -341,9 +340,9 @@ export const $createDocumentVersion = createServerFn({
 
 // === GET LATEST DOCUMENT VERSION
 
-const docPublishedVersionsRequestSchema = documentVersionSelectSchema.pick({
-  contentId: true,
-  locale: true,
+const docPublishedVersionsRequestSchema = z.object({
+  contentId: z.string(),
+  locale: localeSchema,
 });
 
 export const $getLatestDocumentOrContent = createServerFn()

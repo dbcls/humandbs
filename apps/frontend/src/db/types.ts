@@ -13,6 +13,7 @@ import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 export const insertDocumentSchema = createInsertSchema(schema.document);
 
 export const documentSelectSchema = createSelectSchema(schema.document).omit({
+  id: true,
   createdAt: true,
   hideTOC: true,
 });
