@@ -18,6 +18,7 @@ export function MarkdownWithTOC({
   markdownResult: MarkdownResult;
   previousVersions?: DocPublishedVersionListItemResponse[];
   revisionsBasePath?: string;
+  documentName?: string | null;
   afterContent?: React.ReactNode;
   hideTOC?: boolean;
 }) {
@@ -35,6 +36,7 @@ export function MarkdownWithTOC({
             <PreviousVersionsList
               versions={previousVersions}
               revisionsBasePath={revisionsBasePath}
+              documentName={typeof title === "string" ? title : undefined}
             />
           )}
 

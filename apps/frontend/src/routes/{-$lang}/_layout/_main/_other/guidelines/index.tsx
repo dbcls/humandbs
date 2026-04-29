@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
 
 import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import {
@@ -32,8 +31,6 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { contentHtml, title, versions } = Route.useLoaderData();
-
-  const t = useTranslations("Navbar");
 
   return (
     <MarkdownWithTOC

@@ -6,21 +6,21 @@ import type { DocPublishedVersionListItemResponse } from "@/repositories/documen
 export function PreviousVersionsList({
   revisionsBasePath,
   versions,
+  documentName,
 }: {
   revisionsBasePath: string;
   versions: DocPublishedVersionListItemResponse[];
+  documentName?: string | null;
 }) {
   const tCommon = useTranslations("common");
-  const tNav = useTranslations("Navbar");
   const lang = useLocale();
 
-  const docId = revisionsBasePath.split("/").at(-1)!;
-  const documentName = tNav(docId ?? "");
+  const name = documentName ?? versions[0]?.title ?? revisionsBasePath;
 
   return (
     <div>
       <h2 className="text-md font-bold text-neutral-800">
-        {tCommon("previous-versions", { documentName })}
+        {tCommon("previous-versions", { documentName: name })}
       </h2>
       <ul>
         {versions.map((version) => (
