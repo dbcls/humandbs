@@ -34,6 +34,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
     _splat: z.string(),
   }),
   loader: async ({ params, context }) => {
+    /* === Matching humIds === */
     const parsedHumIdWithVer = humIdWithVersion.safeParse(params._splat);
 
     if (parsedHumIdWithVer.success) {
@@ -59,7 +60,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       });
     }
 
+    /** === Matching documents/content items === */
+
     const revisionVersionMatch = revisionVersionPattern.exec(params._splat);
+
     if (revisionVersionMatch) {
       const docId = revisionVersionMatch[1];
       const versionNumber = Number(revisionVersionMatch[2]);
@@ -83,7 +87,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         crumbs: [
           ...docCrumbs,
           { label: "Revisions", href: `/${docId}/revision` },
-          { label: String(versionNumber), href: `/${docId}/revision/${versionNumber}` },
+          {
+            label: String(versionNumber),
+            href: `/${docId}/revision/${versionNumber}`,
+          },
         ],
         hideTOC: false,
         previousVersions: undefined,
@@ -169,13 +176,19 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 });
 
 function RouteComponent() {
-  const { kind, contentHtml, title, hideTOC, previousVersions, revisionsBasePath } =
-    Route.useLoaderData();
+  const {
+    kind,
+    contentHtml,
+    title,
+    hideTOC,
+    previousVersions,
+    revisionsBasePath,
+  } = Route.useLoaderData();
 
   if (kind === "revisionList") {
     return (
       <Card
-        className="w-full min-w-0 min-h-full py-6"
+        className="min-h-full w-full min-w-0 py-6"
         containerClassName="main-content mt-8 min-w-0"
       >
         <PreviousVersionsList

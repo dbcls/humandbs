@@ -33,13 +33,14 @@ bun run db:seed-documents
 
 ### `seed-files.ts`
 
-Copies non-`content.md` files from each document's seed folder to `public/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>/<documentId>/` (defaults to `public/public-files/<documentId>/`).
+Copies non-`content.md` files from each document's seed folder to `public/<HUMANDBS_FRONTEND_PUBLIC_FILES_DIR>/<contentId>/` (defaults to `public/public-files/<contentId>/`).
 
 ```bash
 bun run db:seed-files
 ```
 
 - No DB writes — filesystem only
+- Supports nested document paths such as `guidelines/data-sharing-guidelines`
 - Skips files already copied (deduplicates across locales per document)
 
 ### `seed-navigation.ts`
