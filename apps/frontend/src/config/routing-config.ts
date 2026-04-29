@@ -9,6 +9,9 @@ export const RESERVED_SEGMENTS = [
   "news",
   "dataset",
   "research",
+  "dataset",
+  "versions",
+  "home",
 ];
 
 export const PROTECTED_DOC_IDS = [
