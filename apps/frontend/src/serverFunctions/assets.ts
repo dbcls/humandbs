@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { write } from "bun";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -9,10 +9,14 @@ import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 const FILES_SUBDIR =
   process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-const ASSET_DIR = path.resolve(
-  process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-  FILES_SUBDIR,
-);
+
+const $$getAssetDir = createServerOnlyFn(() => {
+  return path.resolve(
+    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
+    FILES_SUBDIR,
+  );
+});
+
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
 function normalizeRelativeAssetPath(input: string) {
@@ -33,6 +37,7 @@ function normalizeRelativeAssetPath(input: string) {
 }
 
 function getAbsoluteAssetPath(relativePath: string) {
+  const ASSET_DIR = $$getAssetDir();
   return path.join(ASSET_DIR, relativePath);
 }
 
