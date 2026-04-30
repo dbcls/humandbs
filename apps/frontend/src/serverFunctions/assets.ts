@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { write } from "bun";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -7,12 +7,18 @@ import { z } from "zod";
 
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
-const FILES_SUBDIR =
-  process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
-const ASSET_DIR = path.resolve(
-  process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
-  FILES_SUBDIR,
-);
+const $$getFilesSubdir = createServerOnlyFn(() => {
+  return process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+});
+
+const $$getAssetDir = createServerOnlyFn(() => {
+  const FILES_SUBDIR = $$getFilesSubdir();
+  return path.resolve(
+    process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
+    FILES_SUBDIR,
+  );
+});
+
 const MAX_FILE_SIZE = 1024 * 1024 * 50; // 50MB
 
 function normalizeRelativeAssetPath(input: string) {
@@ -33,6 +39,7 @@ function normalizeRelativeAssetPath(input: string) {
 }
 
 function getAbsoluteAssetPath(relativePath: string) {
+  const ASSET_DIR = $$getAssetDir();
   return path.join(ASSET_DIR, relativePath);
 }
 
@@ -59,6 +66,8 @@ async function readAssetFolder(
 ): Promise<AssetHierarchyFolder> {
   const folderPath = getAbsoluteAssetPath(relativePath);
   const entries = await readdir(folderPath, { withFileTypes: true });
+
+  const FILES_SUBDIR = $$getFilesSubdir();
 
   const children = await Promise.all(
     entries
@@ -178,6 +187,8 @@ export const $uploadAsset = createServerFn({ method: "POST" })
     );
 
     const { relativePath } = await uploadAssetFileToFolder(file, folderPath);
+
+    const FILES_SUBDIR = $$getFilesSubdir();
 
     return { url: `/${FILES_SUBDIR}/${relativePath}` };
   });

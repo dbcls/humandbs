@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --host 0.0.0.0 --port 3000",
-    "build": "vite build",
+    "build": "NODE_ENV=production vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production bun server.ts",
     "db:reset": "bun ./src/scripts/database/reset-db.ts",
