@@ -14,7 +14,7 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
       <span className="text-2xs w-24 shrink-0">{newsItem.publishedAt}</span>
 
       <Link
-        className="text-secondary h-fit text-sm underline"
+        className="text-secondary line-clamp-3 h-fit text-sm underline"
         to="/{-$lang}/news/$newsItemId"
         params={{
           lang: newsItem.locale,
