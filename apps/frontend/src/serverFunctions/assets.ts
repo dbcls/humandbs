@@ -7,10 +7,12 @@ import { z } from "zod";
 
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
-const FILES_SUBDIR =
-  process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+const $$getFilesSubdir = createServerOnlyFn(() => {
+  return process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+});
 
 const $$getAssetDir = createServerOnlyFn(() => {
+  const FILES_SUBDIR = $$getFilesSubdir();
   return path.resolve(
     process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
     FILES_SUBDIR,
@@ -64,6 +66,8 @@ async function readAssetFolder(
 ): Promise<AssetHierarchyFolder> {
   const folderPath = getAbsoluteAssetPath(relativePath);
   const entries = await readdir(folderPath, { withFileTypes: true });
+
+  const FILES_SUBDIR = $$getFilesSubdir();
 
   const children = await Promise.all(
     entries
@@ -183,6 +187,8 @@ export const $uploadAsset = createServerFn({ method: "POST" })
     );
 
     const { relativePath } = await uploadAssetFileToFolder(file, folderPath);
+
+    const FILES_SUBDIR = $$getFilesSubdir();
 
     return { url: `/${FILES_SUBDIR}/${relativePath}` };
   });
