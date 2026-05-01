@@ -46,7 +46,7 @@ function RouteComponent() {
       <Card
         className="w-cms-list-panel flex h-full flex-col"
         caption="Researches"
-        containerClassName="flex flex-1 min-h-0 max-h-full overflow-hidden"
+        containerClassName="flex-1 w-full min-h-0 max-h-full overflow-hidden"
       >
         <ResearchesList
           lang={lang}

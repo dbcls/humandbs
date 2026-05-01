@@ -25,8 +25,8 @@ export function ContentList({
   selectedContentId,
   onSelectContent,
 }: {
-  selectedContentId: string | null;
-  onSelectContent: (contentId: string | null) => void;
+  selectedContentId: string | undefined;
+  onSelectContent: (contentId: string | undefined) => void;
 }) {
   const queryClient = useQueryClient();
 
