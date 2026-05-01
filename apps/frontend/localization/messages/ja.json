@@ -110,9 +110,9 @@
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
     "experiments": "実験一覧",
-    "Unrestricted-access": "Open (制限なし)",
-    "Controlled-access (Type I)": "Type I (制限公開)",
-    "Controlled-access (Type II)": "Type II (制限公開)",
+    "Unrestricted-access": "日制限公開",
+    "Controlled-access (Type I)": "制限（Type I）",
+    "Controlled-access (Type II)": "制限（Type II）",
 
     "Analysis Methods": "解析方法",
     "Antigen Activation": "抗原賦活化方法",
