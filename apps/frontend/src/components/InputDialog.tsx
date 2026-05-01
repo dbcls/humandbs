@@ -2,7 +2,6 @@ import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 import type { StandardSchemaV1 } from "@tanstack/form-core";
 
-import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,12 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+
 import { useAppForm } from "./form-context/FormContext";
 
 interface InputDialogProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   label: string;
   trigger: React.ReactNode;
   /** Standard schema (e.g. Zod) for on-submit validation */

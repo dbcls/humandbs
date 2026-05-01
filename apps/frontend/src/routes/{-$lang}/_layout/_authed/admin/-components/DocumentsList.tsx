@@ -167,6 +167,11 @@ export function DocumentsList({
     <>
       <InputDialog
         title="Add Document"
+        description=<div>
+          <p>Enter content ID in `snake-case`.</p>
+          <p>It can have slashes (`hello/world`).</p>
+          <p>Content ID would become the path to this document</p>
+        </div>
         label="Content ID"
         trigger={<AddNewButton className="mb-5" />}
         validateAsync={async (value) => {
