@@ -4,7 +4,9 @@ import * as oidc from "openid-client";
 
 import { $$getOIDCConfig } from "@/lib/oidc";
 
-import { sanitizeRedirectPath } from "./-utils";
+import { buildAuthState, sanitizeRedirectPath } from "./-utils";
+
+const PKCE_STASH_MAX_AGE_SECONDS = 30 * 60;
 
 export const Route = createFileRoute("/auth/login")({
   server: {
@@ -28,8 +30,7 @@ export const Route = createFileRoute("/auth/login")({
         const code_verifier = oidc.randomPKCECodeVerifier();
         const code_challenge =
           await oidc.calculatePKCECodeChallenge(code_verifier);
-        // (Optional) still use state alongside PKCE
-        const state = oidc.randomState();
+        const state = buildAuthState(oidc.randomState(), redirect_to);
 
         const stash = { code_verifier, state, redirect_to };
         const cookie = serialize("oidc_pkce", JSON.stringify(stash), {
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/auth/login")({
           secure: process.env.NODE_ENV !== "development",
           sameSite: "lax",
           path: "/",
-          maxAge: 5 * 60,
+          maxAge: PKCE_STASH_MAX_AGE_SECONDS,
         });
 
         const scope = "openid profile email offline_access";
