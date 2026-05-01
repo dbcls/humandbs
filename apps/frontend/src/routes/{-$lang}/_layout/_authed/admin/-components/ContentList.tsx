@@ -19,6 +19,7 @@ import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
+import { useTranslations } from "use-intl";
 
 export function ContentList({
   selectedContentId,
@@ -38,7 +39,9 @@ export function ContentList({
     mutationFn: (id: string) => $createContentItem({ data: { id } }),
     onMutate: async (id) => {
       await queryClient.cancelQueries(contentsListQO);
-      const prevContentItems = queryClient.getQueryData(contentsListQO.queryKey);
+      const prevContentItems = queryClient.getQueryData(
+        contentsListQO.queryKey,
+      );
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
         if (!old) return [];
         return [...old, { id, translations: [] }];
@@ -47,7 +50,10 @@ export function ContentList({
     },
     onError: (_, __, context) => {
       if (context?.prevContentItems) {
-        queryClient.setQueryData(contentsListQO.queryKey, context.prevContentItems);
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.prevContentItems,
+        );
       }
     },
     onSettled: async () => {
@@ -68,7 +74,10 @@ export function ContentList({
     },
     onError: (_, __, context) => {
       if (context?.prevContentList) {
-        queryClient.setQueryData(contentsListQO.queryKey, context.prevContentList);
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.prevContentList,
+        );
       }
     },
     onSettled: () => {
@@ -90,6 +99,8 @@ export function ContentList({
     });
   }
 
+  const tErrors = useTranslations("Errors");
+
   return (
     <>
       <InputDialog
@@ -106,8 +117,11 @@ export function ContentList({
             },
           )}
         validateAsync={async (val) => {
-          const exists = await validateContentId({ data: val });
-          if (exists) return "Content with this contentId already exists";
+          const validationResult = await validateContentId({ data: val });
+          if (!validationResult.success)
+            return validationResult.errors
+              .map((error) => tErrors(error.errorCode as any))
+              .join(", ");
           return undefined;
         }}
         transformValue={(val) => val.replace(/^\/+|\/+$/g, "")}

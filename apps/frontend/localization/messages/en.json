@@ -294,5 +294,11 @@
     "itemsPerPage": "Items per page",
     "previous": "Previous",
     "next": "Next"
+  },
+  "Errors": {
+    "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",
+    "RESERVED_PATH_PREFIXES": "This id is conflicting with reserved one",
+    "EXISTING_CONTENT": "This id is conflicting with one of existing Content Item IDs",
+    "EXISTING_DOCUMENT": "This id is conflicting with one of existing Document IDs"
   }
 }

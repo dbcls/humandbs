@@ -295,5 +295,11 @@
     "itemsPerPage": "1ページあたりのアイテム数",
     "previous": "前へ",
     "next": "次へ"
+  },
+  "Errors": {
+    "RESERVED_SEGMENTS": "このIDはシステム予約パスのいずれかと競合しています",
+    "RESERVED_PATH_PREFIXES": "このIDは予約済みのものと競合しています",
+    "EXISTING_CONTENT": "このIDは既存のコンテンツアイテムID(「野良ページ」のID)のいずれかと競合しています",
+    "EXISTING_DOCUMENT": "このIDは既存のドキュメントIDのいずれかと競合しています"
   }
 }

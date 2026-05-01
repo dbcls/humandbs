@@ -16,11 +16,16 @@ import {
   type DocumentsListItemResponse,
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
-import { $validateEntityId } from "@/serverFunctions/validate";
+import {
+  $validateEntityId,
+  type ValidationResponse,
+} from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
+import { useServerFn } from "@tanstack/react-start";
+import { useTranslations } from "use-intl";
 
 export function DocumentsList({
   onSelectDoc,
@@ -163,6 +168,9 @@ export function DocumentsList({
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [documents]);
 
+  const validate = useServerFn($validateEntityId);
+
+  const tErrors = useTranslations("Errors");
   return (
     <>
       <InputDialog
@@ -178,11 +186,11 @@ export function DocumentsList({
           if (!value || value.length < 1) return "Content ID is required";
           if (value.length > 100)
             return "Content ID must be 100 characters or less";
-          const isExisting = await $validateEntityId({
-            data: value as ContentId,
+          const validationResult = await validate({
+            data: value,
           });
-          if (isExisting) return "Document with this contentId already exists";
-          return undefined;
+
+          return makeValidationErrorMessage(validationResult, tErrors);
         }}
         onSubmit={(id) => createDocument(id as ContentId)}
       />
@@ -199,12 +207,12 @@ export function DocumentsList({
         validateAsync={async (value) => {
           if (!value || value.length < 1) return "ID is required";
           if (value.length > 100) return "ID must be 100 characters or less";
-          const isOk = await $validateEntityId({
+
+          const validationResponse = await validate({
             data: value,
           });
 
-          if (!isOk) return "A document with this ID already exists";
-          return undefined;
+          return makeValidationErrorMessage(validationResponse, tErrors);
         }}
         onSubmit={handleRenameSubmit}
       />
@@ -283,4 +291,14 @@ export function DocumentsList({
       </ul>
     </>
   );
+}
+
+function makeValidationErrorMessage(
+  validationResponse: ValidationResponse,
+  tErrors: (errorCode: any) => string,
+) {
+  if (validationResponse.success) return undefined;
+  return validationResponse.errors
+    .map((error) => tErrors(error.errorCode))
+    .join(", ");
 }
