@@ -8,7 +8,9 @@
     "more": "他{count}件",
     "collapse": "折りたたむ",
     "no-data": "データなし",
-    "total-results": "全{count}件"
+    "total-results": "全{count}件",
+    "dataset": "データセット",
+    "research": "研究"
   },
   "Footer": {
     "sitemap": "サイトマップ"

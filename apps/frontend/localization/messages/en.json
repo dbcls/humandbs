@@ -8,7 +8,9 @@
     "more": "{count} more",
     "collapse": "Collapse",
     "no-data": "No data",
-    "total-results": "{count} results"
+    "total-results": "{count} results",
+    "dataset": "Dataset",
+    "research": "Research"
   },
   "Footer": {
     "sitemap": "Sitemap"
