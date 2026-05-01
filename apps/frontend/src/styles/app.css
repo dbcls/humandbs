@@ -400,8 +400,7 @@
 
 @layer components {
   .main-content {
-    max-width: calc(var(--content-max-width) + 2.5rem);
-    @apply mx-auto px-10;
+    @apply w-full;
   }
 
   .main-bg {
