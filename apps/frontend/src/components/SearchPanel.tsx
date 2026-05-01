@@ -329,7 +329,7 @@ export function SearchPanel({
                   .filter((s) => normalizeValue(draft[s.id]) !== undefined)
                   .map((s) => s.id)}
               >
-                <p className="py-3 text-sm font-medium">{t(key)}</p>
+                <p className="py-3 text-sm font-medium">{t(key as any)}</p>
                 {val.map((v) => (
                   <AccordionFilterItem
                     key={v.id}
@@ -551,6 +551,7 @@ function CheckboxFacetItem({
     : [];
   const hasValue = selectedValues.length > 0;
 
+  const t = useTranslations("Dataset");
   if (options.length === 0) return null;
 
   return (
@@ -592,7 +593,7 @@ function CheckboxFacetItem({
                       "opacity-40": isFetching,
                     })}
                   >
-                    {optionValue}
+                    {t(optionValue)}
                   </span>
                 </div>
                 <span>{count}</span>
