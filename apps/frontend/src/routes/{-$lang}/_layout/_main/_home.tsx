@@ -63,7 +63,7 @@ function RouteComponent() {
                 setSearchTarget(v as SearchTarget);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-primary border-primary min-w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
