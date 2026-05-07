@@ -22,7 +22,6 @@ function RouteComponent() {
   return (
     <>
       <h1>{title}</h1>
-
       <Markdown contentHtml={contentHtml} />
     </>
   );
