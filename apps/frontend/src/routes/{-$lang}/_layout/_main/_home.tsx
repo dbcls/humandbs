@@ -36,6 +36,7 @@ function RouteComponent() {
         <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-12">
           <div className="w-full max-w-5xl flex flex-col items-center">
             <Outlet />
+
             <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
               <Button
                 variant={"accent"}
