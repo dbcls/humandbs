@@ -145,7 +145,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         contentHtml,
         title: docData.title,
         crumbs,
-        hideTOC: !!docData.hideTOC,
+        hideTOC: docData.hideTOC ?? true,
         previousVersions: versions.length ? versions : undefined,
         revisionsBasePath: versions.length ? params._splat : undefined,
       };
@@ -162,7 +162,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       contentHtml,
       title: contentData.title,
       crumb: contentData.title,
-      hideTOC: !!contentData.hideTOC,
+      hideTOC: contentData.hideTOC ?? true,
       previousVersions: undefined,
       revisionsBasePath: undefined,
     };
