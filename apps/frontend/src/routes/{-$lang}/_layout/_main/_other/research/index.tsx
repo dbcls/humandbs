@@ -35,14 +35,16 @@ export const Route = createFileRoute(
   validateSearch: researchesSearchParamsSchema,
   loaderDeps: ({ search }) => search,
   loader: ({ deps, context }) => {
-    context.queryClient.ensureQueryData(
-      getResearchesQueryOptions({
-        ...deps,
-        lang: context.lang,
-      }),
-    );
+    return Promise.all([
+      context.queryClient.ensureQueryData(
+        getResearchesQueryOptions({
+          ...deps,
+          lang: context.lang,
+        }),
+      ),
 
-    context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
+      context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
+    ]);
   },
   errorComponent: ({ error }) => {
     return <div>{error.message}</div>;

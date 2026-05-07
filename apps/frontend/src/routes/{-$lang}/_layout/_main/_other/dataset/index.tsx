@@ -45,14 +45,16 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
     loaderDeps: ({ search }) => search,
     errorComponent: ({ error }) => <div>{error.message}</div>,
     loader: ({ context, deps }) => {
-      context.queryClient.ensureQueryData(
-        getDatasetsPaginatedQueryOptions({
-          ...deps,
-          sort: deps.sort ?? "datasetId",
-          lang: context.lang,
-        }),
-      );
-      context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
+      return Promise.all([
+        context.queryClient.ensureQueryData(
+          getDatasetsPaginatedQueryOptions({
+            ...deps,
+            sort: deps.sort ?? "datasetId",
+            lang: context.lang,
+          }),
+        ),
+        context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
+      ]);
     },
     wrapInSuspense: true,
     pendingComponent: () => <SkeletonLoading />,
