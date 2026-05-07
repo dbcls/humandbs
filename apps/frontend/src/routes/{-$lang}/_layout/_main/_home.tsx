@@ -33,7 +33,7 @@ function RouteComponent() {
     // All that after the Navbar component
     <section className="w-full flex flex-col items-stretch gap-8">
       <section className="flex h-fit items-start justify-between gap-4">
-        <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-12">
+        <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-24">
           <div className="w-full max-w-5xl flex flex-col items-center">
             <Outlet />
 
