@@ -52,7 +52,7 @@ function RouteComponent() {
   return (
     <section className="main-content flex flex-col items-stretch gap-8">
       <section className="flex h-fit items-start justify-between gap-8">
-        <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:mt-8 prose-h1:mb-16 flex flex-1 flex-col items-center">
+        <div className="mt-6 flex flex-1 flex-col items-center">
           <Outlet />
 
           <div className="mt-8 flex w-full max-w-full items-center gap-8 rounded-md bg-black/15 p-8 text-base">

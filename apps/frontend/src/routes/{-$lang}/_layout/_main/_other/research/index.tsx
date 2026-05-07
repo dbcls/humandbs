@@ -305,7 +305,8 @@ const columns = [
         label={ctx.table.options.meta?.t?.("datePublished")}
       />
     ),
-    size: 10,
+    minSize: 0,
+    maxSize: 14,
     cell: (ctx) => (
       <div>
         <span>{ctx.getValue().releaseDate}</span>
@@ -332,6 +333,8 @@ const columns = [
         label={ctx.table.options.meta?.t?.("dateModified")}
       />
     ),
+    minSize: 0,
+    maxSize: 14,
     cell: (ctx) => (
       <div>
         <span>{ctx.getValue().releaseDate}</span>
@@ -348,7 +351,6 @@ const columns = [
         </Route.Link>
       </div>
     ),
-    size: 15,
   }),
   columnHelper.accessor("methods", {
     id: "methods",
