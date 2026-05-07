@@ -6,7 +6,7 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { startTransition, useCallback, useMemo } from "react";
+import { startTransition, Suspense, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
 
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
@@ -25,6 +25,8 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { cn } from "@/lib/utils";
+import { SkeletonLoading } from "@/components/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/research/",
@@ -51,7 +53,7 @@ function RouteComponent() {
   const t = useTranslations("Research");
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
-  const { setFilters } = useFilters(Route.id);
+  const { setFilters, resetFilters, filters } = useFilters(Route.id);
 
   const { data: researchesData } = useQuery(
     getResearchesQueryOptions({ ...search, lang }),
@@ -101,6 +103,17 @@ function RouteComponent() {
           onQueryChange={(query) => {
             setFilters({ query });
           }}
+          onResetFilters={() => {
+            resetFilters();
+          }}
+          resultsCount={
+            <Suspense
+              fallback={<Skeleton className="h-9 w-24 animate-pulse" />}
+            >
+              <ResultsCount />
+            </Suspense>
+          }
+          filtersCount={Object.keys(filters.datasetFilters || {}).length}
           onFilterClick={onFilterClick}
           isPanelOpen={isOpen}
           onCopy={() => copyTableData(exportData)}
@@ -112,6 +125,26 @@ function RouteComponent() {
     >
       <CardContent />
     </FilterableCard>
+  );
+}
+
+function ResultsCount() {
+  const { lang } = Route.useRouteContext();
+
+  const search = Route.useSearch();
+
+  const t = useTranslations("common");
+
+  const { data: researchesData } = useSuspenseQuery(
+    getResearchesQueryOptions({ ...search, lang }),
+  );
+
+  return (
+    <p className="text-muted-foreground text-sm">
+      {t("total-results", {
+        count: researchesData?.meta.pagination.total ?? 0,
+      })}
+    </p>
   );
 }
 
@@ -163,11 +196,11 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
-  const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
 
+  const search = Route.useSearch();
+
   const t = useTranslations("Research");
-  const tCommon = useTranslations("common");
 
   const { data: researchesData } = useSuspenseQuery(
     getResearchesQueryOptions({ ...search, lang }),
@@ -199,11 +232,6 @@ function CardContent() {
 
   return (
     <>
-      <p className="text-muted-foreground text-sm">
-        {tCommon("total-results", {
-          count: researchesData.meta.pagination.total,
-        })}
-      </p>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
           className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
@@ -249,7 +277,7 @@ const columns = [
         <CollapsiblePreview
           items={ctx.row.original.datasetIds.map((id) => ({
             id,
-            content: () => (
+            content: (
               <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
               </Route.Link>
@@ -266,8 +294,7 @@ const columns = [
       <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("title")} />
     ),
     cell: function Cell(ctx) {
-      const { lang } = Route.useRouteContext();
-      return ctx.renderValue()?.[lang];
+      return ctx.renderValue()?.[ctx.table.options.meta?.lang!];
     },
   }),
   columnHelper.accessor((row) => row.versions[0], {
@@ -335,7 +362,7 @@ const columns = [
       <CollapsiblePreview
         items={ctx
           .renderValue()
-          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
       />
     ),
   }),
@@ -346,7 +373,7 @@ const columns = [
       <CollapsiblePreview
         items={ctx
           .renderValue()
-          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
       />
     ),
   }),
@@ -367,7 +394,7 @@ const columns = [
       <CollapsiblePreview
         items={ctx
           .renderValue()
-          ?.map((item, i) => ({ id: i, content: () => <p>{item}</p> }))}
+          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
       />
     ),
   }),

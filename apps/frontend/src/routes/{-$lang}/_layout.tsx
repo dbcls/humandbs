@@ -63,6 +63,9 @@ function RouteComponent() {
       getMessageFallback={({ key }) => {
         return key;
       }}
+      onError={(error) => {
+        console.warn(error);
+      }}
       locale={lang}
       messages={messages}
       timeZone={timeZone}

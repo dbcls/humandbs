@@ -1,7 +1,7 @@
 import type { DatasetFilters } from "@humandbs/backend/types";
 
 import type { SectionConfig } from "@/components/SearchPanel";
-import { DATASET_FACET_CONFIG } from "@/config/facet-config";
+import { DATASET_FACET_CONFIG, type FacetConfig } from "@/config/facet-config";
 
 /**
  * Builds SectionConfig[] from DATASET_FACET_CONFIG given the active filter
@@ -74,6 +74,16 @@ export function buildFacetSections(
               min?: string | number;
               max?: string | number;
             }) ?? {},
+        } as SectionConfig);
+        break;
+      case "enum":
+        result.push({
+          type: "enum",
+          id: key,
+          groupKey,
+          uiGroup,
+          value: activeValue as string | undefined,
+          options: (config as FacetConfig & { type: "enum" }).options,
         } as SectionConfig);
         break;
     }

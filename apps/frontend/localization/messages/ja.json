@@ -247,40 +247,158 @@
     "before-application": "申請システムの前に"
   },
   "Filters": {
-    "datePublished": "公開日",
-    "dateModified": "更新日",
-    "criteria": "アクセス制限",
-    "subjectCountType": "カウント方式",
-    "healthStatus": "健康状態",
-    "diseaseIcd10": "ICD-10",
-    "tissues": "組織",
-    "cellLine": "細胞株",
-    "population": "集団",
-    "sex": "性別",
-    "ageGroup": "年齢層",
-    "assayType": "アッセイタイプ",
-    "libraryKits": "ライブラリキット",
-    "platform": "プラットフォーム",
-    "readType": "リード方式",
-    "referenceGenome": "リファレンスゲノム",
-    "fileTypes": "ファイル形式",
-    "processedDataTypes": "処理済みデータ",
-    "policyId": "ポリシーID",
-    "disease": "疾患",
-    "isTumor": "腫瘍有無",
-    "hasPhenotypeData": "フェノタイプデータ有無",
-    "releaseDate": "公開日",
-    "subjectCount": "対象者数",
-    "readLength": "リード長 (bp)",
-    "sequencingDepth": "シーケンシング深度 (x)",
-    "targetCoverage": "ターゲットカバレッジ (%)",
-    "dataVolumeGb": "データ容量（GB）",
-    "variantSnv": "バリアント数（SNV）",
-    "variantIndel": "バリアント数（インデル）",
-    "variantCnv": "バリアント数（CNV）",
-    "variantSv": "バリアント数（構造変異）",
-    "variantTotal": "バリアント総数",
-    "humId": "研究ID",
+    "datePublished": {
+      "title": "公開日"
+    },
+    "dateModified": {
+      "title": "更新日"
+    },
+    "criteria": {
+      "title": "アクセス制限",
+      "options": {
+        "Unrestricted-access": "非制限公開",
+        "Controlled-access (Type I)": "制限公開（Type I）",
+        "Controlled-access (Type II)": "制限公開（Type II）"
+      }
+    },
+    "subjectCountType": {
+      "title": "カウント方式",
+      "options": {
+        "individual": "個体数",
+        "sample": "サンプル数",
+        "mixed": "個体数/サンプル数混在"
+      }
+    },
+    "healthStatus": {
+      "title": "健康状態",
+      "options": {
+        "healthy": "健康",
+        "affected": "疾患",
+        "mixed": "健康/疾患混在"
+      }
+    },
+    "diseaseIcd10": {
+      "title": "疾患（ICD-10）"
+    },
+    "tissues": {
+      "title": "組織"
+    },
+    "cellLine": {
+      "title": "細胞株"
+    },
+    "population": {
+      "title": "集団"
+    },
+    "sex": {
+      "title": "性別",
+      "options": {
+        "male": "男性",
+        "female": "女性",
+        "mixed": "男性/女性混在"
+      }
+    },
+    "ageGroup": {
+      "title": "年齢層",
+      "options": {
+        "adult": "成人",
+        "child": "小児",
+        "infant": "乳児",
+        "elderly": "高齢者",
+        "mixed": "成人/小児/乳児/高齢者混在"
+      }
+    },
+    "assayType": {
+      "title": "アッセイタイプ"
+    },
+    "libraryKits": {
+      "title": "ライブラリキット"
+    },
+    "platform": {
+      "title": "プラットフォーム"
+    },
+    "readType": {
+      "title": "リード方式",
+      "options": {
+        "single-end": "シングルエンド",
+        "paired-end": "ペアエンド",
+        "mixed": "シングルエンド/ペアエンド混在"
+      }
+    },
+    "referenceGenome": {
+      "title": "リファレンスゲノム"
+    },
+    "fileTypes": {
+      "title": "ファイル形式"
+    },
+    "processedDataTypes": {
+      "title": "処理済みデータ"
+    },
+    "policyId": {
+      "title": "ポリシーID",
+      "options": {
+        "nbdc-policy": "NBDCポリシー",
+        "cancer-research-policy": "がん研究ポリシー",
+        "familial-policy": "家系研究ポリシー",
+        "company-limitation-policy": "企業利用制限ポリシー",
+        "custom-policy": "カスタムポリシー"
+      }
+    },
+    "disease": {
+      "title": "疾患"
+    },
+    "isTumor": {
+      "title": "腫瘍有無",
+      "options": {
+        "any": "不問",
+        "tumor": "腫瘍",
+        "normal": "非腫瘍",
+        "mixed": "腫瘍/非腫瘍混在"
+      }
+    },
+    "hasPhenotypeData": {
+      "title": "フェノタイプデータ有無",
+      "options": {
+        "any": "不問",
+        "true": "有",
+        "false": "無"
+      }
+    },
+    "releaseDate": {
+      "title": "公開日"
+    },
+    "subjectCount": {
+      "title": "対象者数"
+    },
+    "readLength": {
+      "title": "リード長 (bp)"
+    },
+    "sequencingDepth": {
+      "title": "シーケンシング深度 (x)"
+    },
+    "targetCoverage": {
+      "title": "ターゲットカバレッジ (x)"
+    },
+    "dataVolumeGb": {
+      "title": "データ容量（GB）"
+    },
+    "variantSnv": {
+      "title": "バリアント数（SNV）"
+    },
+    "variantIndel": {
+      "title": "バリアント数（インデル）"
+    },
+    "variantCnv": {
+      "title": "バリアント数（CNV）"
+    },
+    "variantSv": {
+      "title": "バリアント数（構造変異）"
+    },
+    "variantTotal": {
+      "title": "バリアント総数"
+    },
+    "humId": {
+      "title": "研究ID"
+    },
     "panel-title": "詳細条件",
     "panel-reset-all": "すべてをリセット",
     "panel-reset": "リセット",

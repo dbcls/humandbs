@@ -11,7 +11,7 @@ import {
   type Updater,
 } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { startTransition, useCallback, useMemo } from "react";
+import { startTransition, Suspense, useCallback, useMemo } from "react";
 import { useTranslations } from "use-intl";
 
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
@@ -31,38 +31,39 @@ import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
   includeFacets: true,
 });
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/dataset/",
-)({
-  component: RouteComponent,
-  validateSearch: zodValidator(datasetListQuerySchema),
-  loaderDeps: ({ search }) => search,
-  errorComponent: ({ error }) => <div>{error.message}</div>,
-  loader: ({ context, deps }) => {
-    context.queryClient.ensureQueryData(
-      getDatasetsPaginatedQueryOptions({
-        ...deps,
-        sort: deps.sort ?? "datasetId",
-        lang: context.lang,
-      }),
-    );
-    context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
+  {
+    component: RouteComponent,
+    validateSearch: zodValidator(datasetListQuerySchema),
+    loaderDeps: ({ search }) => search,
+    errorComponent: ({ error }) => <div>{error.message}</div>,
+    loader: ({ context, deps }) => {
+      context.queryClient.ensureQueryData(
+        getDatasetsPaginatedQueryOptions({
+          ...deps,
+          sort: deps.sort ?? "datasetId",
+          lang: context.lang,
+        }),
+      );
+      context.queryClient.ensureQueryData(getAllFacetsQueryOptions());
+    },
+    wrapInSuspense: true,
+    pendingComponent: () => <SkeletonLoading />,
   },
-  wrapInSuspense: true,
-  pendingComponent: () => <SkeletonLoading />,
-});
+);
 
 function RouteComponent() {
   const t = useTranslations("Dataset");
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
-  const { setFilters } = useFilters(Route.id);
+  const { filters, setFilters, resetFilters } = useFilters(Route.id);
 
   const { data } = useQuery(
     getDatasetsPaginatedQueryOptions({
@@ -96,6 +97,7 @@ function RouteComponent() {
     };
   }, [data, lang, t]);
 
+  const filtersCount = Object.keys(filters.filters || {}).length;
   return (
     <FilterableCard
       captionSize="lg"
@@ -106,6 +108,17 @@ function RouteComponent() {
           onQueryChange={(query) => {
             setFilters({ query });
           }}
+          onResetFilters={() => {
+            resetFilters();
+          }}
+          resultsCount={
+            <Suspense
+              fallback={<Skeleton className="h-9 w-24 animate-pulse" />}
+            >
+              <ResultsCount />
+            </Suspense>
+          }
+          filtersCount={filtersCount}
           isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
           onCopy={() => copyTableData(exportData)}
@@ -117,6 +130,26 @@ function RouteComponent() {
     >
       <CardContent />
     </FilterableCard>
+  );
+}
+
+function ResultsCount() {
+  const { lang } = Route.useRouteContext();
+
+  const search = Route.useSearch();
+
+  const t = useTranslations("common");
+
+  const { data: datasetsData } = useSuspenseQuery(
+    getDatasetsPaginatedQueryOptions({ ...search, lang }),
+  );
+
+  return (
+    <p className="text-muted-foreground text-sm">
+      {t("total-results", {
+        count: datasetsData?.meta.pagination.total ?? 0,
+      })}
+    </p>
   );
 }
 
@@ -174,7 +207,6 @@ function CardContent() {
   const { filters, setFilters } = useFilters(Route.id);
 
   const t = useTranslations("Dataset");
-  const tCommon = useTranslations("common");
 
   const sorting = useMemo((): SortingState => {
     if (!filters.sort) return [];
@@ -201,9 +233,6 @@ function CardContent() {
 
   return (
     <>
-      <p className="text-muted-foreground text-sm">
-        {tCommon("total-results", { count: data.meta.pagination.total })}
-      </p>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <Table
           className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
@@ -263,7 +292,7 @@ export const datasetsColumns = [
       <CollapsiblePreview
         items={ctx.getValue().map((item, i) => ({
           id: i,
-          content: () => (
+          content: (
             <span>
               {
                 item.header?.[
