@@ -25,7 +25,6 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { cn } from "@/lib/utils";
-import { SkeletonLoading } from "@/components/Skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute(

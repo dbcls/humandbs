@@ -108,6 +108,7 @@
     "research": "研究",
     "version": "バージョン",
     "releaseDate": "公開日付",
+    "version-release-date": "更新日付",
     "date-modified": "更新日",
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",

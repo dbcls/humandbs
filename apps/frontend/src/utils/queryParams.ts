@@ -7,6 +7,8 @@ import { z } from "zod";
 export const researchesSearchParamsSchema = ResearchSearchBodySchema.omit({
   lang: true,
   includeFacets: true,
+}).extend({
+  sort: ResearchSearchBodySchema.shape.sort.default("relevance"),
 });
 
 /** Filter params for the authed researches list page search params,

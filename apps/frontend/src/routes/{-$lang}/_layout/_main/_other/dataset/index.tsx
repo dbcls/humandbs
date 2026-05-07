@@ -36,6 +36,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
   includeFacets: true,
+}).extend({
+  sort: DatasetSearchBodySchema.shape.sort.default("relevance"),
 });
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
@@ -277,6 +279,11 @@ export const datasetsColumns = [
         label={ctx.table.options.meta?.t?.("releaseDate")}
       />
     ),
+  }),
+
+  datasetsColumnHelper.accessor("versionReleaseDate", {
+    id: "versionReleaseDate",
+    header: (ctx) => ctx.table.options.meta?.t?.("version-release-date"),
   }),
   datasetsColumnHelper.accessor("typeOfData", {
     id: "typeOfData",

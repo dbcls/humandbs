@@ -108,6 +108,7 @@
     "research-version": "Research version",
     "version": "Version",
     "releaseDate": "Release date",
+    "version-release-date": "Modification date",
     "date-modified": "Date modified",
     "typeOfData": "Type of data",
     "criteria": "Access type",
@@ -116,7 +117,6 @@
     "Controlled-access (Type I)": "Type I (restrictions apply)",
     "Controlled-access (Type II)": "Type II (restrictions apply)",
 
-    "facets": {},
     "Analysis Methods": "Analysis Methods",
     "Antigen Activation": "Antigen Activation",
     "Bacteria Identification": "Bacteria Identification",
