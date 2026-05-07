@@ -1,5 +1,13 @@
 import type { DatasetFilters, RangeFilter } from "@humandbs/backend/types";
-import { ChevronRight, Plus, Trash2, X as XIcon } from "lucide-react";
+import {
+  ChevronsUpDown,
+  ChevronUp,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Trash2,
+  X as XIcon,
+} from "lucide-react";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
@@ -532,6 +540,38 @@ function FacetItemWrapper({
   );
 }
 
+type CheckboxSortMode = "name" | "count";
+type CheckboxSortDir = "asc" | "desc" | undefined;
+
+function SortButton({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: CheckboxSortDir;
+  onClick: () => void;
+}) {
+  const Icon =
+    dir === "asc" ? ChevronUp : dir === "desc" ? ChevronDown : ChevronsUpDown;
+  return (
+    <div>
+      <Button
+        type="button"
+        onClick={onClick}
+        variant={"ghost"}
+        size={"slim"}
+        className={"hover:bg-hover font-normal"}
+      >
+        {label}
+        <Icon className={cn("size-4", active ? "opacity-100" : "opacity-40")} />
+      </Button>
+    </div>
+  );
+}
+
 function CheckboxFacetItem({
   id,
   draftValue,
@@ -551,10 +591,58 @@ function CheckboxFacetItem({
     ? (draftValue as string[])
     : [];
   const hasValue = selectedValues.length > 0;
+  const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<CheckboxSortMode>("count");
+  const [sortDir, setSortDir] = useState<CheckboxSortDir>("desc");
 
   const t = useTranslations(`Filters.${id}.options` as any);
+  const tFilters = useTranslations("Filters");
 
   if (options.length === 0) return null;
+
+  const getLabel = (optionValue: string): string => {
+    try {
+      const translated = t(optionValue as any);
+      if (typeof translated === "string") return translated;
+    } catch {
+      // fall through to raw value
+    }
+    return optionValue;
+  };
+
+  const handleSortClick = (mode: CheckboxSortMode) => {
+    if (sortMode === mode) {
+      setSortDir((d) =>
+        d === "asc" ? "desc" : d === "desc" ? undefined : "asc",
+      );
+    } else {
+      setSortMode(mode);
+      setSortDir(mode === "count" ? "desc" : "asc");
+    }
+  };
+
+  const showSearch = options.length > 9;
+
+  const filteredOptions =
+    showSearch && search.trim()
+      ? options.filter((optionValue) => {
+          const q = search.trim().toLowerCase();
+          if (optionValue.toLowerCase().includes(q)) return true;
+          return getLabel(optionValue).toLowerCase().includes(q);
+        })
+      : [...options];
+
+  filteredOptions.sort((a, b) => {
+    let cmp: number;
+    if (sortMode === "name") {
+      cmp = getLabel(a).localeCompare(getLabel(b));
+    } else {
+      const countA = facetCounts?.find((f) => f.value === a)?.count ?? 0;
+      const countB = facetCounts?.find((f) => f.value === b)?.count ?? 0;
+      cmp = countA - countB;
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   return (
     <FacetItemWrapper
@@ -564,41 +652,59 @@ function CheckboxFacetItem({
         onUpdate(id, undefined);
       }}
     >
+      {showSearch && (
+        <Input
+          className="mb-2 h-7 text-xs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search…"
+        />
+      )}
+      <div className="text-muted-foreground mb-1 flex items-center justify-between gap-2 text-xs">
+        <SortButton
+          label={tFilters("sort-by-name")}
+          active={sortMode === "name" && !!sortDir}
+          dir={sortMode === "name" ? sortDir : "asc"}
+          onClick={() => handleSortClick("name")}
+        />
+        <SortButton
+          label={tFilters("sort-by-count")}
+          active={sortMode === "count" && !!sortDir}
+          dir={sortMode === "count" ? sortDir : "desc"}
+          onClick={() => handleSortClick("count")}
+        />
+      </div>
       <ul className="max-h-80 space-y-2 overflow-y-auto">
-        {options.map((optionValue) => {
+        {filteredOptions.map((optionValue) => {
           const isChecked = selectedValues.includes(optionValue);
           const count =
             facetCounts?.find((f) => f.value === optionValue)?.count ?? 0;
 
           return (
             <li key={`${id}-${optionValue}`}>
-              <Label className="flex items-start justify-between text-xs">
-                <div className="flex gap-2">
-                  <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={(checked) => {
-                      const nextValues =
-                        checked === true
-                          ? Array.from(
-                              new Set([...selectedValues, optionValue]),
-                            )
-                          : selectedValues.filter((v) => v !== optionValue);
+              <Label className="grid grid-cols-[auto_1fr_auto] items-start gap-x-2 text-xs">
+                <Checkbox
+                  checked={isChecked}
+                  onCheckedChange={(checked) => {
+                    const nextValues =
+                      checked === true
+                        ? Array.from(new Set([...selectedValues, optionValue]))
+                        : selectedValues.filter((v) => v !== optionValue);
 
-                      onUpdate(
-                        id,
-                        nextValues.length > 0 ? nextValues : undefined,
-                      );
-                    }}
-                  />
-                  <span
-                    className={cn("flex-1", {
-                      "opacity-40": isFetching,
-                    })}
-                  >
-                    {t(optionValue as any)}
-                  </span>
-                </div>
-                <span>{count}</span>
+                    onUpdate(
+                      id,
+                      nextValues.length > 0 ? nextValues : undefined,
+                    );
+                  }}
+                />
+                <span
+                  className={cn({
+                    "opacity-40": isFetching,
+                  })}
+                >
+                  {getLabel(optionValue)}
+                </span>
+                <span className="text-muted-foreground">{count}</span>
               </Label>
             </li>
           );

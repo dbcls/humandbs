@@ -292,9 +292,7 @@ const columns = [
   }),
   columnHelper.accessor("title", {
     id: "title",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("title")} />
-    ),
+    header: (ctx) => ctx.table.options.meta?.t?.("title"),
     cell: function Cell(ctx) {
       return ctx.renderValue()?.[ctx.table.options.meta?.lang!];
     },

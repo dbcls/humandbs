@@ -409,7 +409,9 @@
     "platform-method": "Platform & Method",
     "sequencing-quality": "Sequencing Quality",
     "data-format": "Data Format",
-    "policy": "Policy"
+    "policy": "Policy",
+    "sort-by-name": "Filter name",
+    "sort-by-count": "Results count"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",

@@ -409,7 +409,9 @@
     "platform-method": "プラットフォーム・手法",
     "sequencing-quality": "シーケンシング品質",
     "data-format": "データ形式",
-    "policy": "ポリシー"
+    "policy": "ポリシー",
+    "sort-by-name": "フィルター名",
+    "sort-by-count": "件数"
   },
   "Pagination": {
     "itemsPerPage": "1ページあたりのアイテム数",
