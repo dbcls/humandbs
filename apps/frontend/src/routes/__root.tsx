@@ -36,7 +36,7 @@ export const Route = createRootRouteWithContext<Context>()({
       },
       {
         name: "version",
-        content: VITE_APP_VER,
+        content: `${APP_VERSION}_${APP_VERSION_HASH}`,
       },
       ...seo({
         title: "HumanDBS",
