@@ -96,10 +96,10 @@ export function Navbar() {
   const hiddenItems = items.filter((_, index) => overflowIndexSet.has(index));
 
   return (
-    <header className="flex items-center justify-between gap-12 rounded-md bg-white p-4">
+    <header className="flex items-center justify-between gap-12 rounded-md bg-white p-6">
       <MobileNav />
       <Link
-        className="w-fit shrink-0"
+        className="w-fit shrink-0 translate-y-2"
         variant={"nav"}
         to="/{-$lang}"
         params={{ lang }}
@@ -110,12 +110,13 @@ export function Navbar() {
           height={50}
           className="block w-40 md:w-80"
         />
-        <div className="text-center text-sm font-semibold whitespace-nowrap">
+        <div className="text-center text-xs font-semibold whitespace-nowrap">
           {tCommon("humandb")}
         </div>
       </Link>
 
       <NavigationMenu
+        defaultValue="debug" // TEMP
         ref={navContainerRef}
         viewport={false}
         className="relative hidden w-full max-w-none min-w-0 flex-1 justify-start md:flex"
@@ -170,7 +171,7 @@ export function Navbar() {
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
   return (
-    <NavigationMenuItem>
+    <NavigationMenuItem value="debug">
       {item.children ? (
         <>
           <NavigationMenuTrigger className="text-sm">
@@ -183,11 +184,11 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             </Link>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
-            <ul className="w-max max-w-96 min-w-full">
+            <ul className="w-max max-w-[400px] min-w-full">
               {item.children.map((child) => (
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
-                    <Link variant="nav" {...asLinkProps(child.linkOptions)}>
+                    <Link variant="nav" className="w-full" {...asLinkProps(child.linkOptions)}>
                       {child.label}
                     </Link>
                   </NavigationMenuLink>
@@ -325,7 +326,7 @@ function UserMenu() {
   if (!user) {
     return (
       <Button
-        className="flex h-14 w-14 justify-center rounded-full text-center"
+        className="flex size-12 items-center justify-center rounded-full p-0 text-center"
         size={"icon"}
         variant={"action"}
         onClick={login}
@@ -348,7 +349,7 @@ function UserMenu() {
         <Button
           size={"icon"}
           variant={"outline"}
-          className="flex h-14 w-14 justify-center rounded-full text-center"
+          className="flex size-12 items-center justify-center rounded-full p-0 text-center"
         >
           <span>{userInitials}</span>
         </Button>
@@ -406,12 +407,12 @@ function ShoppingCartButton() {
   return (
     <Button
       variant={"plain"}
-      className="relative"
+      className="relative flex size-12 items-center justify-center rounded-full p-0"
       size="icon"
       onClick={handleClick}
     >
       {cart.length > 0 ? (
-        <span className="bg-accent absolute top-0 left-0 w-fit min-w-8 rounded-full p-0.5 text-xs text-white">
+        <span className="bg-accent absolute top-0 right-0 w-fit min-w-4 rounded-full p-0.5 text-[10px] leading-none text-white">
           {cart.length}
         </span>
       ) : null}

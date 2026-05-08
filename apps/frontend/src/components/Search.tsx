@@ -1,10 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { SearchIcon } from "lucide-react";
+import { Button } from "./ui/button";
 
 export function Search() {
   return (
-    <Link to="/{-$lang}/research">
-      <SearchIcon className="text-secondary mr-2" size={24} />
-    </Link>
+    <Button variant="plain" className="flex size-12 items-center justify-center rounded-full p-0" asChild>
+      <Link to="/{-$lang}/research">
+        <SearchIcon className="text-secondary" size={24} />
+      </Link>
+    </Button>
   );
 }
