@@ -17,6 +17,11 @@ export interface NavbarCommittedGroup {
   subItems: NavbarResolvedItem[];
 }
 
+/**
+ * Gets JSON from CMS DB and builds "enriched" version, that can be used in the UI
+ * @param config - json config from the db.
+ * @returns top-level nav groups with resolved sub-group ids.
+ */
 export function deriveNavbarCommittedGroups(
   config: SiteNavigationConfig,
 ): NavbarCommittedGroup[] {
@@ -43,13 +48,21 @@ export function deriveNavbarCommittedGroups(
             .filter((item): item is NavbarResolvedItem => item !== null),
         );
 
-      const [linkedItem, ...ownSubItems] = ownItems;
+      const linkedItem = ownItems.find(
+        (item) => item.item.id === group.linkedItemId && item.enabled,
+      );
+
+      const ownSubItems = ownItems.filter(
+        (item) => item.item.id !== group.linkedItemId,
+      );
 
       return {
         group: {
           ...group,
           parentGroupId: undefined,
-          enabled: group.enabled && linkedItem !== undefined,
+          enabled:
+            group.enabled &&
+            (linkedItem !== undefined || ownSubItems.length > 0),
         },
         ...(linkedItem ? { linkedItem: { item: linkedItem.item } } : {}),
         subItems: [...ownSubItems, ...legacyChildItems],
@@ -57,6 +70,13 @@ export function deriveNavbarCommittedGroups(
     });
 }
 
+/**
+ * Applies UI changes to JSON config
+ *
+ * @param current current JSON config (DB)
+ * @param navGroups uodated navGroups in UI format
+ * @returns new JSON config (DB) with applied updates
+ */
 export function mergeCommittedNavbarGroups(
   current: SiteNavigationConfig,
   navGroups: NavbarCommittedGroup[],
@@ -79,7 +99,9 @@ export function mergeCommittedNavbarGroups(
     ({ group, linkedItem, subItems }) => ({
       ...group,
       parentGroupId: undefined,
-      enabled: linkedItem ? group.enabled : false,
+      enabled:
+        linkedItem !== undefined || subItems.length > 0 ? group.enabled : false,
+      linkedItemId: linkedItem?.item.id,
       items: [
         ...(linkedItem ? [{ id: linkedItem.item.id }] : []),
         ...subItems.map(({ item, enabled }) => ({

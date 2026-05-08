@@ -183,15 +183,18 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
     <NavigationMenuItem>
       {item.children ? (
         <>
-          <NavigationMenuTrigger className="text-sm" asChild>
-            <Link
-              variant="nav"
-              className="whitespace-nowrap"
-              onClick={handleBlur}
-              {...asLinkProps(item.linkOptions)}
-            >
-              {item.label}
-            </Link>
+          <NavigationMenuTrigger className="text-sm">
+            {item.linkOptions ? (
+              <Link
+                variant="nav"
+                className="whitespace-nowrap"
+                {...asLinkProps(item.linkOptions)}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span>{item.label}</span>
+            )}
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
             <ul className="w-max max-w-[400px] min-w-full">
@@ -213,16 +216,19 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
           </NavigationMenuContent>
         </>
       ) : (
-        <NavigationMenuLink asChild>
-          <Link
-            variant="nav"
-            className="whitespace-nowrap"
-            onClick={handleBlur}
-            {...asLinkProps(item.linkOptions)}
-          >
-            {item.label}
-          </Link>
-        </NavigationMenuLink>
+        <>
+          {item.linkOptions ? (
+            <NavigationMenuLink asChild>
+              <Link
+                variant="nav"
+                className="whitespace-nowrap"
+                {...asLinkProps(item.linkOptions)}
+              >
+                {item.label}
+              </Link>
+            </NavigationMenuLink>
+          ) : null}
+        </>
       )}
     </NavigationMenuItem>
   );
@@ -289,14 +295,17 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   return (
     <NavigationMenuItem className="w-full">
       <NavigationMenuLink asChild>
-        <Link
-          variant="nav"
-          onClick={handleBlur}
-          {...asLinkProps(item.linkOptions)}
-          className="w-full rounded-sm px-2 py-2"
-        >
-          {item.label}
-        </Link>
+        {item.linkOptions ? (
+          <Link
+            variant="nav"
+            {...asLinkProps(item.linkOptions)}
+            className="w-full rounded-sm px-2 py-2"
+          >
+            {item.label}
+          </Link>
+        ) : (
+          <span>{item.label}</span>
+        )}
       </NavigationMenuLink>
       {item.children?.length ? (
         <ul className="mt-1 flex flex-col gap-1 pl-4">

@@ -23,12 +23,13 @@ export const Route = createFileRoute(
     return {
       contentHtml,
       title: data.title,
+      hideTOC: data.hideTOC ?? true,
     };
   },
 });
 
 function RouteComponent() {
-  const { contentHtml, title } = Route.useLoaderData();
+  const { contentHtml, title, hideTOC } = Route.useLoaderData();
 
   const navigate = Route.useNavigate();
   const t = useTranslations("Front");
@@ -36,13 +37,14 @@ function RouteComponent() {
     <MarkdownWithTOC
       title={title}
       markdownResult={contentHtml}
+      hideTOC={hideTOC}
       afterContent={
         <div className="mt-5 flex justify-center">
           <Button
             variant={"action"}
             size={"lg"}
             onClick={() => {
-              navigate({ to: "./research" });
+              navigate({ to: "/{-$lang}/research" });
             }}
           >
             {t("data-usage-button")}

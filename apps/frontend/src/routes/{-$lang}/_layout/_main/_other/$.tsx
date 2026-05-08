@@ -80,6 +80,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
       ]);
       if (!data) throw new Error("Revision not found");
       const contentHtml = await renderMarkdown(data.content ?? "");
+
       return {
         kind: "revision" as const,
         contentHtml,

@@ -11,7 +11,7 @@ import {
 } from "./site-navigation-admin";
 
 describe("deriveNavbarCommittedGroups", () => {
-  test("treats the first group item as linked and the rest as submenu items", () => {
+  test("treats the item matching linkedItemId as linked and the rest as submenu items", () => {
     const config: SiteNavigationConfig = {
       items: [
         {
@@ -42,6 +42,7 @@ describe("deriveNavbarCommittedGroups", () => {
               label: { en: "Group A", ja: "Group A" },
               enabled: true,
               priority: "important",
+              linkedItemId: "item-sub-1", // ← not the first item
               items: [
                 { id: "item-top" },
                 { id: "item-sub-1" },
@@ -55,25 +56,23 @@ describe("deriveNavbarCommittedGroups", () => {
 
     const [group] = deriveNavbarCommittedGroups(config);
 
-    expect(group?.linkedItem?.item.id).toBe("item-top");
+    expect(group?.linkedItem?.item.id).toBe("item-sub-1");
     expect(
       group?.subItems.map(({ item, enabled }) => ({ id: item.id, enabled })),
     ).toEqual([
-      { id: "item-sub-1", enabled: true },
+      { id: "item-top", enabled: true },
       { id: "item-sub-2", enabled: false },
     ]);
   });
 });
 
 describe("mergeCommittedNavbarGroups", () => {
-  test("stores the linked item first and submenu items after it", () => {
+  test("stores linkedItemId and all items in the group", () => {
     const config: SiteNavigationConfig = {
       items: [],
       zones: {
         footer: { groups: [] },
-        navbar: {
-          groups: [],
-        },
+        navbar: { groups: [] },
       },
     };
 
@@ -115,12 +114,9 @@ describe("mergeCommittedNavbarGroups", () => {
         enabled: true,
         priority: "important",
         parentGroupId: undefined,
+        linkedItemId: "item-top", // ← explicit
         items: [{ id: "item-top" }, { id: "item-sub", enabled: false }],
       },
-    ]);
-    expect(result.items.map((item) => item.id)).toEqual([
-      "item-top",
-      "item-sub",
     ]);
   });
 
@@ -148,10 +144,44 @@ describe("mergeCommittedNavbarGroups", () => {
 
     expect(result.zones.navbar.groups[0]?.enabled).toBe(false);
   });
+
+  test("keeps enabled groups with only sub-items enabled", () => {
+    const config: SiteNavigationConfig = {
+      items: [],
+      zones: {
+        footer: { groups: [] },
+        navbar: { groups: [] },
+      },
+    };
+    const result = mergeCommittedNavbarGroups(config, [
+      {
+        group: {
+          id: "group-title-only",
+          label: { en: "More", ja: "More" },
+          enabled: true,
+          priority: "important",
+          items: [],
+        },
+        subItems: [
+          {
+            item: {
+              id: "item-sub",
+              type: "link",
+              url: "/sub",
+              label: { en: "Sub", ja: "Sub" },
+            },
+            enabled: true,
+          },
+        ],
+      },
+    ]);
+
+    expect(result.zones.navbar.groups[0]?.enabled).toBe(true);
+  });
 });
 
 describe("buildSiteNavigation", () => {
-  test("uses the first navbar item as the link target and the remaining items as dropdown children", () => {
+  test("uses the item matching linkedItemId as the link target and the remaining enabled items as dropdown children", () => {
     const config: SiteNavigationConfig = {
       items: [
         {
@@ -182,6 +212,7 @@ describe("buildSiteNavigation", () => {
               label: { en: "Group A", ja: "Group A" },
               enabled: true,
               priority: "important",
+              linkedItemId: "item-top", // ← add this
               items: [
                 { id: "item-top" },
                 { id: "item-sub-1" },

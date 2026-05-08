@@ -972,7 +972,12 @@ function removeNavbarAssignedItem(
 ): NavbarGroupWithItems[] {
   return currentGroups.map((group) => ({
     ...group,
-    ...(group.linkedItem?.item.id === itemId ? { linkedItem: undefined } : {}),
+    ...(group.linkedItem?.item.id === itemId
+      ? {
+          linkedItem: undefined,
+          group: { ...group.group, linkedItemId: undefined },
+        }
+      : {}),
     subItems: group.subItems.filter((item) => item.item.id !== itemId),
   }));
 }
@@ -1288,12 +1293,14 @@ function NavbarPreview({
 
                 return {
                   ...group,
+                  group: { ...group.group, linkedItemId: item.id },
                   linkedItem: { item },
                 };
               }
 
               return {
                 ...group,
+                group: { ...group.group, linkedItemId: undefined },
                 subItems: [...group.subItems, { item, enabled: true }],
               };
             });
@@ -1330,6 +1337,7 @@ function NavbarPreview({
 
                 return {
                   ...group,
+                  group: { ...group.group, linkedItemId: undefined },
                   linkedItem: { item },
                 };
               }
@@ -1790,7 +1798,7 @@ function NavbarGroupColumn({
   });
 
   const priority = g.group.priority ?? "important";
-  const canEnableGroup = g.linkedItem !== undefined;
+  const canEnableGroup = g.linkedItem !== undefined || g.subItems.length > 0;
 
   function updateCurrentGroup(
     updater: (group: NavbarGroupWithItems) => NavbarGroupWithItems,
@@ -1969,6 +1977,7 @@ function NavbarGroupColumn({
             onRemove={() =>
               updateCurrentGroup((group) => ({
                 ...group,
+                group: { ...group.group, linkedItemId: undefined },
                 linkedItem: undefined,
               }))
             }
