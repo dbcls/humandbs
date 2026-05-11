@@ -58,7 +58,7 @@ function Index() {
       <section className="flex h-fit items-start justify-between gap-8">
         <div className="flex flex-1 flex-col items-center">
           <ErrorBoundary fallbackRender={(e) => <div>{e.error.message}</div>}>
-            <h1 className="text-secondary mt-10 mb-5 text-lg font-medium">
+            <h1 className="text-secondary mt-10 mb-5 text-lg font-medium relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">
               {title}
             </h1>
             <HomeContent />
