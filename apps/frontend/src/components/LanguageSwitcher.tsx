@@ -19,7 +19,7 @@ export function LangSwitcherPill({
           onClick={() => onChange(lang)}
           key={lang}
           className={cn(
-            "text-foreground-light z-10 h-12 w-12 cursor-pointer rounded-full text-center text-sm font-bold uppercase",
+            "text-foreground-light z-10 h-10 w-10 cursor-pointer rounded-full text-center text-[10px] font-bold uppercase",
             { "text-white": value === lang },
           )}
         >
@@ -27,9 +27,9 @@ export function LangSwitcherPill({
         </button>
       ))}
       <div
-        className="bg-secondary absolute z-0 size-12 rounded-full transition-transform"
+        className="bg-secondary absolute z-0 size-10 rounded-full transition-transform"
         style={{
-          transform: `translateX(${i18nConfig.locales.indexOf(value) * 3}rem)`,
+          transform: `translateX(${i18nConfig.locales.indexOf(value) * 2.5}rem)`,
         }}
       />
     </div>

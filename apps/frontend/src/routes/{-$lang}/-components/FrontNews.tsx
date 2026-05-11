@@ -7,14 +7,16 @@ import type { NewsTitleResponse } from "@/serverFunctions/news";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (
-    <li className="flex items-start gap-2">
-      {newsItem.alert && (
-        <LucideBell className="text-accent mr-1 inline size-4" />
-      )}
-      <span className="text-2xs w-24 shrink-0">{newsItem.publishedAt}</span>
+    <li className="flex flex-col items-start gap-0">
+      <div className="flex items-center gap-1">
+        {newsItem.alert && (
+          <LucideBell className="text-accent inline size-4" />
+        )}
+        <span className="text-xs text-gray-500">{newsItem.publishedAt}</span>
+      </div>
 
       <Link
-        className="text-secondary line-clamp-3 h-fit text-sm underline"
+        className="text-secondary line-clamp-3 h-fit text-base underline"
         to="/{-$lang}/news/$newsItemId"
         params={{
           lang: newsItem.locale,
@@ -38,7 +40,7 @@ function News() {
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className="space-y-2">
+      <ul className="space-y-4">
         {newsTitles.map((item, index) => (
           <NewsItem key={index} newsItem={item} />
         ))}

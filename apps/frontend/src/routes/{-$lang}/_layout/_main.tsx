@@ -30,7 +30,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main")({
 function RouteComponent() {
   return (
     <>
-      <main className="z-10 flex flex-1 flex-col gap-2 p-4">
+      <main className="z-10 flex flex-1 flex-col gap-4 p-4">
         <Navbar />
         <Alerts />
 

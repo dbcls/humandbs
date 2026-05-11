@@ -1,19 +1,19 @@
 import {
-  useLocation,
   useNavigate,
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
 import {
-  ChevronsRight,
   LucideLogIn,
   LucideLogOut,
+  MoreVertical,
   ShoppingCart,
 } from "lucide-react";
 import { forwardRef, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import Logo from "@/assets/Logo.png";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -96,10 +96,10 @@ export function Navbar() {
   const hiddenItems = items.filter((_, index) => overflowIndexSet.has(index));
 
   return (
-    <header className="flex items-center justify-between gap-12 rounded-md bg-white p-4">
+    <header className="flex items-center justify-between gap-12 rounded-md bg-white p-6">
       <MobileNav />
       <Link
-        className="w-fit shrink-0"
+        className="w-fit shrink-0 translate-y-2"
         variant={"nav"}
         to="/{-$lang}"
         params={{ lang }}
@@ -110,7 +110,7 @@ export function Navbar() {
           height={50}
           className="block w-40 md:w-80"
         />
-        <div className="text-center text-sm font-semibold whitespace-nowrap">
+        <div className="text-center text-xs font-semibold whitespace-nowrap">
           {tCommon("humandb")}
         </div>
       </Link>
@@ -168,26 +168,42 @@ export function Navbar() {
   );
 }
 
+function blurActiveElement() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
+  const handleBlur = () => {
+    blurActiveElement();
+  };
+
   return (
     <NavigationMenuItem>
       {item.children ? (
         <>
-          <NavigationMenuTrigger className="text-sm">
+          <NavigationMenuTrigger className="text-sm" asChild>
             <Link
               variant="nav"
               className="whitespace-nowrap"
+              onClick={handleBlur}
               {...asLinkProps(item.linkOptions)}
             >
               {item.label}
             </Link>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
-            <ul className="w-max max-w-96 min-w-full">
+            <ul className="w-max max-w-[400px] min-w-full">
               {item.children.map((child) => (
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
-                    <Link variant="nav" {...asLinkProps(child.linkOptions)}>
+                    <Link
+                      variant="nav"
+                      className="w-full"
+                      onClick={handleBlur}
+                      {...asLinkProps(child.linkOptions)}
+                    >
                       {child.label}
                     </Link>
                   </NavigationMenuLink>
@@ -201,6 +217,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
           <Link
             variant="nav"
             className="whitespace-nowrap"
+            onClick={handleBlur}
             {...asLinkProps(item.linkOptions)}
           >
             {item.label}
@@ -219,7 +236,7 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-72 border bg-white p-2 text-black"
+        className="w-72 border-none bg-white px-4 py-4 text-black shadow-lg"
       >
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
@@ -240,12 +257,12 @@ const OverflowTrigger = forwardRef<
   return (
     <Button
       ref={ref}
-      variant="outline"
+      variant="plain"
       size="icon"
-      className={className ?? "size-8"}
+      className={cn("rounded-full hover:bg-hover text-secondary transition-colors", className ?? "size-10")}
       {...props}
     >
-      <ChevronsRight className="size-4" />
+      <MoreVertical className="size-6" strokeWidth={2.5} />
       <span className="sr-only">More navigation items</span>
     </Button>
   );
@@ -265,11 +282,16 @@ function getNavigationListGap(list: HTMLUListElement | null) {
 }
 
 function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
+  const handleBlur = () => {
+    blurActiveElement();
+  };
+
   return (
     <NavigationMenuItem className="w-full">
       <NavigationMenuLink asChild>
         <Link
           variant="nav"
+          onClick={handleBlur}
           {...asLinkProps(item.linkOptions)}
           className="w-full rounded-sm px-2 py-2"
         >
@@ -283,6 +305,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
               <NavigationMenuLink asChild>
                 <Link
                   variant="nav"
+                  onClick={handleBlur}
                   {...asLinkProps(child.linkOptions)}
                   className="w-full rounded-sm px-2 py-2 text-sm"
                 >
@@ -325,12 +348,12 @@ function UserMenu() {
   if (!user) {
     return (
       <Button
-        className="flex h-14 w-14 justify-center rounded-full text-center"
+        className="flex size-10 items-center justify-center rounded-full p-0 text-center"
         size={"icon"}
         variant={"action"}
         onClick={login}
       >
-        <LucideLogIn className="size-8" />
+        <LucideLogIn className="size-6" />
       </Button>
     );
   }
@@ -348,15 +371,15 @@ function UserMenu() {
         <Button
           size={"icon"}
           variant={"outline"}
-          className="flex h-14 w-14 justify-center rounded-full text-center"
+          className="flex size-10 items-center justify-center rounded-full p-0 text-center"
         >
-          <span>{userInitials}</span>
+          <span className="text-xs font-bold">{userInitials}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="flex flex-col gap-2 bg-white"
+        className="flex flex-col gap-2 border-none bg-white px-4 py-4 shadow-lg"
       >
         <div>{user.name}</div>
         <form method="post" action={"/auth/logout"}>
@@ -372,7 +395,7 @@ function UserMenu() {
           </Button>
           <Button type="submit" className="mt-3 justify-self-end">
             Logout
-            <LucideLogOut className="ml-2 size-8" />
+            <LucideLogOut className="ml-2 size-6" />
           </Button>
         </form>
       </PopoverContent>
@@ -406,16 +429,16 @@ function ShoppingCartButton() {
   return (
     <Button
       variant={"plain"}
-      className="relative"
+      className="relative flex size-10 items-center justify-center rounded-full p-0"
       size="icon"
       onClick={handleClick}
     >
       {cart.length > 0 ? (
-        <span className="bg-accent absolute top-0 left-0 w-fit min-w-8 rounded-full p-0.5 text-xs text-white">
+        <span className="bg-accent absolute top-0 right-0 w-fit min-w-4 rounded-full p-0.5 text-[10px] leading-none text-white">
           {cart.length}
         </span>
       ) : null}
-      <ShoppingCart className="text-secondary" />
+      <ShoppingCart className="text-secondary size-6" />
     </Button>
   );
 }

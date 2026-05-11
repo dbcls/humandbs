@@ -13,13 +13,13 @@ interface CardProps
 }
 
 const cardCaptionVariants = cva(
-  "text-secondary before:bg-secondary relative font-medium before:absolute before:-left-4 before:h-full before:w-1 before:rounded-r-sm",
+  "text-secondary before:bg-secondary relative font-bold before:absolute before:-left-6 before:h-full before:w-2",
   {
     variants: {
       captionSize: {
         lg: "text-lg mt-10",
         sm: "text-sm mt-3",
-        default: "text-base mt-4",
+        default: "text-base mt-1",
       },
     },
     defaultVariants: {
@@ -37,7 +37,7 @@ function Card({
   captionSize = "default",
 }: CardProps) {
   return (
-    <div className={cn("h-fit rounded-md bg-white p-4", className)}>
+    <div className={cn("h-fit rounded-md bg-white p-6", className)}>
       {caption ? (
         <div
           className={cn(cardCaptionVariants({ captionSize }), captionClassName)}
