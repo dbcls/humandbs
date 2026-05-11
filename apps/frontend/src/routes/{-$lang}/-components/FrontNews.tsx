@@ -1,8 +1,12 @@
-import { useLoaderData } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { useLoaderData, useRouteContext } from "@tanstack/react-router";
+import { useLocale, useTranslations } from "use-intl";
 
 import { Link } from "@/components/Link";
-import type { NewsTitleResponse } from "@/serverFunctions/news";
+import {
+  getNewsTitlesQueryOptions,
+  type NewsTitleResponse,
+} from "@/serverFunctions/news";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (
@@ -12,9 +16,11 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
       <Link
         className="text-secondary line-clamp-3 h-fit text-base underline"
         to="/{-$lang}/news/$newsItemId"
-        params={{
-          newsItemId: newsItem.id,
-        } as never}
+        params={
+          {
+            newsItemId: newsItem.id,
+          } as never
+        }
       >
         {newsItem.title}
       </Link>
@@ -23,9 +29,10 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
 }
 
 function News() {
-  const { newsTitles } = useLoaderData({
-    from: "/{-$lang}/_layout/_main/_home",
-  });
+  const lang = useLocale();
+  const { data: newsTitles } = useSuspenseQuery(
+    getNewsTitlesQueryOptions({ locale: lang }),
+  );
 
   const t = useTranslations("Navbar");
 
