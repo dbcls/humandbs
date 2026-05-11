@@ -315,7 +315,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
           </Link>
         </NavigationMenuLink>
       ) : (
-        <span className="block w-full px-2 py-1.5 text-xs font-semibold text-foreground-light">
+        <span className="block w-full px-2 py-1.5 text-xs text-neutral-400">
           {item.label}
         </span>
       )}
