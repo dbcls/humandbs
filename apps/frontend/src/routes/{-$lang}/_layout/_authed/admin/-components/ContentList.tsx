@@ -23,6 +23,8 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { useTranslations } from "use-intl";
+import { Label } from "@/components/ui/label";
+import { Trash2 } from "lucide-react";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/content");
 
@@ -144,33 +146,42 @@ export function ContentList({
       />
 
       <ul className="overflow-y-auto">
-        {contents.map((content) => {
+        {contents.map((content, index) => {
           const isActive = content.id === selectedContentId;
 
           return (
-            <ListItem
-              onClick={() => {
-                onSelectContent(content.id);
-              }}
-              key={content.id}
-              isActive={isActive}
-              className="mb-2 last:mb-0"
-            >
-              <AdminListItem
-                id={content.id}
-                translations={content.translations.map((tr) => ({
-                  lang: tr.lang,
-                  statuses: tr.statuses,
-                }))}
-                menuItems={[
-                  {
-                    label: "Delete",
-                    onSelect: () => handleClickDeleteContentItem(content.id),
-                    variant: "destructive",
-                  },
-                ]}
-              />
-            </ListItem>
+            <li key={content.id}>
+              <ListItem
+                onClick={() => {
+                  onSelectContent(content.id);
+                }}
+                isActive={isActive}
+                className="mb-2"
+              >
+                <AdminListItem
+                  id={content.id}
+                  translations={content.translations.map((tr) => ({
+                    lang: tr.lang,
+                    statuses: tr.statuses,
+                  }))}
+                  menuItems={[
+                    {
+                      label: (
+                        <Label className="text-danger flex justify-between">
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Label>
+                      ),
+                      onSelect: () => handleClickDeleteContentItem(content.id),
+                      variant: "destructive",
+                    },
+                  ]}
+                />
+              </ListItem>
+              {index < contents.length - 1 ? (
+                <hr className="my-2 border-gray-200" />
+              ) : null}
+            </li>
           );
         })}
       </ul>

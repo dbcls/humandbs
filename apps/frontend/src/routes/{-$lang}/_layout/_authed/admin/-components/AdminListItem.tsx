@@ -83,7 +83,7 @@ export function AdminListItem({
                     e.stopPropagation();
                     item.onSelect();
                   }}
-                  className="**:hover:text-white"
+                  className="hover:**:text-white"
                 >
                   {item.label}
                 </DropdownMenuItem>
