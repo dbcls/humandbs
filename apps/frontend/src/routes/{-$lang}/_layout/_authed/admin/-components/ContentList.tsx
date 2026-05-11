@@ -3,12 +3,15 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { localeSchema } from "@/config/i18n";
+import { useFilters } from "@/hooks/useFilters";
 import {
   $createContentItem,
   $deleteContentItem,
@@ -20,6 +23,10 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { useTranslations } from "use-intl";
+import { Label } from "@/components/ui/label";
+import { Trash2 } from "lucide-react";
+
+const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/content");
 
 export function ContentList({
   selectedContentId,
@@ -29,8 +36,10 @@ export function ContentList({
   onSelectContent: (contentId: string | undefined) => void;
 }) {
   const queryClient = useQueryClient();
+  const { q } = routeApi.useSearch();
+  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/content");
 
-  const contentsListQO = getContentsListQueryOptions();
+  const contentsListQO = getContentsListQueryOptions({ q });
   const { data: contents } = useSuspenseQuery(contentsListQO);
 
   const { openConfirmation } = useConfirmationStore();
@@ -94,7 +103,7 @@ export function ContentList({
       actionLabel: "Delete",
       onAction: () => {
         deleteContent(id);
-        onSelectContent(null);
+        onSelectContent(undefined);
       },
     });
   }
@@ -103,6 +112,14 @@ export function ContentList({
 
   return (
     <>
+      <div className="mb-3">
+        <FilterSearchInput
+          value={q}
+          onChange={(nextQ) => setFilters({ q: nextQ })}
+          placeholder="Search by title or content…"
+        />
+      </div>
+
       <InputDialog
         title="Add Content"
         label="Content ID"
@@ -129,28 +146,42 @@ export function ContentList({
       />
 
       <ul className="overflow-y-auto">
-        {contents.map((content) => {
+        {contents.map((content, index) => {
           const isActive = content.id === selectedContentId;
 
           return (
-            <ListItem
-              onClick={() => {
-                onSelectContent(content.id);
-              }}
-              key={content.id}
-              isActive={isActive}
-              className="mb-2 last:mb-0"
-            >
-              <AdminListItem
-                id={content.id}
-                translations={content.translations.map((tr) => ({
-                  lang: tr.lang,
-                  statuses: tr.statuses,
-                }))}
-                onClickDelete={() => handleClickDeleteContentItem(content.id)}
-                hideRename={true}
-              />
-            </ListItem>
+            <li key={content.id}>
+              <ListItem
+                onClick={() => {
+                  onSelectContent(content.id);
+                }}
+                isActive={isActive}
+                className="mb-2"
+              >
+                <AdminListItem
+                  id={content.id}
+                  translations={content.translations.map((tr) => ({
+                    lang: tr.lang,
+                    statuses: tr.statuses,
+                  }))}
+                  menuItems={[
+                    {
+                      label: (
+                        <Label className="text-danger flex justify-between">
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Label>
+                      ),
+                      onSelect: () => handleClickDeleteContentItem(content.id),
+                      variant: "destructive",
+                    },
+                  ]}
+                />
+              </ListItem>
+              {index < contents.length - 1 ? (
+                <hr className="my-2 border-gray-200" />
+              ) : null}
+            </li>
           );
         })}
       </ul>

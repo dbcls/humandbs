@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useStore, uuid } from "@tanstack/react-form";
-import { LucideBell } from "lucide-react";
 import { Suspense, useState } from "react";
 import { type Locale, useLocale } from "use-intl";
 
@@ -33,17 +32,16 @@ import {
   getTagsQueryOptions,
   type NewsItemResponse,
 } from "@/serverFunctions/news";
-import type { DateStringRange } from "@/utils/dates";
 import { Label } from "@/components/ui/label";
 import { DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
 import { useRouteContext } from "@tanstack/react-router";
 import type { SessionUser } from "@/utils/jwt-helpers";
 import { SkeletonLoading } from "@/components/Skeleton";
+import { TitleValue } from "./TitleValue";
+import { toDateString } from "@/utils/dates";
 
 interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
-  isAlert: boolean;
-  alertRange: DateStringRange | null;
   locale: Locale;
   publishedAt: string | null;
   tags: string[];
@@ -59,12 +57,6 @@ function getOptimisticallyUpdatedNewsValue(
     createdAt: newsItem.createdAt,
     publishedAt: formValues.publishedAt,
     author: newsItem.author,
-    alert: formValues.alertRange
-      ? {
-          from: formValues.alertRange.from ?? null,
-          to: formValues.alertRange.to ?? null,
-        }
-      : null,
     tags: formValues.tags
       .map((id) => allTags.find((t) => t.id === id))
       .filter((t): t is NewsTag => !!t),
@@ -105,12 +97,6 @@ function getOptimisticallyCreatedNewsItem(
         },
       ]),
     ),
-    alert: formValues.alertRange
-      ? {
-          from: formValues.alertRange.from ?? null,
-          to: formValues.alertRange.to ?? null,
-        }
-      : null,
     tags: formValues.tags
       .map((id) => allTags.find((t) => t.id === id))
       .filter((t): t is NewsTag => !!t),
@@ -197,7 +183,6 @@ function NewsItemForm({
         data: {
           id: newsItem.id,
           ...values,
-          alert: values.alertRange,
           tags: values.tags,
         },
       });
@@ -258,7 +243,6 @@ function NewsItemForm({
         data: {
           publishedAt: values.publishedAt,
           translations: values.translations,
-          alert: values.alertRange,
           tags: values.tags,
         },
       });
@@ -319,8 +303,6 @@ function NewsItemForm({
   const form = useAppForm({
     defaultValues: {
       translations: newsItem.translations,
-      isAlert: !!newsItem.alert,
-      alertRange: newsItem.alert,
       locale: i18n.defaultLocale,
       publishedAt: newsItem.publishedAt,
       tags: newsItem.tags?.map((t) => t.id) ?? [],
@@ -416,15 +398,14 @@ function NewsItemForm({
           <>
             <TitleValue
               title="Created at:"
-              value={newsItem.createdAt.toLocaleDateString(locale, {
-                timeZone: "UTC",
-              })}
+              value={toDateString(newsItem.createdAt)}
             />
             <TitleValue
               title="Updated at:"
-              value={newsItem.translations[
-                form.state.values.locale
-              ]?.updatedAt?.toLocaleDateString()}
+              value={toDateString(
+                newsItem.translations[form.state.values.locale]?.updatedAt ??
+                  undefined,
+              )}
             />
             <TitleValue
               title="Author:"
@@ -433,46 +414,6 @@ function NewsItemForm({
           </>
         )}
       </div>
-
-      <form.AppField
-        name="isAlert"
-        listeners={{
-          onChange: ({ value }) => {
-            if (!value) {
-              form.setFieldValue("alertRange", null);
-            }
-          },
-        }}
-      >
-        {(field) => (
-          <field.CheckboxField
-            label={
-              <>
-                <LucideBell className="size-4" />
-                Set as alert
-              </>
-            }
-          />
-        )}
-      </form.AppField>
-
-      <form.Subscribe selector={(state) => state.values.isAlert}>
-        {(isAlert) => {
-          if (!isAlert) return null;
-          return (
-            <Suspense fallback={<div>Loading...</div>}>
-              <form.AppField name="alertRange">
-                {(field) => (
-                  <field.DateRangeField
-                    className="ml-5"
-                    label="Alert date range"
-                  />
-                )}
-              </form.AppField>
-            </Suspense>
-          );
-        }}
-      </form.Subscribe>
 
       {/* Locale tabs */}
       <Tabs
@@ -591,20 +532,5 @@ function TagPicker({
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
-  );
-}
-
-function TitleValue({
-  title,
-  value,
-}: {
-  title: string;
-  value: string | undefined;
-}) {
-  return (
-    <p className="flex flex-col items-start gap-2">
-      <span className="text-sm leading-none font-medium">{title}</span>
-      <span className="text-xs">{value}</span>
-    </p>
   );
 }

@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
+import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import {
   $createNavigationFlowchart,
   $deleteNavigationFlowchart,
@@ -359,9 +360,7 @@ function CreateFlowchartPanel({
     <Card className="flex flex-1 flex-col gap-0" caption="New Flowchart">
       <div className="flex flex-col gap-5 p-5">
         {serverError && (
-          <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {serverError}
-          </div>
+          <AdminStatusMessage>{serverError}</AdminStatusMessage>
         )}
 
         <div className="flex flex-col gap-3">
@@ -680,16 +679,19 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
             </div>
           </div>
 
-          {message && (
-            <div className="mx-5 mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          {message ? (
+            <AdminStatusMessage variant="success" className="mx-5 mt-4">
               {message}
-            </div>
-          )}
-          {error && (
-            <div className="mx-5 mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm whitespace-pre-wrap text-red-700">
+            </AdminStatusMessage>
+          ) : null}
+          {error ? (
+            <AdminStatusMessage
+              className="mx-5 mt-4"
+              preserveWhitespace
+            >
               {error}
-            </div>
-          )}
+            </AdminStatusMessage>
+          ) : null}
 
           {/* Scrollable content */}
           <div className="min-h-0 flex-1 overflow-y-auto">

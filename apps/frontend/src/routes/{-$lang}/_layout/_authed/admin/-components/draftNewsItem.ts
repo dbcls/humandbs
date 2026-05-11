@@ -12,7 +12,6 @@ export function createDraftNewsItem(author: {
     createdAt: new Date(),
     publishedAt: toDateString(new Date()) || "",
     author,
-    alert: null,
     translations: {},
     tags: [],
   };

@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq } from "drizzle-orm";
+import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { i18n, type Locale, localeSchema } from "@/config/i18n";
@@ -21,10 +21,10 @@ import {
 import { buildConflictUpdateColumns } from "@/db/utils";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
-export function getContentsListQueryOptions() {
+export function getContentsListQueryOptions(params?: { q?: string }) {
   return queryOptions({
-    queryKey: ["contents"],
-    queryFn: $getContentItems,
+    queryKey: ["contents", params],
+    queryFn: () => $getContentItems({ data: params ?? {} }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
   });
 }
@@ -46,11 +46,33 @@ export interface ContentItemsListItem {
 }
 
 const $getContentItems = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      q: z.string().optional(),
+    }),
+  )
   .middleware([hasPermissionMiddleware])
-  .handler(async ({ context }): Promise<ContentItemsListItem[]> => {
+  .handler(async ({ context, data }): Promise<ContentItemsListItem[]> => {
     context.checkPermission("contents", "list");
 
     const contentItems = await db.query.contentItem.findMany({
+      where: data.q
+        ? (table) =>
+            exists(
+              db
+                .select({ _: contentTranslation.contentId })
+                .from(contentTranslation)
+                .where(
+                  and(
+                    eq(contentTranslation.contentId, table.id),
+                    or(
+                      like(contentTranslation.title, `%${data.q}%`),
+                      like(contentTranslation.content, `%${data.q}%`),
+                    ),
+                  ),
+                ),
+            )
+        : undefined,
       with: {
         translations: {
           columns: {

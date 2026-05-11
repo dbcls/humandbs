@@ -17,6 +17,7 @@ import {
   $createResearch,
   type CreateResearchResult,
 } from "@/serverFunctions/researches";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
 
 const defaultValues: CreateResearchRequest = {
@@ -111,11 +112,9 @@ export function NewResearchForm({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {error && (
-            <div className="text-danger mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm">
-              {error}
-            </div>
-          )}
+          {error ? (
+            <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage>
+          ) : null}
 
           <div className="mx-5 mt-5 flex justify-end gap-2">
             <Button

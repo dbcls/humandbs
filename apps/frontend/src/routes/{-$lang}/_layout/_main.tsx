@@ -21,7 +21,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main")({
 
     return {
       alerts: activeAlertTranslations.filter(
-        (alert) => !hiddenAlerts.includes(alert.newsId),
+        (alert) => !hiddenAlerts.includes(alert.id),
       ),
     };
   },

@@ -8,6 +8,27 @@
       "when": 1777448846360,
       "tag": "0000_quick_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778216814867,
+      "tag": "0001_navbar_linked_item_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778227792261,
+      "tag": "0002_fresh_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778515200000,
+      "tag": "0003_alert_updated_metadata",
+      "breakpoints": true
     }
   ]
 }

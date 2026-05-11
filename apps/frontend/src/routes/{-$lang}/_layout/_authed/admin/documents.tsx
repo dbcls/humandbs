@@ -19,6 +19,7 @@ export const Route = createFileRoute(
   validateSearch: z.object({
     selectedId: z.string().optional(),
     selectedVer: z.number().optional(),
+    q: z.string().optional(),
   }),
   component: RouteComponent,
   loaderDeps: ({ search }) => ({

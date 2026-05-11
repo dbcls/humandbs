@@ -18,7 +18,6 @@ import { newsItemRepository } from "@/repositories/newsItem";
 import type { NewsTag, PublishedTitlesFilters } from "@/repositories/newsItem";
 
 export interface NewsTitleResponse {
-  alert: boolean;
   id: string;
   locale: Locale;
   title: string;
@@ -205,7 +204,6 @@ const newsItemFiltersSchema = z.object({
   titleOrContent: z.string().optional(),
   publishedFrom: z.string().optional(),
   publishedTo: z.string().optional(),
-  isAlert: z.boolean().optional(),
   tagIds: z.array(z.string()).optional(),
 });
 
@@ -228,7 +226,6 @@ export const $getNewsItems = createServerFn({ method: "GET" })
         titleOrContent: data.titleOrContent,
         publishedFrom: data.publishedFrom,
         publishedTo: data.publishedTo,
-        isAlert: data.isAlert,
         tagIds: data.tagIds,
       },
     });
@@ -272,7 +269,6 @@ export const $updateNewsItem = createServerFn({ method: "POST" })
       id: data.id,
       publishedAt: data.publishedAt,
       translations: data.translations,
-      alert: data.alert,
       tags: data.tags,
     });
   });
@@ -283,7 +279,6 @@ export interface NewsItemsFilters {
   titleOrContent?: string;
   publishedFrom?: string;
   publishedTo?: string;
-  isAlert?: boolean;
   tagIds?: string[];
 }
 
@@ -369,7 +364,6 @@ export const $createNewsItem = createServerFn({ method: "POST" })
       authorId: user.id,
       publishedAt: data.publishedAt,
       translations: data.translations,
-      alert: data.alert,
       tags: data.tags,
     });
   });

@@ -47,6 +47,17 @@ export function MobileNav() {
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="flex flex-col gap-2 pl-4">
+                        {item.linkOptions && (
+                          <Link
+                            key="linked"
+                            variant="nav"
+                            {...asLinkProps(item.linkOptions)}
+                            onClick={() => setOpen(false)}
+                            className="block py-2 text-sm font-medium"
+                          >
+                            {item.label}
+                          </Link>
+                        )}
                         {item.children.map((child) => (
                           <Link
                             key={child.id}
@@ -63,6 +74,8 @@ export function MobileNav() {
                   </AccordionItem>
                 );
               }
+
+              if (!item.linkOptions) return null;
 
               return (
                 <div key={item.id} className="border-b py-3 last:border-b-0">

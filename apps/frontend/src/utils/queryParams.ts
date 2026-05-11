@@ -40,11 +40,21 @@ export const newsAdminSearchParamsSchema = z.object({
   q: z.string().optional(),
   publishedFrom: z.string().optional(),
   publishedTo: z.string().optional(),
-  isAlert: z.enum(["alert", "news"]).optional(),
   tagIds: z.array(z.string()).optional(),
 });
 
 export type NewsAdminSearchParams = z.infer<typeof newsAdminSearchParamsSchema>;
+
+export const alertsAdminSearchParamsSchema = z.object({
+  selectedId: z.string().optional(),
+  q: z.string().optional(),
+  activeFrom: z.string().optional(),
+  activeTo: z.string().optional(),
+});
+
+export type AlertsAdminSearchParams = z.infer<
+  typeof alertsAdminSearchParamsSchema
+>;
 
 export const newsPublicSearchParamsSchema = z.object({
   q: z.string().optional(),

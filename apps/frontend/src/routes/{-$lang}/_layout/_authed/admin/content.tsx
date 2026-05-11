@@ -15,6 +15,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(
   {
     validateSearch: z.object({
       selectedId: z.string().optional(),
+      q: z.string().optional(),
     }),
     loaderDeps: ({ search }) => ({
       selectedId: search.selectedId,

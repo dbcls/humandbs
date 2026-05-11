@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { $createResearchVersion } from "@/serverFunctions/researches";
 
@@ -78,11 +79,7 @@ export function NewVersionDialog({
           <DialogTitle>Add new version</DialogTitle>
         </DialogHeader>
 
-        {error && (
-          <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
-            {error}
-          </div>
-        )}
+        {error ? <AdminStatusMessage>{error}</AdminStatusMessage> : null}
 
         <div className="flex flex-col gap-3">
           <p className="text-sm text-gray-500">

@@ -3,12 +3,15 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { type ContentId } from "@/config/content-config";
 import { PROTECTED_DOC_IDS } from "@/config/routing-config";
+import { useFilters } from "@/hooks/useFilters";
 import {
   $changeIdOfDocument,
   $createDocument,
@@ -26,6 +29,10 @@ import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslations } from "use-intl";
+import { Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+
+const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/documents");
 
 export function DocumentsList({
   onSelectDoc,
@@ -34,7 +41,9 @@ export function DocumentsList({
   onSelectDoc: (id: string) => void;
   selectedContentId: string | undefined;
 }) {
-  const documentsListQO = getDocumentsQueryOptions();
+  const { q } = routeApi.useSearch();
+  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/documents");
+  const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
 
   const queryClient = useQueryClient();
@@ -173,6 +182,14 @@ export function DocumentsList({
   const tErrors = useTranslations("Errors");
   return (
     <>
+      <div className="mb-3">
+        <FilterSearchInput
+          value={q}
+          onChange={(nextQ) => setFilters({ q: nextQ })}
+          placeholder="Search by title or content…"
+        />
+      </div>
+
       <InputDialog
         title="Add Document"
         description=<div>
@@ -240,12 +257,27 @@ export function DocumentsList({
                       <AdminListItem
                         id={doc.contentId}
                         translations={doc.translations}
-                        onClickDelete={() =>
-                          handleClickDeleteDoc(doc.contentId)
+                        menuItems={
+                          isProtected
+                            ? []
+                            : [
+                                {
+                                  label: <Label>Change ID...</Label>,
+                                  onSelect: () => setRenamingId(doc.contentId),
+                                },
+                                {
+                                  label: (
+                                    <Label className="text-danger flex justify-between">
+                                      <Trash2 className="size-4" />
+                                      Delete
+                                    </Label>
+                                  ),
+                                  onSelect: () =>
+                                    handleClickDeleteDoc(doc.contentId),
+                                  variant: "destructive",
+                                },
+                              ]
                         }
-                        onClickRename={() => setRenamingId(doc.contentId)}
-                        hideDelete={isProtected}
-                        hideRename={isProtected}
                       />
                     </ListItem>
                   );
@@ -270,12 +302,23 @@ export function DocumentsList({
                           <AdminListItem
                             id={doc.contentId}
                             translations={doc.translations}
-                            onClickDelete={() =>
-                              handleClickDeleteDoc(doc.contentId)
+                            menuItems={
+                              isProtected
+                                ? []
+                                : [
+                                    {
+                                      label: "Change id...",
+                                      onSelect: () =>
+                                        setRenamingId(doc.contentId),
+                                    },
+                                    {
+                                      label: "Delete",
+                                      onSelect: () =>
+                                        handleClickDeleteDoc(doc.contentId),
+                                      variant: "destructive",
+                                    },
+                                  ]
                             }
-                            onClickRename={() => setRenamingId(doc.contentId)}
-                            hideDelete={isProtected}
-                            hideRename={isProtected}
                           />
                         </ListItem>
                       );
