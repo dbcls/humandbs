@@ -24,7 +24,7 @@ const cardCaptionVariants = cva(
       },
       hideCaptionBorder: {
         false:
-          "before:content-[''] before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3",
+          "before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3",
         true: "",
       },
     },
