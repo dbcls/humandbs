@@ -248,8 +248,20 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
       >
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
-            {items.map((item) => (
-              <OverflowMenuItem key={item.id} item={item} />
+            {items.map((item, index) => (
+              <li
+                key={item.id}
+                className="flex w-full flex-col"
+                style={{ display: "contents" }}
+              >
+                {index > 0 && (
+                  <div
+                    className="my-1 h-px w-full bg-border"
+                    role="separator"
+                  />
+                )}
+                <OverflowMenuItem item={item} />
+              </li>
             ))}
           </NavigationMenuList>
         </NavigationMenu>
@@ -295,37 +307,42 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   };
 
   return (
-    <NavigationMenuItem className="w-full">
+    <NavigationMenuItem className="w-full flex flex-col">
       <NavigationMenuLink asChild>
         {item.linkOptions ? (
           <Link
             variant="nav"
             {...asLinkProps(item.linkOptions)}
-            className="w-full rounded-sm px-2 py-2"
+            className="w-full rounded-sm px-2 py-2 text-sm"
           >
             {item.label}
           </Link>
         ) : (
-          <span>{item.label}</span>
+          <span className="block w-full px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+            {item.label}
+          </span>
         )}
       </NavigationMenuLink>
       {item.children?.length ? (
-        <ul className="mt-1 flex flex-col gap-1 pl-4">
-          {item.children.map((child) => (
-            <li key={child.id}>
-              <NavigationMenuLink asChild>
-                <Link
-                  variant="nav"
-                  onClick={handleBlur}
-                  {...asLinkProps(child.linkOptions)}
-                  className="w-full rounded-sm px-2 py-2 text-sm"
-                >
-                  {child.label}
-                </Link>
-              </NavigationMenuLink>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="my-1 h-px w-full bg-border" />
+          <ul className="mt-1 flex flex-col gap-1 pl-4">
+            {item.children.map((child) => (
+              <li key={child.id}>
+                <NavigationMenuLink asChild>
+                  <Link
+                    variant="nav"
+                    onClick={handleBlur}
+                    {...asLinkProps(child.linkOptions)}
+                    className="w-full rounded-sm px-2 py-2 text-sm"
+                  >
+                    {child.label}
+                  </Link>
+                </NavigationMenuLink>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
     </NavigationMenuItem>
   );
