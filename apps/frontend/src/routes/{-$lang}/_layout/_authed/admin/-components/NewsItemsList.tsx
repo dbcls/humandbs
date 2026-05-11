@@ -148,7 +148,7 @@ export function NewsItemsList({
     <Card
       caption="News"
       className="w-cms-list-panel flex h-full flex-col"
-      containerClassName="overflow-auto flex-1 flex flex-col max-h-full"
+      containerClassName="flex-1 flex flex-col max-h-full"
     >
       <div>
         <NewsFiltersBar />

@@ -13,11 +13,7 @@ export function AlertsFiltersBar() {
   const search = routeApi.useSearch();
   const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/alerts");
 
-  const hasActiveFilters = !!(
-    search.q ||
-    search.activeFrom ||
-    search.activeTo
-  );
+  const hasActiveFilters = !!(search.q || search.activeFrom || search.activeTo);
 
   function handleClearAll() {
     setFilters({
@@ -71,7 +67,9 @@ function DateRangeFilter({
   return (
     <DateRangePicker
       value={value}
-      onSelect={(range) => onChange({ activeFrom: range.from, activeTo: range.to })}
+      onSelect={(range) =>
+        onChange({ activeFrom: range.from, activeTo: range.to })
+      }
       onClear={() => onChange({ activeFrom: undefined, activeTo: undefined })}
     />
   );
