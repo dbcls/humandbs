@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { lazy, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import SubmitDataIcon from "@/assets/submit-data.svg?react";
@@ -18,15 +18,14 @@ import {
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
+import { SkeletonLoading } from "@/components/Skeleton";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
   loader: async ({ context }) => {
-    const newsTitles = await context.queryClient.ensureQueryData(
+    context.queryClient.ensureQueryData(
       getNewsTitlesQueryOptions({ locale: context.lang }),
     );
-
-    return { newsTitles };
   },
   errorComponent: () => <div>Oh no, an error!</div>,
 });
@@ -51,10 +50,10 @@ function RouteComponent() {
 
   return (
     // All that after the Navbar component
-    <section className="w-full flex flex-col items-stretch gap-8">
+    <section className="flex w-full flex-col items-stretch gap-8">
       <section className="flex h-fit items-start justify-between gap-4">
         <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-24">
-          <div className="w-full max-w-5xl flex flex-col items-center">
+          <div className="flex w-full max-w-5xl flex-col items-center">
             <Outlet />
 
             <div className="mt-8 flex w-full max-w-full items-center gap-8 rounded-md bg-black/15 p-8 text-base">
@@ -70,7 +69,9 @@ function RouteComponent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="dataset">{tCommon("dataset")}</SelectItem>
-                  <SelectItem value="research">{tCommon("research")}</SelectItem>
+                  <SelectItem value="research">
+                    {tCommon("research")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -130,7 +131,9 @@ function RouteComponent() {
         </div>
 
         <Card caption={"News"} className="w-[30rem] shrink-0">
-          <News />
+          <Suspense fallback={<SkeletonLoading />}>
+            <News />
+          </Suspense>
         </Card>
       </section>
       <Card className="overflow-hidden bg-transparent p-0">

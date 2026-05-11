@@ -131,12 +131,9 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
 
 function RouteComponent() {
   return (
-    <main className="flex h-screen flex-col gap-2 p-4">
-      <Navbar />
-      <section className="flex min-h-0 flex-1 items-stretch gap-3">
-        <NavPanel />
-        <Outlet />
-      </section>
+    <main className="flex min-h-0 flex-1 items-stretch gap-3 p-4">
+      <NavPanel />
+      <Outlet />
     </main>
   );
 }

@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button";
 export function FilterSearchInput({
   value,
   onChange,
+  className,
   placeholder = "Search…",
   debounceMs = 400,
 }: {
   value: string | undefined;
   onChange: (value: string | undefined) => void;
+  className?: string;
   placeholder?: string;
   debounceMs?: number;
 }) {
@@ -49,13 +51,14 @@ export function FilterSearchInput({
       type="text"
       placeholder={placeholder}
       value={inputValue}
+      className={className}
       beforeIcon={<SearchIcon size={14} className="text-muted-foreground" />}
       afterIcon={
         inputValue ? (
           <Button
             variant="plain"
             size="icon"
-            className="text-muted-foreground hover:text-foreground pointer-events-auto"
+            className="text-muted-foreground hover:text-foreground pointer-events-auto p-0"
             onClick={handleClear}
           >
             <XIcon size={14} />
