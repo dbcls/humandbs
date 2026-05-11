@@ -7,25 +7,17 @@ import {
   ilike,
   inArray,
   lte,
-  notExists,
   or,
   sql,
 } from "drizzle-orm";
 
 import { type Locale } from "@/config/i18n";
 import { db } from "@/db/database";
-import {
-  alert,
-  newsItem,
-  newsItemTag,
-  newsTag,
-  newsTranslation,
-} from "@/db/schema";
+import { newsItem, newsItemTag, newsTranslation } from "@/db/schema";
 import type { NewsTranslationSelect, NewsTranslationUpsert } from "@/db/types";
 import { toDateString } from "@/utils/dates";
 
 export interface NewsTitleItem {
-  alert: boolean;
   id: string;
   locale: Locale;
   title: string;
@@ -42,11 +34,6 @@ export interface PublishedTitlesFilters {
 export interface NewsItemAuthor {
   name: string | null;
   email: string | null;
-}
-
-export interface NewsItemAlert {
-  from: string | null;
-  to: string | null;
 }
 
 export interface NewsItemTranslation {
@@ -66,7 +53,6 @@ export interface NewsItemRecord {
   createdAt: Date;
   publishedAt: string | null;
   author: NewsItemAuthor;
-  alert: NewsItemAlert | null;
   translations: Partial<Record<Locale, NewsItemTranslation>>;
   tags: NewsTag[];
 }
@@ -91,7 +77,6 @@ export interface NewsItemFilters {
   titleOrContent?: string;
   publishedFrom?: string;
   publishedTo?: string;
-  isAlert?: boolean;
   tagIds?: string[];
 }
 
@@ -240,11 +225,9 @@ export function createNewsItemRepository(
           locale: newsTranslation.lang,
           title: newsTranslation.title,
           publishedAt: newsItem.publishedAt,
-          alert: alert.newsId,
         })
         .from(newsTranslation)
         .innerJoin(newsItem, eq(newsTranslation.newsId, newsItem.id))
-        .leftJoin(alert, eq(alert.newsId, newsItem.id))
         .where(and(...conditions))
         .orderBy(desc(newsItem.publishedAt))
         .limit(limit)
@@ -253,7 +236,6 @@ export function createNewsItemRepository(
       return news.map((n) => ({
         ...n,
         locale: n.locale as Locale,
-        alert: !!n.alert,
       }));
     },
 
@@ -261,9 +243,7 @@ export function createNewsItemRepository(
       const news = await database.query.newsItem.findMany({
         with: {
           translations: true,
-          alert: {
-            columns: { from: true, to: true },
-          },
+
           author: {
             columns: { name: true, email: true },
           },
@@ -308,26 +288,6 @@ export function createNewsItemRepository(
             conditions.push(lte(table.publishedAt, filters.publishedTo));
           }
 
-          if (filters.isAlert === true) {
-            conditions.push(
-              exists(
-                database
-                  .select({ _: alert.newsId })
-                  .from(alert)
-                  .where(eq(alert.newsId, table.id)),
-              ),
-            );
-          } else if (filters.isAlert === false) {
-            conditions.push(
-              notExists(
-                database
-                  .select({ _: alert.newsId })
-                  .from(alert)
-                  .where(eq(alert.newsId, table.id)),
-              ),
-            );
-          }
-
           if (filters.tagIds && filters.tagIds.length > 0) {
             conditions.push(
               exists(
@@ -352,7 +312,7 @@ export function createNewsItemRepository(
 
       return news.map((item) => ({
         ...item,
-        alert: item.alert ?? null,
+
         tags: mapTags(item.tags),
         translations: mapTranslations(item.translations),
       }));
@@ -363,9 +323,7 @@ export function createNewsItemRepository(
         where: (table, { eq }) => eq(table.id, id),
         with: {
           translations: true,
-          alert: {
-            columns: { from: true, to: true },
-          },
+
           author: {
             columns: { name: true, email: true },
           },
@@ -385,7 +343,7 @@ export function createNewsItemRepository(
       return {
         ...item,
         tags: mapTags(item.tags),
-        alert: item.alert ?? null,
+
         translations: mapTranslations(item.translations),
       };
     },
@@ -427,23 +385,13 @@ export function createNewsItemRepository(
             });
         }
 
-        if (alertInput) {
-          await tx
-            .insert(alert)
-            .values({ newsId: created.id, ...alertInput })
-            .onConflictDoUpdate({
-              target: [alert.newsId],
-              set: alertInput,
-            });
-        }
-
         await syncTags(tx, created.id, tags);
 
         const result = await tx.query.newsItem.findFirst({
           where: eq(newsItem.id, created.id),
           with: {
             translations: true,
-            alert: { columns: { from: true, to: true } },
+
             author: { columns: { name: true, email: true } },
             tags: {
               with: {
@@ -458,7 +406,7 @@ export function createNewsItemRepository(
 
         return {
           ...result,
-          alert: result.alert ?? null,
+
           tags: mapTags(result.tags),
           translations: result.translations.reduce<
             Partial<Record<Locale, NewsItemTranslation>>
@@ -510,18 +458,6 @@ export function createNewsItemRepository(
                 updatedAt: new Date(),
               },
             });
-        }
-
-        if (alertInput) {
-          await tx
-            .insert(alert)
-            .values({ newsId: id, ...alertInput })
-            .onConflictDoUpdate({
-              target: [alert.newsId],
-              set: alertInput,
-            });
-        } else {
-          await tx.delete(alert).where(eq(alert.newsId, id));
         }
 
         await syncTags(tx, id, tags);

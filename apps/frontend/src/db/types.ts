@@ -38,7 +38,7 @@ export const documentVersionSchema = createSelectSchema(schema.documentVersion);
 export const selectAlertSchema = createSelectSchema(schema.alert);
 export const createAlertSchema = createInsertSchema(schema.alert);
 export const updateAlertSchema = createUpdateSchema(schema.alert).required({
-  newsId: true,
+  id: true,
 });
 
 export type UpdateAlert = z.infer<typeof updateAlertSchema>;

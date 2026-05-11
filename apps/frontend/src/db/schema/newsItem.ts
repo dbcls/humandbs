@@ -7,7 +7,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import { alert } from "./alert";
 import { user } from "./auth-schema";
 import { newsItemTag } from "./newsTag";
 
@@ -26,10 +25,7 @@ export const newsItemRelations = relations(newsItem, ({ many, one }) => ({
     fields: [newsItem.authorId],
     references: [user.id],
   }),
-  alert: one(alert, {
-    fields: [newsItem.id],
-    references: [alert.newsId],
-  }),
+
   tags: many(newsItemTag),
 }));
 

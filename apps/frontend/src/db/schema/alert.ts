@@ -1,10 +1,25 @@
 import type { Locale } from "@/config/i18n";
-import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  boolean,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { user } from "./auth-schema";
 
 export const alert = pgTable("alert", {
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  enabled: boolean().$default(() => true),
+  authorId: text("author_id")
+    .notNull()
+    .references(() => user.id),
+  from: text("from"),
+  to: text("to"),
 });
 
 export const alertTranslation = pgTable(
@@ -15,16 +30,18 @@ export const alertTranslation = pgTable(
       .references(() => alert.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     locale: text("locale").notNull().$type<Locale>(),
-    from: text("from"),
-    to: text("to"),
   },
   (table) => [
     unique("alert_translation_unique").on(table.alertId, table.locale),
   ],
 );
 
-export const alertRelations = relations(alert, ({ many }) => ({
+export const alertRelations = relations(alert, ({ many, one }) => ({
   trnanslations: many(alertTranslation),
+  author: one(user, {
+    references: [user.id],
+    fields: [alert.authorId],
+  }),
 }));
 
 export const alertTranslationRelations = relations(

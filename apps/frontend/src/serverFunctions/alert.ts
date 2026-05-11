@@ -1,67 +1,38 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
-import { and, desc, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { localeSchema, type Locale } from "@/config/i18n";
-import { db } from "@/db/database";
-import { alert, newsItem, newsTranslation } from "@/db/schema";
-import { createAlertSchema, updateAlertSchema } from "@/db/types";
+import { localeSchema } from "@/config/i18n";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import { toDateString } from "@/utils/dates";
-
-/** Alerts list for CMS */
-interface AlertListItemResponse {
-  newsId: string;
-  from: string | null;
-  to: string | null;
-  translations: {
-    title: string;
-    lang: Locale;
-  }[];
-}
+import {
+  alertsRepository,
+  createAlertSchema,
+  updateAlertSchema,
+} from "@/repositories/alert";
+import { $getAuthUser } from "./authUser";
 
 /** Get alerts list for CMS */
 export const $getAllAlerts = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ limit: z.number().optional() }).optional())
+  .inputValidator(
+    z
+      .object({ limit: z.number().optional(), offset: z.number().optional() })
+      .optional(),
+  )
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
-    // context.checkPermission("alerts", "list");
+    context.checkPermission("alerts", "list");
 
-    const alerts = await db.query.alert.findMany({
-      with: {
-        newsItem: {
-          columns: {},
-          with: {
-            translations: {
-              columns: {
-                title: true,
-                lang: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: [desc(alert.from)],
-      limit: data?.limit ?? 100,
-    });
+    const alerts = await alertsRepository.list(data ?? {});
 
-    const response: AlertListItemResponse[] = alerts.map((alert) => ({
-      newsId: alert.newsId,
-      from: alert.from,
-      to: alert.to,
-      translations: alert.newsItem.translations.map((translation) => ({
-        title: translation.title,
-        lang: translation.lang as Locale,
-      })),
-    }));
-
-    return response;
+    return alerts;
   });
 
 // Query options
-export const getAllAlertsQueryOptions = (params?: { limit?: number }) =>
+export const getAllAlertsQueryOptions = (params?: {
+  limit?: number;
+  offset?: number;
+}) =>
   queryOptions({
     queryKey: ["alerts", params],
     queryFn: () => $getAllAlerts({ data: params }),
@@ -73,9 +44,12 @@ export const $createAlert = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "create");
 
-    const created = await db.insert(alert).values(data).returning();
+    const { user } = await $getAuthUser();
 
-    return created[0];
+    // user?.id should be defined because context.checkPermission here passed
+    const created = await alertsRepository.create(data, user?.id!);
+
+    return created;
   });
 
 export const $updateAlert = createServerFn({ method: "POST" })
@@ -84,27 +58,18 @@ export const $updateAlert = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "update");
 
-    const [updatedAlert] = await db
-      .update(alert)
-      .set(data)
-      .where(eq(alert.newsId, data.newsId))
-      .returning();
+    const updated = await alertsRepository.update(data);
 
-    return updatedAlert;
+    return updated;
   });
 
 export const $deleteAlert = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ newsId: z.string() }))
+  .inputValidator(z.object({ id: z.string() }))
   .middleware([hasPermissionMiddleware])
   .handler(async ({ data, context }) => {
     context.checkPermission("alerts", "delete");
 
-    const [deletedAlert] = await db
-      .delete(alert)
-      .where(eq(alert.newsId, data.newsId))
-      .returning();
-
-    return deletedAlert;
+    await alertsRepository.delete(data.id);
   });
 
 /** Active alerts list for clients */
@@ -117,35 +82,7 @@ export interface ActiveAlertsItemResponse {
 export const $getActiveAlerts = createServerFn({ method: "GET" })
   .inputValidator(z.object({ locale: localeSchema }))
   .handler(async ({ data }) => {
-    const now = new Date();
-    const nowStr = toDateString(now)!;
-    const alerts = await db
-      .select({
-        newsId: alert.newsId,
-        title: newsTranslation.title,
-      })
-      .from(alert)
-      .innerJoin(newsItem, eq(alert.newsId, newsItem.id))
-      .innerJoin(
-        newsTranslation,
-        and(
-          eq(newsTranslation.newsId, newsItem.id),
-          eq(newsTranslation.lang, data.locale),
-        ),
-      )
-      .where(
-        and(
-          or(isNull(alert.from), lte(alert.from, nowStr)),
-          or(isNull(alert.to), gte(alert.to, nowStr)),
-        ),
-      );
-
-    const response: ActiveAlertsItemResponse[] = alerts.map((alert) => ({
-      newsId: alert.newsId,
-      title: alert.title,
-    }));
-
-    return response;
+    return await alertsRepository.listActive({ lang: data.locale });
   });
 
 /** Cookie key to store hidden alert ids (newsIds) */
@@ -168,10 +105,11 @@ export const $saveHiddenAlertIds = createServerFn({ method: "POST" })
       existingIds = JSON.parse(existingAlertIdsCookie);
     }
 
-    const newIds = new Set(existingIds);
-    newIds.add(data.newsId);
+    const ids = new Set(existingIds);
 
-    setCookie(hiddenAlerts, JSON.stringify([...newIds]), {
+    ids.add(data.newsId);
+
+    setCookie(hiddenAlerts, JSON.stringify([...ids]), {
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
     });
