@@ -175,23 +175,26 @@ function blurActiveElement() {
 }
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
+  const navigate = useNavigate();
   const handleBlur = () => {
     blurActiveElement();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleBlur();
+    navigate(asLinkProps(item.linkOptions));
   };
 
   return (
     <NavigationMenuItem>
       {item.children ? (
         <>
-          <NavigationMenuTrigger className="text-sm" asChild>
-            <Link
-              variant="nav"
-              className="whitespace-nowrap"
-              onClick={handleBlur}
-              {...asLinkProps(item.linkOptions)}
-            >
-              {item.label}
-            </Link>
+          <NavigationMenuTrigger
+            className="text-sm"
+            onClick={handleClick}
+          >
+            <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
             <ul className="w-max max-w-[400px] min-w-full">
