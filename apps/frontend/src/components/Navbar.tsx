@@ -116,7 +116,6 @@ export function Navbar() {
       </Link>
 
       <NavigationMenu
-        defaultValue="debug" // TEMP
         ref={navContainerRef}
         viewport={false}
         className="relative hidden w-full max-w-none min-w-0 flex-1 justify-start md:flex"
@@ -171,7 +170,7 @@ export function Navbar() {
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
   return (
-    <NavigationMenuItem value="debug">
+    <NavigationMenuItem>
       {item.children ? (
         <>
           <NavigationMenuTrigger className="text-sm">
