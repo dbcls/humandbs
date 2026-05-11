@@ -10,7 +10,7 @@ const linkVariants = cva("text-secondary underline", {
   variants: {
     variant: {
       default: "inline-block",
-      nav: "[&.active]:text-secondary text-foreground block w-fit font-bold no-underline",
+      nav: "[&.active]:text-secondary text-foreground block w-fit no-underline",
       alert: "text-alert",
       button:
         "rounded-full bg-white border border-secondary text-secondary [&.active]:text-secondary px-5 py-2 no-underline",
