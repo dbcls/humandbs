@@ -10,7 +10,7 @@ export function Footer() {
   const tFooter = useTranslations("Footer");
 
   return (
-    <footer className="mt-8 flex flex-wrap justify-between gap-6 bg-white p-6 text-sm">
+    <footer className="mt-2 flex flex-wrap justify-between gap-6 bg-white p-6 text-sm">
       <nav className="min-w-0 flex-1">
         <h3 className="font-semibold">{tFooter("sitemap")}</h3>
         <div className="mt-4 columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-8 pb-12">
