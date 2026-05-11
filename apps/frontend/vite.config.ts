@@ -8,8 +8,21 @@ import tailwindcss from "@tailwindcss/vite";
 import svgr from "vite-plugin-svgr";
 import packageJson from "./package.json";
 
+function getCommitHash(): string {
+  try {
+    const head = readFileSync("../../.git/HEAD", "utf8").trim();
+    if (head.startsWith("ref: ")) {
+      return readFileSync(`../../.git/${head.slice(5)}`, "utf8").trim();
+    }
+    return head;
+  } catch {
+    return process.env.VITE_COMMIT_HASH ?? "unknown";
+  }
+}
+
 export default defineConfig(async () => {
-  console.log("ver", packageJson.version);
+  const commitHash = getCommitHash();
+  console.log("ver", packageJson.version, commitHash);
 
   return {
     server: {
@@ -40,7 +53,8 @@ export default defineConfig(async () => {
       viteReact(),
     ],
     define: {
-      VITE_APP_VER: JSON.stringify(`v${packageJson.version}`),
+      APP_VERSION: JSON.stringify(`v${packageJson.version}`),
+      APP_VERSION_HASH: JSON.stringify(commitHash),
     },
   };
 });

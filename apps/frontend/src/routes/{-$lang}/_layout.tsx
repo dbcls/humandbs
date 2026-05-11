@@ -59,7 +59,17 @@ function RouteComponent() {
   const { messages, lang } = Route.useRouteContext();
 
   return (
-    <IntlProvider locale={lang} messages={messages} timeZone={timeZone}>
+    <IntlProvider
+      getMessageFallback={({ key }) => {
+        return key;
+      }}
+      onError={(error) => {
+        console.warn(error);
+      }}
+      locale={lang}
+      messages={messages}
+      timeZone={timeZone}
+    >
       <CatchBoundary getResetKey={() => "reset"}>
         <Outlet />
       </CatchBoundary>

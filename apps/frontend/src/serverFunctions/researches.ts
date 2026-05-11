@@ -27,6 +27,7 @@ import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
+import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -228,12 +229,16 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
   });
 
 export const $getResearches = createServerFn()
+  .middleware([requestSignalMiddleware])
   .inputValidator(ResearchSearchBodySchema)
-  .handler<Promise<ResearchSearchResponse>>(({ data }) => {
+  .handler<Promise<ResearchSearchResponse>>(({ data, context }) => {
     const accessToken = $$getJWT();
 
-    console.log("$getResearches calling api with ", data);
-    return api.searchResearches(data, accessToken ?? undefined);
+    return api.searchResearches(
+      data,
+      accessToken ?? undefined,
+      context.requestSignal,
+    );
   });
 
 const authedResearchesListSearchParamsInnerSchema =
@@ -291,7 +296,8 @@ export function getResearchesQueryOptions(
 ) {
   return queryOptions({
     queryKey: ["researches", "list", data],
-    queryFn: () => $getResearches({ data: { ...data, includeFacets: true } }),
+    queryFn: ({ signal }) =>
+      $getResearches({ data: { ...data, includeFacets: true }, signal }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
     placeholderData: keepPreviousData,
   });

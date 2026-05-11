@@ -106,11 +106,17 @@ function get<T>(
   return request<T>(path, { method: "GET", params, headers });
 }
 
-function post<T>(path: string, body: unknown, headers?: HeadersInit) {
+function post<T>(
+  path: string,
+  body: unknown,
+  headers?: HeadersInit,
+  signal?: AbortSignal,
+) {
   return request<T>(path, {
     method: "POST",
     body: body != null ? JSON.stringify(body) : undefined,
     headers,
+    signal,
   });
 }
 
@@ -158,10 +164,12 @@ interface APIService {
   searchResearches(
     query: ResearchSearchBody,
     accessToken?: string,
+    signal?: AbortSignal,
   ): Promise<ResearchSearchResponse>;
   searchDatasets(
     query: DatasetSearchBody,
     accessToken?: string,
+    signal?: AbortSignal,
   ): Promise<DatasetSearchResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
   createResearch(
@@ -260,19 +268,21 @@ const api: APIService = {
     );
   },
 
-  searchResearches(query, accessToken) {
+  searchResearches(query, accessToken, signal) {
     return post<ResearchSearchResponse>(
       `/research/search`,
       query,
       accessToken ? authHeader(accessToken) : undefined,
+      signal,
     );
   },
 
-  searchDatasets(query, accessToken) {
+  searchDatasets(query, accessToken, signal) {
     return post<DatasetSearchResponse>(
       `/dataset/search`,
       query,
       accessToken ? authHeader(accessToken) : undefined,
+      signal,
     );
   },
 

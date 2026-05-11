@@ -417,6 +417,43 @@
     background-size: 100% auto;
   }
 
+  .custom-prose {
+    a {
+      @apply text-secondary font-medium visited:text-neutral-400;
+    }
+
+    @apply prose prose-h1:text-secondary prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base break-words;
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      position: relative;
+      .anchor {
+        display: none;
+        position: absolute;
+        right: 100%;
+        padding-right: 0.4em;
+        color: inherit;
+        text-decoration: none;
+      }
+      &:hover .anchor {
+        display: inline;
+        cursor: pointer;
+      }
+      .icon.icon-link {
+        &::before {
+          font-family: "FontAwesome6";
+          font-weight: 900;
+          content: "\f0c1";
+          font-size: 0.75em;
+        }
+      }
+    }
+  }
+
   .md-editor {
     position: absolute;
     inset: 0;
@@ -553,43 +590,6 @@
 }
 
 @layer utilities {
-  .custom-prose {
-    a {
-      @apply text-secondary font-medium visited:text-neutral-400;
-    }
-
-    @apply prose prose-h1:text-secondary prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base break-words;
-
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-      position: relative;
-      .anchor {
-        display: none;
-        position: absolute;
-        right: 100%;
-        padding-right: 0.4em;
-        color: inherit;
-        text-decoration: none;
-      }
-      &:hover .anchor {
-        display: inline;
-        cursor: pointer;
-      }
-      .icon.icon-link {
-        &::before {
-          font-family: "FontAwesome6";
-          font-weight: 900;
-          content: "\f0c1";
-          font-size: 0.75em;
-        }
-      }
-    }
-  }
-
   .nested-form {
     position: relative;
     @apply pl-5;

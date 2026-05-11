@@ -1,30 +1,45 @@
 import type { DatasetFilters } from "@humandbs/backend/types";
+import { IsTumorSchema } from "../../../backend/src/crawler/types";
 
 /**
  * Static config describing the UI type and display category for each DatasetFilters field.
  * Fields without a category are rendered as top-level filters (outside any category group).
  */
 
-type FacetType =
-  | "checkbox"
-  | "text"
-  | "text-list"
-  | "boolean"
-  | "range"
-  | "date-range";
+export const FACET_TYPES = {
+  CHECKBOX: "checkbox",
+  TEXT: "text",
+  TEXT_LIST: "text-list",
+  BOOLEAN: "boolean",
+  RANGE: "range",
+  DATE_RANGE: "date-range",
+  ENUM: "enum",
+} as const;
+
+export const FACET_CATEGORY = {
+  EXPERIMENT_OVERVIEW: "experiment-overview",
+  SUBJECTS: "subjects",
+  PLATFORM_METHOD: "platform-method",
+  SEQUENCING_QUALITY: "sequencing-quality",
+  DATA_FORMAT: "data-format",
+  POLICY: "policy",
+} as const;
+
+type FacetType = (typeof FACET_TYPES)[keyof typeof FACET_TYPES];
 
 export type FacetCategory =
-  | "experiment-overview"
-  | "subjects"
-  | "platform-method"
-  | "sequencing-quality"
-  | "data-format"
-  | "policy";
+  (typeof FACET_CATEGORY)[keyof typeof FACET_CATEGORY];
 
-export type FacetConfig = {
-  type: FacetType;
-  category?: FacetCategory;
-};
+export type FacetConfig =
+  | {
+      type: Exclude<FacetType, typeof FACET_TYPES.ENUM>;
+      category?: FacetCategory;
+    }
+  | {
+      type: typeof FACET_TYPES.ENUM;
+      options: string[];
+      category?: FacetCategory;
+    };
 
 export const DATASET_FACET_CONFIG: Record<keyof DatasetFilters, FacetConfig> = {
   // === Experiment Overview (実験の概要) ===
@@ -33,7 +48,11 @@ export const DATASET_FACET_CONFIG: Record<keyof DatasetFilters, FacetConfig> = {
   disease: { type: "text", category: "experiment-overview" },
   diseaseIcd10: { type: "text-list", category: "experiment-overview" },
   healthStatus: { type: "checkbox", category: "experiment-overview" },
-  isTumor: { type: "boolean", category: "experiment-overview" },
+  isTumor: {
+    type: "enum",
+    options: IsTumorSchema.options,
+    category: "experiment-overview",
+  },
 
   // === Subjects (被験者) ===
   subjectCount: { type: "range", category: "subjects" },

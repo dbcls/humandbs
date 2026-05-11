@@ -8,7 +8,9 @@
     "more": "{count} more",
     "collapse": "Collapse",
     "no-data": "No data",
-    "total-results": "{count} results"
+    "total-results": "{count} results",
+    "dataset": "Dataset",
+    "research": "Research"
   },
   "Footer": {
     "sitemap": "Sitemap"
@@ -106,6 +108,7 @@
     "research-version": "Research version",
     "version": "Version",
     "releaseDate": "Release date",
+    "version-release-date": "Modification date",
     "date-modified": "Date modified",
     "typeOfData": "Type of data",
     "criteria": "Access type",
@@ -244,40 +247,158 @@
     "before-application": "Before application system"
   },
   "Filters": {
-    "datePublished": "Date Published",
-    "dateModified": "Date Modified",
-    "criteria": "Access type",
-    "subjectCountType": "Subject Count Type",
-    "healthStatus": "Health Status",
-    "diseaseIcd10": "Disease (ICD-10)",
-    "tissues": "Tissues",
-    "cellLine": "Cell Line",
-    "population": "Population",
-    "sex": "Sex",
-    "ageGroup": "Age Group",
-    "assayType": "Assay Type",
-    "libraryKits": "Library Kits",
-    "platform": "Platform",
-    "readType": "Read Type",
-    "referenceGenome": "Reference Genome",
-    "fileTypes": "File Types",
-    "processedDataTypes": "Processed Data Types",
-    "policyId": "Policy ID",
-    "disease": "Disease",
-    "isTumor": "Tumor Sample",
-    "hasPhenotypeData": "Has Phenotype Data",
-    "releaseDate": "Release Date",
-    "subjectCount": "Subject Count",
-    "readLength": "Read Length (bp)",
-    "sequencingDepth": "Sequencing Depth (x)",
-    "targetCoverage": "Target Coverage (%)",
-    "dataVolumeGb": "Data Volume (GB)",
-    "variantSnv": "SNV Count",
-    "variantIndel": "Indel Count",
-    "variantCnv": "CNV Count",
-    "variantSv": "SV Count",
-    "variantTotal": "Total Variant Count",
-    "humId": "Research ID",
+    "datePublished": {
+      "title": "Date Published"
+    },
+    "dateModified": {
+      "title": "Date Modified"
+    },
+    "criteria": {
+      "title": "Access type",
+      "options": {
+        "Unrestricted-access": "Open (no restrictions)",
+        "Controlled-access (Type I)": "Type I (restrictions apply)",
+        "Controlled-access (Type II)": "Type II (restrictions apply)"
+      }
+    },
+    "subjectCountType": {
+      "title": "Subject Count Type",
+      "options": {
+        "individual": "Individual",
+        "sample": "Sample",
+        "mixed": "Individual/Sample Mixed"
+      }
+    },
+    "healthStatus": {
+      "title": "Health Status",
+      "options": {
+        "healthy": "Healthy",
+        "affected": "Affected",
+        "mixed": "Healthy/Affected Mixed"
+      }
+    },
+    "diseaseIcd10": {
+      "title": "Disease (ICD-10)"
+    },
+    "tissues": {
+      "title": "Tissues"
+    },
+    "cellLine": {
+      "title": "Cell Line"
+    },
+    "population": {
+      "title": "Population"
+    },
+    "sex": {
+      "title": "Sex",
+      "options": {
+        "male": "Male",
+        "female": "Female",
+        "mixed": "Male/Female Mixed"
+      }
+    },
+    "ageGroup": {
+      "title": "Age Group",
+      "options": {
+        "adult": "Adult",
+        "child": "Child",
+        "infant": "Infant",
+        "elderly": "Elderly",
+        "mixed": "Adult/Child/Infant/Elderly Mixed"
+      }
+    },
+    "assayType": {
+      "title": "Assay Type"
+    },
+    "libraryKits": {
+      "title": "Library Kits"
+    },
+    "platform": {
+      "title": "Platform"
+    },
+    "readType": {
+      "title": "Read Type",
+      "options": {
+        "single-end": "Single-end",
+        "paired-end": "Paired-end",
+        "mixed": "Single-end/Paired-end Mixed"
+      }
+    },
+    "referenceGenome": {
+      "title": "Reference Genome"
+    },
+    "fileTypes": {
+      "title": "File Types"
+    },
+    "processedDataTypes": {
+      "title": "Processed Data Types"
+    },
+    "policyId": {
+      "title": "Policy ID",
+      "options": {
+        "nbdc-policy": "NBDC Policy",
+        "cancer-research-policy": "Cancer Research Policy",
+        "familial-policy": "Familial Policy",
+        "company-limitation-policy": "Company Limitation Policy",
+        "custom-policy": "Custom Policy"
+      }
+    },
+    "disease": {
+      "title": "Disease"
+    },
+    "isTumor": {
+      "title": "Tumor Sample",
+      "options": {
+        "any": "Any",
+        "tumor": "Tumor",
+        "normal": "Normal",
+        "mixed": "Tumor/Normal Mixed"
+      }
+    },
+    "hasPhenotypeData": {
+      "title": "Has Phenotype Data",
+      "options": {
+        "any": "Any",
+        "true": "Yes",
+        "false": "No"
+      }
+    },
+    "releaseDate": {
+      "title": "Release Date"
+    },
+    "subjectCount": {
+      "title": "Subject Count"
+    },
+    "readLength": {
+      "title": "Read Length (bp)"
+    },
+    "sequencingDepth": {
+      "title": "Sequencing Depth (x)"
+    },
+    "targetCoverage": {
+      "title": "Target Coverage (%)"
+    },
+    "dataVolumeGb": {
+      "title": "Data Volume (GB)"
+    },
+    "variantSnv": {
+      "title": "SNV Count"
+    },
+    "variantIndel": {
+      "title": "Indel Count"
+    },
+    "variantCnv": {
+      "title": "CNV Count"
+    },
+    "variantSv": {
+      "title": "SV Count"
+    },
+    "variantTotal": {
+      "title": "Total Variant Count"
+    },
+    "humId": {
+      "title": "Research ID"
+    },
     "panel-title": "Filter details",
     "panel-reset-all": "Reset all",
     "panel-reset": "Reset",
@@ -288,7 +409,9 @@
     "platform-method": "Platform & Method",
     "sequencing-quality": "Sequencing Quality",
     "data-format": "Data Format",
-    "policy": "Policy"
+    "policy": "Policy",
+    "sort-by-name": "Filter name",
+    "sort-by-count": "Results count"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",

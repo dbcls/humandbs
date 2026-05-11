@@ -20,10 +20,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_home/")({
 function RouteComponent() {
   const { contentHtml, title } = Route.useLoaderData();
   return (
-    <>
-      <h1>{title}</h1>
-
-      <Markdown contentHtml={contentHtml} />
-    </>
+    <Markdown
+      contentHtml={contentHtml}
+      title={title}
+      className="prose-h1:text-lg prose-h1:text-center prose-h1:mb-4"
+    />
   );
 }

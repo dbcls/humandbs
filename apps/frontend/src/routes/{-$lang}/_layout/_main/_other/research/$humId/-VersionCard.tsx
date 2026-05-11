@@ -26,7 +26,6 @@ export function VersionCard({
   const lang = langOverride ?? routeLang ?? i18n.defaultLocale;
   const messages = useMessages();
 
-  console.log("lang", lang);
   const tableMeta = {
     lang,
     t,
@@ -57,17 +56,17 @@ export function VersionCard({
     >
       <article>
         <ContentHeader>{t("researchOverview")}</ContentHeader>
-        <div className="columns-2 [&>p]:mb-2 [&>p>span]:font-bold">
+        <div className="columns-2 [&>p]:mb-4 [&>p>span]:mr-2 [&>p>span]:font-extrabold">
           <p>
-            <span>{t("aims")}</span>
+            <span>{t("aims")}:</span>
             {versionData.summary.aims[lang]?.text}
           </p>
           <p>
-            <span>{t("methods")}</span>
+            <span>{t("methods")}:</span>
             {versionData.summary.methods[lang]?.text}
           </p>
           <p>
-            <span>{t("targets")}</span>
+            <span>{t("targets")}:</span>
             {versionData.summary.targets[lang]?.text}
           </p>
         </div>

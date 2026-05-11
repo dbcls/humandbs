@@ -8,6 +8,7 @@ import { startTransition } from "react";
 import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
 const preservedKeys = ["sort", "limit", "order"];
+
 export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
   routeId: TId,
 ) {
