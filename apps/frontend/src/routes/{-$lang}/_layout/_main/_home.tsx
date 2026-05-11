@@ -136,13 +136,25 @@ function RouteComponent() {
           </Suspense>
         </Card>
       </section>
-      <Card className="overflow-hidden bg-transparent p-0">
-        <LazyFrontStats />
-      </Card>
+      <div className="w-full">
+        <h2 className="text-xl font-bold mb-4 text-center text-secondary">Old Visualization (Planet Chart)</h2>
+        <Card className="overflow-hidden bg-transparent p-0">
+          <LazyFrontStats />
+        </Card>
+      </div>
+
+      <div className="w-full mt-12">
+        <h2 className="text-xl font-bold mb-4 text-center text-secondary">New Visualization (Bento Grid)</h2>
+        <LazyFrontStatsNew />
+      </div>
     </section>
   );
 }
 
 const LazyFrontStats = lazy(
   () => import("@/components/FrontStatsVisualization"),
+);
+
+const LazyFrontStatsNew = lazy(
+  () => import("@/components/FrontStatsVisualizationNew"),
 );

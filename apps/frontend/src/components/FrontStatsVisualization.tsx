@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { useEffect, useMemo, useRef, useState } from "react";
+import stubStats from "./stats.stub.json";
 
 const WIDTH = 1200;
 const HEIGHT = 760;
@@ -203,11 +204,20 @@ function useStats() {
 
     async function load() {
       try {
+        // --- TEMPORARY STUB START ---
+        // 開発環境用に一時的にスタブデータを使用する
+        const payload = stubStats;
+        // 擬似的な遅延を追加
+        await new Promise(resolve => setTimeout(resolve, 500));
+        /*
         const response = await fetch("/api/stats");
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
         const payload = (await response.json()) as unknown;
+        */
+        // --- TEMPORARY STUB END ---
+        
         const normalized = normalizeStatsResponse(payload);
 
         if (!normalized) {

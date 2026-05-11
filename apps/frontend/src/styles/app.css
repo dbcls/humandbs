@@ -407,7 +407,7 @@
   }
 
   .main-bg {
-    background-image: url("../assets/BG.jpg");
+    background-image: linear-gradient(var(--color-primary-translucent), var(--color-primary-translucent)), url("../assets/BG.jpg");
     background-blend-mode: multiply;
     background-repeat: no-repeat;
     background-position: top;
