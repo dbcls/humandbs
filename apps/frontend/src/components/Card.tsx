@@ -43,7 +43,7 @@ function Card({
           className={cn(cardCaptionVariants({ captionSize }), captionClassName)}
         >
           {typeof caption === "string" ? (
-            <h3 className="relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">
+            <h3 className="relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3">
               {caption}
             </h3>
           ) : (

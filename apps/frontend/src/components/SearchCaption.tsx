@@ -41,7 +41,7 @@ export function SearchCaption({
   return (
     <div className="flex h-fit items-center justify-between">
       <div className="flex items-baseline gap-10">
-        <h3 className="text-lg relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">{title}</h3>
+        <h3 className="text-lg relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3">{title}</h3>
         {resultsCount}
       </div>
 
