@@ -8,8 +8,14 @@ export interface DateRange {
   to?: Date | undefined;
 }
 
-export function toDateString(date: Date | undefined): string | undefined {
+export function toDateString(
+  date: Date | string | undefined,
+): string | undefined {
   if (!date) return undefined;
+
+  if (typeof date === "string") {
+    date = new Date(date);
+  }
 
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");

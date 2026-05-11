@@ -4,10 +4,10 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LucideMoreVertical, Trash2 } from "lucide-react";
+import { LucideMoreVertical } from "lucide-react";
+import type { ReactNode } from "react";
 import { UnpublishedDot } from "./UnpublishedDot";
 
 interface AdminListItemTranslation {
@@ -18,26 +18,30 @@ interface AdminListItemTranslation {
   };
 }
 
+export interface AdminListItemMenuItem {
+  label: React.ReactNode;
+  onSelect: () => void;
+  variant?: "default" | "destructive";
+}
+
 export function AdminListItem({
   id,
+  header,
+  meta,
   translations,
-  onClickDelete,
-  onClickRename,
-  hideDelete,
-  hideRename,
+  menuItems = [],
 }: {
   id: string;
+  header?: string;
+  meta?: ReactNode;
   translations: AdminListItemTranslation[];
-  onClickDelete: () => void;
-  onClickRename?: () => void;
-  hideDelete?: boolean;
-  hideRename?: boolean;
+  menuItems?: AdminListItemMenuItem[];
 }) {
   return (
     <>
       <div className="min-w-0 flex-1">
         <div className="text-foreground-light mb-1 text-xs group-data-[active=true]:text-white/80">
-          {id}
+          {header ?? id}
         </div>
         <ul className="space-y-0.5">
           {translations.map((translation) => {
@@ -60,8 +64,9 @@ export function AdminListItem({
             );
           })}
         </ul>
+        {meta ? <div className="mt-1">{meta}</div> : null}
       </div>
-      {!!hideDelete && !!hideRename ? null : (
+      {menuItems.length === 0 ? null : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant={"ghost"} size={"icon"}>
@@ -69,32 +74,21 @@ export function AdminListItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {!hideRename && (
-              <DropdownMenuGroup>
+            <DropdownMenuGroup>
+              {menuItems.map((item, index) => (
                 <DropdownMenuItem
+                  key={index}
+                  variant={item.variant}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onClickRename?.();
+                    item.onSelect();
                   }}
+                  className="**:hover:text-white"
                 >
-                  Change id...
+                  {item.label}
                 </DropdownMenuItem>
-              </DropdownMenuGroup>
-            )}
-            {!hideRename && !hideDelete && <DropdownMenuSeparator />}
-            {!hideDelete && (
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClickDelete();
-                  }}
-                >
-                  Delete <Trash2 />
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            )}
+              ))}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { LucideBell, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
@@ -41,15 +41,12 @@ export function NewsItemsList({
   const queryClient = useQueryClient();
 
   const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
-  const { q, publishedFrom, publishedTo, isAlert, tagIds } =
-    routeApi.useSearch();
+  const { q, publishedFrom, publishedTo, tagIds } = routeApi.useSearch();
 
   const listQO = newsItemsInfiniteQueryOptions({
     titleOrContent: q,
     publishedFrom,
     publishedTo,
-    isAlert:
-      isAlert === "alert" ? true : isAlert === "news" ? false : undefined,
     tagIds: tagIds && tagIds.length > 0 ? tagIds : undefined,
   });
 
@@ -186,22 +183,9 @@ export function NewsItemsList({
                   className={cn({ "border border-dashed": isDraft })}
                 >
                   <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="block font-mono text-xs">
-                        {item.publishedAt || "No date"}
-                      </span>
-                      {item.alert ? (
-                        <span className="flex items-center gap-0.5">
-                          <LucideBell className="text-accent inline size-3" />
-                          <span className="font-mono text-xs opacity-70">
-                            {item.alert.from}
-                            {item.alert.to && item.alert.to !== item.alert.from
-                              ? ` – ${item.alert.to}`
-                              : null}
-                          </span>
-                        </span>
-                      ) : null}
-                    </div>
+                    <span className="block font-mono text-xs">
+                      {item.publishedAt || "No date"}
+                    </span>
                     {item.translations &&
                       Object.entries(item.translations).map(
                         ([lang, tr], index) => (
@@ -209,7 +193,7 @@ export function NewsItemsList({
                             key={`${lang}-${index}`}
                             className="flex w-full items-center gap-1"
                           >
-                            <Tag tag={lang} isActive={isActive} />
+                            <Tag tag={lang} />
                             <span className="block min-w-0 truncate text-xs opacity-70">
                               {tr.title}
                             </span>
@@ -232,7 +216,6 @@ export function NewsItemsList({
                       e.stopPropagation();
                       handleClickDelete(item);
                     }}
-                    isActive={isActive}
                   />
                 </ListItem>
               );

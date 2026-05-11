@@ -1,27 +1,20 @@
 import { useLoaderData } from "@tanstack/react-router";
-import { LucideBell } from "lucide-react";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import { Link } from "@/components/Link";
 import type { NewsTitleResponse } from "@/serverFunctions/news";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   return (
-    <li className="flex flex-col items-start gap-0">
-      <div className="flex items-center gap-1">
-        {newsItem.alert && (
-          <LucideBell className="text-accent inline size-4" />
-        )}
-        <span className="text-xs text-gray-500">{newsItem.publishedAt}</span>
-      </div>
+    <li className="flex items-start gap-2">
+      <span className="text-2xs w-24 shrink-0">{newsItem.publishedAt}</span>
 
       <Link
         className="text-secondary line-clamp-3 h-fit text-base underline"
         to="/{-$lang}/news/$newsItemId"
         params={{
-          lang: newsItem.locale,
           newsItemId: newsItem.id,
-        }}
+        } as never}
       >
         {newsItem.title}
       </Link>
@@ -34,8 +27,6 @@ function News() {
     from: "/{-$lang}/_layout/_main/_home",
   });
 
-  const lang = useLocale();
-
   const t = useTranslations("Navbar");
 
   return (
@@ -45,7 +36,7 @@ function News() {
           <NewsItem key={index} newsItem={item} />
         ))}
       </ul>
-      <Link to="/{-$lang}/news" params={{ lang }} className="mt-6">
+      <Link to="/{-$lang}/news" className="mt-6">
         {t("all-news")}
       </Link>
     </div>

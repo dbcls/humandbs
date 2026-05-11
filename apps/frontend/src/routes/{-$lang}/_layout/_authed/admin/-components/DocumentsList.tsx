@@ -26,6 +26,8 @@ import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslations } from "use-intl";
+import { Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 export function DocumentsList({
   onSelectDoc,
@@ -240,12 +242,27 @@ export function DocumentsList({
                       <AdminListItem
                         id={doc.contentId}
                         translations={doc.translations}
-                        onClickDelete={() =>
-                          handleClickDeleteDoc(doc.contentId)
+                        menuItems={
+                          isProtected
+                            ? []
+                            : [
+                                {
+                                  label: <Label>Change ID...</Label>,
+                                  onSelect: () => setRenamingId(doc.contentId),
+                                },
+                                {
+                                  label: (
+                                    <Label className="text-danger flex justify-between">
+                                      <Trash2 className="size-4" />
+                                      Delete
+                                    </Label>
+                                  ),
+                                  onSelect: () =>
+                                    handleClickDeleteDoc(doc.contentId),
+                                  variant: "destructive",
+                                },
+                              ]
                         }
-                        onClickRename={() => setRenamingId(doc.contentId)}
-                        hideDelete={isProtected}
-                        hideRename={isProtected}
                       />
                     </ListItem>
                   );
@@ -270,12 +287,23 @@ export function DocumentsList({
                           <AdminListItem
                             id={doc.contentId}
                             translations={doc.translations}
-                            onClickDelete={() =>
-                              handleClickDeleteDoc(doc.contentId)
+                            menuItems={
+                              isProtected
+                                ? []
+                                : [
+                                    {
+                                      label: "Change id...",
+                                      onSelect: () =>
+                                        setRenamingId(doc.contentId),
+                                    },
+                                    {
+                                      label: "Delete",
+                                      onSelect: () =>
+                                        handleClickDeleteDoc(doc.contentId),
+                                      variant: "destructive",
+                                    },
+                                  ]
                             }
-                            onClickRename={() => setRenamingId(doc.contentId)}
-                            hideDelete={isProtected}
-                            hideRename={isProtected}
                           />
                         </ListItem>
                       );

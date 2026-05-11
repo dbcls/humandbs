@@ -7,18 +7,16 @@ import { LucideX } from "lucide-react";
 
 import { $saveHiddenAlertIds } from "@/serverFunctions/alert";
 
-import { Link } from "./Link";
 import { Button } from "./ui/button";
 
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });
-
   const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" });
 
   const router = useRouter();
 
-  async function handleHideAlert(newsId: string) {
-    await $saveHiddenAlertIds({ data: { newsId, locale: lang } });
+  async function handleHideAlert(alertId: string) {
+    await $saveHiddenAlertIds({ data: { alertId, locale: lang } });
     await router.invalidate({
       filter: (r) => r.fullPath !== "/{-$lang}/admin",
     });
@@ -29,7 +27,7 @@ export function Alerts() {
     <ul className="flex flex-col gap-2">
       {alerts.map((alert) => (
         <AlertMessage
-          key={alert.newsId}
+          key={alert.id}
           {...alert}
           onHide={(alertId) => {
             handleHideAlert(alertId);
@@ -41,32 +39,19 @@ export function Alerts() {
 }
 
 export function AlertMessage({
-  newsId,
-  title,
+  id,
+  content,
   onHide,
 }: {
   onHide?: (alertId: string) => void;
-  newsId: string;
-  title: string;
+  id: string;
+  content: string;
 }) {
-  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" });
-
   return (
     <div className="border-secondary text-foreground-dark flex items-center justify-between gap-2 rounded-sm border bg-white px-4 py-2">
-      <div>
-        <Link
-          variant={"alert"}
-          to="/{-$lang}/news/$newsItemId"
-          params={{
-            lang,
-            newsItemId: newsId,
-          }}
-        >
-          {title}
-        </Link>
-      </div>
+      <p className="whitespace-pre-wrap">{content}</p>
       <Button
-        onClick={() => onHide?.(newsId)}
+        onClick={() => onHide?.(id)}
         variant={"ghost"}
         size={"icon"}
         aria-label="Hide alert"

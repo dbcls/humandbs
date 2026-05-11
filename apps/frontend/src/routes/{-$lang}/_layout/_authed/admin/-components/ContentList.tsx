@@ -94,7 +94,7 @@ export function ContentList({
       actionLabel: "Delete",
       onAction: () => {
         deleteContent(id);
-        onSelectContent(null);
+        onSelectContent(undefined);
       },
     });
   }
@@ -147,8 +147,13 @@ export function ContentList({
                   lang: tr.lang,
                   statuses: tr.statuses,
                 }))}
-                onClickDelete={() => handleClickDeleteContentItem(content.id)}
-                hideRename={true}
+                menuItems={[
+                  {
+                    label: "Delete",
+                    onSelect: () => handleClickDeleteContentItem(content.id),
+                    variant: "destructive",
+                  },
+                ]}
               />
             </ListItem>
           );

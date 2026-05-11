@@ -1,45 +1,55 @@
-import { localeSchema, type Locale } from "@/config/i18n";
+import { type Locale, localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
-import { alert, alertTranslation } from "@/db/schema";
-import { and, eq, gte, isNull, like, lte, or } from "drizzle-orm";
+import { alert, alertTranslation, user } from "@/db/schema";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  isNull,
+  lte,
+  or,
+} from "drizzle-orm";
 import z from "zod";
 
-interface AlertFilter {
-  content?: string;
-  from?: string;
-  to?: string;
-}
-
-interface Pagination {
-  limit?: number;
-  offset?: number;
-}
-
-const paginationSchema = z.object({
-  limit: z.number().optional(),
-  offset: z.number().optional(),
-});
-
-const alertFilterSchema = z.object({
-  content: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-});
-
-const listOptionsSchema = paginationSchema.extend(alertFilterSchema.shape);
-
-export type ListOptions = z.infer<typeof listOptionsSchema>;
-
-interface AlertItem {
-  alertId: string;
-  lang: string;
+export interface AlertTranslationInput {
+  lang: Locale;
   content: string;
-  from?: string;
-  to?: string;
+}
+
+export interface AlertRecord {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  enabled: boolean;
+  authorId: string;
+  author: {
+    name: string | null;
+  };
+  updatedById: string;
+  updatedBy: {
+    name: string | null;
+  };
+  from: string | null;
+  to: string | null;
+  translations: Partial<Record<Locale, { content: string }>>;
+}
+
+export interface ActiveAlertItem {
+  id: string;
+  content: string;
+}
+
+export interface AlertFilters {
+  q?: string;
+  activeFrom?: string;
+  activeTo?: string;
 }
 
 export const createAlertSchema = z.object({
-  tranlations: z.array(
+  translations: z.array(
     z.object({
       lang: localeSchema,
       content: z.string(),
@@ -48,16 +58,13 @@ export const createAlertSchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
   enabled: z.boolean().optional(),
-  authorId: z.string(),
 });
 
 export type CreateAlertPayload = z.infer<typeof createAlertSchema>;
 
-export type AlertWithTranslations = CreateAlertPayload;
-
 export const updateAlertSchema = z.object({
   id: z.string(),
-  tranlations: z.array(
+  translations: z.array(
     z.object({
       lang: localeSchema,
       content: z.string(),
@@ -74,20 +81,21 @@ export interface AlertsRepository {
   /**
    * Public - get all active alerts for locale
    */
-  listActive: (options: { lang: Locale }) => Promise<AlertItem[]>;
+  listActive: (options: { lang: Locale }) => Promise<ActiveAlertItem[]>;
 
   /**
-   * Private - get alerts according to filters
+   * Private - get all alerts for CMS
    */
-  list: (options: ListOptions) => Promise<AlertItem[]>;
+  list: (options?: {
+    limit?: number;
+    offset?: number;
+    filters?: AlertFilters;
+  }) => Promise<AlertRecord[]>;
 
   /**
    * Private - create alert
    */
-  create: (
-    data: CreateAlertPayload,
-    authorId: string,
-  ) => Promise<AlertWithTranslations>;
+  create: (data: CreateAlertPayload, authorId: string) => Promise<AlertRecord>;
 
   /**
    * Private - delete alert
@@ -97,7 +105,60 @@ export interface AlertsRepository {
   /**
    * Private - update alert
    */
-  update: (data: UpdateAlertPayload) => Promise<AlertWithTranslations>;
+  update: (
+    data: UpdateAlertPayload,
+    updatedById: string,
+  ) => Promise<AlertRecord>;
+}
+
+function mapAlertRows(
+  rows: Array<{
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    enabled: boolean | null;
+    authorId: string;
+    authorName: string | null;
+    updatedById: string;
+    updatedByName: string | null;
+    from: string | null;
+    to: string | null;
+    locale: Locale;
+    content: string;
+  }>,
+): AlertRecord[] {
+  const grouped = new Map<string, AlertRecord>();
+
+  for (const row of rows) {
+    let current = grouped.get(row.id);
+
+    if (!current) {
+      current = {
+        id: row.id,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        enabled: row.enabled ?? true,
+        authorId: row.authorId,
+        author: {
+          name: row.authorName,
+        },
+        updatedById: row.updatedById,
+        updatedBy: {
+          name: row.updatedByName,
+        },
+        from: row.from,
+        to: row.to,
+        translations: {},
+      };
+      grouped.set(row.id, current);
+    }
+
+    current.translations[row.locale] = {
+      content: row.content,
+    };
+  }
+
+  return [...grouped.values()];
 }
 
 export function createAlertsRepository(database: typeof db): AlertsRepository {
@@ -106,11 +167,8 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
       const now = new Date().toISOString().slice(0, 10);
       const alertTranslations = await database
         .select({
-          alertId: alertTranslation.alertId,
-          lang: alertTranslation.locale,
+          id: alert.id,
           content: alertTranslation.content,
-          from: alert.from,
-          to: alert.to,
         })
         .from(alertTranslation)
         .innerJoin(alert, eq(alertTranslation.alertId, alert.id))
@@ -123,52 +181,81 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
           ),
         );
 
-      const clean = alertTranslations.map((t) => ({
-        ...t,
-        from: t.from ?? undefined,
-        to: t.to ?? undefined,
-      }));
-
-      return clean;
+      return alertTranslations;
     },
 
-    list: async (options) => {
-      const conditions = [];
+    list: async ({ limit = 20, offset = 0, filters = {} } = {}) => {
+      const items = await database.query.alert.findMany({
+        with: {
+          trnanslations: true,
+          author: {
+            columns: { name: true },
+          },
+          updatedByUser: {
+            columns: { name: true },
+          },
+        },
+        orderBy: (table, { desc }) => [desc(table.createdAt)],
+        where: (table, { and }) => {
+          const conditions = [];
 
-      if (options.content !== undefined) {
-        conditions.push(like(alertTranslation.content, `%${options.content}%`));
-      }
+          if (filters.q) {
+            const term = `%${filters.q}%`;
+            conditions.push(
+              exists(
+                database
+                  .select({ _: alertTranslation.alertId })
+                  .from(alertTranslation)
+                  .where(
+                    and(
+                      eq(alertTranslation.alertId, table.id),
+                      ilike(alertTranslation.content, term),
+                    ),
+                  ),
+              ),
+            );
+          }
 
-      let query = database
-        .select({
-          alertId: alertTranslation.alertId,
-          lang: alertTranslation.locale,
-          content: alertTranslation.content,
-          from: alert.from,
-          to: alert.to,
-        })
-        .from(alertTranslation)
-        .innerJoin(alert, eq(alertTranslation.alertId, alert.id))
-        .where(and(...conditions))
-        .$dynamic();
+          if (filters.activeFrom) {
+            conditions.push(or(isNull(table.to), gte(table.to, filters.activeFrom)));
+          }
 
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
+          if (filters.activeTo) {
+            conditions.push(
+              or(isNull(table.from), lte(table.from, filters.activeTo)),
+            );
+          }
 
-      if (options.offset) {
-        query = query.offset(options.offset);
-      }
+          return conditions.length > 0 ? and(...conditions) : undefined;
+        },
+        limit,
+        offset,
+      });
 
-      const alertTranslations = await query;
-
-      const clean = alertTranslations.map((t) => ({
-        ...t,
-        from: t.from ?? undefined,
-        to: t.to ?? undefined,
+      return items.map((item) => ({
+        id: item.id,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        enabled: item.enabled ?? true,
+        authorId: item.authorId,
+        author: {
+          name: item.author?.name ?? null,
+        },
+        updatedById: item.updatedBy,
+        updatedBy: {
+          name: item.updatedByUser?.name ?? null,
+        },
+        from: item.from,
+        to: item.to,
+        translations: item.trnanslations.reduce<
+          Partial<Record<Locale, { content: string }>>
+        >((acc, translation) => {
+          acc[translation.locale] = {
+            content: translation.content,
+          };
+          return acc;
+        }, {}),
       }));
-
-      return clean;
     },
 
     create: async (data, authorId) => {
@@ -179,11 +266,12 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
             enabled: data.enabled ?? true,
             from: data.from ?? null,
             to: data.to ?? null,
-            authorId: data.authorId,
+            authorId,
+            updatedBy: authorId,
           })
           .returning();
 
-        const translationsToInsert = data.tranlations.map((t) => ({
+        const translationsToInsert = data.translations.map((t) => ({
           alertId: newAlert.id,
           content: t.content,
           locale: t.lang,
@@ -194,17 +282,27 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
           .values(translationsToInsert)
           .returning();
 
-        return {
-          tranlations: translations.map((t) => ({
-            lang: t.locale,
-            content: t.content,
+        const createdAuthor = await tx.query.user.findFirst({
+          where: eq(user.id, newAlert.authorId),
+          columns: { name: true },
+        });
+
+        return mapAlertRows(
+          translations.map((translation) => ({
+            id: newAlert.id,
+            createdAt: newAlert.createdAt,
+            updatedAt: newAlert.updatedAt,
+            enabled: newAlert.enabled,
+            authorId: newAlert.authorId,
+            authorName: createdAuthor?.name ?? null,
+            updatedById: newAlert.updatedBy,
+            updatedByName: createdAuthor?.name ?? null,
+            from: newAlert.from,
+            to: newAlert.to,
+            locale: translation.locale,
+            content: translation.content,
           })),
-          from: newAlert.from ?? undefined,
-          to: newAlert.to ?? undefined,
-          enabled: newAlert.enabled ?? true,
-          id: newAlert.id,
-          authorId: authorId,
-        };
+        )[0]!;
       });
     },
 
@@ -212,7 +310,7 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
       await database.delete(alert).where(eq(alert.id, id));
     },
 
-    update: async (updateData) => {
+    update: async (updateData, updatedById) => {
       return await database.transaction(async (tx) => {
         await tx
           .update(alert)
@@ -220,19 +318,23 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
             from: updateData.from ?? null,
             to: updateData.to ?? null,
             enabled: updateData.enabled,
+            updatedAt: new Date(),
+            updatedBy: updatedById,
           })
           .where(eq(alert.id, updateData.id));
 
-        for (const trn of updateData.tranlations) {
-          await tx
-            .update(alertTranslation)
-            .set({ content: trn.content })
-            .where(
-              and(
-                eq(alertTranslation.alertId, updateData.id),
-                eq(alertTranslation.locale, trn.lang),
-              ),
-            );
+        await tx
+          .delete(alertTranslation)
+          .where(eq(alertTranslation.alertId, updateData.id));
+
+        if (updateData.translations.length > 0) {
+          await tx.insert(alertTranslation).values(
+            updateData.translations.map((translation) => ({
+              alertId: updateData.id,
+              locale: translation.lang,
+              content: translation.content,
+            })),
+          );
         }
 
         const [updatedAlert] = await tx
@@ -245,17 +347,31 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
           .from(alertTranslation)
           .where(eq(alertTranslation.alertId, updateData.id));
 
-        return {
-          tranlations: translations.map((t) => ({
-            lang: t.locale,
-            content: t.content,
+        const updatedAuthor = await tx.query.user.findFirst({
+          where: eq(user.id, updatedAlert.authorId),
+          columns: { name: true },
+        });
+        const updatedByUser = await tx.query.user.findFirst({
+          where: eq(user.id, updatedAlert.updatedBy),
+          columns: { name: true },
+        });
+
+        return mapAlertRows(
+          translations.map((translation) => ({
+            id: updatedAlert.id,
+            createdAt: updatedAlert.createdAt,
+            updatedAt: updatedAlert.updatedAt,
+            enabled: updatedAlert.enabled,
+            authorId: updatedAlert.authorId,
+            authorName: updatedAuthor?.name ?? null,
+            updatedById: updatedAlert.updatedBy,
+            updatedByName: updatedByUser?.name ?? null,
+            from: updatedAlert.from,
+            to: updatedAlert.to,
+            locale: translation.locale,
+            content: translation.content,
           })),
-          from: updatedAlert.from ?? undefined,
-          to: updatedAlert.to ?? undefined,
-          enabled: updatedAlert.enabled ?? true,
-          id: updatedAlert.id,
-          authorId: updatedAlert.authorId,
-        };
+        )[0]!;
       });
     },
   };

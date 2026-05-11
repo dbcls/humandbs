@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { LucideBell, XIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
@@ -150,9 +150,6 @@ export function NewsList({
                   <span className="font-mono text-xs opacity-70">
                     {item.publishedAt ?? "No date"}
                   </span>
-                  {item.alert && (
-                    <LucideBell className="text-accent inline size-3" />
-                  )}
                 </div>
 
                 <Link

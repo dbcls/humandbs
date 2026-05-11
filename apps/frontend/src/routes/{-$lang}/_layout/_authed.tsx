@@ -1,5 +1,11 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useRouteContext,
+} from "@tanstack/react-router";
+import {
+  Bell,
   Cuboid,
   Files,
   GitBranch,
@@ -11,12 +17,13 @@ import {
 import { z } from "zod";
 
 import { Navbar } from "@/components/Navbar";
-import { USER_ROLES } from "@/config/permissions";
+import { hasPermission } from "@/config/permissions";
 import { useCan } from "@/hooks/useCan";
 import { Link } from "@/components/Link";
 
 export const tabParamSchema = z.enum([
   "news",
+  "alerts",
   "documents",
   "content",
   "researches",
@@ -135,10 +142,12 @@ function RouteComponent() {
 }
 
 function NavPanel() {
+  const { user } = useRouteContext({ from: "__root__" });
   const { can: canViewCms } = useCan({
     resource: "admin-panel",
     action: "view-cms",
   });
+  const canListAlerts = hasPermission(user, "alerts", "list");
 
   return (
     <aside className="flex flex-col gap-5 rounded-md bg-white px-4 py-3">
@@ -173,6 +182,17 @@ function NavPanel() {
               }
               tab="news"
             />
+            {canListAlerts ? (
+              <PanelItem
+                title={
+                  <span>
+                    <Bell className="mr-2 inline size-5 align-middle leading-normal" />
+                    Alerts
+                  </span>
+                }
+                tab="alerts"
+              />
+            ) : null}
             <PanelItem
               title={
                 <span>
@@ -218,14 +238,11 @@ function NavPanel() {
 }
 
 function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
-  const { lang } = Route.useRouteContext();
-
   return (
     <Link
       variant={"nav"}
       className="data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground w-auto rounded-sm px-4 py-2"
-      to={`/{-$lang}/admin/${tab}`}
-      params={{ lang }}
+      to={`/{-$lang}/admin/${tab}` as never}
     >
       {title}
     </Link>

@@ -61,7 +61,6 @@ export interface NewsItemCreateInput {
   authorId: string;
   publishedAt?: string | null;
   translations: NewsTranslationUpsert;
-  alert?: { from?: string | null; to?: string | null } | null;
   tags?: string[];
 }
 
@@ -69,7 +68,6 @@ export interface NewsItemUpdateInput {
   id: string;
   publishedAt?: string | null;
   translations: NewsTranslationUpsert;
-  alert?: { from?: string | null; to?: string | null } | null;
   tags?: string[];
 }
 
@@ -110,13 +108,13 @@ export interface NewsItemRepository {
 
   /**
    * Private
-   * Create a new news item with translations, optional alert, and tags in one transaction.
+   * Create a new news item with translations and tags in one transaction.
    */
   create: (input: NewsItemCreateInput) => Promise<NewsItemRecord>;
 
   /**
    * Private
-   * Update an existing news item's publishedAt, translations, alert, and tags in one transaction.
+   * Update an existing news item's publishedAt, translations, and tags in one transaction.
    */
   update: (input: NewsItemUpdateInput) => Promise<void>;
 
@@ -347,13 +345,7 @@ export function createNewsItemRepository(
         translations: mapTranslations(item.translations),
       };
     },
-    async create({
-      authorId,
-      publishedAt,
-      translations,
-      alert: alertInput,
-      tags = [],
-    }) {
+    async create({ authorId, publishedAt, translations, tags = [] }) {
       return database.transaction(async (tx) => {
         const [created] = await tx
           .insert(newsItem)
@@ -422,13 +414,7 @@ export function createNewsItemRepository(
       });
     },
 
-    async update({
-      id,
-      publishedAt,
-      translations,
-      alert: alertInput,
-      tags = [],
-    }) {
+    async update({ id, publishedAt, translations, tags = [] }) {
       await database.transaction(async (tx) => {
         await tx
           .update(newsItem)

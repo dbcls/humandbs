@@ -14,8 +14,12 @@ import { user } from "./auth-schema";
 export const alert = pgTable("alert", {
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
   enabled: boolean().$default(() => true),
   authorId: text("author_id")
+    .notNull()
+    .references(() => user.id),
+  updatedBy: text("updated_by")
     .notNull()
     .references(() => user.id),
   from: text("from"),
@@ -41,6 +45,11 @@ export const alertRelations = relations(alert, ({ many, one }) => ({
   author: one(user, {
     references: [user.id],
     fields: [alert.authorId],
+  }),
+  updatedByUser: one(user, {
+    references: [user.id],
+    fields: [alert.updatedBy],
+    relationName: "alert_updated_by_user",
   }),
 }));
 
