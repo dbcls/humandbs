@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
-import ArrowIcon from "@/assets/icons/arrow.svg?react";
 import SubmitDataIcon from "@/assets/submit-data.svg?react";
 import UseDataIcon from "@/assets/use-data.svg?react";
 import { lazy } from "react";

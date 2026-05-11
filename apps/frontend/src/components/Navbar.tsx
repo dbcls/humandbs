@@ -1,11 +1,9 @@
 import {
-  useLocation,
   useNavigate,
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
 import {
-  ChevronsRight,
   LucideLogIn,
   LucideLogOut,
   MoreVertical,
@@ -170,18 +168,22 @@ export function Navbar() {
   );
 }
 
+function blurActiveElement() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
   const handleBlur = () => {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
+    blurActiveElement();
   };
 
   return (
     <NavigationMenuItem>
       {item.children ? (
         <>
-          <NavigationMenuTrigger className="text-sm">
+          <NavigationMenuTrigger className="text-sm" asChild>
             <Link
               variant="nav"
               className="whitespace-nowrap"
@@ -281,9 +283,7 @@ function getNavigationListGap(list: HTMLUListElement | null) {
 
 function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   const handleBlur = () => {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
+    blurActiveElement();
   };
 
   return (
