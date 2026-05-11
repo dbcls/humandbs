@@ -310,6 +310,7 @@
   --info: "\f05a";
   --tip: "\f0eb";
   --warning: "\f071";
+  --cms-side-panel-width: 19rem;
   --cms-assets-panel-width: 500px;
   --cms-list-panel-width: 30rem;
   --filter-panel-width: 30rem;
@@ -351,6 +352,7 @@
   --text-xs: 1.2rem;
   --text-2xs: 0.9rem;
 
+  --spacing-cms-side-panel: var(--cms-side-panel-width);
   --spacing-cms-assets-panel: var(--cms-assets-panel-width);
   --spacing-cms-list-panel: var(--cms-list-panel-width);
   --spacing-filter-panel: var(--filter-panel-width);

@@ -35,9 +35,10 @@ function Card({
   caption,
   captionClassName,
   captionSize = "default",
+  ...rest
 }: CardProps) {
   return (
-    <div className={cn("h-fit rounded-md bg-white p-6", className)}>
+    <div className={cn("h-fit rounded-md bg-white p-6", className)} {...rest}>
       {caption ? (
         <div
           className={cn(cardCaptionVariants({ captionSize }), captionClassName)}
