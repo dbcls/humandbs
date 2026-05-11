@@ -36,6 +36,7 @@ import { toDateString } from "@/utils/dates";
 
 import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";
+import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { AlertsFiltersBar } from "./-components/AlertsFiltersBar";
 import { TitleValue } from "./-components/TitleValue";
 
@@ -430,6 +431,7 @@ function AlertDetails({
 
   const [activeLocale, setActiveLocale] = useState<Locale>(i18n.defaultLocale);
   const [values, setValues] = useState<AlertFormValues>(() => initialValues);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const hasAnyContent = Object.values(values.translations).some(
     (translation) => translation.trim().length > 0,
   );
@@ -467,6 +469,7 @@ function AlertDetails({
       });
     },
     onMutate: async () => {
+      setSaveError(null);
       await queryClient.cancelQueries({ queryKey: ["alerts"] });
 
       const prevAlerts =
@@ -507,6 +510,7 @@ function AlertDetails({
       return { prevAlerts, optimisticId: optimisticAlert.id };
     },
     onSuccess: async (saved, _vars, context) => {
+      setSaveError(null);
       queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(
         alertsQO.queryKey,
         (prev) =>
@@ -524,6 +528,9 @@ function AlertDetails({
     },
     onError: (_error, _vars, context) => {
       queryClient.setQueryData(alertsQO.queryKey, context?.prevAlerts);
+      setSaveError(
+        _error instanceof Error ? _error.message : "Failed to save alert.",
+      );
       if (isNew) {
         onSelectAlert(NEW_ALERT_ID);
       }
@@ -556,6 +563,12 @@ function AlertDetails({
           {isNew ? "Create" : "Update"}
         </Button>
       </div>
+
+      {saveError ? (
+        <AdminStatusMessage className="mx-5 mt-1">
+          {saveError}
+        </AdminStatusMessage>
+      ) : null}
 
       {!isNew && alert ? (
         <div className="flex flex-wrap items-start gap-x-8 gap-y-3">

@@ -1,4 +1,5 @@
 import { Table, SortHeader } from "@/components/Table";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { useCan } from "@/hooks/useCan";
 import { $deleteDataset } from "@/serverFunctions/datasets";
 import useConfirmationStore from "@/stores/confirmationStore";
@@ -120,11 +121,7 @@ export function ResearchDatasetsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      {deleteError && (
-        <div className="text-danger rounded border border-red-200 bg-red-50 p-2 text-sm">
-          {deleteError}
-        </div>
-      )}
+      {deleteError ? <AdminStatusMessage>{deleteError}</AdminStatusMessage> : null}
 
       {datasets.length === 0 ? (
         <p className="text-sm text-gray-400">No datasets yet.</p>

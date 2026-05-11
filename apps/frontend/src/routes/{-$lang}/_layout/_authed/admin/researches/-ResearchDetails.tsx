@@ -33,6 +33,7 @@ import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 
 import { useAppForm } from "@/components/form-context/FormContext";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
@@ -450,11 +451,9 @@ export function ResearchDetails({
       captionClassName="flex items-center"
       containerClassName="flex flex-1 flex-col min-h-0"
     >
-      {error && (
-        <div className="text-danger mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm">
-          {error}
-        </div>
-      )}
+      {error ? (
+        <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage>
+      ) : null}
       {isConflict && (
         <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
           <span>Someone else saved a newer version. Reload to continue.</span>

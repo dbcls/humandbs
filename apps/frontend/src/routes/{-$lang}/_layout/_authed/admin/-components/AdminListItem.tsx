@@ -19,7 +19,7 @@ interface AdminListItemTranslation {
 }
 
 export interface AdminListItemMenuItem {
-  label: React.ReactNode;
+  label: ReactNode;
   onSelect: () => void;
   variant?: "default" | "destructive";
 }

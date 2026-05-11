@@ -21,9 +21,14 @@ export function FilterSearchInput({
 }) {
   const [inputValue, setInputValue] = useState(value ?? "");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    setInputValue(value ?? "");
+    // While the field is focused, keep local typing authoritative so
+    // debounced parent updates don't briefly overwrite newer keystrokes.
+    if (!isFocusedRef.current) {
+      setInputValue(value ?? "");
+    }
   }, [value]);
 
   function commit(val: string) {
@@ -60,6 +65,13 @@ export function FilterSearchInput({
       onChange={(e) => {
         setInputValue(e.target.value);
         commit(e.target.value);
+      }}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onBlur={() => {
+        isFocusedRef.current = false;
+        setInputValue(value ?? "");
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {

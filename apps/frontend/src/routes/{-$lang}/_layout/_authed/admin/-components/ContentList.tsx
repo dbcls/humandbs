@@ -3,12 +3,15 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { localeSchema } from "@/config/i18n";
+import { useFilters } from "@/hooks/useFilters";
 import {
   $createContentItem,
   $deleteContentItem,
@@ -21,6 +24,8 @@ import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
 import { useTranslations } from "use-intl";
 
+const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/content");
+
 export function ContentList({
   selectedContentId,
   onSelectContent,
@@ -29,8 +34,10 @@ export function ContentList({
   onSelectContent: (contentId: string | undefined) => void;
 }) {
   const queryClient = useQueryClient();
+  const { q } = routeApi.useSearch();
+  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/content");
 
-  const contentsListQO = getContentsListQueryOptions();
+  const contentsListQO = getContentsListQueryOptions({ q });
   const { data: contents } = useSuspenseQuery(contentsListQO);
 
   const { openConfirmation } = useConfirmationStore();
@@ -103,6 +110,14 @@ export function ContentList({
 
   return (
     <>
+      <div className="mb-3">
+        <FilterSearchInput
+          value={q}
+          onChange={(nextQ) => setFilters({ q: nextQ })}
+          placeholder="Search by title or content…"
+        />
+      </div>
+
       <InputDialog
         title="Add Content"
         label="Content ID"
