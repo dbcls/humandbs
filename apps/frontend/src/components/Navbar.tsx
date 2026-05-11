@@ -9,7 +9,7 @@ import {
   MoreVertical,
   ShoppingCart,
 } from "lucide-react";
-import { forwardRef, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, forwardRef, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import Logo from "@/assets/Logo.png";
@@ -249,19 +249,15 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
             {items.map((item, index) => (
-              <li
-                key={item.id}
-                className="flex w-full flex-col"
-                style={{ display: "contents" }}
-              >
+              <Fragment key={item.id}>
                 {index > 0 && (
-                  <div
-                    className="my-1 h-px w-full bg-border"
+                  <li
+                    className="my-2 h-px bg-primary-translucent -mx-4"
                     role="separator"
                   />
                 )}
                 <OverflowMenuItem item={item} />
-              </li>
+              </Fragment>
             ))}
           </NavigationMenuList>
         </NavigationMenu>
@@ -308,8 +304,8 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
 
   return (
     <NavigationMenuItem className="w-full flex flex-col">
-      <NavigationMenuLink asChild>
-        {item.linkOptions ? (
+      {item.linkOptions ? (
+        <NavigationMenuLink asChild>
           <Link
             variant="nav"
             {...asLinkProps(item.linkOptions)}
@@ -317,32 +313,29 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
           >
             {item.label}
           </Link>
-        ) : (
-          <span className="block w-full px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-            {item.label}
-          </span>
-        )}
-      </NavigationMenuLink>
+        </NavigationMenuLink>
+      ) : (
+        <span className="block w-full px-2 py-1.5 text-xs font-semibold text-foreground-light">
+          {item.label}
+        </span>
+      )}
       {item.children?.length ? (
-        <>
-          <div className="my-1 h-px w-full bg-border" />
-          <ul className="mt-1 flex flex-col gap-1 pl-4">
-            {item.children.map((child) => (
-              <li key={child.id}>
-                <NavigationMenuLink asChild>
-                  <Link
-                    variant="nav"
-                    onClick={handleBlur}
-                    {...asLinkProps(child.linkOptions)}
-                    className="w-full rounded-sm px-2 py-2 text-sm"
-                  >
-                    {child.label}
-                  </Link>
-                </NavigationMenuLink>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="flex flex-col gap-1">
+          {item.children.map((child) => (
+            <li key={child.id}>
+              <NavigationMenuLink asChild>
+                <Link
+                  variant="nav"
+                  onClick={handleBlur}
+                  {...asLinkProps(child.linkOptions)}
+                  className="w-full rounded-sm px-2 py-2 text-sm"
+                >
+                  {child.label}
+                </Link>
+              </NavigationMenuLink>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </NavigationMenuItem>
   );
