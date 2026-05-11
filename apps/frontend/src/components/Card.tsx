@@ -13,7 +13,7 @@ interface CardProps
 }
 
 const cardCaptionVariants = cva(
-  "text-secondary before:bg-secondary relative font-bold before:absolute before:-left-6 before:h-full before:w-2",
+  "text-secondary relative font-bold",
   {
     variants: {
       captionSize: {
@@ -42,7 +42,13 @@ function Card({
         <div
           className={cn(cardCaptionVariants({ captionSize }), captionClassName)}
         >
-          {caption}
+          {typeof caption === "string" ? (
+            <h3 className="relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary">
+              {caption}
+            </h3>
+          ) : (
+            caption
+          )}
         </div>
       ) : null}
       <div
