@@ -8,12 +8,14 @@ import {
   ChevronsRight,
   LucideLogIn,
   LucideLogOut,
+  MoreVertical,
   ShoppingCart,
 } from "lucide-react";
 import { forwardRef, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import Logo from "@/assets/Logo.png";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -169,6 +171,12 @@ export function Navbar() {
 }
 
 function NavItem({ item }: { item: ResolvedNavbarItem }) {
+  const handleBlur = () => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
   return (
     <NavigationMenuItem>
       {item.children ? (
@@ -177,6 +185,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
             <Link
               variant="nav"
               className="whitespace-nowrap"
+              onClick={handleBlur}
               {...asLinkProps(item.linkOptions)}
             >
               {item.label}
@@ -187,7 +196,12 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
               {item.children.map((child) => (
                 <li key={child.id}>
                   <NavigationMenuLink asChild>
-                    <Link variant="nav" className="w-full" {...asLinkProps(child.linkOptions)}>
+                    <Link
+                      variant="nav"
+                      className="w-full"
+                      onClick={handleBlur}
+                      {...asLinkProps(child.linkOptions)}
+                    >
                       {child.label}
                     </Link>
                   </NavigationMenuLink>
@@ -201,6 +215,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
           <Link
             variant="nav"
             className="whitespace-nowrap"
+            onClick={handleBlur}
             {...asLinkProps(item.linkOptions)}
           >
             {item.label}
@@ -219,7 +234,7 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-72 border bg-white p-2 text-black"
+        className="w-72 border-none bg-white px-4 py-4 text-black shadow-lg"
       >
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
@@ -240,12 +255,12 @@ const OverflowTrigger = forwardRef<
   return (
     <Button
       ref={ref}
-      variant="outline"
+      variant="plain"
       size="icon"
-      className={className ?? "size-8"}
+      className={cn("rounded-full hover:bg-hover text-secondary transition-colors", className ?? "size-10")}
       {...props}
     >
-      <ChevronsRight className="size-4" />
+      <MoreVertical className="size-6" strokeWidth={2.5} />
       <span className="sr-only">More navigation items</span>
     </Button>
   );
@@ -265,11 +280,18 @@ function getNavigationListGap(list: HTMLUListElement | null) {
 }
 
 function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
+  const handleBlur = () => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
   return (
     <NavigationMenuItem className="w-full">
       <NavigationMenuLink asChild>
         <Link
           variant="nav"
+          onClick={handleBlur}
           {...asLinkProps(item.linkOptions)}
           className="w-full rounded-sm px-2 py-2"
         >
@@ -283,6 +305,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
               <NavigationMenuLink asChild>
                 <Link
                   variant="nav"
+                  onClick={handleBlur}
                   {...asLinkProps(child.linkOptions)}
                   className="w-full rounded-sm px-2 py-2 text-sm"
                 >
@@ -325,12 +348,12 @@ function UserMenu() {
   if (!user) {
     return (
       <Button
-        className="flex size-12 items-center justify-center rounded-full p-0 text-center"
+        className="flex size-10 items-center justify-center rounded-full p-0 text-center"
         size={"icon"}
         variant={"action"}
         onClick={login}
       >
-        <LucideLogIn className="size-8" />
+        <LucideLogIn className="size-6" />
       </Button>
     );
   }
@@ -348,15 +371,15 @@ function UserMenu() {
         <Button
           size={"icon"}
           variant={"outline"}
-          className="flex size-12 items-center justify-center rounded-full p-0 text-center"
+          className="flex size-10 items-center justify-center rounded-full p-0 text-center"
         >
-          <span>{userInitials}</span>
+          <span className="text-xs font-bold">{userInitials}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="end"
         sideOffset={10}
-        className="flex flex-col gap-2 bg-white"
+        className="flex flex-col gap-2 border-none bg-white px-4 py-4 shadow-lg"
       >
         <div>{user.name}</div>
         <form method="post" action={"/auth/logout"}>
@@ -372,7 +395,7 @@ function UserMenu() {
           </Button>
           <Button type="submit" className="mt-3 justify-self-end">
             Logout
-            <LucideLogOut className="ml-2 size-8" />
+            <LucideLogOut className="ml-2 size-6" />
           </Button>
         </form>
       </PopoverContent>
@@ -406,7 +429,7 @@ function ShoppingCartButton() {
   return (
     <Button
       variant={"plain"}
-      className="relative flex size-12 items-center justify-center rounded-full p-0"
+      className="relative flex size-10 items-center justify-center rounded-full p-0"
       size="icon"
       onClick={handleClick}
     >
@@ -415,7 +438,7 @@ function ShoppingCartButton() {
           {cart.length}
         </span>
       ) : null}
-      <ShoppingCart className="text-secondary" />
+      <ShoppingCart className="text-secondary size-6" />
     </Button>
   );
 }
