@@ -37,6 +37,7 @@ export function FilterableCard({
         isOpen: panelOpen,
       })}
       captionSize={captionSize}
+      hideCaptionBorder={true}
       containerClassName={"relative overflow-hidden flex-1 min-h-[50vh]"}
     >
       <Suspense fallback={<SkeletonLoading />}>

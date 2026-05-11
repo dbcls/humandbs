@@ -419,7 +419,7 @@
       @apply text-secondary font-medium visited:text-neutral-400;
     }
 
-    @apply prose prose-h1:text-secondary prose-h1:font-medium prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base break-words;
+    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:content-[''] prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base break-words;
 
     h1,
     h2,
