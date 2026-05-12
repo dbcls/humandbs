@@ -10,9 +10,10 @@
  *   IT-AUTH-07 — JWKS rotation (unit test only).
  *   IT-AUTH-10 — admin_uids.json absent: would require restarting the app with a
  *     different env; covered by unit test.
- *   IT-AUTH-11 — owner success path: requires an owned humId fixture which we do
- *     not create in shared ES. Covered by `research.test.ts` when the isolation
- *     index is bootstrapped.
+ *   IT-AUTH-11 — owner success path: covered by `research.test.ts § IT-RESEARCH-12`
+ *     (owner PUT /research/{humId}/update returns 200). The SSOT lists both IT-AUTH-11
+ *     and IT-RESEARCH-12 for 1:1 traceability; the integration implementation lives in
+ *     the research suite where the owned humId is provisioned via the isolation index.
  *   IT-AUTH-14 — deleted Research 404 for all users: covered in
  *     `research.test.ts § IT-RESEARCH-18` (mutating).
  */

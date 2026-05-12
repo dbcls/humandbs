@@ -8,6 +8,8 @@
 - 運用ノート (環境変数・fixture 戦略・件数 drift 対策・JGA 分離・CI): [integration-note.md](integration-note.md)
 - テスト方針 (TDD・命名・Mock 戦略・回帰テスト): [testing.md](testing.md)
 
+> **Stage B (Step 5i–5m) 完了 (2026-05-12)**: mutating IT (research / dataset / workflow / version) 計 37 件を isolation ES index 上で活性化。`tests/integration/api/mutating-helpers.ts` に create / set uids / submit / approve / reject / unpublish / createDataset / createNewVersion / purge の 10 関数を集約。**IT-RESEARCH-07** (humId 採番 retry) と **IT-DATASET-08** (現実装で発生しない状態) は SSOT 内 skip 注記、unit testで網羅。IT-AUTH-11 は IT-RESEARCH-12 で 1:1 トレース。
+
 ## ID 体系
 
 `IT-{機能}-{連番 2 桁}` の形式で振る。例: `IT-AUTH-03`, `IT-RESEARCH-12`, `IT-WORKFLOW-05`。
@@ -1236,6 +1238,8 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/es-client/auth.test.ts`
 
+> **Stage B (Step 5j) 確認**: 現実装の状態遷移経路 (approve→unpublish は `latestVersion` を `draftVersion` に移して `latestVersion=null` にする) では「draft かつ `latestVersion!=null`」の状態が生じない。可視性ルール自体は `tests/unit/api/utils/version.test.ts` で人工 doc を用いて検証済みのため、integration では作業対象外とする。
+
 ### IT-DATASET-09: PUT /dataset/{datasetId}/update は未認証で 401
 
 **endpoint**: `PUT /dataset/{datasetId}/update` (Authorization なし)
@@ -1475,7 +1479,9 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **回帰元**: `architecture.md § 重複リソース作成の防止`
 
-**関連 unit テスト**: `tests/unit/api/es-client/research.test.ts` (新規)
+**関連 unit テスト**: `tests/unit/api/es-client/research.test.ts` (retry-after-conflict)
+
+> **Stage B (Step 5i) 確認**: 上記の通り integration では非決定的になるため隔離 index 上でも実装しない。`research.test.ts` に skip 注記のみ残し、retry 経路は ES client をモックする unit テストで網羅する。
 
 ### IT-RESEARCH-08: GET /research/{humId} の version 解決 (public)
 

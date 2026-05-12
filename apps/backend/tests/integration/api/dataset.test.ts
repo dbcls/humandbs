@@ -13,10 +13,18 @@ import { beforeAll, describe, expect } from "bun:test"
 import type { EsDataset, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
+  createDatasetForResearch,
+  createDraftResearch,
+  purgeResearch,
+  setOwnerUids,
+} from "./mutating-helpers"
+import {
   authHeaders,
+  decodeJwtSub,
   getApp,
   itWithAdminToken,
   itWithEs,
+  itWithIsolationIndex,
   itWithNonAdminToken,
   setupIntegration,
   url,
@@ -277,12 +285,196 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     for (const d of filteredJson.data) expect(d.humId).toBe(humId)
   })
 
-  // IT-DATASET-08: parent draft with latestVersion!=null は staging に都合よく存在しないと検証できない。
-  //   isolation index で fixture を整備したあとに復活させる。
-  // IT-DATASET-12: 楽観的ロック → mutating、isolation index 待ち。
-  // IT-DATASET-13: experiments required は body validation。Update 経路に到達する前に PUT 自体が 403 で弾かれる
-  //   (現状の staging Dataset は published parent 配下しかない)。isolation index 上の draft で実施。
-  // IT-DATASET-14: rawHtml strip → mutating、isolation index 待ち。
-  // IT-DATASET-15: admin-only delete → mutating、isolation index 待ち (parametrize 形式)。
-  // IT-DATASET-16: delete propagation → mutating、isolation index 待ち。
+  // IT-DATASET-08: 親 Research が draft かつ latestVersion!=null は現実装の状態遷移経路上に出現しない
+  //   (approve→unpublish は latestVersion を draftVersion に移すため latestVersion=null になる)。
+  //   解決ルール自体は tests/unit/api/utils/version.test.ts で人工 doc を用いて検証している。
+
+  itWithIsolationIndex("IT-DATASET-12: PUT /dataset/{datasetId}/update with stale _seq_no returns 409", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-12
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const ds = await createDatasetForResearch(nonAdmin, humId)
+      const app = getApp()
+      // First update succeeds and advances the seq.
+      const valid = {
+        humId,
+        humVersionId: `${humId}-v1`,
+        releaseDate: ds.releaseDate ?? new Date().toISOString().split("T")[0],
+        criteria: ds.criteria ?? "Controlled-access (Type I)",
+        typeOfData: { ja: null, en: null },
+        experiments: [],
+      }
+      const first = await app.request(url(`/dataset/${ds.datasetId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ ...valid, _seq_no: ds.seqNo, _primary_term: ds.primaryTerm }),
+      })
+      expect(first.status).toBe(200)
+      // Resending with the now-stale seq must be refused.
+      const stale = await app.request(url(`/dataset/${ds.datasetId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ ...valid, _seq_no: ds.seqNo, _primary_term: ds.primaryTerm }),
+      })
+      expect(stale.status).toBe(409)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-13: PUT /dataset/{datasetId}/update with experiments missing header/data returns 400", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-13
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const ds = await createDatasetForResearch(nonAdmin, humId)
+      const app = getApp()
+      const res = await app.request(url(`/dataset/${ds.datasetId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          humId,
+          humVersionId: `${humId}-v1`,
+          releaseDate: ds.releaseDate ?? new Date().toISOString().split("T")[0],
+          criteria: ds.criteria ?? "Controlled-access (Type I)",
+          typeOfData: { ja: null, en: null },
+          // Each experiments item must declare header and data; an empty object is a schema violation.
+          experiments: [{}],
+          _seq_no: ds.seqNo,
+          _primary_term: ds.primaryTerm,
+        }),
+      })
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { detail?: string; errors?: unknown }
+      const serialized = JSON.stringify(json)
+      expect(serialized).toMatch(/header/i)
+      expect(serialized).toMatch(/data/i)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-14: PUT /dataset/{datasetId}/update silently strips rawHtml fields in body", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-14
+    // SSOT mentions typeOfData; the live UpdateDatasetRequestSchema has typeOfData as bilingual
+    // simple strings (no rawHtml). The observable rawHtml-bearing field on a Dataset is
+    // experiments[].header / data values, so we exercise the strip via experiments[].header.
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const ds = await createDatasetForResearch(nonAdmin, humId)
+      const app = getApp()
+      const res = await app.request(url(`/dataset/${ds.datasetId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          humId,
+          humVersionId: `${humId}-v1`,
+          releaseDate: ds.releaseDate ?? new Date().toISOString().split("T")[0],
+          criteria: ds.criteria ?? "Controlled-access (Type I)",
+          typeOfData: { ja: null, en: null },
+          experiments: [{
+            header: {
+              ja: { text: "実験 A", rawHtml: "<p>実験 A</p>" },
+              en: { text: "Experiment A", rawHtml: "<p>Experiment A</p>" },
+            },
+            data: {},
+          }],
+          _seq_no: ds.seqNo,
+          _primary_term: ds.primaryTerm,
+        }),
+      })
+      expect(res.status).toBe(200)
+      const get = await app.request(url(`/dataset/${ds.datasetId}?includeRawHtml=true`), {
+        headers: authHeaders(admin),
+      })
+      const getJson = (await get.json()) as SingleReadOnlyResponse<{
+        experiments?: { header?: { ja?: { rawHtml?: unknown } } }[]
+      }>
+      expect(getJson.data.experiments?.[0]?.header?.ja?.rawHtml).toBeNull()
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-15: POST /dataset/{datasetId}/delete is admin-only (401/403/403/204)", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-15
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      // Initially leave uids empty so the dataset must be created by admin (non-owner case).
+      const ds = await createDatasetForResearch(admin, humId)
+      const app = getApp()
+      // 1) unauthenticated → 401 (requireAuth middleware)
+      const noAuth = await app.request(url(`/dataset/${ds.datasetId}/delete`), { method: "POST" })
+      expect(noAuth.status).toBe(401)
+      // 2) authenticated non-owner → 403 (requireAdmin middleware)
+      const nonOwner = await app.request(url(`/dataset/${ds.datasetId}/delete`), {
+        method: "POST",
+        headers: authHeaders(nonAdmin),
+      })
+      expect(nonOwner.status).toBe(403)
+      // 3) authenticated owner (non-admin) → still 403 because delete is admin-only
+      await setOwnerUids(admin, humId, [sub!])
+      const ownerNonAdmin = await app.request(url(`/dataset/${ds.datasetId}/delete`), {
+        method: "POST",
+        headers: authHeaders(nonAdmin),
+      })
+      expect(ownerNonAdmin.status).toBe(403)
+      // 4) admin → 204
+      const adminDel = await app.request(url(`/dataset/${ds.datasetId}/delete`), {
+        method: "POST",
+        headers: authHeaders(admin),
+      })
+      expect(adminDel.status).toBe(204)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-16: admin delete removes the Dataset from GET and from the parent dataset list", async ({ admin, nonAdmin }) => {
+    // IT-DATASET-16
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const ds = await createDatasetForResearch(nonAdmin, humId)
+      const app = getApp()
+      const del = await app.request(url(`/dataset/${ds.datasetId}/delete`), {
+        method: "POST",
+        headers: authHeaders(admin),
+      })
+      expect(del.status).toBe(204)
+      const get = await app.request(url(`/dataset/${ds.datasetId}`), { headers: authHeaders(admin) })
+      expect(get.status).toBe(404)
+      const linked = await app.request(url(`/research/${humId}/dataset`), {
+        headers: authHeaders(admin),
+      })
+      const linkedJson = (await linked.json()) as SearchResponse<{ datasetId: string }>
+      for (const d of linkedJson.data) {
+        expect(d.datasetId).not.toBe(ds.datasetId)
+      }
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
 })
