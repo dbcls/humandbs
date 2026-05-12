@@ -1,0 +1,306 @@
+/**
+ * Integration test setup module.
+ *
+ * Each `<category>.test.ts` calls `beforeAll(setupIntegration)` to populate
+ * shared connection state, staging Keycloak tokens, and runtime ES fixtures.
+ * State lives in module scope so subsequent files reuse the result inside the
+ * same `bun test` process (idempotent guard via `setupDone`).
+ *
+ * Operational notes: `tests/integration-note.md`. Scenario SSOT: `tests/integration-scenarios.md`.
+ */
+import { it } from "bun:test"
+
+import { createApp } from "@/api/app"
+import { jgaSql } from "@/api/db-client/client"
+import { esClient } from "@/api/es-client"
+import type { SearchResponse } from "@/api/types"
+
+// === Environment ===
+
+const ISSUER_URL = process.env.HUMANDBS_AUTH_ISSUER_URL ?? ""
+const CLIENT_ID = process.env.HUMANDBS_AUTH_CLIENT_ID ?? ""
+const STAGING_USERNAME = process.env.HUMANDBS_STAGING_USERNAME ?? ""
+const STAGING_PASSWORD = process.env.HUMANDBS_STAGING_PASSWORD ?? ""
+const STAGING_ADMIN_USERNAME = process.env.HUMANDBS_STAGING_ADMIN_USERNAME ?? ""
+const STAGING_ADMIN_PASSWORD = process.env.HUMANDBS_STAGING_ADMIN_PASSWORD ?? ""
+const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
+
+// === Module-scope state populated by setupIntegration() ===
+
+let setupDone = false
+let esConnected = false
+let jgaConnected = false
+let adminToken: string | null = null
+let nonAdminToken: string | null = null
+
+export interface IntegrationFixtures {
+  /** A representative published `humId` from the live ES (latestVersion!=null, status=published). */
+  publishedHumId: string
+  /** A representative `datasetId` whose parent Research is publicly visible. */
+  publishedDatasetId: string
+  /** A `humId` whose research-version index has >=2 versions, for version-resolution scenarios. */
+  multiVersionHumId: string
+}
+
+let fixtures: IntegrationFixtures = {
+  publishedHumId: "",
+  publishedDatasetId: "",
+  multiVersionHumId: "",
+}
+
+// === Public helpers ===
+
+/** Build a request path honoring `HUMANDBS_BACKEND_URL_PREFIX`. */
+export const url = (path: string): string => `${URL_PREFIX}${path}`
+
+/** Build an Authorization header object. */
+export const authHeaders = (token: string): Record<string, string> => ({
+  Authorization: `Bearer ${token}`,
+})
+
+/**
+ * Build a Hono app instance for the running env.
+ *
+ * Unlike `tests/unit/api/helpers/test-app.ts § getTestApp`, this does NOT strip
+ * `HUMANDBS_BACKEND_URL_PREFIX`. The integration env is expected to carry the
+ * same prefix the production container uses (the compose default is `/api`).
+ */
+export const getApp = (): ReturnType<typeof createApp> => createApp()
+
+export const isEsConnected = (): boolean => esConnected
+export const isJgaConnected = (): boolean => jgaConnected
+export const getAdminToken = (): string | null => adminToken
+export const getNonAdminToken = (): string | null => nonAdminToken
+export const getFixtures = (): IntegrationFixtures => fixtures
+export const getUrlPrefix = (): string => URL_PREFIX
+
+/**
+ * Extract the `sub` (user id) claim from a JWT without verifying its signature.
+ * Used in tests to assert that owner-only data comes back keyed to the calling user.
+ */
+export const decodeJwtSub = (token: string): string | null => {
+  const parts = token.split(".")
+  if (parts.length !== 3) return null
+  try {
+    const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const json = JSON.parse(atob(padded)) as { sub?: unknown }
+    return typeof json.sub === "string" ? json.sub : null
+  } catch {
+    return null
+  }
+}
+
+// === Conditional `it` runners ===
+
+const skipLog = (name: string, reason: string): void => {
+  console.log(`  SKIP ${name}: ${reason}`)
+}
+
+/** Run `fn` if ES is reachable; otherwise log a skip line and pass the test. */
+export const itWithEs = (name: string, fn: () => Promise<void>): void => {
+  it(name, async () => {
+    if (!esConnected) {
+      skipLog(name, "ES not connected")
+      return
+    }
+    await fn()
+  })
+}
+
+/** Run `fn` if the JGA PostgreSQL is reachable. */
+export const itWithJga = (name: string, fn: () => Promise<void>): void => {
+  it(name, async () => {
+    if (!jgaConnected) {
+      skipLog(name, "JGA DB not connected")
+      return
+    }
+    await fn()
+  })
+}
+
+/**
+ * Run `fn` if the JGA PostgreSQL is reachable AND a staging admin token is available.
+ * Required for `/jga-shinsei/*` endpoints which combine adminOnly with a live DB query.
+ */
+export const itWithJgaAdmin = (
+  name: string,
+  fn: (token: string) => Promise<void>,
+): void => {
+  it(name, async () => {
+    if (!jgaConnected) {
+      skipLog(name, "JGA DB not connected")
+      return
+    }
+    if (!adminToken) {
+      skipLog(name, "staging admin token unavailable")
+      return
+    }
+    await fn(adminToken)
+  })
+}
+
+/** Run `fn` with the staging admin token if available (ES is also required). */
+export const itWithAdminToken = (
+  name: string,
+  fn: (token: string) => Promise<void>,
+): void => {
+  it(name, async () => {
+    if (!esConnected) {
+      skipLog(name, "ES not connected")
+      return
+    }
+    if (!adminToken) {
+      skipLog(name, "staging admin token unavailable")
+      return
+    }
+    await fn(adminToken)
+  })
+}
+
+/** Run `fn` with the staging non-admin token if available. */
+export const itWithNonAdminToken = (
+  name: string,
+  fn: (token: string) => Promise<void>,
+): void => {
+  it(name, async () => {
+    if (!esConnected) {
+      skipLog(name, "ES not connected")
+      return
+    }
+    if (!nonAdminToken) {
+      skipLog(name, "staging non-admin token unavailable")
+      return
+    }
+    await fn(nonAdminToken)
+  })
+}
+
+/** Inside an `itWithEs` body, gate further execution on a probed fixture. */
+export const requireFixture = (
+  testName: string,
+  value: string,
+  fixtureName: keyof IntegrationFixtures,
+): string | null => {
+  if (!value) {
+    skipLog(testName, `fixture "${fixtureName}" is empty`)
+    return null
+  }
+  return value
+}
+
+// === Internal: staging Keycloak token fetch ===
+
+const fetchStagingToken = async (
+  username: string,
+  password: string,
+): Promise<string | null> => {
+  if (!ISSUER_URL || !CLIENT_ID || !username || !password) return null
+  const tokenUrl = `${ISSUER_URL.replace(/\/$/, "")}/protocol/openid-connect/token`
+  const body = new URLSearchParams({
+    grant_type: "password",
+    client_id: CLIENT_ID,
+    username,
+    password,
+    scope: "openid",
+  })
+  try {
+    const res = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as { access_token?: unknown }
+    return typeof json.access_token === "string" ? json.access_token : null
+  } catch {
+    return null
+  }
+}
+
+// === Internal: runtime fixture probe ===
+
+interface ResearchListItem {
+  humId: string
+  versionIds?: string[]
+}
+
+interface DatasetListItem {
+  datasetId: string
+}
+
+const probeFixtures = async (): Promise<IntegrationFixtures> => {
+  const probed: IntegrationFixtures = {
+    publishedHumId: "",
+    publishedDatasetId: "",
+    multiVersionHumId: "",
+  }
+  if (!esConnected) return probed
+
+  const app = getApp()
+
+  try {
+    const res = await app.request(url("/research?limit=50"))
+    if (res.status === 200) {
+      const json = (await res.json()) as SearchResponse<ResearchListItem>
+      if (json.data.length > 0) probed.publishedHumId = json.data[0].humId
+      const multi = json.data.find((r) => (r.versionIds?.length ?? 0) >= 2)
+      if (multi) probed.multiVersionHumId = multi.humId
+    }
+  } catch (err) {
+    console.log(`  fixture probe (research): ${(err as Error).message}`)
+  }
+
+  try {
+    const res = await app.request(url("/dataset?limit=1"))
+    if (res.status === 200) {
+      const json = (await res.json()) as SearchResponse<DatasetListItem>
+      if (json.data.length > 0) probed.publishedDatasetId = json.data[0].datasetId
+    }
+  } catch (err) {
+    console.log(`  fixture probe (dataset): ${(err as Error).message}`)
+  }
+
+  return probed
+}
+
+// === Public setup entry point ===
+
+/**
+ * Idempotent setup invoked from each test file's `beforeAll`.
+ *
+ * Safe to call multiple times: the first call probes external services,
+ * subsequent calls return immediately so the per-file `beforeAll` overhead
+ * stays bounded.
+ */
+export const setupIntegration = async (): Promise<void> => {
+  if (setupDone) return
+  setupDone = true
+
+  try {
+    const health = await esClient.cluster.health({ timeout: "5s" })
+    esConnected = health.status === "green" || health.status === "yellow"
+    console.log(`ES connection: ${esConnected ? "OK" : `degraded (${health.status})`}`)
+  } catch (err) {
+    esConnected = false
+    console.log(`ES connection: FAILED (${(err as Error).message})`)
+  }
+
+  try {
+    await jgaSql`SELECT 1`
+    jgaConnected = true
+    console.log("JGA DB connection: OK")
+  } catch (err) {
+    jgaConnected = false
+    console.log(`JGA DB connection: FAILED (${(err as Error).message})`)
+  }
+
+  adminToken = await fetchStagingToken(STAGING_ADMIN_USERNAME, STAGING_ADMIN_PASSWORD)
+  nonAdminToken = await fetchStagingToken(STAGING_USERNAME, STAGING_PASSWORD)
+  console.log(
+    `Staging Keycloak: admin=${adminToken ? "OK" : "skip"}, non-admin=${nonAdminToken ? "OK" : "skip"}`,
+  )
+
+  fixtures = await probeFixtures()
+  console.log(`Fixtures: ${JSON.stringify(fixtures)}`)
+  console.log(`URL prefix: "${URL_PREFIX}"`)
+}

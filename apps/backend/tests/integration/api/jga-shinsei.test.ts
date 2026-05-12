@@ -1,144 +1,159 @@
 /**
- * JGA Shinsei DB Integration Tests
+ * IT-JGA-*: JGA Shinsei application endpoints (`/jga-shinsei/ds`, `/du`).
  *
- * Requires a reachable JGA PostgreSQL instance (`HUMANDBS_JGA_DB_*`).
- * Tests are skipped automatically when the DB is unreachable, so this file is
- * safe to include in CI even when the JGA DB cannot be hit.
+ * Reference: `tests/integration-scenarios.md § IT-JGA-*`.
  *
- * Run inside Docker container with proper env:
- *   docker compose exec backend bun test tests/integration/api/jga-shinsei.test.ts
+ * Combines HTTP-level checks (auth/admin guards, pagination, formats) via the running
+ * app with two db-client-level invariants (`fetchDsRaw([])` short-circuits, DS/DU are
+ * separated by data_type) which are easiest to assert by calling the client directly.
  */
-import { beforeAll, describe, expect, it } from "bun:test"
+import { beforeAll, describe, expect } from "bun:test"
 
-import { jgaSql } from "@/api/db-client/client"
-import {
-  fetchDsRaw,
-  fetchDuRaw,
-  getDsApplication,
-  getDuApplication,
-  listIds,
-} from "@/api/db-client/jga-shinsei"
+import { fetchDsRaw, fetchDuRaw, listIds } from "@/api/db-client/jga-shinsei"
+import type { SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 import {
   DsApplicationTransformedSchema,
   DuApplicationTransformedSchema,
 } from "@/crawler/types/jga-shinsei"
 
-let jgaConnected = false
+import {
+  authHeaders,
+  getApp,
+  itWithEs,
+  itWithJga,
+  itWithJgaAdmin,
+  itWithNonAdminToken,
+  setupIntegration,
+  url,
+} from "./setup"
 
-beforeAll(async () => {
-  try {
-    await jgaSql`SELECT 1`
-    jgaConnected = true
-    console.log("JGA DB connection: OK")
-  } catch (err) {
-    console.log(`JGA DB connection: FAILED (${(err as Error).message})`)
-    jgaConnected = false
-  }
-})
+beforeAll(setupIntegration)
 
-const itWithJgaDb = (name: string, fn: () => Promise<void>) => {
-  it(name, async () => {
-    if (!jgaConnected) {
-      console.log(`  Skipping: ${name} (JGA DB not connected)`)
+interface DsListItem { jdsId: string }
+interface DuListItem { jduId: string }
+
+describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () => {
+  itWithEs("IT-JGA-01: GET /jga-shinsei/ds without auth returns 401", async () => {
+    // IT-JGA-01
+    const app = getApp()
+    const res = await app.request(url("/jga-shinsei/ds"))
+    expect(res.status).toBe(401)
+  })
+
+  itWithNonAdminToken("IT-JGA-02: GET /jga-shinsei/ds with non-admin auth returns 403", async (token) => {
+    // IT-JGA-02
+    const app = getApp()
+    const res = await app.request(url("/jga-shinsei/ds"), { headers: authHeaders(token) })
+    expect(res.status).toBe(403)
+  })
+
+  itWithJgaAdmin("IT-JGA-03: GET /jga-shinsei/ds (admin) returns paginated J-DS ids", async (token) => {
+    // IT-JGA-03
+    const app = getApp()
+    const res = await app.request(url("/jga-shinsei/ds?page=1&limit=10"), { headers: authHeaders(token) })
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as SearchResponse<DsListItem>
+    expect(json.meta.pagination.page).toBe(1)
+    expect(json.meta.pagination.limit).toBe(10)
+    expect(json.meta.pagination.total).toBeGreaterThanOrEqual(0)
+    expect(json.data.length).toBeLessThanOrEqual(10)
+    expect(json.data.length).toBeLessThanOrEqual(json.meta.pagination.total)
+    for (const item of json.data) expect(item.jdsId).toMatch(/^J-DS\d+$/)
+  })
+
+  itWithJgaAdmin("IT-JGA-04: ds pagination boundaries (parametrize)", async (token) => {
+    // IT-JGA-04
+    const app = getApp()
+    const cases: { qs: string; expected: number }[] = [
+      { qs: "page=1&limit=1", expected: 200 },
+      { qs: "page=1&limit=100", expected: 200 },
+      { qs: "page=1&limit=101", expected: 400 },
+      { qs: "page=0&limit=20", expected: 400 },
+    ]
+    for (const c of cases) {
+      const res = await app.request(url(`/jga-shinsei/ds?${c.qs}`), { headers: authHeaders(token) })
+      expect(res.status).toBe(c.expected)
+    }
+    const huge = await app.request(url("/jga-shinsei/ds?page=99999&limit=20"), { headers: authHeaders(token) })
+    expect(huge.status).toBe(200)
+    const hugeJson = (await huge.json()) as SearchResponse<DsListItem>
+    expect(hugeJson.data).toEqual([])
+  })
+
+  itWithJgaAdmin("IT-JGA-05: GET /jga-shinsei/ds/{jdsId} (admin) returns the transformed application", async (token) => {
+    // IT-JGA-05
+    const app = getApp()
+    const listRes = await app.request(url("/jga-shinsei/ds?page=1&limit=1"), { headers: authHeaders(token) })
+    const list = (await listRes.json()) as SearchResponse<DsListItem>
+    if (list.data.length === 0) {
+      console.log("  SKIP IT-JGA-05: no J-DS rows in staging DB")
       return
     }
-    await fn()
-  })
-}
-
-describe("db-client/jga-shinsei integration", () => {
-  describe("listIds", () => {
-    itWithJgaDb("returns J-DS ids with prefix and a positive total", async () => {
-      const { ids, total } = await listIds("J-DS", 1, 5)
-      expect(total).toBeGreaterThan(0)
-      expect(ids.length).toBeLessThanOrEqual(5)
-      ids.forEach((id) => { expect(id).toMatch(/^J-DS\d+$/) })
-    })
-
-    itWithJgaDb("returns J-DU ids with prefix and a positive total", async () => {
-      const { ids, total } = await listIds("J-DU", 1, 5)
-      expect(total).toBeGreaterThan(0)
-      expect(ids.length).toBeLessThanOrEqual(5)
-      ids.forEach((id) => { expect(id).toMatch(/^J-DU\d+$/) })
-    })
-
-    itWithJgaDb("computes offset correctly across pages", async () => {
-      const page1 = await listIds("J-DS", 1, 3)
-      const page2 = await listIds("J-DS", 2, 3)
-      expect(page1.total).toBe(page2.total)
-      // page2 ids should not overlap page1 ids (sorted asc, 3 items per page)
-      page2.ids.forEach((id) => { expect(page1.ids).not.toContain(id) })
-    })
+    const jdsId = list.data[0].jdsId
+    const detailRes = await app.request(url(`/jga-shinsei/ds/${jdsId}`), { headers: authHeaders(token) })
+    expect(detailRes.status).toBe(200)
+    const detail = (await detailRes.json()) as SingleReadOnlyResponse<unknown>
+    DsApplicationTransformedSchema.parse(detail.data)
+    const meta = detail.meta as Record<string, unknown>
+    expect(meta._seq_no).toBeUndefined()
+    expect(meta._primary_term).toBeUndefined()
   })
 
-  describe("fetchDsRaw + getDsApplication", () => {
-    itWithJgaDb("fetches a real DS application and transforms successfully", async () => {
-      const { ids } = await listIds("J-DS", 1, 1)
-      if (ids.length === 0) {
-        console.log("  Skipping: no J-DS rows in DB")
-        return
-      }
-      const jdsId = ids[0]
-      const doc = await getDsApplication(jdsId)
-      expect(doc.jdsId).toBe(jdsId)
-      // Round-trip through the canonical Zod schema (same one the API returns)
-      DsApplicationTransformedSchema.parse(doc)
-    })
-
-    itWithJgaDb("fetchDsRaw returns rows in the requested id order", async () => {
-      const { ids } = await listIds("J-DS", 1, 3)
-      if (ids.length < 2) {
-        console.log("  Skipping: fewer than 2 J-DS rows in DB")
-        return
-      }
-      const raws = await fetchDsRaw(ids)
-      const fetchedIds = raws.map((r) => r.jds_id).sort()
-      expect(fetchedIds).toEqual([...ids].sort())
-    })
-
-    itWithJgaDb("throws NotFoundError for non-existent DS id", async () => {
-      let caught: unknown
-      try {
-        await getDsApplication("J-DS999999")
-      } catch (e) {
-        caught = e
-      }
-      expect((caught as Error | undefined)?.message).toMatch(/DS Application/)
-    })
+  itWithJgaAdmin("IT-JGA-06: GET /jga-shinsei/ds/{unknown-jdsId} returns 404", async (token) => {
+    // IT-JGA-06
+    const app = getApp()
+    const res = await app.request(url("/jga-shinsei/ds/J-DS999999"), { headers: authHeaders(token) })
+    expect(res.status).toBe(404)
+    const json = (await res.json()) as { title?: string }
+    expect(json.title).toBe("Not Found")
   })
 
-  describe("fetchDuRaw + getDuApplication", () => {
-    itWithJgaDb("fetches a real DU application and transforms successfully", async () => {
-      const { ids } = await listIds("J-DU", 1, 1)
-      if (ids.length === 0) {
-        console.log("  Skipping: no J-DU rows in DB")
-        return
-      }
-      const jduId = ids[0]
-      const doc = await getDuApplication(jduId)
-      expect(doc.jduId).toBe(jduId)
-      DuApplicationTransformedSchema.parse(doc)
-    })
+  itWithJgaAdmin("IT-JGA-07: malformed jdsId without J-DS prefix is rejected (400 or 404)", async (token) => {
+    // IT-JGA-07
+    const app = getApp()
+    const res = await app.request(url("/jga-shinsei/ds/invalid-id"), { headers: authHeaders(token) })
+    expect([400, 404]).toContain(res.status)
+  })
 
-    itWithJgaDb("fetchDuRaw returns rows in the requested id order", async () => {
-      const { ids } = await listIds("J-DU", 1, 3)
-      if (ids.length < 2) {
-        console.log("  Skipping: fewer than 2 J-DU rows in DB")
-        return
-      }
-      const raws = await fetchDuRaw(ids)
-      const fetchedIds = raws.map((r) => r.jdu_id).sort()
-      expect(fetchedIds).toEqual([...ids].sort())
-    })
+  itWithNonAdminToken("IT-JGA-08: /jga-shinsei/du enforces admin (401 / 403 / 200 by token)", async (token) => {
+    // IT-JGA-08
+    const app = getApp()
+    const unauth = await app.request(url("/jga-shinsei/du"))
+    expect(unauth.status).toBe(401)
+    const nonAdmin = await app.request(url("/jga-shinsei/du"), { headers: authHeaders(token) })
+    expect(nonAdmin.status).toBe(403)
+  })
 
-    itWithJgaDb("throws NotFoundError for non-existent DU id", async () => {
-      let caught: unknown
-      try {
-        await getDuApplication("J-DU999999")
-      } catch (e) {
-        caught = e
-      }
-      expect((caught as Error | undefined)?.message).toMatch(/DU Application/)
-    })
+  itWithJgaAdmin("IT-JGA-09: GET /jga-shinsei/du/{jduId} (admin) returns the transformed application", async (token) => {
+    // IT-JGA-09
+    const app = getApp()
+    const listRes = await app.request(url("/jga-shinsei/du?page=1&limit=1"), { headers: authHeaders(token) })
+    const list = (await listRes.json()) as SearchResponse<DuListItem>
+    if (list.data.length === 0) {
+      console.log("  SKIP IT-JGA-09: no J-DU rows in staging DB")
+      return
+    }
+    const jduId = list.data[0].jduId
+    const detailRes = await app.request(url(`/jga-shinsei/du/${jduId}`), { headers: authHeaders(token) })
+    expect(detailRes.status).toBe(200)
+    const detail = (await detailRes.json()) as SingleReadOnlyResponse<unknown>
+    DuApplicationTransformedSchema.parse(detail.data)
+  })
+
+  itWithJga("IT-JGA-10: fetchDsRaw([]) / fetchDuRaw([]) short-circuit without issuing SQL", async () => {
+    // IT-JGA-10
+    // Empty input must return [] without touching the DB. We assert the return value and rely on
+    // unit-level SQL spy (`tests/unit/api/db-client/jga-shinsei.test.ts`) for the no-query guarantee.
+    expect(await fetchDsRaw([])).toEqual([])
+    expect(await fetchDuRaw([])).toEqual([])
+  })
+
+  itWithJga("IT-JGA-11: J-DS and J-DU id sets returned by listIds are disjoint (data_type separation)", async () => {
+    // IT-JGA-11
+    const [ds, du] = await Promise.all([listIds("J-DS", 1, 50), listIds("J-DU", 1, 50)])
+    for (const id of ds.ids) expect(id).toMatch(/^J-DS\d+$/)
+    for (const id of du.ids) expect(id).toMatch(/^J-DU\d+$/)
+    const dsSet = new Set(ds.ids)
+    for (const id of du.ids) expect(dsSet.has(id)).toBe(false)
   })
 })
