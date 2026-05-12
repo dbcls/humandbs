@@ -70,7 +70,7 @@ export function ResearchDetails({
   const queryClient = useQueryClient();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
-  const { data: initialData } = useSuspenseQuery(
+  const { data: initialData, isError } = useSuspenseQuery(
     getResearchQueryOptions({ humId, lang }),
   );
 
@@ -80,6 +80,7 @@ export function ResearchDetails({
       initialData.data.version,
   );
 
+  // TODO - clean up so RQ wont fetch same twice
   // Re-fetch when selectedVersion changes
   const { data } = useSuspenseQuery(
     getResearchQueryOptions({ humId, lang, version: selectedVersion }),

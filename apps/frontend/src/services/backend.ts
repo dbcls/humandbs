@@ -44,6 +44,7 @@ export class APIError extends Error {
 
   constructor(status: number, method: string, url: string, data: unknown) {
     super(`API Error: ${status} - ${method} ${url}`);
+    Object.setPrototypeOf(this, APIError.prototype);
     this.name = "APIError";
     this.status = status;
     this.data = data;

@@ -11,6 +11,11 @@ import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 
+import { CatchBoundary } from "@tanstack/react-router";
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { APIError } from "@/services/backend";
+
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
 )({
@@ -58,14 +63,42 @@ function RouteComponent() {
           onCreated={(humId) => setSelectedHumId(humId)}
         />
       ) : selectedHumId ? (
-        <Suspense fallback={<ResearchDetailsFallback humId={selectedHumId} />}>
-          <ResearchDetails
-            key={selectedHumId}
-            humId={selectedHumId}
-            lang={lang}
-            onDeselect={() => setSelectedHumId(null)}
-          />
-        </Suspense>
+        <QueryErrorResetBoundary>
+          {({ reset }) => (
+            <CatchBoundary
+              getResetKey={() => selectedHumId}
+              onCatch={reset}
+              errorComponent={function ({ error, reset }) {
+                return (
+                  <Card
+                    className="flex-1"
+                    caption={<span>{selectedHumId}</span>}
+                  >
+                    <p className="text-red-500">
+                      {"data" in error && typeof error.data === "object"
+                        ? (error.data as { detail: string } | undefined)?.detail
+                        : error.message}
+                    </p>
+                    <Button variant={"outline"} onClick={reset}>
+                      Retry
+                    </Button>
+                  </Card>
+                );
+              }}
+            >
+              <Suspense
+                fallback={<ResearchDetailsFallback humId={selectedHumId} />}
+              >
+                <ResearchDetails
+                  key={selectedHumId}
+                  humId={selectedHumId}
+                  lang={lang}
+                  onDeselect={() => setSelectedHumId(null)}
+                />
+              </Suspense>
+            </CatchBoundary>
+          )}
+        </QueryErrorResetBoundary>
       ) : (
         <div className="text-foreground-light flex flex-1 items-center justify-center">
           No research selected

@@ -15,6 +15,7 @@ interface AdminListItemTranslation {
   statuses: {
     published?: string;
     draft?: string;
+    review?: string;
   };
 }
 
@@ -30,24 +31,29 @@ export function AdminListItem({
   meta,
   translations,
   menuItems = [],
+  hideUnpublishedDot
 }: {
   id: string;
   header?: string;
   meta?: ReactNode;
   translations: AdminListItemTranslation[];
-  menuItems?: AdminListItemMenuItem[];
+    menuItems?: AdminListItemMenuItem[];
+    hideUnpublishedDot?: boolean;
 }) {
   return (
     <>
       <div className="min-w-0 flex-1">
-        <div className="text-foreground-light mb-1 text-xs group-data-[active=true]:text-white/80">
-          {header ?? id}
+        <div className="text-foreground-light mb-1 text-xs group-data-[active=true]:text-white/80 items-baseline flex gap-2">
+          {header ?? id} {meta ? <div className="mt-1">{meta}</div> : null}
         </div>
+
         <ul className="space-y-0.5">
           {translations.map((translation) => {
             const publishedTitle = translation.statuses.published;
             const draftTitle = translation.statuses.draft;
-            const displayTitle = publishedTitle || draftTitle;
+            const reviewTitle = translation.statuses.review;
+            const displayTitle = publishedTitle || draftTitle || reviewTitle;
+
             const hasChangedDraft =
               !!draftTitle && draftTitle !== publishedTitle;
 
@@ -59,12 +65,11 @@ export function AdminListItem({
                 className="flex min-w-0 items-center gap-2 text-xs"
               >
                 <span className="truncate text-sm">{displayTitle}</span>
-                {hasChangedDraft ? <UnpublishedDot /> : null}
+                {hasChangedDraft && !hideUnpublishedDot ? <UnpublishedDot /> : null}
               </li>
             );
           })}
         </ul>
-        {meta ? <div className="mt-1">{meta}</div> : null}
       </div>
       {menuItems.length === 0 ? null : (
         <DropdownMenu>

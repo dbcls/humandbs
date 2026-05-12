@@ -28,6 +28,7 @@ import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import { throwSerializableApiError } from "@/utils/errors";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -133,6 +134,7 @@ export const $deleteResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
+    console.log("$deleteResearch", data.humId);
     try {
       await api.deleteResearch(data.humId, accessToken);
       return { ok: true };
@@ -265,7 +267,6 @@ export const $listResearches = createServerFn()
 
     // if query is humIdm then use search with humId
     if (q && /^hum\d+/i.test(q)) {
-      console.log("searching by humId ", q);
       return api.getResearchListPaginated(
         {
           search: {
@@ -362,16 +363,20 @@ export const ResearchQuerySchema = z.object({
 
 export const $getResearch = createServerFn()
   .inputValidator(ResearchQuerySchema)
-  .handler(({ data }) => {
+  .handler(async ({ data }) => {
     const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
 
-    return api.getResearchDetail({
-      search: { ...search, includeRawHtml: false },
-      params: { humId },
-      accessToken: accessToken ?? undefined,
-    });
+    try {
+      return await api.getResearchDetail({
+        search: { ...search, includeRawHtml: false },
+        params: { humId },
+        accessToken: accessToken ?? undefined,
+      });
+    } catch (error) {
+      throwSerializableApiError(error);
+    }
   });
 
 export function getResearchQueryOptions(
