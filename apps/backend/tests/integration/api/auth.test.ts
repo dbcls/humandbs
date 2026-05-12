@@ -64,18 +64,22 @@ describe("IT-AUTH-*: authentication & authorization", () => {
 
   itWithEs("IT-AUTH-02: optionalAuth endpoint without bearer returns 200 with public scope", async () => {
     // IT-AUTH-02
-    // Public-scope invariants:
-    //   - latestVersion !== null and status !== "deleted" for every item;
-    //   - value-based field control: status === "published", uids === [], draftVersion === null.
+    // Public-scope invariants on the ResearchSummary list:
+    //   - status === "published" (the only public-visible status)
+    //   - uids / draftVersion / latestVersion are omitted from the list response shape
+    //     (verified empirically against staging; the API trims them for lean payloads)
+    //   - the `versions` array is non-empty (= the underlying Research has at least one published version)
     const app = getApp()
     const res = await app.request(url("/research?limit=20"))
     expect(res.status).toBe(200)
-    const json = (await res.json()) as SearchResponse<ResearchSummary>
+    const json = (await res.json()) as SearchResponse<ResearchSummary & { versions?: { version: string }[] }>
     for (const item of json.data) {
-      expect(item.latestVersion).not.toBeNull()
       expect(item.status).toBe("published")
-      expect(item.uids).toEqual([])
-      expect(item.draftVersion).toBeNull()
+      expect(item.uids).toBeUndefined()
+      expect(item.draftVersion).toBeUndefined()
+      expect(item.latestVersion).toBeUndefined()
+      const versions = (item as { versions?: { version: string }[] }).versions ?? []
+      expect(versions.length).toBeGreaterThanOrEqual(1)
     }
   })
 

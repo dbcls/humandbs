@@ -121,6 +121,10 @@ export const itWithJga = (name: string, fn: () => Promise<void>): void => {
 /**
  * Run `fn` if the JGA PostgreSQL is reachable AND a staging admin token is available.
  * Required for `/jga-shinsei/*` endpoints which combine adminOnly with a live DB query.
+ *
+ * Live PostgreSQL aggregations on staging routinely exceed bun:test's 5s default
+ * (the listing CTE can take 30s+). We extend the per-test timeout to 60s; chasing the
+ * underlying query performance is tracked separately.
  */
 export const itWithJgaAdmin = (
   name: string,
@@ -136,7 +140,7 @@ export const itWithJgaAdmin = (
       return
     }
     await fn(adminToken)
-  })
+  }, 60_000)
 }
 
 /** Run `fn` with the staging admin token if available (ES is also required). */
@@ -296,6 +300,33 @@ export const setupIntegration = async (): Promise<void> => {
 
   adminToken = await fetchStagingToken(STAGING_ADMIN_USERNAME, STAGING_ADMIN_PASSWORD)
   nonAdminToken = await fetchStagingToken(STAGING_USERNAME, STAGING_PASSWORD)
+
+  // Guard against "fake non-admin" tokens: if `HUMANDBS_STAGING_USERNAME` happens to be in
+  // `admin_uids.json`, the resulting token is actually admin and would silently bypass
+  // ownership/adminOnly guards in mutating tests (see `.claude/docs/staging-integration-test.md`).
+  // Drop the token in that case so `itWithNonAdminToken` falls back to skip rather than mutate
+  // shared ES with admin privileges.
+  if (esConnected && nonAdminToken) {
+    try {
+      const app = createApp()
+      const res = await app.request(`${URL_PREFIX}/admin/is-admin`, {
+        headers: { Authorization: `Bearer ${nonAdminToken}` },
+      })
+      if (res.status === 200) {
+        const json = (await res.json()) as { data?: { isAdmin?: boolean } }
+        if (json.data?.isAdmin === true) {
+          console.log(
+            "Staging Keycloak: configured non-admin user is in admin_uids.json — dropping nonAdminToken to avoid mutating shared ES",
+          )
+          nonAdminToken = null
+        }
+      }
+    } catch (err) {
+      console.log(`  non-admin token guard failed (treating as unavailable): ${(err as Error).message}`)
+      nonAdminToken = null
+    }
+  }
+
   console.log(
     `Staging Keycloak: admin=${adminToken ? "OK" : "skip"}, non-admin=${nonAdminToken ? "OK" : "skip"}`,
   )

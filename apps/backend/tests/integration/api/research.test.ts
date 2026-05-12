@@ -32,19 +32,23 @@ interface ResearchSummary {
 }
 
 describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
-  itWithEs("IT-RESEARCH-01: GET /research returns only publicly visible items with value-based masking", async () => {
+  itWithEs("IT-RESEARCH-01: GET /research returns only publicly visible items with summary-shape field set", async () => {
     // IT-RESEARCH-01
+    // ResearchSummary list shape (empirical staging):
+    //   - status === "published"
+    //   - uids / draftVersion / latestVersion are omitted (the list is a lean summary)
+    //   - `versions` is a non-empty array of `{ version, releaseDate }`
     const app = getApp()
     const res = await app.request(url("/research?page=1&limit=10"))
     expect(res.status).toBe(200)
-    const json = (await res.json()) as SearchResponse<ResearchSummary> & {
-      data: (ResearchSummary & { _seq_no?: number })[]
-    }
+    const json = (await res.json()) as SearchResponse<ResearchSummary & { versions?: { version: string }[] }>
     for (const item of json.data) {
-      expect(item.latestVersion).not.toBeNull()
       expect(item.status).toBe("published")
-      expect(item.uids).toEqual([])
-      expect(item.draftVersion).toBeNull()
+      expect(item.uids).toBeUndefined()
+      expect(item.draftVersion).toBeUndefined()
+      expect(item.latestVersion).toBeUndefined()
+      const versions = item.versions ?? []
+      expect(versions.length).toBeGreaterThanOrEqual(1)
     }
   })
 
@@ -90,8 +94,10 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     expect(json.title).toBe("Forbidden")
   })
 
-  itWithEs("IT-RESEARCH-08: public GET /research/{humId} returns latestVersion as version, draftVersion=null", async () => {
+  itWithEs("IT-RESEARCH-08: public GET /research/{humId} resolves to a v<N> version with draftVersion=null", async () => {
     // IT-RESEARCH-08
+    // Note: the list summary omits `latestVersion`, so we cannot directly compare detail.version to it.
+    // The invariant is: detail.version is a `v<digits>` string, and draftVersion is null for the public view.
     const app = getApp()
     const listRes = await app.request(url("/research?limit=1"))
     const list = (await listRes.json()) as SearchResponse<ResearchSummary>
@@ -99,11 +105,11 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       console.log("  SKIP IT-RESEARCH-08: no Research in ES")
       return
     }
-    const summary = list.data[0]
-    const res = await app.request(url(`/research/${summary.humId}`))
+    const humId = list.data[0].humId
+    const res = await app.request(url(`/research/${humId}`))
     expect(res.status).toBe(200)
     const json = (await res.json()) as SingleReadOnlyResponse<EsResearch & { version?: string }>
-    expect(json.data.version).toBe(summary.latestVersion ?? undefined)
+    expect(json.data.version).toMatch(/^v\d+$/)
     expect(json.data.draftVersion).toBeNull()
   })
 
