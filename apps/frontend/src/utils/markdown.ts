@@ -59,6 +59,22 @@ function getNodeText(node: {
     .join("");
 }
 
+function rehypeShiftHeadings() {
+  return (tree: Root) => {
+    const levels: number[] = [];
+    visit(tree, "element", (node: Element) => {
+      const m = /^h([1-6])$/.exec(node.tagName);
+      if (m) levels.push(Number(m[1]));
+    });
+    const minLevel = levels.length ? Math.min(...levels) : null;
+    if (minLevel !== 1) return;
+    visit(tree, "element", (node: Element) => {
+      const m = /^h([1-6])$/.exec(node.tagName);
+      if (m) node.tagName = `h${Math.min(Number(m[1]) + 1, 6)}`;
+    });
+  };
+}
+
 function collectHeadings(headings: MarkdownHeading[]) {
   return () => (tree: Root) => {
     visit(tree, "element", (node: Element) => {
@@ -199,6 +215,7 @@ export async function renderMarkdown(content: string): Promise<MarkdownResult> {
     .use(remarkCallouts) // Convert :::callout blocks to <callout> elements
     .use(remarkRehype, { allowDangerousHtml: true }) // Convert to HTML AST
     .use(rehypeRaw) // Process raw HTML
+    .use(rehypeShiftHeadings) // Shift h1→h2 etc. when content uses h1 as top-level
     .use(rehypeSlug) // Add IDs to headings
     .use(collectHeadings(headings)) // Collect headings with generated IDs
     .use(rehypeAutolinkHeadings, {

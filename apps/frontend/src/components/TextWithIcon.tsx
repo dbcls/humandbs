@@ -10,7 +10,7 @@ function TextWithIcon({
   className?: string;
 }) {
   return (
-    <span className={cn("flex items-center gap-1", className)}>
+    <span className={cn("flex items-baseline gap-1", className)}>
       {icon}
       <span>{children}</span>
     </span>

@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "./ui/collapsible";
+import { Collapsible, CollapsibleTrigger } from "./ui/collapsible";
 import { Button } from "./ui/button";
 import { ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "use-intl";
@@ -13,7 +9,7 @@ export function CollapsiblePreview({
   previewN = 3,
 }: {
   previewN?: number;
-  items: { id: string | number; content: () => React.ReactNode }[] | undefined;
+  items: { id: string | number; content: React.ReactNode }[] | undefined;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -29,19 +25,13 @@ export function CollapsiblePreview({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      {previewItems.map((p) => (
-        <div className="my-1" key={p.id}>
-          {p.content()}
-        </div>
-      ))}
-
-      <CollapsibleContent>
-        {restItems.map((p) => (
-          <div className="my-1" key={p.id}>
-            {p.content()}
-          </div>
+      <ul className="space-y-4">
+        {previewItems.map((p) => (
+          <li key={p.id}>{p.content}</li>
         ))}
-      </CollapsibleContent>
+        {open && restItems.map((p) => <li key={p.id}>{p.content}</li>)}
+      </ul>
+
       {xMore > 0 ? (
         <CollapsibleTrigger asChild>
           <Button

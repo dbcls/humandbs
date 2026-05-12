@@ -38,7 +38,7 @@ export const documentVersionSchema = createSelectSchema(schema.documentVersion);
 export const selectAlertSchema = createSelectSchema(schema.alert);
 export const createAlertSchema = createInsertSchema(schema.alert);
 export const updateAlertSchema = createUpdateSchema(schema.alert).required({
-  newsId: true,
+  id: true,
 });
 
 export type UpdateAlert = z.infer<typeof updateAlertSchema>;
@@ -75,19 +75,15 @@ export const newsItemUpdateSchema = createUpdateSchema(schema.newsItem)
     id: true,
   })
   .extend({
-    alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
     translations: newsTranslationUpsertSchema,
     tags: z.array(z.string()).optional().default([]),
   });
 
-export const newsItemInsertSchema = createInsertSchema(schema.newsItem).extend({
-  alert: createAlertSchema.omit({ newsId: true }).optional(),
-});
+export const newsItemInsertSchema = createInsertSchema(schema.newsItem);
 
 export const newsItemCreateSchema = z.object({
   publishedAt: z.string().optional().nullable(),
   translations: newsTranslationUpsertSchema,
-  alert: createAlertSchema.omit({ newsId: true }).optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
 });
 

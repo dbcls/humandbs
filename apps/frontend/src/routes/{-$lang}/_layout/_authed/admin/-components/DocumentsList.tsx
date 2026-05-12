@@ -3,12 +3,15 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { type ContentId } from "@/config/content-config";
 import { PROTECTED_DOC_IDS } from "@/config/routing-config";
+import { useFilters } from "@/hooks/useFilters";
 import {
   $changeIdOfDocument,
   $createDocument,
@@ -16,11 +19,21 @@ import {
   type DocumentsListItemResponse,
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
-import { $validateEntityId } from "@/serverFunctions/validate";
+import {
+  $validateEntityId,
+  type ValidationResponse,
+} from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
+import { useServerFn } from "@tanstack/react-start";
+import { useTranslations } from "use-intl";
+import { Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/documents");
 
 export function DocumentsList({
   onSelectDoc,
@@ -29,7 +42,11 @@ export function DocumentsList({
   onSelectDoc: (id: string) => void;
   selectedContentId: string | undefined;
 }) {
-  const documentsListQO = getDocumentsQueryOptions();
+  const { q } = routeApi.useSearch();
+  const { setFilters } = useFilters(
+    "/{-$lang}/_layout/_authed/admin/documents",
+  );
+  const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
 
   const queryClient = useQueryClient();
@@ -158,26 +175,47 @@ export function DocumentsList({
       groups.get(topSegment)!.push(doc);
     }
     for (const docs of groups.values()) {
-      docs.sort((a, b) => a.contentId.localeCompare(b.contentId));
+      docs.sort((a, b) => {
+        const aDepth = a.contentId.split("/").length - 1;
+        const bDepth = b.contentId.split("/").length - 1;
+        if (aDepth !== bDepth) return aDepth - bDepth;
+        return a.contentId.localeCompare(b.contentId);
+      });
     }
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [documents]);
 
+  const validate = useServerFn($validateEntityId);
+
+  const tErrors = useTranslations("Errors");
   return (
     <>
+      <div className="mb-3">
+        <FilterSearchInput
+          value={q}
+          onChange={(nextQ) => setFilters({ q: nextQ })}
+          placeholder="Search by title or content…"
+        />
+      </div>
+
       <InputDialog
         title="Add Document"
+        description=<div>
+          <p>Enter content ID in `snake-case`.</p>
+          <p>It can have slashes (`hello/world`).</p>
+          <p>Content ID would become the path to this document</p>
+        </div>
         label="Content ID"
         trigger={<AddNewButton className="mb-5" />}
         validateAsync={async (value) => {
           if (!value || value.length < 1) return "Content ID is required";
           if (value.length > 100)
             return "Content ID must be 100 characters or less";
-          const isExisting = await $validateEntityId({
-            data: value as ContentId,
+          const validationResult = await validate({
+            data: value,
           });
-          if (isExisting) return "Document with this contentId already exists";
-          return undefined;
+
+          return makeValidationErrorMessage(validationResult, tErrors);
         }}
         onSubmit={(id) => createDocument(id as ContentId)}
       />
@@ -194,12 +232,12 @@ export function DocumentsList({
         validateAsync={async (value) => {
           if (!value || value.length < 1) return "ID is required";
           if (value.length > 100) return "ID must be 100 characters or less";
-          const isOk = await $validateEntityId({
+
+          const validationResponse = await validate({
             data: value,
           });
 
-          if (!isOk) return "A document with this ID already exists";
-          return undefined;
+          return makeValidationErrorMessage(validationResponse, tErrors);
         }}
         onSubmit={handleRenameSubmit}
       />
@@ -207,69 +245,52 @@ export function DocumentsList({
       <ul className="overflow-y-auto">
         {groupedDocs.map(([topSegment, docs], groupIndex) => (
           <li key={topSegment}>
-            <ul>
-              {docs
-                .filter((doc) => !doc.contentId.includes("/"))
-                .map((doc) => {
-                  const isActive = doc.contentId === selectedContentId;
-                  const isProtected = PROTECTED_DOC_IDS.includes(
-                    doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
-                  );
+            {docs.map((doc, level) => {
+              const isActive = doc.contentId === selectedContentId;
+              const isProtected = PROTECTED_DOC_IDS.includes(
+                doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+              );
 
-                  return (
-                    <ListItem
-                      key={doc.contentId}
-                      role="menuitem"
-                      className="mb-2"
-                      onClick={() => onSelectDoc(doc.contentId)}
-                      isActive={isActive}
-                    >
-                      <AdminListItem
-                        id={doc.contentId}
-                        translations={doc.translations}
-                        onClickDelete={() =>
-                          handleClickDeleteDoc(doc.contentId)
-                        }
-                        onClickRename={() => setRenamingId(doc.contentId)}
-                        hideDelete={isProtected}
-                        hideRename={isProtected}
-                      />
-                    </ListItem>
-                  );
-                })}
-              {docs.some((doc) => doc.contentId.includes("/")) && (
-                <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
-                  {docs
-                    .filter((doc) => doc.contentId.includes("/"))
-                    .map((doc) => {
-                      const isActive = doc.contentId === selectedContentId;
-                      const isProtected = PROTECTED_DOC_IDS.includes(
-                        doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
-                      );
-                      return (
-                        <ListItem
-                          key={doc.contentId}
-                          role="menuitem"
-                          className="mb-2"
-                          onClick={() => onSelectDoc(doc.contentId)}
-                          isActive={isActive}
-                        >
-                          <AdminListItem
-                            id={doc.contentId}
-                            translations={doc.translations}
-                            onClickDelete={() =>
-                              handleClickDeleteDoc(doc.contentId)
-                            }
-                            onClickRename={() => setRenamingId(doc.contentId)}
-                            hideDelete={isProtected}
-                            hideRename={isProtected}
-                          />
-                        </ListItem>
-                      );
-                    })}
-                </ul>
-              )}
-            </ul>
+              return (
+                <ListItem
+                  key={doc.contentId}
+                  role="menuitem"
+                  className={cn("relative mb-2", {
+                    "pl-6 before:absolute before:top-0 before:left-1 before:block before:h-full before:w-1 before:bg-gray-200":
+                      level > 0,
+                  })}
+                  onClick={() => onSelectDoc(doc.contentId)}
+                  isActive={isActive}
+                >
+                  <AdminListItem
+                    id={doc.contentId}
+                    translations={doc.translations}
+                    menuItems={
+                      isProtected
+                        ? []
+                        : [
+                            {
+                              label: <Label>Change ID...</Label>,
+                              onSelect: () => setRenamingId(doc.contentId),
+                            },
+                            {
+                              label: (
+                                <Label>
+                                  <Trash2 />
+                                  Delete
+                                </Label>
+                              ),
+                              onSelect: () =>
+                                handleClickDeleteDoc(doc.contentId),
+                              variant: "destructive",
+                            },
+                          ]
+                    }
+                  />
+                </ListItem>
+              );
+            })}
+
             {groupIndex < groupedDocs.length - 1 && (
               <hr className="my-2 border-gray-200" />
             )}
@@ -278,4 +299,14 @@ export function DocumentsList({
       </ul>
     </>
   );
+}
+
+function makeValidationErrorMessage(
+  validationResponse: ValidationResponse,
+  tErrors: (errorCode: any) => string,
+) {
+  if (validationResponse.success) return undefined;
+  return validationResponse.errors
+    .map((error) => tErrors(error.errorCode))
+    .join(", ");
 }

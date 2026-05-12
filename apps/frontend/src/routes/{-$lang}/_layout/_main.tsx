@@ -21,7 +21,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main")({
 
     return {
       alerts: activeAlertTranslations.filter(
-        (alert) => !hiddenAlerts.includes(alert.newsId),
+        (alert) => !hiddenAlerts.includes(alert.id),
       ),
     };
   },
@@ -30,10 +30,8 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main")({
 function RouteComponent() {
   return (
     <>
-      <main className="z-10 flex flex-1 flex-col gap-2 p-4">
-        <Navbar />
+      <main className="z-10 flex flex-1 flex-col items-stretch gap-4 p-4">
         <Alerts />
-
         <Outlet />
       </main>
       <Footer />

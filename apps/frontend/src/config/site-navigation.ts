@@ -39,6 +39,7 @@ export interface NavigationGroup {
   parentGroupId?: string; // legacy navbar nesting support; not used by the simplified navbar model
   enabled: boolean;
   items: NavigationGroupItem[];
+  linkedItemId?: string; //NavigationItem.id, optional linked item. if absent, navbar group is not clickable, just hoverable
   // Navbar-only fields (ignored in footer zone)
   visibility?: NavVisibility;
   priority?: NavPriority;
@@ -48,6 +49,7 @@ export interface NavigationZone {
   groups: NavigationGroup[];
 }
 
+/** JSON that stored in DB. Flat groups, nesting is by referencing parent id */
 export interface SiteNavigationConfig {
   items: NavigationItem[];
   zones: {
@@ -72,7 +74,7 @@ export const asLinkProps = (opts: ResolvedLinkOptions): any => opts;
 export interface ResolvedNavbarItem {
   id: string;
   label: string;
-  linkOptions: ResolvedLinkOptions;
+  linkOptions?: ResolvedLinkOptions;
   priority: NavPriority;
   children?: Array<{
     id: string;
@@ -672,12 +674,9 @@ function buildNavbarItems(
   resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedNavbarItem[] {
   return deriveNavbarCommittedGroups(config)
-    .filter((group) => group.group.enabled && group.linkedItem)
+    .filter((group) => group.group.enabled)
     .map((groupWithItems) => {
       const { group, linkedItem, subItems } = groupWithItems;
-      if (!linkedItem) {
-        return null;
-      }
 
       const label = group.label[lang] ?? group.label["en"] ?? "";
       const children = subItems
@@ -696,16 +695,19 @@ function buildNavbarItems(
       return {
         id: group.id,
         label,
-        linkOptions: resolveItemLinkOptions(
-          linkedItem.item,
-          lang,
-          resolveDocumentPath,
-        ),
+        ...(linkedItem
+          ? {
+              linkOptions: resolveItemLinkOptions(
+                linkedItem.item,
+                lang,
+                resolveDocumentPath,
+              ),
+            }
+          : {}),
         priority: group.priority ?? "important",
         ...(children.length > 0 ? { children } : {}),
       };
-    })
-    .filter((item): item is ResolvedNavbarItem => item !== null);
+    });
 }
 
 function buildFooterGroups(

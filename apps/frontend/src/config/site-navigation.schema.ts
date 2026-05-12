@@ -9,14 +9,15 @@ const localizedLabelValueSchema = z.string().trim().min(1);
 const multilingualLabelSchema = z.record(z.string(), localizedLabelValueSchema);
 
 const navigationGroupItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   enabled: z.boolean().optional().default(true),
 });
 
 const navigationGroupSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   label: multilingualLabelSchema,
-  parentGroupId: z.string().uuid().optional(),
+  parentGroupId: z.uuid().optional(),
+  linkedItemId: z.string().optional(),
   enabled: z.boolean(),
   items: z.array(navigationGroupItemSchema),
   visibility: z.enum(["essential", "secondary"]).optional(),
@@ -28,9 +29,9 @@ const navigationZoneSchema = z.object({
 });
 
 const navigationItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   type: z.enum(["document", "link"]),
-  documentId: z.string().uuid().optional(),
+  documentId: z.uuid().optional(),
   contentId: z.string().optional(),
   url: z.string().optional(),
   label: multilingualLabelSchema.optional(),
@@ -184,17 +185,13 @@ export const siteNavigationConfigSchema =
         }
 
         if (zoneName === "navbar") {
-          if (group.enabled && group.items.length === 0) {
-            ctx.addIssue({
-              code: "custom",
-              message: `Navbar group "${group.id}" cannot be enabled without a linked item.`,
-            });
-          }
+          const totalItemsCount = group.items.length;
 
-          if (group.items[0]?.enabled === false) {
+          // Group must have at least one item (linked or sub) to be enabled
+          if (group.enabled && totalItemsCount === 0) {
             ctx.addIssue({
               code: "custom",
-              message: `Navbar group "${group.id}" cannot disable its top-level linked item.`,
+              message: `Navbar group "${group.id}" cannot be enabled without at least one sub-item.`,
             });
           }
         }

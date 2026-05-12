@@ -1,12 +1,16 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { LucideBell, Trash2Icon } from "lucide-react";
+import {
+  SidebarCloseIcon,
+  SidebarOpenIcon,
+  Trash2,
+  Trash2Icon,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { ListItem } from "@/components/ListItem";
-import { TrashButton } from "@/components/TrashButton";
 import {
   $deleteNewsItem,
   newsItemsInfiniteQueryOptions,
@@ -15,17 +19,21 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tag } from "@/components/StatusTag";
 import { cn } from "@/lib/utils";
 import {
   createDraftNewsItem,
   DRAFT_NEWS_ID,
   isDraftNewsItem,
 } from "./draftNewsItem";
+import { AdminListItem } from "./AdminListItem";
 import { AddNewButton } from "./AddNewButton";
 import { NewsFiltersBar } from "./NewsFiltersBar";
 import { TagPill } from "@/components/TagPill";
 import { useRouteContext } from "@tanstack/react-router";
+import { Label } from "@/components/ui/label";
+import { useTogglePanel } from "@/hooks/useTogglePanel";
+import { Button } from "@/components/ui/button";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 
 export function NewsItemsList({
   selectedNewsItemId,
@@ -41,15 +49,12 @@ export function NewsItemsList({
   const queryClient = useQueryClient();
 
   const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
-  const { q, publishedFrom, publishedTo, isAlert, tagIds } =
-    routeApi.useSearch();
+  const { q, publishedFrom, publishedTo, tagIds } = routeApi.useSearch();
 
   const listQO = newsItemsInfiniteQueryOptions({
     titleOrContent: q,
     publishedFrom,
     publishedTo,
-    isAlert:
-      isAlert === "alert" ? true : isAlert === "news" ? false : undefined,
     tagIds: tagIds && tagIds.length > 0 ? tagIds : undefined,
   });
 
@@ -95,7 +100,7 @@ export function NewsItemsList({
       cancelLabel: t("cancel"),
       actionLabel: (
         <>
-          <Trash2Icon className="mr-2 inline size-5 text-white" />{" "}
+          <Trash2Icon className="mr-2 inline size-5 text-white" />
           {t("confirm")}
         </>
       ),
@@ -148,11 +153,7 @@ export function NewsItemsList({
   }
 
   return (
-    <Card
-      caption="News"
-      className="w-cms-list-panel flex h-full flex-col"
-      containerClassName="overflow-auto flex-1 flex flex-col max-h-full"
-    >
+    <CollapsibleCard title={"News"}>
       <div>
         <NewsFiltersBar />
         <AddNewButton
@@ -175,66 +176,62 @@ export function NewsItemsList({
               isFetching && !isFetchingNextPage && "opacity-60",
             )}
           >
-            {newsItems.map((item) => {
+            {newsItems.map((item, index) => {
               const isActive = item.id === selectedNewsItemId;
               const isDraft = isDraftNewsItem(item.id);
               return (
-                <ListItem
-                  key={item.id}
-                  onClick={() => onSelectNewsItem(item.id)}
-                  isActive={isActive}
-                  className={cn({ "border border-dashed": isDraft })}
-                >
-                  <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="block font-mono text-xs">
-                        {item.publishedAt || "No date"}
-                      </span>
-                      {item.alert ? (
-                        <span className="flex items-center gap-0.5">
-                          <LucideBell className="text-accent inline size-3" />
-                          <span className="font-mono text-xs opacity-70">
-                            {item.alert.from}
-                            {item.alert.to && item.alert.to !== item.alert.from
-                              ? ` – ${item.alert.to}`
-                              : null}
-                          </span>
-                        </span>
-                      ) : null}
-                    </div>
-                    {item.translations &&
-                      Object.entries(item.translations).map(
-                        ([lang, tr], index) => (
-                          <div
-                            key={`${lang}-${index}`}
-                            className="flex w-full items-center gap-1"
-                          >
-                            <Tag tag={lang} isActive={isActive} />
-                            <span className="block min-w-0 truncate text-xs opacity-70">
-                              {tr.title}
-                            </span>
-                          </div>
-                        ),
-                      )}
-                    {item.tags && item.tags.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {item.tags.map((tag) => (
-                          <TagPill key={tag.id} color={tag.color}>
-                            {tag.name}
-                          </TagPill>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <TrashButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClickDelete(item);
-                    }}
+                <li key={item.id}>
+                  <ListItem
+                    onClick={() => onSelectNewsItem(item.id)}
                     isActive={isActive}
-                  />
-                </ListItem>
+                    className={cn("mb-2", {
+                      "border border-dashed": isDraft,
+                    })}
+                  >
+                    <AdminListItem
+                      id={item.id}
+                      header={
+                        isDraft
+                          ? "New news item"
+                          : item.publishedAt || "No date"
+                      }
+                      translations={Object.entries(item.translations ?? {}).map(
+                        ([lang, tr]) => ({
+                          lang,
+                          statuses: {
+                            published: tr.title,
+                          },
+                        }),
+                      )}
+                      meta={
+                        item.tags && item.tags.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {item.tags.map((tag) => (
+                              <TagPill key={tag.id} color={tag.color}>
+                                {tag.name}
+                              </TagPill>
+                            ))}
+                          </div>
+                        ) : null
+                      }
+                      menuItems={[
+                        {
+                          label: (
+                            <Label className="text-danger flex justify-between">
+                              <Trash2 className="size-4" />
+                              Delete
+                            </Label>
+                          ),
+                          onSelect: () => handleClickDelete(item),
+                          variant: "destructive",
+                        },
+                      ]}
+                    />
+                  </ListItem>
+                  {index < newsItems.length - 1 ? (
+                    <hr className="my-2 border-gray-200" />
+                  ) : null}
+                </li>
               );
             })}
             <div ref={sentinelRef} className="h-4 shrink-0">
@@ -261,6 +258,6 @@ export function NewsItemsList({
           </div>
         ) : null}
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }

@@ -9,5 +9,5 @@ export const getAllFacetsQueryOptions = () =>
   queryOptions({
     queryKey: ["facets", "all"],
     queryFn: () => $getFacets(),
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: Infinity, // Facets are not changing much. Reload the page to get new values if any
   });

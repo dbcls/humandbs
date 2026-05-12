@@ -14,6 +14,8 @@ const statusTagVariants = cva(
           "text-accent-light border-accent-light",
         current: "text-secondary-light border-secondary-light",
         archived: "text-yellow-600 border-yellow-600",
+        review: "text-yellow-700 border-yellow-700",
+        deleted: "text-gray-400 border-gray-300",
       },
     },
     defaultVariants: {

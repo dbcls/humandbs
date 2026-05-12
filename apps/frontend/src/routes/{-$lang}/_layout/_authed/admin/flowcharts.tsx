@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
+import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import {
   $createNavigationFlowchart,
   $deleteNavigationFlowchart,
@@ -58,6 +59,7 @@ import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { ListItem } from "@/components/ListItem";
 import { StatusTag } from "@/components/StatusTag";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/flowcharts",
@@ -137,10 +139,7 @@ function RouteComponent() {
 
   return (
     <>
-      <Card
-        className="w-cms-list-panel flex h-full flex-col"
-        caption="Flowcharts"
-      >
+      <CollapsibleCard title="Flowcharts">
         <div className="flex flex-col gap-2">
           <div className="px-1">
             <Button
@@ -159,7 +158,7 @@ function RouteComponent() {
             onDelete={handleDeleteFlowchart}
           />
         </div>
-      </Card>
+      </CollapsibleCard>
 
       {mode === "create" ? (
         <CreateFlowchartPanel key="create" onCreated={handleCreated} />
@@ -358,11 +357,7 @@ function CreateFlowchartPanel({
   return (
     <Card className="flex flex-1 flex-col gap-0" caption="New Flowchart">
       <div className="flex flex-col gap-5 p-5">
-        {serverError && (
-          <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {serverError}
-          </div>
-        )}
+        {serverError && <AdminStatusMessage>{serverError}</AdminStatusMessage>}
 
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-medium text-gray-700">Name</h3>
@@ -680,16 +675,16 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
             </div>
           </div>
 
-          {message && (
-            <div className="mx-5 mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          {message ? (
+            <AdminStatusMessage variant="success" className="mx-5 mt-4">
               {message}
-            </div>
-          )}
-          {error && (
-            <div className="mx-5 mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm whitespace-pre-wrap text-red-700">
+            </AdminStatusMessage>
+          ) : null}
+          {error ? (
+            <AdminStatusMessage className="mx-5 mt-4" preserveWhitespace>
               {error}
-            </div>
-          )}
+            </AdminStatusMessage>
+          ) : null}
 
           {/* Scrollable content */}
           <div className="min-h-0 flex-1 overflow-y-auto">

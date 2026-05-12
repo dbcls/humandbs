@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 
 const variants = cva(
-  "bg-primary flex items-center gap-1 rounded-full p-1 text-base transition-colors focus-visible:ring-1",
+  "bg-primary flex items-center gap-1 rounded-full p-1 text-base transition-colors focus-within:ring-2 focus-within:ring-secondary-light",
   {
     variants: {
       hasBeforeIcon: {

@@ -16,11 +16,9 @@ import {
   ComboboxList,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useFilters } from "@/hooks/useFilters";
 import { getTagsQueryOptions } from "@/serverFunctions/news";
 import type { DateStringRange } from "@/utils/dates";
-import type { NewsAdminSearchParams } from "@/utils/queryParams";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/news");
 
@@ -32,7 +30,6 @@ export function NewsFiltersBar() {
     search.q ||
     search.publishedFrom ||
     search.publishedTo ||
-    search.isAlert ||
     (search.tagIds && search.tagIds.length > 0)
   );
 
@@ -41,7 +38,6 @@ export function NewsFiltersBar() {
       q: undefined,
       publishedFrom: undefined,
       publishedTo: undefined,
-      isAlert: undefined,
       tagIds: undefined,
     });
   }
@@ -55,10 +51,6 @@ export function NewsFiltersBar() {
         onChange={({ publishedFrom, publishedTo }) =>
           setFilters({ publishedFrom, publishedTo })
         }
-      />
-      <AlertToggleFilter
-        value={search.isAlert}
-        onChange={(isAlert) => setFilters({ isAlert })}
       />
       <TagFilter
         value={search.tagIds ?? []}
@@ -119,31 +111,6 @@ function DateRangeFilter({
         onChange({ publishedFrom: undefined, publishedTo: undefined })
       }
     />
-  );
-}
-
-function AlertToggleFilter({
-  value,
-  onChange,
-}: {
-  value: NewsAdminSearchParams["isAlert"];
-  onChange: (val: NewsAdminSearchParams["isAlert"]) => void;
-}) {
-  return (
-    <ToggleGroup
-      type="single"
-      variant="outline"
-      size="sm"
-      value={value ?? "all"}
-      onValueChange={(val) => {
-        if (val === "all" || !val) onChange(undefined);
-        else onChange(val as "alert" | "news");
-      }}
-    >
-      <ToggleGroupItem value="all">All</ToggleGroupItem>
-      <ToggleGroupItem value="alert">Alert</ToggleGroupItem>
-      <ToggleGroupItem value="news">News</ToggleGroupItem>
-    </ToggleGroup>
   );
 }
 

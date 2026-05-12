@@ -9,6 +9,7 @@ import { IntlProvider } from "use-intl";
 import { i18n, localeSchema } from "@/config/i18n";
 import { $getMessages } from "@/serverFunctions/i18n";
 import { $getSiteNavigation } from "@/serverFunctions/siteNavigation";
+import { Navbar } from "@/components/Navbar";
 
 // import { getMessagesFn } from "@/serverFunctions/locale";
 
@@ -59,8 +60,19 @@ function RouteComponent() {
   const { messages, lang } = Route.useRouteContext();
 
   return (
-    <IntlProvider locale={lang} messages={messages} timeZone={timeZone}>
+    <IntlProvider
+      getMessageFallback={({ key }) => {
+        return key;
+      }}
+      onError={(error) => {
+        console.warn(error);
+      }}
+      locale={lang}
+      messages={messages}
+      timeZone={timeZone}
+    >
       <CatchBoundary getResetKey={() => "reset"}>
+        <Navbar />
         <Outlet />
       </CatchBoundary>
     </IntlProvider>

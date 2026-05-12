@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { type ContentId } from "@/config/content-config";
@@ -27,68 +27,92 @@ export interface DocumentsListItemResponse {
 /** List all documents */
 export const $getDocuments = createServerFn({
   method: "GET",
-}).handler(async () => {
-  const documents = await db.query.document.findMany();
-
-  const documentsWithTitles = await Promise.all(
-    documents.map(async (doc) => {
-      const translations = await Promise.all(
-        i18n.locales.map(async (locale) => {
-          const [latestPublishedVersion, latestDraftVersion] =
-            await Promise.all([
-              db.query.documentVersion.findFirst({
-                where: (table, { and, eq }) =>
-                  and(
-                    eq(table.documentId, doc.id),
-                    eq(table.locale, locale),
-                    eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
-                  ),
-                orderBy: (table, { desc }) => desc(table.versionNumber),
-                columns: {
-                  title: true,
-                },
-              }),
-              db.query.documentVersion.findFirst({
-                where: (table, { and, eq }) =>
-                  and(
-                    eq(table.documentId, doc.id),
-                    eq(table.locale, locale),
-                    eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
-                  ),
-                orderBy: (table, { desc }) => desc(table.versionNumber),
-                columns: {
-                  title: true,
-                },
-              }),
-            ]);
-
-          return {
-            lang: locale,
-            statuses: {
-              published: latestPublishedVersion?.title ?? undefined,
-              draft: latestDraftVersion?.title ?? undefined,
-            },
-          };
-        }),
-      );
-
-      return {
-        ...doc,
-        translations: translations.filter(
-          (translation) =>
-            translation.statuses.published || translation.statuses.draft,
-        ),
-      };
+})
+  .inputValidator(
+    z.object({
+      q: z.string().optional(),
     }),
-  );
+  )
+  .handler(async ({ data }) => {
+    const documents = await db.query.document.findMany({
+      where: data.q
+        ? (table) =>
+            exists(
+              db
+                .select({ _: documentVersion.documentId })
+                .from(documentVersion)
+                .where(
+                  and(
+                    eq(documentVersion.documentId, table.id),
+                    or(
+                      like(documentVersion.title, `%${data.q}%`),
+                      like(documentVersion.content, `%${data.q}%`),
+                    ),
+                  ),
+                ),
+            )
+        : undefined,
+    });
 
-  return documentsWithTitles as DocumentsListItemResponse[];
-});
+    const documentsWithTitles = await Promise.all(
+      documents.map(async (doc) => {
+        const translations = await Promise.all(
+          i18n.locales.map(async (locale) => {
+            const [latestPublishedVersion, latestDraftVersion] =
+              await Promise.all([
+                db.query.documentVersion.findFirst({
+                  where: (table, { and, eq }) =>
+                    and(
+                      eq(table.documentId, doc.id),
+                      eq(table.locale, locale),
+                      eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
+                    ),
+                  orderBy: (table, { desc }) => desc(table.versionNumber),
+                  columns: {
+                    title: true,
+                  },
+                }),
+                db.query.documentVersion.findFirst({
+                  where: (table, { and, eq }) =>
+                    and(
+                      eq(table.documentId, doc.id),
+                      eq(table.locale, locale),
+                      eq(table.status, DOCUMENT_VERSION_STATUS.DRAFT),
+                    ),
+                  orderBy: (table, { desc }) => desc(table.versionNumber),
+                  columns: {
+                    title: true,
+                  },
+                }),
+              ]);
 
-export function getDocumentsQueryOptions() {
+            return {
+              lang: locale,
+              statuses: {
+                published: latestPublishedVersion?.title ?? undefined,
+                draft: latestDraftVersion?.title ?? undefined,
+              },
+            };
+          }),
+        );
+
+        return {
+          ...doc,
+          translations: translations.filter(
+            (translation) =>
+              translation.statuses.published || translation.statuses.draft,
+          ),
+        };
+      }),
+    );
+
+    return documentsWithTitles as DocumentsListItemResponse[];
+  });
+
+export function getDocumentsQueryOptions(params?: { q?: string }) {
   return queryOptions({
-    queryKey: ["documents"],
-    queryFn: $getDocuments,
+    queryKey: ["documents", params],
+    queryFn: () => $getDocuments({ data: params ?? {} }),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

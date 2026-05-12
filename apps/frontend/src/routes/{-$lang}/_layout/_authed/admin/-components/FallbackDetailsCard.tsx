@@ -1,6 +1,6 @@
 import { Card } from "@/components/Card";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { i18n } from "@/config/i18n";
+import { SkeletonLoading } from "@/components/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function FallbackDetailsCard() {
   return (
@@ -10,22 +10,19 @@ export function FallbackDetailsCard() {
       captionSize={"sm"}
       caption={
         <span className="flex items-center gap-5">
-          <span>Details</span>
+          <Skeleton className="h-8 w-36" />
 
-          <ToggleGroup type="single" value={i18n.defaultLocale}>
-            {i18n.locales.map((loc) => (
-              <ToggleGroupItem
-                className="capitalize"
-                disabled={true}
-                key={loc}
-                value={loc}
-              >
-                {loc}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <Skeleton className="h-8 w-48" />
         </span>
       }
-    />
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-end gap-2">
+          <Skeleton className="h-16 w-36" />
+          <Skeleton className="h-16 w-36" />
+        </div>
+        <SkeletonLoading />
+      </div>
+    </Card>
   );
 }

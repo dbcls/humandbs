@@ -15,7 +15,26 @@ import {
   $$createSessionCookie,
 } from "@/utils/jwt-helpers";
 
-import { redirectWithCookies, sanitizeRedirectPath } from "./-utils";
+import {
+  parseAuthState,
+  redirectWithCookies,
+  sanitizeRedirectPath,
+} from "./-utils";
+
+function restartLogin(redirectTo: string, clearPkce = true) {
+  const loginUrl = new URL("/auth/login", "http://localhost");
+  loginUrl.searchParams.set("redirect", redirectTo);
+
+  const cookies = clearPkce
+    ? [serialize("oidc_pkce", "", { path: "/", maxAge: 0 })]
+    : [];
+
+  return redirectWithCookies(
+    `${loginUrl.pathname}${loginUrl.search}`,
+    cookies,
+    302,
+  );
+}
 
 export const Route = createFileRoute("/auth/callback")({
   server: {
@@ -34,11 +53,16 @@ export const Route = createFileRoute("/auth/callback")({
         const cookies = parse(request.headers.get("cookie") ?? "");
 
         const stash = cookies.oidc_pkce ? JSON.parse(cookies.oidc_pkce) : null;
+        const callbackState = parseAuthState(url.searchParams.get("state"));
+        const fallbackRedirect = callbackState?.redirectTo ?? "/";
 
-        if (!stash) return new Response("Missing PKCE stash", { status: 400 });
+        if (!stash) {
+          return restartLogin(fallbackRedirect);
+        }
 
-        const tokens: oidc.TokenEndpointResponse =
-          await oidc.authorizationCodeGrant(
+        let tokens: oidc.TokenEndpointResponse;
+        try {
+          tokens = await oidc.authorizationCodeGrant(
             cfg,
             url, // includes ?code & ?state
             {
@@ -47,6 +71,9 @@ export const Route = createFileRoute("/auth/callback")({
             },
             // NOTE: no client_secret, no client authentication for public client
           );
+        } catch {
+          return restartLogin(fallbackRedirect);
+        }
 
         const setCookies: string[] = [];
 

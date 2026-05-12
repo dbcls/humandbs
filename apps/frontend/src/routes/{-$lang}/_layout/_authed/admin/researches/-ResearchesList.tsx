@@ -7,7 +7,6 @@ import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
-  type QueryKey,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -22,7 +21,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { FilterSearchInput } from "@/components/FilterSearchInput";
-import { Tag } from "@/components/StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useFilters } from "@/hooks/useFilters";
@@ -32,6 +31,18 @@ import {
   DUMMY_HUM_ID,
   isDummyResearch,
 } from "./-dummyResearch";
+import { AdminListItem } from "../-components/AdminListItem";
+import { Trash2Icon } from "lucide-react";
+import { Label } from "@/components/ui/label";
+
+type ResearchesInfiniteData = {
+  pages: Array<{ data: ResearchSummary[] }>;
+  pageParams: unknown[];
+};
+
+function markResearchDeleted(research: ResearchSummary): ResearchSummary {
+  return { ...research, status: "deleted" };
+}
 
 export function ResearchesList({
   lang,
@@ -78,18 +89,18 @@ export function ResearchesList({
   function handleAddNew() {
     if (hasDummy) return;
     const dummy = createDummyResearch(lang);
-    queryClient.setQueriesData<{
-      pages: Array<{ data: ResearchSummary[] }>;
-      pageParams: unknown[];
-    }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page, i) =>
-          i === 0 ? { ...page, data: [dummy, ...page.data] } : page,
-        ),
-      };
-    });
+    queryClient.setQueriesData<ResearchesInfiniteData>(
+      { queryKey: ["researches", "list", "infinite"] },
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page, i) =>
+            i === 0 ? { ...page, data: [dummy, ...page.data] } : page,
+          ),
+        };
+      },
+    );
     onSelectResearch(DUMMY_HUM_ID);
   }
   // Infinite scroll sentinel
@@ -111,13 +122,9 @@ export function ResearchesList({
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   // Delete mutation with optimistic update
-  const { mutate: deleteResearch } = useMutation<
-    void,
-    Error,
-    string,
-    { previousLists: [QueryKey, ResearchSearchResponse | undefined][] }
-  >({
-    mutationFn: async (humId) => {
+  const { mutate: deleteResearch } = useMutation({
+    mutationFn: async (humId: string) => {
+      console.log("deleteResearch mut", humId);
       const result = await $deleteResearch({ data: { humId } });
       if (!result.ok && result.code !== "NOT_FOUND") {
         throw new Error(result.error);
@@ -126,20 +133,36 @@ export function ResearchesList({
     onMutate: async (humId) => {
       await queryClient.cancelQueries({ queryKey: ["researches", "list"] });
 
-      const previousLists = queryClient.getQueriesData<ResearchSearchResponse>({
+      const previousLists = queryClient.getQueriesData<unknown>({
         queryKey: ["researches", "list"],
       });
 
-      queryClient.setQueriesData<ResearchSearchResponse>(
-        { queryKey: ["researches", "list"] },
-        (oldData) => {
-          if (!oldData) return oldData;
+      queryClient.setQueriesData<
+        ResearchSearchResponse | ResearchesInfiniteData
+      >({ queryKey: ["researches", "list"] }, (oldData) => {
+        if (!oldData) return oldData;
+
+        if ("pages" in oldData) {
           return {
             ...oldData,
-            data: oldData.data.filter((r) => r.humId !== humId),
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              data: page.data.map((research) =>
+                research.humId === humId
+                  ? markResearchDeleted(research)
+                  : research,
+              ),
+            })),
           };
-        },
-      );
+        }
+
+        return {
+          ...oldData,
+          data: oldData.data.map((research) =>
+            research.humId === humId ? markResearchDeleted(research) : research,
+          ),
+        };
+      });
 
       return { previousLists };
     },
@@ -154,19 +177,18 @@ export function ResearchesList({
     },
   });
 
-  const handleDelete = useCallback(
-    (humId: string) => {
-      openConfirmation({
-        title: "Delete Research",
-        description: `are you really want to delete research ${humId} ?`,
-        actionLabel: "Delete",
-        onAction: () => {
-          deleteResearch(humId);
-        },
-      });
-    },
-    [deleteResearch, openConfirmation],
-  );
+  function handleDelete(humId: string) {
+    console.log("handleDelete", humId);
+    openConfirmation({
+      title: "Delete Research",
+      description: `Are you really want to delete research \`${humId}\` ?`,
+      actionLabel: "Delete",
+      onAction: () => {
+        console.log("onAction", humId);
+        deleteResearch(humId);
+      },
+    });
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -200,40 +222,55 @@ export function ResearchesList({
             )}
           >
             <ul>
-              {allResearches.map((research) => {
+              {allResearches.map((research, index) => {
                 const isActive = research.humId === selectedHumId;
                 const isDummy = isDummyResearch(research.humId);
-                const title =
-                  research.title[lang] ||
-                  research.title.ja ||
-                  research.title.en;
-                const englishTitle = research.title.en;
+
+                const translations = Object.entries(research.title).map(
+                  ([lang, title]) => ({
+                    lang,
+                    statuses: { [research.status]: title },
+                  }),
+                );
 
                 return (
-                  <ListItem
-                    key={research.humId}
-                    role="menuitem"
-                    onClick={() => onSelectResearch(research.humId)}
-                    isActive={isActive}
-                    className={cn("flex-1 flex-col items-start gap-1", {
-                      "border border-dashed": isDummy,
-                    })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="block font-mono text-xs">
-                        {research.humId}
-                      </span>
-                      {research.status ? <Tag tag={research.status} /> : null}
-                    </div>
-                    <span className="block max-w-full truncate text-xs opacity-70">
-                      {title}
-                    </span>
-                    {englishTitle && englishTitle !== title ? (
-                      <span className="block max-w-full truncate text-xs opacity-70">
-                        {englishTitle}
-                      </span>
-                    ) : null}
-                  </ListItem>
+                  <li key={`${research.humId}-${index}`}>
+                    <ListItem
+                      role="menuitem"
+                      onClick={() => onSelectResearch(research.humId)}
+                      isActive={isActive}
+                      className={cn("mb-2", {
+                        "border border-dashed": isDummy,
+                      })}
+                    >
+                      <AdminListItem
+                        id={research.humId}
+                        translations={translations}
+                        meta={
+                          <StatusTag
+                            className="capitalize"
+                            status={research.status}
+                          />
+                        }
+                        hideUnpublishedDot
+                        menuItems={[
+                          {
+                            label: (
+                              <Label>
+                                <Trash2Icon />
+                                Delete
+                              </Label>
+                            ),
+                            onSelect: () => handleDelete(research.humId),
+                            variant: "destructive",
+                          },
+                        ]}
+                      ></AdminListItem>
+                    </ListItem>
+                    {index < allResearches.length - 1 && (
+                      <hr className="my-2 border-gray-200" />
+                    )}
+                  </li>
                 );
               })}
             </ul>

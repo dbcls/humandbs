@@ -67,9 +67,19 @@ function normalizeDocTextValue(value: string | undefined) {
   return value ?? "";
 }
 
-export function DocumentVersion({ contentId }: { contentId: string }) {
-  const { selectedVersionNumber, setSelectedVersionNumber, versions } =
-    useDocVersionsList(contentId);
+export function DocumentVersion({
+  contentId,
+  version,
+  onSelectVersion,
+}: {
+  contentId: string;
+  version?: number;
+  onSelectVersion: (versionNumber: number) => void;
+}) {
+  const { selectedVersionNumber, versions } = useDocVersionsList(
+    contentId,
+    version,
+  );
 
   const { mutate: createVersion, isPending: isCreatingVersion } =
     useCreateVersion(contentId);
@@ -113,7 +123,7 @@ export function DocumentVersion({ contentId }: { contentId: string }) {
           <DocumentVersionSelector
             items={versions}
             versionNumber={selectedVersionNumber}
-            onSelect={setSelectedVersionNumber}
+            onSelect={onSelectVersion}
             contentId={contentId}
           />
           <Suspense>
@@ -597,39 +607,16 @@ function useDocumentVersionForm({
   return form;
 }
 
-function useDocVersionsList(contentId: string) {
+function useDocVersionsList(contentId: string, version?: number) {
   const docVersionsListQO = getDocumentVersionListQueryOptions({ contentId });
   const { data: versions } = useSuspenseQuery(docVersionsListQO);
 
-  const [selectedVersionNumber, setSelectedVersionNumber] = useState<
-    number | undefined
-  >(versions.at(-1)?.versionNumber);
+  const selectedVersionNumber = version ?? versions.at(-1)?.versionNumber;
 
-  useEffect(() => {
-    if (versions.length === 0) {
-      if (selectedVersionNumber !== undefined) {
-        setSelectedVersionNumber(undefined);
-      }
-      return;
-    }
-
-    const hasSelectedVersion = versions.some(
-      (version) => version.versionNumber === selectedVersionNumber,
-    );
-
-    if (!hasSelectedVersion) {
-      setSelectedVersionNumber(versions.at(-1)?.versionNumber);
-    }
-  }, [selectedVersionNumber, versions]);
-
-  return useMemo(
-    () => ({
-      selectedVersionNumber,
-      setSelectedVersionNumber,
-      versions,
-    }),
-    [selectedVersionNumber, versions],
-  );
+  return {
+    versions,
+    selectedVersionNumber,
+  };
 }
 
 interface DocumentVersionSelectorProps {

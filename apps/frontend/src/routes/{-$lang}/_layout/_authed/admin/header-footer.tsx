@@ -58,6 +58,7 @@ import {
   type DocumentsListItemResponse,
 } from "@/serverFunctions/document";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/header-footer",
@@ -847,15 +848,13 @@ function RouteComponent() {
       </div>
 
       {message ? (
-        <div className="mx-5 mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+        <AdminStatusMessage variant="success" className="mx-5 mt-4">
           {message}
-        </div>
+        </AdminStatusMessage>
       ) : null}
 
       {error ? (
-        <div className="text-danger mx-5 mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm">
-          {error}
-        </div>
+        <AdminStatusMessage className="mx-5 mt-4">{error}</AdminStatusMessage>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -972,7 +971,12 @@ function removeNavbarAssignedItem(
 ): NavbarGroupWithItems[] {
   return currentGroups.map((group) => ({
     ...group,
-    ...(group.linkedItem?.item.id === itemId ? { linkedItem: undefined } : {}),
+    ...(group.linkedItem?.item.id === itemId
+      ? {
+          linkedItem: undefined,
+          group: { ...group.group, linkedItemId: undefined },
+        }
+      : {}),
     subItems: group.subItems.filter((item) => item.item.id !== itemId),
   }));
 }
@@ -1288,12 +1292,14 @@ function NavbarPreview({
 
                 return {
                   ...group,
+                  group: { ...group.group, linkedItemId: item.id },
                   linkedItem: { item },
                 };
               }
 
               return {
                 ...group,
+                group: { ...group.group, linkedItemId: undefined },
                 subItems: [...group.subItems, { item, enabled: true }],
               };
             });
@@ -1330,6 +1336,7 @@ function NavbarPreview({
 
                 return {
                   ...group,
+                  group: { ...group.group, linkedItemId: undefined },
                   linkedItem: { item },
                 };
               }
@@ -1790,7 +1797,7 @@ function NavbarGroupColumn({
   });
 
   const priority = g.group.priority ?? "important";
-  const canEnableGroup = g.linkedItem !== undefined;
+  const canEnableGroup = g.linkedItem !== undefined || g.subItems.length > 0;
 
   function updateCurrentGroup(
     updater: (group: NavbarGroupWithItems) => NavbarGroupWithItems,
@@ -1969,6 +1976,7 @@ function NavbarGroupColumn({
             onRemove={() =>
               updateCurrentGroup((group) => ({
                 ...group,
+                group: { ...group.group, linkedItemId: undefined },
                 linkedItem: undefined,
               }))
             }

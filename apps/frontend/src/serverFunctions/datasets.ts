@@ -20,6 +20,7 @@ import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import type { DeepOmit } from "@/utils/typeUtils";
+import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 
 export type CreateDatasetForResearchResult =
   | { ok: true; data: DatasetCreateResponse }
@@ -45,11 +46,16 @@ export type DeleteDatasetResult =
       code: "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
     };
 
-export const $getDatasetsPaginated = createServerFn({ method: "GET" })
+export const $getDatasetsPaginated = createServerFn()
+  .middleware([requestSignalMiddleware])
   .inputValidator(DatasetSearchBodySchema)
-  .handler<Promise<DatasetSearchResponse>>(async ({ data }) => {
+  .handler<Promise<DatasetSearchResponse>>(async ({ data, context }) => {
     const accessToken = $$getJWT();
-    const paginated = await api.searchDatasets(data, accessToken ?? undefined);
+    const paginated = await api.searchDatasets(
+      data,
+      accessToken ?? undefined,
+      context.requestSignal,
+    );
 
     return paginated;
   });
@@ -59,9 +65,10 @@ export function getDatasetsPaginatedQueryOptions(
 ) {
   return queryOptions({
     queryKey: ["datasets", "list", data],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return await $getDatasetsPaginated({
         data: { ...data, includeFacets: true },
+        signal,
       });
     },
     placeholderData: keepPreviousData,

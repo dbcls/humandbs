@@ -27,6 +27,9 @@ import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
+import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
+import { throwSerializableApiError } from "@/utils/errors";
+import type { DeepOmit } from "@/utils/typeUtils";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -47,6 +50,13 @@ export type UpdateResearchUidsResult =
     };
 export type DeleteResearchResult =
   | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+export type GetJDSResearchResult =
+  | { ok: true; data: DeepOmit<ResearchDetailResponse, "rawHtml"> }
   | {
       ok: false;
       error: string;
@@ -132,11 +142,27 @@ export const $deleteResearch = createServerFn({ method: "POST" })
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
+    console.log("$deleteResearch", data.humId);
     try {
       await api.deleteResearch(data.humId, accessToken);
       return { ok: true };
     } catch (error) {
       return mapApiError(error, "Failed to delete research.");
+    }
+  });
+
+const GetJDSResearchInputSchema = z.object({
+  id: z.string().trim().min(1),
+});
+
+export const $getJDSResearch = createServerFn({ method: "POST" })
+  .inputValidator(GetJDSResearchInputSchema)
+  .handler<Promise<GetJDSResearchResult>>(async ({ data }) => {
+    try {
+      const result = await api.getJDSResearch(data.id);
+      return { ok: true, data: result };
+    } catch (error) {
+      return mapApiError(error, "Failed to get J-DS research.");
     }
   });
 
@@ -228,12 +254,16 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
   });
 
 export const $getResearches = createServerFn()
+  .middleware([requestSignalMiddleware])
   .inputValidator(ResearchSearchBodySchema)
-  .handler<Promise<ResearchSearchResponse>>(({ data }) => {
+  .handler<Promise<ResearchSearchResponse>>(({ data, context }) => {
     const accessToken = $$getJWT();
 
-    console.log("$getResearches calling api with ", data);
-    return api.searchResearches(data, accessToken ?? undefined);
+    return api.searchResearches(
+      data,
+      accessToken ?? undefined,
+      context.requestSignal,
+    );
   });
 
 const authedResearchesListSearchParamsInnerSchema =
@@ -260,7 +290,6 @@ export const $listResearches = createServerFn()
 
     // if query is humIdm then use search with humId
     if (q && /^hum\d+/i.test(q)) {
-      console.log("searching by humId ", q);
       return api.getResearchListPaginated(
         {
           search: {
@@ -291,7 +320,8 @@ export function getResearchesQueryOptions(
 ) {
   return queryOptions({
     queryKey: ["researches", "list", data],
-    queryFn: () => $getResearches({ data: { ...data, includeFacets: true } }),
+    queryFn: ({ signal }) =>
+      $getResearches({ data: { ...data, includeFacets: true }, signal }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
     placeholderData: keepPreviousData,
   });
@@ -356,16 +386,20 @@ export const ResearchQuerySchema = z.object({
 
 export const $getResearch = createServerFn()
   .inputValidator(ResearchQuerySchema)
-  .handler(({ data }) => {
+  .handler(async ({ data }) => {
     const accessToken = $$getJWT();
     // if data.verison is undefined, dont include it
     const { humId, ...search } = filterDefined(data);
 
-    return api.getResearchDetail({
-      search: { ...search, includeRawHtml: false },
-      params: { humId },
-      accessToken: accessToken ?? undefined,
-    });
+    try {
+      return await api.getResearchDetail({
+        search: { ...search, includeRawHtml: false },
+        params: { humId },
+        accessToken: accessToken ?? undefined,
+      });
+    } catch (error) {
+      throwSerializableApiError(error);
+    }
   });
 
 export function getResearchQueryOptions(

@@ -11,19 +11,26 @@ import { Button } from "@/components/ui/button";
 export function FilterSearchInput({
   value,
   onChange,
+  className,
   placeholder = "Search…",
   debounceMs = 400,
 }: {
   value: string | undefined;
   onChange: (value: string | undefined) => void;
+  className?: string;
   placeholder?: string;
   debounceMs?: number;
 }) {
   const [inputValue, setInputValue] = useState(value ?? "");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    setInputValue(value ?? "");
+    // While the field is focused, keep local typing authoritative so
+    // debounced parent updates don't briefly overwrite newer keystrokes.
+    if (!isFocusedRef.current) {
+      setInputValue(value ?? "");
+    }
   }, [value]);
 
   function commit(val: string) {
@@ -44,13 +51,14 @@ export function FilterSearchInput({
       type="text"
       placeholder={placeholder}
       value={inputValue}
+      className={className}
       beforeIcon={<SearchIcon size={14} className="text-muted-foreground" />}
       afterIcon={
         inputValue ? (
           <Button
             variant="plain"
             size="icon"
-            className="text-muted-foreground hover:text-foreground pointer-events-auto"
+            className="text-muted-foreground hover:text-foreground pointer-events-auto p-0"
             onClick={handleClear}
           >
             <XIcon size={14} />
@@ -60,6 +68,13 @@ export function FilterSearchInput({
       onChange={(e) => {
         setInputValue(e.target.value);
         commit(e.target.value);
+      }}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onBlur={() => {
+        isFocusedRef.current = false;
+        setInputValue(value ?? "");
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {

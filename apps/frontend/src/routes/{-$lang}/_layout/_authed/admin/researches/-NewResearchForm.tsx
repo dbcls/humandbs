@@ -1,5 +1,6 @@
 import type { CreateResearchRequest } from "@humandbs/backend/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useStore } from "@tanstack/react-form";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -17,7 +18,14 @@ import {
   $createResearch,
   type CreateResearchResult,
 } from "@/serverFunctions/researches";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearchDialog";
+import {
+  pickNewResearchMergeValues,
+  toResearchValuesForMerge,
+  type NewResearchMergeValues,
+} from "./-mergeJDSResearch";
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
@@ -96,6 +104,20 @@ export function NewResearchForm({
       await mutateAsync({ ...value, humId: normalizedHumId });
     },
   });
+  const formValues = useStore(form.store, (state) => state.values);
+
+  function applyMergedJDSValues(values: NewResearchMergeValues) {
+    if (values.title !== undefined) form.setFieldValue("title", values.title);
+    if (values.summary !== undefined)
+      form.setFieldValue("summary", values.summary);
+    if (values.dataProvider !== undefined)
+      form.setFieldValue("dataProvider", values.dataProvider);
+    if (values.researchProject !== undefined)
+      form.setFieldValue("researchProject", values.researchProject);
+    if (values.grant !== undefined) form.setFieldValue("grant", values.grant);
+    if (values.relatedPublication !== undefined)
+      form.setFieldValue("relatedPublication", values.relatedPublication);
+  }
 
   return (
     <Card
@@ -111,13 +133,19 @@ export function NewResearchForm({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {error && (
-            <div className="text-danger mx-5 mt-5 rounded border border-red-200 bg-red-50 p-2 text-sm">
+          {error ? (
+            <AdminStatusMessage className="mx-5 mt-5">
               {error}
-            </div>
-          )}
+            </AdminStatusMessage>
+          ) : null}
 
           <div className="mx-5 mt-5 flex justify-end gap-2">
+            <MergeJDSResearchDialog
+              currentValues={toResearchValuesForMerge(formValues)}
+              onMerge={(values) =>
+                applyMergedJDSValues(pickNewResearchMergeValues(values))
+              }
+            />
             <Button
               type="submit"
               variant="accent"

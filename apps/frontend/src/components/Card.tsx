@@ -10,23 +10,27 @@ interface CardProps
   caption?: ReactNode;
   captionClassName?: string;
   containerClassName?: string;
+  hideCaptionBorder?: boolean;
 }
 
-const cardCaptionVariants = cva(
-  "text-secondary before:bg-secondary relative font-medium before:absolute before:-left-4 before:h-full before:w-1 before:rounded-r-sm",
-  {
-    variants: {
-      captionSize: {
-        lg: "text-lg mt-10",
-        sm: "text-sm mt-3",
-        default: "text-base mt-4",
-      },
+const cardCaptionVariants = cva("text-secondary relative font-bold", {
+  variants: {
+    captionSize: {
+      lg: "text-lg mt-10",
+      sm: "text-sm mt-3",
+      default: "text-base mt-1",
     },
-    defaultVariants: {
-      captionSize: "default",
+    hideCaptionBorder: {
+      false:
+        "before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3",
+      true: "",
     },
   },
-);
+  defaultVariants: {
+    captionSize: "default",
+    hideCaptionBorder: false,
+  },
+});
 
 function Card({
   children,
@@ -35,14 +39,20 @@ function Card({
   caption,
   captionClassName,
   captionSize = "default",
+  hideCaptionBorder = false,
+  ...rest
 }: CardProps) {
   return (
-    <div className={cn("h-fit rounded-md bg-white p-4", className)}>
+    <div className={cn("h-fit rounded-md bg-white p-6", className)} {...rest}>
       {caption ? (
         <div
-          className={cn(cardCaptionVariants({ captionSize }), captionClassName)}
+          id="caption"
+          className={cn(
+            cardCaptionVariants({ captionSize, hideCaptionBorder }),
+            captionClassName,
+          )}
         >
-          {caption}
+          {typeof caption === "string" ? <h3>{caption}</h3> : caption}
         </div>
       ) : null}
       <div

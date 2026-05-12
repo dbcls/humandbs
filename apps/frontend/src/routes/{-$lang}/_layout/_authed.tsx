@@ -1,22 +1,23 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
+  Bell,
   Cuboid,
   Files,
   GitBranch,
   LibraryBig,
-  PanelsTopLeft,
   Newspaper,
+  PanelsTopLeft,
   PenTool,
 } from "lucide-react";
 import { z } from "zod";
 
-import { Navbar } from "@/components/Navbar";
-import { USER_ROLES } from "@/config/permissions";
-import { useCan } from "@/hooks/useCan";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { Link } from "@/components/Link";
+import { useCan } from "@/hooks/useCan";
 
 export const tabParamSchema = z.enum([
   "news",
+  "alerts",
   "documents",
   "content",
   "researches",
@@ -124,12 +125,9 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
 
 function RouteComponent() {
   return (
-    <main className="flex h-screen flex-col gap-2 p-4">
-      <Navbar />
-      <section className="flex min-h-0 flex-1 items-stretch gap-3">
-        <NavPanel />
-        <Outlet />
-      </section>
+    <main className="flex min-h-0 flex-1 items-stretch gap-3 p-4">
+      <NavPanel />
+      <Outlet />
     </main>
   );
 }
@@ -141,91 +139,100 @@ function NavPanel() {
   });
 
   return (
-    <aside className="flex flex-col gap-5 rounded-md bg-white px-4 py-3">
-      {canViewCms && (
-        <section className="flex flex-col gap-5 text-sm">
-          <span>Static Pages</span>
-          <div className="flex flex-col items-stretch gap-5 pl-5">
-            <PanelItem
-              title={
-                <span>
-                  <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
-                  Content
-                </span>
-              }
-              tab="content"
-            />
-            <PanelItem
-              title={
-                <span>
-                  <Files className="mr-2 inline size-5 align-middle leading-normal" />
-                  Documents
-                </span>
-              }
-              tab="documents"
-            />
-            <PanelItem
-              title={
-                <span>
-                  <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
-                  News
-                </span>
-              }
-              tab="news"
-            />
-            <PanelItem
-              title={
-                <span>
-                  <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
-                  Assets
-                </span>
-              }
-              tab="assets"
-            />
-            <PanelItem
-              title={
-                <span>
-                  <PanelsTopLeft className="mr-2 inline size-5 align-middle leading-normal" />
-                  Header & Footer
-                </span>
-              }
-              tab="header-footer"
-            />
-            <PanelItem
-              title={
-                <span>
-                  <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
-                  Flowcharts
-                </span>
-              }
-              tab="flowcharts"
-            />
-          </div>
-        </section>
-      )}
+    <CollapsibleCard wLeftPanel>
+      <section className="flex flex-col gap-5">
+        {canViewCms && (
+          <section className="flex flex-col gap-5 text-sm">
+            <span>Static Pages</span>
+            <div className="flex flex-col items-stretch gap-5 pl-5">
+              <PanelItem
+                title={
+                  <span>
+                    <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
+                    Content
+                  </span>
+                }
+                tab="content"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <Files className="mr-2 inline size-5 align-middle leading-normal" />
+                    Documents
+                  </span>
+                }
+                tab="documents"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
+                    News
+                  </span>
+                }
+                tab="news"
+              />
 
-      <PanelItem
-        title={
-          <span>
-            <LibraryBig className="mr-2 inline size-5 align-middle leading-normal" />
-            Researches
-          </span>
-        }
-        tab="researches"
-      />
-    </aside>
+              <PanelItem
+                title={
+                  <span>
+                    <Bell className="mr-2 inline size-5 align-middle leading-normal" />
+                    Alerts
+                  </span>
+                }
+                tab="alerts"
+              />
+
+              <PanelItem
+                title={
+                  <span>
+                    <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
+                    Assets
+                  </span>
+                }
+                tab="assets"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <PanelsTopLeft className="mr-2 inline size-5 align-middle leading-normal" />
+                    Header & Footer
+                  </span>
+                }
+                tab="header-footer"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
+                    Flowcharts
+                  </span>
+                }
+                tab="flowcharts"
+              />
+            </div>
+          </section>
+        )}
+        <PanelItem
+          title={
+            <span>
+              <LibraryBig className="mr-2 inline size-5 align-middle leading-normal" />
+              Researches
+            </span>
+          }
+          tab="researches"
+        />
+      </section>
+    </CollapsibleCard>
   );
 }
 
 function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
-  const { lang } = Route.useRouteContext();
-
   return (
     <Link
       variant={"nav"}
       className="data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground w-auto rounded-sm px-4 py-2"
-      to={`/{-$lang}/admin/${tab}`}
-      params={{ lang }}
+      to={`/{-$lang}/admin/${tab}` as never}
     >
       {title}
     </Link>
