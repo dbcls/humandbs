@@ -25,9 +25,13 @@ const STAGING_ADMIN_USERNAME = process.env.HUMANDBS_STAGING_ADMIN_USERNAME ?? ""
 const STAGING_ADMIN_PASSWORD = process.env.HUMANDBS_STAGING_ADMIN_PASSWORD ?? ""
 const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
 
-// Isolation-index activation marker: every override must point at a `-it` index
-// AND the indices must actually exist (otherwise mutating IT would silently fall
-// through to the production indices and clobber real data).
+// Isolation-index activation marker. The primary gate is
+// `HUMANDBS_INTEGRATION_TEST=1`, hardcoded by `package.json §
+// scripts.test:integration` so `bun run test:integration` always lands on the
+// `-it` indices without any manual env injection. The `-it` suffix check and
+// the live-existence probe below remain as defence in depth: even if the flag
+// leaks somewhere, mutating IT must never reach the production indices.
+const INTEGRATION_TEST_FLAG = process.env.HUMANDBS_INTEGRATION_TEST ?? ""
 const ISOLATION_INDEX_NAMES = {
   research: process.env.HUMANDBS_ES_INDEX_RESEARCH ?? "",
   researchVersion: process.env.HUMANDBS_ES_INDEX_RESEARCH_VERSION ?? "",
@@ -196,12 +200,13 @@ export const itWithNonAdminToken = (
  *
  * Mutating IT (create / update / delete) must NEVER write into the production
  * indices. This helper short-circuits to a skip log when:
- *   - `HUMANDBS_ES_INDEX_RESEARCH` / `..._RESEARCH_VERSION` / `..._DATASET` are
- *     not all set, or
- *   - any of them does not end with `-it` (defence in depth against typos), or
+ *   - `HUMANDBS_INTEGRATION_TEST` is not `1` (primary gate set by `package.json`), or
+ *   - any of `HUMANDBS_ES_INDEX_*` does not end with `-it` (defence in depth), or
  *   - any of the three indices is missing on the ES cluster.
  *
- * Bootstrap with `apps/backend/scripts/bootstrap-it-index.ts` first.
+ * Bootstrap with `apps/backend/scripts/bootstrap-it-index.ts` first (the
+ * `--from-production` flag copies the live indices wholesale so the read-only
+ * IT suite keeps passing on the same data the production endpoint sees).
  * Both `adminToken` and `nonAdminToken` are passed for tests that need to
  * exercise multiple roles within the same case.
  */
@@ -215,7 +220,7 @@ export const itWithIsolationIndex = (
       return
     }
     if (!isolationIndexReady) {
-      skipLog(name, "isolation index not bootstrapped (HUMANDBS_ES_INDEX_*)")
+      skipLog(name, "isolation index not ready (need HUMANDBS_INTEGRATION_TEST=1 + bootstrapped `-it` indices)")
       return
     }
     if (!adminToken || !nonAdminToken) {
@@ -348,18 +353,19 @@ export const setupIntegration = async (): Promise<void> => {
   adminToken = await fetchStagingToken(STAGING_ADMIN_USERNAME, STAGING_ADMIN_PASSWORD)
   nonAdminToken = await fetchStagingToken(STAGING_USERNAME, STAGING_PASSWORD)
 
-  // Probe the isolation indices. We require all three to be present AND for
-  // every override to carry the `-it` suffix; absent either condition we keep
-  // `isolationIndexReady = false` so mutating IT remain skipped (defence in
-  // depth: ES_INDEX would otherwise resolve to the production indices).
+  // Probe the isolation indices. Primary gate is `HUMANDBS_INTEGRATION_TEST=1`
+  // (set by `package.json § scripts.test:integration`). The `-it` suffix check
+  // and the existence probe remain as defence in depth: a misconfigured run
+  // still skips mutating IT instead of writing into the production indices.
   const isolationNames = [
     ISOLATION_INDEX_NAMES.research,
     ISOLATION_INDEX_NAMES.researchVersion,
     ISOLATION_INDEX_NAMES.dataset,
   ]
+  const isIntegrationTest = INTEGRATION_TEST_FLAG === "1"
   const allOverridesSet = isolationNames.every((n) => !!n)
   const allLookSafe = isolationNames.every((n) => n.endsWith("-it"))
-  if (esConnected && allOverridesSet && allLookSafe) {
+  if (esConnected && isIntegrationTest && allOverridesSet && allLookSafe) {
     try {
       const checks = await Promise.all(
         isolationNames.map((index) => esClient.indices.exists({ index })),
@@ -374,6 +380,8 @@ export const setupIntegration = async (): Promise<void> => {
     } catch (err) {
       console.log(`Isolation index probe failed: ${(err as Error).message}`)
     }
+  } else if (esConnected && !isIntegrationTest) {
+    console.log("Isolation index: skip (HUMANDBS_INTEGRATION_TEST != 1)")
   }
   console.log(
     `Isolation index: ${isolationIndexReady ? `ready (${ES_INDEX.research}/${ES_INDEX.researchVersion}/${ES_INDEX.dataset})` : "skip"}`,

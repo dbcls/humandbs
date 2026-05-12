@@ -154,29 +154,38 @@ export const getResearchDetail = async (
 
 /**
  * Generate next humId
- * humId format: "hum" + 4 digits (hum0001, hum0002, ...)
+ * humId format: "hum" + 4 (or more) digits (hum0001, hum0002, ..., hum9999, hum10000, ...)
  *
- * Uses Sort Query (descending) with size=1 for efficient index-based retrieval
+ * The numeric component is treated as an integer, not a string: a plain
+ * `humId desc` keyword sort puts `hum9999` ahead of `hum10000` (codepoint
+ * order), so we run a Painless aggregation that parses the digits and takes
+ * the numeric max.
  */
 export const generateNextHumId = async (): Promise<string> => {
-  const res = await esClient.search<{ humId: string }>({
+  const res = await esClient.search({
     index: ES_INDEX.research,
-    size: 1,
-    _source: ["humId"],
-    sort: [{ humId: { order: "desc" } }],
+    size: 0,
     track_total_hits: false,
+    aggs: {
+      max_hum_num: {
+        max: {
+          script: {
+            source: "Integer.parseInt(doc['humId'].value.substring(3))",
+          },
+        },
+      },
+    },
   })
 
-  const hit = res.hits.hits[0]
-  if (hit?._source?.humId == null) {
+  const aggs = res.aggregations as { max_hum_num?: { value: number | null } } | undefined
+  const maxValue = aggs?.max_hum_num?.value
+  if (maxValue == null) {
     // No existing documents, start from hum0001
     return "hum0001"
   }
 
-  // Extract number from humId (e.g., "hum0123" → 123)
-  const match = /^hum(\d+)$/.exec(hit._source.humId)
-  const maxNum = match ? parseInt(match[1], 10) : 0
-  return `hum${String(maxNum + 1).padStart(4, "0")}`
+  const next = Math.floor(maxValue) + 1
+  return `hum${String(next).padStart(4, "0")}`
 }
 
 /**
