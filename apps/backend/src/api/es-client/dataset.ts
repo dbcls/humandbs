@@ -81,6 +81,25 @@ export const getDataset = async (
 }
 
 /**
+ * Resolve the latest version string of a Dataset (by version desc, then releaseDate desc).
+ * Returns null when no document with the given datasetId exists.
+ */
+export const resolveLatestDatasetVersion = async (datasetId: string): Promise<string | null> => {
+  const { hits } = await esClient.search<EsDataset>({
+    index: ES_INDEX.dataset,
+    size: 1,
+    query: { term: { datasetId } },
+    sort: [
+      versionSortSpec("desc"),
+      { releaseDate: { order: "desc" } },
+    ],
+    _source: ["version"],
+    track_total_hits: false,
+  })
+  return hits.hits[0]?._source?.version ?? null
+}
+
+/**
  * Get Dataset document with sequence number for optimistic locking
  */
 export const getDatasetWithSeqNo = async (

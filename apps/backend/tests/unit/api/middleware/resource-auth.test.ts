@@ -85,6 +85,7 @@ const mockGetDatasetWithSeqNo = mock<
   (datasetId: string, version: string) =>
   Promise<{ doc: EsDataset; seqNo: number; primaryTerm: number } | null>
 >()
+const mockResolveLatestDatasetVersion = mock<(datasetId: string) => Promise<string | null>>()
 
 void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
@@ -94,6 +95,8 @@ void mock.module("@/api/es-client/research", () => ({
 void mock.module("@/api/es-client/dataset", () => ({
   getDatasetWithSeqNo: (...args: unknown[]) =>
     mockGetDatasetWithSeqNo(args[0] as string, args[1] as string),
+  resolveLatestDatasetVersion: (...args: unknown[]) =>
+    mockResolveLatestDatasetVersion(args[0] as string),
 }))
 
 // Import AFTER mock.module (bun hoists mock.module, but be explicit for clarity)
@@ -362,6 +365,9 @@ describe("loadDatasetAndAuthorize", () => {
   beforeEach(() => {
     mockGetDatasetWithSeqNo.mockReset()
     mockGetResearchDoc.mockReset()
+    mockResolveLatestDatasetVersion.mockReset()
+    // Default: resolve to "v1" so existing tests without ?version= keep their semantics.
+    mockResolveLatestDatasetVersion.mockResolvedValue("v1")
   })
 
   describe("requireOwnership: true, requireParentDraft: true", () => {
@@ -506,8 +512,13 @@ describe("loadDatasetAndAuthorize", () => {
       expect(mockGetDatasetWithSeqNo).toHaveBeenCalledWith("JGAD000001", "v3")
     })
 
-    it("falls back to v1 when ?version=<malformed>", async () => {
-      mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+    it("resolves to the latest dataset version when ?version is malformed", async () => {
+      mockResolveLatestDatasetVersion.mockResolvedValue("v2")
+      mockGetDatasetWithSeqNo.mockResolvedValue({
+        doc: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humId: "hum0001" }),
+        seqNo: 1,
+        primaryTerm: 1,
+      })
       mockGetResearchDoc.mockResolvedValue(draftParent)
 
       const res = await app.request("/JGAD000001/action?version=foo", {
@@ -516,7 +527,20 @@ describe("loadDatasetAndAuthorize", () => {
       })
 
       expect(res.status).toBe(200)
-      expect(mockGetDatasetWithSeqNo).toHaveBeenCalledWith("JGAD000001", "v1")
+      expect(mockResolveLatestDatasetVersion).toHaveBeenCalledWith("JGAD000001")
+      expect(mockGetDatasetWithSeqNo).toHaveBeenCalledWith("JGAD000001", "v2")
+    })
+
+    it("404 when ?version is omitted and the Dataset has no versions in ES", async () => {
+      mockResolveLatestDatasetVersion.mockResolvedValue(null)
+
+      const res = await app.request("/JGAD999999/action", {
+        method: "POST",
+        headers: { "X-Test-Auth": JSON.stringify(owner) },
+      })
+
+      expect(res.status).toBe(404)
+      expect(mockGetDatasetWithSeqNo).not.toHaveBeenCalled()
     })
   })
 

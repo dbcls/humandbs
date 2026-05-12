@@ -9,7 +9,7 @@ import type { MiddlewareHandler } from "hono"
 import { createMiddleware } from "hono/factory"
 
 import { ERROR_MESSAGES } from "@/api/constants"
-import { getDatasetWithSeqNo } from "@/api/es-client/dataset"
+import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
 import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
 import {
   ForbiddenError,
@@ -150,10 +150,20 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
     }
 
     // validators have not yet run, so `c.req.valid("query")` is unavailable.
-    // Read raw query and fall back to "v1" (handler's prior default) on missing
-    // / malformed values; strict format validation remains the validators' job.
+    // Read raw query; on missing/malformed values, resolve the latest dataset version
+    // (matching `getDataset`'s default behaviour) so a draft-cycle bump's new version
+    // is picked up. Strict format validation remains the validators' job.
     const versionRaw = c.req.query("version")
-    const version = versionRaw && /^v\d+$/.test(versionRaw) ? versionRaw : "v1"
+    let version: string
+    if (versionRaw && /^v\d+$/.test(versionRaw)) {
+      version = versionRaw
+    } else {
+      const latest = await resolveLatestDatasetVersion(datasetId)
+      if (!latest) {
+        throw new NotFoundError(`Dataset ${datasetId} not found`)
+      }
+      version = latest
+    }
 
     const result = await getDatasetWithSeqNo(datasetId, version)
     if (!result) {
