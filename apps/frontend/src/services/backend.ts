@@ -393,7 +393,8 @@ const api: APIService = {
   getJDSResearch(id) {
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve(getEmptyResearchDetails());
+        const research = getEmptyResearchDetails();
+        resolve({ ...research, data: { ...research.data, humId: id } });
       }, 1000);
     });
   },

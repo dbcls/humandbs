@@ -57,6 +57,8 @@ import {
 import { cn } from "@/lib/utils";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearchDialog";
+import type { MergeResearchResult } from "./-mergeJDSResearch";
 
 export function ResearchDetails({
   humId,
@@ -379,6 +381,32 @@ export function ResearchDetails({
       }
     },
   });
+
+  function applyMergedJDSValues(values: MergeResearchResult["values"]) {
+    form.setFieldValue("title", values.title);
+    form.setFieldValue(
+      "summary",
+      values.summary as typeof researchValues.summary,
+    );
+    form.setFieldValue(
+      "dataProvider",
+      values.dataProvider as typeof researchValues.dataProvider,
+    );
+    form.setFieldValue(
+      "researchProject",
+      values.researchProject as typeof researchValues.researchProject,
+    );
+    form.setFieldValue("grant", values.grant as typeof researchValues.grant);
+    form.setFieldValue(
+      "relatedPublication",
+      values.relatedPublication as typeof researchValues.relatedPublication,
+    );
+    form.setFieldValue(
+      "controlledAccessUser",
+      values.controlledAccessUser as typeof researchValues.controlledAccessUser,
+    );
+  }
+
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
@@ -518,6 +546,12 @@ export function ResearchDetails({
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex shrink-0 items-center gap-2">
               <div className="ml-auto flex items-center gap-2">
+                <MergeJDSResearchDialog
+                  currentValues={formValues}
+                  disabled={!isViewingDraft || !canUpdate}
+                  onMerge={applyMergedJDSValues}
+                />
+
                 {canDelete && (
                   <Button type="button" size="lg" onClick={handleDelete}>
                     Delete

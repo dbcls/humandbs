@@ -29,6 +29,7 @@ import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { throwSerializableApiError } from "@/utils/errors";
+import type { DeepOmit } from "@/utils/typeUtils";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -49,6 +50,13 @@ export type UpdateResearchUidsResult =
     };
 export type DeleteResearchResult =
   | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+export type GetJDSResearchResult =
+  | { ok: true; data: DeepOmit<ResearchDetailResponse, "rawHtml"> }
   | {
       ok: false;
       error: string;
@@ -140,6 +148,21 @@ export const $deleteResearch = createServerFn({ method: "POST" })
       return { ok: true };
     } catch (error) {
       return mapApiError(error, "Failed to delete research.");
+    }
+  });
+
+const GetJDSResearchInputSchema = z.object({
+  id: z.string().trim().min(1),
+});
+
+export const $getJDSResearch = createServerFn({ method: "POST" })
+  .inputValidator(GetJDSResearchInputSchema)
+  .handler<Promise<GetJDSResearchResult>>(async ({ data }) => {
+    try {
+      const result = await api.getJDSResearch(data.id);
+      return { ok: true, data: result };
+    } catch (error) {
+      return mapApiError(error, "Failed to get J-DS research.");
     }
   });
 
