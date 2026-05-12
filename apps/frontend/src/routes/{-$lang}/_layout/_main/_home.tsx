@@ -145,7 +145,9 @@ function RouteComponent() {
 
       <div className="w-full mt-12">
         <h2 className="text-xl font-bold mb-4 text-center text-secondary">New Visualization (Bento Grid)</h2>
-        <LazyFrontStatsNew />
+        <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Loading...</div>}>
+          <LazyFrontStatsNew />
+        </Suspense>
       </div>
     </section>
   );
