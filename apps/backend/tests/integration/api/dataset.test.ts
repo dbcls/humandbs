@@ -157,13 +157,10 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     expect(publicGet.status).toBe(404)
   })
 
-  itWithEs("IT-DATASET-09: PUT /dataset/{datasetId}/update without auth returns 401 (or 400 if validation fires first)", async () => {
+  itWithEs("IT-DATASET-09: PUT /dataset/{datasetId}/update without auth returns 401", async () => {
     // IT-DATASET-09
-    // Note: current Hono/zod-openapi middleware order runs body validation before the in-handler
-    // auth check, so a `{}` body returns 400 instead of 401. The invariant we actually want to hold
-    // is "mutation is refused with a 4xx without state change". A 400 from validation satisfies that.
-    // Long-term, the middleware should be reordered so that `requireAuth` precedes body parsing
-    // (security: don't leak schema details to anonymous callers).
+    // loadDatasetAndAuthorize runs before validators, so an unauthenticated PUT is
+    // refused at the auth gate (401) and the body schema is never reported back.
     const app = getApp()
     const listRes = await app.request(url("/dataset?limit=1"))
     const list = (await listRes.json()) as SearchResponse<EsDataset>
@@ -177,13 +174,12 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       headers: { "Content-Type": "application/json" },
       body: "{}",
     })
-    expect([400, 401]).toContain(res.status)
+    expect(res.status).toBe(401)
   })
 
-  itWithNonAdminToken("IT-DATASET-10: PUT update by non-owner returns 403 (or 400 if validation fires first)", async (token) => {
+  itWithNonAdminToken("IT-DATASET-10: PUT update by non-owner returns 403", async (token) => {
     // IT-DATASET-10
-    // Same middleware-order caveat as IT-DATASET-09. Non-owner must not mutate, whether the refusal
-    // is 400 (validation) or 403 (ownership guard).
+    // Non-owner is rejected at the ownership gate (403) before validators run.
     const app = getApp()
     const listRes = await app.request(url("/dataset?limit=1"))
     const list = (await listRes.json()) as SearchResponse<EsDataset>
@@ -197,15 +193,14 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
       body: JSON.stringify({}),
     })
-    expect([400, 403]).toContain(res.status)
+    expect(res.status).toBe(403)
   })
 
-  itWithAdminToken("IT-DATASET-11: PUT update on a published-parent dataset is refused with 403 or 400", async (token) => {
+  itWithAdminToken("IT-DATASET-11: PUT update on a published-parent dataset returns 403", async (token) => {
     // IT-DATASET-11
-    // Admin bypasses ownership but the parent-status check still fires per
-    // `src/api/routes/dataset.ts:330-331`. With an empty body we hit body validation first (400).
-    // To exercise the actual parent-status 403 we would need to round-trip a valid Dataset body,
-    // which staging doesn't make easy without an isolation index. Accept either refusal.
+    // Admin bypasses ownership but parent-draft check still fires (403) before
+    // validators run. The error detail must surface the parent-status reason so a
+    // 403 from any earlier gate would not match.
     const app = getApp()
     const listRes = await app.request(url("/dataset?limit=1"))
     const list = (await listRes.json()) as SearchResponse<EsDataset>
@@ -219,12 +214,10 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
       body: JSON.stringify({ experiments: [] }),
     })
-    expect([400, 403]).toContain(res.status)
-    if (res.status === 403) {
-      const json = (await res.json()) as { title?: string; detail?: string }
-      expect(json.title).toBe("Forbidden")
-      expect(json.detail ?? "").toMatch(/parent Research is not in draft/i)
-    }
+    expect(res.status).toBe(403)
+    const json = (await res.json()) as { title?: string; detail?: string }
+    expect(json.title).toBe("Forbidden")
+    expect(json.detail ?? "").toMatch(/parent Research is not in draft/i)
   })
 
   itWithEs("IT-DATASET-17: GET /dataset/{datasetId}/versions returns ascending version array", async () => {

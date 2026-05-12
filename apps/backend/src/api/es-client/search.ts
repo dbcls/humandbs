@@ -59,6 +59,15 @@ import type {
 } from "@/api/types"
 import { isOwnerOrAdmin, parseVersionNum } from "@/api/utils/version"
 
+// === Constants ===
+
+/**
+ * Elasticsearch default `index.max_result_window`. When `from + size` exceeds this,
+ * ES returns 500. The list/search code paths cap pagination at this boundary and
+ * return an empty page instead of issuing the doomed request.
+ */
+export const MAX_RESULT_WINDOW = 10000
+
 // === Types ===
 
 /** Internal search result (not the API response shape) */
@@ -496,6 +505,16 @@ export const searchDatasets = async (
   const from = (page - 1) * limit
   const facetCountField: FacetCountField = opts.facetCountField ?? "datasetId"
 
+  // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
+  // empty page; callers see a regular SearchResponse with `data: []`.
+  if (from + limit > MAX_RESULT_WINDOW) {
+    return {
+      data: [],
+      pagination: createPagination(0, page, limit),
+      facets: includeFacets ? {} : undefined,
+    }
+  }
+
   // Build query (lang filter removed - documents are BilingualText)
   const must: estypes.QueryDslQueryContainer[] = []
 
@@ -641,6 +660,16 @@ export const searchResearches = async (
     includeFacets, status: requestedStatus,
   } = params
   const from = (page - 1) * limit
+
+  // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
+  // empty page; callers see a regular SearchResponse with `data: []`.
+  if (from + limit > MAX_RESULT_WINDOW) {
+    return {
+      data: [],
+      pagination: createPagination(0, page, limit),
+      facets: includeFacets ? {} : undefined,
+    }
+  }
 
   // Step 1: If Dataset filters are present, get humIds from Dataset index
   let humIdFilter: string[] | null = null

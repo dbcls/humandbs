@@ -11,6 +11,7 @@ import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
 import { getResearchVersion } from "@/api/es-client/research-version"
+import { MAX_RESULT_WINDOW } from "@/api/es-client/search"
 import { mgetMap } from "@/api/es-client/utils"
 import {
   EsDatasetSchema,
@@ -507,6 +508,11 @@ export const getPendingReviews = async (
   limit = 20,
 ): Promise<{ data: EsResearch[]; total: number }> => {
   const from = (page - 1) * limit
+
+  // Pagination beyond ES `index.max_result_window` would 500. Short-circuit.
+  if (from + limit > MAX_RESULT_WINDOW) {
+    return { data: [], total: 0 }
+  }
 
   const res = await esClient.search<EsResearch>({
     index: ES_INDEX.research,

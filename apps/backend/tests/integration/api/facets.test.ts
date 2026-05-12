@@ -11,12 +11,10 @@ import { authHeaders, getApp, itWithEs, itWithNonAdminToken, setupIntegration, u
 
 beforeAll(setupIntegration)
 
-// `src/api/types/facets.ts § FacetsMapSchema` enumerates 18 keys.
-// Staging additionally returns `isTumor` and `hasPhenotypeData` (boolean facets that the schema does
-// not currently list). Per `tests/integration-scenarios.md § IT-FACETS-01` we accept the superset.
-// Long-term: align `FacetsMapSchema` with the actual `extractStatsFacets` output, or have the route
-// strip the extras to match the documented 18.
-const SCHEMA_KEYS: readonly (keyof FacetsMap)[] = [
+// `src/api/types/facets.ts § FacetsMapSchema` enumerates 20 keys (Dataset facet aggregations).
+// Response keys must be a subset; `isTumor` / `hasPhenotypeData` were added once aligned with the
+// frontend `facet-config.ts` usage and the ES Dataset mapping.
+const SCHEMA_KEYS = new Set<string>([
   "criteria",
   "assayType",
   "healthStatus",
@@ -35,9 +33,6 @@ const SCHEMA_KEYS: readonly (keyof FacetsMap)[] = [
   "diseaseIcd10",
   "cellLine",
   "policyId",
-]
-const ACCEPTED_FACET_KEYS = new Set<string>([
-  ...SCHEMA_KEYS,
   "isTumor",
   "hasPhenotypeData",
 ])
@@ -53,7 +48,7 @@ describe("IT-FACETS-*: facet aggregations", () => {
     const json = (await res.json()) as SingleReadOnlyResponse<FacetsMap>
     expect(typeof json.meta.requestId).toBe("string")
     for (const [key, values] of Object.entries(json.data)) {
-      expect(ACCEPTED_FACET_KEYS.has(key)).toBe(true)
+      expect(SCHEMA_KEYS.has(key)).toBe(true)
       if (values === undefined) continue
       expect(Array.isArray(values)).toBe(true)
       for (const v of values) {

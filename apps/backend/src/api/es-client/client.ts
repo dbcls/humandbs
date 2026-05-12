@@ -11,10 +11,16 @@ import type { estypes } from "@elastic/elasticsearch"
 
 // === Index Names ===
 
+/**
+ * Index names. Env overrides (`HUMANDBS_ES_INDEX_RESEARCH` /
+ * `HUMANDBS_ES_INDEX_RESEARCH_VERSION` / `HUMANDBS_ES_INDEX_DATASET`) point the
+ * runtime at an isolated set of indices (e.g. `research-it`) so mutating
+ * integration tests can write without touching the production indices.
+ */
 export const ES_INDEX = {
-  research: "research",
-  researchVersion: "research-version",
-  dataset: "dataset",
+  research: process.env.HUMANDBS_ES_INDEX_RESEARCH ?? "research",
+  researchVersion: process.env.HUMANDBS_ES_INDEX_RESEARCH_VERSION ?? "research-version",
+  dataset: process.env.HUMANDBS_ES_INDEX_DATASET ?? "dataset",
 } as const
 
 // === Client Configuration ===

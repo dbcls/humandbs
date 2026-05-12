@@ -12,7 +12,7 @@ import { it } from "bun:test"
 
 import { createApp } from "@/api/app"
 import { jgaSql } from "@/api/db-client/client"
-import { esClient } from "@/api/es-client"
+import { esClient, ES_INDEX } from "@/api/es-client"
 import type { SearchResponse } from "@/api/types"
 
 // === Environment ===
@@ -25,6 +25,15 @@ const STAGING_ADMIN_USERNAME = process.env.HUMANDBS_STAGING_ADMIN_USERNAME ?? ""
 const STAGING_ADMIN_PASSWORD = process.env.HUMANDBS_STAGING_ADMIN_PASSWORD ?? ""
 const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
 
+// Isolation-index activation marker: every override must point at a `-it` index
+// AND the indices must actually exist (otherwise mutating IT would silently fall
+// through to the production indices and clobber real data).
+const ISOLATION_INDEX_NAMES = {
+  research: process.env.HUMANDBS_ES_INDEX_RESEARCH ?? "",
+  researchVersion: process.env.HUMANDBS_ES_INDEX_RESEARCH_VERSION ?? "",
+  dataset: process.env.HUMANDBS_ES_INDEX_DATASET ?? "",
+}
+
 // === Module-scope state populated by setupIntegration() ===
 
 let setupDone = false
@@ -32,6 +41,7 @@ let esConnected = false
 let jgaConnected = false
 let adminToken: string | null = null
 let nonAdminToken: string | null = null
+let isolationIndexReady = false
 
 export interface IntegrationFixtures {
   /** A representative published `humId` from the live ES (latestVersion!=null, status=published). */
@@ -69,10 +79,12 @@ export const getApp = (): ReturnType<typeof createApp> => createApp()
 
 export const isEsConnected = (): boolean => esConnected
 export const isJgaConnected = (): boolean => jgaConnected
+export const isIsolationIndexReady = (): boolean => isolationIndexReady
 export const getAdminToken = (): string | null => adminToken
 export const getNonAdminToken = (): string | null => nonAdminToken
 export const getFixtures = (): IntegrationFixtures => fixtures
 export const getUrlPrefix = (): string => URL_PREFIX
+export const getIsolationIndexNames = (): typeof ISOLATION_INDEX_NAMES => ISOLATION_INDEX_NAMES
 
 /**
  * Extract the `sub` (user id) claim from a JWT without verifying its signature.
@@ -176,6 +188,41 @@ export const itWithNonAdminToken = (
       return
     }
     await fn(nonAdminToken)
+  })
+}
+
+/**
+ * Run `fn` only when the isolated `*-it` indices are bootstrapped and reachable.
+ *
+ * Mutating IT (create / update / delete) must NEVER write into the production
+ * indices. This helper short-circuits to a skip log when:
+ *   - `HUMANDBS_ES_INDEX_RESEARCH` / `..._RESEARCH_VERSION` / `..._DATASET` are
+ *     not all set, or
+ *   - any of them does not end with `-it` (defence in depth against typos), or
+ *   - any of the three indices is missing on the ES cluster.
+ *
+ * Bootstrap with `apps/backend/scripts/bootstrap-it-index.ts` first.
+ * Both `adminToken` and `nonAdminToken` are passed for tests that need to
+ * exercise multiple roles within the same case.
+ */
+export const itWithIsolationIndex = (
+  name: string,
+  fn: (tokens: { admin: string; nonAdmin: string }) => Promise<void>,
+): void => {
+  it(name, async () => {
+    if (!esConnected) {
+      skipLog(name, "ES not connected")
+      return
+    }
+    if (!isolationIndexReady) {
+      skipLog(name, "isolation index not bootstrapped (HUMANDBS_ES_INDEX_*)")
+      return
+    }
+    if (!adminToken || !nonAdminToken) {
+      skipLog(name, "staging tokens unavailable")
+      return
+    }
+    await fn({ admin: adminToken, nonAdmin: nonAdminToken })
   })
 }
 
@@ -300,6 +347,37 @@ export const setupIntegration = async (): Promise<void> => {
 
   adminToken = await fetchStagingToken(STAGING_ADMIN_USERNAME, STAGING_ADMIN_PASSWORD)
   nonAdminToken = await fetchStagingToken(STAGING_USERNAME, STAGING_PASSWORD)
+
+  // Probe the isolation indices. We require all three to be present AND for
+  // every override to carry the `-it` suffix; absent either condition we keep
+  // `isolationIndexReady = false` so mutating IT remain skipped (defence in
+  // depth: ES_INDEX would otherwise resolve to the production indices).
+  const isolationNames = [
+    ISOLATION_INDEX_NAMES.research,
+    ISOLATION_INDEX_NAMES.researchVersion,
+    ISOLATION_INDEX_NAMES.dataset,
+  ]
+  const allOverridesSet = isolationNames.every((n) => !!n)
+  const allLookSafe = isolationNames.every((n) => n.endsWith("-it"))
+  if (esConnected && allOverridesSet && allLookSafe) {
+    try {
+      const checks = await Promise.all(
+        isolationNames.map((index) => esClient.indices.exists({ index })),
+      )
+      if (checks.every(Boolean)) {
+        isolationIndexReady = true
+      } else {
+        console.log(
+          `Isolation indices missing on ES (${isolationNames.filter((_, i) => !checks[i]).join(", ")}); mutating IT will skip.`,
+        )
+      }
+    } catch (err) {
+      console.log(`Isolation index probe failed: ${(err as Error).message}`)
+    }
+  }
+  console.log(
+    `Isolation index: ${isolationIndexReady ? `ready (${ES_INDEX.research}/${ES_INDEX.researchVersion}/${ES_INDEX.dataset})` : "skip"}`,
+  )
 
   // Guard against "fake non-admin" tokens: if `HUMANDBS_STAGING_USERNAME` happens to be in
   // `admin_uids.json`, the resulting token is actually admin and would silently bypass

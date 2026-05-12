@@ -82,16 +82,12 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
       const res = await app.request(url(`/research?${c.qs}`))
       expect(res.status).toBe(c.expect)
     }
-    // Huge page: API responds either with 200 + empty data, or 500 when `from + size` exceeds
-    // ES `index.max_result_window` (default 10000). Both behaviors are observed in real clusters.
-    // The invariant: never silently returns stale data or 200 with non-empty `data`.
-    // (Long-term: cap pagination on the server side and always return 200 + empty for out-of-range pages.)
+    // Huge page: `searchResearches` short-circuits `from + size > MAX_RESULT_WINDOW` (10000) so the
+    // API always returns 200 with an empty data array instead of letting ES 500 on the impossible range.
     const huge = await app.request(url("/research?page=99999&limit=20"))
-    expect([200, 500]).toContain(huge.status)
-    if (huge.status === 200) {
-      const hugeJson = (await huge.json()) as SearchResponse<ResearchSummary>
-      expect(hugeJson.data).toEqual([])
-    }
+    expect(huge.status).toBe(200)
+    const hugeJson = (await huge.json()) as SearchResponse<ResearchSummary>
+    expect(hugeJson.data).toEqual([])
   })
 
   itWithEs("IT-SEARCH-03: lang=en returns English values for monolingual fields, title stays bilingual", async () => {
