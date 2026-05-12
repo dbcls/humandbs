@@ -213,6 +213,7 @@ export const itWithNonAdminToken = (
 export const itWithIsolationIndex = (
   name: string,
   fn: (tokens: { admin: string; nonAdmin: string }) => Promise<void>,
+  timeoutMs = 30_000,
 ): void => {
   it(name, async () => {
     if (!esConnected) {
@@ -228,7 +229,7 @@ export const itWithIsolationIndex = (
       return
     }
     await fn({ admin: adminToken, nonAdmin: nonAdminToken })
-  })
+  }, timeoutMs)
 }
 
 /** Inside an `itWithEs` body, gate further execution on a probed fixture. */

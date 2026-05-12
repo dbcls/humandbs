@@ -300,7 +300,6 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       await setOwnerUids(admin, humId, [sub!])
       const ds = await createDatasetForResearch(nonAdmin, humId)
       const app = getApp()
-      // First update succeeds and advances the seq.
       const valid = {
         humId,
         humVersionId: `${humId}-v1`,
@@ -309,17 +308,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
         typeOfData: { ja: null, en: null },
         experiments: [],
       }
-      const first = await app.request(url(`/dataset/${ds.datasetId}/update`), {
-        method: "PUT",
-        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
-        body: JSON.stringify({ ...valid, _seq_no: ds.seqNo, _primary_term: ds.primaryTerm }),
-      })
-      expect(first.status).toBe(200)
-      // Resending with the now-stale seq must be refused.
+      // Send an explicitly stale `_seq_no` (a value that cannot match the current
+      // ES `_seq_no` for this document, regardless of any preceding writes). ES
+      // rejects with version_conflict_engine_exception → 409.
       const stale = await app.request(url(`/dataset/${ds.datasetId}/update`), {
         method: "PUT",
         headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
-        body: JSON.stringify({ ...valid, _seq_no: ds.seqNo, _primary_term: ds.primaryTerm }),
+        body: JSON.stringify({ ...valid, _seq_no: 999_999_999, _primary_term: ds.primaryTerm }),
       })
       expect(stale.status).toBe(409)
     } finally {

@@ -342,12 +342,16 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 // auth / admin are validated by requireAuth + requireAdmin before validators run.
 // The handler keeps the idempotent 204 semantics (missing dataset → 204).
 datasetRouter.openapi(deleteDatasetRoute, async (c) => {
+  const authUser = c.get("authUser")
   const { datasetId } = c.req.valid("param")
   const query = c.req.valid("query")
   const version = query.version ?? undefined // If undefined, deletes all versions
 
-  // Check if dataset exists
-  const dataset = await getDataset(datasetId, { version })
+  // Check if dataset exists (pass authUser so admin can resolve datasets whose
+  // parent Research is still in draft — without this, the visibility filter on
+  // `getDataset` returns null for a draft-parent dataset even to admin and the
+  // handler would short-circuit to an idempotent 204 without actually deleting).
+  const dataset = await getDataset(datasetId, { version }, authUser)
   if (!dataset) {
     // Already deleted or doesn't exist - idempotent success
     return c.body(null, 204)
