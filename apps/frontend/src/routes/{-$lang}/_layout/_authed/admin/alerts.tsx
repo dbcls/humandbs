@@ -1,9 +1,9 @@
+import type { InfiniteData } from "@tanstack/react-query";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { InfiniteData } from "@tanstack/react-query";
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
 import { Plus, Trash2Icon } from "lucide-react";
@@ -30,10 +30,11 @@ import {
   getAllAlertsInfiniteQueryOptions,
 } from "@/serverFunctions/alert";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { alertsAdminSearchParamsSchema } from "@/utils/queryParams";
 import type { DateStringRange } from "@/utils/dates";
 import { toDateString } from "@/utils/dates";
+import { alertsAdminSearchParamsSchema } from "@/utils/queryParams";
 
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
@@ -250,11 +251,7 @@ function AlertsList({
   }
 
   return (
-    <Card
-      caption="Alerts"
-      className="w-cms-list-panel flex h-full flex-col"
-      containerClassName="flex-1 flex flex-col max-h-full"
-    >
+    <CollapsibleCard title="Alerts">
       <div>
         <AlertsFiltersBar />
         {canCreate ? (
@@ -400,7 +397,7 @@ function AlertsList({
           </div>
         ) : null}
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
 

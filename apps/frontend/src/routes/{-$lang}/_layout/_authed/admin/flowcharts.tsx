@@ -59,6 +59,7 @@ import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { ListItem } from "@/components/ListItem";
 import { StatusTag } from "@/components/StatusTag";
 import useConfirmationStore from "@/stores/confirmationStore";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/flowcharts",
@@ -138,10 +139,7 @@ function RouteComponent() {
 
   return (
     <>
-      <Card
-        className="w-cms-list-panel flex h-full flex-col"
-        caption="Flowcharts"
-      >
+      <CollapsibleCard title="Flowcharts">
         <div className="flex flex-col gap-2">
           <div className="px-1">
             <Button
@@ -160,7 +158,7 @@ function RouteComponent() {
             onDelete={handleDeleteFlowchart}
           />
         </div>
-      </Card>
+      </CollapsibleCard>
 
       {mode === "create" ? (
         <CreateFlowchartPanel key="create" onCreated={handleCreated} />
@@ -359,9 +357,7 @@ function CreateFlowchartPanel({
   return (
     <Card className="flex flex-1 flex-col gap-0" caption="New Flowchart">
       <div className="flex flex-col gap-5 p-5">
-        {serverError && (
-          <AdminStatusMessage>{serverError}</AdminStatusMessage>
-        )}
+        {serverError && <AdminStatusMessage>{serverError}</AdminStatusMessage>}
 
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-medium text-gray-700">Name</h3>
@@ -685,10 +681,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
             </AdminStatusMessage>
           ) : null}
           {error ? (
-            <AdminStatusMessage
-              className="mx-5 mt-4"
-              preserveWhitespace
-            >
+            <AdminStatusMessage className="mx-5 mt-4" preserveWhitespace>
               {error}
             </AdminStatusMessage>
           ) : null}

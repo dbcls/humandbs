@@ -158,7 +158,6 @@ function NewsItemForm({
 }) {
   const { user } = useRouteContext({ from: "__root__" });
   const mode = isDraftNewsItem(newsItem.id) ? "create" : "update";
-  const locale = useLocale();
 
   const queryClient = useQueryClient();
 

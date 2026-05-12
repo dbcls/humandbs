@@ -9,6 +9,7 @@ import { ResearchesList } from "./-ResearchesList";
 import { NewResearchForm } from "./-NewResearchForm";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
@@ -43,17 +44,13 @@ function RouteComponent() {
 
   return (
     <>
-      <Card
-        className="w-cms-list-panel flex h-full flex-col"
-        caption="Researches"
-        containerClassName="flex-1 w-full min-h-0 max-h-full overflow-hidden"
-      >
+      <CollapsibleCard title="Researches">
         <ResearchesList
           lang={lang}
           selectedHumId={selectedHumId}
           onSelectResearch={setSelectedHumId}
         />
-      </Card>
+      </CollapsibleCard>
 
       {selectedHumId && isDummyResearch(selectedHumId) ? (
         <NewResearchForm
