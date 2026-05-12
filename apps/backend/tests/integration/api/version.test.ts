@@ -241,13 +241,8 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
     }
   })
 
-  itWithIsolationIndex("IT-VERSION-09: PUT under a new draft cycle leaves Dataset version unchanged (impl gap vs spec)", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-VERSION-09: first PUT under a new draft cycle bumps Dataset version v1 → v2", async ({ admin, nonAdmin }) => {
     // IT-VERSION-09
-    // SSOT/architecture.md mandates a v1→v2 bump on the first PUT in a new draft
-    // cycle, but `updateDataset` (`src/api/es-client/dataset.ts § updateDataset`)
-    // performs an in-place ES `update` and does NOT create a new version document.
-    // We pin the observable behavior here: PUT succeeds and the dataset stays at v1.
-    // Tracked as a follow-up implementation gap.
     const sub = decodeJwtSub(nonAdmin)
     expect(sub).toBeTruthy()
     let humId = ""
@@ -261,9 +256,11 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
       await createNewVersion(nonAdmin, humId)
       const app = getApp()
       const dsCurrent = await app.request(url(`/dataset/${ds.datasetId}`), { headers: authHeaders(admin) })
-      const dsCurrentJson = (await dsCurrent.json()) as SingleReadOnlyResponse<{ releaseDate?: string; criteria?: string }> & {
+      const dsCurrentJson = (await dsCurrent.json()) as SingleReadOnlyResponse<{ releaseDate?: string; criteria?: string; version?: string }> & {
         meta: { _seq_no?: number; _primary_term?: number }
       }
+      // GET returns the previously pinned version (v1) before the bump.
+      expect(dsCurrentJson.data.version).toBe("v1")
       const put = await app.request(url(`/dataset/${ds.datasetId}/update`), {
         method: "PUT",
         headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
@@ -280,19 +277,16 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
       })
       expect(put.status).toBe(200)
       const latest = await app.request(url(`/dataset/${ds.datasetId}`), { headers: authHeaders(admin) })
-      const latestJson = (await latest.json()) as SingleReadOnlyResponse<{ version?: string }>
-      // Current impl: dataset stays at v1. SSOT spec would want "v2"; see comment above.
-      expect(latestJson.data.version).toBe("v1")
+      const latestJson = (await latest.json()) as SingleReadOnlyResponse<{ version?: string; humVersionId?: string }>
+      expect(latestJson.data.version).toBe("v2")
+      expect(latestJson.data.humVersionId).toBe(`${humId}-v2`)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
   })
 
-  itWithIsolationIndex("IT-VERSION-10: second PUT in the same draft cycle stays on the same Dataset version", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-VERSION-10: second PUT in the same draft cycle stays on the bumped Dataset version", async ({ admin, nonAdmin }) => {
     // IT-VERSION-10
-    // Companion to IT-VERSION-09. Since the impl never bumps the dataset version,
-    // "stays on the same version" is trivially true; we still assert that both PUTs
-    // succeed and that the dataset's version remains constant.
     const sub = decodeJwtSub(nonAdmin)
     expect(sub).toBeTruthy()
     let humId = ""
@@ -325,13 +319,18 @@ describe("IT-VERSION-*: Research/Dataset version endpoints", () => {
           }),
         })
       }
+      // First PUT performs the v1 → v2 bump.
       const first = await doPut()
       expect(first.status).toBe(200)
+      const afterFirst = await app.request(url(`/dataset/${ds.datasetId}`), { headers: authHeaders(admin) })
+      const afterFirstJson = (await afterFirst.json()) as SingleReadOnlyResponse<{ version?: string }>
+      expect(afterFirstJson.data.version).toBe("v2")
+      // Second PUT in the same draft cycle: in-place overwrite on v2 (no further bump).
       const second = await doPut()
       expect(second.status).toBe(200)
       const latest = await app.request(url(`/dataset/${ds.datasetId}`), { headers: authHeaders(admin) })
       const latestJson = (await latest.json()) as SingleReadOnlyResponse<{ version?: string }>
-      expect(latestJson.data.version).toBe("v1")
+      expect(latestJson.data.version).toBe("v2")
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

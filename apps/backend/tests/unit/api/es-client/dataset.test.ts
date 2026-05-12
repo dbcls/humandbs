@@ -27,8 +27,9 @@
  * - @/api/es-client/research-version.linkDatasetToResearch / unlinkDatasetFromResearch / getResearchVersionWithSeqNo are stubbed
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import fc from "fast-check"
 
-import { createMockAuthUser, createMockDatasetDoc, createMockResearchDoc } from "../helpers/mock-es"
+import { createMockAuthUser, createMockDatasetDoc, createMockResearchDoc, createMockResearchVersionDoc } from "../helpers/mock-es"
 
 const mockEsGet = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({ found: false }))
 const mockEsSearch = mock<(..._args: unknown[]) => Promise<unknown>>(async () => ({ hits: { hits: [] } }))
@@ -273,25 +274,192 @@ describe("createDataset", () => {
 
 // === updateDataset ===
 
-describe("updateDataset (IT-DATASET-12)", () => {
-  it("propagates optimistic-lock parameters to es client", async () => {
-    mockEsUpdate.mockResolvedValue({})
-    mockEsGet.mockResolvedValue({ found: true, _source: createMockDatasetDoc({ version: "v1" }), _seq_no: 6, _primary_term: 2 })
+describe("updateDataset (IT-DATASET-12 + IT-VERSION-09/10)", () => {
+  it("Path E (first draft cycle, no latestVersion): propagates optimistic-lock parameters to in-place update", async () => {
+    // 1st mockEsGet: getDatasetWithSeqNo (initial fetch)
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v1" }), _seq_no: 5, _primary_term: 2 })
+    // parent is in first draft cycle: latestVersion is null → bump path not entered
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: null, draftVersion: "v1", uids: ["owner-1"],
+    }))
+    mockEsUpdate.mockResolvedValueOnce({})
+    // 2nd mockEsGet: getDatasetWithSeqNo (post-update reload)
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v1", releaseDate: "2024-09-01" }), _seq_no: 6, _primary_term: 2 })
 
     const result = await dataset.updateDataset("JGAD000001", "v1", { releaseDate: "2024-09-01" }, 5, 2)
     expect(result).not.toBeNull()
+    expect(result?.version).toBe("v1")
 
     const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { if_seq_no: number; if_primary_term: number; body: { doc: Record<string, unknown> } }
     expect(updateArgs.if_seq_no).toBe(5)
     expect(updateArgs.if_primary_term).toBe(2)
     expect(updateArgs.body.doc.releaseDate).toBe("2024-09-01")
+    // bump path not taken: no index() / no parent ResearchVersion seq fetch
+    expect(mockEsIndex).not.toHaveBeenCalled()
+    expect(mockGetResearchVersionWithSeqNo).not.toHaveBeenCalled()
   })
 
-  it("returns null on optimistic-lock failure (IT-DATASET-12)", async () => {
-    mockEsUpdate.mockRejectedValue(optimisticLockError())
+  it("Path C (stale seqNo on existing doc): returns null without touching ES", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v1" }), _seq_no: 10, _primary_term: 2 })
+    // caller seqNo (5) is stale → reject without update/index/parent fetch
 
-    const result = await dataset.updateDataset("JGAD000001", "v1", {}, 0, 0)
+    const result = await dataset.updateDataset("JGAD000001", "v1", { releaseDate: "2024-09-01" }, 5, 2)
     expect(result).toBeNull()
+    expect(mockEsUpdate).not.toHaveBeenCalled()
+    expect(mockEsIndex).not.toHaveBeenCalled()
+    expect(mockGetResearchDoc).not.toHaveBeenCalled()
+  })
+
+  it("Path C (in-place ES 409 conflict): returns null", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v1" }), _seq_no: 5, _primary_term: 2 })
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: null, draftVersion: "v1", uids: ["owner-1"],
+    }))
+    mockEsUpdate.mockRejectedValueOnce(optimisticLockError())
+
+    const result = await dataset.updateDataset("JGAD000001", "v1", {}, 5, 2)
+    expect(result).toBeNull()
+  })
+
+  it("Path A (first PUT in a new draft cycle): creates a new Dataset version and rewires parent draftVersion (IT-VERSION-09)", async () => {
+    // current dataset is v1 (the version pinned by parent.latestVersion)
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001", humVersionId: "hum0001-v1" }), _seq_no: 5, _primary_term: 2 })
+    // parent has latestVersion=v1 and draftVersion=v2 → bump candidate
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2", uids: ["owner-1"],
+    }))
+    // 1st getResearchVersionWithSeqNo: parent.latestVersion ResearchVersion has the dataset pinned at v1
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 10,
+      primaryTerm: 2,
+    })
+    // getNextDatasetVersion: aggregations max_version=1 → v2
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 1 } } })
+    // esClient.index: create new dataset doc (v2)
+    mockEsIndex.mockResolvedValueOnce({})
+    // 2nd getResearchVersionWithSeqNo: parent.draftVersion ResearchVersion (the rewire target)
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v2", version: "v2", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 20,
+      primaryTerm: 3,
+    })
+    // esClient.update: rewire parent.draftVersion ResearchVersion.datasets
+    mockEsUpdate.mockResolvedValueOnce({})
+
+    const result = await dataset.updateDataset("JGAD000001", "v1", { releaseDate: "2024-09-01" }, 5, 2)
+
+    expect(result?.version).toBe("v2")
+    expect(result?.humVersionId).toBe("hum0001-v2")
+    expect(result?.releaseDate).toBe("2024-09-01")
+    // new dataset doc created with op_type:create
+    const indexArgs = mockEsIndex.mock.calls[0]?.[0] as { id: string; op_type: string; body: { datasetId: string; version: string; humVersionId: string } }
+    expect(indexArgs.id).toBe("JGAD000001-v2")
+    expect(indexArgs.op_type).toBe("create")
+    expect(indexArgs.body.version).toBe("v2")
+    expect(indexArgs.body.humVersionId).toBe("hum0001-v2")
+    // parent.draftVersion datasets rewired v1 → v2
+    const rewireArgs = mockEsUpdate.mock.calls[0]?.[0] as { id: string; if_seq_no: number; if_primary_term: number; body: { doc: { datasets: { datasetId: string; version: string }[] } } }
+    expect(rewireArgs.id).toBe("hum0001-v2")
+    expect(rewireArgs.if_seq_no).toBe(20)
+    expect(rewireArgs.if_primary_term).toBe(3)
+    expect(rewireArgs.body.doc.datasets).toEqual([{ datasetId: "JGAD000001", version: "v2" }])
+  })
+
+  it("Path B (second PUT in the same draft cycle): in-place update on the current draft version (IT-VERSION-10)", async () => {
+    // current dataset is v2 (already bumped during the cycle); parent.latestVersion still references v1
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v2", humId: "hum0001", humVersionId: "hum0001-v2" }), _seq_no: 7, _primary_term: 2 })
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2", uids: ["owner-1"],
+    }))
+    // parent.latestVersion ResearchVersion still pins dataset to v1, but current is v2 → no bump
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 10,
+      primaryTerm: 2,
+    })
+    mockEsUpdate.mockResolvedValueOnce({})
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ version: "v2", releaseDate: "2024-10-01" }), _seq_no: 8, _primary_term: 2 })
+
+    const result = await dataset.updateDataset("JGAD000001", "v2", { releaseDate: "2024-10-01" }, 7, 2)
+
+    expect(result?.version).toBe("v2")
+    // in-place esClient.update on the dataset doc (id=JGAD000001-v2)
+    const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { id: string; if_seq_no: number; if_primary_term: number }
+    expect(updateArgs.id).toBe("JGAD000001-v2")
+    expect(updateArgs.if_seq_no).toBe(7)
+    // bump-path side effects must not have happened
+    expect(mockEsIndex).not.toHaveBeenCalled()
+  })
+
+  it("Path D (bump rollback on parent ResearchVersion 409): deletes the new dataset doc and returns null", async () => {
+    mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1" }), _seq_no: 5, _primary_term: 2 })
+    mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+      humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: "v2", uids: ["owner-1"],
+    }))
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 10,
+      primaryTerm: 2,
+    })
+    mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: 1 } } })
+    mockEsIndex.mockResolvedValueOnce({})
+    mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+      doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v2", version: "v2", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+      seqNo: 20,
+      primaryTerm: 3,
+    })
+    // parent.draftVersion ResearchVersion update fails with 409
+    mockEsUpdate.mockRejectedValueOnce(optimisticLockError())
+    mockEsDelete.mockResolvedValueOnce({})
+
+    const result = await dataset.updateDataset("JGAD000001", "v1", { releaseDate: "2024-09-01" }, 5, 2)
+
+    expect(result).toBeNull()
+    // rollback: new dataset doc deleted
+    const delArgs = mockEsDelete.mock.calls[0]?.[0] as { id: string }
+    expect(delArgs.id).toBe("JGAD000001-v2")
+  })
+
+  it("PBT (Path A): bumped Dataset version is exactly max_existing + 1 and rewires parent.draftVersion accordingly", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 1, max: 99 }), async (maxExisting) => {
+        mockEsGet.mockReset()
+        mockEsSearch.mockReset()
+        mockEsIndex.mockReset()
+        mockEsUpdate.mockReset()
+        mockGetResearchDoc.mockReset()
+        mockGetResearchVersionWithSeqNo.mockReset()
+
+        mockEsGet.mockResolvedValueOnce({ found: true, _source: createMockDatasetDoc({ datasetId: "JGAD000001", version: "v1", humId: "hum0001" }), _seq_no: 5, _primary_term: 2 })
+        mockGetResearchDoc.mockResolvedValueOnce(createMockResearchDoc({
+          humId: "hum0001", status: "draft", latestVersion: "v1", draftVersion: `v${maxExisting + 1}`, uids: ["owner-1"],
+        }))
+        mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+          doc: createMockResearchVersionDoc({ humVersionId: "hum0001-v1", version: "v1", datasets: [{ datasetId: "JGAD000001", version: "v1" }] }),
+          seqNo: 10,
+          primaryTerm: 2,
+        })
+        mockEsSearch.mockResolvedValueOnce({ aggregations: { max_version: { value: maxExisting } } })
+        mockEsIndex.mockResolvedValueOnce({})
+        mockGetResearchVersionWithSeqNo.mockResolvedValueOnce({
+          doc: createMockResearchVersionDoc({
+            humVersionId: `hum0001-v${maxExisting + 1}`,
+            version: `v${maxExisting + 1}`,
+            datasets: [{ datasetId: "JGAD000001", version: "v1" }],
+          }),
+          seqNo: 20,
+          primaryTerm: 3,
+        })
+        mockEsUpdate.mockResolvedValueOnce({})
+
+        const result = await dataset.updateDataset("JGAD000001", "v1", {}, 5, 2)
+
+        const expectedVersion = `v${maxExisting + 1}`
+        return result?.version === expectedVersion
+      }),
+      { numRuns: 30 },
+    )
   })
 })
 

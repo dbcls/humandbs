@@ -324,8 +324,10 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     throw new ConflictError()
   }
 
-  // Get updated seqNo/primaryTerm
-  const updatedWithSeqNo = await getDatasetWithSeqNo(datasetId, version)
+  // Get updated seqNo/primaryTerm — use the post-update version, which may
+  // differ from `version` (the URL-resolved current version) when a draft-cycle
+  // bump created a new Dataset version document.
+  const updatedWithSeqNo = await getDatasetWithSeqNo(datasetId, updated.version)
   if (!updatedWithSeqNo) {
     throw new NotFoundError("Updated dataset not found")
   }

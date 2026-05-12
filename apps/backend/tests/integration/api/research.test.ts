@@ -553,10 +553,11 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       // `canAccessResearchDoc`.
       const detail = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
       expect(detail.status).toBe(404)
-      // Note: GET /research/{humId}/versions returns 200 for admin on a deleted
-      // Research because `canAccessResearchDoc` exits early when `authUser.isAdmin`
-      // (it does not yet check `status === "deleted"`). architecture.md mandates
-      // 404 for everyone, so this is a known impl gap; tracked separately.
+      // architecture.md § deleted: admin のみ /versions を 200 で閲覧可、owner 含むそれ以外は 404
+      const adminVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(admin) })
+      expect(adminVersions.status).toBe(200)
+      const ownerVersions = await app.request(url(`/research/${humId}/versions`), { headers: authHeaders(nonAdmin) })
+      expect(ownerVersions.status).toBe(404)
       // Associated Datasets are physically removed by `deleteByQuery`.
       const dsGet = await app.request(url(`/dataset/${dataset.datasetId}`), {
         headers: authHeaders(admin),
