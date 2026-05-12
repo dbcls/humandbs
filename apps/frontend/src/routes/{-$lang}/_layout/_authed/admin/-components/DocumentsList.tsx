@@ -31,6 +31,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslations } from "use-intl";
 import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/documents");
 
@@ -42,7 +43,9 @@ export function DocumentsList({
   selectedContentId: string | undefined;
 }) {
   const { q } = routeApi.useSearch();
-  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/documents");
+  const { setFilters } = useFilters(
+    "/{-$lang}/_layout/_authed/admin/documents",
+  );
   const documentsListQO = getDocumentsQueryOptions({ q });
   const { data: documents } = useSuspenseQuery(documentsListQO);
 
@@ -172,7 +175,12 @@ export function DocumentsList({
       groups.get(topSegment)!.push(doc);
     }
     for (const docs of groups.values()) {
-      docs.sort((a, b) => a.contentId.localeCompare(b.contentId));
+      docs.sort((a, b) => {
+        const aDepth = a.contentId.split("/").length - 1;
+        const bDepth = b.contentId.split("/").length - 1;
+        if (aDepth !== bDepth) return aDepth - bDepth;
+        return a.contentId.localeCompare(b.contentId);
+      });
     }
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [documents]);
@@ -237,95 +245,52 @@ export function DocumentsList({
       <ul className="overflow-y-auto">
         {groupedDocs.map(([topSegment, docs], groupIndex) => (
           <li key={topSegment}>
-            <ul>
-              {docs
-                .filter((doc) => !doc.contentId.includes("/"))
-                .map((doc) => {
-                  const isActive = doc.contentId === selectedContentId;
-                  const isProtected = PROTECTED_DOC_IDS.includes(
-                    doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
-                  );
+            {docs.map((doc, level) => {
+              const isActive = doc.contentId === selectedContentId;
+              const isProtected = PROTECTED_DOC_IDS.includes(
+                doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+              );
 
-                  return (
-                    <ListItem
-                      key={doc.contentId}
-                      role="menuitem"
-                      className="mb-2"
-                      onClick={() => onSelectDoc(doc.contentId)}
-                      isActive={isActive}
-                    >
-                      <AdminListItem
-                        id={doc.contentId}
-                        translations={doc.translations}
-                        menuItems={
-                          isProtected
-                            ? []
-                            : [
-                                {
-                                  label: <Label>Change ID...</Label>,
-                                  onSelect: () => setRenamingId(doc.contentId),
-                                },
-                                {
-                                  label: (
-                                    <Label className="text-danger flex justify-between">
-                                      <Trash2 className="size-4" />
-                                      Delete
-                                    </Label>
-                                  ),
-                                  onSelect: () =>
-                                    handleClickDeleteDoc(doc.contentId),
-                                  variant: "destructive",
-                                },
-                              ]
-                        }
-                      />
-                    </ListItem>
-                  );
-                })}
-              {docs.some((doc) => doc.contentId.includes("/")) && (
-                <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
-                  {docs
-                    .filter((doc) => doc.contentId.includes("/"))
-                    .map((doc) => {
-                      const isActive = doc.contentId === selectedContentId;
-                      const isProtected = PROTECTED_DOC_IDS.includes(
-                        doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
-                      );
-                      return (
-                        <ListItem
-                          key={doc.contentId}
-                          role="menuitem"
-                          className="mb-2"
-                          onClick={() => onSelectDoc(doc.contentId)}
-                          isActive={isActive}
-                        >
-                          <AdminListItem
-                            id={doc.contentId}
-                            translations={doc.translations}
-                            menuItems={
-                              isProtected
-                                ? []
-                                : [
-                                    {
-                                      label: "Change id...",
-                                      onSelect: () =>
-                                        setRenamingId(doc.contentId),
-                                    },
-                                    {
-                                      label: "Delete",
-                                      onSelect: () =>
-                                        handleClickDeleteDoc(doc.contentId),
-                                      variant: "destructive",
-                                    },
-                                  ]
-                            }
-                          />
-                        </ListItem>
-                      );
-                    })}
-                </ul>
-              )}
-            </ul>
+              return (
+                <ListItem
+                  key={doc.contentId}
+                  role="menuitem"
+                  className={cn("relative mb-2", {
+                    "pl-6 before:absolute before:top-0 before:left-1 before:block before:h-full before:w-1 before:bg-gray-200":
+                      level > 0,
+                  })}
+                  onClick={() => onSelectDoc(doc.contentId)}
+                  isActive={isActive}
+                >
+                  <AdminListItem
+                    id={doc.contentId}
+                    translations={doc.translations}
+                    menuItems={
+                      isProtected
+                        ? []
+                        : [
+                            {
+                              label: <Label>Change ID...</Label>,
+                              onSelect: () => setRenamingId(doc.contentId),
+                            },
+                            {
+                              label: (
+                                <Label>
+                                  <Trash2 />
+                                  Delete
+                                </Label>
+                              ),
+                              onSelect: () =>
+                                handleClickDeleteDoc(doc.contentId),
+                              variant: "destructive",
+                            },
+                          ]
+                    }
+                  />
+                </ListItem>
+              );
+            })}
+
             {groupIndex < groupedDocs.length - 1 && (
               <hr className="my-2 border-gray-200" />
             )}

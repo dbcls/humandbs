@@ -61,7 +61,7 @@ export function CollapsibleCard({
         {
           "w-20 overflow-clip **:min-w-max": !open,
           "w-cms-list-panel": open && !wLeftPanel,
-          "w-cms-side-panel **:min-w-max": open && wLeftPanel,
+          "w-cms-side-panel overflow-clip **:min-w-max": open && wLeftPanel,
         },
         className,
       )}

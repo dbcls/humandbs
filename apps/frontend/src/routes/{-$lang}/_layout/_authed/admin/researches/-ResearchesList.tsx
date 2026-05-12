@@ -32,6 +32,9 @@ import {
   DUMMY_HUM_ID,
   isDummyResearch,
 } from "./-dummyResearch";
+import { AdminListItem } from "../-components/AdminListItem";
+import { Trash2Icon } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 export function ResearchesList({
   lang,
@@ -219,20 +222,28 @@ export function ResearchesList({
                       "border border-dashed": isDummy,
                     })}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="block font-mono text-xs">
-                        {research.humId}
-                      </span>
-                      {research.status ? <Tag tag={research.status} /> : null}
-                    </div>
-                    <span className="block max-w-full truncate text-xs opacity-70">
-                      {title}
-                    </span>
-                    {englishTitle && englishTitle !== title ? (
-                      <span className="block max-w-full truncate text-xs opacity-70">
-                        {englishTitle}
-                      </span>
-                    ) : null}
+                    <AdminListItem
+                      header={research.humId}
+                      id={research.humId}
+                      translations={Object.entries(research.title).map(
+                        ([lang, title]) => ({
+                          lang,
+                          statuses: { [research.status]: title },
+                        }),
+                      )}
+                      menuItems={[
+                        {
+                          label: (
+                            <Label>
+                              <Trash2Icon />
+                              Delete
+                            </Label>
+                          ),
+                          onSelect: () => handleDelete(research.humId),
+                          variant: "destructive",
+                        },
+                      ]}
+                    ></AdminListItem>
                   </ListItem>
                 );
               })}

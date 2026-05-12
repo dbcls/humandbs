@@ -167,8 +167,8 @@ export function ContentList({
                   menuItems={[
                     {
                       label: (
-                        <Label className="text-danger flex justify-between">
-                          <Trash2 className="size-4" />
+                        <Label>
+                          <Trash2 />
                           Delete
                         </Label>
                       ),

@@ -354,8 +354,8 @@ function AlertsList({
                           ? [
                               {
                                 label: (
-                                  <Label className="flex justify-between">
-                                    <Trash2Icon className="size-4" />
+                                  <Label>
+                                    <Trash2Icon />
                                     Delete
                                   </Label>
                                 ),
