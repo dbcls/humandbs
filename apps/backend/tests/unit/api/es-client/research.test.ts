@@ -94,7 +94,7 @@ beforeEach(() => {
   mockEsDeleteByQuery.mockReset()
 })
 
-// === generateNextHumId (Painless numeric aggregation, Step 5h onward) ===
+// === generateNextHumId (Painless numeric aggregation) ===
 
 describe("generateNextHumId", () => {
   it("returns hum0001 when the aggregation has no value (empty index)", async () => {
@@ -111,7 +111,7 @@ describe("generateNextHumId", () => {
     expect(id).toBe("hum0100")
   })
 
-  it("returns 5-digit hum10000 when the aggregation max is 9999 (Step 5h regression)", async () => {
+  it("returns 5-digit hum10000 when the aggregation max is 9999", async () => {
     mockEsSearch.mockResolvedValue({ aggregations: { max_hum_num: { value: 9999 } } })
 
     const id = await research.generateNextHumId()
@@ -441,7 +441,7 @@ describe("createResearch humId collision retry", () => {
     expect(result.research.humId).toBe("hum0001")
   })
 
-  it("Step 5h regression: 5-digit humIds remain monotonic across two creates (hum9999 → hum10000 → hum10001)", async () => {
+  it("5-digit humIds remain monotonic across two creates (hum9999 → hum10000 → hum10001)", async () => {
     mockEsIndex.mockResolvedValue({})
     mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
 

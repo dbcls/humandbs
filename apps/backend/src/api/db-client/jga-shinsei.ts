@@ -67,14 +67,9 @@ export const fetchDsRaw = async (jdsIds: string[]): Promise<RawDsApplication[]> 
       WHERE nam.data_type = 1
         AND nam.ds_du_id = ANY(${jdsIds})
     ),
-    -- Merged the previously-separate jds_jsub / jds_hum / jds_jga CTEs into one aggregation.
-    -- All three walked the same submission_permission → entry → relation → accession chain
-    -- (the ~12M-row "relation" table dominates the cost) and only differed in which column
-    -- they captured. EXPLAIN ANALYZE on staging confirmed that the merged form (one walk +
-    -- a LEFT JOIN to metadata) beats the original (~36.8s → ~31.9s) and beats a 2-CTE split
-    -- (jds_acc + separate jds_hum, ~33.5s); the metadata LEFT JOIN inflates the GROUP BY
-    -- input less than the cost of scanning "relation" a second time. A larger speedup needs
-    -- an index on relation.entry_id, which has to go through the JGA team.
+    -- Project jsub_ids / jga_ids / hum_ids in one pass over the submission_permission →
+    -- entry → relation → accession chain (the ~12M-row "relation" table dominates the cost,
+    -- so it must be scanned only once). The LEFT JOIN to metadata feeds hum_ids only.
     jds_acc AS (
       SELECT
         na.ds_du_id AS jds_id,
@@ -164,10 +159,9 @@ export const fetchDuRaw = async (jduIds: string[]): Promise<RawDuApplication[]> 
       WHERE na.ds_du_id LIKE 'J-DU%'
         AND na.ds_du_id = ANY(${jduIds})
     ),
-    -- Merged jdu_jgad / jdu_jgas / jdu_hum into a single aggregation. All three
-    -- shared the use_permission → accession (→ relation → parent_acc → metadata)
-    -- chain — only the FILTER clauses differed — so combining them lets the
-    -- "relation" walk happen once instead of three times per list page.
+    -- Project jgad_ids / jgas_ids / hum_ids in one pass over the use_permission →
+    -- accession (→ relation → parent_acc → metadata) chain so the "relation" walk
+    -- happens once per list page instead of once per accession type.
     jdu_acc AS (
       SELECT
         jb.jdu_id,

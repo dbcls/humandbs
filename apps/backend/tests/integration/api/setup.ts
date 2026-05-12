@@ -139,8 +139,7 @@ export const itWithJga = (name: string, fn: () => Promise<void>): void => {
  * Required for `/jga-shinsei/*` endpoints which combine adminOnly with a live DB query.
  *
  * Live PostgreSQL aggregations on staging routinely exceed bun:test's 5s default
- * (the listing CTE can take 30s+). We extend the per-test timeout to 60s; chasing the
- * underlying query performance is tracked separately.
+ * (the listing CTE can take 30s+), so the per-test timeout is extended to 60s.
  */
 export const itWithJgaAdmin = (
   name: string,
