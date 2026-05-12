@@ -7,10 +7,11 @@
  * Note: GET /search/* endpoints have been removed in favor of POST endpoints.
  * Use GET /research and GET /dataset for simple list retrieval.
  */
-import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi"
+import { createRoute, z } from "@hono/zod-openapi"
 
 import { ARRAY_FIELD_MAPPINGS, RANGE_FIELD_MAPPINGS } from "@/api/es-client/filters"
 import { searchDatasets, searchResearches } from "@/api/es-client/search"
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
   searchResponse,
   singleReadOnlyResponse,
@@ -268,7 +269,7 @@ Returns an array of {value, count} pairs sorted by count descending. Pass filter
 
 // === Router ===
 
-export const searchRouter = new OpenAPIHono()
+export const searchRouter = createOpenAPIHono()
 
 searchRouter.use("*", optionalAuth)
 

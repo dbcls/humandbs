@@ -4,7 +4,7 @@
  * Handles CRUD operations and versioning for Dataset resources.
  * Dataset visibility is determined by linked Research status.
  */
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute } from "@hono/zod-openapi"
 
 import {
   deleteDataset,
@@ -16,6 +16,7 @@ import {
 } from "@/api/es-client/dataset"
 import { getResearchDoc } from "@/api/es-client/research"
 import { searchDatasets } from "@/api/es-client/search"
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
   listResponse,
   searchResponse,
@@ -241,7 +242,7 @@ A Dataset belongs to exactly one Research (1:N relationship). Returns an array w
 
 // === Router ===
 
-export const datasetRouter = new OpenAPIHono()
+export const datasetRouter = createOpenAPIHono()
 
 datasetRouter.use("*", optionalAuth)
 

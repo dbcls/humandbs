@@ -261,7 +261,7 @@ describe("buildDatasetMultiMatchQuery", () => {
           "experiments.searchable.targets",
         ],
         type: "best_fields",
-        fuzziness: "AUTO",
+        fuzziness: "AUTO:5,12",
       },
     })
     expect(result.bool.should).toContainEqual({ term: { humId: { value: "cancer", case_insensitive: true, boost: 10 } } })
@@ -362,7 +362,7 @@ describe("buildResearchMultiMatchQuery", () => {
           "summary.targets.en.text",
         ],
         type: "best_fields",
-        fuzziness: "AUTO",
+        fuzziness: "AUTO:5,12",
       },
     })
     expect(result.bool.should).toContainEqual({ term: { humId: { value: "genomics", case_insensitive: true, boost: 10 } } })
@@ -488,7 +488,13 @@ describe("buildResearchDateRangeFilters", () => {
 
   // PBT: result length equals number of non-undefined params
   it("result length equals number of defined params", () => {
-    const optionalDate = fc.option(fc.date().map(d => d.toISOString().slice(0, 10)), { nil: undefined })
+    // Constrain to a valid ISO range so toISOString() never throws (fc.date() default
+    // includes invalid dates such as 'Invalid Date' which break .toISOString()).
+    const optionalDate = fc.option(
+      fc.date({ min: new Date("1900-01-01"), max: new Date("2100-12-31"), noInvalidDate: true })
+        .map(d => d.toISOString().slice(0, 10)),
+      { nil: undefined },
+    )
 
     fc.assert(
       fc.property(
@@ -501,7 +507,8 @@ describe("buildResearchDateRangeFilters", () => {
             maxDateModified: maxMod,
           }
           const result = buildResearchDateRangeFilters(params)
-          const definedCount = [minPub, maxPub, minMod, maxMod].filter(v => v !== undefined).length
+          // Implementation treats nullish (null and undefined) values as "absent"
+          const definedCount = [minPub, maxPub, minMod, maxMod].filter(v => v != null).length
 
           return result.length === definedCount
         },

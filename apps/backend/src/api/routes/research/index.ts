@@ -3,8 +3,7 @@
  *
  * Aggregates all research-related route handlers.
  */
-import { OpenAPIHono } from "@hono/zod-openapi"
-
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { optionalAuth } from "@/api/middleware/auth"
 import { loadResearchAndAuthorize } from "@/api/middleware/resource-auth"
 
@@ -14,7 +13,7 @@ import { registerVersionHandlers } from "./versions"
 import { registerWorkflowHandlers } from "./workflow"
 
 // Create router
-export const researchRouter = new OpenAPIHono()
+export const researchRouter = createOpenAPIHono()
 
 // Apply authentication middleware
 researchRouter.use("*", optionalAuth)

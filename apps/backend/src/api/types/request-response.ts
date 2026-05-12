@@ -13,7 +13,6 @@ import {
   DsApplicationTransformedSchema,
   DuApplicationTransformedSchema,
 } from "../../crawler/types/jga-shinsei"
-
 // Import from es/types
 import {
   BilingualTextSchema,

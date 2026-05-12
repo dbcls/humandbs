@@ -1,11 +1,11 @@
 import { swaggerUI } from "@hono/swagger-ui"
-import { OpenAPIHono } from "@hono/zod-openapi"
 import { cors } from "hono/cors"
 import { HTTPException } from "hono/http-exception"
 
 import { ERROR_MESSAGES } from "@/api/constants"
 import { isAppError, toProblemDetails, createProblemDetails } from "@/api/errors"
 import { isConflictError } from "@/api/es-client/client"
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { logger } from "@/api/logger"
 import { getRequestId, requestIdMiddleware } from "@/api/middleware/request-id"
 import { adminRouter } from "@/api/routes/admin"
@@ -18,7 +18,7 @@ import { statsRouter } from "@/api/routes/stats"
 
 export const createApp = () => {
   const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
-  const app = new OpenAPIHono()
+  const app = createOpenAPIHono()
 
   // Middleware
   app.use("*", requestIdMiddleware)
@@ -42,7 +42,7 @@ export const createApp = () => {
   })
 
   // Create a sub-app for API routes
-  const api = new OpenAPIHono()
+  const api = createOpenAPIHono()
 
   // Utility routes
   api.route("/health", healthRouter)
@@ -156,6 +156,30 @@ Only admins can approve/reject submissions and unpublish content.
     url: openApiJsonPath,
   }))
 
+  // RFC 7807 Problem Details response helper
+  // Content-Type: application/problem+json per RFC 7807
+  const problemResponse = (
+    c: Parameters<Parameters<typeof app.onError>[0]>[1],
+    problemDetails: unknown,
+    status: 400 | 401 | 403 | 404 | 409 | 500,
+  ) => c.body(JSON.stringify(problemDetails), status, {
+    "Content-Type": "application/problem+json",
+  })
+
+  // Not-found handler: return RFC 7807 (Hono's default is plain "404 Not Found")
+  app.notFound((c) => {
+    const requestId = getRequestId(c)
+    const instance = c.req.path
+    const problemDetails = createProblemDetails(
+      404,
+      "NOT_FOUND",
+      `Path not found: ${instance}`,
+      requestId,
+      instance,
+    )
+    return problemResponse(c, problemDetails, 404)
+  })
+
   // Global error handler with RFC 7807 Problem Details support
   app.onError((err, c) => {
     const requestId = getRequestId(c)
@@ -170,7 +194,7 @@ Only admins can approve/reject submissions and unpublish content.
         code: err.code,
       })
       const problemDetails = toProblemDetails(err, requestId, instance)
-      return c.json(problemDetails, err.statusCode)
+      return problemResponse(c, problemDetails, err.statusCode)
     }
 
     // Handle HTTPException from Hono
@@ -181,14 +205,15 @@ Only admins can approve/reject submissions and unpublish content.
           : err.status === 404 ? "NOT_FOUND"
             : err.status === 409 ? "CONFLICT"
               : "INTERNAL_ERROR"
+      const status = err.status as 400 | 401 | 403 | 404 | 409 | 500
       const problemDetails = createProblemDetails(
-        err.status as 400 | 401 | 403 | 404 | 409 | 500,
+        status,
         code,
         err.cause ? (typeof err.cause === "string" ? err.cause : JSON.stringify(err.cause)) : err.message,
         requestId,
         instance,
       )
-      return c.json(problemDetails, err.status)
+      return problemResponse(c, problemDetails, status)
     }
 
     // Handle ES version conflict (409)
@@ -201,7 +226,7 @@ Only admins can approve/reject submissions and unpublish content.
         requestId,
         instance,
       )
-      return c.json(problemDetails, 409)
+      return problemResponse(c, problemDetails, 409)
     }
 
     // Default to 500 Internal Server Error
@@ -213,7 +238,7 @@ Only admins can approve/reject submissions and unpublish content.
       requestId,
       instance,
     )
-    return c.json(problemDetails, 500)
+    return problemResponse(c, problemDetails, 500)
   })
 
   return app

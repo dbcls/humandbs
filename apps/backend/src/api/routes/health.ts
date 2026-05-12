@@ -1,5 +1,6 @@
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute } from "@hono/zod-openapi"
 
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { ErrorSpec500 } from "@/api/routes/errors"
 import { HealthResponseSchema } from "@/types"
 
@@ -22,7 +23,7 @@ const healthRoute = createRoute({
   },
 })
 
-export const healthRouter = new OpenAPIHono()
+export const healthRouter = createOpenAPIHono()
 
 healthRouter.openapi(healthRoute, (c) => {
   const response = {
