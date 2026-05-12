@@ -70,7 +70,7 @@ export function ResearchDetails({
   const queryClient = useQueryClient();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
-  const { data: initialData, isError } = useSuspenseQuery(
+  const { data: initialData } = useSuspenseQuery(
     getResearchQueryOptions({ humId, lang }),
   );
 

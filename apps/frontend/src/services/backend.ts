@@ -214,6 +214,9 @@ interface APIService {
     accessToken: string,
   ): Promise<DatasetUpdateResponse>;
   deleteDataset(datasetId: string, accessToken: string): Promise<void>;
+  getJDSResearch(
+    id: string,
+  ): Promise<DeepOmit<ResearchDetailResponse, "rawHtml">>;
 }
 
 export const FixedPaginationSchema =
@@ -386,6 +389,14 @@ const api: APIService = {
       authHeader(accessToken),
     );
   },
+
+  getJDSResearch(id) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(getEmptyResearchDetails());
+      }, 1000);
+    });
+  },
 };
 
 export { api };
@@ -416,4 +427,52 @@ export function mapApiError<C extends string = never>(
       return { ok: false, error: detail, code: "UNAUTHORIZED" };
   }
   throw error;
+}
+
+/** Returns dummy data. For testing purposes only */
+function getEmptyResearchDetails(): DeepOmit<
+  ResearchDetailResponse,
+  "rawHtml"
+> {
+  const now = new Date().toISOString();
+
+  return {
+    data: {
+      humId: "",
+      url: { ja: null, en: null },
+      title: { ja: "Dummy Ja title", en: "Dummy en title" },
+      summary: {
+        aims: { ja: { text: "Dummy Ja aims" }, en: { text: "Dummy En aims" } },
+        methods: { ja: { text: "Dummy Ja methods" }, en: null },
+        targets: { ja: null, en: null },
+        url: { ja: [], en: [] },
+      },
+      dataProvider: [
+        {
+          name: { ja: { text: "dummy Ja data provider name" }, en: null },
+        },
+      ],
+      researchProject: [],
+      grant: [],
+      relatedPublication: [],
+      controlledAccessUser: [],
+      latestVersion: null,
+      datePublished: null,
+      dateModified: now,
+      status: "draft",
+      uids: [],
+      draftVersion: null,
+      humVersionId: "",
+      version: "",
+      versionReleaseDate: now,
+      datasets: [],
+      releaseNote: { ja: null, en: null },
+    },
+    meta: {
+      requestId: "",
+      timestamp: now,
+      _seq_no: 0,
+      _primary_term: 1,
+    },
+  };
 }
