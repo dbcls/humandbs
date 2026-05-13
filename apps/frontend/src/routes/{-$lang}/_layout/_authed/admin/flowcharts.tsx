@@ -951,22 +951,35 @@ function StepList({
     const newJaSteps = config.ja.steps.map((s) => {
       if (s.id !== id) return s;
       if (!patch.options) return { ...s, ...patch };
+      const oldEnStep = steps.find((step) => step.id === id);
+      const oldEnById = Object.fromEntries(
+        (oldEnStep?.options ?? []).map((o) => [o.id, o]),
+      );
       const jaById = Object.fromEntries(s.options.map((o) => [o.id, o]));
       const { options: _enOptions, ...rest } = patch;
       const reorderedJaOptions = patch.options
         .map((enOpt) => jaById[enOpt.id] ?? enOpt)
         .map((jaOpt, i) => {
-          // Carry over any structural fields (nextStep, linkedFlowchartId, link,
-          // linkTextEn/Ja) that may have been edited on the EN side.
+          // Carry over fields edited through the EN option row while preserving
+          // existing JA labels during unrelated reorder/destination edits.
           const enOpt = patch.options![i];
           if (!enOpt) return jaOpt;
+          const oldEnOpt = oldEnById[enOpt.id];
           return {
             ...jaOpt,
+            titleEn: enOpt.titleEn,
+            titleJa:
+              !oldEnOpt || enOpt.titleJa !== oldEnOpt.titleJa
+                ? enOpt.titleJa
+                : jaOpt.titleJa,
             nextStep: enOpt.nextStep,
             linkedFlowchartId: enOpt.linkedFlowchartId,
             link: enOpt.link,
             linkTextEn: enOpt.linkTextEn,
-            linkTextJa: enOpt.linkTextJa ?? jaOpt.linkTextJa,
+            linkTextJa:
+              !oldEnOpt || enOpt.linkTextJa !== oldEnOpt.linkTextJa
+                ? enOpt.linkTextJa
+                : jaOpt.linkTextJa,
           };
         });
       return { ...s, ...rest, options: reorderedJaOptions };
@@ -1185,6 +1198,7 @@ function StepCard({
           {/* Options */}
           <OptionList
             options={step.options}
+            jaOptions={jaStep?.options ?? []}
             allSteps={allSteps}
             currentStepId={step.id}
             otherFlowcharts={otherFlowcharts}
@@ -1211,6 +1225,7 @@ const OPTION_TYPE_PREFIX = "flowchart-option-";
  */
 function OptionList({
   options,
+  jaOptions,
   allSteps,
   currentStepId,
   otherFlowcharts,
@@ -1219,6 +1234,7 @@ function OptionList({
   onReorder,
 }: {
   options: NavigationFlowchartOption[];
+  jaOptions: NavigationFlowchartOption[];
   allSteps: NavigationFlowchartStep[];
   currentStepId: string;
   otherFlowcharts: NavigationFlowchartSummary[];
@@ -1253,6 +1269,7 @@ function OptionList({
               <OptionRow
                 key={opt.id}
                 option={opt}
+                jaOption={jaOptions.find((jaOpt) => jaOpt.id === opt.id)}
                 index={idx}
                 optionType={optionType}
                 allSteps={allSteps}
@@ -1313,6 +1330,7 @@ function getDestType(opt: NavigationFlowchartOption): DestType {
  */
 function OptionRow({
   option,
+  jaOption,
   index,
   optionType,
   allSteps,
@@ -1322,6 +1340,7 @@ function OptionRow({
   onDelete,
 }: {
   option: NavigationFlowchartOption;
+  jaOption?: NavigationFlowchartOption;
   index: number;
   optionType: string;
   allSteps: NavigationFlowchartStep[];
@@ -1382,7 +1401,10 @@ function OptionRow({
         </button>
         <div className="min-w-0 flex-1">
           <LocaleInlineEditor
-            value={{ en: option.titleEn, ja: option.titleJa }}
+            value={{
+              en: option.titleEn,
+              ja: jaOption?.titleJa ?? option.titleJa,
+            }}
             onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
             placeholder="Option label"
             displayClassName="text-xs"
