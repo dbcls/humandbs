@@ -83,7 +83,12 @@ const optimisticLockError = () => Object.assign(new Error("optimistic lock"), {
   meta: { statusCode: 409, body: { error: { type: "version_conflict_engine_exception", reason: "current version mismatch" } } },
 })
 
+// TODAY is only used for stubbing mock ES `_source` payloads (data that the
+// test supplies). Assertions on production-generated `dateModified` use the
+// `ISO_DATE` regex instead — relying on strict equality between two `new
+// Date()` calls is flaky when execution straddles UTC midnight.
 const TODAY = new Date().toISOString().split("T")[0]
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 beforeEach(() => {
   mockEsIndex.mockReset()
@@ -141,7 +146,7 @@ describe("createResearch", () => {
     expect(result.research.status).toBe("draft")
     expect(result.research.latestVersion).toBe(null)
     expect(result.research.draftVersion).toBe("v1")
-    expect(result.research.dateModified).toBe(TODAY)
+    expect(result.research.dateModified).toMatch(ISO_DATE)
     expect(result.version.version).toBe("v1")
     expect(result.version.humVersionId).toBe("hum0002-v1")
     // ResearchVersion is indexed first, then Research
@@ -249,7 +254,7 @@ describe("updateResearch", () => {
 
     const result = await research.updateResearch("hum0001", { title: { ja: "new", en: "new" } }, 4, 1)
     expect(result).not.toBeNull()
-    expect(result?.dateModified).toBe(TODAY)
+    expect(result?.dateModified).toMatch(ISO_DATE)
 
     // Optimistic lock parameters propagated to ES
     const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { if_seq_no: number; if_primary_term: number }
@@ -326,7 +331,7 @@ describe("updateResearchStatus", () => {
 
     const result = await research.updateResearchStatus("hum0001", "review", 5, 1)
     expect(result).not.toBeNull()
-    expect(result?.dateModified).toBe(TODAY)
+    expect(result?.dateModified).toMatch(ISO_DATE)
     expect(result?.seqNo).toBe(6)
   })
 
@@ -351,7 +356,7 @@ describe("deleteResearch", () => {
     const updateArgs = mockEsUpdate.mock.calls[0]?.[0] as { body: { doc: { status: string; draftVersion: null; dateModified: string } } }
     expect(updateArgs.body.doc.status).toBe("deleted")
     expect(updateArgs.body.doc.draftVersion).toBeNull()
-    expect(updateArgs.body.doc.dateModified).toBe(TODAY)
+    expect(updateArgs.body.doc.dateModified).toMatch(ISO_DATE)
 
     const delQueryArgs = mockEsDeleteByQuery.mock.calls[0]?.[0] as { index: string; query: { term: { humId: string } } }
     expect(delQueryArgs.index).toBe("dataset")

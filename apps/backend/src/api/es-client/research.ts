@@ -160,12 +160,17 @@ export const getResearchDetail = async (
  * `humId desc` keyword sort puts `hum9999` ahead of `hum10000` (codepoint
  * order), so we run a Painless aggregation that parses the digits and takes
  * the numeric max.
+ *
+ * The aggregation is scoped to docs whose `humId` matches `hum[0-9]+` so that
+ * a malformed seed doc (missing field, non-`hum`-prefix, empty digits) cannot
+ * trigger a Painless shard failure on `Integer.parseInt`.
  */
 export const generateNextHumId = async (): Promise<string> => {
   const res = await esClient.search({
     index: ES_INDEX.research,
     size: 0,
     track_total_hits: false,
+    query: { regexp: { humId: "hum[0-9]+" } },
     aggs: {
       max_hum_num: {
         max: {

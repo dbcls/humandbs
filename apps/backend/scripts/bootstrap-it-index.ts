@@ -45,7 +45,16 @@ const DATASET_INDEX = process.env.HUMANDBS_ES_INDEX_DATASET ?? ""
 
 const FIXTURE_DIR = join(import.meta.dir, "..", "tests", "fixtures", "es")
 
-const FROM_PRODUCTION = process.argv.slice(2).includes("--from-production")
+const ACCEPTED_ARGS = new Set(["--from-production"])
+const rawArgs = process.argv.slice(2)
+const unknownArgs = rawArgs.filter(a => !ACCEPTED_ARGS.has(a))
+if (unknownArgs.length > 0) {
+  console.error(
+    `Unknown argument(s): ${unknownArgs.join(", ")}. Accepted: ${[...ACCEPTED_ARGS].join(", ")} (or none for the default minimal-seed mode). Forms like "--from-production=true" or "--from_production" are not recognized.`,
+  )
+  process.exit(1)
+}
+const FROM_PRODUCTION = rawArgs.includes("--from-production")
 
 const validateEnv = (): void => {
   if (INTEGRATION_TEST_FLAG !== "1") {
@@ -91,9 +100,16 @@ const createWithMapping = async (
   mapping: EsMapping | Record<string, unknown>,
 ): Promise<void> => {
   console.log(`Creating index ${indexName}`)
+  // Pin `refresh_interval: "1s"` on the `-it` index so mutating IT helpers
+  // (e.g. setOwnerUids) that read back immediately after a write don't
+  // become flaky if the cluster default is changed or if a production-tuned
+  // refresh interval is copied via --from-production.
+  const body: Record<string, unknown> = { ...mapping }
+  const existingSettings = (body.settings ?? {}) as Record<string, unknown>
+  body.settings = { ...existingSettings, refresh_interval: "1s" }
   await client.indices.create({
     index: indexName,
-    body: mapping,
+    body,
   })
 }
 

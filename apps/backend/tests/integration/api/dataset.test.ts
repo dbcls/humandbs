@@ -13,10 +13,13 @@ import { beforeAll, describe, expect } from "bun:test"
 import type { EsDataset, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
+  approveResearch,
   createDatasetForResearch,
   createDraftResearch,
+  createNewVersion,
   purgeResearch,
   setOwnerUids,
+  submitForReview,
 } from "./mutating-helpers"
 import {
   authHeaders,
@@ -45,11 +48,16 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     const app = getApp()
     const res = await app.request(url("/dataset?page=1&limit=5&lang=ja"))
     expect(res.status).toBe(200)
-    const json = (await res.json()) as SearchResponse<EsDataset>
+    const json = (await res.json()) as SearchResponse<EsDataset & { _seq_no?: number; _primary_term?: number }>
     expect(json.meta.pagination.page).toBe(1)
     expect(json.meta.pagination.limit).toBe(5)
     expect(json.data.length).toBeLessThanOrEqual(5)
     expect(json.data.length).toBeLessThanOrEqual(json.meta.pagination.total)
+    // Optimistic-lock fields are detail-only — list items must NOT leak them.
+    for (const item of json.data) {
+      expect(item._seq_no).toBeUndefined()
+      expect(item._primary_term).toBeUndefined()
+    }
   })
 
   itWithEs("IT-DATASET-02: pagination boundaries (parametrize)", async () => {
@@ -438,6 +446,73 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
         headers: authHeaders(admin),
       })
       expect(adminDel.status).toBe(204)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-T7: concurrent first-PUT bump produces exactly one new version (no orphan)", async ({ admin, nonAdmin }) => {
+    // Two parallel PUTs against a v1 Dataset whose parent Research just
+    // entered a v2 draft cycle must result in `{200, 409}` and a single new
+    // Dataset version (`v2`). The orphan-free invariant is what `refresh:
+    // "wait_for"` on the compensating delete (es-client/dataset.ts:404) is
+    // there to guarantee.
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      // 1. Set up a published Research with one Dataset at v1.
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      const ds = await createDatasetForResearch(nonAdmin, humId)
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+      // 2. Open a new draft cycle on the parent Research (latestVersion=v1, draftVersion=v2).
+      await createNewVersion(nonAdmin, humId)
+
+      // 3. Read the v1 Dataset back so both racers start from the same _seq_no.
+      const app = getApp()
+      const dsGet = await app.request(url(`/dataset/${ds.datasetId}?version=v1`), {
+        headers: authHeaders(nonAdmin),
+      })
+      expect(dsGet.status).toBe(200)
+      const dsJson = (await dsGet.json()) as SingleReadOnlyResponse<EsDataset> & {
+        meta: { _seq_no: number; _primary_term: number }
+      }
+
+      const putBody = JSON.stringify({
+        humId,
+        humVersionId: `${humId}-v2`,
+        releaseDate: ds.releaseDate ?? new Date().toISOString().split("T")[0],
+        criteria: ds.criteria ?? "Controlled-access (Type I)",
+        typeOfData: { ja: null, en: null },
+        experiments: [],
+        _seq_no: dsJson.meta._seq_no,
+        _primary_term: dsJson.meta._primary_term,
+      })
+      const headers = { ...authHeaders(nonAdmin), "Content-Type": "application/json" }
+
+      // 4. Fire both PUTs at the same time. Both will compute nextVersion=v2 and
+      //    race to `op_type:create` the new dataset doc; ES makes exactly one win.
+      const [a, b] = await Promise.all([
+        app.request(url(`/dataset/${ds.datasetId}/update?version=v1`), { method: "PUT", headers, body: putBody }),
+        app.request(url(`/dataset/${ds.datasetId}/update?version=v1`), { method: "PUT", headers, body: putBody }),
+      ])
+      const statuses = [a.status, b.status].sort((x, y) => x - y)
+      expect(statuses).toEqual([200, 409])
+
+      // 5. Versions endpoint must show exactly v1 + v2; the loser's compensating
+      //    delete (refresh:wait_for) must have removed any orphan it created.
+      const versions = await app.request(url(`/dataset/${ds.datasetId}/versions`), {
+        headers: authHeaders(admin),
+      })
+      expect(versions.status).toBe(200)
+      const vjson = (await versions.json()) as SingleReadOnlyResponse<{ version: string }[]>
+      const versionSet = new Set(vjson.data.map(d => d.version))
+      expect(versionSet.has("v1")).toBe(true)
+      expect(versionSet.has("v2")).toBe(true)
+      expect(versionSet.size).toBe(2)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

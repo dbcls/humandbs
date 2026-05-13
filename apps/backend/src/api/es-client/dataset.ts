@@ -401,9 +401,14 @@ const bumpDatasetVersion = async (
       refresh: "wait_for",
     })
   } catch (error) {
+    // Compensating delete on the freshly-created new-version doc when the
+    // parent ResearchVersion reference swap fails. `refresh: "wait_for"` so
+    // a follow-up GET / list does not observe the orphan during the visible
+    // refresh window (the caller will see the 409 we return below).
     await esClient.delete({
       index: ES_INDEX.dataset,
       id: nextEsId,
+      refresh: "wait_for",
     }, { ignore: [404] })
 
     if (error && typeof error === "object" && "meta" in error) {

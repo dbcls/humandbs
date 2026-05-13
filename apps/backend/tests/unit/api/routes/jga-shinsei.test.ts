@@ -110,6 +110,12 @@ describe("api/routes/jga-shinsei", () => {
       const body = await res.json() as { title?: string }
       expect(body.title).toBe("Unauthorized")
     })
+
+    it("does not invoke the DB layer when the caller is unauthenticated", async () => {
+      const app = getTestApp()
+      await app.request("/jga-shinsei/ds")
+      expect(mockListDs).not.toHaveBeenCalled()
+    })
   })
 
   // === IT-JGA-02: non-admin authenticated -> 403 ===

@@ -49,6 +49,10 @@ void mock.module("@/api/es-client/search", () => ({
     data: [],
     pagination: { page: 1, limit: 1, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
   })),
+  // Other modules in the es-client barrel import named exports from search.ts;
+  // re-export the constants that exist in production so importing modules don't
+  // crash at module-init time with "Export named 'X' not found".
+  MAX_RESULT_WINDOW: 10000,
 }))
 
 const { getTestApp } = await import("../helpers")

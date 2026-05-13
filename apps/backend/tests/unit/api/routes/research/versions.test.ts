@@ -189,6 +189,9 @@ describe("api/routes/research/versions", () => {
       })
 
       expect(res.status).toBe(401)
+      // The auth gate must short-circuit before any ES read or write.
+      expect(mockGetResearchWithSeqNo).not.toHaveBeenCalled()
+      expect(mockCreateResearchVersion).not.toHaveBeenCalled()
     })
 
     it("returns 404 when humId does not exist", async () => {
@@ -202,6 +205,7 @@ describe("api/routes/research/versions", () => {
       })
 
       expect(res.status).toBe(404)
+      expect(mockCreateResearchVersion).not.toHaveBeenCalled()
     })
 
     it("returns 409 on optimistic-lock failure (IT-VERSION-14)", async () => {

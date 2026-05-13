@@ -95,18 +95,38 @@ void mock.module("@/api/es-client/search", () => ({
   })),
 }))
 
-// Avoid pulling real ES through other es-client modules at import time
+// Avoid pulling real ES through other es-client modules at import time.
+// Named mocks for the mutating paths so 401 assertions can prove that the
+// auth gate short-circuits before any ES write is issued.
+const mockGetResearchWithSeqNo = mock(async () => null as ({ doc: unknown; seqNo: number; primaryTerm: number } | null))
+const mockCreateResearch = mock(async () => { throw new Error("not stubbed") })
+const mockUpdateResearch = mock(async () => null)
+const mockUpdateResearchStatus = mock(async () => null)
+const mockUpdateResearchUids = mock(async () => null)
+const mockDeleteResearch = mock(async () => false)
+const mockCreateResearchVersion = mock(async () => null)
+
 void mock.module("@/api/es-client/research", () => ({
-  getResearchWithSeqNo: mock(async () => null),
+  getResearchWithSeqNo: mockGetResearchWithSeqNo,
   getResearchDetail: mock(async () => null),
   getResearchDoc: mock(async () => null),
   generateNextHumId: mock(async () => "hum0001"),
-  createResearch: mock(async () => { throw new Error("not stubbed") }),
-  updateResearch: mock(async () => null),
-  updateResearchStatus: mock(async () => null),
-  updateResearchUids: mock(async () => null),
-  deleteResearch: mock(async () => false),
+  createResearch: mockCreateResearch,
+  updateResearch: mockUpdateResearch,
+  updateResearchStatus: mockUpdateResearchStatus,
+  updateResearchUids: mockUpdateResearchUids,
+  deleteResearch: mockDeleteResearch,
   getPendingReviews: mock(async () => []),
+}))
+
+void mock.module("@/api/es-client/research-version", () => ({
+  createResearchVersion: mockCreateResearchVersion,
+  listResearchVersionsSorted: mock(async () => null),
+  getResearchVersion: mock(async () => null),
+  getResearchVersionWithSeqNo: mock(async () => null),
+  listResearchVersions: mock(async () => []),
+  linkDatasetToResearch: mock(async () => undefined),
+  unlinkDatasetFromResearch: mock(async () => undefined),
 }))
 
 const { getTestApp } = await import("../../helpers")
@@ -122,6 +142,13 @@ const adminAuth = () => ({
 beforeEach(() => {
   searchCalls.length = 0
   mockSearchResearches.mockClear()
+  mockGetResearchWithSeqNo.mockClear()
+  mockCreateResearch.mockClear()
+  mockUpdateResearch.mockClear()
+  mockUpdateResearchStatus.mockClear()
+  mockUpdateResearchUids.mockClear()
+  mockDeleteResearch.mockClear()
+  mockCreateResearchVersion.mockClear()
 })
 
 describe("api/routes/research", () => {
@@ -163,6 +190,14 @@ describe("api/routes/research", () => {
         body: JSON.stringify({}),
       })
       expect(res.status).toBe(401)
+      // The auth gate must short-circuit before any ES read or write happens.
+      expect(mockGetResearchWithSeqNo).not.toHaveBeenCalled()
+      expect(mockCreateResearch).not.toHaveBeenCalled()
+      expect(mockUpdateResearch).not.toHaveBeenCalled()
+      expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
+      expect(mockUpdateResearchUids).not.toHaveBeenCalled()
+      expect(mockDeleteResearch).not.toHaveBeenCalled()
+      expect(mockCreateResearchVersion).not.toHaveBeenCalled()
     })
   })
 

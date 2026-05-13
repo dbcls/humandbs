@@ -58,12 +58,37 @@ const asString = (v: unknown, fallback = ""): string =>
 const asStringOrNull = (v: unknown): string | null | undefined =>
   v === null ? null : typeof v === "string" ? v : undefined
 
+/**
+ * Pull the optimistic-lock pair out of a response envelope. ES `_seq_no` is
+ * 0-based and `_primary_term` is 1-based, so silently defaulting either to
+ * `0`/`1` on missing meta would yield optimistic-lock false positives
+ * (the next PUT would appear to "lock against the right doc" when in fact
+ * the response shape was malformed). We throw instead so the test fails fast
+ * with a pointer to the actual problem.
+ */
+const requireSeqLock = (
+  meta: { _seq_no?: number; _primary_term?: number },
+  source: string,
+): { seqNo: number; primaryTerm: number } => {
+  const seqNo = meta._seq_no
+  const primaryTerm = meta._primary_term
+  if (typeof seqNo !== "number" || typeof primaryTerm !== "number") {
+    throw new Error(
+      `${source}: response meta is missing optimistic-lock fields ` +
+      `(_seq_no=${String(seqNo)}, _primary_term=${String(primaryTerm)}). ` +
+      "Mutating helpers depend on the API returning both as numbers.",
+    )
+  }
+  return { seqNo, primaryTerm }
+}
+
 const extractHandle = (json: SingleEnvelope<Record<string, unknown>>): ResearchHandle => {
   const data = json.data
+  const { seqNo, primaryTerm } = requireSeqLock(json.meta, "extractHandle")
   const handle: ResearchHandle = {
     humId: asString(data.humId),
-    seqNo: typeof json.meta._seq_no === "number" ? json.meta._seq_no : 0,
-    primaryTerm: typeof json.meta._primary_term === "number" ? json.meta._primary_term : 1,
+    seqNo,
+    primaryTerm,
   }
   if (typeof data.status === "string") handle.status = data.status
   const latest = asStringOrNull(data.latestVersion)
@@ -80,12 +105,13 @@ const extractDatasetHandle = (
   json: SingleEnvelope<Record<string, unknown>>,
 ): DatasetHandle => {
   const data = json.data
+  const { seqNo, primaryTerm } = requireSeqLock(json.meta, "extractDatasetHandle")
   return {
     datasetId: asString(data.datasetId),
     humId: asString(data.humId),
     version: asString(data.version, "v1"),
-    seqNo: typeof json.meta._seq_no === "number" ? json.meta._seq_no : 0,
-    primaryTerm: typeof json.meta._primary_term === "number" ? json.meta._primary_term : 1,
+    seqNo,
+    primaryTerm,
     releaseDate: typeof data.releaseDate === "string" ? data.releaseDate : undefined,
     criteria: typeof data.criteria === "string" ? data.criteria : undefined,
     experiments: Array.isArray(data.experiments) ? data.experiments : undefined,
@@ -130,10 +156,7 @@ export const getResearchSeqNo = async (
   const res = await app.request(url(`/research/${humId}`), { headers: authHeaders(token) })
   expect(res.status).toBe(200)
   const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>
-  return {
-    seqNo: typeof json.meta._seq_no === "number" ? json.meta._seq_no : 0,
-    primaryTerm: typeof json.meta._primary_term === "number" ? json.meta._primary_term : 1,
-  }
+  return requireSeqLock(json.meta, `getResearchSeqNo(${humId})`)
 }
 
 /**
@@ -161,16 +184,37 @@ export const setOwnerUids = async (
   expect(res.status).toBe(200)
   const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>
 
-  // Re-GET to confirm the uids landed (search refresh / get refresh window).
-  const verify = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
-  const verifyJson = (await verify.json()) as SingleEnvelope<{ uids?: string[] }>
-  const observed = verifyJson.data.uids ?? []
+  // Re-GET to confirm the uids landed. The PUT uses `refresh: "wait_for"` and
+  // the `-it` index is pinned to `refresh_interval: "1s"`, so this normally
+  // succeeds on the first read; the retry loop is a defense-in-depth against
+  // cluster-level pauses or CI jitter so we don't get flaky failures.
+  const VERIFY_ATTEMPTS = 5
+  const VERIFY_DELAY_MS = 100
+  let verifyJson: SingleEnvelope<{ uids?: string[] }> | null = null
+  let observed: string[] = []
+  for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt++) {
+    const verify = await app.request(url(`/research/${humId}`), { headers: authHeaders(admin) })
+    verifyJson = (await verify.json()) as SingleEnvelope<{ uids?: string[] }>
+    observed = verifyJson.data.uids ?? []
+    if (uids.every(uid => observed.includes(uid))) break
+    if (attempt < VERIFY_ATTEMPTS - 1) {
+      await new Promise(resolve => setTimeout(resolve, VERIFY_DELAY_MS))
+    }
+  }
   for (const uid of uids) expect(observed).toContain(uid)
+
+  // Prefer the verify GET's lock fields (they reflect the post-write state).
+  // Fall back to the PUT response only if the verify meta is unusable — both
+  // can't be missing because requireSeqLock would have thrown earlier.
+  if (!verifyJson) throw new Error(`setOwnerUids(${humId}): verify GET produced no JSON`)
+  const verifyLock = typeof verifyJson.meta._seq_no === "number" && typeof verifyJson.meta._primary_term === "number"
+    ? { seqNo: verifyJson.meta._seq_no, primaryTerm: verifyJson.meta._primary_term }
+    : requireSeqLock(json.meta, `setOwnerUids(${humId}) put-response`)
 
   return {
     humId,
-    seqNo: typeof verifyJson.meta._seq_no === "number" ? verifyJson.meta._seq_no : json.meta._seq_no ?? 0,
-    primaryTerm: typeof verifyJson.meta._primary_term === "number" ? verifyJson.meta._primary_term : json.meta._primary_term ?? 1,
+    seqNo: verifyLock.seqNo,
+    primaryTerm: verifyLock.primaryTerm,
   }
 }
 
@@ -192,10 +236,11 @@ const callWorkflow = async (
   })
   expect(res.status).toBe(200)
   const json = (await res.json()) as WorkflowResponse
+  const { seqNo, primaryTerm } = requireSeqLock(json.meta, `${action}(${humId})`)
   return {
     humId,
-    seqNo: typeof json.meta._seq_no === "number" ? json.meta._seq_no : 0,
-    primaryTerm: typeof json.meta._primary_term === "number" ? json.meta._primary_term : 1,
+    seqNo,
+    primaryTerm,
     status: json.data.status,
     dateModified: json.data.dateModified,
   }
@@ -248,10 +293,11 @@ export const createNewVersion = async (
   })
   expect(res.status).toBe(201)
   const json = (await res.json()) as SingleEnvelope<Record<string, unknown>>
+  const { seqNo, primaryTerm } = requireSeqLock(json.meta, `createNewVersion(${humId})`)
   return {
     humId,
-    seqNo: typeof json.meta._seq_no === "number" ? json.meta._seq_no : 0,
-    primaryTerm: typeof json.meta._primary_term === "number" ? json.meta._primary_term : 1,
+    seqNo,
+    primaryTerm,
     draftVersion: typeof json.data.version === "string" ? json.data.version : undefined,
   }
 }

@@ -228,9 +228,11 @@ describe("api/middleware/auth", () => {
       const res = await app.request("/admin/is-admin", { headers: bearerHeaders() })
 
       expect(res.status).toBe(200)
+      // jwtVerify is called twice (initial + after JWKS cache clear). We do not
+      // assert on createRemoteJWKSet's call count: that is internal to how the
+      // middleware refreshes JWKS and a future refactor (eg. a single fetch
+      // that internally retries) would needlessly break this test.
       expect(mockJwtVerify).toHaveBeenCalledTimes(2)
-      // createRemoteJWKSet is called twice: initial + after cache clear
-      expect(mockCreateRemoteJWKSet).toHaveBeenCalledTimes(2)
     })
 
     it("returns 401 when retry also fails with signature error", async () => {
@@ -288,12 +290,12 @@ describe("api/middleware/auth", () => {
     })
 
     it("treats unset env (HUMANDBS_BACKEND_ADMIN_UID_FILE) as no admins (IT-AUTH-10 env path)", async () => {
-      // Reload middleware so module-level ADMIN_UID_FILE picks up the unset env
+      // The middleware reads HUMANDBS_BACKEND_ADMIN_UID_FILE each time the
+      // admin-uids cache misses (auth.ts `getAdminUidFile`), so unsetting the
+      // env *after* clearing the cache really does exercise the env-unset
+      // branch — fs.readFile must not be touched.
       setEnv("HUMANDBS_BACKEND_ADMIN_UID_FILE", undefined)
-      // (the middleware already imported has captured ADMIN_UID_FILE at import time;
-      // since beforeEach previously set a path, this test relies on the ENOENT fallback
-      // instead. We still assert no admin is granted.)
-      setAdminUidsFileMissing()
+      __testing.clearAdminUidsCache()
       mockJwtVerify.mockImplementation(okClaims(ADMIN_USER_ID))
 
       const app = getTestApp()
@@ -302,9 +304,10 @@ describe("api/middleware/auth", () => {
       expect(res.status).toBe(200)
       const body = await res.json() as { data: { isAdmin: boolean } }
       expect(body.data.isAdmin).toBe(false)
-
-      // restore env so subsequent tests have a path again
-      setEnv("HUMANDBS_BACKEND_ADMIN_UID_FILE", ORIGINAL_ENV.HUMANDBS_BACKEND_ADMIN_UID_FILE ?? "/fake/admin_uids.json")
+      // Crucially: when env is unset the middleware must short-circuit before
+      // reading any file. If a future refactor accidentally re-reads on the
+      // unset branch (e.g. with a default path), this assertion catches it.
+      expect(mockReadFile).not.toHaveBeenCalled()
     })
 
     it("treats malformed (non-array) admin_uids.json as empty without throwing", async () => {

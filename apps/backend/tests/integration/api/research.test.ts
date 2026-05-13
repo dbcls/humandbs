@@ -9,6 +9,8 @@
  */
 import { beforeAll, describe, expect } from "bun:test"
 
+import { esClient, ES_INDEX } from "@/api/es-client"
+import { generateNextHumId } from "@/api/es-client/research"
 import type { EsResearch, SearchResponse, SingleReadOnlyResponse } from "@/api/types"
 
 import {
@@ -58,16 +60,23 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     // ResearchSummary list shape (empirical staging):
     //   - status === "published"
     //   - uids / draftVersion / latestVersion are omitted (the list is a lean summary)
+    //   - item-level `_seq_no` / `_primary_term` must NOT leak (those belong to detail)
     //   - `versions` is a non-empty array of `{ version, releaseDate }`
     const app = getApp()
     const res = await app.request(url("/research?page=1&limit=10"))
     expect(res.status).toBe(200)
-    const json = (await res.json()) as SearchResponse<ResearchSummary & { versions?: { version: string }[] }>
+    const json = (await res.json()) as SearchResponse<ResearchSummary & {
+      versions?: { version: string }[]
+      _seq_no?: number
+      _primary_term?: number
+    }>
     for (const item of json.data) {
       expect(item.status).toBe("published")
       expect(item.uids).toBeUndefined()
       expect(item.draftVersion).toBeUndefined()
       expect(item.latestVersion).toBeUndefined()
+      expect(item._seq_no).toBeUndefined()
+      expect(item._primary_term).toBeUndefined()
       const versions = item.versions ?? []
       expect(versions.length).toBeGreaterThanOrEqual(1)
     }
@@ -656,6 +665,95 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       expect(res.status).toBe(403)
       const json = (await res.json()) as { title?: string; detail?: string }
       expect(json.detail ?? "").toMatch(/parent Research is not in draft/i)
+    } finally {
+      if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-T1: generateNextHumId is robust against malformed humId seeds", async () => {
+    // The Painless aggregation in generateNextHumId calls
+    // `Integer.parseInt(doc['humId'].value.substring(3))`. Without a `humId`
+    // regex filter on the search query, a seed with a non-conforming `humId`
+    // (empty, missing the `hum` prefix, etc.) would crash the shard with a
+    // NumberFormatException. The IT seeds three deliberately malformed docs
+    // and asserts that generateNextHumId still returns a syntactically valid
+    // `hum\d{4,}` id, without bubbling a 500 / shard failure.
+    const seeds: { id: string; doc: Record<string, unknown> }[] = [
+      { id: "__t1_empty__", doc: { humId: "" } },
+      { id: "__t1_nonhum__", doc: { humId: "abc1234" } },
+      { id: "__t1_prefix_only__", doc: { humId: "hum" } },
+    ]
+    try {
+      for (const s of seeds) {
+        await esClient.index({
+          index: ES_INDEX.research,
+          id: s.id,
+          body: s.doc,
+          refresh: "wait_for",
+        })
+      }
+      // Should not throw a Painless shard failure even with the malformed seeds present.
+      const nextId = await generateNextHumId()
+      expect(nextId).toMatch(/^hum\d{4,}$/)
+    } finally {
+      for (const s of seeds) {
+        await esClient.delete({
+          index: ES_INDEX.research,
+          id: s.id,
+          refresh: "wait_for",
+        }, { ignore: [404] })
+      }
+    }
+  })
+
+  itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from /research and POST /research/search", async ({ admin, nonAdmin }) => {
+    // A Research that was once published (latestVersion=v1) and then deleted
+    // (status="deleted") must disappear from public list and search. This
+    // exercises the search post-filter that drops `status === "deleted"`
+    // rows from the response.
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humId = ""
+    try {
+      const created = await createDraftResearch(admin)
+      humId = created.humId
+      await setOwnerUids(admin, humId, [sub!])
+      await submitForReview(nonAdmin, humId)
+      await approveResearch(admin, humId)
+      // Sanity check: at this point the humId is publicly visible.
+      const app = getApp()
+      const beforeDelete = await app.request(url("/research/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: humId, page: 1, limit: 50 }),
+      })
+      expect(beforeDelete.status).toBe(200)
+      const beforeJson = (await beforeDelete.json()) as SearchResponse<{ humId: string }>
+      expect(beforeJson.data.find(d => d.humId === humId)).toBeDefined()
+
+      const del = await app.request(url(`/research/${humId}/delete`), {
+        method: "POST",
+        headers: authHeaders(admin),
+      })
+      expect(del.status).toBe(204)
+
+      // Public listing must not include the deleted humId.
+      const list = await app.request(url("/research?limit=200"))
+      expect(list.status).toBe(200)
+      const listJson = (await list.json()) as SearchResponse<{ humId: string }>
+      expect(listJson.data.find(d => d.humId === humId)).toBeUndefined()
+
+      // POST /research/search with the humId as the query must return 0 hits.
+      const search = await app.request(url("/research/search"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: humId, page: 1, limit: 50 }),
+      })
+      expect(search.status).toBe(200)
+      const searchJson = (await search.json()) as SearchResponse<{ humId: string }>
+      expect(searchJson.data.find(d => d.humId === humId)).toBeUndefined()
+
+      humId = "" // already deleted; suppress cleanup.
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }
