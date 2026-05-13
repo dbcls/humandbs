@@ -52,12 +52,12 @@ export const downloadOne = async (
 }
 
 /**
- * Download all versions for a humId by trying v1, v2, v3... until 404
- * Returns the number of versions downloaded
+ * Download all versions for a humId by trying v1, v2, v3... until 404.
+ * Returns the number of versions downloaded.
  *
- * Phase 1: Download detail pages for all versions
- * Phase 2: Download release page for latest version only
- *   (latest release page contains release notes for all versions)
+ * Detail pages exist per version; the release page exists only on the latest
+ * version (and contains release notes for every prior version), so the release
+ * page is fetched once after the version range is known.
  */
 const downloadAllVersionsForHumId = async (
   humId: string,
@@ -68,7 +68,7 @@ const downloadAllVersionsForHumId = async (
   let errors = 0
   let latestVersion = 0
 
-  // Phase 1: Download detail pages for all versions
+  // Walk v1..vN by detail page until 404 marks the end of the range.
   for (let v = 1; v <= MAX_VERSION; v++) {
     const humVersionId = `${humId}-v${v}`
     let versionExists = false
@@ -98,7 +98,7 @@ const downloadAllVersionsForHumId = async (
     latestVersion = v
   }
 
-  // Phase 2: Download release page for latest version only
+  // Fetch the release page only for the latest version (it covers every version).
   if (latestVersion > 0) {
     const latestHumVersionId = `${humId}-v${latestVersion}`
     for (const lang of langs) {

@@ -45,7 +45,7 @@ import {
   ResearchDetailSchema,
   DatasetVersionItemSchema,
 } from "./views"
-import { RESEARCH_STATUS } from "./workflow"
+import { EditableResearchStatusSchema, RESEARCH_STATUS } from "./workflow"
 
 // === Response Schemas ===
 
@@ -270,9 +270,12 @@ export const ResearchWithStatusSchema = ResearchSchema.extend({
 export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
 
 /**
- * Research response with status info
+ * Research response for POST /research/new and PUT /research/{humId}/update.
+ * These endpoints can never observe `status: "deleted"` — deletion is a separate
+ * route — so the response status is narrowed to the editable subset.
  */
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
+  status: EditableResearchStatusSchema,
   datasets: z.array(ApiDatasetSchema).optional(), // Embedded datasets (for detail view)
 })
 export type ResearchResponse = z.infer<typeof ResearchResponseSchema>

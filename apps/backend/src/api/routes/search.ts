@@ -86,6 +86,8 @@ const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQue
 
   const sortMap: Record<string, "humId" | "title" | "releaseDate" | "datePublished" | "dateModified" | "relevance"> = {
     humId: "humId",
+    title: "title",
+    releaseDate: "releaseDate",
     datePublished: "datePublished",
     dateModified: "dateModified",
     relevance: "relevance",

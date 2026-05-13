@@ -515,7 +515,7 @@ export const searchDatasets = async (
     }
   }
 
-  // Build query (lang filter removed - documents are BilingualText)
+  // Build query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
   // Apply authorization filter: Dataset visibility depends on parent Research status
@@ -598,7 +598,7 @@ export const searchDatasets = async (
 const getHumIdsByDatasetFilters = async (
   params: ResearchSearchQuery,
 ): Promise<string[]> => {
-  // lang filter removed - documents are BilingualText
+  // BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
   must.push(...buildDatasetFilterClauses(params))
 
@@ -671,7 +671,8 @@ export const searchResearches = async (
     }
   }
 
-  // Step 1: If Dataset filters are present, get humIds from Dataset index
+  // Dataset filters (parent-child): resolve a humId allowlist from the Dataset
+  // index first, so the Research query can constrain by it.
   let humIdFilter: string[] | null = null
   if (hasDatasetFilters(params)) {
     humIdFilter = await getHumIdsByDatasetFilters(params)
@@ -685,7 +686,7 @@ export const searchResearches = async (
     }
   }
 
-  // Step 2: Build Research query (lang filter removed - documents are BilingualText)
+  // Build the Research query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
   // Status filter logic:

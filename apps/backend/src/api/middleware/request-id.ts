@@ -16,11 +16,7 @@ declare module "hono" {
   }
 }
 
-/**
- * Header name for request ID.
- * Standard header used by many services and load balancers.
- */
-export const REQUEST_ID_HEADER = "X-Request-ID"
+const REQUEST_ID_HEADER = "X-Request-ID"
 
 /**
  * Middleware that assigns a unique request ID to each request.

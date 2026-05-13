@@ -10,6 +10,14 @@
 import { z } from "zod"
 
 import { IsTumorSchema } from "../../es/types"
+import { PAGINATION } from "../constants"
+
+import {
+  DATASET_SEARCH_SORT,
+  RESEARCH_SEARCH_SORT,
+  SORT_ORDER,
+} from "./query-params"
+import { RESEARCH_STATUS } from "./workflow"
 
 // === Range Filter ===
 
@@ -166,19 +174,19 @@ export const ResearchSearchBodySchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(100)
-    .default(20)
-    .describe("Number of items per page (max: 100)"),
+    .max(PAGINATION.MAX_LIMIT)
+    .default(PAGINATION.DEFAULT_LIMIT)
+    .describe(`Number of items per page (max: ${PAGINATION.MAX_LIMIT})`),
 
   // Sort
   sort: z
-    .enum(["humId", "datePublished", "dateModified", "relevance"])
+    .enum(RESEARCH_SEARCH_SORT)
     .optional()
     .describe(
       "Sort field. Defaults to 'relevance' when query is provided, 'humId' otherwise",
     ),
   order: z
-    .enum(["asc", "desc"])
+    .enum(SORT_ORDER)
     .default("asc")
     .describe("Sort order. Defaults to 'desc' when sort=relevance"),
 
@@ -205,7 +213,7 @@ export const ResearchSearchBodySchema = z.object({
 
   // Status filter
   status: z
-    .enum(["draft", "review", "published", "deleted"])
+    .enum(RESEARCH_STATUS)
     .optional()
     .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
 
@@ -241,19 +249,19 @@ export const DatasetSearchBodySchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(100)
-    .default(20)
-    .describe("Number of items per page (max: 100)"),
+    .max(PAGINATION.MAX_LIMIT)
+    .default(PAGINATION.DEFAULT_LIMIT)
+    .describe(`Number of items per page (max: ${PAGINATION.MAX_LIMIT})`),
 
   // Sort
   sort: z
-    .enum(["datasetId", "releaseDate", "relevance"])
+    .enum(DATASET_SEARCH_SORT)
     .optional()
     .describe(
       "Sort field. Defaults to 'relevance' when query is provided, 'datasetId' otherwise",
     ),
   order: z
-    .enum(["asc", "desc"])
+    .enum(SORT_ORDER)
     .default("asc")
     .describe("Sort order. Defaults to 'desc' when sort=relevance"),
 

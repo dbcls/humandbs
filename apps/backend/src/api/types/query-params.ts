@@ -23,6 +23,14 @@ import { RESEARCH_STATUS } from "./workflow"
 
 export { PaginationQuerySchema } from "./query-schemas"
 
+// === Sort enums (shared across GET query params and POST body) ===
+
+export const RESEARCH_LISTING_SORT = ["humId", "title", "releaseDate"] as const
+export const RESEARCH_SEARCH_SORT = ["humId", "title", "releaseDate", "datePublished", "dateModified", "relevance"] as const
+export const DATASET_LISTING_SORT = ["datasetId", "releaseDate"] as const
+export const DATASET_SEARCH_SORT = ["datasetId", "releaseDate", "relevance"] as const
+export const SORT_ORDER = ["asc", "desc"] as const
+
 // === Common Query Schemas ===
 
 // Lang version query
@@ -73,11 +81,11 @@ export const ResearchListingQuerySchema = PaginationQuerySchema
   .extend(LangQueryBase.shape)
   .extend(ResponseControlQuerySchema.shape)
   .extend({
-    sort: z.enum(["humId", "title", "releaseDate"]).default("humId")
+    sort: z.enum(RESEARCH_LISTING_SORT).default("humId")
       .describe("Sort field"),
-    order: z.enum(["asc", "desc"]).default("asc")
+    order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order"),
-    status: z.enum(["draft", "review", "published", "deleted"]).optional()
+    status: z.enum(RESEARCH_STATUS).optional()
       .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
@@ -93,11 +101,11 @@ export const ResearchSearchQuerySchema = PaginationQuerySchema
   .extend(ResearchDateFilterQuerySchema.shape)
   .extend(DatasetFilterQuerySchema.shape)
   .extend({
-    sort: z.enum(["humId", "title", "releaseDate", "datePublished", "dateModified", "relevance"]).default("humId")
+    sort: z.enum(RESEARCH_SEARCH_SORT).default("humId")
       .describe("Sort field. Use 'relevance' for full-text search ranking"),
-    order: z.enum(["asc", "desc"]).default("asc")
+    order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
-    status: z.enum(["draft", "review", "published", "deleted"]).optional()
+    status: z.enum(RESEARCH_STATUS).optional()
       .describe("Filter by status. public: published only, authenticated: own draft/review/published, admin: all including deleted"),
     humId: z.string().optional()
       .describe("Filter by specific Research ID"),
@@ -114,9 +122,9 @@ export const DatasetListingQuerySchema = PaginationQuerySchema
   .extend(LangQueryBase.shape)
   .extend(ResponseControlQuerySchema.shape)
   .extend({
-    sort: z.enum(["datasetId", "releaseDate"]).default("datasetId")
+    sort: z.enum(DATASET_LISTING_SORT).default("datasetId")
       .describe("Sort field"),
-    order: z.enum(["asc", "desc"]).default("asc")
+    order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order"),
     humId: z.string().optional()
       .describe("Filter by parent Research ID"),
@@ -131,9 +139,9 @@ export const DatasetSearchQuerySchema = PaginationQuerySchema
   .extend(FulltextQuerySchema.shape)
   .extend(DatasetFilterQuerySchema.shape)
   .extend({
-    sort: z.enum(["datasetId", "releaseDate", "relevance"]).default("datasetId")
+    sort: z.enum(DATASET_SEARCH_SORT).default("datasetId")
       .describe("Sort field. Use 'relevance' for full-text search ranking"),
-    order: z.enum(["asc", "desc"]).default("asc")
+    order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
     humId: z.string().optional()
       .describe("Filter by parent Research ID (exact match)"),

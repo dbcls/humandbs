@@ -18,7 +18,7 @@ import {
   createdResponse,
   searchResponse,
   singleResponse,
-} from "@/api/helpers/response"
+} from "@/api/helpers"
 import {
   ConflictError,
   ForbiddenError,
@@ -26,6 +26,7 @@ import {
   UnauthorizedError,
 } from "@/api/routes/errors"
 import { createPagination } from "@/api/types/response"
+import { EditableResearchStatusSchema } from "@/api/types/workflow"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
 import { isOwnerOrAdmin } from "@/api/utils/version"
 
@@ -108,7 +109,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const { status, ...rest } = createResult.research
     const responseData = {
       ...rest,
-      status: status as "draft" | "review" | "published",
+      status: EditableResearchStatusSchema.parse(status),
       datasets: [],
     }
 
@@ -189,7 +190,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const { status: updatedStatus, ...restUpdated } = updated
     const responseData = {
       ...restUpdated,
-      status: updatedStatus as "draft" | "review" | "published",
+      status: EditableResearchStatusSchema.parse(updatedStatus),
       datasets: [],
     }
 

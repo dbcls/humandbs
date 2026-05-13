@@ -85,7 +85,7 @@ export const fetchDsRaw = async (jdsIds: string[]): Promise<RawDsApplication[]> 
       WHERE na.ds_du_id = ANY(${jdsIds})
       GROUP BY na.ds_du_id
     ),
-    -- hum_ids come from nbdc_application.hum_id directly (no metadata XML detour).
+    -- hum_ids are read from nbdc_application.hum_id.
     jds_hum AS (
       SELECT
         nam.ds_du_id AS jds_id,
@@ -185,7 +185,7 @@ export const fetchDuRaw = async (jduIds: string[]): Promise<RawDuApplication[]> 
       LEFT JOIN ${schema}.accession parent_acc ON r.parent = parent_acc.accession_id
       GROUP BY jb.jdu_id
     ),
-    -- hum_ids come from nbdc_application.hum_id directly (no metadata XML detour).
+    -- hum_ids are read from nbdc_application.hum_id.
     jdu_hum AS (
       SELECT
         na.ds_du_id AS jdu_id,
