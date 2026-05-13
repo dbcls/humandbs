@@ -5,6 +5,7 @@
 !.prettierignore
 !apps
 !bun.lock
+!bunfig.toml
 !docs
 !eslint.config.mjs
 !package.json

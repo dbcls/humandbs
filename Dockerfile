@@ -20,7 +20,7 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY package.json bun.lock ./
+COPY package.json bun.lock bunfig.toml ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
