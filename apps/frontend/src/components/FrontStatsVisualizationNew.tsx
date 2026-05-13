@@ -94,10 +94,12 @@ function useStats() {
 
 // --- Configuration & Materials ---
 
-const INITIAL_CAROUSEL_RADIUS = 280;
+const INITIAL_CAROUSEL_RADIUS = 560;
 const INITIAL_CAROUSEL_ROTATION_SPEED = 0.05; // Radians per second
 const BLOB_RESOLUTION = 40;
-const INITIAL_BLOB_SCALE = 160; // Scale of the [0,1] MarchingCubes grid in 3D units
+const INITIAL_BLOB_SCALE = 210; // Scale of the [0,1] MarchingCubes grid in 3D units
+const INITIAL_CAMERA_Y = 30;    // Vertical position of the camera
+const INITIAL_CAMERA_Z = 880;  // Zoom distance of the camera (adjust based on your preference!)
 
 // Beautiful, dreamy pastel palettes for the blobs
 const COLOR_PALETTES = [
@@ -174,8 +176,9 @@ function BlobCluster({
     
     // Scale for physical collision (D3 space is roughly [-50, 50])
     const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([8, 25]);
-    // Scale for visual size in MarchingCubes (strength)
-    const strengthScale = d3.scaleSqrt().domain([0, maxVal]).range([0.4, 1.8]);
+    // Scale for visual size in MarchingCubes (strength). 
+    // Kept extremely small (0.02 to 0.15) so the blob volume never hits the [0,1] grid boundary and gets clipped.
+    const strengthScale = d3.scaleSqrt().domain([0, maxVal]).range([0.02, 0.15]);
 
     setNodes((prev) => {
       return satellites.map((sat, i) => {
@@ -204,8 +207,8 @@ function BlobCluster({
     const simulation = (d3.forceSimulation as any)(nodes)
       .force("charge", (d3.forceManyBody() as any).strength(2)) // Slight repulsion
       .force("collide", (d3.forceCollide() as any).radius((d: SimNode) => d.d3Radius - 2).iterations(3)) // -2 allows them to overlap and fuse visually
-      .force("x", d3.forceX(0).strength(isActive ? 0.04 : 0.06)) // Active clusters are looser
-      .force("y", d3.forceY(0).strength(isActive ? 0.04 : 0.06))
+      .force("x", d3.forceX(0).strength(isActive ? 0.08 : 0.15)) // Pull strongly to center
+      .force("y", d3.forceY(0).strength(isActive ? 0.08 : 0.15))
       .alpha(1)
       .alphaDecay(0.01)
       .on("tick", () => {
@@ -224,9 +227,10 @@ function BlobCluster({
     mc.reset();
     
     // Map D3's [-50, 50] space to MarchingCubes [0, 1] space
+    // Using 0.002 multiplier to keep the blobs well within the [0.2, 0.8] range to avoid bounding box clipping
     nodes.forEach(node => {
-      const nx = 0.5 + (node.x || 0) * 0.01;
-      const ny = 0.5 + (node.y || 0) * 0.01;
+      const nx = 0.5 + (node.x || 0) * 0.002;
+      const ny = 0.5 + (node.y || 0) * 0.002;
       const nz = 0.5; // Flattened depth slightly, but organic due to radii
       
       // Keep within bounds
@@ -375,22 +379,22 @@ function CarouselScene({
 // --- Dynamic Camera Updater ---
 // React Three Fiber's <Canvas camera={...}> prop is only used on initial mount.
 // To dynamically update the camera/fog during HMR or state changes, we must use this component.
-function CameraUpdater({ radius }: { radius: number }) {
+function CameraUpdater({ cameraY, cameraZ, radius }: { cameraY: number, cameraZ: number, radius: number }) {
   const { camera, scene } = useThree();
 
   useEffect(() => {
-    const cameraZ = radius * 2.5;
     const fogStart = cameraZ - radius * 0.8;
     const fogEnd = cameraZ + radius * 1.5;
 
-    camera.position.set(0, radius * 0.3, cameraZ);
+    camera.position.set(0, cameraY, cameraZ);
+    (camera as THREE.PerspectiveCamera).far = 5000;
     camera.updateProjectionMatrix();
 
     if (scene.fog) {
       scene.fog.near = fogStart;
       scene.fog.far = fogEnd;
     }
-  }, [radius, camera, scene]);
+  }, [cameraY, cameraZ, radius, camera, scene]);
 
   return null;
 }
@@ -402,15 +406,36 @@ export default function FrontStatsVisualizationNew() {
   const [mode, setMode] = useState<"dataset" | "research">("dataset");
   const [isMounted, setIsMounted] = useState(false);
   
-  // Real-time Debug Parameters
-  const [debugParams, setDebugParams] = useState({
-    carouselRadius: INITIAL_CAROUSEL_RADIUS,
-    blobScale: INITIAL_BLOB_SCALE,
-    rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
-    transmission: 0.4,
-    clearcoat: 1.0,
-    thickness: 2.5,
+  // Real-time Debug Parameters with LocalStorage persistence
+  const [debugParams, setDebugParams] = useState(() => {
+    const defaults = {
+      carouselRadius: INITIAL_CAROUSEL_RADIUS,
+      blobScale: INITIAL_BLOB_SCALE,
+      rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
+      transmission: 0.4,
+      clearcoat: 1.0,
+      thickness: 2.5,
+      cameraY: INITIAL_CAMERA_Y,
+      cameraZ: INITIAL_CAMERA_Z,
+    };
+    
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("blob_debug_params");
+      if (saved) {
+        try {
+          return { ...defaults, ...JSON.parse(saved) };
+        } catch (e) {
+          console.warn("Failed to parse debug params from localStorage", e);
+        }
+      }
+    }
+    return defaults;
   });
+
+  // Save to localStorage whenever params change
+  useEffect(() => {
+    localStorage.setItem("blob_debug_params", JSON.stringify(debugParams));
+  }, [debugParams]);
 
   const navigate = useNavigate();
 
@@ -442,12 +467,6 @@ export default function FrontStatsVisualizationNew() {
     );
   }
 
-  // Dynamic Camera & Fog settings based on Carousel Radius
-  // If user increases carouselRadius, the camera pulls back automatically so items don't disappear.
-  const cameraZ = debugParams.carouselRadius * 2.5; 
-  const fogStart = cameraZ - debugParams.carouselRadius * 0.8;
-  const fogEnd = cameraZ + debugParams.carouselRadius * 1.5;
-
   return (
     <div className="w-full flex flex-col items-center gap-8 py-12 rounded-3xl mt-8 overflow-hidden bg-slate-50 shadow-inner relative">
       
@@ -462,7 +481,7 @@ export default function FrontStatsVisualizationNew() {
           </label>
           <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Blob Scale</span><span className="font-mono text-accent">{debugParams.blobScale}</span></div>
-            <input type="range" min="80" max="300" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
+            <input type="range" min="80" max="800" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
           </label>
           <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Rotation Speed</span><span className="font-mono text-accent">{debugParams.rotationSpeed}</span></div>
@@ -480,6 +499,32 @@ export default function FrontStatsVisualizationNew() {
             <div className="flex justify-between"><span>Thickness</span><span className="font-mono text-accent">{debugParams.thickness}</span></div>
             <input type="range" min="0" max="10" step="0.5" value={debugParams.thickness} onChange={(e) => setDebugParams(p => ({...p, thickness: Number(e.target.value)}))} />
           </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Camera Y (Up/Down)</span><span className="font-mono text-accent">{debugParams.cameraY}</span></div>
+            <input type="range" min="-300" max="500" step="10" value={debugParams.cameraY} onChange={(e) => setDebugParams(p => ({...p, cameraY: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Camera Z (Zoom)</span><span className="font-mono text-accent">{debugParams.cameraZ}</span></div>
+            <input type="range" min="100" max="2000" step="10" value={debugParams.cameraZ} onChange={(e) => setDebugParams(p => ({...p, cameraZ: Number(e.target.value)}))} />
+          </label>
+          <button 
+            className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 rounded font-bold transition-colors"
+            onClick={() => {
+              localStorage.removeItem("blob_debug_params");
+              setDebugParams({
+                carouselRadius: INITIAL_CAROUSEL_RADIUS,
+                blobScale: INITIAL_BLOB_SCALE,
+                rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
+                transmission: 0.4,
+                clearcoat: 1.0,
+                thickness: 2.5,
+                cameraY: 80,
+                cameraZ: 700,
+              });
+            }}
+          >
+            Reset Defaults
+          </button>
         </div>
       </div>
 
@@ -510,10 +555,10 @@ export default function FrontStatsVisualizationNew() {
       {/* The Unified 3D Space */}
       <div className="relative w-full max-w-[1400px] h-[650px] cursor-grab active:cursor-grabbing">
         {/* We use perspective camera for natural 3D depth. fov=45 gives a nice cinematic lens */}
-        <Canvas camera={{ position: [0, debugParams.carouselRadius * 0.3, cameraZ], fov: 45 }}>
-          <CameraUpdater radius={debugParams.carouselRadius} />
+        <Canvas camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45, far: 5000 }}>
+          <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
           {/* Subtle atmospheric fog to blend the distant carousel items into the background */}
-          <fog attach="fog" args={['#f8fafc', fogStart, fogEnd]} />
+          <fog attach="fog" args={['#f8fafc', debugParams.cameraZ - debugParams.carouselRadius * 0.8, debugParams.cameraZ + debugParams.carouselRadius * 1.5]} />
           
           <Suspense fallback={null}>
             <CarouselScene 
