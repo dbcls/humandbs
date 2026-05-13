@@ -136,18 +136,18 @@ function RouteComponent() {
           </Suspense>
         </Card>
       </section>
-      <div className="w-full">
+      <div className="w-full mt-12">
+        <h2 className="text-xl font-bold mb-4 text-center text-secondary">New Visualization (Carousel)</h2>
+        <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Loading...</div>}>
+          <LazyFrontStatsNew />
+        </Suspense>
+      </div>
+
+      <div className="w-full mt-12">
         <h2 className="text-xl font-bold mb-4 text-center text-secondary">Old Visualization (Planet Chart)</h2>
         <Card className="overflow-hidden bg-transparent p-0">
           <LazyFrontStats />
         </Card>
-      </div>
-
-      <div className="w-full mt-12">
-        <h2 className="text-xl font-bold mb-4 text-center text-secondary">New Visualization (Bento Grid)</h2>
-        <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Loading...</div>}>
-          <LazyFrontStatsNew />
-        </Suspense>
       </div>
     </section>
   );

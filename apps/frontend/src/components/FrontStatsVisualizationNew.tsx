@@ -148,6 +148,16 @@ function useStats() {
 
 // --- Visual Components ---
 
+// --- Adjustable Layout Parameters ---
+const CAROUSEL_TILT_ANGLE = -25; // 見下ろし角度 (負の値で上から見下ろす、0で真正面)
+const CAROUSEL_RADIUS = 550;     // カルーセルの円の半径
+const CAROUSEL_PERSPECTIVE = 2000; // 遠近感の強さ (値が小さいほど遠近感が強くなる)
+const CAROUSEL_OFFSET_X = 550;   // カルーセル中心の左右ズレ (通常は RADIUS と同じ値にすると、手前のアイテムが画面中央に来ます)
+const CAROUSEL_VISIBLE_ITEMS = 10; // 表示するアイテムの数 (これより奥にあるものは非表示になります)
+
+// --- 連続的な回転のスピード調整 ---
+const CAROUSEL_ROTATION_SPEED = 2; // ずっと回転するスピード (度/秒)。マイナスにすると反時計回りになります。
+
 const COLOR_PALETTES = [
   ["#1a5fbd", "#1a96d2", "#2ebedb"], // Blues
   ["#eb0075", "#ff618e", "#ff8fa3"], // Pinks
@@ -191,11 +201,11 @@ function FluidCluster({
   const [nodes, setNodes] = useState<SimNode[]>([]);
   const containerSize = isActive ? 400 : 250;
 
-  // We only show top 15 satellites to avoid clutter, filter out 0 values for current mode
+  // タンパク質のような複雑な構造を見せるため、表示するノード数を増やします（最大30個）
   const satellites = useMemo(() => {
     return system.satellites
       .filter((s) => s[mode] > 0)
-      .slice(0, 15);
+      .slice(0, 30);
   }, [system, mode]);
 
   useEffect(() => {
@@ -208,7 +218,8 @@ function FluidCluster({
     
     const extent = d3.extent(satellites, (d: StatsSatellite) => d[mode]) as [number, number];
     const maxVal = Math.max(1, extent[1] ?? 1);
-    const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([5, isActive ? 45 : 25]);
+    // タンパク質風にするため、ノードのサイズを少し小さめにして密集させます
+    const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([5, isActive ? 35 : 20]);
 
     // Initialize or update nodes
     setNodes((prevNodes) => {
@@ -233,9 +244,9 @@ function FluidCluster({
   useEffect(() => {
     if (nodes.length === 0) return;
 
-    // Simulation forces
-    const strengthHover = isHovered ? -20 : 2; // Repel when hovered, attract when not
-    const collideMargin = isHovered ? 8 : -2;  // Gap when hovered, overlap when gooey
+    // Simulation forces (Tightly packed for protein aesthetic)
+    const strengthHover = isHovered ? -20 : 6; // より強く引き寄せて塊にする
+    const collideMargin = isHovered ? 8 : -8;  // 深く食い込ませて1つの表面に見せる
 
     const simulation = (d3.forceSimulation as any)(nodes)
       .force("charge", (d3.forceManyBody() as any).strength(strengthHover))
@@ -284,15 +295,44 @@ function FluidCluster({
         style={{ filter: isHovered ? "none" : `url(#gooey-${system.facet})` }}
       >
         <defs>
-          <filter id={`gooey-${system.facet}`}>
-            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+          {/* タンパク質（分子表面）のような 3D Blob フィルター */}
+          <filter id={`gooey-${system.facet}`} x="-30%" y="-30%" width="160%" height="160%">
+            {/* 1. Blur to merge shapes and create a height map */}
+            <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+            
+            {/* 2. Threshold for the gooey sharp edge */}
             <feColorMatrix
               in="blur"
               mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
-              result="goo"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -12"
+              result="gooey"
             />
-            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+            
+            {/* 3. Extract the alpha channel to act as a 3D bump map */}
+            <feColorMatrix
+              in="blur"
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+              result="bumpMap"
+            />
+            
+            {/* 4. Diffuse Lighting (Soft shadows) */}
+            <feDiffuseLighting in="bumpMap" surfaceScale="12" diffuseConstant="1.2" result="diffuse" lightingColor="#ffffff">
+              <fePointLight x={centerOffset - 60} y={centerOffset - 120} z="100" />
+            </feDiffuseLighting>
+            
+            {/* 5. Specular Lighting (Shiny wet highlights) */}
+            <feSpecularLighting in="bumpMap" surfaceScale="15" specularConstant="1.8" specularExponent="35" lightingColor="#ffffff" result="specular">
+              <fePointLight x={centerOffset - 60} y={centerOffset - 120} z="100" />
+            </feSpecularLighting>
+            
+            {/* 6. Composite diffuse shadows onto base color */}
+            <feComposite in="diffuse" in2="gooey" operator="in" result="diffuseClipped" />
+            <feBlend in="diffuseClipped" in2="gooey" mode="multiply" result="shadedBase" />
+            
+            {/* 7. Add specular highlights on top */}
+            <feComposite in="specular" in2="gooey" operator="in" result="specularClipped" />
+            <feComposite in="specularClipped" in2="shadedBase" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" />
           </filter>
         </defs>
 
@@ -374,15 +414,83 @@ export default function FrontStatsVisualizationNew() {
   // Custom navigation to handle search params
   const navigate = useNavigate();
 
-  // Auto-play logic
+  // Auto-play logic (Continuous rotation via rAF)
+  const carouselAngleRef = useRef(0);
+  const itemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const activeIndexRef = useRef(0);
+
+  // --- HMR / パラメータ変更のリアルタイム反映用 ---
+  const paramsRef = useRef({
+    speed: CAROUSEL_ROTATION_SPEED,
+    visibleItems: CAROUSEL_VISIBLE_ITEMS,
+    offsetX: CAROUSEL_OFFSET_X,
+    radius: CAROUSEL_RADIUS
+  });
+  paramsRef.current = {
+    speed: CAROUSEL_ROTATION_SPEED,
+    visibleItems: CAROUSEL_VISIBLE_ITEMS,
+    offsetX: CAROUSEL_OFFSET_X,
+    radius: CAROUSEL_RADIUS
+  };
+
   useEffect(() => {
     if (isHovered || !stats) return;
     
-    const interval = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % stats.systems.length);
-    }, 4000);
-    
-    return () => clearInterval(interval);
+    let rafId: number;
+    let lastTime = performance.now();
+
+    const tick = (time: number) => {
+      const dt = time - lastTime;
+      lastTime = time;
+      
+      const p = paramsRef.current;
+
+      // Update continuous angle
+      carouselAngleRef.current += (p.speed * dt) / 1000;
+      
+      const total = stats.systems.length;
+      let minDiff = Infinity;
+      let closestIndex = 0;
+
+      stats.systems.forEach((sys, i) => {
+        const el = itemsRef.current[i];
+        if (!el) return;
+        
+        const baseAngle = i * (360 / total);
+        const worldAngle = baseAngle + carouselAngleRef.current;
+        
+        let norm = worldAngle % 360;
+        if (norm > 180) norm -= 360;
+        if (norm < -180) norm += 360;
+        
+        const diff = Math.abs(norm);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIndex = i;
+        }
+        
+        const maxDiffForVisible = Math.max(1, (p.visibleItems / 2)) * (360 / total);
+        const isVisible = diff <= maxDiffForVisible;
+        const opacity = isVisible ? Math.max(0.15, 1 - (diff / maxDiffForVisible) * 0.85) : 0;
+        
+        // 直接DOMを更新してパフォーマンスを最適化（CSSアニメーションを使わない）
+        el.style.transform = `translate(-50%, -50%) translateX(${p.offsetX}px) rotateY(${norm - 90}deg) translateZ(${p.radius}px) rotateY(90deg)`;
+        el.style.opacity = opacity.toString();
+        el.style.pointerEvents = opacity > 0.1 ? 'auto' : 'none';
+        el.style.zIndex = Math.round(100 - diff).toString();
+        el.style.filter = closestIndex === i ? 'drop-shadow(0 20px 30px rgba(0,0,0,0.15))' : 'none';
+      });
+
+      if (closestIndex !== activeIndexRef.current) {
+        activeIndexRef.current = closestIndex;
+        setActiveIndex(closestIndex);
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [isHovered, stats]);
 
   const handleNodeClick = (facet: string, value: string) => {
@@ -412,7 +520,8 @@ export default function FrontStatsVisualizationNew() {
   }
 
   return (
-    <div className="w-full flex flex-col items-center gap-8 py-12 rounded-2xl mt-8 overflow-hidden">
+    <div className="w-full flex flex-col items-center gap-8 py-12 rounded-2xl mt-8 overflow-hidden bg-slate-900">
+      {/* 🌟 背景色を変更する場合は、上の div にある bg-slate-100 をお好みの色（例：bg-white, bg-slate-900 など）に変更してください */}
       
       {/* Toggle Switch */}
       <div className="flex items-center bg-white p-1.5 rounded-full shadow-sm border border-slate-200">
@@ -438,47 +547,46 @@ export default function FrontStatsVisualizationNew() {
         </button>
       </div>
 
-      {/* Coverflow Carousel */}
-      <div className="relative w-full max-w-6xl h-[450px] flex items-center justify-center perspective-[1200px]">
-        {stats.systems.map((system, i) => {
-          // Calculate relative position (-2, -1, 0, 1, 2)
-          let offset = i - activeIndex;
-          const total = stats.systems.length;
-          
-          // Wrap around logic for circular carousel
-          if (offset < -Math.floor(total / 2)) offset += total;
-          if (offset > Math.floor(total / 2)) offset -= total;
-          
-          const isActive = offset === 0;
-          const isVisible = Math.abs(offset) <= 2; // only show 5 items max
-          
-          if (!isVisible) return null;
+      {/* Radial Cylindrical Carousel (Slide Projector) */}
+      <div 
+        className="relative w-full max-w-6xl h-[650px] flex items-center justify-center mt-4"
+        style={{ perspective: `${CAROUSEL_PERSPECTIVE}px` }}
+      >
+        {/* The 3D container that tilts the carousel for a "looking down" perspective */}
+        <div 
+          className="absolute w-full h-full pointer-events-none" 
+          style={{ transform: `rotateX(${CAROUSEL_TILT_ANGLE}deg)`, transformStyle: 'preserve-3d' }}
+        >
+          {stats.systems.map((system, i) => {
+            // Initial render state before rAF takes over
+            const total = stats.systems.length;
+            const baseAngle = i * (360 / total);
+            let norm = (baseAngle + carouselAngleRef.current) % 360;
+            if (norm > 180) norm -= 360;
+            if (norm < -180) norm += 360;
+            const diff = Math.abs(norm);
+            const isActive = diff < 10; // Approx
 
-          // Compute Transform
-          const translateX = offset * 220; // px spacing
-          const translateZ = Math.abs(offset) * -150; // push back
-          const rotateY = offset * -25; // angle inwards
-          const opacity = isActive ? 1 : 1 - Math.abs(offset) * 0.3;
-
-          return (
-            <div
-              key={system.facet}
-              className="absolute top-1/2 left-1/2 transition-all duration-700 ease-out"
-              style={{
-                transform: `translate(-50%, -50%) translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg)`,
-                zIndex: 10 - Math.abs(offset),
-                opacity: opacity,
-              }}
-            >
-              <FluidCluster
-                system={system}
-                mode={mode}
-                isActive={isActive}
-                isHovered={isActive && isHovered}
-                onHover={() => {
-                  if (isActive) setIsHovered(true);
-                  if (!isActive) setActiveIndex(i); // click/hover to focus
+            return (
+              <div
+                key={system.facet}
+                ref={(el) => itemsRef.current[i] = el}
+                className="absolute top-1/2 left-1/2 pointer-events-auto"
+                style={{
+                  transform: `translate(-50%, -50%) translateX(${CAROUSEL_OFFSET_X}px) rotateY(${norm - 90}deg) translateZ(${CAROUSEL_RADIUS}px) rotateY(90deg)`,
+                  opacity: 0, // 最初のフレームは非表示にしてチラつきを防ぐ
+                  willChange: 'transform, opacity' // GPU最適化
                 }}
+              >
+                <FluidCluster
+                  system={system}
+                  mode={mode}
+                  isActive={isActive}
+                  isHovered={isActive && isHovered}
+                  onHover={() => {
+                    if (isActive) setIsHovered(true);
+                    if (!isActive) setActiveIndex(i); // click/hover to focus
+                  }}
                 onLeave={() => {
                   if (isActive) setIsHovered(false);
                 }}
@@ -488,6 +596,7 @@ export default function FrontStatsVisualizationNew() {
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Indicators */}
