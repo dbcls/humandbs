@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
+  ArchiveRestore,
   Bell,
   Cuboid,
   Files,
@@ -145,6 +146,14 @@ function NavPanel() {
           <section className="flex flex-col gap-5 text-sm">
             <span>Static Pages</span>
             <div className="flex flex-col items-stretch gap-5 pl-5">
+              <PanelRootItem
+                title={
+                  <span>
+                    <ArchiveRestore className="mr-2 inline size-5 align-middle leading-normal" />
+                    Data Transfer
+                  </span>
+                }
+              />
               <PanelItem
                 title={
                   <span>
@@ -224,6 +233,19 @@ function NavPanel() {
         />
       </section>
     </CollapsibleCard>
+  );
+}
+
+function PanelRootItem({ title }: { title: React.ReactNode }) {
+  return (
+    <Link
+      variant={"nav"}
+      activeOptions={{ exact: true }}
+      className="data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground w-auto rounded-sm px-4 py-2"
+      to={"/{-$lang}/admin" as never}
+    >
+      {title}
+    </Link>
   );
 }
 
