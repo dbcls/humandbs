@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Html, Environment, ContactShadows } from "@react-three/drei";
+import * as THREE from "three";
+import { MarchingCubes as MarchingCubesImpl } from "three-stdlib";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
 
@@ -34,53 +38,24 @@ type StatsState = {
 };
 
 function normalizeStatsResponse(payload: unknown): NormalizedStats | null {
-  const data =
-    typeof payload === "object" && payload && "data" in payload
-      ? (payload as { data?: unknown }).data
-      : payload;
+  const data = typeof payload === "object" && payload && "data" in payload ? (payload as any).data : payload;
+  if (!data || typeof data !== "object") return null;
 
-  if (!data || typeof data !== "object") {
-    return null;
-  }
-
-  const stats = data as {
-    research?: { total?: number };
-    dataset?: { total?: number };
-    facets?: Record<
-      string,
-      Record<string, { research?: number; dataset?: number } | undefined>
-    >;
-  };
-
-  if (!stats.research?.total && !stats.dataset?.total && !stats.facets) {
-    return null;
-  }
+  const stats = data as any;
+  if (!stats.research?.total && !stats.dataset?.total && !stats.facets) return null;
 
   const systems: StatsSystem[] = [];
-
   for (const [facet, values] of Object.entries(stats.facets ?? {})) {
     const satellites: StatsSatellite[] = [];
-
-    for (const [value, counts] of Object.entries(values ?? {})) {
-      const research = Number(counts?.research ?? 0);
-      const dataset = Number(counts?.dataset ?? 0);
+    for (const [value, counts] of Object.entries(values as any ?? {})) {
+      const research = Number((counts as any)?.research ?? 0);
+      const dataset = Number((counts as any)?.dataset ?? 0);
       const total = research + dataset;
-
       if (total <= 0) continue;
-
-      satellites.push({
-        id: `${facet}:${value}`,
-        facet,
-        value,
-        research,
-        dataset,
-        total,
-      });
+      satellites.push({ id: `${facet}:${value}`, facet, value, research, dataset, total });
     }
-
     satellites.sort((a, b) => b.total - a.total);
     if (satellites.length === 0) continue;
-
     systems.push({
       facet,
       total: satellites.reduce((acc, sat) => acc + sat.total, 0),
@@ -88,11 +63,7 @@ function normalizeStatsResponse(payload: unknown): NormalizedStats | null {
     });
   }
 
-  // Filter out facets that might not be useful for coverflow
-  // e.g., fileTypes, hasPhenotypeData etc might be too generic.
-  // We keep the top 8 most rich facets
   systems.sort((a, b) => b.total - a.total);
-
   return {
     researchTotal: Number(stats.research?.total ?? 0),
     datasetTotal: Number(stats.dataset?.total ?? 0),
@@ -101,411 +72,363 @@ function normalizeStatsResponse(payload: unknown): NormalizedStats | null {
 }
 
 function useStats() {
-  const [state, setState] = useState<StatsState>({
-    loading: true,
-    error: "",
-    stats: null,
-  });
-
+  const [state, setState] = useState<StatsState>({ loading: true, error: "", stats: null });
   useEffect(() => {
     let mounted = true;
-
     async function load() {
       try {
         const payload = stubStats;
         await new Promise((resolve) => setTimeout(resolve, 300));
         const normalized = normalizeStatsResponse(payload);
-
-        if (!normalized) {
-          throw new Error("Unexpected stats payload format");
-        }
-
-        if (mounted) {
-          setState({ loading: false, error: "", stats: normalized });
-        }
+        if (!normalized) throw new Error("Unexpected stats payload format");
+        if (mounted) setState({ loading: false, error: "", stats: normalized });
       } catch (error) {
-        if (mounted) {
-          const message =
-            error instanceof Error ? error.message : "Unknown error";
-          setState({
-            loading: false,
-            error: `Could not load stats (${message}).`,
-            stats: null,
-          });
-        }
+        if (mounted) setState({ loading: false, error: `Could not load stats.`, stats: null });
       }
     }
-
     load();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
-
   return state;
 }
 
-// --- Visual Components ---
+// --- Configuration & Materials ---
 
-// --- Adjustable Layout Parameters ---
-const CAROUSEL_TILT_ANGLE = -25; // 見下ろし角度 (負の値で上から見下ろす、0で真正面)
-const CAROUSEL_RADIUS = 550;     // カルーセルの円の半径
-const CAROUSEL_PERSPECTIVE = 2000; // 遠近感の強さ (値が小さいほど遠近感が強くなる)
-const CAROUSEL_OFFSET_X = 550;   // カルーセル中心の左右ズレ (通常は RADIUS と同じ値にすると、手前のアイテムが画面中央に来ます)
-const CAROUSEL_VISIBLE_ITEMS = 10; // 表示するアイテムの数 (これより奥にあるものは非表示になります)
+const INITIAL_CAROUSEL_RADIUS = 280;
+const INITIAL_CAROUSEL_ROTATION_SPEED = 0.05; // Radians per second
+const BLOB_RESOLUTION = 40;
+const INITIAL_BLOB_SCALE = 160; // Scale of the [0,1] MarchingCubes grid in 3D units
 
-// --- 連続的な回転のスピード調整 ---
-const CAROUSEL_ROTATION_SPEED = 2; // ずっと回転するスピード (度/秒)。マイナスにすると反時計回りになります。
-
+// Beautiful, dreamy pastel palettes for the blobs
 const COLOR_PALETTES = [
-  ["#1a5fbd", "#1a96d2", "#2ebedb"], // Blues
-  ["#eb0075", "#ff618e", "#ff8fa3"], // Pinks
-  ["#2a5b73", "#4caf50", "#8bc34a"], // Greens
-  ["#673ab7", "#9c27b0", "#e1bee7"], // Purples
-  ["#ff9800", "#ffc107", "#ffeb3b"], // Oranges
+  ["#a2d2ff", "#bde0fe", "#ffafcc", "#ffc8dd"], // Cotton Candy
+  ["#cbb2fe", "#e2cbf7", "#f1e3f3", "#c6d8ff"], // Lavender
+  ["#9bf6ff", "#a0c4ff", "#bdb2ff", "#ffc6ff"], // Bright Pastels
+  ["#ffcdb2", "#ffb4a2", "#e5989b", "#b5838d"], // Warm Sunset
+  ["#a0e8af", "#ffb5a7", "#fcd5ce", "#f8edeb"], // Mint/Peach
+  ["#caf0f8", "#90e0ef", "#00b4d8", "#0077b6"], // Deep Ocean
+  ["#d8e2dc", "#ffe5d9", "#ffcad4", "#f4acb7"], // Rosy
+  ["#e0aaff", "#c77dff", "#9d4edd", "#7b2cbf"], // Royal Purple
 ];
 
+// Shared material for all blobs for maximum performance and unified lighting
+const blobMaterial = new THREE.MeshPhysicalMaterial({
+  roughness: 0.1,
+  transmission: 0.4,
+  thickness: 2.5,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.1,
+  vertexColors: true,
+  envMapIntensity: 1.5,
+});
+
 type SimNode = StatsSatellite & { 
-  targetRadius: number;
-  currentRadius: number;
-  color: string;
+  d3Radius: number;
+  strength: number;
+  currentStrength: number;
+  color: THREE.Color;
   x?: number;
   y?: number;
   vx?: number;
   vy?: number;
-  index?: number;
 };
 
-function FluidCluster({
+// --- Single Blob Cluster Component ---
+
+function BlobCluster({
   system,
   mode,
   isActive,
-  isHovered,
-  onHover,
-  onLeave,
-  onClickNode,
-  paletteIndex
+  position,
+  rotation,
+  paletteIndex,
+  onClick,
+  blobScale
 }: {
   system: StatsSystem;
   mode: "research" | "dataset";
   isActive: boolean;
-  isHovered: boolean;
-  onHover: () => void;
-  onLeave: () => void;
-  onClickNode: (facet: string, value: string) => void;
+  position: [number, number, number];
+  rotation: [number, number, number];
   paletteIndex: number;
+  onClick: (facet: string, value: string) => void;
+  blobScale: number;
 }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const simulationRef = useRef<any>(null);
   const [nodes, setNodes] = useState<SimNode[]>([]);
-  const containerSize = isActive ? 400 : 250;
-
-  // タンパク質のような複雑な構造を見せるため、表示するノード数を増やします（最大30個）
+  const simulationRef = useRef<any>(null);
+  
+  // Create a raw MarchingCubes instance from three-stdlib
+  const mc = useMemo(() => new MarchingCubesImpl(BLOB_RESOLUTION, blobMaterial, false, true, 10000), []);
+  
+  // Use up to 20 largest satellites to keep performance high and blobs chunky
   const satellites = useMemo(() => {
-    return system.satellites
-      .filter((s) => s[mode] > 0)
-      .slice(0, 30);
+    return system.satellites.filter((s) => s[mode] > 0).slice(0, 20);
   }, [system, mode]);
 
   useEffect(() => {
-    if (satellites.length === 0) {
-      setNodes([]);
-      return;
-    }
+    if (satellites.length === 0) return;
 
     const palette = COLOR_PALETTES[paletteIndex % COLOR_PALETTES.length]!;
-    
     const extent = d3.extent(satellites, (d: StatsSatellite) => d[mode]) as [number, number];
     const maxVal = Math.max(1, extent[1] ?? 1);
-    // タンパク質風にするため、ノードのサイズを少し小さめにして密集させます
-    const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([5, isActive ? 35 : 20]);
+    
+    // Scale for physical collision (D3 space is roughly [-50, 50])
+    const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([8, 25]);
+    // Scale for visual size in MarchingCubes (strength)
+    const strengthScale = d3.scaleSqrt().domain([0, maxVal]).range([0.4, 1.8]);
 
-    // Initialize or update nodes
-    setNodes((prevNodes) => {
-      const newNodes = satellites.map((sat, i) => {
-        const existing = prevNodes.find((n) => n.id === sat.id);
-        const targetRadius = radiusScale(sat[mode]);
+    setNodes((prev) => {
+      return satellites.map((sat, i) => {
+        const existing = prev.find((n) => n.id === sat.id);
+        const d3Radius = radiusScale(sat[mode]);
+        const strength = strengthScale(sat[mode]);
         return {
           ...sat,
-          x: existing?.x ?? (Math.random() - 0.5) * 50,
-          y: existing?.y ?? (Math.random() - 0.5) * 50,
+          x: existing?.x ?? (Math.random() - 0.5) * 40,
+          y: existing?.y ?? (Math.random() - 0.5) * 40,
           vx: existing?.vx ?? 0,
           vy: existing?.vy ?? 0,
-          targetRadius,
-          currentRadius: existing?.currentRadius ?? targetRadius,
-          color: palette[i % palette.length]!,
+          d3Radius,
+          strength,
+          currentStrength: existing?.currentStrength ?? strength,
+          color: existing?.color ?? new THREE.Color(palette[i % palette.length]),
         };
       });
-      return newNodes;
     });
-  }, [satellites, mode, isActive, paletteIndex]);
+  }, [satellites, mode, paletteIndex]);
 
   useEffect(() => {
     if (nodes.length === 0) return;
 
-    // Simulation forces (Tightly packed for protein aesthetic)
-    const strengthHover = isHovered ? -20 : 6; // より強く引き寄せて塊にする
-    const collideMargin = isHovered ? 8 : -8;  // 深く食い込ませて1つの表面に見せる
-
+    // Organic D3 Force Setup
     const simulation = (d3.forceSimulation as any)(nodes)
-      .force("charge", (d3.forceManyBody() as any).strength(strengthHover))
-      .force(
-        "collide",
-        (d3.forceCollide() as any).radius((d: SimNode) => d.targetRadius + collideMargin).iterations(3)
-      )
-      .force("x", d3.forceX(0).strength(isHovered ? 0.05 : 0.08))
-      .force("y", d3.forceY(0).strength(isHovered ? 0.05 : 0.08))
-      .alpha(isHovered ? 1 : 0.3) // Reheat simulation gently
-      .alphaDecay(0.02)
+      .force("charge", (d3.forceManyBody() as any).strength(2)) // Slight repulsion
+      .force("collide", (d3.forceCollide() as any).radius((d: SimNode) => d.d3Radius - 2).iterations(3)) // -2 allows them to overlap and fuse visually
+      .force("x", d3.forceX(0).strength(isActive ? 0.04 : 0.06)) // Active clusters are looser
+      .force("y", d3.forceY(0).strength(isActive ? 0.04 : 0.06))
+      .alpha(1)
+      .alphaDecay(0.01)
       .on("tick", () => {
-        // Smoothly interpolate radius for transitions
-        setNodes((current) =>
-          current.map((n) => {
-            n.currentRadius += (n.targetRadius - n.currentRadius) * 0.1;
-            return { ...n };
-          })
-        );
+        setNodes((current) => current.map((n) => {
+          n.currentStrength += (n.strength - n.currentStrength) * 0.1;
+          return { ...n };
+        }));
       });
 
     simulationRef.current = simulation;
+    return () => simulation.stop();
+  }, [nodes.length, isActive]);
 
-    return () => {
-      simulation.stop();
-    };
-  }, [nodes.length, isHovered, isActive]); // We don't want to re-run on every nodes update, just state changes
-
-  const centerOffset = containerSize / 2;
+  // Update the raw MarchingCubes mesh every frame
+  useFrame(() => {
+    mc.reset();
+    
+    // Map D3's [-50, 50] space to MarchingCubes [0, 1] space
+    nodes.forEach(node => {
+      const nx = 0.5 + (node.x || 0) * 0.01;
+      const ny = 0.5 + (node.y || 0) * 0.01;
+      const nz = 0.5; // Flattened depth slightly, but organic due to radii
+      
+      // Keep within bounds
+      if (nx > 0 && nx < 1 && ny > 0 && ny < 1) {
+        mc.addBall(nx, ny, nz, node.currentStrength, 12, node.color);
+      }
+    });
+    
+    mc.update();
+  });
 
   return (
-    <div
-      className={`relative rounded-full transition-all duration-700 cursor-pointer flex items-center justify-center`}
-      style={{
-        width: containerSize,
-        height: containerSize,
-      }}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
-    >
-      <svg
-        ref={svgRef}
-        width={containerSize}
-        height={containerSize}
-        className="absolute inset-0 overflow-visible"
-        style={{ filter: isHovered ? "none" : `url(#gooey-${system.facet})` }}
+    <group position={position} rotation={rotation}>
+      <group 
+        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          if (satellites.length > 0) {
+            onClick(system.facet, satellites[0].value); 
+          }
+        }}
       >
-        <defs>
-          {/* タンパク質（分子表面）のような 3D Blob フィルター */}
-          <filter id={`gooey-${system.facet}`} x="-30%" y="-30%" width="160%" height="160%">
-            {/* 1. Blur to merge shapes and create a height map */}
-            <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
-            
-            {/* 2. Threshold for the gooey sharp edge */}
-            <feColorMatrix
-              in="blur"
-              mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -12"
-              result="gooey"
-            />
-            
-            {/* 3. Extract the alpha channel to act as a 3D bump map */}
-            <feColorMatrix
-              in="blur"
-              type="matrix"
-              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
-              result="bumpMap"
-            />
-            
-            {/* 4. Diffuse Lighting (Soft shadows) */}
-            <feDiffuseLighting in="bumpMap" surfaceScale="12" diffuseConstant="1.2" result="diffuse" lightingColor="#ffffff">
-              <fePointLight x={centerOffset - 60} y={centerOffset - 120} z="100" />
-            </feDiffuseLighting>
-            
-            {/* 5. Specular Lighting (Shiny wet highlights) */}
-            <feSpecularLighting in="bumpMap" surfaceScale="15" specularConstant="1.8" specularExponent="35" lightingColor="#ffffff" result="specular">
-              <fePointLight x={centerOffset - 60} y={centerOffset - 120} z="100" />
-            </feSpecularLighting>
-            
-            {/* 6. Composite diffuse shadows onto base color */}
-            <feComposite in="diffuse" in2="gooey" operator="in" result="diffuseClipped" />
-            <feBlend in="diffuseClipped" in2="gooey" mode="multiply" result="shadedBase" />
-            
-            {/* 7. Add specular highlights on top */}
-            <feComposite in="specular" in2="gooey" operator="in" result="specularClipped" />
-            <feComposite in="specularClipped" in2="shadedBase" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" />
-          </filter>
-        </defs>
-
-        <g transform={`translate(${centerOffset},${centerOffset})`}>
-          {nodes.map((node) => (
-            <g
-              key={node.id}
-              transform={`translate(${node.x || 0},${node.y || 0})`}
-              className={`transition-opacity duration-300 ${isHovered ? "opacity-100 hover:opacity-80" : "opacity-90"}`}
-              onClick={(e) => {
-                if (isHovered) {
-                  e.stopPropagation();
-                  onClickNode(node.facet, node.value);
-                }
-              }}
-            >
-              <circle
-                r={Math.max(0, node.currentRadius)}
-                fill={node.color}
-                className="transition-all duration-300"
-              />
-            </g>
-          ))}
-        </g>
-      </svg>
+        {/* We center the [0,1] grid by moving it by -0.5 * blobScale */}
+        <primitive object={mc} scale={blobScale} position={[-blobScale/2, -blobScale/2, -blobScale/2]} />
+      </group>
       
-      {/* Labels rendered outside SVG for better text rendering and absolute positioning */}
-      {isHovered && isActive && (
-        <div className="absolute inset-0 pointer-events-none">
-          {nodes.map((node) => (
-            <div
-              key={`label-${node.id}`}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none transition-all duration-100"
-              style={{
-                left: centerOffset + (node.x || 0),
-                top: centerOffset + (node.y || 0),
-                width: node.currentRadius * 2,
-              }}
-            >
-              {node.currentRadius > 15 && (
-                <>
-                  <span className="text-white font-bold text-[10px] leading-tight text-center px-1 drop-shadow-md truncate w-full">
-                    {node.value}
-                  </span>
-                  {node.currentRadius > 25 && (
-                    <span className="text-white/90 font-medium text-[9px] drop-shadow-md">
-                      {node[mode].toLocaleString()}
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
+      {/* HTML Label perfectly attached to the 3D group */}
+      <Html center position={[0, -100, 0]} zIndexRange={[100, 0]} distanceFactor={600}>
+        <div 
+          className={`flex flex-col items-center justify-center transition-all duration-700 pointer-events-none 
+            ${isActive ? 'opacity-100 scale-110 drop-shadow-xl' : 'opacity-30 scale-90'}`}
+          style={{ width: 'max-content' }}
+        >
+          <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-white/20">
+            <h3 className="font-bold text-slate-800 text-base tracking-widest uppercase">{system.facet}</h3>
+            <p className="text-xs text-slate-500 font-medium text-center mt-0.5">
+              {d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items
+            </p>
+          </div>
         </div>
-      )}
-
-      {/* Main Facet Label - fades out on hover */}
-      <div 
-        className={`absolute pointer-events-none flex flex-col items-center justify-center transition-opacity duration-500 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg ${isHovered ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
-        style={{ transform: `translateY(${isActive ? '140px' : '90px'})` }}
-      >
-        <h3 className="font-bold text-slate-800 text-sm tracking-wide uppercase">{system.facet}</h3>
-        <p className="text-xs text-slate-500 font-medium">
-          {d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items
-        </p>
-      </div>
-    </div>
+      </Html>
+    </group>
   );
 }
 
-// --- Main Container ---
+// --- Main Carousel 3D Engine ---
 
-export default function FrontStatsVisualizationNew() {
-  const { loading, error, stats } = useStats();
-  const [mode, setMode] = useState<"dataset" | "research">("dataset");
+function CarouselScene({ 
+  stats, 
+  mode, 
+  navigate, 
+  carouselRadius,
+  rotationSpeed,
+  blobScale
+}: { 
+  stats: NormalizedStats, 
+  mode: "dataset" | "research", 
+  navigate: any,
+  carouselRadius: number,
+  rotationSpeed: number,
+  blobScale: number
+}) {
+  const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  
-  // Custom navigation to handle search params
-  const navigate = useNavigate();
 
-  // Auto-play logic (Continuous rotation via rAF)
-  const carouselAngleRef = useRef(0);
-  const itemsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const activeIndexRef = useRef(0);
+  const total = stats.systems.length;
 
-  // --- HMR / パラメータ変更のリアルタイム反映用 ---
-  const paramsRef = useRef({
-    speed: CAROUSEL_ROTATION_SPEED,
-    visibleItems: CAROUSEL_VISIBLE_ITEMS,
-    offsetX: CAROUSEL_OFFSET_X,
-    radius: CAROUSEL_RADIUS
-  });
-  paramsRef.current = {
-    speed: CAROUSEL_ROTATION_SPEED,
-    visibleItems: CAROUSEL_VISIBLE_ITEMS,
-    offsetX: CAROUSEL_OFFSET_X,
-    radius: CAROUSEL_RADIUS
-  };
+  useFrame((state, delta) => {
+    if (!groupRef.current) return;
 
-  useEffect(() => {
-    if (isHovered || !stats) return;
+    // Auto-rotation logic
+    if (!isHovered) {
+      groupRef.current.rotation.y += rotationSpeed * delta;
+    }
+
+    // Determine which cluster is currently at the front (closest to camera Z)
+    let normalizedRot = groupRef.current.rotation.y % (Math.PI * 2);
+    if (normalizedRot < 0) normalizedRot += Math.PI * 2;
     
-    let rafId: number;
-    let lastTime = performance.now();
+    const slice = (Math.PI * 2) / total;
+    let closestIdx = Math.round(normalizedRot / slice) % total;
+    closestIdx = (total - closestIdx) % total;
 
-    const tick = (time: number) => {
-      const dt = time - lastTime;
-      lastTime = time;
-      
-      const p = paramsRef.current;
+    if (closestIdx !== activeIndex) {
+      setActiveIndex(closestIdx);
+    }
+  });
 
-      // Update continuous angle
-      carouselAngleRef.current += (p.speed * dt) / 1000;
-      
-      const total = stats.systems.length;
-      let minDiff = Infinity;
-      let closestIndex = 0;
-
-      stats.systems.forEach((sys, i) => {
-        const el = itemsRef.current[i];
-        if (!el) return;
-        
-        const baseAngle = i * (360 / total);
-        const worldAngle = baseAngle + carouselAngleRef.current;
-        
-        let norm = worldAngle % 360;
-        if (norm > 180) norm -= 360;
-        if (norm < -180) norm += 360;
-        
-        const diff = Math.abs(norm);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestIndex = i;
-        }
-        
-        const maxDiffForVisible = Math.max(1, (p.visibleItems / 2)) * (360 / total);
-        const isVisible = diff <= maxDiffForVisible;
-        const opacity = isVisible ? Math.max(0.15, 1 - (diff / maxDiffForVisible) * 0.85) : 0;
-        
-        // 直接DOMを更新してパフォーマンスを最適化（CSSアニメーションを使わない）
-        el.style.transform = `translate(-50%, -50%) translateX(${p.offsetX}px) rotateY(${norm - 90}deg) translateZ(${p.radius}px) rotateY(90deg)`;
-        el.style.opacity = opacity.toString();
-        el.style.pointerEvents = opacity > 0.1 ? 'auto' : 'none';
-        el.style.zIndex = Math.round(100 - diff).toString();
-        el.style.filter = closestIndex === i ? 'drop-shadow(0 20px 30px rgba(0,0,0,0.15))' : 'none';
-      });
-
-      if (closestIndex !== activeIndexRef.current) {
-        activeIndexRef.current = closestIndex;
-        setActiveIndex(closestIndex);
-      }
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isHovered, stats]);
-
-  const handleNodeClick = (facet: string, value: string) => {
+  const handleFacetClick = (facet: string, value: string) => {
     const filters = encodeURIComponent(JSON.stringify({ [facet]: [value] }));
     const to = `/${mode === 'dataset' ? 'dataset' : 'research'}` as any;
-    // Note: since this is dynamic routing, we construct the search string manually or use navigate with search obj if supported
     navigate({
       to,
       search: { filters: JSON.parse(decodeURIComponent(filters)), page: 1, limit: 20, order: 'asc' } as any
     });
   };
 
-  if (loading) {
+  return (
+    <>
+      {/* Soft, beautiful lighting for pastel organic surfaces */}
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 20, 15]} intensity={1.5} color="#ffffff" castShadow />
+      <pointLight position={[-20, -10, -20]} intensity={1.5} color="#c6d8ff" />
+      <pointLight position={[20, -10, 20]} intensity={1} color="#ffc8dd" />
+
+      {/* A soft shadow plane underneath the carousel gives a premium grounded feel */}
+      <ContactShadows position={[0, -150, 0]} opacity={0.4} scale={800} blur={2.5} far={200} />
+
+      {/* Group tilted down slightly for a "carousel" projector view */}
+      <group rotation={[-0.2, 0, 0]}>
+        <group 
+          ref={groupRef}
+          onPointerEnter={() => setIsHovered(true)}
+          onPointerLeave={() => setIsHovered(false)}
+        >
+          {stats.systems.map((sys, i) => {
+            const angle = i * ((Math.PI * 2) / total);
+            // Distribute in a circle in the XZ plane
+            const x = Math.sin(angle) * carouselRadius;
+            const z = Math.cos(angle) * carouselRadius;
+            // Items face outwards
+            const ry = angle;
+
+            return (
+              <BlobCluster
+                key={sys.facet}
+                system={sys}
+                mode={mode}
+                paletteIndex={i}
+                isActive={activeIndex === i}
+                position={[x, 0, z]}
+                rotation={[0, ry, 0]}
+                onClick={handleFacetClick}
+                blobScale={blobScale}
+              />
+            );
+          })}
+        </group>
+      </group>
+    </>
+  );
+}
+
+// --- Dynamic Camera Updater ---
+// React Three Fiber's <Canvas camera={...}> prop is only used on initial mount.
+// To dynamically update the camera/fog during HMR or state changes, we must use this component.
+function CameraUpdater({ radius }: { radius: number }) {
+  const { camera, scene } = useThree();
+
+  useEffect(() => {
+    const cameraZ = radius * 2.5;
+    const fogStart = cameraZ - radius * 0.8;
+    const fogEnd = cameraZ + radius * 1.5;
+
+    camera.position.set(0, radius * 0.3, cameraZ);
+    camera.updateProjectionMatrix();
+
+    if (scene.fog) {
+      scene.fog.near = fogStart;
+      scene.fog.far = fogEnd;
+    }
+  }, [radius, camera, scene]);
+
+  return null;
+}
+
+// --- Application Shell ---
+
+export default function FrontStatsVisualizationNew() {
+  const { loading, error, stats } = useStats();
+  const [mode, setMode] = useState<"dataset" | "research">("dataset");
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Real-time Debug Parameters
+  const [debugParams, setDebugParams] = useState({
+    carouselRadius: INITIAL_CAROUSEL_RADIUS,
+    blobScale: INITIAL_BLOB_SCALE,
+    rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
+    transmission: 0.4,
+    clearcoat: 1.0,
+    thickness: 2.5,
+  });
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Sync debug params to material
+  useEffect(() => {
+    blobMaterial.transmission = debugParams.transmission;
+    blobMaterial.clearcoat = debugParams.clearcoat;
+    blobMaterial.thickness = debugParams.thickness;
+    blobMaterial.needsUpdate = true;
+  }, [debugParams]);
+
+  if (!isMounted || loading) {
     return (
-      <div className="w-full h-[500px] flex items-center justify-center mt-8">
+      <div className="w-full h-[650px] flex items-center justify-center mt-8">
         <SkeletonLoading />
       </div>
     );
@@ -519,12 +442,49 @@ export default function FrontStatsVisualizationNew() {
     );
   }
 
+  // Dynamic Camera & Fog settings based on Carousel Radius
+  // If user increases carouselRadius, the camera pulls back automatically so items don't disappear.
+  const cameraZ = debugParams.carouselRadius * 2.5; 
+  const fogStart = cameraZ - debugParams.carouselRadius * 0.8;
+  const fogEnd = cameraZ + debugParams.carouselRadius * 1.5;
+
   return (
-    <div className="w-full flex flex-col items-center gap-8 py-12 rounded-2xl mt-8 overflow-hidden bg-slate-900">
-      {/* 🌟 背景色を変更する場合は、上の div にある bg-slate-100 をお好みの色（例：bg-white, bg-slate-900 など）に変更してください */}
+    <div className="w-full flex flex-col items-center gap-8 py-12 rounded-3xl mt-8 overflow-hidden bg-slate-50 shadow-inner relative">
       
+      {/* --- LIVE DEBUG PANEL (Development Only) --- */}
+      <div className="absolute top-4 left-4 z-50 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 w-80 text-xs">
+        <h3 className="font-bold mb-3 text-slate-800 text-sm">Real-time Tweaks</h3>
+        
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Carousel Radius</span><span className="font-mono text-accent">{debugParams.carouselRadius}</span></div>
+            <input type="range" min="100" max="600" step="10" value={debugParams.carouselRadius} onChange={(e) => setDebugParams(p => ({...p, carouselRadius: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Blob Scale</span><span className="font-mono text-accent">{debugParams.blobScale}</span></div>
+            <input type="range" min="80" max="300" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Rotation Speed</span><span className="font-mono text-accent">{debugParams.rotationSpeed}</span></div>
+            <input type="range" min="0" max="0.3" step="0.01" value={debugParams.rotationSpeed} onChange={(e) => setDebugParams(p => ({...p, rotationSpeed: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Transmission (Glassy)</span><span className="font-mono text-accent">{debugParams.transmission}</span></div>
+            <input type="range" min="0" max="1" step="0.05" value={debugParams.transmission} onChange={(e) => setDebugParams(p => ({...p, transmission: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Clearcoat (Shiny)</span><span className="font-mono text-accent">{debugParams.clearcoat}</span></div>
+            <input type="range" min="0" max="1" step="0.05" value={debugParams.clearcoat} onChange={(e) => setDebugParams(p => ({...p, clearcoat: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Thickness</span><span className="font-mono text-accent">{debugParams.thickness}</span></div>
+            <input type="range" min="0" max="10" step="0.5" value={debugParams.thickness} onChange={(e) => setDebugParams(p => ({...p, thickness: Number(e.target.value)}))} />
+          </label>
+        </div>
+      </div>
+
       {/* Toggle Switch */}
-      <div className="flex items-center bg-white p-1.5 rounded-full shadow-sm border border-slate-200">
+      <div className="flex items-center bg-white p-1.5 rounded-full shadow-sm border border-slate-200 z-10">
         <button
           onClick={() => setMode("dataset")}
           className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
@@ -547,70 +507,25 @@ export default function FrontStatsVisualizationNew() {
         </button>
       </div>
 
-      {/* Radial Cylindrical Carousel (Slide Projector) */}
-      <div 
-        className="relative w-full max-w-6xl h-[650px] flex items-center justify-center mt-4"
-        style={{ perspective: `${CAROUSEL_PERSPECTIVE}px` }}
-      >
-        {/* The 3D container that tilts the carousel for a "looking down" perspective */}
-        <div 
-          className="absolute w-full h-full pointer-events-none" 
-          style={{ transform: `rotateX(${CAROUSEL_TILT_ANGLE}deg)`, transformStyle: 'preserve-3d' }}
-        >
-          {stats.systems.map((system, i) => {
-            // Initial render state before rAF takes over
-            const total = stats.systems.length;
-            const baseAngle = i * (360 / total);
-            let norm = (baseAngle + carouselAngleRef.current) % 360;
-            if (norm > 180) norm -= 360;
-            if (norm < -180) norm += 360;
-            const diff = Math.abs(norm);
-            const isActive = diff < 10; // Approx
-
-            return (
-              <div
-                key={system.facet}
-                ref={(el) => itemsRef.current[i] = el}
-                className="absolute top-1/2 left-1/2 pointer-events-auto"
-                style={{
-                  transform: `translate(-50%, -50%) translateX(${CAROUSEL_OFFSET_X}px) rotateY(${norm - 90}deg) translateZ(${CAROUSEL_RADIUS}px) rotateY(90deg)`,
-                  opacity: 0, // 最初のフレームは非表示にしてチラつきを防ぐ
-                  willChange: 'transform, opacity' // GPU最適化
-                }}
-              >
-                <FluidCluster
-                  system={system}
-                  mode={mode}
-                  isActive={isActive}
-                  isHovered={isActive && isHovered}
-                  onHover={() => {
-                    if (isActive) setIsHovered(true);
-                    if (!isActive) setActiveIndex(i); // click/hover to focus
-                  }}
-                onLeave={() => {
-                  if (isActive) setIsHovered(false);
-                }}
-                onClickNode={handleNodeClick}
-                paletteIndex={i}
-              />
-            </div>
-          );
-        })}
-        </div>
-      </div>
-
-      {/* Indicators */}
-      <div className="flex gap-2 mt-4">
-        {stats.systems.map((sys, i) => (
-          <button
-            key={`indicator-${sys.facet}`}
-            onClick={() => setActiveIndex(i)}
-            className={`transition-all duration-300 rounded-full h-2 ${
-              i === activeIndex ? "bg-secondary w-8" : "bg-slate-300 hover:bg-slate-400 w-2"
-            }`}
-            aria-label={`Go to ${sys.facet}`}
-          />
-        ))}
+      {/* The Unified 3D Space */}
+      <div className="relative w-full max-w-[1400px] h-[650px] cursor-grab active:cursor-grabbing">
+        {/* We use perspective camera for natural 3D depth. fov=45 gives a nice cinematic lens */}
+        <Canvas camera={{ position: [0, debugParams.carouselRadius * 0.3, cameraZ], fov: 45 }}>
+          <CameraUpdater radius={debugParams.carouselRadius} />
+          {/* Subtle atmospheric fog to blend the distant carousel items into the background */}
+          <fog attach="fog" args={['#f8fafc', fogStart, fogEnd]} />
+          
+          <Suspense fallback={null}>
+            <CarouselScene 
+              stats={stats} 
+              mode={mode} 
+              navigate={navigate} 
+              carouselRadius={debugParams.carouselRadius}
+              rotationSpeed={debugParams.rotationSpeed}
+              blobScale={debugParams.blobScale}
+            />
+          </Suspense>
+        </Canvas>
       </div>
     </div>
   );
