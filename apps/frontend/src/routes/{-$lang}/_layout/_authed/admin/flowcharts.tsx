@@ -61,6 +61,7 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/flowcharts",
@@ -166,12 +167,7 @@ function RouteComponent() {
       ) : mode === "edit" && selectedId ? (
         <EditFlowchartPanel key={selectedId} id={selectedId} />
       ) : (
-        <Card className="flex flex-1 items-center justify-center text-gray-400">
-          <div className="flex flex-col items-center gap-3">
-            <GitBranch className="size-10 opacity-30" />
-            <p className="text-sm">Select a flowchart to edit</p>
-          </div>
-        </Card>
+        <NoSelectedItemMessage icon={<GitBranch />} />
       )}
     </>
   );

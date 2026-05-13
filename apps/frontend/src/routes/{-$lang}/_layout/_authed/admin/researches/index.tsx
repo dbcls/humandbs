@@ -15,6 +15,8 @@ import {
   ErrorContent,
   ErrorResetBoundary,
 } from "@/components/ErrorResetBoundary";
+import { FA_ICONS } from "@/lib/faIcons";
+import { NoSelectedItemMessage } from "../-components/NoSelectedItemMessage";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
@@ -93,9 +95,7 @@ function RouteComponent() {
           </Suspense>
         </ErrorResetBoundary>
       ) : (
-        <div className="text-foreground-light flex flex-1 items-center justify-center">
-          No research selected
-        </div>
+        <NoSelectedItemMessage icon={FA_ICONS.books} />
       )}
     </>
   );

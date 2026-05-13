@@ -8,6 +8,8 @@ import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { getContentQueryOptions } from "@/serverFunctions/contentItem";
 import { z } from "zod";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { Pen } from "lucide-react";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(
   {
@@ -51,10 +53,12 @@ function RouteComponent() {
           onSelectContent={setSelectedId}
         />
       </CollapsibleCard>
-      {selectedId && (
+      {selectedId ? (
         <Suspense fallback={<FallbackDetailsCard />}>
           <ContentItemDetails key={selectedId} id={selectedId} />
         </Suspense>
+      ) : (
+        <NoSelectedItemMessage icon={<Pen />} />
       )}
     </>
   );

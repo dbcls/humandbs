@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
-import { Plus, Trash2Icon } from "lucide-react";
+import { Bell, Plus, Trash2Icon } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
@@ -43,6 +43,7 @@ import { AlertsFiltersBar } from "./-components/AlertsFiltersBar";
 import { TitleValue } from "./-components/TitleValue";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
 
 const NEW_ALERT_ID = "__new_alert__";
 
@@ -88,7 +89,9 @@ function RouteComponent() {
           selectedAlertId={selectedId}
           onSelectAlert={handleSelectAlert}
         />
-      ) : null}
+      ) : (
+        <NoSelectedItemMessage icon={<Bell />} />
+      )}
     </>
   );
 }

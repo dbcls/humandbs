@@ -11,6 +11,9 @@ import { z } from "zod";
 import { DocumentsList } from "./-components/DocumentsList";
 import { DocumentVersion } from "./-components/DocumentVersion";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { FA_ICONS } from "@/lib/faIcons";
+import { FilesIcon } from "lucide-react";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/documents",
@@ -82,7 +85,7 @@ function RouteComponent() {
           </Suspense>
         </ErrorResetBoundary>
       ) : (
-        <div>No document selected</div>
+        <NoSelectedItemMessage icon={<FilesIcon />} />
       )}
     </>
   );
