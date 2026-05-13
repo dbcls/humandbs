@@ -711,6 +711,10 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     // (status="deleted") must disappear from public list and search. This
     // exercises the search post-filter that drops `status === "deleted"`
     // rows from the response.
+    //
+    // Filtering uses the dedicated `humId` query parameter (ResearchSearchQuery)
+    // rather than the `q` full-text field: `humId` is a keyword field and is
+    // not part of the analyzed multi-match used by `q`.
     const sub = decodeJwtSub(nonAdmin)
     expect(sub).toBeTruthy()
     let humId = ""
@@ -725,7 +729,7 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       const beforeDelete = await app.request(url("/research/search"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: humId, page: 1, limit: 50 }),
+        body: JSON.stringify({ humId, page: 1, limit: 50 }),
       })
       expect(beforeDelete.status).toBe(200)
       const beforeJson = (await beforeDelete.json()) as SearchResponse<{ humId: string }>
@@ -743,11 +747,11 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       const listJson = (await list.json()) as SearchResponse<{ humId: string }>
       expect(listJson.data.find(d => d.humId === humId)).toBeUndefined()
 
-      // POST /research/search with the humId as the query must return 0 hits.
+      // POST /research/search filtered by humId must return 0 hits.
       const search = await app.request(url("/research/search"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: humId, page: 1, limit: 50 }),
+        body: JSON.stringify({ humId, page: 1, limit: 50 }),
       })
       expect(search.status).toBe(200)
       const searchJson = (await search.json()) as SearchResponse<{ humId: string }>
