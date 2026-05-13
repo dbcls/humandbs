@@ -4,7 +4,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Environment, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
-import { MarchingCubes as MarchingCubesImpl } from "three-stdlib";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
 
@@ -96,21 +95,30 @@ function useStats() {
 
 const INITIAL_CAROUSEL_RADIUS = 560;
 const INITIAL_CAROUSEL_ROTATION_SPEED = 0.05; // Radians per second
-const BLOB_RESOLUTION = 40;
+const BLOB_RESOLUTION = 45; // Optimized resolution for smooth rendering without hitting poly limits
 const INITIAL_BLOB_SCALE = 210; // Scale of the [0,1] MarchingCubes grid in 3D units
+const INITIAL_BLOB_ISOLATION = 80; // Controls metaball fusion. Higher = less fusion, more distinct particles.
 const INITIAL_CAMERA_Y = 30;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 880;  // Zoom distance of the camera (adjust based on your preference!)
+const INITIAL_LIGHT_AMBIENT = 1.0;
+const INITIAL_LIGHT_AMBIENT_COLOR = "#ffffff";
+const INITIAL_LIGHT_DIRECTIONAL = 1.0;
+const INITIAL_LIGHT_POINT_1 = 1.0;
+const INITIAL_LIGHT_POINT_2 = 0.8;
+const INITIAL_MATERIAL_TRANSMISSION = 0.4;
+const INITIAL_MATERIAL_CLEARCOAT = 1.0;
+const INITIAL_MATERIAL_THICKNESS = 2.5;
 
-// Beautiful, dreamy pastel palettes for the blobs
+// Vibrant, highly saturated palettes so they don't wash out into white under strong lighting
 const COLOR_PALETTES = [
-  ["#a2d2ff", "#bde0fe", "#ffafcc", "#ffc8dd"], // Cotton Candy
-  ["#cbb2fe", "#e2cbf7", "#f1e3f3", "#c6d8ff"], // Lavender
-  ["#9bf6ff", "#a0c4ff", "#bdb2ff", "#ffc6ff"], // Bright Pastels
-  ["#ffcdb2", "#ffb4a2", "#e5989b", "#b5838d"], // Warm Sunset
-  ["#a0e8af", "#ffb5a7", "#fcd5ce", "#f8edeb"], // Mint/Peach
-  ["#caf0f8", "#90e0ef", "#00b4d8", "#0077b6"], // Deep Ocean
-  ["#d8e2dc", "#ffe5d9", "#ffcad4", "#f4acb7"], // Rosy
-  ["#e0aaff", "#c77dff", "#9d4edd", "#7b2cbf"], // Royal Purple
+  ["#ff006e", "#ffbe0b", "#fb5607", "#8338ec"], // Vibrant Sunset
+  ["#3a0ca3", "#4361ee", "#4cc9f0", "#7209b7"], // Deep Neon
+  ["#06d6a0", "#118ab2", "#073b4c", "#ef476f"], // Teal Pink
+  ["#e5383b", "#ba1826", "#a4161a", "#660708"], // Crimson
+  ["#2b9348", "#55a630", "#80b918", "#aacc00"], // Toxic Green
+  ["#0077b6", "#0096c7", "#00b4d8", "#48cae4"], // Bright Ocean
+  ["#f72585", "#b5179e", "#7209b7", "#560bad"], // Cyber Pink
+  ["#ffd166", "#06d6a0", "#118ab2", "#ef476f"], // Pop Art
 ];
 
 // Shared material for all blobs for maximum performance and unified lighting
@@ -120,9 +128,10 @@ const blobMaterial = new THREE.MeshPhysicalMaterial({
   thickness: 2.5,
   clearcoat: 1.0,
   clearcoatRoughness: 0.1,
-  vertexColors: true,
-  envMapIntensity: 1.5,
+  envMapIntensity: 0.8, // Reduced to prevent white blowout with Environment map
 });
+
+const blobGeometry = new THREE.SphereGeometry(1, 32, 32);
 
 type SimNode = StatsSatellite & { 
   d3Radius: number;
@@ -131,8 +140,10 @@ type SimNode = StatsSatellite & {
   color: THREE.Color;
   x?: number;
   y?: number;
+  z?: number;
   vx?: number;
   vy?: number;
+  vz?: number;
 };
 
 // --- Single Blob Cluster Component ---
@@ -145,7 +156,8 @@ function BlobCluster({
   rotation,
   paletteIndex,
   onClick,
-  blobScale
+  blobScale,
+  blobIsolation
 }: {
   system: StatsSystem;
   mode: "research" | "dataset";
@@ -155,16 +167,15 @@ function BlobCluster({
   paletteIndex: number;
   onClick: (facet: string, value: string) => void;
   blobScale: number;
+  blobIsolation: number;
 }) {
-  const [nodes, setNodes] = useState<SimNode[]>([]);
-  const simulationRef = useRef<any>(null);
+  const nodesRef = useRef<SimNode[]>([]);
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
   
-  // Create a raw MarchingCubes instance from three-stdlib
-  const mc = useMemo(() => new MarchingCubesImpl(BLOB_RESOLUTION, blobMaterial, false, true, 10000), []);
-  
-  // Use up to 20 largest satellites to keep performance high and blobs chunky
+  // Use up to 50 largest satellites to show all items while keeping performance reasonable
   const satellites = useMemo(() => {
-    return system.satellites.filter((s) => s[mode] > 0).slice(0, 20);
+    return system.satellites.filter((s) => s[mode] > 0).slice(0, 50);
   }, [system, mode]);
 
   useEffect(() => {
@@ -174,73 +185,121 @@ function BlobCluster({
     const extent = d3.extent(satellites, (d: StatsSatellite) => d[mode]) as [number, number];
     const maxVal = Math.max(1, extent[1] ?? 1);
     
-    // Scale for physical collision (D3 space is roughly [-50, 50])
+    // Scale for physical collision
     const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([8, 25]);
     // Scale for visual size in MarchingCubes (strength). 
-    // Kept extremely small (0.02 to 0.15) so the blob volume never hits the [0,1] grid boundary and gets clipped.
-    const strengthScale = d3.scaleSqrt().domain([0, maxVal]).range([0.02, 0.15]);
+    // Increased strength slightly so separated particles don't become too small
+    const strengthScale = d3.scaleSqrt().domain([0, maxVal]).range([0.15, 0.35]);
 
-    setNodes((prev) => {
-      return satellites.map((sat, i) => {
-        const existing = prev.find((n) => n.id === sat.id);
-        const d3Radius = radiusScale(sat[mode]);
-        const strength = strengthScale(sat[mode]);
-        return {
-          ...sat,
-          x: existing?.x ?? (Math.random() - 0.5) * 40,
-          y: existing?.y ?? (Math.random() - 0.5) * 40,
-          vx: existing?.vx ?? 0,
-          vy: existing?.vy ?? 0,
-          d3Radius,
-          strength,
-          currentStrength: existing?.currentStrength ?? strength,
-          color: existing?.color ?? new THREE.Color(palette[i % palette.length]),
-        };
-      });
+    nodesRef.current = satellites.map((sat, i) => {
+      const existing = nodesRef.current.find((n) => n.id === sat.id);
+      const d3Radius = radiusScale(sat[mode]);
+      const strength = strengthScale(sat[mode]);
+      return {
+        ...sat,
+        x: existing?.x ?? (Math.random() - 0.5) * 40,
+        y: existing?.y ?? (Math.random() - 0.5) * 40,
+        z: existing?.z ?? (Math.random() - 0.5) * 40,
+        vx: existing?.vx ?? 0,
+        vy: existing?.vy ?? 0,
+        vz: existing?.vz ?? 0,
+        d3Radius,
+        strength,
+        currentStrength: existing?.currentStrength ?? strength,
+        color: existing?.color ?? new THREE.Color(palette[i % palette.length]),
+      };
     });
   }, [satellites, mode, paletteIndex]);
 
-  useEffect(() => {
-    if (nodes.length === 0) return;
-
-    // Organic D3 Force Setup
-    const simulation = (d3.forceSimulation as any)(nodes)
-      .force("charge", (d3.forceManyBody() as any).strength(2)) // Slight repulsion
-      .force("collide", (d3.forceCollide() as any).radius((d: SimNode) => d.d3Radius - 2).iterations(3)) // -2 allows them to overlap and fuse visually
-      .force("x", d3.forceX(0).strength(isActive ? 0.08 : 0.15)) // Pull strongly to center
-      .force("y", d3.forceY(0).strength(isActive ? 0.08 : 0.15))
-      .alpha(1)
-      .alphaDecay(0.01)
-      .on("tick", () => {
-        setNodes((current) => current.map((n) => {
-          n.currentStrength += (n.strength - n.currentStrength) * 0.1;
-          return { ...n };
-        }));
-      });
-
-    simulationRef.current = simulation;
-    return () => simulation.stop();
-  }, [nodes.length, isActive]);
-
-  // Update the raw MarchingCubes mesh every frame
-  useFrame(() => {
-    mc.reset();
+  // Update the InstancedMesh every frame with a custom 3D Verlet physics engine
+  useFrame((state, delta) => {
+    const nodes = nodesRef.current;
     
-    // Map D3's [-50, 50] space to MarchingCubes [0, 1] space
-    // Using 0.002 multiplier to keep the blobs well within the [0.2, 0.8] range to avoid bounding box clipping
-    nodes.forEach(node => {
-      const nx = 0.5 + (node.x || 0) * 0.002;
-      const ny = 0.5 + (node.y || 0) * 0.002;
-      const nz = 0.5; // Flattened depth slightly, but organic due to radii
-      
-      // Keep within bounds
-      if (nx > 0 && nx < 1 && ny > 0 && ny < 1) {
-        mc.addBall(nx, ny, nz, node.currentStrength, 12, node.color);
+    // Cap delta to prevent physics explosions on lag spikes
+    const dt = Math.min(delta, 0.05);
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      // Pull to center - much weaker now to allow them to spread like a bunch of grapes
+      const pull = isActive ? 0.03 : 0.1;
+      node.vx = (node.vx || 0) + (0 - (node.x || 0)) * pull * dt;
+      node.vy = (node.vy || 0) + (0 - (node.y || 0)) * pull * dt;
+      node.vz = (node.vz || 0) + (0 - (node.z || 0)) * pull * dt;
+
+      // Gentle organic wander
+      node.vx += (Math.random() - 0.5) * 1.5;
+      node.vy += (Math.random() - 0.5) * 1.5;
+      node.vz += (Math.random() - 0.5) * 1.5;
+
+      // 3D Collision Repulsion
+      for (let j = i + 1; j < nodes.length; j++) {
+        const other = nodes[j];
+        const dx = (node.x || 0) - (other.x || 0);
+        const dy = (node.y || 0) - (other.y || 0);
+        const dz = (node.z || 0) - (other.z || 0);
+        const distSq = dx*dx + dy*dy + dz*dz;
+        const dist = Math.sqrt(distSq) + 0.001;
+        const minDist = node.d3Radius + other.d3Radius + 2;
+
+        if (dist < minDist) {
+          // Stronger repulsion to keep them apart
+          const force = (minDist - dist) * 15.0 * dt;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          const fz = (dz / dist) * force;
+          node.vx += fx; node.vy += fy; node.vz += fz;
+          other.vx = (other.vx || 0) - fx; 
+          other.vy = (other.vy || 0) - fy; 
+          other.vz = (other.vz || 0) - fz;
+        }
       }
-    });
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      // Friction
+      node.vx = (node.vx || 0) * 0.85; 
+      node.vy = (node.vy || 0) * 0.85; 
+      node.vz = (node.vz || 0) * 0.85;
+      
+      // Velocity
+      node.x = (node.x || 0) + node.vx * dt * 10;
+      node.y = (node.y || 0) + node.vy * dt * 10;
+      node.z = (node.z || 0) + node.vz * dt * 10;
+      
+      // Strength animation
+      node.currentStrength += (node.strength - node.currentStrength) * 0.1;
+
+      // Update InstancedMesh matrix and color
+      // blobScale slider controls the overall size multiplier
+      const scale = node.currentStrength * blobScale * 0.15;
+      dummy.position.set(node.x, node.y, node.z);
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
+      
+      if (meshRef.current) {
+        meshRef.current.setMatrixAt(i, dummy.matrix);
+        meshRef.current.setColorAt(i, node.color);
+      }
+    }
     
-    mc.update();
+    if (meshRef.current) {
+      meshRef.current.count = nodes.length;
+      meshRef.current.instanceMatrix.needsUpdate = true;
+      if (meshRef.current.instanceColor) {
+        meshRef.current.instanceColor.needsUpdate = true;
+      }
+    }
   });
+
+  // Calculate center of mass for label
+  const center = useMemo(() => {
+    if (nodesRef.current.length === 0) return new THREE.Vector3();
+    const x = d3.mean(nodesRef.current, (d) => d.x || 0) || 0;
+    const y = d3.mean(nodesRef.current, (d) => d.y || 0) || 0;
+    const z = d3.mean(nodesRef.current, (d) => d.z || 0) || 0;
+    return new THREE.Vector3(x, y, z);
+  }, [satellites, isActive]);
 
   return (
     <group position={position} rotation={rotation}>
@@ -254,19 +313,18 @@ function BlobCluster({
           }
         }}
       >
-        {/* We center the [0,1] grid by moving it by -0.5 * blobScale */}
-        <primitive object={mc} scale={blobScale} position={[-blobScale/2, -blobScale/2, -blobScale/2]} />
+        <instancedMesh ref={meshRef} args={[blobGeometry, blobMaterial, 50]} castShadow receiveShadow />
       </group>
       
       {/* HTML Label perfectly attached to the 3D group */}
-      <Html center position={[0, -100, 0]} zIndexRange={[100, 0]} distanceFactor={600}>
+      <Html center position={[center.x, center.y - 12, center.z]} zIndexRange={[100, 0]}>
         <div 
           className={`flex flex-col items-center justify-center transition-all duration-700 pointer-events-none 
-            ${isActive ? 'opacity-100 scale-110 drop-shadow-xl' : 'opacity-30 scale-90'}`}
+            ${isActive ? 'opacity-100 scale-110 drop-shadow-xl' : 'opacity-40 scale-90'}`}
           style={{ width: 'max-content' }}
         >
           <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-white/20">
-            <h3 className="font-bold text-slate-800 text-base tracking-widest uppercase">{system.facet}</h3>
+            <h3 className="font-bold text-slate-800 text-base tracking-widest uppercase">{system.facet.replace(/_/g, " ")}</h3>
             <p className="text-xs text-slate-500 font-medium text-center mt-0.5">
               {d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items
             </p>
@@ -285,14 +343,26 @@ function CarouselScene({
   navigate, 
   carouselRadius,
   rotationSpeed,
-  blobScale
+  blobScale,
+  blobIsolation,
+  lightAmbient,
+  lightAmbientColor,
+  lightDirectional,
+  lightPoint1,
+  lightPoint2
 }: { 
   stats: NormalizedStats, 
   mode: "dataset" | "research", 
   navigate: any,
   carouselRadius: number,
   rotationSpeed: number,
-  blobScale: number
+  blobScale: number,
+  blobIsolation: number,
+  lightAmbient: number,
+  lightAmbientColor: string,
+  lightDirectional: number,
+  lightPoint1: number,
+  lightPoint2: number
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -332,11 +402,13 @@ function CarouselScene({
 
   return (
     <>
-      {/* Soft, beautiful lighting for pastel organic surfaces */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 20, 15]} intensity={1.5} color="#ffffff" castShadow />
-      <pointLight position={[-20, -10, -20]} intensity={1.5} color="#c6d8ff" />
-      <pointLight position={[20, -10, 20]} intensity={1} color="#ffc8dd" />
+      {/* User controllable lighting */}
+      <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
+      <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" castShadow />
+      
+      {/* Side lights to add colorful reflections to the glass */}
+      <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#c6d8ff" />
+      <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ffc8dd" />
 
       {/* A soft shadow plane underneath the carousel gives a premium grounded feel */}
       <ContactShadows position={[0, -150, 0]} opacity={0.4} scale={800} blur={2.5} far={200} />
@@ -367,6 +439,7 @@ function CarouselScene({
                 rotation={[0, ry, 0]}
                 onClick={handleFacetClick}
                 blobScale={blobScale}
+                blobIsolation={blobIsolation}
               />
             );
           })}
@@ -411,16 +484,22 @@ export default function FrontStatsVisualizationNew() {
     const defaults = {
       carouselRadius: INITIAL_CAROUSEL_RADIUS,
       blobScale: INITIAL_BLOB_SCALE,
+      blobIsolation: INITIAL_BLOB_ISOLATION,
       rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
-      transmission: 0.4,
-      clearcoat: 1.0,
-      thickness: 2.5,
+      transmission: INITIAL_MATERIAL_TRANSMISSION,
+      clearcoat: INITIAL_MATERIAL_CLEARCOAT,
+      thickness: INITIAL_MATERIAL_THICKNESS,
       cameraY: INITIAL_CAMERA_Y,
       cameraZ: INITIAL_CAMERA_Z,
+      lightAmbient: INITIAL_LIGHT_AMBIENT,
+      lightAmbientColor: INITIAL_LIGHT_AMBIENT_COLOR,
+      lightDirectional: INITIAL_LIGHT_DIRECTIONAL,
+      lightPoint1: INITIAL_LIGHT_POINT_1,
+      lightPoint2: INITIAL_LIGHT_POINT_2,
     };
     
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("blob_debug_params");
+      const saved = localStorage.getItem("blob_debug_params_v2");
       if (saved) {
         try {
           return { ...defaults, ...JSON.parse(saved) };
@@ -434,7 +513,7 @@ export default function FrontStatsVisualizationNew() {
 
   // Save to localStorage whenever params change
   useEffect(() => {
-    localStorage.setItem("blob_debug_params", JSON.stringify(debugParams));
+    localStorage.setItem("blob_debug_params_v2", JSON.stringify(debugParams));
   }, [debugParams]);
 
   const navigate = useNavigate();
@@ -479,9 +558,13 @@ export default function FrontStatsVisualizationNew() {
             <div className="flex justify-between"><span>Carousel Radius</span><span className="font-mono text-accent">{debugParams.carouselRadius}</span></div>
             <input type="range" min="100" max="600" step="10" value={debugParams.carouselRadius} onChange={(e) => setDebugParams(p => ({...p, carouselRadius: Number(e.target.value)}))} />
           </label>
-          <label className="flex flex-col gap-1">
+          <label className="block space-y-1">
             <div className="flex justify-between"><span>Blob Scale</span><span className="font-mono text-accent">{debugParams.blobScale}</span></div>
-            <input type="range" min="80" max="800" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
+            <input type="range" min="50" max="400" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
+          </label>
+          <label className="block space-y-1">
+            <div className="flex justify-between"><span>Blob Fusion (Isolation)</span><span className="font-mono text-accent">{debugParams.blobIsolation}</span></div>
+            <input type="range" min="10" max="250" step="5" value={debugParams.blobIsolation} onChange={(e) => setDebugParams(p => ({...p, blobIsolation: Number(e.target.value)}))} />
           </label>
           <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Rotation Speed</span><span className="font-mono text-accent">{debugParams.rotationSpeed}</span></div>
@@ -507,19 +590,57 @@ export default function FrontStatsVisualizationNew() {
             <div className="flex justify-between"><span>Camera Z (Zoom)</span><span className="font-mono text-accent">{debugParams.cameraZ}</span></div>
             <input type="range" min="100" max="2000" step="10" value={debugParams.cameraZ} onChange={(e) => setDebugParams(p => ({...p, cameraZ: Number(e.target.value)}))} />
           </label>
+
+          {/* Lighting Controls */}
+          <div className="space-y-1 mt-4 border-t pt-2 border-slate-200">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+              <span className="whitespace-nowrap">Ambient Color</span>
+              <input type="color" value={debugParams.lightAmbientColor} onChange={(e) => setDebugParams(p => ({...p, lightAmbientColor: e.target.value}))} className="w-8 h-6 p-0 border-0 cursor-pointer" />
+            </div>
+            <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+              <span>Ambient Light</span>
+              <span className="text-pink-500">{debugParams.lightAmbient.toFixed(1)}</span>
+            </div>
+            <input type="range" min="0" max="3" step="0.1" value={debugParams.lightAmbient} onChange={(e) => setDebugParams(p => ({...p, lightAmbient: parseFloat(e.target.value)}))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+            
+            <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+              <span>Directional Light</span>
+              <span className="text-pink-500">{debugParams.lightDirectional.toFixed(1)}</span>
+            </div>
+            <input type="range" min="0" max="3" step="0.1" value={debugParams.lightDirectional} onChange={(e) => setDebugParams(p => ({...p, lightDirectional: parseFloat(e.target.value)}))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+            
+            <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+              <span>Point Light (Blue)</span>
+              <span className="text-pink-500">{debugParams.lightPoint1.toFixed(1)}</span>
+            </div>
+            <input type="range" min="0" max="3" step="0.1" value={debugParams.lightPoint1} onChange={(e) => setDebugParams(p => ({...p, lightPoint1: parseFloat(e.target.value)}))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+            
+            <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+              <span>Point Light (Pink)</span>
+              <span className="text-pink-500">{debugParams.lightPoint2.toFixed(1)}</span>
+            </div>
+            <input type="range" min="0" max="3" step="0.1" value={debugParams.lightPoint2} onChange={(e) => setDebugParams(p => ({...p, lightPoint2: parseFloat(e.target.value)}))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+          </div>
+
           <button 
             className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 rounded font-bold transition-colors"
             onClick={() => {
-              localStorage.removeItem("blob_debug_params");
+              localStorage.removeItem("blob_debug_params_v2");
               setDebugParams({
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 blobScale: INITIAL_BLOB_SCALE,
+                blobIsolation: INITIAL_BLOB_ISOLATION,
                 rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
-                transmission: 0.4,
-                clearcoat: 1.0,
-                thickness: 2.5,
-                cameraY: 80,
-                cameraZ: 700,
+                transmission: INITIAL_MATERIAL_TRANSMISSION,
+                clearcoat: INITIAL_MATERIAL_CLEARCOAT,
+                thickness: INITIAL_MATERIAL_THICKNESS,
+                cameraY: INITIAL_CAMERA_Y,
+                cameraZ: INITIAL_CAMERA_Z,
+                lightAmbient: INITIAL_LIGHT_AMBIENT,
+                lightAmbientColor: INITIAL_LIGHT_AMBIENT_COLOR,
+                lightDirectional: INITIAL_LIGHT_DIRECTIONAL,
+                lightPoint1: INITIAL_LIGHT_POINT_1,
+                lightPoint2: INITIAL_LIGHT_POINT_2,
               });
             }}
           >
@@ -557,6 +678,8 @@ export default function FrontStatsVisualizationNew() {
         {/* We use perspective camera for natural 3D depth. fov=45 gives a nice cinematic lens */}
         <Canvas camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45, far: 5000 }}>
           <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
+          {/* Environment map is CRITICAL for glass materials to look realistic and not blow out into white */}
+          <Environment preset="city" />
           {/* Subtle atmospheric fog to blend the distant carousel items into the background */}
           <fog attach="fog" args={['#f8fafc', debugParams.cameraZ - debugParams.carouselRadius * 0.8, debugParams.cameraZ + debugParams.carouselRadius * 1.5]} />
           
@@ -568,6 +691,12 @@ export default function FrontStatsVisualizationNew() {
               carouselRadius={debugParams.carouselRadius}
               rotationSpeed={debugParams.rotationSpeed}
               blobScale={debugParams.blobScale}
+              blobIsolation={debugParams.blobIsolation}
+              lightAmbient={debugParams.lightAmbient}
+              lightAmbientColor={debugParams.lightAmbientColor}
+              lightDirectional={debugParams.lightDirectional}
+              lightPoint1={debugParams.lightPoint1}
+              lightPoint2={debugParams.lightPoint2}
             />
           </Suspense>
         </Canvas>
