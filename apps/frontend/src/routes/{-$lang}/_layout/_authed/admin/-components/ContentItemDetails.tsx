@@ -6,14 +6,13 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Save } from "lucide-react";
-import { Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,6 +35,10 @@ import { waitUntilNoMutations } from "@/utils/mutations";
 
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
+
+const MarkdownClientPreview = lazy(
+  () => import("@/components/markdown/MarkdownClientPreview"),
+);
 
 type ContentItem = NonNullable<ContentItemResponse>;
 

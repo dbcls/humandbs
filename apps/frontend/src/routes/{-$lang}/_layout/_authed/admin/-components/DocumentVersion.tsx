@@ -6,18 +6,16 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save } from "lucide-react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
-import { useAppForm } from "@/components/form-context/FormContext";
-import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
+import { useAppForm } from "@/components/form-context/FormContext";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -26,29 +24,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, type Locale } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
 import {
-  getDocumentQueryOptions,
   $updateDocumentHideTOC,
+  getDocumentQueryOptions,
 } from "@/serverFunctions/document";
 import {
+  $createDocumentVersion,
+  $publishDocumentVersionDraft,
+  $resetDocumentVersionDraft,
+  $saveDocumentVersionDraft,
+  $unpublishDocumentVersion,
   type DocVersionListItemResponse,
   type DocVersionResponse,
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,
-  $saveDocumentVersionDraft,
-  $publishDocumentVersionDraft,
-  $unpublishDocumentVersion,
-  $resetDocumentVersionDraft,
-  $createDocumentVersion,
 } from "@/serverFunctions/documentVersion";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
 import { StatusTag, Tag } from "@/components/StatusTag";
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
+
+const MarkdownClientPreview = lazy(
+  () => import("@/components/markdown/MarkdownClientPreview"),
+);
 
 interface FormMeta {
   submitAction: "saveDraft" | "publish" | "publishAll" | "resetDraft" | null;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ import {
   getNavigationFlowchartNamesQueryOptions,
 } from "@/serverFunctions/navigationFlowchart";
 import type { Locale } from "@/config/i18n";
+
+const MarkdownClientPreview = lazy(
+  () => import("@/components/markdown/MarkdownClientPreview"),
+);
 
 // Legacy shape kept for backward compat with callers not yet migrated
 export interface NavigationData {
@@ -283,7 +287,9 @@ const StepComponent = ({
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
           {title}
         </h2>
-        <p className="m-auto mb-5 w-2/3 max-w-3xl">{text}</p>
+        <p className="m-auto mb-5 w-2/3 max-w-3xl">
+          <MarkdownClientPreview source={text} />
+        </p>
         <div className="text-tetriary flex justify-center gap-8">
           {step.options.map((option) => {
             // Arrow only for nextStep pointing to the immediately following step.
