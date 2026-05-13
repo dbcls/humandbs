@@ -3,11 +3,12 @@ import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
+  useSuspenseInfiniteQuery,
 } from "@tanstack/react-query";
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
-import { Plus, Trash2Icon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Bell, Plus, Trash2Icon } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { DateRangePicker } from "@/components/DatePicker";
@@ -15,7 +16,6 @@ import { ListItem } from "@/components/ListItem";
 import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n, type Locale } from "@/config/i18n";
@@ -35,11 +35,15 @@ import { toDateString } from "@/utils/dates";
 import { alertsAdminSearchParamsSchema } from "@/utils/queryParams";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { AlertsFiltersBar } from "./-components/AlertsFiltersBar";
 import { TitleValue } from "./-components/TitleValue";
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { NoItemsMessage } from "./-components/NoItemsMessage";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
 
 const NEW_ALERT_ID = "__new_alert__";
 
@@ -85,7 +89,9 @@ function RouteComponent() {
           selectedAlertId={selectedId}
           onSelectAlert={handleSelectAlert}
         />
-      ) : null}
+      ) : (
+        <NoSelectedItemMessage icon={<Bell />} />
+      )}
     </>
   );
 }
@@ -98,27 +104,64 @@ function AlertsList({
   onSelectAlert: (id?: string) => void;
 }) {
   const { user } = useRouteContext({ from: "__root__" });
+
   const canCreate = hasPermission(user, "alerts", "create");
-  const canDelete = hasPermission(user, "alerts", "delete");
-  const canUpdate = hasPermission(user, "alerts", "update");
-  const { openConfirmation } = useConfirmationStore();
+
+  return (
+    <CollapsibleCard title="Alerts">
+      <div>
+        <AlertsFiltersBar />
+        {canCreate ? (
+          <AddNewButton
+            className="mb-5"
+            onClick={() => onSelectAlert(NEW_ALERT_ID)}
+          >
+            <Plus className="size-5" />
+            <span className="ml-2">Add alert</span>
+          </AddNewButton>
+        ) : null}
+      </div>
+
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <ErrorResetBoundary getResetKey={() => `${selectedAlertId}`}>
+          <Suspense fallback={<SkeletonLoadingPanelItems />}>
+            <ListItems
+              selectedAlertId={selectedAlertId}
+              onSelectAlert={onSelectAlert}
+            />
+          </Suspense>
+        </ErrorResetBoundary>
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+function ListItems({
+  selectedAlertId,
+  onSelectAlert,
+}: {
+  selectedAlertId?: string;
+  onSelectAlert: (id?: string) => void;
+}) {
   const queryClient = useQueryClient();
+
+  const { user } = useRouteContext({ from: "__root__" });
+
   const { q, activeFrom, activeTo } = Route.useSearch();
   const alertsQO = getAllAlertsInfiniteQueryOptions({
     q,
     activeFrom,
     activeTo,
   });
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    isPending,
-  } = useInfiniteQuery(alertsQO);
+
+  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(alertsQO);
+
   const alerts = data?.pages.flat() ?? [];
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const canDelete = hasPermission(user, "alerts", "delete");
+  const canUpdate = hasPermission(user, "alerts", "update");
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -155,6 +198,8 @@ function AlertsList({
       ...alerts,
     ];
   }, [alerts, selectedAlertId, user?.id, user?.name]);
+
+  const { openConfirmation } = useConfirmationStore();
 
   function handleDeleteAlert(id: string) {
     openConfirmation({
@@ -250,154 +295,115 @@ function AlertsList({
     }
   }
 
+  if (listItems.length === 0)
+    return <NoItemsMessage>No alerts found</NoItemsMessage>;
+
   return (
-    <CollapsibleCard title="Alerts">
-      <div>
-        <AlertsFiltersBar />
-        {canCreate ? (
-          <AddNewButton
-            className="mb-5"
-            onClick={() => onSelectAlert(NEW_ALERT_ID)}
-          >
-            <Plus className="size-5" />
-            <span className="ml-2">Add alert</span>
-          </AddNewButton>
+    <ul
+      className={cn(
+        "h-full overflow-y-auto transition-opacity",
+        isFetching && !isFetchingNextPage && "opacity-60",
+      )}
+    >
+      {listItems.map((alert, index) => {
+        const isDraft = alert.id === NEW_ALERT_ID;
+        const previewTranslations = i18n.locales
+          .map((translationLocale) => ({
+            locale: translationLocale,
+            content: alert.translations[translationLocale]?.content,
+          }))
+          .filter(
+            (translation): translation is { locale: Locale; content: string } =>
+              !!translation.content,
+          );
+
+        return (
+          <li key={alert.id}>
+            <ListItem
+              onClick={() => onSelectAlert(alert.id)}
+              isActive={selectedAlertId === alert.id}
+              className={cn("mb-2", { "border border-dashed": isDraft })}
+            >
+              <AdminListItem
+                id={alert.id}
+                header={isDraft ? "New alert" : ""}
+                translations={
+                  previewTranslations.length > 0
+                    ? previewTranslations.map((translation) => ({
+                        lang: translation.locale,
+                        statuses: {
+                          published: translation.content,
+                        },
+                      }))
+                    : [
+                        {
+                          lang: i18n.defaultLocale,
+                          statuses: {
+                            published: "Untitled alert",
+                          },
+                        },
+                      ]
+                }
+                meta={
+                  <div className="space-y-1">
+                    {!alert.enabled ? (
+                      <div className="text-foreground-light text-xs group-data-[active=true]:text-white/80">
+                        Disabled
+                      </div>
+                    ) : null}
+                    {(alert.from || alert.to) && !isDraft ? (
+                      <div className="text-foreground-light font-mono text-xs group-data-[active=true]:text-white/80">
+                        {alert.from ?? "Any time"} - {alert.to ?? "Open ended"}
+                      </div>
+                    ) : null}
+                  </div>
+                }
+                menuItems={[
+                  ...(!isDraft && canUpdate
+                    ? [
+                        {
+                          label: (
+                            <Label>
+                              {alert.enabled ? "Disable" : "Enable"}
+                            </Label>
+                          ),
+                          onSelect: () => {
+                            void handleToggleEnabled(alert);
+                          },
+                        },
+                      ]
+                    : []),
+                  ...(!isDraft && canDelete
+                    ? [
+                        {
+                          label: (
+                            <Label>
+                              <Trash2Icon />
+                              Delete
+                            </Label>
+                          ),
+                          onSelect: () => handleDeleteAlert(alert.id),
+                          variant: "destructive" as const,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            </ListItem>
+            {index < listItems.length - 1 ? (
+              <hr className="my-2 border-gray-200" />
+            ) : null}
+          </li>
+        );
+      })}
+      <div ref={sentinelRef} className="h-4 shrink-0">
+        {isFetchingNextPage ? (
+          <span className="text-foreground-light block py-2 text-center text-xs">
+            Loading more…
+          </span>
         ) : null}
       </div>
-
-      <div className="relative min-h-0 flex-1 overflow-hidden">
-        {isPending ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-          </div>
-        ) : (
-          <ul
-            className={cn(
-              "h-full overflow-y-auto transition-opacity",
-              isFetching && !isFetchingNextPage && "opacity-60",
-            )}
-          >
-            {listItems.map((alert, index) => {
-              const isDraft = alert.id === NEW_ALERT_ID;
-              const previewTranslations = i18n.locales
-                .map((translationLocale) => ({
-                  locale: translationLocale,
-                  content: alert.translations[translationLocale]?.content,
-                }))
-                .filter(
-                  (
-                    translation,
-                  ): translation is { locale: Locale; content: string } =>
-                    !!translation.content,
-                );
-
-              return (
-                <li key={alert.id}>
-                  <ListItem
-                    onClick={() => onSelectAlert(alert.id)}
-                    isActive={selectedAlertId === alert.id}
-                    className={cn("mb-2", { "border border-dashed": isDraft })}
-                  >
-                    <AdminListItem
-                      id={alert.id}
-                      header={isDraft ? "New alert" : ""}
-                      translations={
-                        previewTranslations.length > 0
-                          ? previewTranslations.map((translation) => ({
-                              lang: translation.locale,
-                              statuses: {
-                                published: translation.content,
-                              },
-                            }))
-                          : [
-                              {
-                                lang: i18n.defaultLocale,
-                                statuses: {
-                                  published: "Untitled alert",
-                                },
-                              },
-                            ]
-                      }
-                      meta={
-                        <div className="space-y-1">
-                          {!alert.enabled ? (
-                            <div className="text-foreground-light text-xs group-data-[active=true]:text-white/80">
-                              Disabled
-                            </div>
-                          ) : null}
-                          {(alert.from || alert.to) && !isDraft ? (
-                            <div className="text-foreground-light font-mono text-xs group-data-[active=true]:text-white/80">
-                              {alert.from ?? "Any time"} -{" "}
-                              {alert.to ?? "Open ended"}
-                            </div>
-                          ) : null}
-                        </div>
-                      }
-                      menuItems={[
-                        ...(!isDraft && canUpdate
-                          ? [
-                              {
-                                label: (
-                                  <Label>
-                                    {alert.enabled ? "Disable" : "Enable"}
-                                  </Label>
-                                ),
-                                onSelect: () => {
-                                  void handleToggleEnabled(alert);
-                                },
-                              },
-                            ]
-                          : []),
-                        ...(!isDraft && canDelete
-                          ? [
-                              {
-                                label: (
-                                  <Label>
-                                    <Trash2Icon />
-                                    Delete
-                                  </Label>
-                                ),
-                                onSelect: () => handleDeleteAlert(alert.id),
-                                variant: "destructive" as const,
-                              },
-                            ]
-                          : []),
-                      ]}
-                    />
-                  </ListItem>
-                  {index < listItems.length - 1 ? (
-                    <hr className="my-2 border-gray-200" />
-                  ) : null}
-                </li>
-              );
-            })}
-            <div ref={sentinelRef} className="h-4 shrink-0">
-              {isFetchingNextPage ? (
-                <span className="text-foreground-light block py-2 text-center text-xs">
-                  Loading more…
-                </span>
-              ) : null}
-            </div>
-          </ul>
-        )}
-
-        {isFetching && !isFetchingNextPage && data ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-            <div className="bg-primary/20 mx-2 h-1 rounded-full">
-              <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
-            </div>
-          </div>
-        ) : null}
-
-        {!isPending && data && alerts.length === 0 ? (
-          <div className="text-foreground-light flex h-full items-center justify-center text-sm">
-            No alerts found
-          </div>
-        ) : null}
-      </div>
-    </CollapsibleCard>
+    </ul>
   );
 }
 

@@ -17,7 +17,7 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
-import { Tag } from "@/components/StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type {
   ResearchDetailResponse,
@@ -457,7 +457,7 @@ export function ResearchDetails({
       caption={
         <>
           <span>{researchValues.humId}</span>
-          <Tag tag={researchValues.status} size="md" className="ml-3" />
+          <StatusTag status={researchValues.status} className="mx-3" />
           <ResearchVersionSelector
             humId={humId}
             lang={lang}
@@ -545,65 +545,64 @@ export function ResearchDetails({
           >
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex shrink-0 items-center gap-2">
-              <div className="ml-auto flex items-center gap-2">
-                <MergeJDSResearchDialog
-                  currentValues={formValues}
-                  disabled={!isViewingDraft || !canUpdate}
-                  onMerge={applyMergedJDSValues}
-                />
+              <MergeJDSResearchDialog
+                className="mr-auto"
+                currentValues={formValues}
+                disabled={!isViewingDraft || !canUpdate}
+                onMerge={applyMergedJDSValues}
+              />
 
-                {canDelete && (
-                  <Button type="button" size="lg" onClick={handleDelete}>
-                    Delete
-                  </Button>
-                )}
+              {canDelete && (
+                <Button type="button" size="lg" onClick={handleDelete}>
+                  Delete
+                </Button>
+              )}
 
-                {isViewingDraft && canSubmit && (
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Submitting…" : "Submit for review"}
-                  </Button>
-                )}
-                {isViewingDraft && canReject && (
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={handleReject}
-                    disabled={isRejecting}
-                  >
-                    {isRejecting ? "Rejecting…" : "Reject"}
-                  </Button>
-                )}
-                {isViewingDraft && canApprove && (
-                  <Button
-                    variant="action"
-                    size="lg"
-                    onClick={handleApprove}
-                    disabled={isApproving}
-                  >
-                    {isApproving ? "Approving…" : "Approve"}
-                  </Button>
-                )}
-                {canUnpublish && (
-                  <Button variant="outline" size="lg">
-                    Unpublish
-                  </Button>
-                )}
+              {isViewingDraft && canSubmit && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Submitting…" : "Submit for review"}
+                </Button>
+              )}
+              {isViewingDraft && canReject && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleReject}
+                  disabled={isRejecting}
+                >
+                  {isRejecting ? "Rejecting…" : "Reject"}
+                </Button>
+              )}
+              {isViewingDraft && canApprove && (
+                <Button
+                  variant="action"
+                  size="lg"
+                  onClick={handleApprove}
+                  disabled={isApproving}
+                >
+                  {isApproving ? "Approving…" : "Approve"}
+                </Button>
+              )}
+              {canUnpublish && (
+                <Button variant="outline" size="lg">
+                  Unpublish
+                </Button>
+              )}
 
-                {isViewingDraft && canUpdate && (
-                  <Button
-                    size="lg"
-                    onClick={() => form.handleSubmit()}
-                    disabled={isSaving || !isModified}
-                  >
-                    {isSaving ? "Saving…" : "Save draft"}
-                  </Button>
-                )}
-              </div>
+              {isViewingDraft && canUpdate && (
+                <Button
+                  size="lg"
+                  onClick={() => form.handleSubmit()}
+                  disabled={isSaving || !isModified}
+                >
+                  {isSaving ? "Saving…" : "Save draft"}
+                </Button>
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">

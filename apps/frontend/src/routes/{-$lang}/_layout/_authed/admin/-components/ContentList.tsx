@@ -25,6 +25,10 @@ import { AdminListItem } from "./AdminListItem";
 import { useTranslations } from "use-intl";
 import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
+import { Suspense } from "react";
+import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { NoItemsMessage } from "./NoItemsMessage";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/content");
 
@@ -40,9 +44,8 @@ export function ContentList({
   const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/content");
 
   const contentsListQO = getContentsListQueryOptions({ q });
-  const { data: contents } = useSuspenseQuery(contentsListQO);
 
-  const { openConfirmation } = useConfirmationStore();
+  const validateContentId = useServerFn($validateEntityId);
 
   const { mutateAsync: createContent } = useMutation({
     mutationFn: (id: string) => $createContentItem({ data: { id } }),
@@ -69,44 +72,6 @@ export function ContentList({
       await queryClient.invalidateQueries(contentsListQO);
     },
   });
-
-  const { mutate: deleteContent } = useMutation({
-    mutationFn: (id: string) => $deleteContentItem({ data: { id } }),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries(contentsListQO);
-      const prevContentList = queryClient.getQueryData(contentsListQO.queryKey);
-      queryClient.setQueryData(contentsListQO.queryKey, (oldData) => {
-        if (!oldData) return [];
-        return oldData.filter((content) => content.id !== id);
-      });
-      return { prevContentList };
-    },
-    onError: (_, __, context) => {
-      if (context?.prevContentList) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context.prevContentList,
-        );
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries(contentsListQO);
-    },
-  });
-
-  const validateContentId = useServerFn($validateEntityId);
-
-  function handleClickDeleteContentItem(id: string) {
-    openConfirmation({
-      title: "Delete Content page",
-      description: `Are you sure you want to delete content page ${id}?`,
-      actionLabel: "Delete",
-      onAction: () => {
-        deleteContent(id);
-        onSelectContent(undefined);
-      },
-    });
-  }
 
   const tErrors = useTranslations("Errors");
 
@@ -145,46 +110,115 @@ export function ContentList({
         onSubmit={createContent}
       />
 
-      <ul className="overflow-y-auto">
-        {contents.map((content, index) => {
-          const isActive = content.id === selectedContentId;
-
-          return (
-            <li key={content.id}>
-              <ListItem
-                onClick={() => {
-                  onSelectContent(content.id);
-                }}
-                isActive={isActive}
-                className="mb-2"
-              >
-                <AdminListItem
-                  id={content.id}
-                  translations={content.translations.map((tr) => ({
-                    lang: tr.lang,
-                    statuses: tr.statuses,
-                  }))}
-                  menuItems={[
-                    {
-                      label: (
-                        <Label>
-                          <Trash2 />
-                          Delete
-                        </Label>
-                      ),
-                      onSelect: () => handleClickDeleteContentItem(content.id),
-                      variant: "destructive",
-                    },
-                  ]}
-                />
-              </ListItem>
-              {index < contents.length - 1 ? (
-                <hr className="my-2 border-gray-200" />
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      <ErrorResetBoundary getResetKey={() => `${q}`}>
+        <Suspense fallback={<SkeletonLoadingPanelItems />}>
+          <ItemsList
+            selectedContentId={selectedContentId}
+            onSelectContent={onSelectContent}
+          />
+        </Suspense>
+      </ErrorResetBoundary>
     </>
+  );
+}
+
+function ItemsList({
+  selectedContentId,
+  onSelectContent,
+}: {
+  selectedContentId: string | undefined;
+  onSelectContent: (contentId: string | undefined) => void;
+}) {
+  const queryClient = useQueryClient();
+
+  const { q } = routeApi.useSearch();
+
+  const contentsListQO = getContentsListQueryOptions({ q });
+
+  const { data: contents } = useSuspenseQuery(contentsListQO);
+
+  const { openConfirmation } = useConfirmationStore();
+
+  const { mutate: deleteContent } = useMutation({
+    mutationFn: (id: string) => $deleteContentItem({ data: { id } }),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries(contentsListQO);
+      const prevContentList = queryClient.getQueryData(contentsListQO.queryKey);
+      queryClient.setQueryData(contentsListQO.queryKey, (oldData) => {
+        if (!oldData) return [];
+        return oldData.filter((content) => content.id !== id);
+      });
+      return { prevContentList };
+    },
+    onError: (_, __, context) => {
+      if (context?.prevContentList) {
+        queryClient.setQueryData(
+          contentsListQO.queryKey,
+          context.prevContentList,
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(contentsListQO);
+    },
+  });
+
+  function handleClickDeleteContentItem(id: string) {
+    openConfirmation({
+      title: "Delete Content page",
+      description: `Are you sure you want to delete content page ${id}?`,
+      actionLabel: "Delete",
+      onAction: () => {
+        deleteContent(id);
+        onSelectContent(undefined);
+      },
+    });
+  }
+
+  if (contents.length === 0) {
+    return <NoItemsMessage>No content found</NoItemsMessage>;
+  }
+
+  return (
+    <ul className="overflow-y-auto">
+      {contents.map((content, index) => {
+        const isActive = content.id === selectedContentId;
+
+        return (
+          <li key={content.id}>
+            <ListItem
+              onClick={() => {
+                onSelectContent(content.id);
+              }}
+              isActive={isActive}
+              className="mb-2"
+            >
+              <AdminListItem
+                id={content.id}
+                translations={content.translations.map((tr) => ({
+                  lang: tr.lang,
+                  statuses: tr.statuses,
+                }))}
+                menuItems={[
+                  {
+                    label: (
+                      <Label>
+                        <Trash2 />
+                        Delete
+                      </Label>
+                    ),
+                    onSelect: () => handleClickDeleteContentItem(content.id),
+                    variant: "destructive",
+                  },
+                ]}
+              />
+            </ListItem>
+            {index < contents.length - 1 ? (
+              <hr className="my-2 border-gray-200" />
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

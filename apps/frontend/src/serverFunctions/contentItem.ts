@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq, exists, like, or } from "drizzle-orm";
 import { z } from "zod";
@@ -25,6 +25,7 @@ export function getContentsListQueryOptions(params?: { q?: string }) {
   return queryOptions({
     queryKey: ["contents", params],
     queryFn: () => $getContentItems({ data: params ?? {} }),
+    placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 5, // 5 minutes,
   });
 }

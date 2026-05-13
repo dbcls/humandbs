@@ -35,6 +35,7 @@ const getBackendBaseUrl = createIsomorphicFn()
   .client(() => `/api`)
   .server(
     () =>
+      process.env.HUMANDBS_BACKEND_BASE_URL ??
       `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}${process.env.HUMANDBS_BACKEND_URL_PREFIX}`,
   );
 

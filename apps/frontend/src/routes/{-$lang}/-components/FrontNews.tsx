@@ -1,4 +1,3 @@
-import { useLoaderData, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Link } from "@/components/Link";
@@ -6,12 +5,17 @@ import {
   getNewsTitlesQueryOptions,
   type NewsTitleResponse,
 } from "@/serverFunctions/news";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
+  const lang = useLocale();
   return (
-    <li className="flex items-start gap-2">
-      <span className="text-2xs w-24 shrink-0">{newsItem.publishedAt}</span>
+    <li>
+      {newsItem.publishedAt ? (
+        <span className="w-24 shrink-0 text-xs">
+          {new Date(newsItem.publishedAt).toLocaleDateString(lang)}
+        </span>
+      ) : null}
 
       <Link
         className="text-secondary line-clamp-3 h-fit text-base underline"

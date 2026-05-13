@@ -1,9 +1,8 @@
+import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { move } from "@dnd-kit/helpers";
-import { createFileRoute } from "@tanstack/react-router";
-import { type Ref, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertCircle,
   ChevronDown,
@@ -14,9 +13,13 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { useRef, useState, type Ref } from "react";
 
 import { Card } from "@/components/Card";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
+import { ListItem } from "@/components/ListItem";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import {
   Breadcrumbs,
@@ -24,11 +27,9 @@ import {
   type BreadcrumbItem,
   type FlowchartAnswers,
 } from "@/components/NavigationChart";
+import { StatusTag } from "@/components/StatusTag";
 import { TrashButton } from "@/components/TrashButton";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { TextareaAutosize } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -36,8 +37,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { TextareaAutosize } from "@/components/ui/textarea";
+import type {
+  NavigationFlowchartConfig,
+  NavigationFlowchartOption,
+  NavigationFlowchartStep,
+} from "@/config/navigation-flowchart";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
-import { AdminStatusMessage } from "./-components/AdminStatusMessage";
+import { cn } from "@/lib/utils";
+import type {
+  NavigationFlowchartRecord,
+  NavigationFlowchartSummary,
+} from "@/repositories/navigationFlowchart";
 import {
   $createNavigationFlowchart,
   $deleteNavigationFlowchart,
@@ -45,21 +58,10 @@ import {
   getNavigationFlowchartByIdQueryOptions,
   getNavigationFlowchartsQueryOptions,
 } from "@/serverFunctions/navigationFlowchartAdmin";
-import type {
-  NavigationFlowchartRecord,
-  NavigationFlowchartSummary,
-} from "@/repositories/navigationFlowchart";
-import type {
-  NavigationFlowchartConfig,
-  NavigationFlowchartOption,
-  NavigationFlowchartStep,
-} from "@/config/navigation-flowchart";
-import { cn } from "@/lib/utils";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
-import { ListItem } from "@/components/ListItem";
-import { StatusTag } from "@/components/StatusTag";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { AdminStatusMessage } from "./-components/AdminStatusMessage";
+import { NoItemsMessage } from "./-components/NoItemsMessage";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/flowcharts",
@@ -165,12 +167,7 @@ function RouteComponent() {
       ) : mode === "edit" && selectedId ? (
         <EditFlowchartPanel key={selectedId} id={selectedId} />
       ) : (
-        <Card className="flex flex-1 items-center justify-center text-gray-400">
-          <div className="flex flex-col items-center gap-3">
-            <GitBranch className="size-10 opacity-30" />
-            <p className="text-sm">Select a flowchart to edit</p>
-          </div>
-        </Card>
+        <NoSelectedItemMessage icon={<GitBranch />} />
       )}
     </>
   );
@@ -212,6 +209,15 @@ function FlowchartList({
   const orphans = flowcharts.filter(
     (fc) => !fc.isEntryPoint && !referencedIds.has(fc.id),
   );
+
+  if (entryPoints.length === 0) {
+    return (
+      <NoItemsMessage>
+        No entry point flowchart found. Create a flowchart and set it as the
+        entry point to get started.
+      </NoItemsMessage>
+    );
+  }
 
   return (
     <ul className="flex flex-col gap-0.5">
