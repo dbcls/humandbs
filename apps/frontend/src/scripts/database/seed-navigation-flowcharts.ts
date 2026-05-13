@@ -170,7 +170,7 @@ async function seedNavigationFlowcharts() {
       null,
     );
 
-    // before-application is a child flowchart
+    // before-application is a linked flowchart
     const beforeApplicationId = await upsertFlowchart(db, {
       isEntryPoint: false,
       nameEn: "Before Application",

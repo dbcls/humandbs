@@ -48,6 +48,7 @@ export function LangSwitcher() {
     await router.navigate({
       to: ".",
       params: { lang: lang === i18n.defaultLocale ? undefined : lang },
+      search: (prev) => prev,
     });
   }
 

@@ -199,7 +199,7 @@ function FlowchartList({
     return <p className="px-1 text-sm text-gray-400">No flowcharts yet.</p>;
   }
 
-  // Build grouped list: each entry point followed by its direct children.
+  // Build grouped list: each entry point followed by directly linked flowcharts.
   // Flowcharts not reachable from any entry point appear at the end.
   const entryPoints = flowcharts.filter((fc) => fc.isEntryPoint);
   const byId = Object.fromEntries(flowcharts.map((fc) => [fc.id, fc]));
@@ -238,20 +238,20 @@ function FlowchartList({
           </ListItem>
           {ep.linkedFlowchartIds.length > 0 && (
             <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
-              {ep.linkedFlowchartIds.map((childId) => {
-                const child = byId[childId];
-                if (!child) return null;
+              {ep.linkedFlowchartIds.map((linkedId) => {
+                const linked = byId[linkedId];
+                if (!linked) return null;
                 return (
                   <ListItem
-                    key={child.id}
-                    isActive={selectedId === child.id}
-                    onClick={() => onSelect(child.id)}
+                    key={linked.id}
+                    isActive={selectedId === linked.id}
+                    onClick={() => onSelect(linked.id)}
                   >
-                    <FlowchartListItemContent fc={child} />
+                    <FlowchartListItemContent fc={linked} />
                     <TrashButton
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(child.id);
+                        onDelete(linked.id);
                       }}
                     />
                   </ListItem>
@@ -315,8 +315,8 @@ function FlowchartListItemContent({
 
 /**
  * Panel for creating a new flowchart record. Collects EN/JA name and an
- * optional slug. Leaving the slug blank creates a child-only flowchart that
- * can only be reached via a linked option in another flowchart.
+ * optional slug. Leaving the slug blank creates a flowchart that can only be
+ * reached via a linked option in another flowchart.
  */
 function CreateFlowchartPanel({
   onCreated,
@@ -754,14 +754,14 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 }
 
 // ---------------------------------------------------------------------------
-// FlowchartPreview — interactive preview with child flowchart navigation
+// FlowchartPreview — interactive preview with linked flowchart navigation
 // ---------------------------------------------------------------------------
 
 /**
  * Self-contained preview panel for a flowchart editor.
  *
  * - The root flowchart uses `configDraft` so unsaved changes are reflected.
- * - Child flowcharts are fetched from the DB via the admin query.
+ * - Linked flowcharts are fetched from the DB via the admin query.
  * - Maintains a navigation stack so breadcrumbs work just like the public page.
  * - `linkedFlowchartNames` is resolved from `allFlowcharts` for the current level.
  */
@@ -778,21 +778,21 @@ function FlowchartPreview({
   lang: "en" | "ja";
   onLangChange: (l: "en" | "ja") => void;
 }) {
-  // Stack of IDs navigated into: empty = showing root, ["childId"] = showing child, etc.
-  const [childStack, setChildStack] = useState<string[]>([]);
+  // Stack of linked flowchart IDs navigated into; empty means showing root.
+  const [linkedStack, setLinkedStack] = useState<string[]>([]);
   const [answers, setAnswers] = useState<FlowchartAnswers>({});
 
   const currentId =
-    childStack.length > 0 ? childStack[childStack.length - 1] : null;
+    linkedStack.length > 0 ? linkedStack[linkedStack.length - 1] : null;
 
-  // Fetch current child if we've navigated into one
-  const { data: childRecord } = useQuery({
+  // Fetch current linked flowchart if we've navigated into one
+  const { data: linkedRecord } = useQuery({
     ...getNavigationFlowchartByIdQueryOptions(currentId ?? ""),
     enabled: !!currentId,
   });
 
   // Build the data for the current level
-  const currentConfig = currentId ? childRecord?.config : configDraft;
+  const currentConfig = currentId ? linkedRecord?.config : configDraft;
   const currentFlowchartId = currentId ?? record.id;
   const currentSlug = currentFlowchartId;
   const currentData = currentConfig ?? null;
@@ -813,21 +813,21 @@ function FlowchartPreview({
       nameEn: record.nameEn,
       nameJa: record.nameJa,
       onClick:
-        childStack.length > 0
+        linkedStack.length > 0
           ? () => {
-              setChildStack([]);
+              setLinkedStack([]);
             }
           : undefined,
     },
-    ...childStack.map((childId, i) => {
-      const fc = allFlowcharts.find((f) => f.id === childId);
+    ...linkedStack.map((linkedId, i) => {
+      const fc = allFlowcharts.find((f) => f.id === linkedId);
       return {
-        slug: childId,
-        nameEn: fc?.nameEn ?? childId,
-        nameJa: fc?.nameJa ?? childId,
+        slug: linkedId,
+        nameEn: fc?.nameEn ?? linkedId,
+        nameJa: fc?.nameJa ?? linkedId,
         onClick:
-          i < childStack.length - 1
-            ? () => setChildStack((prev) => prev.slice(0, i + 1))
+          i < linkedStack.length - 1
+            ? () => setLinkedStack((prev) => prev.slice(0, i + 1))
             : undefined,
       };
     }),
@@ -850,8 +850,8 @@ function FlowchartPreview({
     });
   }
 
-  function handleNavigateToChild(childId: string) {
-    setChildStack((prev) => [...prev, childId]);
+  function handleNavigateToFlowchart(flowchartId: string) {
+    setLinkedStack((prev) => [...prev, flowchartId]);
   }
 
   return (
@@ -871,7 +871,7 @@ function FlowchartPreview({
               answers={answers}
               linkedFlowchartNames={linkedFlowchartNames}
               onAnswerChange={handleAnswerChange}
-              onNavigateToChild={handleNavigateToChild}
+              onNavigateToFlowchart={handleNavigateToFlowchart}
             />
           ) : (
             <div className="py-8 text-center text-sm text-gray-400">
@@ -1244,7 +1244,7 @@ function OptionList({
   );
 }
 
-type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
+type DestType = "next-step" | "linked-flowchart" | "external-link" | "none";
 
 /**
  * Derives the current destination type of an option from its config fields.
@@ -1253,7 +1253,7 @@ type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
  */
 function getDestType(opt: NavigationFlowchartOption): DestType {
   if (opt.nextStep) return "next-step";
-  if (opt.linkedFlowchartId) return "child-flowchart";
+  if (opt.linkedFlowchartId) return "linked-flowchart";
   // link can be an empty string when the user just selected "External link"
   // but hasn't typed a URL yet — treat null/undefined as unset, string as set.
   if (opt.link !== undefined && opt.link !== null) return "external-link";
@@ -1264,7 +1264,7 @@ function getDestType(opt: NavigationFlowchartOption): DestType {
  * Single editable option row with:
  * - Drag handle (dnd-kit `useSortable`, scoped to parent step via `optionType`)
  * - Inline bilingual title editor
- * - Radio buttons for destination type (next step / child flowchart / external link)
+ * - Radio buttons for destination type (next step / linked flowchart / external link)
  * - Context-sensitive sub-form for the selected destination type
  *
  * Changing the destination type clears all previously set dest fields before
@@ -1311,7 +1311,7 @@ function OptionRow({
     };
     if (newType === "next-step") {
       onUpdate({ ...base, nextStep: otherSteps[0]?.id ?? "" });
-    } else if (newType === "child-flowchart") {
+    } else if (newType === "linked-flowchart") {
       onUpdate({ ...base, linkedFlowchartId: otherFlowcharts[0]?.id ?? "" });
     } else if (newType === "external-link") {
       onUpdate({ ...base, link: "" });
@@ -1367,7 +1367,7 @@ function OptionRow({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="next-step">Next step</SelectItem>
-            <SelectItem value="child-flowchart">Child flowchart</SelectItem>
+            <SelectItem value="linked-flowchart">Linked flowchart</SelectItem>
             <SelectItem value="external-link">External link</SelectItem>
             <SelectItem value="none">None</SelectItem>
           </SelectContent>
@@ -1398,7 +1398,7 @@ function OptionRow({
           </Select>
         )}
 
-        {destType === "child-flowchart" && (
+        {destType === "linked-flowchart" && (
           <Select
             value={option.linkedFlowchartId ?? ""}
             onValueChange={(v) =>
