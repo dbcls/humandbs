@@ -17,17 +17,26 @@ interface AuthUserResponse {
   session: SessionMeta | null;
 }
 
+export const $$getServerBackendBaseUrl = createServerOnlyFn(
+  () =>
+    process.env.HUMANDBS_BACKEND_BASE_URL ??
+    `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}${process.env.HUMANDBS_BACKEND_URL_PREFIX}`,
+);
+
 export const $$resolveUserRole = createServerOnlyFn(
   async (accessToken: string): Promise<UserRole> => {
-    const isAdminRes = await fetch(
-      `http://${process.env.HUMANDBS_BACKEND_HOST}:${process.env.HUMANDBS_BACKEND_PORT}/api/admin/is-admin`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+    const backendBaseUrl = $$getServerBackendBaseUrl();
+    const base = backendBaseUrl.endsWith("/")
+      ? backendBaseUrl
+      : `${backendBaseUrl}/`;
+    const isAdminUrl = new URL("admin/is-admin", base);
+
+    const isAdminRes = await fetch(isAdminUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+    });
 
     if (!isAdminRes.ok) {
       return USER_ROLES.USER;
