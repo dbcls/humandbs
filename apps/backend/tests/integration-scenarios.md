@@ -161,7 +161,7 @@ JGA 関連 (`IT-JGA-*`) は staging PostgreSQL と staging Keycloak admin トー
 - 認証なしで 200 が返る
 - `timestamp` を `new Date()` でパースしたとき NaN にならず、現在時刻から ±60 秒以内
 
-**回帰元**: `docs/api-guide.md § その他 (Health)` / `src/api/routes/health.ts`
+**回帰元**: `docs/api-guide.md § エンドポイント構成` / `src/api/routes/health.ts`
 
 **関連 unit テスト**: `tests/unit/api/routes/health.test.ts`
 
@@ -173,7 +173,7 @@ JGA 関連 (`IT-JGA-*`) は staging PostgreSQL と staging Keycloak admin トー
 - ES が unreachable な状態でも `200` を返す (ES に問い合わせていない)
 - > 注: 検証手段が要る場合は `HUMANDBS_ES_HOST` を `localhost:1` 等で起動する別プロセスで確認。通常の integration 実行では skip してよい
 
-**回帰元**: `architecture.md § ヘルスチェック方針`
+**回帰元**: `src/api/routes/health.ts`
 
 **関連 unit テスト**: `tests/unit/api/routes/health.test.ts`
 
@@ -871,7 +871,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 返る `data` 配列に対象 humId が **必ず先頭** で含まれる (boost で最上位)
 - `total >= 1`
 
-**回帰元**: `docs/api-guide.md § フリーテキスト検索 § Research 検索`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -883,7 +883,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 返る `data` の humId が全て `hum000` で始まる、または fulltext で title 等にヒットしたもの
 - 候補が複数件存在するなら `total >= 2`
 
-**回帰元**: `docs/api-guide.md § フリーテキスト検索 § ID 完全一致/前方一致`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -895,7 +895,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 小文字 `hum0001` の Research が `data` に含まれる
 - `total >= 1`
 
-**回帰元**: `docs/api-guide.md § ID マッチは大文字小文字を区別しない`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -907,7 +907,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 該当 Dataset の親 `humId` を持つ Research が `data` に含まれる
 - > 注: Research index には datasetId フィールドが無いため、内部で Dataset index を引いて親 humId を経由するロジック
 
-**回帰元**: `docs/api-guide.md § フリーテキスト検索 § Research 検索`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/search.test.ts`
 
@@ -919,7 +919,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - ID 完全一致経路は空振り、本文 `cancer` でヒット
 - `data` の humId は `hum0001` に限らない
 
-**回帰元**: `docs/api-guide.md § ID マッチは大文字小文字を区別しない` (最後の段落)
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -995,7 +995,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 前方一致: 該当 prefix を持つ Dataset 群が含まれる
 - 大文字版でもヒット (case-insensitive)
 
-**回帰元**: `docs/api-guide.md § フリーテキスト検索 § Dataset 検索`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -1007,7 +1007,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 返る Dataset は全て `humId === <input>` (親フィルタ)
 - `total === <親の Dataset 数>`
 
-**回帰元**: `docs/api-guide.md § フリーテキスト検索 § Dataset 検索`
+**回帰元**: `docs/api-guide.md § フリーテキスト検索`
 
 **関連 unit テスト**: `tests/unit/api/es-client/query-builders.test.ts`
 
@@ -1092,7 +1092,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 **不変条件**:
 - 2 つの結果の `humId` 集合が一致
 
-**回帰元**: `docs/api-guide.md § ID マッチは大文字小文字を区別しない` + ES standard analyzer
+**回帰元**: `docs/api-guide.md § 全文検索の fuzziness` + ES standard analyzer
 
 **関連 unit テスト**: なし
 
@@ -1149,7 +1149,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 認証なしでは `data` 中の Dataset は **親 Research が公開条件を満たすもの** に限る
 - `data.length <= 5`
 
-**回帰元**: `docs/api-guide.md § Dataset API`、`architecture.md § Dataset の status 依存`
+**回帰元**: `docs/api-guide.md § エンドポイント構成`、`architecture.md § Dataset の status 依存`
 
 **関連 unit テスト**: `tests/unit/api/routes/dataset/index.test.ts`
 
@@ -1362,7 +1362,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - `data.humId === <parent humId>`
 - 認証状態によって status/uids/draftVersion の field control が IT-AUTH-18/19 と一致
 
-**回帰元**: `docs/api-guide.md § Dataset API`
+**回帰元**: `docs/api-guide.md § エンドポイント構成`
 
 **関連 unit テスト**: `tests/unit/api/es-client/dataset.test.ts`
 
@@ -1656,7 +1656,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - 直後の admin GET で `data.uids === ["uid1", "uid2"]`
 - uid1 ユーザーで update 系 endpoint を叩けるようになる
 
-**回帰元**: `docs/api-guide.md § Research API § PUT /research/{humId}/uids`
+**回帰元**: `docs/api-guide.md § エンドポイント構成` / `src/api/routes/research/crud.ts`
 
 **関連 unit テスト**: `tests/unit/api/es-client/research.test.ts`
 
@@ -1722,7 +1722,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 - crawler 由来データなら `rawHtml: string`、API 編集後なら `rawHtml: null`
 - `includeRawHtml=false` (デフォルト) では `rawHtml` プロパティが除外される
 
-**回帰元**: `docs/api-guide.md § rawHtml パラメータ`
+**回帰元**: `docs/api-guide.md § rawHtml の扱い`
 
 **関連 unit テスト**: `tests/unit/api/utils/hydrate-raw-html.test.ts`
 

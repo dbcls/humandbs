@@ -130,123 +130,26 @@ experiments[].searchable に格納
 }
 ```
 
-## 正規化の方針
+## LLM の責務範囲
 
-### LLM がやること (翻訳)
-
-- 日本語のフィールド値を英語に翻訳
-- 例: "末梢血" → "peripheral blood", "腫瘍組織" → "tumor tissue"
-
-### LLM がやらないこと (正規化)
-
-- 同義語の統一は後段ステップ (facet-normalize)で行う
-- 例: "RNA-Seq" / "RNAseq" / "mRNA-Seq" の統一は TSV マッピングで
-
-### 理由
-
-- 誤った変換による情報損失リスク
-- 正規化ルールの更新が LLM プロンプト変更を要求
-- 正規化は domain knowledge が必要で、人間が適切に判断できる
+- **翻訳まで担当**: 日本語のフィールド値を英語に翻訳する（例: "末梢血" → "peripheral blood", "腫瘍組織" → "tumor tissue"）
+- **同義語の統一はしない**: "RNA-Seq" / "RNAseq" / "mRNA-Seq" の統一は後段の facet-normalize に分離し、TSV マッピングで管理する
 
 ## フィールド追加の手順
 
-新しい searchable フィールドを追加する場合:
+新しい searchable フィールドを追加する場合、以下のファイルを変更する。具体的な書き方は各ファイルの既存フィールドに倣う。
 
-### 1. 型定義を追加
-
-`src/crawler/types/structured.ts`:
-
-```typescript
-// SearchableExperimentFields に追加
-newField: string | null
-```
-
-### 2. ES スキーマを追加
-
-`src/es/types.ts`:
-
-```typescript
-// SearchableExperimentFieldsSchema に追加
-newField: z.string().nullable(),
-```
-
-`src/es/dataset-schema.ts`:
-
-```typescript
-// searchable オブジェクト内に追加
-newField: f.keyword(),
-```
-
-### 3. プロンプトを追加
-
-`src/crawler/llm/prompts.ts`:
-
-```typescript
-// Field Guide セクションに追加
-- newField: Description of what to extract. null if not stated.
-```
-
-### 4. LLM 出力スキーマを追加
-
-`src/crawler/llm/extract.ts`:
-
-`LlmOutputBaseSchema` と `SearchableExperimentFieldsSchema` の両方にフィールドを追加:
-
-```typescript
-// LlmOutputBaseSchema に追加 (JSON Schema 生成用)
-newField: z.string().nullable(),
-
-// SearchableExperimentFieldsSchema に追加 (バリデーション用)
-newField: z.string().nullable().catch(null),
-```
-
-また、`createEmptySearchableFields()` と `isEmptySearchableFields()` にもフィールドを追加。
-
-### 5. 正規化ルールを追加 (必要に応じて)
-
-ファセット検索用に値を統一する場合:
-
-1. `src/crawler/data/facet-mappings/newField.tsv` を作成
-2. `src/crawler/cli/facet-values.ts` に収集対象を追加
-3. `src/crawler/cli/facet-normalize.ts` に正規化対象を追加
+| 手順 | 変更箇所 |
+|---|---|
+| 1. 型定義 | `src/crawler/types/structured.ts` の `SearchableExperimentFields` |
+| 2. ES スキーマ | `src/es/types.ts` の `SearchableExperimentFieldsSchema` と `src/es/dataset-schema.ts` の `searchable` mapping |
+| 3. プロンプト | `src/crawler/llm/prompts.ts` の Field Guide セクション |
+| 4. LLM 出力スキーマ | `src/crawler/llm/extract.ts` の `LlmOutputBaseSchema` と `SearchableExperimentFieldsSchema`、および `createEmptySearchableFields()` / `isEmptySearchableFields()` |
+| 5. (必要なら) 正規化 | `src/crawler/data/facet-mappings/<field>.tsv` を追加し、`src/crawler/cli/facet-values.ts` / `facet-normalize.ts` に対象を追加 |
 
 ## 実行コマンド
 
-```bash
-# 全データセット処理 (Ollama 接続先を指定)
-bun run crawler:llm-extract --host localhost --port 11434
-
-# モデルを指定
-bun run crawler:llm-extract --host localhost --port 11434 --model llama3.3:70b
-
-# 特定の humId のみ
-bun run crawler:llm-extract --host localhost --port 11434 --hum-id hum0001
-
-# 特定のファイルのみ
-bun run crawler:llm-extract --host localhost --port 11434 --file JGAD000001-v1.json
-
-# 強制再抽出 (既存フィールド上書き)
-bun run crawler:llm-extract --host localhost --port 11434 --force
-
-# ドライラン (LLM 呼び出しなし)
-bun run crawler:llm-extract --dry-run
-```
-
-### CLI オプション
-
-| オプション | デフォルト | 説明 |
-|-----------|----------|------|
-| `--host, -h` | `localhost` | Ollama ホスト |
-| `--port, -p` | `11434` | Ollama ポート |
-| `--model, -m` | `llama3.3:70b` | モデル名 |
-| `--timeout, -t` | `300000` | リクエストタイムアウト (ms) |
-| `--concurrency, -c` | `16` | 並列呼び出し数 |
-| `--file, -f` | - | 特定ファイルのみ処理 |
-| `--hum-id, -i` | - | 特定の humId のみ処理（複数指定可） |
-| `--dataset-id, -d` | - | 特定の datasetId のみ処理（複数指定可） |
-| `--dry-run` | `false` | LLM 呼び出しなし |
-| `--force` | `false` | 既存フィールドを上書き |
-| `--latest-only` | `true` | 最新バージョンのみ処理 |
+実行コマンド・CLI オプションは [crawler-pipeline.md § Step 6: llm-extract](crawler-pipeline.md#step-6-llm-extract) を参照。
 
 ## トラブルシューティング
 

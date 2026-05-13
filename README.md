@@ -14,7 +14,7 @@
 
 ## ネットワークアーキテクチャ
 
-```planetext
+```plaintext
 [Internet]
     |
     v
@@ -87,38 +87,7 @@ docker compose exec frontend bash
 
 ### 管理者設定
 
-管理者権限を持つユーザーを設定するには、テンプレートをコピーして編集する:
-
-```bash
-cp admin_uids.template.json admin_uids.json
-```
-
-`admin_uids.json` に管理者の UID（Keycloak の sub）を設定:
-
-```json
-[
-  "actual-admin-user-id-1",
-  "actual-admin-user-id-2"
-]
-```
-
-#### UID 取得スクリプト
-
-Keycloak のユーザー名とパスワードから UID を取得するスクリプトを用意している:
-
-```bash
-# UID を取得して表示
-./scripts/fetch_keycloak_uid.sh
-
-# UID を取得して admin_uids.json に追記
-./scripts/fetch_keycloak_uid.sh --append
-```
-
-このスクリプトは `.env` から Keycloak の設定を読み込み、対話的にユーザー名とパスワードを入力して UID を取得する。`curl` と `jq` が必要。
-
-**注意**: `admin_uids.json` は機密情報を含むため Git にコミットしないこと。
-
-Keycloak 管理設定は [docs/keycloak-admin.md](docs/keycloak-admin.md) を参照。
+管理者権限を持つユーザーは `admin_uids.json` に Keycloak の `sub` (UID) を列挙する。`admin_uids.json` は機密情報のため Git にコミットしない。設定手順・UID 取得スクリプト・Keycloak クライアント設定の詳細は [docs/keycloak-admin.md](docs/keycloak-admin.md) を参照。
 
 ### Podman での起動
 

@@ -44,7 +44,6 @@ API ドキュメント (Swagger UI):
 ### テスト
 
 - [テストガイド](tests/testing.md) - テスト方針、構成、実行方法
-- [API 手動テスト](tests/api-manual-testing.md) - curl での動作確認手順
 
 ## サブプロジェクト
 

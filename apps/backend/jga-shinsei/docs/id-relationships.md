@@ -216,5 +216,5 @@ J-DS --[appl_id]--> submission_permission --[submission_id]--> submission
 ## 注意事項
 
 - **JSUB と J-DU の紐付けは行わない**: JSUB は Submission（データ提供）側、J-DU は Data Use（データ利用）側で、直接的な関係がない
-- **group_id 経由の紐付けは非推奨**: 多対多になり正確な紐付けができないため使用しない
-- **hum_id の取得**: 現在は `metadata.metadata` XML の `nbdc_number` 属性から抽出。`nbdc_application.hum_id` は将来拡充予定（現在はほぼ未入力）
+- **group_id 経由の紐付けは行わない**: 多対多になり正確な紐付けができない
+- **hum_id の取得**: `metadata.metadata` XML の `nbdc_number` 属性から抽出する。`nbdc_application.hum_id` は担当者が直接入力する経路もあるが、データ件数は少ない

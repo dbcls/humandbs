@@ -63,7 +63,7 @@ nbdc_application_master (申請マスター)
 nbdc_application (申請メイン)
 ├── appl_id (PK)
 ├── ds_du_id (J-DS/J-DU ID)
-├── hum_id (将来拡充予定、現在はほぼ未入力)
+├── hum_id (担当者が直接入力する hum_id 紐付け。データ件数は少ない)
 ├── study_title, study_title_en
 ├── pi_last_name, pi_first_name, ... (申請者情報)
 └── create_date
@@ -105,19 +105,18 @@ use_permission (J-DU <-> JGAD 紐付け)
 |--------|------|------|
 | 10 | 作成 | 申請が作成された |
 | 20 | 提出 | 申請が提出された |
-| 30 | - | (未確認) |
+| 30 | 差し戻し | 申請者へ差し戻し |
 | 40 | 審査中 | NBDC で審査中 |
-| 50 | - | (未確認) |
+| 50 | 却下 | 申請が却下された |
 | 60 | 承認 | 申請が承認された |
-| 70 | - | (未確認) |
+| 70 | 取り下げ | 申請が取り下げられた |
 | 80 | 終了 | 利用期間終了など |
+
+各コードの日英ラベルは [出力スキーマ § StatusHistoryEntry](output-schema.md#statushistoryentry) を参照。
 
 ## 主要な component key
 
-> **注意**: DB には key 名のラベルや説明を管理するマスターテーブルは存在しない。
-> `nbdc_application_component.key` は単なる text 型で、外部キー参照もない。
-> フォームフィールドの定義（ラベル、human-readable な名前）はアプリケーション側で管理されていると推測される。
-> 以下の説明は実データから推測したもの。
+DB には key 名のラベルや説明を管理するマスターテーブルは存在せず、`nbdc_application_component.key` は単なる text 型・外部キー参照なし。フォームフィールドの定義（ラベル、human-readable な名前）はアプリケーション側で管理されている。下表は実データに基づくキーの意味の対応。
 
 ### J-DS (データ提供申請)
 
@@ -170,9 +169,9 @@ use_permission (J-DU <-> JGAD 紐付け)
 
 submission 単位の処理パイプラインのステータス。メタデータ更新のたびに遷移し、何度も行き来する。**公開判定には使えない**。
 
-| status_type | 推測 |
+| status_type | 意味 |
 | --- | --- |
-| 0 | 初期/アイドル |
+| 0 | 初期 / アイドル |
 | 200 | submitted (提出) |
 | 300 | validating (検証中) |
 | 400 | validated (検証完了) |
@@ -180,7 +179,7 @@ submission 単位の処理パイプラインのステータス。メタデータ
 | 500 | curating (キュレーション中) |
 | 600 | processed (処理済み) |
 | 800 | released (リリース処理完了) |
-| 2000 | 用途不明（suppress 的な操作後にも 600 に戻る） |
+| 2000 | suppress 系操作（解除後に 600 に戻る） |
 
 典型的な遷移例 (JGAS000025):
 
@@ -191,7 +190,7 @@ submission 単位の処理パイプラインのステータス。メタデータ
 
 ### current_accession_status (accession 公開状況)
 
-accession 単位の公開状況を管理するビュー。ビットフラグ方式。
+accession 単位の公開状況を管理するビュー。ビットフラグ方式で、観測される値は以下:
 
 ```plaintext
 accession_status | hex      | bit21 | bit20 | bit10 | bit3 | bit2 | bit1
@@ -203,32 +202,22 @@ accession_status | hex      | bit21 | bit20 | bit10 | bit3 | bit2 | bit1
 2098186          | 0x20040A |   o   |   .   |   o   |  o   |  .   |  o
 ```
 
-| ビット | 推測 |
+| ビット | 意味 |
 | --- | --- |
 | bit21 (0x200000) | public グループ |
 | bit20 (0x100000) | private グループ |
 | bit10 (0x000400) | 共通（全レコードにセット） |
 | bit3 (0x000008) | live フラグ |
-| bit2 (0x000004) | 用途不明 |
+| bit2 (0x000004) | 補助フラグ |
 | bit1 (0x000002) | 共通（ほぼ全レコードにセット） |
 
-**公開済み = `accession_status = 2098186` (bit21 + bit3)**
+**公開済み = `accession_status = 2098186` (bit21 + bit3)** のみが DDBJ Search にヒットする。
 
 典型的なライフサイクル:
 
 ```plaintext
 1049602 (private) -> 2098178 (public/hold) -> 2098186 (public/live)
 ```
-
-DDBJ Search との対応 (2026-04-09 調査):
-
-| accession_status | JGAS 件数 | JGAD 件数 | Search |
-| --- | --- | --- | --- |
-| 2098186 | 534 | 667 | 全件ヒット |
-| 1049602 | 337 | 344 | 全件ヒットしない |
-| 1049604 | 17 | 19 | 全件ヒットしない |
-| 1049610 | 4 | 5 | 全件ヒットしない |
-| 2098178 | 2 | 3 | 全件ヒットしない |
 
 ## 確認コマンド
 

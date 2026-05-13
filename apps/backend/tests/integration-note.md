@@ -60,36 +60,21 @@ docker compose exec backend bun run import:es  # データ投入 (初回のみ)
 
 ## fixture 戦略
 
-`tests/integration/api/fixtures.ts` (新規予定) に代表 ID と定数を集約する。種類は 4 系統。
+read-only な integration テスト (search, facets, stats, ... 等) は、共有 ES に存在する代表データを **そのまま参照する**。代表 ID や代表ファセット値はテストファイルの先頭で定数化し、接続先のデータに該当が無い場合は当該テストを skip する。
 
-1. **代表 humId / datasetId**: status / shape を pin する例
-   - `PUBLISHED_HUM_ID` (= 1 件、`latestVersion!=null`)
-   - `DRAFT_HUM_ID` (= owner/admin にのみ見える、`latestVersion=null`)
-   - `MULTI_VERSION_HUM_ID` (= v2 以上)
-   - `PUBLISHED_DATASET_ID` / `DATASET_WITH_EXPERIMENTS_ID`
-2. **type-specific facet の代表 bucket** (例: `ASSAY_TYPE_WGS = "WGS"`)
-3. **type-specific text-match の代表 token** (例: `DISEASE_TOKEN = "cancer"`)
-4. **JGA 申請の代表 ID** (例: `J_DS_ID = "J-DS002494"`、staging でのみ有効)
+| 系統 | 例 | 取得方法 |
+|---|---|---|
+| 代表 humId / datasetId | `latestVersion!=null` な Research、複数 version Research など | 実 ES への aggregation / count probe で実測 |
+| type-specific facet の代表 bucket | `assayType=WGS` 等 | facet API で実測 |
+| type-specific text-match の代表 token | `cancer` 等 | search API で実測 |
+| JGA 申請の代表 ID | staging で参照可能な `J-DS*` / `J-DU*` | staging DB から実測 |
 
-値は実 ES への aggregation / count probe で実測し、converter のリリース取り込みのタイミングで再採取する。
-
-接続先のデータに対象が存在しない場合は対応する定数を空文字 (`""`) のまま置き、`require_value` ヘルパー経由で当該テストを skip する。**使う見込みのない定数は置かない** (drift しても気付かれずに腐る)。
-
-```typescript
-// require ヘルパー例
-const requireValue = (value: string, name: string): string => {
-  if (!value) {
-    test.skip(`Skipping: ${name} fixture is empty`)
-    return ""  // unreachable
-  }
-  return value
-}
-```
+mutating な integration テスト (research / dataset / workflow / version の create/update/delete 系) は `tests/integration/api/mutating-helpers.ts` の共通ヘルパーを経由し、**isolation ES index** 上で実行する。
 
 ### 禁止事項
 
 - **テスト用 doc を共有 ES に POST して setUp/tearDown する運用は禁止** (汚染リスクがあるため)
-- 既存ドキュメントの値を変更するテストも禁止 (新規作成テストは隔離 ES または 物理削除可能な範囲のみ)
+- 既存ドキュメントの値を変更するテストも禁止 (新規作成テストは isolation ES index 上に限る)
 
 ## 件数 drift 対策
 
@@ -137,7 +122,6 @@ expect(hidden.status).toBe(404)
 `/jga-shinsei/*` の integration テストは **staging Keycloak の admin トークン** と **JGA PostgreSQL への到達性** を必要とする。ローカル/CI 環境では成立しないため分離する。
 
 - 接続不可なら session skip (`require_value` ヘルパーで一括判定)
-- もし将来 `@pytest.mark.staging_only` 相当の仕組みが欲しければ、Bun の `test.if(condition)` または独自タグで分離する
 
 ```typescript
 const JGA_DB_REACHABLE = await checkJgaDb()  // 接続テスト
@@ -161,12 +145,9 @@ test("returns 200 for /research with pagination", async () => {
 
 ## CI
 
-現状の `bun test` は `tests/unit/` のみを実行する。integration は手動 (`bun run test:integration`)。GitHub Actions で integration を回すには次のいずれかが要る。
+`bun test` は `tests/unit/` のみを実行する。integration は手動 (`bun run test:integration`) で、運用は **dev で手動実行 → staging deploy 前に smoke** で行う。
 
-- ES service container を `services:` で起動 + converter の最小データセットを bring-up
-- JGA は staging 環境にしかないため、CI では skip するか staging への secure tunnel が要る
-
-これらは Future work として扱う。当面は **dev で手動実行 → staging deploy 前に smoke** が運用方針。
+GitHub Actions で integration を回すには、ES service container を `services:` で起動 + converter の最小データセットを bring-up する必要がある。JGA は staging 環境にしかないため、CI では skip するか staging への secure tunnel が要る。
 
 ## 実行コマンドまとめ
 

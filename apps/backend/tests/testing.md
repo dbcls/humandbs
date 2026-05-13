@@ -4,7 +4,6 @@ HumanDBs Backend のテストの方針。整理した運用ノートとシナリ
 
 - 運用ノート (環境変数・fixture 戦略・件数 drift 対策): [integration-note.md](integration-note.md)
 - Integration シナリオ列挙 (SSOT): [integration-scenarios.md](integration-scenarios.md)
-- API の手動テスト手順: [api-manual-testing.md](api-manual-testing.md)
 
 ## 目的
 
@@ -177,7 +176,6 @@ docker compose exec backend bun run test:es
 
 - [integration-note.md](integration-note.md) — 環境変数・fixture・件数 drift 対策・CI
 - [integration-scenarios.md](integration-scenarios.md) — IT-XXX-NN シナリオ列挙 SSOT
-- [api-manual-testing.md](api-manual-testing.md) — API 手動テスト手順
 - [apps/backend/docs/api-guide.md](../docs/api-guide.md) — API 仕様 SSOT
 - [apps/backend/docs/architecture.md](../docs/architecture.md) — アーキテクチャ
 - [apps/backend/docs/data-model.md](../docs/data-model.md) — データモデル
