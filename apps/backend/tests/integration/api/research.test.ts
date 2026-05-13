@@ -706,15 +706,17 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     }
   })
 
-  itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from /research and POST /research/search", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-RESEARCH-T5: deleted Research is excluded from public listing", async ({ admin, nonAdmin }) => {
     // A Research that was once published (latestVersion=v1) and then deleted
-    // (status="deleted") must disappear from public list and search. This
-    // exercises the search post-filter that drops `status === "deleted"`
-    // rows from the response.
+    // (status="deleted") must disappear from the public listing. This exercises
+    // the search post-filter that drops `status === "deleted"` rows.
     //
-    // Filtering uses the dedicated `humId` query parameter (ResearchSearchQuery)
-    // rather than the `q` full-text field: `humId` is a keyword field and is
-    // not part of the analyzed multi-match used by `q`.
+    // `GET /research?humId=<id>` is used because it is the canonical
+    // direct-filter path (`ResearchListingQuerySchema § humId`) and shares the
+    // `searchResearches` post-filter with `POST /research/search`. The POST
+    // search body (`ResearchSearchBodySchema`) does not currently expose a
+    // dedicated `humId` filter, and `query` (full-text) does not match the
+    // `humId` keyword field — so we rely on the GET endpoint here.
     const sub = decodeJwtSub(nonAdmin)
     expect(sub).toBeTruthy()
     let humId = ""
@@ -724,13 +726,9 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       await setOwnerUids(admin, humId, [sub!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
-      // Sanity check: at this point the humId is publicly visible.
+      // Sanity check: the humId is visible to public via the humId-filtered list.
       const app = getApp()
-      const beforeDelete = await app.request(url("/research/search"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ humId, page: 1, limit: 50 }),
-      })
+      const beforeDelete = await app.request(url(`/research?humId=${humId}&limit=10`))
       expect(beforeDelete.status).toBe(200)
       const beforeJson = (await beforeDelete.json()) as SearchResponse<{ humId: string }>
       expect(beforeJson.data.find(d => d.humId === humId)).toBeDefined()
@@ -741,21 +739,17 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       })
       expect(del.status).toBe(204)
 
-      // Public listing must not include the deleted humId.
-      const list = await app.request(url("/research?limit=200"))
-      expect(list.status).toBe(200)
-      const listJson = (await list.json()) as SearchResponse<{ humId: string }>
-      expect(listJson.data.find(d => d.humId === humId)).toBeUndefined()
+      // After delete, the humId-filtered list must return 0 hits.
+      const filtered = await app.request(url(`/research?humId=${humId}&limit=10`))
+      expect(filtered.status).toBe(200)
+      const filteredJson = (await filtered.json()) as SearchResponse<{ humId: string }>
+      expect(filteredJson.data.length).toBe(0)
 
-      // POST /research/search filtered by humId must return 0 hits.
-      const search = await app.request(url("/research/search"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ humId, page: 1, limit: 50 }),
-      })
-      expect(search.status).toBe(200)
-      const searchJson = (await search.json()) as SearchResponse<{ humId: string }>
-      expect(searchJson.data.find(d => d.humId === humId)).toBeUndefined()
+      // Broader scan: the unfiltered first 200 items must not include the deleted humId.
+      const broad = await app.request(url("/research?limit=200"))
+      expect(broad.status).toBe(200)
+      const broadJson = (await broad.json()) as SearchResponse<{ humId: string }>
+      expect(broadJson.data.find(d => d.humId === humId)).toBeUndefined()
 
       humId = "" // already deleted; suppress cleanup.
     } finally {
