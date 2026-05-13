@@ -135,11 +135,11 @@ const OptionComponent = ({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [buttonHeight, setButtonHeight] = useState<number>(0);
 
-  const title = locale === "ja" ? option.titleJa : option.titleEn;
+  const title = locale === "ja" ? option.title.ja : option.title.en;
   const linkText =
     locale === "ja"
-      ? (option.linkTextJa ?? option.linkTextEn)
-      : (option.linkTextEn ?? option.linkTextJa);
+      ? (option.linkText?.ja ?? option.linkText?.en)
+      : (option.linkText?.en ?? option.linkText?.ja);
 
   function updateHeight() {
     if (buttonRef.current) setButtonHeight(buttonRef.current.offsetHeight);
@@ -269,8 +269,8 @@ const StepComponent = ({
   isCurrent?: boolean;
   selectedOptionId?: string;
 }) => {
-  const title = locale === "ja" ? step.titleJa : step.titleEn;
-  const text = locale === "ja" ? step.textJa : step.textEn;
+  const title = locale === "ja" ? step.title.ja : step.title.en;
+  const text = locale === "ja" ? step.text.ja : step.text.en;
 
   return (
     <div className="relative">
@@ -626,18 +626,14 @@ function LegacyNavigationChart({
   // Convert legacy steps to new shape for rendering
   const newSteps: NavigationFlowchartStep[] = data.steps.map((s) => ({
     id: s.id,
-    titleEn: s.title,
-    titleJa: s.title,
-    textEn: s.text,
-    textJa: s.text,
+    title: { en: s.title, ja: s.title },
+    text: { en: s.text, ja: s.text },
     options: s.options.map((o) => ({
       id: o.id,
-      titleEn: o.title,
-      titleJa: o.title,
+      title: { en: o.title, ja: o.title },
       nextStep: o.nextStep,
       link: o.link,
-      linkTextEn: o.linkText,
-      linkTextJa: o.linkText,
+      ...(o.linkText ? { linkText: { en: o.linkText, ja: o.linkText } } : {}),
     })),
   }));
 

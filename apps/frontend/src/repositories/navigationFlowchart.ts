@@ -111,7 +111,7 @@ export function createNavigationFlowchartRepository(
         const config = row.config as NavigationFlowchartConfig;
         const linkedFlowchartIds = [
           ...new Set(
-            config.en.steps
+            config.steps
               .flatMap((s) => s.options)
               .map((o) => o.linkedFlowchartId)
               .filter((id): id is string => !!id),
@@ -248,16 +248,16 @@ export function createNavigationFlowchartRepository(
 
       for (const row of all) {
         const config = row.config as NavigationFlowchartConfig;
-        for (const step of config.en.steps) {
+        for (const step of config.steps) {
           for (const option of step.options) {
             if (option.linkedFlowchartId === id) {
               deps.push({
                 flowchartId: row.id,
                 flowchartNameEn: row.nameEn,
                 stepId: step.id,
-                stepTitleEn: step.titleEn,
+                stepTitleEn: step.title.en,
                 optionId: option.id,
-                optionTitleEn: option.titleEn,
+                optionTitleEn: option.title.en,
               });
             }
           }

@@ -38,16 +38,12 @@ function transformSteps(
   enSteps: LegacyStep[],
   jaSteps: LegacyStep[],
   beforeApplicationId: string | null,
-): { enSteps: NavigationFlowchartStep[]; jaSteps: NavigationFlowchartStep[] } {
+): NavigationFlowchartStep[] {
   const transformOptions = (
     enOptions: LegacyOption[],
     jaOptions: LegacyOption[],
-  ): {
-    enOptions: NavigationFlowchartOption[];
-    jaOptions: NavigationFlowchartOption[];
-  } => {
-    const newEnOptions: NavigationFlowchartOption[] = [];
-    const newJaOptions: NavigationFlowchartOption[] = [];
+  ): NavigationFlowchartOption[] => {
+    const newOptions: NavigationFlowchartOption[] = [];
 
     for (let i = 0; i < enOptions.length; i++) {
       const enOpt = enOptions[i];
@@ -57,76 +53,49 @@ function transformSteps(
         enOpt.link === BEFORE_APPLICATION_LINK ||
         jaOpt?.link === BEFORE_APPLICATION_LINK;
 
-      const enOption: NavigationFlowchartOption = {
+      const option: NavigationFlowchartOption = {
         id: enOpt.id,
-        titleEn: enOpt.title,
-        titleJa: jaOpt?.title ?? enOpt.title,
+        title: { en: enOpt.title, ja: jaOpt?.title ?? enOpt.title },
         ...(enOpt.nextStep ? { nextStep: enOpt.nextStep } : {}),
         ...(isBeforeApplicationLink && beforeApplicationId
           ? { linkedFlowchartId: beforeApplicationId }
           : !isBeforeApplicationLink && enOpt.link
             ? {
                 link: enOpt.link,
-                linkTextEn: enOpt.linkText,
-                linkTextJa: jaOpt?.linkText ?? enOpt.linkText,
+                ...(enOpt.linkText || jaOpt?.linkText
+                  ? {
+                      linkText: {
+                        en: enOpt.linkText ?? "",
+                        ja: jaOpt?.linkText ?? enOpt.linkText ?? "",
+                      },
+                    }
+                  : {}),
               }
             : {}),
       };
 
-      const jaOption: NavigationFlowchartOption = {
-        id: enOpt.id,
-        titleEn: enOpt.title,
-        titleJa: jaOpt?.title ?? enOpt.title,
-        ...(enOption.nextStep ? { nextStep: enOption.nextStep } : {}),
-        ...(enOption.linkedFlowchartId
-          ? { linkedFlowchartId: enOption.linkedFlowchartId }
-          : enOption.link
-            ? {
-                link: enOption.link,
-                linkTextEn: enOption.linkTextEn,
-                linkTextJa: enOption.linkTextJa,
-              }
-            : {}),
-      };
-
-      newEnOptions.push(enOption);
-      newJaOptions.push(jaOption);
+      newOptions.push(option);
     }
 
-    return { enOptions: newEnOptions, jaOptions: newJaOptions };
+    return newOptions;
   };
 
-  const newEnSteps: NavigationFlowchartStep[] = [];
-  const newJaSteps: NavigationFlowchartStep[] = [];
+  const newSteps: NavigationFlowchartStep[] = [];
 
   for (let i = 0; i < enSteps.length; i++) {
     const enStep = enSteps[i];
     const jaStep = jaSteps[i];
-    const { enOptions, jaOptions } = transformOptions(
-      enStep.options,
-      jaStep?.options ?? [],
-    );
+    const options = transformOptions(enStep.options, jaStep?.options ?? []);
 
-    newEnSteps.push({
+    newSteps.push({
       id: enStep.id,
-      titleEn: enStep.title,
-      titleJa: jaStep?.title ?? enStep.title,
-      textEn: enStep.text,
-      textJa: jaStep?.text ?? enStep.text,
-      options: enOptions,
-    });
-
-    newJaSteps.push({
-      id: enStep.id,
-      titleEn: enStep.title,
-      titleJa: jaStep?.title ?? enStep.title,
-      textEn: enStep.text,
-      textJa: jaStep?.text ?? enStep.text,
-      options: jaOptions,
+      title: { en: enStep.title, ja: jaStep?.title ?? enStep.title },
+      text: { en: enStep.text, ja: jaStep?.text ?? enStep.text },
+      options,
     });
   }
 
-  return { enSteps: newEnSteps, jaSteps: newJaSteps };
+  return newSteps;
 }
 
 async function upsertFlowchart(
@@ -195,7 +164,7 @@ async function seedNavigationFlowcharts() {
     ).json()) as LegacyNavigationData;
 
     // Seed before-application first (no cross-flowchart links)
-    const { enSteps: baEnSteps, jaSteps: baJaSteps } = transformSteps(
+    const baSteps = transformSteps(
       beforeApplicationEn.steps,
       beforeApplicationJa.steps,
       null,
@@ -206,11 +175,11 @@ async function seedNavigationFlowcharts() {
       isEntryPoint: false,
       nameEn: "Before Application",
       nameJa: "申請システムの前に",
-      config: { en: { steps: baEnSteps }, ja: { steps: baJaSteps } },
+      config: { steps: baSteps },
     });
 
     // data-submission is the single entry point
-    const { enSteps: dsEnSteps, jaSteps: dsJaSteps } = transformSteps(
+    const dsSteps = transformSteps(
       dataSubmissionEn.steps,
       dataSubmissionJa.steps,
       beforeApplicationId,
@@ -220,7 +189,7 @@ async function seedNavigationFlowcharts() {
       isEntryPoint: true,
       nameEn: "Data Submission Navigation",
       nameJa: "データ登録ナビゲーション",
-      config: { en: { steps: dsEnSteps }, ja: { steps: dsJaSteps } },
+      config: { steps: dsSteps },
     });
 
     console.log("Done.");

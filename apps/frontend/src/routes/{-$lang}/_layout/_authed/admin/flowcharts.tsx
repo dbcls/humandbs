@@ -536,7 +536,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
   /** Returns IDs of EN steps that have fewer than 2 options (invalid for publishing). */
   function validateSteps(config: NavigationFlowchartConfig) {
-    return config.en.steps.filter((s) => s.options.length < 2).map((s) => s.id);
+    return config.steps.filter((s) => s.options.length < 2).map((s) => s.id);
   }
 
   async function commitSave(currentMeta: FlowchartMeta) {
@@ -795,11 +795,7 @@ function FlowchartPreview({
   const currentConfig = currentId ? childRecord?.config : configDraft;
   const currentFlowchartId = currentId ?? record.id;
   const currentSlug = currentFlowchartId;
-  const currentData = currentConfig
-    ? lang === "ja"
-      ? currentConfig.ja
-      : currentConfig.en
-    : null;
+  const currentData = currentConfig ?? null;
 
   // linkedFlowchartNames for the current level
   const linkedFlowchartNames: Record<string, string> = {};
@@ -899,8 +895,7 @@ const STEP_TYPE = "flowchart-step";
  * (`"step-" + step.id`) so the `move()` helper matches sortable registrations
  * correctly; prefixes are stripped after reordering.
  *
- * EN steps are authoritative for order; JA steps are kept in sync by ID lookup
- * inside `updateSteps`.
+ * Steps are stored as one canonical graph with localized labels on each node.
  */
 function StepList({
   config,
@@ -913,22 +908,17 @@ function StepList({
   invalidStepIds: string[];
   otherFlowcharts: NavigationFlowchartSummary[];
 }) {
-  const steps = config.en.steps;
+  const steps = config.steps;
 
-  /** Applies a new EN step order and rebuilds the JA array to match, preserving JA content. */
-  function updateSteps(newEnSteps: NavigationFlowchartStep[]) {
-    const jaById = Object.fromEntries(config.ja.steps.map((s) => [s.id, s]));
-    const newJaSteps = newEnSteps.map((s) => jaById[s.id] ?? s);
-    onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
+  function updateSteps(newSteps: NavigationFlowchartStep[]) {
+    onChange({ steps: newSteps });
   }
 
   function handleAddStep() {
     const newStep: NavigationFlowchartStep = {
       id: crypto.randomUUID(),
-      titleEn: "",
-      titleJa: "",
-      textEn: "",
-      textJa: "",
+      title: { en: "", ja: "" },
+      text: { en: "", ja: "" },
       options: [],
     };
     updateSteps([...steps, newStep]);
@@ -942,50 +932,7 @@ function StepList({
     id: string,
     patch: Partial<NavigationFlowchartStep>,
   ) {
-    const newEnSteps = steps.map((s) => (s.id === id ? { ...s, ...patch } : s));
-
-    // For the JA side, apply non-options fields directly (bilingual text/title
-    // fields are included in the patch). For `options`, preserve JA option
-    // objects but reorder them to match the EN order — never replace JA options
-    // wholesale with EN objects.
-    const newJaSteps = config.ja.steps.map((s) => {
-      if (s.id !== id) return s;
-      if (!patch.options) return { ...s, ...patch };
-      const oldEnStep = steps.find((step) => step.id === id);
-      const oldEnById = Object.fromEntries(
-        (oldEnStep?.options ?? []).map((o) => [o.id, o]),
-      );
-      const jaById = Object.fromEntries(s.options.map((o) => [o.id, o]));
-      const { options: _enOptions, ...rest } = patch;
-      const reorderedJaOptions = patch.options
-        .map((enOpt) => jaById[enOpt.id] ?? enOpt)
-        .map((jaOpt, i) => {
-          // Carry over fields edited through the EN option row while preserving
-          // existing JA labels during unrelated reorder/destination edits.
-          const enOpt = patch.options![i];
-          if (!enOpt) return jaOpt;
-          const oldEnOpt = oldEnById[enOpt.id];
-          return {
-            ...jaOpt,
-            titleEn: enOpt.titleEn,
-            titleJa:
-              !oldEnOpt || enOpt.titleJa !== oldEnOpt.titleJa
-                ? enOpt.titleJa
-                : jaOpt.titleJa,
-            nextStep: enOpt.nextStep,
-            linkedFlowchartId: enOpt.linkedFlowchartId,
-            link: enOpt.link,
-            linkTextEn: enOpt.linkTextEn,
-            linkTextJa:
-              !oldEnOpt || enOpt.linkTextJa !== oldEnOpt.linkTextJa
-                ? enOpt.linkTextJa
-                : jaOpt.linkTextJa,
-          };
-        });
-      return { ...s, ...rest, options: reorderedJaOptions };
-    });
-
-    onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
+    updateSteps(steps.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
   /** A step cannot be deleted while any option in this flowchart points to it as a nextStep target. */
@@ -1016,7 +963,6 @@ function StepList({
               key={step.id}
               step={step}
               index={index}
-              jaStep={config.ja.steps.find((s) => s.id === step.id)}
               isInvalid={invalidStepIds.includes(step.id)}
               canDelete={canDeleteStep(step.id)}
               allSteps={steps}
@@ -1053,7 +999,6 @@ function StepList({
 function StepCard({
   step,
   index,
-  jaStep,
   isInvalid,
   canDelete,
   allSteps,
@@ -1063,7 +1008,6 @@ function StepCard({
 }: {
   step: NavigationFlowchartStep;
   index: number;
-  jaStep?: NavigationFlowchartStep;
   isInvalid: boolean;
   canDelete: boolean;
   allSteps: NavigationFlowchartStep[];
@@ -1083,8 +1027,7 @@ function StepCard({
   function handleAddOption() {
     const newOpt: NavigationFlowchartOption = {
       id: crypto.randomUUID(),
-      titleEn: "",
-      titleJa: "",
+      title: { en: "", ja: "" },
     };
     onUpdate({ options: [...step.options, newOpt] });
   }
@@ -1139,8 +1082,8 @@ function StepCard({
         </button>
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <LocaleInlineEditor
-            value={{ en: step.titleEn, ja: step.titleJa }}
-            onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
+            value={step.title}
+            onChange={(title) => onUpdate({ title })}
             placeholder="Step title"
             displayClassName="text-sm font-medium"
             displayLocale="ja"
@@ -1176,8 +1119,10 @@ function StepCard({
                 <span className="text-xs text-gray-400">EN</span>
                 <TextareaAutosize
                   minRows={3}
-                  value={step.textEn}
-                  onChange={(e) => onUpdate({ textEn: e.target.value })}
+                  value={step.text.en}
+                  onChange={(e) =>
+                    onUpdate({ text: { ...step.text, en: e.target.value } })
+                  }
                   placeholder="English body text"
                   className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 />
@@ -1186,8 +1131,10 @@ function StepCard({
                 <span className="text-xs text-gray-400">JA</span>
                 <TextareaAutosize
                   minRows={3}
-                  value={jaStep?.textJa ?? step.textJa}
-                  onChange={(e) => onUpdate({ textJa: e.target.value })}
+                  value={step.text.ja}
+                  onChange={(e) =>
+                    onUpdate({ text: { ...step.text, ja: e.target.value } })
+                  }
                   placeholder="Japanese body text"
                   className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 />
@@ -1198,7 +1145,6 @@ function StepCard({
           {/* Options */}
           <OptionList
             options={step.options}
-            jaOptions={jaStep?.options ?? []}
             allSteps={allSteps}
             currentStepId={step.id}
             otherFlowcharts={otherFlowcharts}
@@ -1225,7 +1171,6 @@ const OPTION_TYPE_PREFIX = "flowchart-option-";
  */
 function OptionList({
   options,
-  jaOptions,
   allSteps,
   currentStepId,
   otherFlowcharts,
@@ -1234,7 +1179,6 @@ function OptionList({
   onReorder,
 }: {
   options: NavigationFlowchartOption[];
-  jaOptions: NavigationFlowchartOption[];
   allSteps: NavigationFlowchartStep[];
   currentStepId: string;
   otherFlowcharts: NavigationFlowchartSummary[];
@@ -1269,7 +1213,6 @@ function OptionList({
               <OptionRow
                 key={opt.id}
                 option={opt}
-                jaOption={jaOptions.find((jaOpt) => jaOpt.id === opt.id)}
                 index={idx}
                 optionType={optionType}
                 allSteps={allSteps}
@@ -1286,8 +1229,7 @@ function OptionList({
               onClick={() => {
                 const newOpt: NavigationFlowchartOption = {
                   id: crypto.randomUUID(),
-                  titleEn: "",
-                  titleJa: "",
+                  title: { en: "", ja: "" },
                 };
                 onReorder([...options, newOpt]);
               }}
@@ -1330,7 +1272,6 @@ function getDestType(opt: NavigationFlowchartOption): DestType {
  */
 function OptionRow({
   option,
-  jaOption,
   index,
   optionType,
   allSteps,
@@ -1340,7 +1281,6 @@ function OptionRow({
   onDelete,
 }: {
   option: NavigationFlowchartOption;
-  jaOption?: NavigationFlowchartOption;
   index: number;
   optionType: string;
   allSteps: NavigationFlowchartStep[];
@@ -1367,8 +1307,7 @@ function OptionRow({
       nextStep: undefined,
       linkedFlowchartId: undefined,
       link: undefined,
-      linkTextEn: undefined,
-      linkTextJa: undefined,
+      linkText: undefined,
     };
     if (newType === "next-step") {
       onUpdate({ ...base, nextStep: otherSteps[0]?.id ?? "" });
@@ -1401,11 +1340,8 @@ function OptionRow({
         </button>
         <div className="min-w-0 flex-1">
           <LocaleInlineEditor
-            value={{
-              en: option.titleEn,
-              ja: jaOption?.titleJa ?? option.titleJa,
-            }}
-            onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
+            value={option.title}
+            onChange={(title) => onUpdate({ title })}
             placeholder="Option label"
             displayClassName="text-xs"
             displayLocale="ja"
@@ -1445,8 +1381,7 @@ function OptionRow({
                 nextStep: v,
                 linkedFlowchartId: undefined,
                 link: undefined,
-                linkTextEn: undefined,
-                linkTextJa: undefined,
+                linkText: undefined,
               })
             }
           >
@@ -1456,7 +1391,7 @@ function OptionRow({
             <SelectContent>
               {otherSteps.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.titleEn || s.id}
+                  {s.title.en || s.id}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1471,8 +1406,7 @@ function OptionRow({
                 linkedFlowchartId: v,
                 nextStep: undefined,
                 link: undefined,
-                linkTextEn: undefined,
-                linkTextJa: undefined,
+                linkText: undefined,
               })
             }
           >
@@ -1506,12 +1440,10 @@ function OptionRow({
             />
             <LocaleInlineEditor
               value={{
-                en: option.linkTextEn ?? "",
-                ja: option.linkTextJa ?? "",
+                en: option.linkText?.en ?? "",
+                ja: option.linkText?.ja ?? "",
               }}
-              onChange={({ en, ja }) =>
-                onUpdate({ linkTextEn: en, linkTextJa: ja })
-              }
+              onChange={(linkText) => onUpdate({ linkText })}
               placeholder="Link label"
               displayClassName="text-xs"
             />

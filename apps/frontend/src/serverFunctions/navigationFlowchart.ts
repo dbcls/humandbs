@@ -30,28 +30,27 @@ interface LegacyNavigationData {
 
 function legacyToFlowchartData(
   legacy: LegacyNavigationData,
-  locale: Locale,
 ): NavigationFlowchartData {
   const steps: NavigationFlowchartStep[] = legacy.steps.map((s) => ({
     id: s.id,
-    titleEn: s.title,
-    titleJa: s.title,
-    textEn: s.text,
-    textJa: s.text,
+    title: { en: s.title, ja: s.title },
+    text: { en: s.text, ja: s.text },
     options: s.options.map(
       (o): NavigationFlowchartOption => ({
         id: o.id,
-        titleEn: o.title,
-        titleJa: o.title,
+        title: { en: o.title, ja: o.title },
         ...(o.nextStep ? { nextStep: o.nextStep } : {}),
         ...(o.link && o.link !== "before-application"
-          ? { link: o.link, linkTextEn: o.linkText, linkTextJa: o.linkText }
+          ? {
+              link: o.link,
+              ...(o.linkText
+                ? { linkText: { en: o.linkText, ja: o.linkText } }
+                : {}),
+            }
           : {}),
       }),
     ),
   }));
-  // suppress unused locale in fallback path
-  void locale;
   return { steps };
 }
 
@@ -63,7 +62,7 @@ async function getFallbackEntryPoint(
       `./src/config/navigation/data-submission-${locale}.json`,
     );
     const legacy = (await file.json()) as LegacyNavigationData;
-    return legacyToFlowchartData(legacy, locale);
+    return legacyToFlowchartData(legacy);
   } catch {
     return null;
   }
@@ -92,7 +91,7 @@ export const $getNavigationEntryPoint = createServerFn({ method: "GET" })
             isEntryPoint: true,
             nameEn: record.nameEn,
             nameJa: record.nameJa,
-            data: locale === "ja" ? record.config.ja : record.config.en,
+            data: record.config,
           };
         }
       } catch (error) {
@@ -129,7 +128,7 @@ export const $getNavigationFlowchartById = createServerFn({ method: "GET" })
             isEntryPoint: record.isEntryPoint,
             nameEn: record.nameEn,
             nameJa: record.nameJa,
-            data: locale === "ja" ? record.config.ja : record.config.en,
+            data: record.config,
           };
         }
       } catch (error) {
