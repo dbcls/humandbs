@@ -50,9 +50,11 @@ const defaultValues: CreateResearchRequest = {
 export function NewResearchForm({
   lang,
   onCreated,
+  onDiscard,
 }: {
   lang: Locale;
   onCreated: (humId: string) => void;
+  onDiscard: () => void;
 }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -141,11 +143,21 @@ export function NewResearchForm({
 
           <div className="mx-5 mt-5 flex justify-end gap-2">
             <MergeJDSResearchDialog
+              className="mr-auto"
               currentValues={toResearchValuesForMerge(formValues)}
               onMerge={(values) =>
                 applyMergedJDSValues(pickNewResearchMergeValues(values))
               }
             />
+            <Button
+              type="button"
+              variant="outline"
+              size={"lg"}
+              disabled={isPending}
+              onClick={onDiscard}
+            >
+              Discard
+            </Button>
             <Button
               type="submit"
               variant="accent"

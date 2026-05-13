@@ -1,20 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { ResearchDetails } from "./-ResearchDetails";
-import { ResearchesList } from "./-ResearchesList";
-import { NewResearchForm } from "./-NewResearchForm";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
-import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { NewResearchForm } from "./-NewResearchForm";
+import { ResearchDetails } from "./-ResearchDetails";
+import { ResearchesList } from "./-ResearchesList";
 
-import { CatchBoundary } from "@tanstack/react-router";
-import { QueryErrorResetBoundary } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { APIError } from "@/services/backend";
+import {
+  ErrorContent,
+  ErrorResetBoundary,
+} from "@/components/ErrorResetBoundary";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
@@ -28,24 +28,33 @@ function RouteComponent() {
   const { lang, queryClient } = Route.useRouteContext();
   const [selectedHumId, setSelectedHumId] = useState<string | null>(null);
 
+  const removeDummyResearch = useCallback(() => {
+    queryClient.setQueriesData<{
+      pages: Array<{ data: Array<{ humId: string }> }>;
+      pageParams: unknown[];
+    }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          data: page.data.filter((r) => r.humId !== DUMMY_HUM_ID),
+        })),
+      };
+    });
+  }, [queryClient]);
+
+  function handleDiscardNewResearch() {
+    removeDummyResearch();
+    setSelectedHumId(null);
+  }
+
   // Clean up dummy entry when navigating away from this route
   useEffect(() => {
     return () => {
-      queryClient.setQueriesData<{
-        pages: Array<{ data: Array<{ humId: string }> }>;
-        pageParams: unknown[];
-      }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            data: page.data.filter((r) => r.humId !== DUMMY_HUM_ID),
-          })),
-        };
-      });
+      removeDummyResearch();
     };
-  }, [queryClient]);
+  }, [removeDummyResearch]);
 
   return (
     <>
@@ -61,44 +70,28 @@ function RouteComponent() {
         <NewResearchForm
           lang={lang}
           onCreated={(humId) => setSelectedHumId(humId)}
+          onDiscard={handleDiscardNewResearch}
         />
       ) : selectedHumId ? (
-        <QueryErrorResetBoundary>
-          {({ reset }) => (
-            <CatchBoundary
-              getResetKey={() => selectedHumId}
-              onCatch={reset}
-              errorComponent={function ({ error, reset }) {
-                return (
-                  <Card
-                    className="flex-1"
-                    caption={<span>{selectedHumId}</span>}
-                  >
-                    <p className="text-red-500">
-                      {"data" in error && typeof error.data === "object"
-                        ? (error.data as { detail: string } | undefined)?.detail
-                        : error.message}
-                    </p>
-                    <Button variant={"outline"} onClick={reset}>
-                      Retry
-                    </Button>
-                  </Card>
-                );
-              }}
-            >
-              <Suspense
-                fallback={<ResearchDetailsFallback humId={selectedHumId} />}
-              >
-                <ResearchDetails
-                  key={selectedHumId}
-                  humId={selectedHumId}
-                  lang={lang}
-                  onDeselect={() => setSelectedHumId(null)}
-                />
-              </Suspense>
-            </CatchBoundary>
+        <ErrorResetBoundary
+          getResetKey={() => selectedHumId}
+          errorComponent={(props) => (
+            <Card className="flex-1" caption={<span>{selectedHumId}</span>}>
+              <ErrorContent {...props} />
+            </Card>
           )}
-        </QueryErrorResetBoundary>
+        >
+          <Suspense
+            fallback={<ResearchDetailsFallback humId={selectedHumId} />}
+          >
+            <ResearchDetails
+              key={selectedHumId}
+              humId={selectedHumId}
+              lang={lang}
+              onDeselect={() => setSelectedHumId(null)}
+            />
+          </Suspense>
+        </ErrorResetBoundary>
       ) : (
         <div className="text-foreground-light flex flex-1 items-center justify-center">
           No research selected

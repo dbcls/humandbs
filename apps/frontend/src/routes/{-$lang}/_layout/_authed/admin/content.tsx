@@ -1,16 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, useCallback } from "react";
 
-import { Card } from "@/components/Card";
-import { Skeleton } from "@/components/ui/skeleton";
-
 import { ContentItemDetails } from "./-components/ContentItemDetails";
 import { ContentList } from "./-components/ContentList";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 
-import { z } from "zod";
-import { getContentQueryOptions } from "@/serverFunctions/contentItem";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { getContentQueryOptions } from "@/serverFunctions/contentItem";
+import { z } from "zod";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(
   {
@@ -48,12 +45,11 @@ function RouteComponent() {
     <>
       <CollapsibleCard title={"Content"}>
         <p className="mb-5 text-sm">"Oprhan pages" list</p>
-        <Suspense fallback={<Skeleton />}>
-          <ContentList
-            selectedContentId={selectedId}
-            onSelectContent={setSelectedId}
-          />
-        </Suspense>
+
+        <ContentList
+          selectedContentId={selectedId}
+          onSelectContent={setSelectedId}
+        />
       </CollapsibleCard>
       {selectedId && (
         <Suspense fallback={<FallbackDetailsCard />}>

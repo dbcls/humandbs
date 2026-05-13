@@ -11,7 +11,7 @@ const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/alerts");
 
 export function AlertsFiltersBar() {
   const search = routeApi.useSearch();
-  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/alerts");
+  const { setFilters } = useFilters(routeApi.id);
 
   const hasActiveFilters = !!(search.q || search.activeFrom || search.activeTo);
 

@@ -28,10 +28,12 @@ export function MergeJDSResearchDialog({
   currentValues,
   disabled,
   onMerge,
+  className,
 }: {
   currentValues: ResearchValues | JDSResearchValues;
   disabled?: boolean;
   onMerge: (values: MergeResearchResult["values"]) => void;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [jdsId, setJdsId] = useState("");
@@ -92,7 +94,13 @@ export function MergeJDSResearchDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="lg" disabled={disabled}>
+        <Button
+          type="button"
+          variant="outline"
+          className={className}
+          size="lg"
+          disabled={disabled}
+        >
           Merge data from J-DS
         </Button>
       </DialogTrigger>

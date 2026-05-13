@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback } from "react";
 
-import { Card } from "@/components/Card";
-import { Skeleton } from "@/components/ui/skeleton";
-
-import { DocumentsList } from "./-components/DocumentsList";
-import { DocumentVersion } from "./-components/DocumentVersion";
-import { z } from "zod";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import {
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,
 } from "@/serverFunctions/documentVersion";
+import { z } from "zod";
+import { DocumentsList } from "./-components/DocumentsList";
+import { DocumentVersion } from "./-components/DocumentVersion";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
-import { CollapsibleCard } from "@/components/CollapsibleCard";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/documents",
@@ -66,23 +64,23 @@ function RouteComponent() {
   return (
     <>
       <CollapsibleCard title="Documents">
-        <Suspense fallback={<Skeleton />}>
-          <DocumentsList
-            onSelectDoc={setSelectedContentId}
-            selectedContentId={selectedId}
-          />
-        </Suspense>
+        <DocumentsList
+          onSelectDoc={setSelectedContentId}
+          selectedContentId={selectedId}
+        />
       </CollapsibleCard>
 
       {selectedId ? (
-        <Suspense fallback={<FallbackDetailsCard />}>
-          <DocumentVersion
-            key={selectedId}
-            contentId={selectedId}
-            version={selectedVer}
-            onSelectVersion={onSelectVersion}
-          />
-        </Suspense>
+        <ErrorResetBoundary getResetKey={() => selectedId}>
+          <Suspense fallback={<FallbackDetailsCard />}>
+            <DocumentVersion
+              key={selectedId}
+              contentId={selectedId}
+              version={selectedVer}
+              onSelectVersion={onSelectVersion}
+            />
+          </Suspense>
+        </ErrorResetBoundary>
       ) : (
         <div>No document selected</div>
       )}
