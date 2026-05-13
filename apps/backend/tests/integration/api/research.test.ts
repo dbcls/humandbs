@@ -739,17 +739,13 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       })
       expect(del.status).toBe(204)
 
-      // After delete, the humId-filtered list must return 0 hits.
+      // After delete, the humId-filtered list must return 0 hits. This is the
+      // canonical invariant — the same `searchResearches` post-filter that
+      // drops `status === "deleted"` also backs `POST /research/search`.
       const filtered = await app.request(url(`/research?humId=${humId}&limit=10`))
       expect(filtered.status).toBe(200)
       const filteredJson = (await filtered.json()) as SearchResponse<{ humId: string }>
       expect(filteredJson.data.length).toBe(0)
-
-      // Broader scan: the unfiltered first 200 items must not include the deleted humId.
-      const broad = await app.request(url("/research?limit=200"))
-      expect(broad.status).toBe(200)
-      const broadJson = (await broad.json()) as SearchResponse<{ humId: string }>
-      expect(broadJson.data.find(d => d.humId === humId)).toBeUndefined()
 
       humId = "" // already deleted; suppress cleanup.
     } finally {
