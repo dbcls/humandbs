@@ -39,15 +39,25 @@ export function LocaleInlineEditor({
   const [editJa, setEditJa] = useState("");
   const formRef = useRef<HTMLDivElement | null>(null);
   const enInputRef = useRef<HTMLInputElement | null>(null);
+  const jaInputRef = useRef<HTMLInputElement | null>(null);
 
   const commitRef = useRef(commit);
   commitRef.current = commit;
 
   useEffect(() => {
     if (!isEditing) return;
-    enInputRef.current?.focus();
-    enInputRef.current?.select();
-  }, [isEditing]);
+
+    switch (displayLocale) {
+      case "en":
+        enInputRef.current?.focus();
+        enInputRef.current?.select();
+        break;
+      case "ja":
+        jaInputRef.current?.focus();
+        jaInputRef.current?.select();
+        break;
+    }
+  }, [isEditing, displayLocale]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -91,7 +101,7 @@ export function LocaleInlineEditor({
               {locale}
             </label>
             <input
-              ref={locale === "en" ? enInputRef : undefined}
+              ref={locale === "en" ? enInputRef : jaInputRef}
               type="text"
               value={locale === "en" ? editEn : editJa}
               onChange={(e) =>

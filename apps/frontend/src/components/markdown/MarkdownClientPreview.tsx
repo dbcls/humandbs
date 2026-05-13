@@ -7,7 +7,13 @@ import { Markdown } from "../Merkdown";
 /**
  * Markdown rendered on client side - for CMS
  */
-export function MarkdownClientPreview({ source }: { source: string }) {
+export default function MarkdownClientPreview({
+  source,
+  className,
+}: {
+  source: string;
+  className?: string;
+}) {
   const [contentHtml, setContentHtml] = useState<MarkdownResult>();
 
   const [error, setError] = useState(false);
@@ -25,7 +31,10 @@ export function MarkdownClientPreview({ source }: { source: string }) {
 
   return (
     <section className="w-full">
-      <Markdown contentHtml={contentHtml ?? { markup: "", headings: [] }} />
+      <Markdown
+        className={className}
+        contentHtml={contentHtml ?? { markup: "", headings: [] }}
+      />
     </section>
   );
 }

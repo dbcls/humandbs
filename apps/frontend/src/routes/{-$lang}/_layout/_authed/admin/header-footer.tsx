@@ -59,6 +59,7 @@ import {
 } from "@/serverFunctions/document";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
+import { useLocale } from "use-intl";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/header-footer",
@@ -1080,7 +1081,10 @@ function NavbarPreview({
       ...group,
       group: {
         ...group.group,
-        enabled: group.linkedItem ? group.group.enabled : false,
+        enabled:
+          group.linkedItem || group.subItems.length > 0
+            ? group.group.enabled
+            : false,
       },
     }));
   }
@@ -1567,7 +1571,7 @@ function NavbarUnassignedPool({
     <div
       ref={poolDropRef}
       className={[
-        "flex h-[min(36rem,calc(100vh-18rem))] min-h-[300px] w-72 shrink-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors lg:w-80",
+        "flex h-fit min-h-[300px] w-72 shrink-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors lg:w-80",
         isDropTarget ? "border-blue-300 bg-blue-50" : "",
       ].join(" ")}
     >
@@ -1895,6 +1899,7 @@ function NavbarGroupColumn({
           </button>
           <div className="min-w-0 flex-1">
             <LocaleInlineEditor
+              displayLocale={lang}
               value={{
                 en: g.group.label["en"] ?? "",
                 ja: g.group.label["ja"] ?? "",
@@ -2980,7 +2985,7 @@ function FooterUnassignedPool({
     <div
       ref={poolDropRef}
       className={[
-        "flex h-[min(36rem,calc(100vh-18rem))] min-h-[300px] w-72 shrink-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors lg:w-80",
+        "flex h-fit min-h-[300px] w-72 shrink-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors lg:w-80",
         isPoolDropTarget ? "border-blue-300 bg-blue-50" : "",
       ].join(" ")}
     >
@@ -3449,6 +3454,7 @@ function FooterGroupColumn({
               en: g.group.label["en"] ?? "",
               ja: g.group.label["ja"] ?? "",
             }}
+            displayLocale={lang}
             onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
             displayClassName="text-xs font-semibold uppercase text-gray-500"
             required

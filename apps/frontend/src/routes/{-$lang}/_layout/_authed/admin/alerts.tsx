@@ -8,12 +8,11 @@ import {
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
 import { Bell, Plus, Trash2Icon } from "lucide-react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { DateRangePicker } from "@/components/DatePicker";
 import { ListItem } from "@/components/ListItem";
-import { MarkdownClientPreview } from "@/components/markdown/MarkdownClientPreview";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +43,10 @@ import { TitleValue } from "./-components/TitleValue";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+
+const MarkdownClientPreview = lazy(
+  () => import("@/components/markdown/MarkdownClientPreview"),
+);
 
 const NEW_ALERT_ID = "__new_alert__";
 

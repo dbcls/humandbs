@@ -106,7 +106,7 @@ export const $createNavigationFlowchart = createServerFn({ method: "POST" })
       nameEn: data.nameEn,
       nameJa: data.nameJa,
       isEntryPoint: false,
-      config: { en: { steps: [] }, ja: { steps: [] } },
+      config: { steps: [] },
       userId,
     });
   });

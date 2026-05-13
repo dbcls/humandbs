@@ -62,6 +62,7 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { useLocale } from "use-intl";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/flowcharts",
@@ -199,7 +200,7 @@ function FlowchartList({
     return <p className="px-1 text-sm text-gray-400">No flowcharts yet.</p>;
   }
 
-  // Build grouped list: each entry point followed by its direct children.
+  // Build grouped list: each entry point followed by directly linked flowcharts.
   // Flowcharts not reachable from any entry point appear at the end.
   const entryPoints = flowcharts.filter((fc) => fc.isEntryPoint);
   const byId = Object.fromEntries(flowcharts.map((fc) => [fc.id, fc]));
@@ -238,20 +239,20 @@ function FlowchartList({
           </ListItem>
           {ep.linkedFlowchartIds.length > 0 && (
             <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
-              {ep.linkedFlowchartIds.map((childId) => {
-                const child = byId[childId];
-                if (!child) return null;
+              {ep.linkedFlowchartIds.map((linkedId) => {
+                const linked = byId[linkedId];
+                if (!linked) return null;
                 return (
                   <ListItem
-                    key={child.id}
-                    isActive={selectedId === child.id}
-                    onClick={() => onSelect(child.id)}
+                    key={linked.id}
+                    isActive={selectedId === linked.id}
+                    onClick={() => onSelect(linked.id)}
                   >
-                    <FlowchartListItemContent fc={child} />
+                    <FlowchartListItemContent fc={linked} />
                     <TrashButton
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(child.id);
+                        onDelete(linked.id);
                       }}
                     />
                   </ListItem>
@@ -315,8 +316,8 @@ function FlowchartListItemContent({
 
 /**
  * Panel for creating a new flowchart record. Collects EN/JA name and an
- * optional slug. Leaving the slug blank creates a child-only flowchart that
- * can only be reached via a linked option in another flowchart.
+ * optional slug. Leaving the slug blank creates a flowchart that can only be
+ * reached via a linked option in another flowchart.
  */
 function CreateFlowchartPanel({
   onCreated,
@@ -536,7 +537,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 
   /** Returns IDs of EN steps that have fewer than 2 options (invalid for publishing). */
   function validateSteps(config: NavigationFlowchartConfig) {
-    return config.en.steps.filter((s) => s.options.length < 2).map((s) => s.id);
+    return config.steps.filter((s) => s.options.length < 2).map((s) => s.id);
   }
 
   async function commitSave(currentMeta: FlowchartMeta) {
@@ -613,6 +614,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     !deepEqual(meta, savedMetaRef.current) ||
     !deepEqual(configDraft, savedConfigRef.current);
 
+  const lang = useLocale();
   return (
     <Card
       className="flex h-full flex-1 flex-col overflow-hidden"
@@ -708,6 +710,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
                       nameJa: undefined,
                     }));
                   }}
+                  displayLocale={lang}
                   displayClassName="text-sm font-medium"
                   required
                 />
@@ -754,14 +757,14 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
 }
 
 // ---------------------------------------------------------------------------
-// FlowchartPreview — interactive preview with child flowchart navigation
+// FlowchartPreview — interactive preview with linked flowchart navigation
 // ---------------------------------------------------------------------------
 
 /**
  * Self-contained preview panel for a flowchart editor.
  *
  * - The root flowchart uses `configDraft` so unsaved changes are reflected.
- * - Child flowcharts are fetched from the DB via the admin query.
+ * - Linked flowcharts are fetched from the DB via the admin query.
  * - Maintains a navigation stack so breadcrumbs work just like the public page.
  * - `linkedFlowchartNames` is resolved from `allFlowcharts` for the current level.
  */
@@ -778,28 +781,24 @@ function FlowchartPreview({
   lang: "en" | "ja";
   onLangChange: (l: "en" | "ja") => void;
 }) {
-  // Stack of IDs navigated into: empty = showing root, ["childId"] = showing child, etc.
-  const [childStack, setChildStack] = useState<string[]>([]);
+  // Stack of linked flowchart IDs navigated into; empty means showing root.
+  const [linkedStack, setLinkedStack] = useState<string[]>([]);
   const [answers, setAnswers] = useState<FlowchartAnswers>({});
 
   const currentId =
-    childStack.length > 0 ? childStack[childStack.length - 1] : null;
+    linkedStack.length > 0 ? linkedStack[linkedStack.length - 1] : null;
 
-  // Fetch current child if we've navigated into one
-  const { data: childRecord } = useQuery({
+  // Fetch current linked flowchart if we've navigated into one
+  const { data: linkedRecord } = useQuery({
     ...getNavigationFlowchartByIdQueryOptions(currentId ?? ""),
     enabled: !!currentId,
   });
 
   // Build the data for the current level
-  const currentConfig = currentId ? childRecord?.config : configDraft;
+  const currentConfig = currentId ? linkedRecord?.config : configDraft;
   const currentFlowchartId = currentId ?? record.id;
   const currentSlug = currentFlowchartId;
-  const currentData = currentConfig
-    ? lang === "ja"
-      ? currentConfig.ja
-      : currentConfig.en
-    : null;
+  const currentData = currentConfig ?? null;
 
   // linkedFlowchartNames for the current level
   const linkedFlowchartNames: Record<string, string> = {};
@@ -817,21 +816,21 @@ function FlowchartPreview({
       nameEn: record.nameEn,
       nameJa: record.nameJa,
       onClick:
-        childStack.length > 0
+        linkedStack.length > 0
           ? () => {
-              setChildStack([]);
+              setLinkedStack([]);
             }
           : undefined,
     },
-    ...childStack.map((childId, i) => {
-      const fc = allFlowcharts.find((f) => f.id === childId);
+    ...linkedStack.map((linkedId, i) => {
+      const fc = allFlowcharts.find((f) => f.id === linkedId);
       return {
-        slug: childId,
-        nameEn: fc?.nameEn ?? childId,
-        nameJa: fc?.nameJa ?? childId,
+        slug: linkedId,
+        nameEn: fc?.nameEn ?? linkedId,
+        nameJa: fc?.nameJa ?? linkedId,
         onClick:
-          i < childStack.length - 1
-            ? () => setChildStack((prev) => prev.slice(0, i + 1))
+          i < linkedStack.length - 1
+            ? () => setLinkedStack((prev) => prev.slice(0, i + 1))
             : undefined,
       };
     }),
@@ -854,8 +853,8 @@ function FlowchartPreview({
     });
   }
 
-  function handleNavigateToChild(childId: string) {
-    setChildStack((prev) => [...prev, childId]);
+  function handleNavigateToFlowchart(flowchartId: string) {
+    setLinkedStack((prev) => [...prev, flowchartId]);
   }
 
   return (
@@ -875,7 +874,7 @@ function FlowchartPreview({
               answers={answers}
               linkedFlowchartNames={linkedFlowchartNames}
               onAnswerChange={handleAnswerChange}
-              onNavigateToChild={handleNavigateToChild}
+              onNavigateToFlowchart={handleNavigateToFlowchart}
             />
           ) : (
             <div className="py-8 text-center text-sm text-gray-400">
@@ -899,8 +898,7 @@ const STEP_TYPE = "flowchart-step";
  * (`"step-" + step.id`) so the `move()` helper matches sortable registrations
  * correctly; prefixes are stripped after reordering.
  *
- * EN steps are authoritative for order; JA steps are kept in sync by ID lookup
- * inside `updateSteps`.
+ * Steps are stored as one canonical graph with localized labels on each node.
  */
 function StepList({
   config,
@@ -913,22 +911,17 @@ function StepList({
   invalidStepIds: string[];
   otherFlowcharts: NavigationFlowchartSummary[];
 }) {
-  const steps = config.en.steps;
+  const steps = config.steps;
 
-  /** Applies a new EN step order and rebuilds the JA array to match, preserving JA content. */
-  function updateSteps(newEnSteps: NavigationFlowchartStep[]) {
-    const jaById = Object.fromEntries(config.ja.steps.map((s) => [s.id, s]));
-    const newJaSteps = newEnSteps.map((s) => jaById[s.id] ?? s);
-    onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
+  function updateSteps(newSteps: NavigationFlowchartStep[]) {
+    onChange({ steps: newSteps });
   }
 
   function handleAddStep() {
     const newStep: NavigationFlowchartStep = {
       id: crypto.randomUUID(),
-      titleEn: "",
-      titleJa: "",
-      textEn: "",
-      textJa: "",
+      title: { en: "", ja: "" },
+      text: { en: "", ja: "" },
       options: [],
     };
     updateSteps([...steps, newStep]);
@@ -942,37 +935,7 @@ function StepList({
     id: string,
     patch: Partial<NavigationFlowchartStep>,
   ) {
-    const newEnSteps = steps.map((s) => (s.id === id ? { ...s, ...patch } : s));
-
-    // For the JA side, apply non-options fields directly (bilingual text/title
-    // fields are included in the patch). For `options`, preserve JA option
-    // objects but reorder them to match the EN order — never replace JA options
-    // wholesale with EN objects.
-    const newJaSteps = config.ja.steps.map((s) => {
-      if (s.id !== id) return s;
-      if (!patch.options) return { ...s, ...patch };
-      const jaById = Object.fromEntries(s.options.map((o) => [o.id, o]));
-      const { options: _enOptions, ...rest } = patch;
-      const reorderedJaOptions = patch.options
-        .map((enOpt) => jaById[enOpt.id] ?? enOpt)
-        .map((jaOpt, i) => {
-          // Carry over any structural fields (nextStep, linkedFlowchartId, link,
-          // linkTextEn/Ja) that may have been edited on the EN side.
-          const enOpt = patch.options![i];
-          if (!enOpt) return jaOpt;
-          return {
-            ...jaOpt,
-            nextStep: enOpt.nextStep,
-            linkedFlowchartId: enOpt.linkedFlowchartId,
-            link: enOpt.link,
-            linkTextEn: enOpt.linkTextEn,
-            linkTextJa: enOpt.linkTextJa ?? jaOpt.linkTextJa,
-          };
-        });
-      return { ...s, ...rest, options: reorderedJaOptions };
-    });
-
-    onChange({ en: { steps: newEnSteps }, ja: { steps: newJaSteps } });
+    updateSteps(steps.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
   /** A step cannot be deleted while any option in this flowchart points to it as a nextStep target. */
@@ -1003,7 +966,6 @@ function StepList({
               key={step.id}
               step={step}
               index={index}
-              jaStep={config.ja.steps.find((s) => s.id === step.id)}
               isInvalid={invalidStepIds.includes(step.id)}
               canDelete={canDeleteStep(step.id)}
               allSteps={steps}
@@ -1040,7 +1002,6 @@ function StepList({
 function StepCard({
   step,
   index,
-  jaStep,
   isInvalid,
   canDelete,
   allSteps,
@@ -1050,7 +1011,6 @@ function StepCard({
 }: {
   step: NavigationFlowchartStep;
   index: number;
-  jaStep?: NavigationFlowchartStep;
   isInvalid: boolean;
   canDelete: boolean;
   allSteps: NavigationFlowchartStep[];
@@ -1070,8 +1030,7 @@ function StepCard({
   function handleAddOption() {
     const newOpt: NavigationFlowchartOption = {
       id: crypto.randomUUID(),
-      titleEn: "",
-      titleJa: "",
+      title: { en: "", ja: "" },
     };
     onUpdate({ options: [...step.options, newOpt] });
   }
@@ -1094,6 +1053,8 @@ function StepCard({
   function handleReorderOptions(newOptions: NavigationFlowchartOption[]) {
     onUpdate({ options: newOptions });
   }
+
+  const lang = useLocale();
 
   return (
     <div
@@ -1126,11 +1087,11 @@ function StepCard({
         </button>
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <LocaleInlineEditor
-            value={{ en: step.titleEn, ja: step.titleJa }}
-            onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
+            value={step.title}
+            onChange={(title) => onUpdate({ title })}
             placeholder="Step title"
             displayClassName="text-sm font-medium"
-            displayLocale="ja"
+            displayLocale={lang}
           />
           {isInvalid && (
             <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
@@ -1163,8 +1124,10 @@ function StepCard({
                 <span className="text-xs text-gray-400">EN</span>
                 <TextareaAutosize
                   minRows={3}
-                  value={step.textEn}
-                  onChange={(e) => onUpdate({ textEn: e.target.value })}
+                  value={step.text.en}
+                  onChange={(e) =>
+                    onUpdate({ text: { ...step.text, en: e.target.value } })
+                  }
                   placeholder="English body text"
                   className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 />
@@ -1173,8 +1136,10 @@ function StepCard({
                 <span className="text-xs text-gray-400">JA</span>
                 <TextareaAutosize
                   minRows={3}
-                  value={jaStep?.textJa ?? step.textJa}
-                  onChange={(e) => onUpdate({ textJa: e.target.value })}
+                  value={step.text.ja}
+                  onChange={(e) =>
+                    onUpdate({ text: { ...step.text, ja: e.target.value } })
+                  }
                   placeholder="Japanese body text"
                   className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 />
@@ -1269,8 +1234,7 @@ function OptionList({
               onClick={() => {
                 const newOpt: NavigationFlowchartOption = {
                   id: crypto.randomUUID(),
-                  titleEn: "",
-                  titleJa: "",
+                  title: { en: "", ja: "" },
                 };
                 onReorder([...options, newOpt]);
               }}
@@ -1285,7 +1249,7 @@ function OptionList({
   );
 }
 
-type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
+type DestType = "next-step" | "linked-flowchart" | "external-link" | "none";
 
 /**
  * Derives the current destination type of an option from its config fields.
@@ -1294,7 +1258,7 @@ type DestType = "next-step" | "child-flowchart" | "external-link" | "none";
  */
 function getDestType(opt: NavigationFlowchartOption): DestType {
   if (opt.nextStep) return "next-step";
-  if (opt.linkedFlowchartId) return "child-flowchart";
+  if (opt.linkedFlowchartId) return "linked-flowchart";
   // link can be an empty string when the user just selected "External link"
   // but hasn't typed a URL yet — treat null/undefined as unset, string as set.
   if (opt.link !== undefined && opt.link !== null) return "external-link";
@@ -1305,7 +1269,7 @@ function getDestType(opt: NavigationFlowchartOption): DestType {
  * Single editable option row with:
  * - Drag handle (dnd-kit `useSortable`, scoped to parent step via `optionType`)
  * - Inline bilingual title editor
- * - Radio buttons for destination type (next step / child flowchart / external link)
+ * - Radio buttons for destination type (next step / linked flowchart / external link)
  * - Context-sensitive sub-form for the selected destination type
  *
  * Changing the destination type clears all previously set dest fields before
@@ -1348,12 +1312,11 @@ function OptionRow({
       nextStep: undefined,
       linkedFlowchartId: undefined,
       link: undefined,
-      linkTextEn: undefined,
-      linkTextJa: undefined,
+      linkText: undefined,
     };
     if (newType === "next-step") {
       onUpdate({ ...base, nextStep: otherSteps[0]?.id ?? "" });
-    } else if (newType === "child-flowchart") {
+    } else if (newType === "linked-flowchart") {
       onUpdate({ ...base, linkedFlowchartId: otherFlowcharts[0]?.id ?? "" });
     } else if (newType === "external-link") {
       onUpdate({ ...base, link: "" });
@@ -1363,6 +1326,8 @@ function OptionRow({
   }
 
   const otherSteps = allSteps.filter((s) => s.id !== currentStepId);
+
+  const lang = useLocale();
 
   return (
     <div
@@ -1382,11 +1347,11 @@ function OptionRow({
         </button>
         <div className="min-w-0 flex-1">
           <LocaleInlineEditor
-            value={{ en: option.titleEn, ja: option.titleJa }}
-            onChange={({ en, ja }) => onUpdate({ titleEn: en, titleJa: ja })}
+            value={option.title}
+            onChange={(title) => onUpdate({ title })}
             placeholder="Option label"
             displayClassName="text-xs"
-            displayLocale="ja"
+            displayLocale={lang}
           />
         </div>
         <button
@@ -1409,7 +1374,7 @@ function OptionRow({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="next-step">Next step</SelectItem>
-            <SelectItem value="child-flowchart">Child flowchart</SelectItem>
+            <SelectItem value="linked-flowchart">Linked flowchart</SelectItem>
             <SelectItem value="external-link">External link</SelectItem>
             <SelectItem value="none">None</SelectItem>
           </SelectContent>
@@ -1423,25 +1388,27 @@ function OptionRow({
                 nextStep: v,
                 linkedFlowchartId: undefined,
                 link: undefined,
-                linkTextEn: undefined,
-                linkTextJa: undefined,
+                linkText: undefined,
               })
             }
           >
-            <SelectTrigger className="h-7 text-xs">
+            <SelectTrigger className="max-w-full text-xs data-[size=default]:h-fit">
               <SelectValue placeholder="Select step…" />
             </SelectTrigger>
             <SelectContent>
               {otherSteps.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.titleEn || s.id}
+                  <div className="text-left">
+                    {s.title.ja && <p>{s.title.ja}</p>}
+                    <p>{s.title.en || s.id}</p>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
 
-        {destType === "child-flowchart" && (
+        {destType === "linked-flowchart" && (
           <Select
             value={option.linkedFlowchartId ?? ""}
             onValueChange={(v) =>
@@ -1449,18 +1416,20 @@ function OptionRow({
                 linkedFlowchartId: v,
                 nextStep: undefined,
                 link: undefined,
-                linkTextEn: undefined,
-                linkTextJa: undefined,
+                linkText: undefined,
               })
             }
           >
-            <SelectTrigger className="h-7 text-xs">
+            <SelectTrigger className="max-w-full data-[size=default]:h-fit">
               <SelectValue placeholder="Select flowchart…" />
             </SelectTrigger>
             <SelectContent>
               {otherFlowcharts.map((fc) => (
                 <SelectItem key={fc.id} value={fc.id}>
-                  {fc.nameEn}
+                  <div className="text-left [&>p]:text-xs">
+                    {fc.nameJa && <p>{fc.nameJa}</p>}
+                    <p>{fc.nameEn || fc.id}</p>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1484,12 +1453,11 @@ function OptionRow({
             />
             <LocaleInlineEditor
               value={{
-                en: option.linkTextEn ?? "",
-                ja: option.linkTextJa ?? "",
+                en: option.linkText?.en ?? "",
+                ja: option.linkText?.ja ?? "",
               }}
-              onChange={({ en, ja }) =>
-                onUpdate({ linkTextEn: en, linkTextJa: ja })
-              }
+              onChange={(linkText) => onUpdate({ linkText })}
+              displayLocale={lang}
               placeholder="Link label"
               displayClassName="text-xs"
             />
