@@ -1385,13 +1385,16 @@ function OptionRow({
               })
             }
           >
-            <SelectTrigger className="h-7 text-xs">
+            <SelectTrigger className="max-w-full text-xs data-[size=default]:h-fit">
               <SelectValue placeholder="Select step…" />
             </SelectTrigger>
             <SelectContent>
               {otherSteps.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.title.en || s.id}
+                  <div className="text-left">
+                    {s.title.ja && <p>{s.title.ja}</p>}
+                    <p>{s.title.en || s.id}</p>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1410,13 +1413,16 @@ function OptionRow({
               })
             }
           >
-            <SelectTrigger className="h-7 text-xs">
+            <SelectTrigger className="max-w-full data-[size=default]:h-fit">
               <SelectValue placeholder="Select flowchart…" />
             </SelectTrigger>
             <SelectContent>
               {otherFlowcharts.map((fc) => (
                 <SelectItem key={fc.id} value={fc.id}>
-                  {fc.nameEn}
+                  <div className="text-left [&>p]:text-xs">
+                    {fc.nameJa && <p>{fc.nameJa}</p>}
+                    <p>{fc.nameEn || fc.id}</p>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
