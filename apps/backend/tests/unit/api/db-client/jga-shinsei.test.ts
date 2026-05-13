@@ -132,7 +132,7 @@ describe("api/db-client/jga-shinsei", () => {
       expect(result).toEqual([fakeRow])
       const templates = calls.filter((c) => c.type === "template")
       expect(templates).toHaveLength(1)
-      // jdsIds is bound multiple times across CTEs (jds_base, jds_jsub, jds_hum, jds_jga)
+      // jdsIds is bound multiple times across CTEs (jds_base, jds_acc, jds_hum)
       expect(templates[0]?.values).toContainEqual(["J-DS000001"])
     })
   })

@@ -132,7 +132,7 @@ DB には key 名のラベルや説明を管理するマスターテーブルは
 | `participant_en` | 研究参加者（英語） |
 | `restriction` | 利用制限 |
 | `restriction_en` | 利用制限（英語） |
-| `data_access` | アクセス制限 (submission_open, submission_controlled) |
+| `data_access` | アクセス制限 (`submission_open` / `submission_type1` / `submission_type2`、意味は下表) |
 | `study_type` | 研究種別 (study_type_wgs, etc.) |
 | `file_format` | ファイル形式 |
 | `file_size` | ファイルサイズ |
@@ -141,6 +141,16 @@ DB には key 名のラベルや説明を管理するマスターテーブルは
 | `pi_*` | 申請者情報 |
 | `head_*` | 機関長情報 |
 | `group_id` | グループ ID (submission との紐付け) |
+
+`data_access` の値:
+
+| 値 | 意味 |
+|---|---|
+| `submission_open` | Unrestricted-access（自由利用） |
+| `submission_type1` | Controlled-access (Type I) |
+| `submission_type2` | Controlled-access (Type II)。仕様上ありうる値だが、現データには未出現 |
+
+API ファセット `criteria`（Research / Dataset 検索）の値もこの区分に対応する。
 
 ### J-DU (データ利用申請)
 

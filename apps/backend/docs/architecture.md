@@ -44,7 +44,7 @@ Keycloak の管理設定は [keycloak-admin.md](../../../docs/keycloak-admin.md)
 
 ### JWT Claims
 
-`sub` (Keycloak の ユーザー UID) のみを利用する。他のクレーム (`preferred_username`, `email`, role 等) は参照しない。スキーマは `src/api/types/auth.ts` を参照。
+認可・業務ロジックでは `sub` (Keycloak の ユーザー UID) のみを利用する。スキーマ (`src/api/types/auth.ts` の `JwtClaimsSchema` / `AuthUserSchema`) には `preferred_username` / `email` も含まれ JWT から抽出されるが、現状コードベース内で参照されていない（将来のロギング / audit 用に保持）。role 系のクレームは抽出しない。
 
 ### 認可レベル
 

@@ -28,7 +28,7 @@
     "test": "bun test",
     "test:crawler": "bun test tests/unit/crawler",
     "test:es": "bun test tests/unit/es",
-    "test:api": "FAIL=0; for f in $(find tests/unit/api -name '*.test.ts' | sort); do echo \"--- $f ---\"; bun test \"$f\" || FAIL=$((FAIL+1)); done; if [ $FAIL -gt 0 ]; then echo \"Failed files: $FAIL\"; exit 1; fi",
+    "test:api": "FAIL=0; for f in $(find tests/unit/api -name '*.test.ts' | sort); do echo \"--- $f ---\"; timeout 120 bun test \"$f\" || FAIL=$((FAIL+1)); done; if [ $FAIL -gt 0 ]; then echo \"Failed files: $FAIL\"; exit 1; fi",
     "test:api:bulk": "bun test tests/unit/api",
     "test:integration": "HUMANDBS_INTEGRATION_TEST=1 HUMANDBS_ES_INDEX_RESEARCH=research-it HUMANDBS_ES_INDEX_RESEARCH_VERSION=research-version-it HUMANDBS_ES_INDEX_DATASET=dataset-it bun test --test-root ./tests/integration",
     "test:smoke": "bun test --test-root ./tests/smoke",

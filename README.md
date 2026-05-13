@@ -125,25 +125,9 @@ podman-compose up -d --build
 
 ### 環境変数
 
-| 変数名 | 説明 |
-|--------|------|
-| `HUMANDBS_ENV` | 環境識別子（`development` / `staging` / `production`）。container / network / volume 名はこの値から `humandbs-${HUMANDBS_ENV}-*` の形で自動生成される |
-| `HUMANDBS_NODE_ENV` | Node.js ランタイムモード（`development` / `production`）。コンテナ内の `NODE_ENV` に展開される。staging は `production` を指定する |
-| `HUMANDBS_TZ` | タイムゾーン |
-| `HUMANDBS_NGINX_BIND_HOST` | Nginx ポートのバインドホスト |
-| `HUMANDBS_NGINX_PORT` | Nginx のポート番号 |
-| `HUMANDBS_ES_MEM_LIMIT` | Elasticsearch のメモリ制限 |
-| `HUMANDBS_ES_JAVA_OPTS` | Elasticsearch の JVM オプション |
-| `HUMANDBS_ES_BACKUP_PATH` | Elasticsearch バックアップパス |
-| `HUMANDBS_POSTGRES_USER` | PostgreSQL ユーザー名 |
-| `HUMANDBS_POSTGRES_PASSWORD` | PostgreSQL パスワード |
-| `HUMANDBS_POSTGRES_DB` | PostgreSQL データベース名 |
-| `HUMANDBS_AUTH_ISSUER_URL` | OIDC プロバイダーの URL |
-| `HUMANDBS_AUTH_CLIENT_ID` | OIDC クライアント ID |
-| `HUMANDBS_AUTH_REDIRECT_URI` | OIDC リダイレクト URI |
-| `HUMANDBS_FRONTEND_COMMAND` | フロントエンドコンテナの起動コマンド |
-| `HUMANDBS_BACKEND_COMMAND` | バックエンドコンテナの起動コマンド |
-| `HUMANDBS_BACKEND_ADMIN_UID_FILE` | 管理者UID一覧ファイルのパス（絶対パス、オプション） |
+env テンプレート (`env.development` / `env.staging` / `env.production`) 自身が SSOT。各変数の意味・必須/任意・デフォルト値は templates 内のコメントで管理する。`.env` は gitignored なので、`cp env.<env> .env` で初期化してから運用に必要な値を埋める。
+
+JGA 申請 API を有効化する場合、`HUMANDBS_JGA_DB_HOST` / `_USER` / `_PASSWORD` を `.claude/docs/jga-shinsei-db-access.md` の値で埋める。compose.yml で必須化されているため、未設定だとコンテナ起動が失敗する。
 
 ### Docker ボリューム
 

@@ -6,6 +6,7 @@ Backend の開発を始めるための手順。
 
 - Docker 環境が起動していること（[README.md](../../../README.md) 参照）
 - backend コンテナ内で作業すること
+- 環境変数は repo ルートの env テンプレート (`env.development` / `env.staging` / `env.production`) を `.env` にコピーして使う。JGA 申請 API を有効化する場合は `HUMANDBS_JGA_DB_*` を `.claude/docs/jga-shinsei-db-access.md` の値で埋める
 
 ## 1. Elasticsearch の準備
 
@@ -47,3 +48,4 @@ curl http://localhost:8080/api/health
 
 - クローラーを実行する場合: [crawler-pipeline.md](crawler-pipeline.md)
 - API の使い方を確認する場合: [api-guide.md](api-guide.md)
+- テストの方針と実行コマンド: [tests/testing.md](../tests/testing.md)

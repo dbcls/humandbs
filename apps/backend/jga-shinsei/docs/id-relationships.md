@@ -99,14 +99,16 @@ JSUB  <------>  JGA, JGAS, JGAD, ...
 
 - `accession.alias` に JSUB ID が格納されている
 
-#### 3. JSUB/JGA <-> hum_id (metadata XML)
+#### 3. J-DS/J-DU <-> hum_id (nbdc_application.hum_id)
 
 ```plaintext
-JSUB/JGA  ------>  metadata.xml  ------>  hum_id
-           1:1      nbdc_number
+J-DS/J-DU  ------>  nbdc_application.hum_id
+            1:N         (担当者入力)
 ```
 
-- `metadata.metadata` XML 内の `nbdc_number` 属性から抽出
+- `nbdc_application.hum_id` カラムを直接参照する
+- API (`/jga-shinsei/ds`, `/du`) と ops dump (`scripts/dump-jga-hum-relations.sh`) は同じ経路を使う
+- NULL / 空文字 / `N/A` は除外
 
 #### 4. J-DS <-> submission (submission_permission)
 
@@ -134,8 +136,8 @@ J-DU  ------>  JGAD
 | From | To | 経路 | テーブル |
 |------|----|------|----------|
 | JSUB | JGA IDs | `accession.alias` に JSUB ID が格納 | `accession` |
-| JSUB | hum_id | `metadata.metadata` XML の `nbdc_number` 属性 | `accession` -> `metadata` |
-| JGA | hum_id | 同上（JSUB 経由と同じデータ） | `accession` -> `metadata` |
+| J-DS | hum_id | `nbdc_application.hum_id` 直参照 | `nbdc_application` |
+| J-DU | hum_id | 同上 | `nbdc_application` |
 | J-DU | JGAD | `use_permission.dataset_id` | `nbdc_application` -> `use_permission` -> `accession` |
 
 #### J-DS から JGA IDs への経路
@@ -160,7 +162,7 @@ J-DS --[appl_id]--> submission_permission --[submission_id]--> submission
 
 1. **JSUB は非公開内部 ID**: `accession.alias` に格納され、公開されない
 2. **submission_permission が J-DS と submission を直接紐付け**: 1 対 1 で正確な紐付け
-3. **hum_id は XML から正規表現抽出**: `nbdc_number="..."` 属性
+3. **hum_id は `nbdc_application.hum_id` 直参照**: 申請時に担当者が入力した値。NULL / 空文字 / `N/A` は除外
 4. **J-DU は Dataset 単位で申請**: JGAD に直接紐付く（`use_permission`）
 5. **relation テーブルが階層管理**: self/parent で JGA ID の親子関係を表現
 
@@ -217,4 +219,4 @@ J-DS --[appl_id]--> submission_permission --[submission_id]--> submission
 
 - **JSUB と J-DU の紐付けは行わない**: JSUB は Submission（データ提供）側、J-DU は Data Use（データ利用）側で、直接的な関係がない
 - **group_id 経由の紐付けは行わない**: 多対多になり正確な紐付けができない
-- **hum_id の取得**: `metadata.metadata` XML の `nbdc_number` 属性から抽出する。`nbdc_application.hum_id` は担当者が直接入力する経路もあるが、データ件数は少ない
+- **hum_id の取得**: `nbdc_application.hum_id` カラムを直参照する。NULL / 空文字 / `N/A` は除外。API (`/jga-shinsei/ds`, `/du`) と ops dump (`scripts/dump-jga-hum-relations.sh`) は同じ経路を使う
