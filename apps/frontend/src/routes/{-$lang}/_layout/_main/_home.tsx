@@ -19,6 +19,7 @@ import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
 import { SkeletonLoading } from "@/components/Skeleton";
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
@@ -87,7 +88,6 @@ function RouteComponent() {
                     className="pointer-events-auto gap-2 rounded-full px-8 py-3 text-sm"
                     onClick={handleSearch}
                   >
-                    <p>{tCommon("search")}</p>
                     <Search size={18} />
                   </Button>
                 }
@@ -130,10 +130,16 @@ function RouteComponent() {
           </div>
         </div>
 
-        <Card caption={"News"} className="w-[30rem] shrink-0">
-          <Suspense fallback={<SkeletonLoading />}>
-            <News />
-          </Suspense>
+        <Card
+          caption={"News"}
+          containerClassName="px-3"
+          className="w-[30rem] shrink-0"
+        >
+          <ErrorResetBoundary getResetKey={() => "reset"}>
+            <Suspense fallback={<SkeletonLoading />}>
+              <News />
+            </Suspense>
+          </ErrorResetBoundary>
         </Card>
       </section>
       <Card className="overflow-hidden bg-transparent p-0">

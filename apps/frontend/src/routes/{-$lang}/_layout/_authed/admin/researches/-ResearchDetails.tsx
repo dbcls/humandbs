@@ -17,7 +17,7 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
-import { Tag } from "@/components/StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type {
   ResearchDetailResponse,
@@ -457,7 +457,7 @@ export function ResearchDetails({
       caption={
         <>
           <span>{researchValues.humId}</span>
-          <Tag tag={researchValues.status} size="md" className="ml-3" />
+          <StatusTag status={researchValues.status} className="mx-3" />
           <ResearchVersionSelector
             humId={humId}
             lang={lang}

@@ -49,7 +49,7 @@ export function AlertMessage({
 }) {
   return (
     <div className="border-secondary text-foreground-dark flex items-center justify-between gap-2 rounded-sm border bg-white px-4 py-2">
-      <p className="whitespace-pre-wrap">{content}</p>
+      <p className="text-xs whitespace-pre-wrap">{content}</p>
       <Button
         onClick={() => onHide?.(id)}
         variant={"ghost"}
