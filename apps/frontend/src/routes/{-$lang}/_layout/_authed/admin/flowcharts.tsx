@@ -62,6 +62,7 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { useLocale } from "use-intl";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/flowcharts",
@@ -613,6 +614,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     !deepEqual(meta, savedMetaRef.current) ||
     !deepEqual(configDraft, savedConfigRef.current);
 
+  const lang = useLocale();
   return (
     <Card
       className="flex h-full flex-1 flex-col overflow-hidden"
@@ -708,6 +710,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
                       nameJa: undefined,
                     }));
                   }}
+                  displayLocale={lang}
                   displayClassName="text-sm font-medium"
                   required
                 />
@@ -1051,6 +1054,8 @@ function StepCard({
     onUpdate({ options: newOptions });
   }
 
+  const lang = useLocale();
+
   return (
     <div
       ref={ref as Ref<HTMLDivElement>}
@@ -1086,7 +1091,7 @@ function StepCard({
             onChange={(title) => onUpdate({ title })}
             placeholder="Step title"
             displayClassName="text-sm font-medium"
-            displayLocale="ja"
+            displayLocale={lang}
           />
           {isInvalid && (
             <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
@@ -1322,6 +1327,8 @@ function OptionRow({
 
   const otherSteps = allSteps.filter((s) => s.id !== currentStepId);
 
+  const lang = useLocale();
+
   return (
     <div
       ref={ref as Ref<HTMLDivElement>}
@@ -1344,7 +1351,7 @@ function OptionRow({
             onChange={(title) => onUpdate({ title })}
             placeholder="Option label"
             displayClassName="text-xs"
-            displayLocale="ja"
+            displayLocale={lang}
           />
         </div>
         <button
@@ -1450,6 +1457,7 @@ function OptionRow({
                 ja: option.linkText?.ja ?? "",
               }}
               onChange={(linkText) => onUpdate({ linkText })}
+              displayLocale={lang}
               placeholder="Link label"
               displayClassName="text-xs"
             />
