@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
+import React, { useEffect, useMemo, useRef, useState, Suspense, useCallback } from "react";
 import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -108,6 +108,7 @@ const INITIAL_LIGHT_POINT_2 = 3.0;
 const INITIAL_PHYSICS_FORCE = 0.1;
 const INITIAL_FOG_NEAR = 650;
 const INITIAL_FOG_FAR = 5000;
+const INITIAL_MAX_PARTICLES = 100;
 
 // Macromolecule OKLCH Color Parameters
 const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
@@ -168,6 +169,41 @@ type SimNode = StatsSatellite & {
 
 // --- Single Blob Cluster Component ---
 
+function AnimatedParticleLabel({ sat, mode, isDimmed, debugParams, onNavigate, facet, onPointerEnter, onPointerLeave, isDragging }: any) {
+  const textRef = useRef<any>(null);
+
+  useFrame(() => {
+    if (textRef.current) {
+      const targetOpacity = isDimmed ? 0.15 : 1.0;
+      textRef.current.fillOpacity = THREE.MathUtils.lerp(textRef.current.fillOpacity ?? 1.0, targetOpacity, 0.15);
+      
+      const targetColor = new THREE.Color(isDimmed ? "#94a3b8" : "#334155");
+      if (!textRef.current._currentColor) textRef.current._currentColor = new THREE.Color("#334155");
+      textRef.current._currentColor.lerp(targetColor, 0.15);
+      textRef.current.color = textRef.current._currentColor;
+      
+      textRef.current.sync();
+    }
+  });
+
+  return (
+    <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+      <Text
+        ref={textRef}
+        fontSize={debugParams?.particleLabelFontSize ?? 12}
+        material-transparent={true}
+        material-depthWrite={false}
+        depthOffset={-1}
+        anchorX="center"
+        anchorY="top"
+        raycast={() => null} // Completely disable raycasting for the text so it never blocks
+      >
+        {`${capitalize(sat.value)} (${sat[mode]})`}
+      </Text>
+    </Billboard>
+  );
+}
+
 function BlobCluster({
   system,
   mode,
@@ -205,10 +241,25 @@ function BlobCluster({
   const [hoveredParticleIndex, setHoveredParticleIndex] = useState<number | null>(null);
   const labelRefs = useRef<(THREE.Group | null)[]>([]);
   const gridDims = useRef({ width: 100, height: 100 });
+
+  const facetDriftParams = useMemo(() => {
+    const hash = hashString(system.facet);
+    return {
+      phaseX: (hash % 100) / 10.0,
+      phaseY: ((hash >> 2) % 100) / 10.0,
+      phaseZ: ((hash >> 4) % 100) / 10.0,
+      freqX: 1.0 + ((hash % 50) / 100.0), // 1.0 to 1.5
+      freqY: 1.0 + (((hash >> 1) % 50) / 100.0),
+      freqZ: 1.0 + (((hash >> 3) % 50) / 100.0),
+    };
+  }, [system.facet]);
   
   const satellites = useMemo(() => {
-    return system.satellites.filter((s) => s[mode] > 0);
-  }, [system, mode]);
+    const valid = system.satellites.filter((s) => s[mode] > 0);
+    // Sort descending and apply the max item limit
+    valid.sort((a, b) => b[mode] - a[mode]);
+    return valid.slice(0, debugParams?.maxParticles ?? 100);
+  }, [system, mode, debugParams?.maxParticles]);
 
   useEffect(() => {
     if (satellites.length === 0) return;
@@ -272,9 +323,10 @@ function BlobCluster({
       const { x: targetX, y: layoutY, d3Radius } = layout;
       // Perfectly center vertically. Camera will handle framing.
       const targetY = layoutY + yOffset; 
-      const targetZ = 0; 
-      
       const hash = hashString(sat.value || sat.facet);
+      // Give them a slight deterministic Z variation based on their hash to prevent specular flattening (bleaching)
+      const targetZ = ((hash % 100) / 100 - 0.5) * 40; 
+      
       const hue = hash % 360;
       const isVivid = (hash % 100) < (MACRO_VIVID_PROBABILITY * 100);
       const lightness = isVivid ? MACRO_COLOR_L_VIVID : MACRO_COLOR_L_NEUTRAL;
@@ -300,6 +352,11 @@ function BlobCluster({
 
   const localGroupRef = useRef<THREE.Group>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const particleHoverTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleParticleHover = (index: number | null) => {
+    setHoveredParticleIndex(index);
+  };
 
   useEffect(() => {
     return () => {
@@ -357,14 +414,9 @@ function BlobCluster({
       const node = nodes[i];
       
       if (isHovered) {
-        let currentTargetZ = node.targetZ;
-        if (hoveredParticleIndex !== null && hoveredParticleIndex !== i) {
-          currentTargetZ -= 300; // Relative Z pushback
-        }
-
         node.x = THREE.MathUtils.lerp(node.x || 0, node.targetX, 0.1);
         node.y = THREE.MathUtils.lerp(node.y || 0, node.targetY, 0.1);
-        node.z = THREE.MathUtils.lerp(node.z || 0, currentTargetZ, 0.1);
+        node.z = THREE.MathUtils.lerp(node.z || 0, node.targetZ, 0.1);
         node.vx = 0; node.vy = 0; node.vz = 0;
         continue;
       }
@@ -374,11 +426,14 @@ function BlobCluster({
       node.vy = (node.vy || 0) + (0 - (node.y || 0)) * pull * dt;
       node.vz = (node.vz || 0) + (0 - (node.z || 0)) * pull * dt;
 
-      // Organic "protein-like" fluid drift instead of pure jitter
+      // Organic "protein-like" fluid drift
+      // Speed varies by count: heavier (larger count) means slower, lighter means faster.
+      const logCount = Math.log10(((node as any)[mode] as number) || 1) + 1;
+      const speedScale = 1.5 / logCount;
       const offset = i * 0.13;
-      node.vx += Math.sin(time * 1.2 + offset) * 0.4 + (Math.random() - 0.5) * 0.5;
-      node.vy += Math.cos(time * 1.1 + offset * 2.1) * 0.4 + (Math.random() - 0.5) * 0.5;
-      node.vz += Math.sin(time * 1.3 + offset * 3.2) * 0.4 + (Math.random() - 0.5) * 0.5;
+      node.vx += (Math.sin(time * 1.2 * facetDriftParams.freqX + offset + facetDriftParams.phaseX) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
+      node.vy += (Math.cos(time * 1.1 * facetDriftParams.freqY + offset * 2.1 + facetDriftParams.phaseY) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
+      node.vz += (Math.sin(time * 1.3 * facetDriftParams.freqZ + offset * 3.2 + facetDriftParams.phaseZ) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
 
       const visualRadius = node.d3Radius * (particleScale / 260);
       for (let j = i + 1; j < nodes.length; j++) {
@@ -436,14 +491,8 @@ function BlobCluster({
         dummy.scale.set(visualRadius, visualRadius, visualRadius);
         dummy.updateMatrix();
         
-        if (hoveredParticleIndex !== null && hoveredParticleIndex !== i) {
-          node.color.copy(node.baseColor).lerp(new THREE.Color("#f8fafc"), 0.85);
-        } else {
-          node.color.copy(node.baseColor);
-        }
-        
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
-        instancedMeshRef.current.setColorAt(i, node.color);
+        instancedMeshRef.current.setColorAt(i, node.baseColor);
         
         if (isHovered && labelRefs.current[i]) {
           const currentScale = localGroupRef.current?.scale.x ?? 1.0;
@@ -470,7 +519,7 @@ function BlobCluster({
       {/* Hit box OUTSIDE of localGroupRef so it doesn't shrink during layout scaling.
           This prevents the object from slipping out from under the mouse. */}
       <mesh 
-        position={[0, 0, 50]} 
+        position={[0, 0, -100]} 
         visible={!(isAnyHovered && !isHovered)}
         onClick={(e) => { 
           e.stopPropagation(); 
@@ -494,13 +543,44 @@ function BlobCluster({
           args={[undefined, undefined, satellites.length]}
           castShadow
           receiveShadow
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isDragging && e.instanceId !== undefined) {
+              const sat = satellites[e.instanceId];
+              if (onNavigate) onNavigate(system.facet, sat.value);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (isDragging) return;
+            if (isHovered && e.instanceId !== undefined) {
+              handleParticleHover(e.instanceId);
+              document.body.style.cursor = 'pointer';
+            }
+          }}
+          onPointerOut={(e) => {
+            if (isHovered && e.instanceId !== undefined) {
+              // Only clear if we are leaving the CURRENTLY hovered particle!
+              // This prevents race conditions where out(A) fires AFTER move(B) and clears the state incorrectly.
+              setHoveredParticleIndex((prev) => prev === e.instanceId ? null : prev);
+              document.body.style.cursor = 'auto';
+            }
+          }}
         >
-          <sphereGeometry args={[1, 32, 32]} />
+          <sphereGeometry 
+            args={[1, 32, 32]} 
+            onUpdate={(geo) => {
+              // CRITICAL: Three.js InstancedMesh raycaster uses the geometry's bounding sphere 
+              // for early frustum culling. Since instances are spread far beyond the base 
+              // geometry's radius of 1, the raycaster incorrectly ignores particles far from the center!
+              // Setting an infinite bounding sphere forces the raycaster to check all instances.
+              geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 999999);
+            }}
+          />
           <meshStandardMaterial 
             color="#ffffff" 
-            roughness={debugParams?.roughness ?? INITIAL_MATERIAL_ROUGHNESS}
+            roughness={isHovered ? 0.8 : (debugParams?.roughness ?? INITIAL_MATERIAL_ROUGHNESS)}
             metalness={0.0}
-            envMapIntensity={0.2}
+            envMapIntensity={isHovered ? 0.05 : 0.2}
           />
         </instancedMesh>
       </group>
@@ -510,20 +590,15 @@ function BlobCluster({
         // We render all labels, removed the 50 item cutoff limit as requested!
         return (
         <group key={sat.id} ref={el => labelRefs.current[i] = el}>
-          <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-            <Text
-              fontSize={debugParams?.particleLabelFontSize ?? 12}
-              color="#334155"
-              anchorX="center"
-              anchorY="top"
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                if (!isDragging) onNavigate(system.facet, sat.value); 
-              }}
-            >
-              {`${capitalize(sat.value)} (${sat[mode]})`}
-            </Text>
-          </Billboard>
+          <AnimatedParticleLabel
+            sat={sat}
+            mode={mode}
+            isDimmed={hoveredParticleIndex !== null && hoveredParticleIndex !== i}
+            debugParams={debugParams}
+            onNavigate={onNavigate}
+            facet={system.facet}
+            isDragging={isDragging}
+          />
         </group>
       )})}
         
@@ -784,6 +859,7 @@ export default function FrontStatsVisualizationNew() {
       particleLabelFontSize: 12,
       fogNear: INITIAL_FOG_NEAR,
       fogFar: INITIAL_FOG_FAR,
+      maxParticles: INITIAL_MAX_PARTICLES,
     };
     
     if (typeof window !== "undefined") {
@@ -848,6 +924,10 @@ export default function FrontStatsVisualizationNew() {
           <label className="block space-y-1">
             <div className="flex justify-between"><span>Particle Scale</span><span className="font-mono text-accent">{debugParams.particleScale}</span></div>
             <input type="range" min="50" max="400" step="10" value={debugParams.particleScale} onChange={(e) => setDebugParams(p => ({...p, particleScale: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Max Particles / Facet</span><span className="font-mono text-accent">{debugParams.maxParticles}</span></div>
+            <input type="range" min="10" max="500" step="10" value={debugParams.maxParticles} onChange={(e) => setDebugParams(p => ({...p, maxParticles: Number(e.target.value)}))} />
           </label>
           <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Rotation Speed</span><span className="font-mono text-accent">{debugParams.rotationSpeed}</span></div>
@@ -979,6 +1059,7 @@ export default function FrontStatsVisualizationNew() {
                 particleLabelFontSize: 12,
                 fogNear: INITIAL_FOG_NEAR,
                 fogFar: INITIAL_FOG_FAR,
+                maxParticles: INITIAL_MAX_PARTICLES,
               });
             }}
           >
@@ -1022,7 +1103,7 @@ export default function FrontStatsVisualizationNew() {
             <CameraUpdater 
               cameraY={debugParams.cameraY} 
               cameraZ={debugParams.cameraZ} 
-              radius={debugParams.carouselRadius} 
+              radius={ debugParams.carouselRadius } 
               sceneOffsetY={debugParams.sceneOffsetY ?? 50}
               isAnyHovered={hoveredIndex !== null}
             />
@@ -1053,4 +1134,4 @@ export default function FrontStatsVisualizationNew() {
     </div>
   );
 
-}
+} // Force HMR reload
