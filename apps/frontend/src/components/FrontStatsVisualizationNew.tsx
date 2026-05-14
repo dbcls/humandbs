@@ -187,13 +187,13 @@ function BlobCluster({
   useEffect(() => {
     if (satellites.length === 0) return;
 
-    // Scale for physical collision using globalMaxCount so volumes are consistent across all clusters.
-    // We use Math.cbrt (cube root) so that the VOLUME of the 3D sphere is strictly proportional to the count.
-    // The range [2, 45] ensures a massive visual difference between small and large values.
-    const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([2, 45]);
+    // We use cube root so that the VOLUME of the 3D sphere is STRICTLY proportional to the count.
+    // To maintain strict proportionality, the range must start at 0.
+    const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([0, 50]);
     nodesRef.current = satellites.map((sat, i) => {
       const existing = nodesRef.current.find((n) => n.id === sat.id);
-      const d3Radius = radiusScale(sat[mode]);
+      // Math.max ensures that even count=1 items are at least barely visible (0.8 radius)
+      const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
       
       // Macromolecule coloring logic (OKLCH)
       const hash = hashString(sat.value || sat.facet);
@@ -214,7 +214,8 @@ function BlobCluster({
         color, // Assign newly calculated color based on hash
       };
     });
-  }, [satellites, mode, globalMaxCount]);
+  // Added paletteIndex back to dependency array to fix React Fast Refresh size error during HMR
+  }, [satellites, mode, paletteIndex, globalMaxCount]);
 
   // Update the InstancedMesh every frame with a custom 3D Verlet physics engine
   useFrame((state, delta) => {
