@@ -93,12 +93,9 @@ function useStats() {
 
 // --- Configuration & Materials ---
 
-const INITIAL_CAROUSEL_RADIUS = 1480;
-const INITIAL_PARTICLE_SCALE = 260; // Global multiplier for physical marble size
-const INITIAL_CAROUSEL_ROTATION_SPEED = 0.03; // Radians per second
-const INITIAL_MATERIAL_TRANSMISSION = 0;
-const INITIAL_MATERIAL_CLEARCOAT = 0;
-const INITIAL_MATERIAL_THICKNESS = 2.5;
+const INITIAL_CAROUSEL_RADIUS = 1400;
+const INITIAL_PARTICLE_SCALE = 400; // Global multiplier for physical marble size
+const INITIAL_CAROUSEL_ROTATION_SPEED = 0.02; // Radians per second
 const INITIAL_CAMERA_Y = 370;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
 const INITIAL_LIGHT_AMBIENT = 2.4;
@@ -107,17 +104,39 @@ const INITIAL_LIGHT_DIRECTIONAL = 0.0;
 const INITIAL_LIGHT_POINT_1 = 3.0;
 const INITIAL_LIGHT_POINT_2 = 3.0;
 
-// Vibrant, highly saturated palettes so they don't wash out into white under strong lighting
-const COLOR_PALETTES = [
-  ["#ff006e", "#ffbe0b", "#fb5607", "#8338ec"], // Vibrant Sunset
-  ["#3a0ca3", "#4361ee", "#4cc9f0", "#7209b7"], // Deep Neon
-  ["#06d6a0", "#118ab2", "#073b4c", "#ef476f"], // Teal Pink
-  ["#e5383b", "#ba1826", "#a4161a", "#660708"], // Crimson
-  ["#2b9348", "#55a630", "#80b918", "#aacc00"], // Toxic Green
-  ["#0077b6", "#0096c7", "#00b4d8", "#48cae4"], // Bright Ocean
-  ["#f72585", "#b5179e", "#7209b7", "#560bad"], // Cyber Pink
-  ["#ffd166", "#06d6a0", "#118ab2", "#ef476f"], // Pop Art
-];
+// Macromolecule OKLCH Color Parameters
+const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
+const MACRO_COLOR_L_NEUTRAL = 0.98; // High L (Neutral/Off-white base)
+const MACRO_COLOR_L_VIVID = 0.5;   // Low L (Vivid point)
+const MACRO_VIVID_PROBABILITY = 0.1; // 20% chance for a particle to be a vivid point
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function oklchToThreeColor(l: number, c: number, h: number): THREE.Color {
+  const hRad = (h * Math.PI) / 180;
+  const a = c * Math.cos(hRad);
+  const b = c * Math.sin(hRad);
+  const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+  const l_cubed = l_ * l_ * l_;
+  const m_cubed = m_ * m_ * m_;
+  const s_cubed = s_ * s_ * s_;
+  const r_lin = +4.0767416621 * l_cubed - 3.3077115913 * m_cubed + 0.2309699292 * s_cubed;
+  const g_lin = -1.2684380046 * l_cubed + 2.6097574011 * m_cubed - 0.3413193965 * s_cubed;
+  const b_lin = -0.0041960863 * l_cubed - 0.7034186147 * m_cubed + 1.7076147010 * s_cubed;
+  const gamma = (v: number) => {
+    v = Math.max(0, Math.min(1, v));
+    return v > 0.0031308 ? 1.055 * Math.pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
+  };
+  return new THREE.Color(gamma(r_lin), gamma(g_lin), gamma(b_lin));
+}
 
 // Removed global blobMaterial. Using inline material per cluster.
 
@@ -161,20 +180,28 @@ function BlobCluster({
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   
-  // Use up to 50 largest satellites to show all items while keeping performance reasonable
   const satellites = useMemo(() => {
-    return system.satellites.filter((s) => s[mode] > 0).slice(0, 50);
+    return system.satellites.filter((s) => s[mode] > 0);
   }, [system, mode]);
 
   useEffect(() => {
     if (satellites.length === 0) return;
 
-    const palette = COLOR_PALETTES[paletteIndex % COLOR_PALETTES.length]!;
-    // Scale for physical collision using globalMaxCount so volumes are consistent across all clusters
-    const radiusScale = d3.scaleSqrt().domain([0, globalMaxCount]).range([8, 25]);
+    // Scale for physical collision using globalMaxCount so volumes are consistent across all clusters.
+    // We use Math.cbrt (cube root) so that the VOLUME of the 3D sphere is strictly proportional to the count.
+    // The range [2, 45] ensures a massive visual difference between small and large values.
+    const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([2, 45]);
     nodesRef.current = satellites.map((sat, i) => {
       const existing = nodesRef.current.find((n) => n.id === sat.id);
       const d3Radius = radiusScale(sat[mode]);
+      
+      // Macromolecule coloring logic (OKLCH)
+      const hash = hashString(sat.value || sat.facet);
+      const hue = hash % 360;
+      const isVivid = (hash % 100) < (MACRO_VIVID_PROBABILITY * 100);
+      const lightness = isVivid ? MACRO_COLOR_L_VIVID : MACRO_COLOR_L_NEUTRAL;
+      const color = oklchToThreeColor(lightness, MACRO_COLOR_CHROMA, hue);
+
       return {
         ...sat,
         x: existing?.x ?? (Math.random() - 0.5) * 40,
@@ -184,10 +211,10 @@ function BlobCluster({
         vy: existing?.vy ?? 0,
         vz: existing?.vz ?? 0,
         d3Radius,
-        color: existing?.color ?? new THREE.Color(palette[i % palette.length]), // Use pure color without white blending so it's fully visible
+        color, // Assign newly calculated color based on hash
       };
     });
-  }, [satellites, mode, paletteIndex, globalMaxCount]);
+  }, [satellites, mode, globalMaxCount]);
 
   // Update the InstancedMesh every frame with a custom 3D Verlet physics engine
   useFrame((state, delta) => {
@@ -269,8 +296,10 @@ function BlobCluster({
         dummy.updateMatrix();
         
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
+        instancedMeshRef.current.setColorAt(i, node.color);
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
+      if (instancedMeshRef.current.instanceColor) instancedMeshRef.current.instanceColor.needsUpdate = true;
     }
   });
 
@@ -302,13 +331,10 @@ function BlobCluster({
           receiveShadow
         >
           <sphereGeometry args={[1, 32, 32]} />
-          <meshPhysicalMaterial 
-            color={new THREE.Color(COLOR_PALETTES[paletteIndex % COLOR_PALETTES.length][0]).lerp(new THREE.Color("#ffffff"), 0.3)} 
+          <meshStandardMaterial 
+            color="#ffffff" 
             roughness={0.15}
-            transmission={debugParams?.transmission ?? 0.9}
-            thickness={debugParams?.thickness ?? 2.5}
-            clearcoat={debugParams?.clearcoat ?? 0}
-            clearcoatRoughness={0.1}
+            metalness={0.1}
             envMapIntensity={1.2}
           />
         </instancedMesh>
@@ -486,9 +512,6 @@ export default function FrontStatsVisualizationNew() {
       carouselRadius: INITIAL_CAROUSEL_RADIUS,
       particleScale: INITIAL_PARTICLE_SCALE,
       rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
-      transmission: INITIAL_MATERIAL_TRANSMISSION,
-      clearcoat: INITIAL_MATERIAL_CLEARCOAT,
-      thickness: INITIAL_MATERIAL_THICKNESS,
       cameraY: INITIAL_CAMERA_Y,
       cameraZ: INITIAL_CAMERA_Z,
       lightAmbient: INITIAL_LIGHT_AMBIENT,
@@ -567,18 +590,6 @@ export default function FrontStatsVisualizationNew() {
             <input type="range" min="0" max="0.3" step="0.01" value={debugParams.rotationSpeed} onChange={(e) => setDebugParams(p => ({...p, rotationSpeed: Number(e.target.value)}))} />
           </label>
           <label className="flex flex-col gap-1">
-            <div className="flex justify-between"><span>Transmission (Glassy)</span><span className="font-mono text-accent">{debugParams.transmission}</span></div>
-            <input type="range" min="0" max="1" step="0.05" value={debugParams.transmission} onChange={(e) => setDebugParams(p => ({...p, transmission: Number(e.target.value)}))} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <div className="flex justify-between"><span>Clearcoat (Shiny)</span><span className="font-mono text-accent">{debugParams.clearcoat}</span></div>
-            <input type="range" min="0" max="1" step="0.05" value={debugParams.clearcoat} onChange={(e) => setDebugParams(p => ({...p, clearcoat: Number(e.target.value)}))} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <div className="flex justify-between"><span>Thickness</span><span className="font-mono text-accent">{debugParams.thickness}</span></div>
-            <input type="range" min="0" max="10" step="0.5" value={debugParams.thickness} onChange={(e) => setDebugParams(p => ({...p, thickness: Number(e.target.value)}))} />
-          </label>
-          <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Camera Y (Up/Down)</span><span className="font-mono text-accent">{debugParams.cameraY}</span></div>
             <input type="range" min="-300" max="500" step="10" value={debugParams.cameraY} onChange={(e) => setDebugParams(p => ({...p, cameraY: Number(e.target.value)}))} />
           </label>
@@ -626,9 +637,6 @@ export default function FrontStatsVisualizationNew() {
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 particleScale: INITIAL_PARTICLE_SCALE,
                 rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
-                transmission: INITIAL_MATERIAL_TRANSMISSION,
-                clearcoat: INITIAL_MATERIAL_CLEARCOAT,
-                thickness: INITIAL_MATERIAL_THICKNESS,
                 cameraY: INITIAL_CAMERA_Y,
                 cameraZ: INITIAL_CAMERA_Z,
                 lightAmbient: INITIAL_LIGHT_AMBIENT,
