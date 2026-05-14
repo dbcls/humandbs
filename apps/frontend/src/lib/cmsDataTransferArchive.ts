@@ -41,19 +41,6 @@ import {
   type CmsDataTransferCategory,
 } from "@/serverFunctions/cmsDataTransfer";
 
-export interface CmsDataTransferArchiveManifest {
-  schemaVersion: 1;
-  archiveFormat: "tar.gz";
-  createdAt: string;
-  createdBy: {
-    id: string;
-    email: string;
-    name: string;
-  } | null;
-  categories: CmsDataTransferCategory[];
-  counts: Partial<Record<CmsDataTransferCategory, number>>;
-}
-
 export interface InspectCmsDataTransferArchiveParams {
   fileName: string;
   fileSize: number;
@@ -61,33 +48,11 @@ export interface InspectCmsDataTransferArchiveParams {
   bytes: Uint8Array<ArrayBufferLike>;
 }
 
-export interface InspectedCmsDataTransferArchive {
-  archive: {
-    name: string;
-    size: number;
-    lastModified: number;
-    schemaVersion: 1;
-    archiveFormat: "tar.gz";
-    createdAt: string;
-    createdBy: CmsDataTransferArchiveManifest["createdBy"];
-    categories: CmsDataTransferCategory[];
-    availableCategories: CmsDataTransferCategory[];
-    counts: Partial<Record<CmsDataTransferCategory, number>>;
-    assetFileCount: number;
-  };
-}
-
 export interface RestoreCmsDataTransferArchiveParams {
   fileName: string;
   bytes: Uint8Array<ArrayBufferLike>;
   categories: CmsDataTransferCategory[];
   restoredByUserId?: string;
-}
-
-export interface RestoredCmsDataTransferArchive {
-  archiveName: string;
-  restoredCategories: CmsDataTransferCategory[];
-  counts: Partial<Record<CmsDataTransferCategory, number>>;
 }
 
 type ArchiveFileInput = Record<
@@ -98,6 +63,17 @@ type ArchiveFileInput = Record<
 type Database = typeof db;
 
 const looseObjectSchema = z.record(z.string(), z.unknown());
+const archiveCreatedBySchema = z
+  .object({
+    id: z.string(),
+    email: z.string().email(),
+    name: z.string(),
+  })
+  .nullable();
+const archiveCountsSchema = z.partialRecord(
+  cmsDataTransferCategorySchema,
+  z.number().int().nonnegative(),
+);
 
 const headerFooterActiveConfigSchema = z.object({
   id: z.string(),
@@ -239,15 +215,9 @@ const archiveManifestSchema = z
     schemaVersion: z.literal(1),
     archiveFormat: z.literal("tar.gz"),
     createdAt: z.string(),
-    createdBy: z
-      .object({
-        id: z.string(),
-        email: z.string().email(),
-        name: z.string(),
-      })
-      .nullable(),
+    createdBy: archiveCreatedBySchema,
     categories: z.array(cmsDataTransferCategorySchema),
-    counts: z.record(z.string(), z.number().int().nonnegative()).default({}),
+    counts: archiveCountsSchema.default({}),
   })
   .superRefine((manifest, ctx) => {
     const uniqueCategories = new Set(manifest.categories);
@@ -267,6 +237,40 @@ const archiveManifestSchema = z
       }
     }
   });
+
+export type CmsDataTransferArchiveManifest = z.infer<
+  typeof archiveManifestSchema
+>;
+
+const inspectedCmsDataTransferArchiveSchema = z.object({
+  archive: z.object({
+    name: z.string(),
+    size: z.number().int().nonnegative(),
+    lastModified: z.number().int().nonnegative(),
+    schemaVersion: z.literal(1),
+    archiveFormat: z.literal("tar.gz"),
+    createdAt: z.string(),
+    createdBy: archiveCreatedBySchema,
+    categories: z.array(cmsDataTransferCategorySchema),
+    availableCategories: z.array(cmsDataTransferCategorySchema),
+    counts: archiveCountsSchema,
+    assetFileCount: z.number().int().nonnegative(),
+  }),
+});
+
+export type InspectedCmsDataTransferArchive = z.infer<
+  typeof inspectedCmsDataTransferArchiveSchema
+>;
+
+const restoredCmsDataTransferArchiveSchema = z.object({
+  archiveName: z.string(),
+  restoredCategories: z.array(cmsDataTransferCategorySchema),
+  counts: archiveCountsSchema,
+});
+
+export type RestoredCmsDataTransferArchive = z.infer<
+  typeof restoredCmsDataTransferArchiveSchema
+>;
 
 const $$getAssetDir = createServerOnlyFn(() => {
   const filesSubdir =
