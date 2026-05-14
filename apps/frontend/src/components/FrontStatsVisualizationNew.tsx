@@ -876,8 +876,11 @@ export default function FrontStatsVisualizationNew() {
           <Canvas
             shadows
             camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45 }}
-            gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
+            gl={{ alpha: false, antialias: true, powerPreference: "high-performance" }}
           >
+            {/* Solid warm gray background to match the fog and site theme */}
+            <color attach="background" args={["#f8fafc"]} />
+            
             <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
             {/* Environment map is CRITICAL for glass materials to look realistic and not blow out into white */}
             <Environment preset="city" />
