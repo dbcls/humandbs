@@ -93,11 +93,13 @@ function useStats() {
 
 // --- Configuration & Materials ---
 
-const INITIAL_CAROUSEL_RADIUS = 1400;
+const INITIAL_CAROUSEL_RADIUS = 1750;
 const INITIAL_PARTICLE_SCALE = 400; // Global multiplier for physical marble size
 const INITIAL_CAROUSEL_ROTATION_SPEED = 0.02; // Radians per second
-const INITIAL_CAMERA_Y = 370;    // Vertical position of the camera
+const INITIAL_CAMERA_Y = 500;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
+const INITIAL_SCENE_OFFSET_Y = -150; // Vertical offset to prevent cutoff at the bottom
+const INITIAL_MATERIAL_ROUGHNESS = 0.8; // High roughness for a matte look
 const INITIAL_LIGHT_AMBIENT = 2.4;
 const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
 const INITIAL_LIGHT_DIRECTIONAL = 0.0;
@@ -334,15 +336,15 @@ function BlobCluster({
           <sphereGeometry args={[1, 32, 32]} />
           <meshStandardMaterial 
             color="#ffffff" 
-            roughness={0.15}
-            metalness={0.1}
-            envMapIntensity={1.2}
+            roughness={debugParams?.roughness ?? INITIAL_MATERIAL_ROUGHNESS}
+            metalness={0.0}
+            envMapIntensity={0.2}
           />
         </instancedMesh>
       </group>
       
-      {/* HTML Label perfectly attached to the 3D group */}
-      <Html center position={[center.x, center.y - 12, center.z]} zIndexRange={[100, 0]}>
+      {/* HTML Label positioned slightly below the cluster and z-sorted */}
+      <Html center position={[center.x, center.y - (particleScale * 0.45) - 30, center.z]} zIndexRange={[1000, 0]}>
         <div 
           className={`flex flex-col items-center justify-center transition-all duration-700 pointer-events-none 
             ${isActive ? 'opacity-100 scale-110 drop-shadow-xl' : 'opacity-40 scale-90'}`}
@@ -441,7 +443,7 @@ function CarouselScene({
       <ContactShadows position={[0, -150, 0]} opacity={0.4} scale={4000} blur={2.5} far={600} resolution={512} />
 
       {/* Group tilted down slightly for a "carousel" projector view */}
-      <group rotation={[-0.2, 0, 0]}>
+      <group rotation={[-0.2, 0, 0]} position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}>
         <group 
           ref={groupRef}
           onPointerEnter={() => setIsHovered(true)}
@@ -513,6 +515,8 @@ export default function FrontStatsVisualizationNew() {
       carouselRadius: INITIAL_CAROUSEL_RADIUS,
       particleScale: INITIAL_PARTICLE_SCALE,
       rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
+      sceneOffsetY: INITIAL_SCENE_OFFSET_Y,
+      roughness: INITIAL_MATERIAL_ROUGHNESS,
       cameraY: INITIAL_CAMERA_Y,
       cameraZ: INITIAL_CAMERA_Z,
       lightAmbient: INITIAL_LIGHT_AMBIENT,
@@ -591,6 +595,14 @@ export default function FrontStatsVisualizationNew() {
             <input type="range" min="0" max="0.3" step="0.01" value={debugParams.rotationSpeed} onChange={(e) => setDebugParams(p => ({...p, rotationSpeed: Number(e.target.value)}))} />
           </label>
           <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Scene Offset Y</span><span className="font-mono text-accent">{debugParams.sceneOffsetY}</span></div>
+            <input type="range" min="-500" max="500" step="10" value={debugParams.sceneOffsetY} onChange={(e) => setDebugParams(p => ({...p, sceneOffsetY: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <div className="flex justify-between"><span>Material Roughness</span><span className="font-mono text-accent">{debugParams.roughness}</span></div>
+            <input type="range" min="0" max="1" step="0.05" value={debugParams.roughness} onChange={(e) => setDebugParams(p => ({...p, roughness: Number(e.target.value)}))} />
+          </label>
+          <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Camera Y (Up/Down)</span><span className="font-mono text-accent">{debugParams.cameraY}</span></div>
             <input type="range" min="-300" max="500" step="10" value={debugParams.cameraY} onChange={(e) => setDebugParams(p => ({...p, cameraY: Number(e.target.value)}))} />
           </label>
@@ -638,6 +650,8 @@ export default function FrontStatsVisualizationNew() {
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 particleScale: INITIAL_PARTICLE_SCALE,
                 rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
+                sceneOffsetY: INITIAL_SCENE_OFFSET_Y,
+                roughness: INITIAL_MATERIAL_ROUGHNESS,
                 cameraY: INITIAL_CAMERA_Y,
                 cameraZ: INITIAL_CAMERA_Z,
                 lightAmbient: INITIAL_LIGHT_AMBIENT,
