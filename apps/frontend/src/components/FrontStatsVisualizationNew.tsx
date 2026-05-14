@@ -66,7 +66,7 @@ function normalizeStatsResponse(payload: unknown): NormalizedStats | null {
   return {
     researchTotal: Number(stats.research?.total ?? 0),
     datasetTotal: Number(stats.dataset?.total ?? 0),
-    systems: systems.slice(0, 8),
+    systems: systems,
   };
 }
 
@@ -93,21 +93,21 @@ function useStats() {
 
 // --- Configuration & Materials ---
 
-const INITIAL_CAROUSEL_RADIUS = 560;
-const INITIAL_CAROUSEL_ROTATION_SPEED = 0.05; // Radians per second
-const BLOB_RESOLUTION = 45; // Optimized resolution for smooth rendering without hitting poly limits
-const INITIAL_BLOB_SCALE = 210; // Scale of the [0,1] MarchingCubes grid in 3D units
-const INITIAL_BLOB_ISOLATION = 80; // Controls metaball fusion. Higher = less fusion, more distinct particles.
-const INITIAL_CAMERA_Y = 30;    // Vertical position of the camera
-const INITIAL_CAMERA_Z = 880;  // Zoom distance of the camera (adjust based on your preference!)
-const INITIAL_LIGHT_AMBIENT = 1.0;
-const INITIAL_LIGHT_AMBIENT_COLOR = "#ffffff";
-const INITIAL_LIGHT_DIRECTIONAL = 1.0;
-const INITIAL_LIGHT_POINT_1 = 1.0;
-const INITIAL_LIGHT_POINT_2 = 0.8;
-const INITIAL_MATERIAL_TRANSMISSION = 0.4;
-const INITIAL_MATERIAL_CLEARCOAT = 1.0;
+const INITIAL_CAROUSEL_RADIUS = 1480;
+const INITIAL_BLOB_SCALE = 260; // Scale of the [0,1] MarchingCubes grid in 3D units
+const BLOB_RESOLUTION = 40; // Optimized resolution for smooth rendering without hitting poly limits
+const INITIAL_BLOB_ISOLATION = 10; // Controls metaball fusion. Higher = less fusion, more distinct particles.
+const INITIAL_CAROUSEL_ROTATION_SPEED = 0.03; // Radians per second
+const INITIAL_MATERIAL_TRANSMISSION = 0;
+const INITIAL_MATERIAL_CLEARCOAT = 0;
 const INITIAL_MATERIAL_THICKNESS = 2.5;
+const INITIAL_CAMERA_Y = 370;    // Vertical position of the camera
+const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
+const INITIAL_LIGHT_AMBIENT = 2.4;
+const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
+const INITIAL_LIGHT_DIRECTIONAL = 0.0;
+const INITIAL_LIGHT_POINT_1 = 3.0;
+const INITIAL_LIGHT_POINT_2 = 3.0;
 
 // Vibrant, highly saturated palettes so they don't wash out into white under strong lighting
 const COLOR_PALETTES = [
@@ -121,17 +121,7 @@ const COLOR_PALETTES = [
   ["#ffd166", "#06d6a0", "#118ab2", "#ef476f"], // Pop Art
 ];
 
-// Shared material for all blobs for maximum performance and unified lighting
-const blobMaterial = new THREE.MeshPhysicalMaterial({
-  roughness: 0.1,
-  transmission: 0.4,
-  thickness: 2.5,
-  clearcoat: 1.0,
-  clearcoatRoughness: 0.1,
-  envMapIntensity: 0.8, // Reduced to prevent white blowout with Environment map
-});
-
-const blobGeometry = new THREE.SphereGeometry(1, 32, 32);
+// Removed global blobMaterial. Using inline material per cluster.
 
 type SimNode = StatsSatellite & { 
   d3Radius: number;
@@ -157,7 +147,10 @@ function BlobCluster({
   paletteIndex,
   onClick,
   blobScale,
-  blobIsolation
+  blobIsolation,
+  blobResolution,
+  globalMaxCount,
+  debugParams
 }: {
   system: StatsSystem;
   mode: "research" | "dataset";
@@ -168,9 +161,12 @@ function BlobCluster({
   onClick: (facet: string, value: string) => void;
   blobScale: number;
   blobIsolation: number;
+  blobResolution: number;
+  globalMaxCount: number;
+  debugParams: any;
 }) {
   const nodesRef = useRef<SimNode[]>([]);
-  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   
   // Use up to 50 largest satellites to show all items while keeping performance reasonable
@@ -182,14 +178,10 @@ function BlobCluster({
     if (satellites.length === 0) return;
 
     const palette = COLOR_PALETTES[paletteIndex % COLOR_PALETTES.length]!;
-    const extent = d3.extent(satellites, (d: StatsSatellite) => d[mode]) as [number, number];
-    const maxVal = Math.max(1, extent[1] ?? 1);
-    
-    // Scale for physical collision
-    const radiusScale = d3.scaleSqrt().domain([0, maxVal]).range([8, 25]);
+    // Scale for physical collision using globalMaxCount so volumes are consistent across all clusters
+    const radiusScale = d3.scaleSqrt().domain([0, globalMaxCount]).range([8, 25]);
     // Scale for visual size in MarchingCubes (strength). 
-    // Increased strength slightly so separated particles don't become too small
-    const strengthScale = d3.scaleSqrt().domain([0, maxVal]).range([0.15, 0.35]);
+    const strengthScale = d3.scaleSqrt().domain([0, globalMaxCount]).range([0.15, 0.35]);
 
     nodesRef.current = satellites.map((sat, i) => {
       const existing = nodesRef.current.find((n) => n.id === sat.id);
@@ -206,10 +198,10 @@ function BlobCluster({
         d3Radius,
         strength,
         currentStrength: existing?.currentStrength ?? strength,
-        color: existing?.color ?? new THREE.Color(palette[i % palette.length]),
+        color: existing?.color ?? new THREE.Color(palette[i % palette.length]), // Use pure color without white blending so it's fully visible
       };
     });
-  }, [satellites, mode, paletteIndex]);
+  }, [satellites, mode, paletteIndex, globalMaxCount]);
 
   // Update the InstancedMesh every frame with a custom 3D Verlet physics engine
   useFrame((state, delta) => {
@@ -231,7 +223,8 @@ function BlobCluster({
       node.vy += (Math.random() - 0.5) * 1.5;
       node.vz += (Math.random() - 0.5) * 1.5;
 
-      // 3D Collision Repulsion
+      // 3D Collision Repulsion (Rigid Marble Physics)
+      const visualRadius = node.d3Radius * (blobScale / 260);
       for (let j = i + 1; j < nodes.length; j++) {
         const other = nodes[j];
         const dx = (node.x || 0) - (other.x || 0);
@@ -239,11 +232,12 @@ function BlobCluster({
         const dz = (node.z || 0) - (other.z || 0);
         const distSq = dx*dx + dy*dy + dz*dz;
         const dist = Math.sqrt(distSq) + 0.001;
-        const minDist = node.d3Radius + other.d3Radius + 2;
+        const otherRadius = other.d3Radius * (blobScale / 260);
+        const minDist = visualRadius + otherRadius + 1.0; // 1.0 padding to prevent visual intersection
 
         if (dist < minDist) {
-          // Stronger repulsion to keep them apart
-          const force = (minDist - dist) * 15.0 * dt;
+          // Solid repulsion to keep them perfectly apart like marbles
+          const force = (minDist - dist) * 25.0 * dt;
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
           const fz = (dz / dist) * force;
@@ -266,29 +260,31 @@ function BlobCluster({
       node.x = (node.x || 0) + node.vx * dt * 10;
       node.y = (node.y || 0) + node.vy * dt * 10;
       node.z = (node.z || 0) + node.vz * dt * 10;
-      
-      // Strength animation
-      node.currentStrength += (node.strength - node.currentStrength) * 0.1;
 
-      // Update InstancedMesh matrix and color
-      // blobScale slider controls the overall size multiplier
-      const scale = node.currentStrength * blobScale * 0.15;
-      dummy.position.set(node.x, node.y, node.z);
-      dummy.scale.set(scale, scale, scale);
-      dummy.updateMatrix();
+      // Hard boundary to prevent MarchingCubes cutoff
+      const bound = blobScale * 0.42;
+      if (node.x > bound) { node.x = bound; node.vx *= -0.5; }
+      if (node.x < -bound) { node.x = -bound; node.vx *= -0.5; }
+      if (node.y > bound) { node.y = bound; node.vy *= -0.5; }
+      if (node.y < -bound) { node.y = -bound; node.vy *= -0.5; }
+      if (node.z > bound) { node.z = bound; node.vz *= -0.5; }
+      if (node.z < -bound) { node.z = -bound; node.vz *= -0.5; }
       
-      if (meshRef.current) {
-        meshRef.current.setMatrixAt(i, dummy.matrix);
-        meshRef.current.setColorAt(i, node.color);
-      }
+      // (Removed MarchingCubes strength animation)
     }
-    
-    if (meshRef.current) {
-      meshRef.current.count = nodes.length;
-      meshRef.current.instanceMatrix.needsUpdate = true;
-      if (meshRef.current.instanceColor) {
-        meshRef.current.instanceColor.needsUpdate = true;
+
+    if (instancedMeshRef.current) {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const visualRadius = node.d3Radius * (blobScale / 260);
+        
+        dummy.position.set(node.x || 0, node.y || 0, node.z || 0);
+        dummy.scale.set(visualRadius, visualRadius, visualRadius);
+        dummy.updateMatrix();
+        
+        instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
       }
+      instancedMeshRef.current.instanceMatrix.needsUpdate = true;
     }
   });
 
@@ -313,7 +309,23 @@ function BlobCluster({
           }
         }}
       >
-        <instancedMesh ref={meshRef} args={[blobGeometry, blobMaterial, 50]} castShadow receiveShadow />
+        <instancedMesh
+          ref={instancedMeshRef}
+          args={[undefined, undefined, satellites.length]}
+          castShadow
+          receiveShadow
+        >
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshPhysicalMaterial 
+            color={new THREE.Color(COLOR_PALETTES[paletteIndex % COLOR_PALETTES.length][0]).lerp(new THREE.Color("#ffffff"), 0.3)} 
+            roughness={0.15}
+            transmission={debugParams?.transmission ?? 0.9}
+            thickness={debugParams?.thickness ?? 2.5}
+            clearcoat={debugParams?.clearcoat ?? 0}
+            clearcoatRoughness={0.1}
+            envMapIntensity={1.2}
+          />
+        </instancedMesh>
       </group>
       
       {/* HTML Label perfectly attached to the 3D group */}
@@ -345,11 +357,14 @@ function CarouselScene({
   rotationSpeed,
   blobScale,
   blobIsolation,
+  blobResolution,
   lightAmbient,
   lightAmbientColor,
   lightDirectional,
   lightPoint1,
-  lightPoint2
+  lightPoint2,
+  globalMaxCount,
+  debugParams
 }: { 
   stats: NormalizedStats, 
   mode: "dataset" | "research", 
@@ -358,11 +373,14 @@ function CarouselScene({
   rotationSpeed: number,
   blobScale: number,
   blobIsolation: number,
+  blobResolution: number,
   lightAmbient: number,
   lightAmbientColor: string,
   lightDirectional: number,
   lightPoint1: number,
-  lightPoint2: number
+  lightPoint2: number,
+  globalMaxCount: number,
+  debugParams: any
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -407,11 +425,11 @@ function CarouselScene({
       <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" castShadow />
       
       {/* Side lights to add colorful reflections to the glass */}
-      <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#c6d8ff" />
-      <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ffc8dd" />
+      <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#00f0ff" />
+      <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ff00a0" />
 
       {/* A soft shadow plane underneath the carousel gives a premium grounded feel */}
-      <ContactShadows position={[0, -150, 0]} opacity={0.4} scale={800} blur={2.5} far={200} />
+      <ContactShadows position={[0, -150, 0]} opacity={0.4} scale={4000} blur={2.5} far={600} resolution={512} />
 
       {/* Group tilted down slightly for a "carousel" projector view */}
       <group rotation={[-0.2, 0, 0]}>
@@ -440,6 +458,9 @@ function CarouselScene({
                 onClick={handleFacetClick}
                 blobScale={blobScale}
                 blobIsolation={blobIsolation}
+                blobResolution={blobResolution}
+                globalMaxCount={globalMaxCount}
+                debugParams={debugParams}
               />
             );
           })}
@@ -484,6 +505,7 @@ export default function FrontStatsVisualizationNew() {
     const defaults = {
       carouselRadius: INITIAL_CAROUSEL_RADIUS,
       blobScale: INITIAL_BLOB_SCALE,
+      blobResolution: BLOB_RESOLUTION,
       blobIsolation: INITIAL_BLOB_ISOLATION,
       rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
       transmission: INITIAL_MATERIAL_TRANSMISSION,
@@ -522,17 +544,9 @@ export default function FrontStatsVisualizationNew() {
     setIsMounted(true);
   }, []);
 
-  // Sync debug params to material
-  useEffect(() => {
-    blobMaterial.transmission = debugParams.transmission;
-    blobMaterial.clearcoat = debugParams.clearcoat;
-    blobMaterial.thickness = debugParams.thickness;
-    blobMaterial.needsUpdate = true;
-  }, [debugParams]);
-
   if (!isMounted || loading) {
     return (
-      <div className="w-full h-[650px] flex items-center justify-center mt-8">
+      <div className="w-full h-[540px] flex items-center justify-center mt-8">
         <SkeletonLoading />
       </div>
     );
@@ -546,21 +560,33 @@ export default function FrontStatsVisualizationNew() {
     );
   }
 
+  // Calculate global max count across all systems to ensure volume scaling is consistent everywhere
+  let globalMaxCount = 1;
+  stats.systems.forEach(sys => {
+    sys.satellites.forEach(s => {
+      if (s[mode] > globalMaxCount) globalMaxCount = s[mode];
+    });
+  });
+
   return (
-    <div className="w-full flex flex-col items-center gap-8 py-12 rounded-3xl mt-8 overflow-hidden bg-slate-50 shadow-inner relative">
+    <div className="w-full h-[640px] rounded-3xl mt-8 overflow-hidden bg-slate-50 shadow-inner relative flex justify-center">
       
       {/* --- LIVE DEBUG PANEL (Development Only) --- */}
-      <div className="absolute top-4 left-4 z-50 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 w-80 text-xs">
+      <div className="absolute top-4 left-4 z-[9999] bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 w-80 text-xs overflow-y-auto max-h-[calc(100%-2rem)]">
         <h3 className="font-bold mb-3 text-slate-800 text-sm">Real-time Tweaks</h3>
         
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Carousel Radius</span><span className="font-mono text-accent">{debugParams.carouselRadius}</span></div>
-            <input type="range" min="100" max="600" step="10" value={debugParams.carouselRadius} onChange={(e) => setDebugParams(p => ({...p, carouselRadius: Number(e.target.value)}))} />
+            <input type="range" min="100" max="3000" step="10" value={debugParams.carouselRadius} onChange={(e) => setDebugParams(p => ({...p, carouselRadius: Number(e.target.value)}))} />
           </label>
           <label className="block space-y-1">
             <div className="flex justify-between"><span>Blob Scale</span><span className="font-mono text-accent">{debugParams.blobScale}</span></div>
             <input type="range" min="50" max="400" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
+          </label>
+          <label className="block space-y-1">
+            <div className="flex justify-between"><span>Blob Resolution</span><span className="font-mono text-accent">{debugParams.blobResolution}</span></div>
+            <input type="range" min="20" max="80" step="1" value={debugParams.blobResolution} onChange={(e) => setDebugParams(p => ({...p, blobResolution: Number(e.target.value)}))} />
           </label>
           <label className="block space-y-1">
             <div className="flex justify-between"><span>Blob Fusion (Isolation)</span><span className="font-mono text-accent">{debugParams.blobIsolation}</span></div>
@@ -629,6 +655,7 @@ export default function FrontStatsVisualizationNew() {
               setDebugParams({
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 blobScale: INITIAL_BLOB_SCALE,
+                blobResolution: BLOB_RESOLUTION,
                 blobIsolation: INITIAL_BLOB_ISOLATION,
                 rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
                 transmission: INITIAL_MATERIAL_TRANSMISSION,
@@ -650,7 +677,7 @@ export default function FrontStatsVisualizationNew() {
       </div>
 
       {/* Toggle Switch */}
-      <div className="flex items-center bg-white p-1.5 rounded-full shadow-sm border border-slate-200 z-10">
+      <div className="absolute top-6 z-10 flex items-center bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm border border-slate-200">
         <button
           onClick={() => setMode("dataset")}
           className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
@@ -674,7 +701,7 @@ export default function FrontStatsVisualizationNew() {
       </div>
 
       {/* The Unified 3D Space */}
-      <div className="relative w-full max-w-[1400px] h-[650px] cursor-grab active:cursor-grabbing">
+      <div className="absolute inset-0 cursor-grab active:cursor-grabbing">
         {/* We use perspective camera for natural 3D depth. fov=45 gives a nice cinematic lens */}
         <Canvas camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45, far: 5000 }}>
           <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
@@ -691,12 +718,15 @@ export default function FrontStatsVisualizationNew() {
               carouselRadius={debugParams.carouselRadius}
               rotationSpeed={debugParams.rotationSpeed}
               blobScale={debugParams.blobScale}
+              blobResolution={debugParams.blobResolution}
               blobIsolation={debugParams.blobIsolation}
               lightAmbient={debugParams.lightAmbient}
               lightAmbientColor={debugParams.lightAmbientColor}
               lightDirectional={debugParams.lightDirectional}
               lightPoint1={debugParams.lightPoint1}
               lightPoint2={debugParams.lightPoint2}
+              globalMaxCount={globalMaxCount}
+              debugParams={debugParams}
             />
           </Suspense>
         </Canvas>
@@ -704,3 +734,4 @@ export default function FrontStatsVisualizationNew() {
     </div>
   );
 }
+
