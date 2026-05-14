@@ -73,6 +73,7 @@
     "remark-toc": "^9.0.0",
     "shiki": "^3.22.0",
     "tailwind-merge": "^3.4.0",
+    "tar-stream": "^3.2.0",
     "unified": "^11.0.5",
     "use-intl": "^4.8.2",
     "uuid": "^13.0.0",
@@ -81,8 +82,8 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.0",
     "@humandbs/eslint-config": "workspace:*",
+    "@rsbuild/core": "^2.0.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/eslint-plugin-router": "^1.161.6",
@@ -90,6 +91,7 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "@types/tar-stream": "^3.1.4",
     "@vitejs/plugin-react": "^4.6.0",
     "axios": "^1.13.6",
     "cheerio": "^1.2.0",

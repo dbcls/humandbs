@@ -25,7 +25,6 @@ import {
   CMS_DATA_TRANSFER_CATEGORIES,
   CMS_DATA_TRANSFER_CATEGORY_LABELS,
   MAX_CMS_ARCHIVE_SIZE_BYTES,
-  $prepareCmsDataArchiveExport,
   $validateCmsDataArchiveUpload,
   type CmsDataArchiveUploadSummary,
   type CmsDataTransferCategory,
@@ -79,23 +78,6 @@ export function DataTransferPage() {
     () => sortCategories(CMS_DATA_TRANSFER_CATEGORIES),
     [],
   );
-
-  const { mutate: prepareExport, isPending: isPreparingExport } = useMutation({
-    mutationFn: $prepareCmsDataArchiveExport,
-    onSuccess: (result) => {
-      setPageStatus({
-        variant: "warning",
-        text: result.message,
-      });
-      setDownloadDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      setPageStatus({
-        variant: "error",
-        text: error.message || "Failed to prepare archive export.",
-      });
-    },
-  });
 
   const { mutate: validateArchive, isPending: isValidatingArchive } =
     useMutation({
@@ -160,6 +142,26 @@ export function DataTransferPage() {
     validateArchive({ data: formData });
   }
 
+  function handleDownloadArchive() {
+    if (selectedExportCategories.length === 0) return;
+
+    const params = new URLSearchParams();
+    for (const category of selectedExportCategories) {
+      params.append("category", category);
+    }
+
+    const downloadUrl = `/admin/data-transfer-download?${params.toString()}`;
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.click();
+
+    setPageStatus({
+      variant: "success",
+      text: "Archive download started.",
+    });
+    setDownloadDialogOpen(false);
+  }
+
   function handleConfirmRestore() {
     if (!selectedArchive || selectedRestoreCategories.length === 0) return;
 
@@ -202,8 +204,8 @@ export function DataTransferPage() {
               </div>
               <p className="text-foreground-light text-sm">
                 Choose which CMS categories to include in a portable archive.
-                The full ZIP export engine is the next implementation slice; the
-                selection and workflow shell are wired now.
+                Export downloads a compressed `.tar.gz` archive built from the
+                current CMS state.
               </p>
             </div>
 
@@ -244,8 +246,9 @@ export function DataTransferPage() {
                 Restore data from archive
               </div>
               <p className="text-foreground-light text-sm">
-                Upload a ZIP archive, run transport-level checks, review the
-                selected categories, and confirm the destructive restore intent.
+                Upload a `.tar.gz` archive, run transport-level checks, review
+                the selected categories, and confirm the destructive restore
+                intent.
               </p>
             </div>
 
@@ -259,7 +262,7 @@ export function DataTransferPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".zip,application/zip"
+                    accept=".tar,.tgz,.tar.gz,application/gzip,application/x-gzip,application/x-tar"
                     className="block w-full text-sm file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-2"
                     onChange={(event) => {
                       handleArchiveUpload(event.target.files?.[0] ?? null);
@@ -378,8 +381,8 @@ export function DataTransferPage() {
             <DialogTitle>Download CMS data</DialogTitle>
             <DialogDescription>
               Select which CMS categories should be included in the archive.
-              ZIP archive generation is not implemented yet, but this category
-              selection flow is.
+              The export is delivered as a compressed `.tar.gz` archive built
+              from the current CMS state.
             </DialogDescription>
           </DialogHeader>
 
@@ -418,24 +421,15 @@ export function DataTransferPage() {
               type="button"
               variant="outline"
               onClick={() => setDownloadDialogOpen(false)}
-              disabled={isPreparingExport}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              disabled={
-                selectedExportCategories.length === 0 || isPreparingExport
-              }
-              onClick={() =>
-                prepareExport({
-                  data: {
-                    categories: selectedExportCategories,
-                  },
-                })
-              }
+              disabled={selectedExportCategories.length === 0}
+              onClick={handleDownloadArchive}
             >
-              {isPreparingExport ? "Preparing…" : "Download"}
+              Download
             </Button>
           </DialogFooter>
         </DialogContent>

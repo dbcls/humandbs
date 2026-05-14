@@ -35,25 +35,6 @@ export const CMS_DATA_TRANSFER_CATEGORY_LABELS: Record<
 
 export const MAX_CMS_ARCHIVE_SIZE_BYTES = 1024 * 1024 * 500; // 500 MB
 
-const prepareCmsDataArchiveExportInputSchema = z.object({
-  categories: z.array(cmsDataTransferCategorySchema).min(1),
-});
-
-export const $prepareCmsDataArchiveExport = createServerFn({ method: "POST" })
-  .middleware([hasPermissionMiddleware])
-  .inputValidator(prepareCmsDataArchiveExportInputSchema)
-  .handler(async ({ context, data }) => {
-    context.checkPermission("admin-panel", "view-cms");
-
-    return {
-      ok: false as const,
-      code: "NOT_IMPLEMENTED" as const,
-      message:
-        "Archive generation will be implemented in the next slice. Category selection is wired and ready.",
-      categories: data.categories,
-    };
-  });
-
 export interface CmsDataArchiveUploadSummary {
   name: string;
   size: number;
@@ -72,15 +53,21 @@ export const $validateCmsDataArchiveUpload = createServerFn({ method: "POST" })
       return {
         ok: false as const,
         code: "MISSING_FILE" as const,
-        message: "Select a `.zip` archive before continuing.",
+        message: "Select a `.tar.gz` archive before continuing.",
       };
     }
 
-    if (!archive.name.toLowerCase().endsWith(".zip")) {
+    const lowerName = archive.name.toLowerCase();
+
+    if (
+      !lowerName.endsWith(".tar.gz") &&
+      !lowerName.endsWith(".tgz") &&
+      !lowerName.endsWith(".tar")
+    ) {
       return {
         ok: false as const,
         code: "INVALID_FILE_TYPE" as const,
-        message: "Only `.zip` archives are supported.",
+        message: "Only `.tar.gz`, `.tgz`, and `.tar` archives are supported.",
       };
     }
 

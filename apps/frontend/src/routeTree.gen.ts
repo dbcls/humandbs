@@ -14,6 +14,7 @@ import { Route as AuthRefreshRouteImport } from './routes/auth/refresh'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AdminDataTransferDownloadRouteImport } from './routes/admin/data-transfer-download'
 import { Route as Char123LangChar125LayoutMainRouteImport } from './routes/{-$lang}/_layout/_main'
 import { Route as Char123LangChar125LayoutAuthedRouteImport } from './routes/{-$lang}/_layout/_authed'
 import { Route as Char123LangChar125LayoutMainOtherRouteImport } from './routes/{-$lang}/_layout/_main/_other'
@@ -26,6 +27,7 @@ import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './r
 import { Route as Char123LangChar125LayoutAuthedAdminHeaderFooterRouteImport } from './routes/{-$lang}/_layout/_authed/admin/header-footer'
 import { Route as Char123LangChar125LayoutAuthedAdminFlowchartsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/flowcharts'
 import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
+import { Route as Char123LangChar125LayoutAuthedAdminDataTransferDownloadRouteImport } from './routes/{-$lang}/_layout/_authed/admin/data-transfer-download'
 import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin/content'
 import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
 import { Route as Char123LangChar125LayoutAuthedAdminAlertsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/alerts'
@@ -80,6 +82,12 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDataTransferDownloadRoute =
+  AdminDataTransferDownloadRouteImport.update({
+    id: '/admin/data-transfer-download',
+    path: '/admin/data-transfer-download',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const Char123LangChar125LayoutMainRoute =
   Char123LangChar125LayoutMainRouteImport.update({
     id: '/_main',
@@ -146,6 +154,12 @@ const Char123LangChar125LayoutAuthedAdminDocumentsRoute =
   Char123LangChar125LayoutAuthedAdminDocumentsRouteImport.update({
     id: '/documents',
     path: '/documents',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute =
+  Char123LangChar125LayoutAuthedAdminDataTransferDownloadRouteImport.update({
+    id: '/data-transfer-download',
+    path: '/data-transfer-download',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
 const Char123LangChar125LayoutAuthedAdminContentRoute =
@@ -330,6 +344,7 @@ const Char123LangChar125LayoutMainOtherDataSubmissionRevisionRevisionRoute =
   )
 
 export interface FileRoutesByFullPath {
+  '/admin/data-transfer-download': typeof AdminDataTransferDownloadRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -344,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/admin/data-transfer-download': typeof Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -372,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/research/$humId/': typeof Char123LangChar125LayoutMainOtherResearchHumIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/admin/data-transfer-download': typeof AdminDataTransferDownloadRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -381,6 +398,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/admin/data-transfer-download': typeof Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -406,6 +424,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/admin/data-transfer-download': typeof AdminDataTransferDownloadRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -424,6 +443,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/_layout/_authed/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/_layout/_authed/admin/data-transfer-download': typeof Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/_layout/_authed/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/_layout/_authed/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -454,6 +474,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/admin/data-transfer-download'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -468,6 +489,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/alerts'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
+    | '/{-$lang}/admin/data-transfer-download'
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/flowcharts'
     | '/{-$lang}/admin/header-footer'
@@ -496,6 +518,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/research/$humId/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/admin/data-transfer-download'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -505,6 +528,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/alerts'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
+    | '/{-$lang}/admin/data-transfer-download'
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/flowcharts'
     | '/{-$lang}/admin/header-footer'
@@ -529,6 +553,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/research/$humId'
   id:
     | '__root__'
+    | '/admin/data-transfer-download'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -547,6 +572,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/alerts'
     | '/{-$lang}/_layout/_authed/admin/assets'
     | '/{-$lang}/_layout/_authed/admin/content'
+    | '/{-$lang}/_layout/_authed/admin/data-transfer-download'
     | '/{-$lang}/_layout/_authed/admin/documents'
     | '/{-$lang}/_layout/_authed/admin/flowcharts'
     | '/{-$lang}/_layout/_authed/admin/header-footer'
@@ -576,6 +602,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  AdminDataTransferDownloadRoute: typeof AdminDataTransferDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
@@ -618,6 +645,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/data-transfer-download': {
+      id: '/admin/data-transfer-download'
+      path: '/admin/data-transfer-download'
+      fullPath: '/admin/data-transfer-download'
+      preLoaderRoute: typeof AdminDataTransferDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/_layout/_main': {
@@ -702,6 +736,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/{-$lang}/admin/documents'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/data-transfer-download': {
+      id: '/{-$lang}/_layout/_authed/admin/data-transfer-download'
+      path: '/data-transfer-download'
+      fullPath: '/{-$lang}/admin/data-transfer-download'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminDataTransferDownloadRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
     '/{-$lang}/_layout/_authed/admin/content': {
@@ -900,6 +941,7 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminAlertsRoute: typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   Char123LangChar125LayoutAuthedAdminContentRoute: typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute: typeof Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   Char123LangChar125LayoutAuthedAdminFlowchartsRoute: typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   Char123LangChar125LayoutAuthedAdminHeaderFooterRoute: typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -916,6 +958,8 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminAssetsRoute,
     Char123LangChar125LayoutAuthedAdminContentRoute:
       Char123LangChar125LayoutAuthedAdminContentRoute,
+    Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute:
+      Char123LangChar125LayoutAuthedAdminDataTransferDownloadRoute,
     Char123LangChar125LayoutAuthedAdminDocumentsRoute:
       Char123LangChar125LayoutAuthedAdminDocumentsRoute,
     Char123LangChar125LayoutAuthedAdminFlowchartsRoute:
@@ -1182,6 +1226,7 @@ const Char123LangChar125LayoutRouteWithChildren =
   )
 
 const rootRouteChildren: RootRouteChildren = {
+  AdminDataTransferDownloadRoute: AdminDataTransferDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthLogoutRoute: AuthLogoutRoute,
