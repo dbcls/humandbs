@@ -8,6 +8,9 @@ import { isConflictError } from "@/api/es-client/client"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { logger } from "@/api/logger"
 import { getRequestId, requestIdMiddleware } from "@/api/middleware/request-id"
+import { buildOpenAPIDocument, registerOpenAPISecuritySchemes } from "@/api/openapi/document"
+import { SWAGGER_UI_OAUTH2_REDIRECT_HTML } from "@/api/openapi/oauth2-redirect"
+import { registerOpenAPISchemas } from "@/api/openapi/schemas"
 import { adminRouter } from "@/api/routes/admin"
 import { datasetRouter } from "@/api/routes/dataset"
 import { healthRouter } from "@/api/routes/health"
@@ -69,92 +72,62 @@ export const createApp = () => {
   const openApiJsonPath = `${docsPath}/openapi.json`
 
   // OpenAPI docs
-  app.doc(openApiJsonPath, {
-    openapi: "3.0.0",
-    info: {
-      title: "HumanDBs Backend API",
-      version: "2.0.0",
-      description: `
-HumanDBs REST API for accessing research database information.
+  registerOpenAPISecuritySchemes(app)
+  registerOpenAPISchemas(app)
+  app.doc(openApiJsonPath, buildOpenAPIDocument())
 
-## Authentication
+  // Swagger UI with Keycloak OAuth2 authorization-code (PKCE) flow.
+  // The Keycloak Valid Redirect URIs list must include `${docsPath}/oauth2-redirect.html`
+  // for the popup-based OAuth login to complete. See apps/backend/docs/api-guide.md.
+  const oauthRedirectUrl = `${docsPath}/oauth2-redirect.html`
+  const envClientId = process.env.HUMANDBS_AUTH_CLIENT_ID
+  if (!envClientId && process.env.NODE_ENV === "production") {
+    throw new Error("HUMANDBS_AUTH_CLIENT_ID is required in production")
+  }
+  const oauthClientId = envClientId ?? "humandbs-dev"
 
-This API uses Keycloak OIDC for authentication. Include a Bearer token in the Authorization header:
-
-\`\`\`
-Authorization: Bearer <access_token>
-\`\`\`
-
-## Roles
-
-- **public**: Unauthenticated users can read published resources only
-- **authenticated**: Authenticated users can also access their own draft/review resources (where their UID is in the resource's uids field)
-- **admin**: Full access to all resources and administrative functions
-
-## Resource Naming
-
-API endpoints use singular resource names (e.g., \`/research\`, \`/dataset\`).
-
-## Status Workflow
-
-Research resources follow a publication workflow:
-- **draft** → **review** → **published**
-
-Only admins can approve/reject submissions and unpublish content.
-      `.trim(),
-    },
-    servers: [{ url: "/" }],
-    tags: [
-      {
-        name: "Health",
-        description: "Health check endpoint for monitoring and load balancer probes.",
-      },
-      {
-        name: "Stats",
-        description: "Statistics about published resources. Returns counts and facet aggregations for Research and Dataset resources. Only includes published resources.",
-      },
-      {
-        name: "Research",
-        description: "CRUD operations for Research resources. A Research represents a study that contains one or more Datasets. Supports versioning and publication workflow (draft → review → published). Research deletion is logical (status=deleted) to preserve humId uniqueness and external references.",
-      },
-      {
-        name: "Research Versions",
-        description: "Version management for Research resources. Each Research can have multiple versions (v1, v2, ...). Creating a new version copies datasets from the previous version. Specific versions can be retrieved via /research/{humId}/versions/{version}.",
-      },
-      {
-        name: "Research Datasets",
-        description: "Manage datasets linked to a Research. Datasets can only be created, updated, or deleted when the parent Research is in draft status. Use POST /research/{humId}/dataset/new to create a new Dataset for a Research.",
-      },
-      {
-        name: "Research Status",
-        description: "Research publication workflow management. Transitions: draft → review (submit), review → published (approve), review → draft (reject), published → draft (unpublish). Only admins can approve, reject, or unpublish. Dataset versions are finalized when Research is approved.",
-      },
-      {
-        name: "Dataset",
-        description: "CRUD operations for Dataset resources. A Dataset belongs to exactly one Research (1:N relationship). Dataset visibility depends on parent Research status. Datasets cannot be created standalone - use POST /research/{humId}/dataset/new instead.",
-      },
-      {
-        name: "Dataset Versions",
-        description: "Version management for Dataset resources. Dataset versions are tied to Research versions. When a Dataset is first modified in a draft Research cycle, a new version is created. Subsequent modifications update the same version until Research is published.",
-      },
-      {
-        name: "Search",
-        description: "Full-text and faceted search for Research and Dataset resources. Supports complex filters via POST endpoints. GET /facets returns available facet values with counts. Search targets: Research (title, summary), Dataset (experiments).",
-      },
-      {
-        name: "Admin",
-        description: "Administrative operations requiring admin role. Includes admin status check. Admin users are determined by admin_uids.json configuration, not JWT roles.",
-      },
-      {
-        name: "JGA Shinsei",
-        description: "Read-only API for JGA application data (DS: data submission applications / DU: data use applications). All endpoints require admin authentication. Backed by per-request queries against the JGA PostgreSQL.",
-      },
-    ],
-  })
-
+  // `@hono/swagger-ui` only ships `swagger-ui-bundle.js` (no standalone preset
+  // / topbar), so we use BaseLayout and the bundle's built-in `apis` preset;
+  // do NOT reference `SwaggerUIStandalonePreset` or `StandaloneLayout` — they
+  // would be `undefined` here and crash with `ReferenceError`.
+  //
+  // The outer `url` is required by `SwaggerUIOptions` (one of `url` / `urls`
+  // must be present), but `manuallySwaggerUIHtml` overrides the rendered page
+  // body, so SwaggerUIBundle actually reads the URL from the inline template
+  // literal below. The two values are intentionally kept in sync.
   app.get(docsPath, swaggerUI({
     url: openApiJsonPath,
+    manuallySwaggerUIHtml: (asset) => `
+      <div id="swagger-ui"></div>
+      ${asset.css.map((url) => `<link rel="stylesheet" href="${url}" />`).join("\n")}
+      ${asset.js.map((url) => `<script src="${url}" crossorigin="anonymous"></script>`).join("\n")}
+      <script>
+        window.onload = () => {
+          const ui = SwaggerUIBundle({
+            dom_id: "#swagger-ui",
+            url: ${JSON.stringify(openApiJsonPath)},
+            deepLinking: true,
+            persistAuthorization: true,
+            oauth2RedirectUrl: window.location.origin + ${JSON.stringify(oauthRedirectUrl)},
+            presets: [SwaggerUIBundle.presets.apis],
+            plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+            layout: "BaseLayout",
+          })
+          ui.initOAuth({
+            clientId: ${JSON.stringify(oauthClientId)},
+            scopes: "openid profile email",
+            usePkceWithAuthorizationCodeGrant: true,
+          })
+          window.ui = ui
+        }
+      </script>
+    `,
   }))
+
+  // Serve the Swagger UI OAuth2 redirect helper. Swagger UI's distribution
+  // ships a tiny HTML file at this path; we proxy it via CDN-equivalent content
+  // so the OAuth popup can postMessage back to the parent window.
+  app.get(oauthRedirectUrl, (c) => c.html(SWAGGER_UI_OAUTH2_REDIRECT_HTML))
 
   // RFC 7807 Problem Details response helper
   // Content-Type: application/problem+json per RFC 7807

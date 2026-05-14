@@ -8,6 +8,7 @@
  * These fragments are composed via .merge()/.extend() in query-params.ts
  * to build endpoint-specific query schemas.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import { IsTumorSchema } from "../../es/types"

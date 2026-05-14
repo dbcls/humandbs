@@ -11,6 +11,7 @@
  * Grant / Publication は BilingualTextSchema（rawHtml を持たない）で構成されているため
  * 派生は不要。
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import {

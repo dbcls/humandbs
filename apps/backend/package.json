@@ -34,10 +34,13 @@
     "test:smoke": "bun test --test-root ./tests/smoke",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "lint:fix": "eslint src tests --fix"
+    "lint:fix": "eslint src tests --fix",
+    "openapi:dump": "bun -e 'import(\"./src/api/app\").then(async ({ createApp }) => { const prefix = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? \"\"; const r = await createApp().request(`${prefix}/docs/openapi.json`); if (r.status !== 200) { console.error(`openapi.json fetch failed: ${r.status}`); process.exit(1); } await Bun.write(\"/tmp/humandbs-openapi.json\", await r.text()); console.log(\"wrote /tmp/humandbs-openapi.json\"); })'",
+    "openapi:lint": "bun run openapi:dump && NO_UPDATE_NOTIFIER=1 REDOCLY_TELEMETRY=off bunx redocly lint --config redocly.yaml /tmp/humandbs-openapi.json"
   },
   "devDependencies": {
     "@humandbs/eslint-config": "workspace:*",
+    "@redocly/cli": "^2.30.3",
     "@stylistic/eslint-plugin": "^5.3.1",
     "@types/bun": "^1.3.5",
     "@types/jsdom": "^21.1.7",

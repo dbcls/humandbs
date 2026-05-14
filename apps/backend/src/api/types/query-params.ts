@@ -8,6 +8,7 @@
  *
  * Search/listing schemas are composed from reusable fragments in query-schemas.ts.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import { LANG_TYPES, BilingualTextSchema } from "./common"

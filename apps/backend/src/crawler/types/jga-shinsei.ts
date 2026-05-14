@@ -4,7 +4,13 @@
  * - Input types: DB ダンプ JSON の構造（snake_case）- interface のまま
  * - Union types: z.enum() で定義
  * - Output types: 変換後の API フレンドリーな構造（camelCase）- Zod スキーマ
+ *
+ * Side-effect import of `@hono/zod-openapi` patches `.openapi(...)` onto the
+ * project-wide zod prototype so this module's schemas can be registered as
+ * OpenAPI components (see api/openapi/schemas.ts). Mirrors the same pattern in
+ * src/es/types.ts.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 // === Union types ===

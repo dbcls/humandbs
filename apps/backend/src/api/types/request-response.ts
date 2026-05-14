@@ -7,6 +7,7 @@
  * - Search response schemas
  * - Error response schemas
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import {

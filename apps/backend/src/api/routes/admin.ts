@@ -12,6 +12,8 @@ import { createRoute } from "@hono/zod-openapi"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
 import { requireAuth } from "@/api/middleware/auth"
+import { SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
+import { exampleIsAdminSingleResponse } from "@/api/openapi/examples"
 import { ErrorSpec401, ErrorSpec500, UnauthorizedError } from "@/api/routes/errors"
 import { createSingleReadOnlyResponseSchema, IsAdminResponseSchema } from "@/api/types"
 
@@ -26,11 +28,13 @@ const isAdminRoute = createRoute({
   method: "get",
   path: "/is-admin",
   tags: ["Admin"],
+  operationId: "checkIsAdmin",
   summary: "Check Admin Status",
   description: "Check if the current user is an admin. Requires authentication.",
+  security: SECURITY_REQUIRES_AUTH,
   responses: {
     200: {
-      content: { "application/json": { schema: IsAdminWrappedResponseSchema } },
+      content: { "application/json": { schema: IsAdminWrappedResponseSchema, example: exampleIsAdminSingleResponse } },
       description: "Admin status of current user",
     },
     401: ErrorSpec401,

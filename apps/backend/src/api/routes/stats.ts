@@ -12,6 +12,8 @@ import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { esTotal } from "@/api/es-client/utils"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
+import { SECURITY_PUBLIC } from "@/api/openapi/document"
+import { exampleStatsSingleResponse } from "@/api/openapi/examples"
 import { ErrorSpec500 } from "@/api/routes/errors"
 import { createSingleReadOnlyResponseSchema, StatsResponseSchema } from "@/api/types"
 import type { StatsFacetCount } from "@/api/types"
@@ -280,11 +282,13 @@ const getStatsRoute = createRoute({
   method: "get",
   path: "/",
   tags: ["Stats"],
+  operationId: "getStats",
   summary: "Get Statistics",
-  description: "Get statistics about published Research and Dataset resources, including counts and facets with Research/Dataset breakdown.",
+  description: "Get statistics about published Research and Dataset resources, including counts and facets with Research/Dataset breakdown. Only published resources are aggregated.",
+  security: SECURITY_PUBLIC,
   responses: {
     200: {
-      content: { "application/json": { schema: StatsWrappedResponseSchema } },
+      content: { "application/json": { schema: StatsWrappedResponseSchema, example: exampleStatsSingleResponse } },
       description: "Statistics about published resources",
     },
     500: ErrorSpec500,

@@ -5,6 +5,7 @@
  * - Language types and constants
  * - Common Zod preprocessing helpers
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 // === Language Types (re-exported from es/types, SSOT is crawler/types) ===

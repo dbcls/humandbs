@@ -5,6 +5,7 @@
  * for API response purposes (detail views, merged fields, etc.).
  * These are distinct from raw ES document aliases in es-docs.ts.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import {
@@ -34,6 +35,12 @@ const researchVersionFields = {
 /**
  * Research detail view model (unified for all users)
  * All fields included; values are controlled per-user in the route handler.
+ *
+ * `_seq_no` / `_primary_term` handling differs by response envelope:
+ * - Detail endpoint (`ResearchDetailResponseSchema`) omits these from `data`
+ *   and surfaces them in `meta` so the lock travels alongside the request id.
+ * - List endpoint (`LinkedResearchesListResponseSchema`) keeps them on each
+ *   `data[]` item because the envelope's `meta` carries pagination instead.
  */
 export const ResearchDetailSchema = EsResearchSchema
   .omit({ versionIds: true })

@@ -7,6 +7,7 @@
  * - Research search body schema
  * - Dataset search body schema
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import { IsTumorSchema } from "../../es/types"

@@ -17,6 +17,15 @@ import {
   singleReadOnlyResponse,
 } from "@/api/helpers/response"
 import { optionalAuth } from "@/api/middleware/auth"
+import { SECURITY_OPTIONAL_AUTH } from "@/api/openapi/document"
+import {
+  exampleAllFacetsResponse,
+  exampleDatasetSearchBody,
+  exampleDatasetSearchResponse,
+  exampleFacetFieldResponse,
+  exampleResearchSearchBody,
+  exampleResearchSearchResponse,
+} from "@/api/openapi/examples"
 import { ErrorSpec400, ErrorSpec403, ErrorSpec500, ForbiddenError } from "@/api/routes/errors"
 import {
   createSearchResponseSchema,
@@ -151,7 +160,9 @@ const postResearchSearchRoute = createRoute({
   method: "post",
   path: "/research/search",
   tags: ["Search"],
+  operationId: "searchResearch",
   summary: "Search Research (POST)",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Search Research resources with advanced filters and facets.
 
 **Full-text search targets:** title, summary.aims, summary.methods, summary.targets
@@ -171,11 +182,11 @@ const postResearchSearchRoute = createRoute({
 
 Set includeFacets=true to get facet counts for building filter UIs.`,
   request: {
-    body: { content: { "application/json": { schema: ResearchSearchBodySchema } } },
+    body: { content: { "application/json": { schema: ResearchSearchBodySchema, example: exampleResearchSearchBody } } },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: ResearchSearchResponseSchema } },
+      content: { "application/json": { schema: ResearchSearchResponseSchema, example: exampleResearchSearchResponse } },
       description: "Research search results with optional facets",
     },
     400: ErrorSpec400,
@@ -188,7 +199,9 @@ const postDatasetSearchRoute = createRoute({
   method: "post",
   path: "/dataset/search",
   tags: ["Search"],
+  operationId: "searchDataset",
   summary: "Search Dataset (POST)",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Search Dataset resources with advanced filters and facets.
 
 **Full-text search targets:** typeOfData, experiments.searchable.targets
@@ -206,11 +219,11 @@ const postDatasetSearchRoute = createRoute({
 
 Set includeFacets=true to get facet counts for building filter UIs.`,
   request: {
-    body: { content: { "application/json": { schema: DatasetSearchBodySchema } } },
+    body: { content: { "application/json": { schema: DatasetSearchBodySchema, example: exampleDatasetSearchBody } } },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetSearchResponseSchema } },
+      content: { "application/json": { schema: DatasetSearchResponseSchema, example: exampleDatasetSearchResponse } },
       description: "Dataset search results with optional facets",
     },
     400: ErrorSpec400,
@@ -222,7 +235,9 @@ const getFacetsRoute = createRoute({
   method: "get",
   path: "/facets",
   tags: ["Search"],
+  operationId: "getFacets",
   summary: "Get All Facet Values",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get all available facet values with document counts.
 
 Returns facet values grouped by field name. Use this to populate filter dropdowns in search UIs.
@@ -235,7 +250,7 @@ Counts reflect published Datasets only. Pass filter parameters to get counts nar
   },
   responses: {
     200: {
-      content: { "application/json": { schema: AllFacetsResponseSchema } },
+      content: { "application/json": { schema: AllFacetsResponseSchema, example: exampleAllFacetsResponse } },
       description: "All facet values with counts grouped by field",
     },
     400: ErrorSpec400,
@@ -247,7 +262,9 @@ const getFacetFieldRoute = createRoute({
   method: "get",
   path: "/facets/{fieldName}",
   tags: ["Search"],
+  operationId: "getFacet",
   summary: "Get Facet Values for Field",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get available values for a specific facet field.
 
 **Example fields:** criteria, assayType, healthStatus, tissues, platform
@@ -261,7 +278,7 @@ Returns an array of {value, count} pairs sorted by count descending. Pass filter
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SingleFacetFieldResponseSchema } },
+      content: { "application/json": { schema: SingleFacetFieldResponseSchema, example: exampleFacetFieldResponse } },
       description: "Facet values for the specified field",
     },
     400: ErrorSpec400,

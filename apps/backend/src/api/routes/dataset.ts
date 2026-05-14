@@ -25,7 +25,18 @@ import {
 } from "@/api/helpers/response"
 import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
+import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
+  exampleDatasetDetailResponse,
+  exampleDatasetSearchResponse,
+  exampleDatasetUpdateResponse,
+  exampleDatasetVersionDetailResponse,
+  exampleDatasetVersionsListResponse,
+  exampleLinkedResearchesListResponse,
+  exampleUpdateDatasetRequest,
+} from "@/api/openapi/examples"
+import {
+  ErrorSpec400,
   ErrorSpec401,
   ErrorSpec403,
   ErrorSpec404,
@@ -59,7 +70,9 @@ const listDatasetsRoute = createRoute({
   method: "get",
   path: "/",
   tags: ["Dataset"],
+  operationId: "listDatasets",
   summary: "List Datasets",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get a paginated list of Dataset resources.
 
 **Visibility by role:**
@@ -73,9 +86,10 @@ const listDatasetsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetSearchResponseSchema } },
+      content: { "application/json": { schema: DatasetSearchResponseSchema, example: exampleDatasetSearchResponse } },
       description: "List of datasets with optional facets",
     },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })
@@ -84,7 +98,9 @@ const getDatasetRoute = createRoute({
   method: "get",
   path: "/{datasetId}",
   tags: ["Dataset"],
+  operationId: "getDataset",
   summary: "Get Dataset Detail",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get detailed information about a specific Dataset.
 
 **Visibility:**
@@ -101,9 +117,10 @@ Response includes \`mergedSearchable\` field which aggregates all experiment sea
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetDetailResponseSchema } },
+      content: { "application/json": { schema: DatasetDetailResponseSchema, example: exampleDatasetDetailResponse } },
       description: "Dataset detail with merged searchable fields",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -113,7 +130,9 @@ const updateDatasetRoute = createRoute({
   method: "put",
   path: "/{datasetId}/update",
   tags: ["Dataset"],
+  operationId: "updateDataset",
   summary: "Update Dataset",
+  security: SECURITY_REQUIRES_AUTH,
   description: `Update a Dataset (full replacement).
 
 **Authorization:** Owner (user in parent Research's uids) or admin
@@ -128,13 +147,14 @@ const updateDatasetRoute = createRoute({
   request: {
     params: DatasetIdParamsSchema,
     query: LangVersionQuerySchema,
-    body: { content: { "application/json": { schema: UpdateDatasetRequestSchema } } },
+    body: { content: { "application/json": { schema: UpdateDatasetRequestSchema, example: exampleUpdateDatasetRequest } } },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetUpdateResponseSchema } },
+      content: { "application/json": { schema: DatasetUpdateResponseSchema, example: exampleDatasetUpdateResponse } },
       description: "Dataset updated successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -147,7 +167,10 @@ const deleteDatasetRoute = createRoute({
   method: "post",
   path: "/{datasetId}/delete",
   tags: ["Dataset"],
+  operationId: "deleteDataset",
   summary: "Delete Dataset",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Delete a Dataset (physical deletion).
 
 **Authorization:** Admin only
@@ -164,6 +187,7 @@ const deleteDatasetRoute = createRoute({
   },
   responses: {
     204: { description: "Dataset deleted successfully" },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -175,7 +199,9 @@ const listVersionsRoute = createRoute({
   method: "get",
   path: "/{datasetId}/versions",
   tags: ["Dataset Versions"],
+  operationId: "listDatasetVersions",
   summary: "List Dataset Versions",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `List all versions of a Dataset.
 
 Dataset versions are tied to Research versions. Each time a Research is published, the current Dataset versions are finalized.`,
@@ -185,9 +211,10 @@ Dataset versions are tied to Research versions. Each time a Research is publishe
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetVersionsListResponseSchema } },
+      content: { "application/json": { schema: DatasetVersionsListResponseSchema, example: exampleDatasetVersionsListResponse } },
       description: "List of versions",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -197,7 +224,9 @@ const getVersionRoute = createRoute({
   method: "get",
   path: "/{datasetId}/versions/{version}",
   tags: ["Dataset Versions"],
+  operationId: "getDatasetVersion",
   summary: "Get Specific Version",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get a specific version of a Dataset.
 
 Version format: v1, v2, v3, etc.
@@ -209,9 +238,10 @@ Response includes \`mergedSearchable\` field which aggregates all experiment sea
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetVersionDetailResponseSchema } },
+      content: { "application/json": { schema: DatasetVersionDetailResponseSchema, example: exampleDatasetVersionDetailResponse } },
       description: "Version detail with merged searchable fields",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -221,7 +251,9 @@ const listLinkedResearchesRoute = createRoute({
   method: "get",
   path: "/{datasetId}/research",
   tags: ["Dataset"],
+  operationId: "listLinkedResearches",
   summary: "Get Parent Research",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get the parent Research that this Dataset belongs to.
 
 A Dataset belongs to exactly one Research (1:N relationship). Returns an array with a single Research element.`,
@@ -231,9 +263,10 @@ A Dataset belongs to exactly one Research (1:N relationship). Returns an array w
   },
   responses: {
     200: {
-      content: { "application/json": { schema: LinkedResearchesListResponseSchema } },
+      content: { "application/json": { schema: LinkedResearchesListResponseSchema, example: exampleLinkedResearchesListResponse } },
       description: "Parent Research",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
