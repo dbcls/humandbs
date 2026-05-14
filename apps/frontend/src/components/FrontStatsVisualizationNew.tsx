@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Environment, ContactShadows, Text, Billboard } from "@react-three/drei";
+import { EffectComposer, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -378,6 +379,12 @@ function BlobCluster({
           />
         </instancedMesh>
 
+        {/* Invisible hit box to ensure hover state doesn't jitter when mouse moves between particles */}
+        <mesh>
+          <sphereGeometry args={[particleScale * 0.45, 16, 16]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+
         {/* Render individual clickable 3D text labels for particles when focused */}
         {isHovered && satellites.map((sat, i) => (
           <group key={sat.id} ref={el => labelRefs.current[i] = el}>
@@ -493,6 +500,16 @@ function CarouselScene({
 
   return (
     <>
+      {/* Postprocessing for depth blur (gradually blurs items further from the front) */}
+      <EffectComposer disableNormalPass multisampling={4}>
+        <DepthOfField 
+          target={[0, 0, carouselRadius]} 
+          focalLength={0.05} 
+          bokehScale={8} 
+          height={700} 
+        />
+      </EffectComposer>
+
       {/* User controllable lighting */}
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
       <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" castShadow />
