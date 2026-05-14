@@ -1,10 +1,21 @@
-import { readdir } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { createServerOnlyFn } from "@tanstack/react-start";
 import tar from "tar-stream";
 import { z } from "zod";
 
+import { localeSchema } from "@/config/i18n";
+import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
+import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
 import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 import { db } from "@/db/database";
 import {
@@ -15,10 +26,14 @@ import {
   document,
   documentVersion,
   navigationFlowchart,
+  navigationFlowchartRevision,
   newsItem,
   newsItemTag,
   newsTag,
   newsTranslation,
+  siteNavigationConfig,
+  siteNavigationConfigRevision,
+  user,
 } from "@/db/schema";
 import {
   CMS_DATA_TRANSFER_CATEGORIES,
@@ -62,6 +77,19 @@ export interface InspectedCmsDataTransferArchive {
   };
 }
 
+export interface RestoreCmsDataTransferArchiveParams {
+  fileName: string;
+  bytes: Uint8Array<ArrayBufferLike>;
+  categories: CmsDataTransferCategory[];
+  restoredByUserId?: string;
+}
+
+export interface RestoredCmsDataTransferArchive {
+  archiveName: string;
+  restoredCategories: CmsDataTransferCategory[];
+  counts: Partial<Record<CmsDataTransferCategory, number>>;
+}
+
 type ArchiveFileInput = Record<
   string,
   string | Blob | ArrayBufferView | ArrayBufferLike
@@ -79,26 +107,108 @@ const headerFooterActiveConfigSchema = z.object({
   updatedBy: z.string().nullable(),
 });
 
+const timestampStringSchema = z.string().min(1);
+const nullableTimestampStringSchema = z.string().min(1).nullable();
+
+const contentItemArchiveRowSchema = z.object({
+  id: z.string().min(1),
+  createdAt: timestampStringSchema,
+  publishedAt: z.string().nullable(),
+  authorId: z.string().min(1),
+  hideTOC: z.boolean().nullable().optional(),
+});
+
+const contentTranslationArchiveRowSchema = z.object({
+  contentId: z.string().min(1),
+  title: z.string(),
+  lang: z.string().min(1),
+  updatedAt: nullableTimestampStringSchema,
+  content: z.string(),
+  status: z.enum(["draft", "published"]),
+});
+
 const contentPayloadSchema = z.object({
-  items: z.array(looseObjectSchema),
-  translations: z.array(looseObjectSchema),
+  items: z.array(contentItemArchiveRowSchema),
+  translations: z.array(contentTranslationArchiveRowSchema),
+});
+
+const documentArchiveRowSchema = z.object({
+  id: z.string().uuid(),
+  contentId: z.string().min(1),
+  createdAt: timestampStringSchema,
+  hideTOC: z.boolean().nullable().optional(),
+});
+
+const documentVersionArchiveRowSchema = z.object({
+  documentId: z.string().uuid(),
+  versionNumber: z.number().int(),
+  status: z.enum(["draft", "published"]),
+  locale: localeSchema,
+  title: z.string().nullable(),
+  content: z.string().nullable(),
+  translatedBy: z.string().nullable(),
+  createdAt: timestampStringSchema,
+  updatedAt: timestampStringSchema,
 });
 
 const documentsPayloadSchema = z.object({
-  documents: z.array(looseObjectSchema),
-  versions: z.array(looseObjectSchema),
+  documents: z.array(documentArchiveRowSchema),
+  versions: z.array(documentVersionArchiveRowSchema),
+});
+
+const newsItemArchiveRowSchema = z.object({
+  id: z.string().uuid(),
+  createdAt: timestampStringSchema,
+  publishedAt: z.string().nullable(),
+  authorId: z.string().min(1),
+});
+
+const newsTranslationArchiveRowSchema = z.object({
+  newsId: z.string().uuid(),
+  title: z.string(),
+  lang: z.string().min(1),
+  updatedAt: nullableTimestampStringSchema,
+  content: z.string(),
+});
+
+const newsTagArchiveRowSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  color: z.string().nullable(),
+});
+
+const newsItemTagArchiveRowSchema = z.object({
+  newsId: z.string().uuid(),
+  tagId: z.string().uuid(),
 });
 
 const newsPayloadSchema = z.object({
-  items: z.array(looseObjectSchema),
-  translations: z.array(looseObjectSchema),
-  tags: z.array(looseObjectSchema),
-  itemTags: z.array(looseObjectSchema),
+  items: z.array(newsItemArchiveRowSchema),
+  translations: z.array(newsTranslationArchiveRowSchema),
+  tags: z.array(newsTagArchiveRowSchema),
+  itemTags: z.array(newsItemTagArchiveRowSchema),
+});
+
+const alertArchiveRowSchema = z.object({
+  id: z.string().uuid(),
+  createdAt: timestampStringSchema,
+  updatedAt: timestampStringSchema,
+  enabled: z.boolean().nullable().optional(),
+  authorId: z.string().min(1),
+  updatedBy: z.string().min(1),
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+});
+
+const alertTranslationArchiveRowSchema = z.object({
+  alertId: z.string().uuid(),
+  content: z.string(),
+  locale: localeSchema,
 });
 
 const alertsPayloadSchema = z.object({
-  items: z.array(looseObjectSchema),
-  translations: z.array(looseObjectSchema),
+  items: z.array(alertArchiveRowSchema),
+  translations: z.array(alertTranslationArchiveRowSchema),
 });
 
 const headerFooterPayloadSchema = z.object({
@@ -106,12 +216,15 @@ const headerFooterPayloadSchema = z.object({
 });
 
 const flowchartRowSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   isEntryPoint: z.boolean(),
   nameEn: z.string(),
   nameJa: z.string(),
-  config: looseObjectSchema,
-  status: z.string(),
+  config: navigationFlowchartConfigSchema,
+  status: z.enum([
+    NAVIGATION_FLOWCHART_STATUS.DRAFT,
+    NAVIGATION_FLOWCHART_STATUS.PUBLISHED,
+  ]),
   revision: z.number().int(),
   updatedAt: z.string(),
   updatedBy: z.string().nullable(),
@@ -574,6 +687,614 @@ export async function inspectCmsDataTransferArchive(
   };
 }
 
+type ParsedArchivePayloadByCategory = {
+  content: z.infer<typeof contentPayloadSchema>;
+  documents: z.infer<typeof documentsPayloadSchema>;
+  news: z.infer<typeof newsPayloadSchema>;
+  alerts: z.infer<typeof alertsPayloadSchema>;
+  "header-footer": z.infer<typeof headerFooterPayloadSchema>;
+  flowcharts: z.infer<typeof flowchartsPayloadSchema>;
+};
+
+interface ParsedCmsDataTransferArchive {
+  manifest: CmsDataTransferArchiveManifest;
+  availableCategories: CmsDataTransferCategory[];
+  assetFileCount: number;
+  payloads: Partial<ParsedArchivePayloadByCategory>;
+  assetEntries: Record<string, Uint8Array<ArrayBufferLike>>;
+}
+
+function normalizeArchiveAssetPath(entryName: string) {
+  const relativePath = entryName.replace(/^assets\//, "");
+  const normalized = path.posix.normalize(relativePath).replace(/^\/+/, "");
+
+  if (
+    normalized.length === 0 ||
+    normalized === "." ||
+    normalized === ".." ||
+    normalized.startsWith("../") ||
+    normalized.includes("/../")
+  ) {
+    throw new Error(`Archive contains an invalid asset path "${entryName}".`);
+  }
+
+  return normalized;
+}
+
+async function parseCmsDataTransferArchive(
+  fileName: string,
+  bytes: Uint8Array<ArrayBufferLike>,
+): Promise<ParsedCmsDataTransferArchive> {
+  const lowerName = fileName.toLowerCase();
+  const tarBytes = lowerName.endsWith(".tar")
+    ? bytes
+    : new Uint8Array(gunzipSync(Buffer.from(bytes)));
+
+  const entries = await extractArchiveEntries(tarBytes);
+  const manifestBytes = entries["manifest.json"];
+
+  if (!manifestBytes) {
+    throw new Error('Archive is missing required file "manifest.json".');
+  }
+
+  const manifest = parseJsonFile(
+    manifestBytes,
+    archiveManifestSchema,
+    "manifest.json",
+  ) as CmsDataTransferArchiveManifest;
+
+  const assetEntries: Record<string, Uint8Array<ArrayBufferLike>> = {};
+  const payloads: Partial<ParsedArchivePayloadByCategory> = {};
+  const availableCategories: CmsDataTransferCategory[] = [];
+
+  for (const [name, value] of Object.entries(entries)) {
+    if (!name.startsWith("assets/")) continue;
+    normalizeArchiveAssetPath(name);
+    assetEntries[name] = value;
+  }
+
+  const assetFileCount = Object.keys(assetEntries).length;
+
+  for (const category of manifest.categories) {
+    const payloadPath = getCategoryPayloadPath(category);
+    const expectedCount = manifest.counts[category] ?? 0;
+
+    switch (category) {
+      case "content": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error(
+            'Archive is missing required file "categories/content.json".',
+          );
+        }
+        const payload = parseJsonFile(
+          entries[payloadPath],
+          contentPayloadSchema,
+          payloadPath,
+        );
+        const actualCount = payload.items.length + payload.translations.length;
+        if (expectedCount !== actualCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+          );
+        }
+        payloads.content = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "documents": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error(
+            'Archive is missing required file "categories/documents.json".',
+          );
+        }
+        const payload = parseJsonFile(
+          entries[payloadPath],
+          documentsPayloadSchema,
+          payloadPath,
+        );
+        const actualCount =
+          payload.documents.length + payload.versions.length;
+        if (expectedCount !== actualCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+          );
+        }
+        payloads.documents = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "news": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error(
+            'Archive is missing required file "categories/news.json".',
+          );
+        }
+        const payload = parseJsonFile(
+          entries[payloadPath],
+          newsPayloadSchema,
+          payloadPath,
+        );
+        const actualCount =
+          payload.items.length +
+          payload.translations.length +
+          payload.tags.length +
+          payload.itemTags.length;
+        if (expectedCount !== actualCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+          );
+        }
+        payloads.news = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "alerts": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error(
+            'Archive is missing required file "categories/alerts.json".',
+          );
+        }
+        const payload = parseJsonFile(
+          entries[payloadPath],
+          alertsPayloadSchema,
+          payloadPath,
+        );
+        const actualCount = payload.items.length + payload.translations.length;
+        if (expectedCount !== actualCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+          );
+        }
+        payloads.alerts = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "header-footer": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error(
+            'Archive is missing required file "categories/header-footer.json".',
+          );
+        }
+        const payload = parseJsonFile(
+          entries[payloadPath],
+          headerFooterPayloadSchema,
+          payloadPath,
+        );
+        const actualCount = payload.activeConfig ? 1 : 0;
+        if (expectedCount !== actualCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+          );
+        }
+        payloads["header-footer"] = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "flowcharts": {
+        if (!payloadPath || !entries[payloadPath]) {
+          throw new Error(
+            'Archive is missing required file "categories/flowcharts.json".',
+          );
+        }
+        const payload = parseJsonFile(
+          entries[payloadPath],
+          flowchartsPayloadSchema,
+          payloadPath,
+        );
+        const actualCount = payload.flowcharts.length;
+        if (expectedCount !== actualCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+          );
+        }
+        payloads.flowcharts = payload;
+        availableCategories.push(category);
+        break;
+      }
+      case "assets": {
+        if (expectedCount !== assetFileCount) {
+          throw new Error(
+            `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${assetFileCount}.`,
+          );
+        }
+        availableCategories.push(category);
+        break;
+      }
+    }
+  }
+
+  return {
+    manifest,
+    availableCategories,
+    assetFileCount,
+    payloads,
+    assetEntries,
+  };
+}
+
+function toDate(value: string | null) {
+  return value ? new Date(value) : null;
+}
+
+function mapRestoredUserId(
+  currentUserId: string | undefined,
+  fallbackValue: string | null | undefined,
+) {
+  if (!currentUserId) {
+    return fallbackValue ?? undefined;
+  }
+
+  return currentUserId;
+}
+
+async function writeArchiveAssetsToDirectory(
+  assetEntries: Record<string, Uint8Array<ArrayBufferLike>>,
+  targetDirectory: string,
+) {
+  await mkdir(targetDirectory, { recursive: true });
+
+  for (const [entryName, bytes] of Object.entries(assetEntries)) {
+    const relativePath = normalizeArchiveAssetPath(entryName);
+    const absolutePath = path.join(targetDirectory, relativePath);
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, Buffer.from(bytes));
+  }
+}
+
+async function replaceAssetDirectory(
+  assetDirectory: string,
+  stagedDirectory: string,
+) {
+  const parentDirectory = path.dirname(assetDirectory);
+  const backupDirectory = path.join(
+    parentDirectory,
+    `.cms-restore-backup-${Date.now()}`,
+  );
+
+  await mkdir(parentDirectory, { recursive: true });
+
+  let movedExistingDirectory = false;
+
+  try {
+    await rename(assetDirectory, backupDirectory);
+    movedExistingDirectory = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  try {
+    await rename(stagedDirectory, assetDirectory);
+  } catch (error) {
+    if (movedExistingDirectory) {
+      await rename(backupDirectory, assetDirectory);
+    }
+    throw error;
+  }
+
+  if (movedExistingDirectory) {
+    await rm(backupDirectory, { recursive: true, force: true });
+  }
+}
+
+function assertSelectedRestoreCategories(
+  selectedCategories: CmsDataTransferCategory[],
+  availableCategories: CmsDataTransferCategory[],
+) {
+  const normalized = CMS_DATA_TRANSFER_CATEGORIES.filter((category) =>
+    selectedCategories.includes(category),
+  );
+
+  if (normalized.length === 0) {
+    throw new Error("Select at least one archive category to restore.");
+  }
+
+  for (const category of normalized) {
+    if (!availableCategories.includes(category)) {
+      throw new Error(
+        `Archive does not include the selected "${category}" category.`,
+      );
+    }
+  }
+
+  return normalized;
+}
+
+export interface CmsDataTransferArchiveRestorerDependencies {
+  database: Database;
+  getAssetDir?: () => string;
+}
+
+export function createCmsDataTransferArchiveRestorer({
+  database,
+  getAssetDir = $$getAssetDir,
+}: CmsDataTransferArchiveRestorerDependencies) {
+  return async function restoreCmsDataTransferArchive(
+    params: RestoreCmsDataTransferArchiveParams,
+  ): Promise<RestoredCmsDataTransferArchive> {
+    const parsedArchive = await parseCmsDataTransferArchive(
+      params.fileName,
+      params.bytes,
+    );
+    const restoredCategories = assertSelectedRestoreCategories(
+      params.categories,
+      parsedArchive.availableCategories,
+    );
+
+    let stagedAssetDirectory: string | null = null;
+
+    try {
+      if (restoredCategories.includes("assets")) {
+        stagedAssetDirectory = await mkdtemp(
+          path.join(tmpdir(), "cms-data-restore-assets-"),
+        );
+        await writeArchiveAssetsToDirectory(
+          parsedArchive.assetEntries,
+          stagedAssetDirectory,
+        );
+      }
+
+      await database.transaction(async (tx) => {
+        const effectiveUserId = params.restoredByUserId;
+
+        if (effectiveUserId) {
+          await tx
+            .insert(user)
+            .values({
+              id: effectiveUserId,
+              role: "admin",
+            })
+            .onConflictDoNothing();
+        }
+
+        if (restoredCategories.includes("content")) {
+          const payload = parsedArchive.payloads.content;
+          if (!payload) {
+            throw new Error("Content payload is missing from the archive.");
+          }
+
+          await tx.delete(contentTranslation);
+          await tx.delete(contentItem);
+
+          if (payload.items.length > 0) {
+            await tx.insert(contentItem).values(
+              payload.items.map((item) => ({
+                id: item.id,
+                createdAt: new Date(item.createdAt),
+                publishedAt: item.publishedAt,
+                authorId:
+                  mapRestoredUserId(effectiveUserId, item.authorId) ??
+                  item.authorId,
+                hideTOC: item.hideTOC ?? true,
+              })),
+            );
+          }
+
+          if (payload.translations.length > 0) {
+            await tx.insert(contentTranslation).values(
+              payload.translations.map((translation) => ({
+                contentId: translation.contentId,
+                title: translation.title,
+                lang: translation.lang,
+                updatedAt: toDate(translation.updatedAt),
+                content: translation.content,
+                status: translation.status,
+              })),
+            );
+          }
+        }
+
+        if (restoredCategories.includes("documents")) {
+          const payload = parsedArchive.payloads.documents;
+          if (!payload) {
+            throw new Error("Documents payload is missing from the archive.");
+          }
+
+          await tx.delete(documentVersion);
+          await tx.delete(document);
+
+          if (payload.documents.length > 0) {
+            await tx.insert(document).values(
+              payload.documents.map((item) => ({
+                id: item.id,
+                contentId: item.contentId,
+                createdAt: new Date(item.createdAt),
+                hideTOC: item.hideTOC ?? true,
+              })),
+            );
+          }
+
+          if (payload.versions.length > 0) {
+            await tx.insert(documentVersion).values(
+              payload.versions.map((version) => ({
+                documentId: version.documentId,
+                versionNumber: version.versionNumber,
+                status: version.status,
+                locale: version.locale,
+                title: version.title,
+                content: version.content,
+                translatedBy: mapRestoredUserId(
+                  effectiveUserId,
+                  version.translatedBy,
+                ),
+                createdAt: new Date(version.createdAt),
+                updatedAt: new Date(version.updatedAt),
+              })),
+            );
+          }
+        }
+
+        if (restoredCategories.includes("news")) {
+          const payload = parsedArchive.payloads.news;
+          if (!payload) {
+            throw new Error("News payload is missing from the archive.");
+          }
+
+          await tx.delete(newsItemTag);
+          await tx.delete(newsTranslation);
+          await tx.delete(newsItem);
+          await tx.delete(newsTag);
+
+          if (payload.tags.length > 0) {
+            await tx.insert(newsTag).values(payload.tags);
+          }
+
+          if (payload.items.length > 0) {
+            await tx.insert(newsItem).values(
+              payload.items.map((item) => ({
+                id: item.id,
+                createdAt: new Date(item.createdAt),
+                publishedAt: item.publishedAt,
+                authorId:
+                  mapRestoredUserId(effectiveUserId, item.authorId) ??
+                  item.authorId,
+              })),
+            );
+          }
+
+          if (payload.translations.length > 0) {
+            await tx.insert(newsTranslation).values(
+              payload.translations.map((translation) => ({
+                newsId: translation.newsId,
+                title: translation.title,
+                lang: translation.lang,
+                updatedAt: toDate(translation.updatedAt),
+                content: translation.content,
+              })),
+            );
+          }
+
+          if (payload.itemTags.length > 0) {
+            await tx.insert(newsItemTag).values(payload.itemTags);
+          }
+        }
+
+        if (restoredCategories.includes("alerts")) {
+          const payload = parsedArchive.payloads.alerts;
+          if (!payload) {
+            throw new Error("Alerts payload is missing from the archive.");
+          }
+
+          await tx.delete(alertTranslation);
+          await tx.delete(alert);
+
+          if (payload.items.length > 0) {
+            await tx.insert(alert).values(
+              payload.items.map((item) => ({
+                id: item.id,
+                createdAt: new Date(item.createdAt),
+                updatedAt: new Date(item.updatedAt),
+                enabled: item.enabled ?? true,
+                authorId:
+                  mapRestoredUserId(effectiveUserId, item.authorId) ??
+                  item.authorId,
+                updatedBy:
+                  mapRestoredUserId(effectiveUserId, item.updatedBy) ??
+                  item.updatedBy,
+                from: item.from,
+                to: item.to,
+              })),
+            );
+          }
+
+          if (payload.translations.length > 0) {
+            await tx.insert(alertTranslation).values(payload.translations);
+          }
+        }
+
+        if (restoredCategories.includes("header-footer")) {
+          const payload = parsedArchive.payloads["header-footer"];
+          if (!payload) {
+            throw new Error(
+              "Header & Footer payload is missing from the archive.",
+            );
+          }
+
+          await tx.delete(siteNavigationConfigRevision);
+          await tx.delete(siteNavigationConfig);
+
+          if (payload.activeConfig) {
+            await tx.insert(siteNavigationConfig).values({
+              id: payload.activeConfig.id,
+              config: payload.activeConfig.config,
+              revision: 1,
+              updatedAt: new Date(),
+              updatedBy: effectiveUserId,
+            });
+
+            await tx.insert(siteNavigationConfigRevision).values({
+              configId: payload.activeConfig.id,
+              config: payload.activeConfig.config,
+              revision: 1,
+              createdBy: effectiveUserId,
+            });
+          }
+        }
+
+        if (restoredCategories.includes("flowcharts")) {
+          const payload = parsedArchive.payloads.flowcharts;
+          if (!payload) {
+            throw new Error("Flowcharts payload is missing from the archive.");
+          }
+
+          await tx.delete(navigationFlowchartRevision);
+          await tx.delete(navigationFlowchart);
+
+          if (payload.flowcharts.length > 0) {
+            await tx.insert(navigationFlowchart).values(
+              payload.flowcharts.map((item) => ({
+                id: item.id,
+                isEntryPoint: item.isEntryPoint,
+                nameEn: item.nameEn,
+                nameJa: item.nameJa,
+                config: item.config,
+                status: item.status,
+                revision: 1,
+                updatedAt: new Date(),
+                updatedBy: effectiveUserId,
+              })),
+            );
+
+            await tx.insert(navigationFlowchartRevision).values(
+              payload.flowcharts.map((item) => ({
+                flowchartId: item.id,
+                config: item.config,
+                revision: 1,
+                createdBy: effectiveUserId,
+              })),
+            );
+          }
+        }
+
+        if (restoredCategories.includes("assets")) {
+          if (!stagedAssetDirectory) {
+            throw new Error("Asset staging directory is missing.");
+          }
+
+          await replaceAssetDirectory(getAssetDir(), stagedAssetDirectory);
+          stagedAssetDirectory = null;
+        }
+      });
+
+      return {
+        archiveName: params.fileName,
+        restoredCategories,
+        counts: Object.fromEntries(
+          restoredCategories.map((category) => [
+            category,
+            parsedArchive.manifest.counts[category] ?? 0,
+          ]),
+        ) as Partial<Record<CmsDataTransferCategory, number>>,
+      };
+    } finally {
+      if (stagedAssetDirectory) {
+        await rm(stagedAssetDirectory, { recursive: true, force: true });
+      }
+    }
+  };
+}
+
 async function buildCategoryPayload(
   database: Database,
   getAssetDir: () => string,
@@ -738,7 +1459,16 @@ const createCmsDataTransferArchive = createCmsDataTransferArchiveBuilder({
   database: db,
 });
 
+const restoreCmsDataTransferArchive = createCmsDataTransferArchiveRestorer({
+  database: db,
+});
+
 export const $$createCmsDataTransferArchive = createServerOnlyFn(
   async (params: CreateCmsDataTransferArchiveParams) =>
     createCmsDataTransferArchive(params),
+);
+
+export const $$restoreCmsDataTransferArchive = createServerOnlyFn(
+  async (params: RestoreCmsDataTransferArchiveParams) =>
+    restoreCmsDataTransferArchive(params),
 );

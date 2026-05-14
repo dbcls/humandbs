@@ -6,7 +6,7 @@ import {
   expect,
   test,
 } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
@@ -23,6 +23,7 @@ import {
 
 import {
   createCmsDataTransferArchiveBuilder,
+  createCmsDataTransferArchiveRestorer,
   type CmsDataTransferArchiveManifest,
   inspectCmsDataTransferArchive,
 } from "./cmsDataTransferArchive";
@@ -32,6 +33,7 @@ const { db, pool } = createTestDb();
 const AUTHOR_ID = "cms-transfer-test-user";
 
 let tempAssetDir: string | null = null;
+let restoreAssetDir: string | null = null;
 
 async function extractArchiveEntries(
   archiveBytes: Uint8Array<ArrayBufferLike>,
@@ -122,6 +124,11 @@ afterEach(async () => {
   if (tempAssetDir) {
     await rm(tempAssetDir, { recursive: true, force: true });
     tempAssetDir = null;
+  }
+
+  if (restoreAssetDir) {
+    await rm(restoreAssetDir, { recursive: true, force: true });
+    restoreAssetDir = null;
   }
 });
 
@@ -321,5 +328,79 @@ describe("createCmsDataTransferArchiveBuilder", () => {
     ).rejects.toThrow(
       'Archive is missing required file "categories/content.json".',
     );
+  });
+
+  test("restores selected categories and replaces the asset directory", async () => {
+    await seedContentFixture();
+    await seedAssetFixture();
+
+    const buildArchive = createCmsDataTransferArchiveBuilder({
+      database: db,
+      getAssetDir: () => tempAssetDir!,
+    });
+
+    const { bytes } = await buildArchive({
+      categories: ["content", "assets"],
+      createdBy: {
+        id: AUTHOR_ID,
+        email: "cms-transfer@test.local",
+        name: "CMS Transfer Tester",
+      },
+    });
+
+    await clearTables(db);
+    await db.insert(schema.user).values({
+      id: AUTHOR_ID,
+      name: "CMS Transfer Tester",
+      email: "cms-transfer@test.local",
+      role: "admin",
+    });
+    await db.insert(schema.contentItem).values({
+      id: "stale",
+      authorId: AUTHOR_ID,
+      publishedAt: null,
+      hideTOC: true,
+    });
+    await db.insert(schema.contentTranslation).values({
+      contentId: "stale",
+      title: "Stale",
+      lang: "en",
+      content: "<p>Stale</p>",
+      status: "draft",
+    });
+
+    restoreAssetDir = await mkdtemp(path.join(tmpdir(), "cms-restore-assets-"));
+    await writeFile(path.join(restoreAssetDir, "stale.txt"), "stale-asset");
+
+    const restoreArchive = createCmsDataTransferArchiveRestorer({
+      database: db,
+      getAssetDir: () => restoreAssetDir!,
+    });
+
+    const result = await restoreArchive({
+      fileName: "cms-data-export.tar.gz",
+      bytes,
+      categories: ["content", "assets"],
+      restoredByUserId: AUTHOR_ID,
+    });
+
+    expect(result.restoredCategories).toEqual(["content", "assets"]);
+    expect(result.counts.content).toBe(3);
+    expect(result.counts.assets).toBe(2);
+
+    const items = await db.select().from(schema.contentItem);
+    const translations = await db.select().from(schema.contentTranslation);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe("faq");
+    expect(translations).toHaveLength(2);
+    expect(translations.map((item) => item.contentId)).toEqual(["faq", "faq"]);
+
+    const restoredFiles = await readdir(restoreAssetDir, {
+      recursive: true,
+    });
+    expect(restoredFiles).toContain("logo.txt");
+    expect(restoredFiles).toContain(path.join("nested", "diagram.txt"));
+    expect(restoredFiles).not.toContain("stale.txt");
   });
 });

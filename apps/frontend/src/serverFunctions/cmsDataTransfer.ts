@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { $$createCmsDataTransferArchive } from "@/lib/cmsDataTransferArchive";
-import { inspectCmsDataTransferArchive } from "@/lib/cmsDataTransferArchive";
+import {
+  $$createCmsDataTransferArchive,
+  $$restoreCmsDataTransferArchive,
+  inspectCmsDataTransferArchive,
+} from "@/lib/cmsDataTransferArchive";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 export const CMS_DATA_TRANSFER_CATEGORIES = [
@@ -55,6 +58,42 @@ export interface CmsDataArchiveUploadSummary {
   assetFileCount: number;
 }
 
+function getArchiveValidationError(archive: File) {
+  const lowerName = archive.name.toLowerCase();
+
+  if (
+    !lowerName.endsWith(".tar.gz") &&
+    !lowerName.endsWith(".tgz") &&
+    !lowerName.endsWith(".tar")
+  ) {
+    return {
+      ok: false as const,
+      code: "INVALID_FILE_TYPE" as const,
+      message: "Only `.tar.gz`, `.tgz`, and `.tar` archives are supported.",
+    };
+  }
+
+  if (archive.size <= 0) {
+    return {
+      ok: false as const,
+      code: "EMPTY_FILE" as const,
+      message: "The selected archive is empty.",
+    };
+  }
+
+  if (archive.size > MAX_CMS_ARCHIVE_SIZE_BYTES) {
+    return {
+      ok: false as const,
+      code: "FILE_TOO_LARGE" as const,
+      message: `Archive exceeds the current limit of ${Math.floor(
+        MAX_CMS_ARCHIVE_SIZE_BYTES / (1024 * 1024),
+      )} MB.`,
+    };
+  }
+
+  return null;
+}
+
 const downloadCmsDataArchiveInputSchema = z.object({
   categories: z
     .array(cmsDataTransferCategorySchema)
@@ -100,6 +139,67 @@ export const $downloadCmsDataArchive = createServerFn({ method: "POST" })
     });
   });
 
+export const $prepareCmsDataArchiveExport = $downloadCmsDataArchive;
+
+export const $restoreCmsDataArchive = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.instanceof(FormData))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("admin-panel", "view-cms");
+
+    const archive = data.get("archive");
+
+    if (!(archive instanceof File)) {
+      return {
+        ok: false as const,
+        code: "MISSING_FILE" as const,
+        message: "Select a `.tar.gz` archive before continuing.",
+      };
+    }
+
+    const validationError = getArchiveValidationError(archive);
+    if (validationError) {
+      return validationError;
+    }
+
+    const rawCategories = data.getAll("category");
+    const parsedCategories = z
+      .array(cmsDataTransferCategorySchema)
+      .min(1)
+      .safeParse(rawCategories);
+
+    if (!parsedCategories.success) {
+      return {
+        ok: false as const,
+        code: "MISSING_CATEGORIES" as const,
+        message: "Select at least one archive category to restore.",
+      };
+    }
+
+    try {
+      const result = await $$restoreCmsDataTransferArchive({
+        fileName: archive.name,
+        bytes: new Uint8Array(await archive.arrayBuffer()),
+        categories: parsedCategories.data,
+        restoredByUserId: context.user?.id,
+      });
+
+      return {
+        ok: true as const,
+        code: "RESTORE_COMPLETED" as const,
+        message: "CMS data restore completed.",
+        result,
+      };
+    } catch (error) {
+      return {
+        ok: false as const,
+        code: "RESTORE_FAILED" as const,
+        message:
+          error instanceof Error ? error.message : "CMS data restore failed.",
+      };
+    }
+  });
+
 export const $validateCmsDataArchiveUpload = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
   .inputValidator(z.instanceof(FormData))
@@ -116,36 +216,9 @@ export const $validateCmsDataArchiveUpload = createServerFn({ method: "POST" })
       };
     }
 
-    const lowerName = archive.name.toLowerCase();
-
-    if (
-      !lowerName.endsWith(".tar.gz") &&
-      !lowerName.endsWith(".tgz") &&
-      !lowerName.endsWith(".tar")
-    ) {
-      return {
-        ok: false as const,
-        code: "INVALID_FILE_TYPE" as const,
-        message: "Only `.tar.gz`, `.tgz`, and `.tar` archives are supported.",
-      };
-    }
-
-    if (archive.size <= 0) {
-      return {
-        ok: false as const,
-        code: "EMPTY_FILE" as const,
-        message: "The selected archive is empty.",
-      };
-    }
-
-    if (archive.size > MAX_CMS_ARCHIVE_SIZE_BYTES) {
-      return {
-        ok: false as const,
-        code: "FILE_TOO_LARGE" as const,
-        message: `Archive exceeds the current limit of ${Math.floor(
-          MAX_CMS_ARCHIVE_SIZE_BYTES / (1024 * 1024),
-        )} MB.`,
-      };
+    const validationError = getArchiveValidationError(archive);
+    if (validationError) {
+      return validationError;
     }
 
     try {

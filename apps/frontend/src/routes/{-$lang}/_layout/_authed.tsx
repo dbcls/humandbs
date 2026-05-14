@@ -114,12 +114,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
         },
       });
     }
-
-    const tab = getTabRoute(matches.at(-1)?.fullPath);
-
-    return {
-      tab,
-    };
   },
 
   component: RouteComponent,
@@ -147,15 +141,6 @@ function NavPanel() {
           <section className="flex flex-col gap-5 text-sm">
             <span>Static Pages</span>
             <div className="flex flex-col items-stretch gap-5 pl-5">
-              <PanelItem
-                title={
-                  <span>
-                    <ArchiveRestore className="mr-2 inline size-5 align-middle leading-normal" />
-                    Data Transfer
-                  </span>
-                }
-                tab="data-transfer"
-              />
               <PanelItem
                 title={
                   <span>
@@ -220,6 +205,15 @@ function NavPanel() {
                   </span>
                 }
                 tab="flowcharts"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <ArchiveRestore className="mr-2 inline size-5 align-middle leading-normal" />
+                    Data Transfer
+                  </span>
+                }
+                tab="data-transfer"
               />
             </div>
           </section>
