@@ -101,11 +101,11 @@ const INITIAL_CAMERA_Y = 500;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
 const INITIAL_SCENE_OFFSET_Y = 90; // Vertical offset to prevent cutoff at the bottom
 const INITIAL_MATERIAL_ROUGHNESS = 0.8; // High roughness for a matte look
-const INITIAL_LIGHT_AMBIENT = 3.0;
+const INITIAL_LIGHT_AMBIENT = 1.2;
 const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
 const INITIAL_LIGHT_DIRECTIONAL = 0.0;
-const INITIAL_LIGHT_POINT_1 = 3.0;
-const INITIAL_LIGHT_POINT_2 = 3.0;
+const INITIAL_LIGHT_POINT_1 = 1.0;
+const INITIAL_LIGHT_POINT_2 = 1.0;
 
 // Macromolecule OKLCH Color Parameters
 const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
@@ -653,7 +653,7 @@ export default function FrontStatsVisualizationNew() {
     };
     
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("blob_debug_params_v3");
+      const saved = localStorage.getItem("blob_debug_params_v4");
       if (saved) {
         try {
           return { ...defaults, ...JSON.parse(saved) };
@@ -666,7 +666,7 @@ export default function FrontStatsVisualizationNew() {
   });
 
   useEffect(() => {
-    localStorage.setItem("blob_debug_params_v3", JSON.stringify(debugParams));
+    localStorage.setItem("blob_debug_params_v4", JSON.stringify(debugParams));
   }, [debugParams]);
 
   const navigate = useNavigate();
@@ -828,7 +828,7 @@ export default function FrontStatsVisualizationNew() {
           <button 
             className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 rounded font-bold transition-colors"
             onClick={() => {
-              localStorage.removeItem("blob_debug_params_v3");
+              localStorage.removeItem("blob_debug_params_v4");
               setDebugParams({
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 particleScale: INITIAL_PARTICLE_SCALE,
