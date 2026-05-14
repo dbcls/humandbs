@@ -556,9 +556,6 @@ function CarouselScene({
       <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#00f0ff" />
       <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ff00a0" />
 
-      {/* A soft shadow plane underneath the carousel gives a premium grounded feel */}
-      <ContactShadows position={[0, -150, 0]} opacity={0.4} scale={4000} blur={2.5} far={600} resolution={512} />
-
       {/* Group tilted down slightly for a "carousel" projector view */}
       <group rotation={[-0.2, 0, 0]} position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}>
         <group ref={groupRef}>
