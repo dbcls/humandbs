@@ -3,7 +3,6 @@ import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Environment, ContactShadows, Text, Billboard } from "@react-three/drei";
-import { EffectComposer, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -101,11 +100,11 @@ const INITIAL_CAMERA_Y = 500;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
 const INITIAL_SCENE_OFFSET_Y = 90; // Vertical offset to prevent cutoff at the bottom
 const INITIAL_MATERIAL_ROUGHNESS = 0.8; // High roughness for a matte look
-const INITIAL_LIGHT_AMBIENT = 1.2;
+const INITIAL_LIGHT_AMBIENT = 3.0;
 const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
 const INITIAL_LIGHT_DIRECTIONAL = 0.0;
-const INITIAL_LIGHT_POINT_1 = 1.0;
-const INITIAL_LIGHT_POINT_2 = 1.0;
+const INITIAL_LIGHT_POINT_1 = 3.0;
+const INITIAL_LIGHT_POINT_2 = 3.0;
 
 // Macromolecule OKLCH Color Parameters
 const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
@@ -546,15 +545,8 @@ function CarouselScene({
 
   return (
     <>
-      {/* Postprocessing for depth blur (gradually blurs items further from the front) */}
-      <EffectComposer disableNormalPass multisampling={4}>
-        <DepthOfField 
-          target={[0, 0, carouselRadius]} 
-          focalLength={debugParams?.dofFocalLength ?? 0.05} 
-          bokehScale={debugParams?.dofBokehScale ?? 8} 
-          height={700} 
-        />
-      </EffectComposer>
+      {/* Fog flawlessly fades out distant objects without altering WebGL color pipelines or causing transparent canvas clipping artifacts */}
+      <fog attach="fog" args={['#f8fafc', debugParams?.fogNear ?? 500, debugParams?.fogFar ?? 3000]} />
 
       {/* User controllable lighting */}
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
@@ -648,12 +640,12 @@ export default function FrontStatsVisualizationNew() {
       lightPoint2: INITIAL_LIGHT_POINT_2,
       physicsForce: 0.1,
       particleLabelFontSize: 12,
-      dofFocalLength: 0.05,
-      dofBokehScale: 8,
+      fogNear: 500,
+      fogFar: 3000,
     };
     
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("blob_debug_params_v4");
+      const saved = localStorage.getItem("blob_debug_params_v5");
       if (saved) {
         try {
           return { ...defaults, ...JSON.parse(saved) };
@@ -666,7 +658,7 @@ export default function FrontStatsVisualizationNew() {
   });
 
   useEffect(() => {
-    localStorage.setItem("blob_debug_params_v4", JSON.stringify(debugParams));
+    localStorage.setItem("blob_debug_params_v5", JSON.stringify(debugParams));
   }, [debugParams]);
 
   const navigate = useNavigate();
@@ -778,28 +770,28 @@ export default function FrontStatsVisualizationNew() {
 
             <div className="flex flex-col">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-gray-700">Blur: Focal Length</label>
-                <span className="text-xs font-mono text-pink-500">{debugParams.dofFocalLength.toFixed(3)}</span>
+                <label className="text-xs font-semibold text-gray-700">Fog: Fade Start (Near)</label>
+                <span className="text-xs font-mono text-pink-500">{debugParams.fogNear}</span>
               </div>
               <input
                 type="range"
-                min="0.01" max="0.2" step="0.01"
-                value={debugParams.dofFocalLength}
-                onChange={(e) => setDebugParams(p => ({ ...p, dofFocalLength: parseFloat(e.target.value) }))}
+                min="0" max="2000" step="50"
+                value={debugParams.fogNear}
+                onChange={(e) => setDebugParams(p => ({ ...p, fogNear: parseInt(e.target.value) }))}
                 className="w-full mt-2 accent-blue-500"
               />
             </div>
 
             <div className="flex flex-col">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-gray-700">Blur: Bokeh Scale</label>
-                <span className="text-xs font-mono text-pink-500">{debugParams.dofBokehScale.toFixed(1)}</span>
+                <label className="text-xs font-semibold text-gray-700">Fog: Fade End (Far)</label>
+                <span className="text-xs font-mono text-pink-500">{debugParams.fogFar}</span>
               </div>
               <input
                 type="range"
-                min="1" max="20" step="0.5"
-                value={debugParams.dofBokehScale}
-                onChange={(e) => setDebugParams(p => ({ ...p, dofBokehScale: parseFloat(e.target.value) }))}
+                min="1000" max="5000" step="100"
+                value={debugParams.fogFar}
+                onChange={(e) => setDebugParams(p => ({ ...p, fogFar: parseInt(e.target.value) }))}
                 className="w-full mt-2 accent-blue-500"
               />
             </div>
@@ -828,7 +820,7 @@ export default function FrontStatsVisualizationNew() {
           <button 
             className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 rounded font-bold transition-colors"
             onClick={() => {
-              localStorage.removeItem("blob_debug_params_v4");
+              localStorage.removeItem("blob_debug_params_v5");
               setDebugParams({
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 particleScale: INITIAL_PARTICLE_SCALE,
@@ -844,8 +836,8 @@ export default function FrontStatsVisualizationNew() {
                 lightPoint2: INITIAL_LIGHT_POINT_2,
                 physicsForce: 0.1,
                 particleLabelFontSize: 12,
-                dofFocalLength: 0.05,
-                dofBokehScale: 8,
+                fogNear: 500,
+                fogFar: 3000,
               });
             }}
           >
@@ -892,8 +884,6 @@ export default function FrontStatsVisualizationNew() {
             <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
             {/* Environment map is CRITICAL for glass materials to look realistic and not blow out into white */}
             <Environment preset="city" />
-            {/* Subtle atmospheric fog to blend the distant carousel items into the background */}
-            <fog attach="fog" args={['#f8fafc', debugParams.cameraZ - debugParams.carouselRadius * 0.8, debugParams.cameraZ + debugParams.carouselRadius * 1.5]} />
             
             <Suspense fallback={null}>
             <CarouselScene 
