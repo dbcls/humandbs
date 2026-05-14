@@ -93,14 +93,14 @@ function useStats() {
 
 // --- Configuration & Materials ---
 
-const INITIAL_CAROUSEL_RADIUS = 1750;
+const INITIAL_CAROUSEL_RADIUS = 1500;
 const INITIAL_PARTICLE_SCALE = 400; // Global multiplier for physical marble size
 const INITIAL_CAROUSEL_ROTATION_SPEED = 0.02; // Radians per second
 const INITIAL_CAMERA_Y = 500;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
-const INITIAL_SCENE_OFFSET_Y = -150; // Vertical offset to prevent cutoff at the bottom
+const INITIAL_SCENE_OFFSET_Y = 90; // Vertical offset to prevent cutoff at the bottom
 const INITIAL_MATERIAL_ROUGHNESS = 0.8; // High roughness for a matte look
-const INITIAL_LIGHT_AMBIENT = 2.4;
+const INITIAL_LIGHT_AMBIENT = 3.0;
 const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
 const INITIAL_LIGHT_DIRECTIONAL = 0.0;
 const INITIAL_LIGHT_POINT_1 = 3.0;
