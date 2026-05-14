@@ -98,7 +98,7 @@ const INITIAL_PARTICLE_SCALE = 400; // Global multiplier for physical marble siz
 const INITIAL_CAROUSEL_ROTATION_SPEED = 0.02; // Radians per second
 const INITIAL_CAMERA_Y = 500;    // Vertical position of the camera
 const INITIAL_CAMERA_Z = 2000;  // Zoom distance of the camera (adjust based on your preference!)
-const INITIAL_SCENE_OFFSET_Y = 90; // Vertical offset to prevent cutoff at the bottom
+const INITIAL_SCENE_OFFSET_Y = 50; // Vertical offset to prevent cutoff at the bottom
 const INITIAL_MATERIAL_ROUGHNESS = 0.8; // High roughness for a matte look
 const INITIAL_LIGHT_AMBIENT = 3.0;
 const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
@@ -106,6 +106,8 @@ const INITIAL_LIGHT_DIRECTIONAL = 1.0;
 const INITIAL_LIGHT_POINT_1 = 3.0;
 const INITIAL_LIGHT_POINT_2 = 3.0;
 const INITIAL_PHYSICS_FORCE = 0.1;
+const INITIAL_FOG_NEAR = 650;
+const INITIAL_FOG_FAR = 5000;
 
 // Macromolecule OKLCH Color Parameters
 const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
@@ -173,11 +175,14 @@ function BlobCluster({
   position,
   rotation,
   paletteIndex,
-  onClick,
+  onNavigate,
   particleScale,
   globalMaxCount,
   debugParams,
-  onHover
+  isHovered,
+  onHover,
+  isAnyHovered,
+  isDragging
 }: {
   system: StatsSystem;
   mode: "research" | "dataset";
@@ -185,18 +190,21 @@ function BlobCluster({
   position: [number, number, number];
   rotation: [number, number, number];
   paletteIndex: number;
-  onClick: (facet: string, value: string) => void;
+  onNavigate: (facet: string, value: string) => void;
   particleScale: number;
   globalMaxCount: number;
   debugParams: any;
+  isHovered: boolean;
   onHover: (state: boolean) => void;
+  isAnyHovered: boolean;
+  isDragging: boolean;
 }) {
   const nodesRef = useRef<SimNode[]>([]);
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const [isHovered, setIsHovered] = useState(false);
   const [hoveredParticleIndex, setHoveredParticleIndex] = useState<number | null>(null);
   const labelRefs = useRef<(THREE.Group | null)[]>([]);
+  const gridDims = useRef({ width: 100, height: 100 });
   
   const satellites = useMemo(() => {
     return system.satellites.filter((s) => s[mode] > 0);
@@ -205,26 +213,24 @@ function BlobCluster({
   useEffect(() => {
     if (satellites.length === 0) return;
 
-    // We use cube root so that the VOLUME of the 3D sphere is STRICTLY proportional to the count.
-    // To maintain strict proportionality, the range must start at 0.
     const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([0, 50]);
     
-    // Pre-calculate target grid positions using a dynamic 2D row-packing algorithm
     const sorted = [...satellites].sort((a, b) => b[mode] - a[mode]);
     
-    // Prepare items with exact physical sizes
     const layoutItems = sorted.map(sat => {
       const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
       const visualRadius = d3Radius * (particleScale / 260);
       return { sat, d3Radius, visualRadius };
     });
 
-    // Row-wrap layout optimized for screen aspect ratio (16:9)
     const rows: (typeof layoutItems[0])[][] = [[]];
     let currentRowWidth = 0;
-    const totalArea = layoutItems.reduce((sum, item) => sum + Math.PI * item.visualRadius * item.visualRadius, 0);
-    const maxRowWidth = Math.sqrt(totalArea * 1.77) * 1.2; // 1.77 is ~16:9, 1.2 is padding factor
-    const padding = particleScale * 0.05; // Gap between particles
+    const padding = particleScale * 0.05;
+    
+    // Calculate total required area treating each particle + padding as a square bounding box
+    const totalArea = layoutItems.reduce((sum, item) => sum + Math.pow(item.visualRadius * 2 + padding, 2), 0);
+    // Use natural 16:9 aspect ratio width. If very few items, lay them out in a single row.
+    const maxRowWidth = layoutItems.length <= 10 ? 9999 : Math.sqrt(totalArea * 1.77) * 1.1;
 
     for (const item of layoutItems) {
       const diam = item.visualRadius * 2;
@@ -238,9 +244,11 @@ function BlobCluster({
 
     const layoutResults = new Map<string, {x: number, y: number, d3Radius: number}>();
     let yCursor = 0;
+    let actualWidth = 0;
     for (const row of rows) {
       const rowHeight = Math.max(...row.map(i => i.visualRadius * 2));
       const rowWidth = row.reduce((sum, item) => sum + item.visualRadius * 2 + padding, 0) - padding;
+      actualWidth = Math.max(actualWidth, rowWidth);
       
       let xCursor = -rowWidth / 2;
       const rowY = yCursor - rowHeight / 2;
@@ -253,19 +261,19 @@ function BlobCluster({
       yCursor -= rowHeight + padding;
     }
     
-    // Center the whole block vertically
     const totalHeight = -yCursor - padding;
     const yOffset = totalHeight / 2;
+    
+    gridDims.current = { width: actualWidth, height: totalHeight };
 
     nodesRef.current = satellites.map((sat) => {
       const existing = nodesRef.current.find((n) => n.id === sat.id);
       const layout = layoutResults.get(sat.id)!;
       const { x: targetX, y: layoutY, d3Radius } = layout;
-      // Push the active cluster UP and OUT towards the camera to fill the screen
-      const targetY = layoutY + yOffset + 250; 
-      const targetZ = 350; 
+      // Perfectly center vertically. Camera will handle framing.
+      const targetY = layoutY + yOffset; 
+      const targetZ = 0; 
       
-      // Macromolecule coloring logic (OKLCH)
       const hash = hashString(sat.value || sat.facet);
       const hue = hash % 360;
       const isVivid = (hash % 100) < (MACRO_VIVID_PROBABILITY * 100);
@@ -288,40 +296,90 @@ function BlobCluster({
         targetZ,
       };
     });
-  // Added paletteIndex back to dependency array to fix React Fast Refresh size error during HMR
   }, [satellites, mode, paletteIndex, globalMaxCount]);
 
-  // Update the InstancedMesh every frame with a custom 3D Verlet physics engine
+  const localGroupRef = useRef<THREE.Group>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
+  }, []);
+
+  const handlePointerEnter = (e: any) => {
+    if (isDragging) return;
+    e.stopPropagation();
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    onHover(true);
+    document.body.style.cursor = 'pointer';
+  };
+
+  const handlePointerLeave = (e: any) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      onHover(false);
+      document.body.style.cursor = 'auto';
+    }, 200); // 200ms delay to prevent instant drop
+  };
+
+  // Force collapse if user starts dragging
+  useEffect(() => {
+    if (isDragging && isHovered) {
+      onHover(false);
+    }
+  }, [isDragging, isHovered, onHover]);
+
+  // Calculate dynamic target scale based on grid size
+  const maxDim = Math.max(gridDims.current.width, gridDims.current.height * 1.77);
+  // Target a visible size of ~1600 units, capped at 8x scale so single items aren't huge
+  const targetScale = isHovered ? Math.min(8.0, 1600 / (maxDim || 1)) : 1.0;
+
   useFrame((state, delta) => {
+    const time = state.clock.elapsedTime;
+    if (localGroupRef.current) {
+      // Unfocused clusters retreat down and away so they disappear cleanly
+      const pushBackZ = (isAnyHovered && !isHovered) ? -1500 : 0;
+      const pushDownY = (isAnyHovered && !isHovered) ? -2000 : 0;
+      localGroupRef.current.position.z = THREE.MathUtils.lerp(localGroupRef.current.position.z, pushBackZ, 0.08);
+      localGroupRef.current.position.y = THREE.MathUtils.lerp(localGroupRef.current.position.y, pushDownY, 0.08);
+      
+      localGroupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
+    }
+
     const nodes = nodesRef.current;
-    
-    // Cap delta to prevent physics explosions on lag spikes
     const dt = Math.min(delta, 0.05);
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       
       if (isHovered) {
-        // Smoothly lerp to ordered grid positions
+        let currentTargetZ = node.targetZ;
+        if (hoveredParticleIndex !== null && hoveredParticleIndex !== i) {
+          currentTargetZ -= 300; // Relative Z pushback
+        }
+
         node.x = THREE.MathUtils.lerp(node.x || 0, node.targetX, 0.1);
         node.y = THREE.MathUtils.lerp(node.y || 0, node.targetY, 0.1);
-        node.z = THREE.MathUtils.lerp(node.z || 0, node.targetZ, 0.1);
+        node.z = THREE.MathUtils.lerp(node.z || 0, currentTargetZ, 0.1);
         node.vx = 0; node.vy = 0; node.vz = 0;
-        continue; // Skip collision and velocity for hovered items
+        continue;
       }
 
-      // Pull to center - parameterized physics force
       const pull = isActive ? (debugParams?.physicsForce ?? 0.1) : (debugParams?.physicsForce ?? 0.1) * 3;
       node.vx = (node.vx || 0) + (0 - (node.x || 0)) * pull * dt;
       node.vy = (node.vy || 0) + (0 - (node.y || 0)) * pull * dt;
       node.vz = (node.vz || 0) + (0 - (node.z || 0)) * pull * dt;
 
-      // Gentle organic wander
-      node.vx += (Math.random() - 0.5) * 1.5;
-      node.vy += (Math.random() - 0.5) * 1.5;
-      node.vz += (Math.random() - 0.5) * 1.5;
+      // Organic "protein-like" fluid drift instead of pure jitter
+      const offset = i * 0.13;
+      node.vx += Math.sin(time * 1.2 + offset) * 0.4 + (Math.random() - 0.5) * 0.5;
+      node.vy += Math.cos(time * 1.1 + offset * 2.1) * 0.4 + (Math.random() - 0.5) * 0.5;
+      node.vz += Math.sin(time * 1.3 + offset * 3.2) * 0.4 + (Math.random() - 0.5) * 0.5;
 
-      // 3D Collision Repulsion (Rigid Marble Physics)
       const visualRadius = node.d3Radius * (particleScale / 260);
       for (let j = i + 1; j < nodes.length; j++) {
         const other = nodes[j];
@@ -331,14 +389,16 @@ function BlobCluster({
         const distSq = dx*dx + dy*dy + dz*dz;
         const dist = Math.sqrt(distSq) + 0.001;
         const otherRadius = other.d3Radius * (particleScale / 260);
-        const minDist = visualRadius + otherRadius + 1.0; // 1.0 padding to prevent visual intersection
+        const minDist = visualRadius + otherRadius + 1.0;
 
         if (dist < minDist) {
-          // Solid repulsion to keep them perfectly apart like marbles
           const force = (minDist - dist) * 25.0 * dt;
-          const fx = (dx / dist) * force;
-          const fy = (dy / dist) * force;
-          const fz = (dz / dist) * force;
+          // Add Z-scattering to prevent them from getting permanently flattened after layout
+          const adjustedDz = Math.abs(dz) < 1.0 ? (Math.random() - 0.5) * 5.0 : dz;
+          const adjDist = Math.sqrt(dx*dx + dy*dy + adjustedDz*adjustedDz) + 0.001;
+          const fx = (dx / adjDist) * force;
+          const fy = (dy / adjDist) * force;
+          const fz = (adjustedDz / adjDist) * force;
           node.vx += fx; node.vy += fy; node.vz += fz;
           other.vx = (other.vx || 0) - fx; 
           other.vy = (other.vy || 0) - fy; 
@@ -350,17 +410,13 @@ function BlobCluster({
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       if (!isHovered) {
-        // Friction
         node.vx = (node.vx || 0) * 0.85; 
         node.vy = (node.vy || 0) * 0.85; 
         node.vz = (node.vz || 0) * 0.85;
-        
-        // Velocity
         node.x = (node.x || 0) + node.vx * dt * 10;
         node.y = (node.y || 0) + node.vy * dt * 10;
         node.z = (node.z || 0) + node.vz * dt * 10;
 
-        // Hard boundary
         const bound = particleScale * 0.42;
         if (node.x > bound) { node.x = bound; node.vx *= -0.5; }
         if (node.x < -bound) { node.x = -bound; node.vx *= -0.5; }
@@ -380,9 +436,8 @@ function BlobCluster({
         dummy.scale.set(visualRadius, visualRadius, visualRadius);
         dummy.updateMatrix();
         
-        // Hover isolation logic: fade out other particles
         if (hoveredParticleIndex !== null && hoveredParticleIndex !== i) {
-          node.color.copy(node.baseColor).lerp(new THREE.Color("#f8fafc"), 0.85); // Fade to background
+          node.color.copy(node.baseColor).lerp(new THREE.Color("#f8fafc"), 0.85);
         } else {
           node.color.copy(node.baseColor);
         }
@@ -390,9 +445,13 @@ function BlobCluster({
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
         instancedMeshRef.current.setColorAt(i, node.color);
         
-        // Update label position dynamically to track physics/lerp
         if (isHovered && labelRefs.current[i]) {
-          labelRefs.current[i]!.position.set(node.x || 0, (node.y || 0) - visualRadius - 3, node.z || 0);
+          const currentScale = localGroupRef.current?.scale.x ?? 1.0;
+          labelRefs.current[i]!.position.set(
+            (node.x || 0) * currentScale, 
+            ((node.y || 0) - visualRadius) * currentScale - 8, 
+            (node.z || 0) * currentScale
+          );
         }
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
@@ -401,34 +460,40 @@ function BlobCluster({
   });
 
   return (
-    <group position={position} rotation={rotation}>
-      <group 
-        onPointerEnter={() => { setIsHovered(true); onHover(true); document.body.style.cursor = 'pointer'; }}
-        onPointerLeave={() => { setIsHovered(false); onHover(false); document.body.style.cursor = 'auto'; }}
+    <group 
+      position={position} 
+      rotation={rotation}
+      onPointerEnter={isAnyHovered && !isHovered ? undefined : handlePointerEnter}
+      onPointerLeave={isAnyHovered && !isHovered ? undefined : handlePointerLeave}
+    >
+      
+      {/* Hit box OUTSIDE of localGroupRef so it doesn't shrink during layout scaling.
+          This prevents the object from slipping out from under the mouse. */}
+      <mesh 
+        position={[0, 0, 50]} 
+        visible={!(isAnyHovered && !isHovered)}
         onClick={(e) => { 
           e.stopPropagation(); 
+          if (isDragging) return;
           if (satellites.length > 0) {
-            onClick(system.facet, satellites[0].value); 
+            onNavigate(system.facet, satellites[0].value); 
           }
         }}
       >
+        {isHovered ? (
+          <planeGeometry args={[Math.max(300, gridDims.current.width * targetScale * 1.8), Math.max(300, gridDims.current.height * targetScale * 1.8)]} />
+        ) : (
+          <sphereGeometry args={[particleScale * 0.45, 16, 16]} />
+        )}
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+
+      <group ref={localGroupRef}>
         <instancedMesh
           ref={instancedMeshRef}
           args={[undefined, undefined, satellites.length]}
           castShadow
           receiveShadow
-          onPointerMove={(e) => {
-            if (isHovered && e.instanceId !== undefined) {
-              e.stopPropagation();
-              setHoveredParticleIndex(e.instanceId);
-              document.body.style.cursor = 'pointer';
-            }
-          }}
-          onPointerOut={(e) => {
-            if (isHovered) {
-              setHoveredParticleIndex(null);
-            }
-          }}
         >
           <sphereGeometry args={[1, 32, 32]} />
           <meshStandardMaterial 
@@ -438,54 +503,54 @@ function BlobCluster({
             envMapIntensity={0.2}
           />
         </instancedMesh>
-
-        {/* Invisible hit box to ensure hover state doesn't jitter when mouse moves between particles */}
-        <mesh>
-          <sphereGeometry args={[particleScale * 0.45, 16, 16]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
-
-        {/* Render individual clickable 3D text labels for particles when focused */}
-        {isHovered && satellites.map((sat, i) => (
-          <group key={sat.id} ref={el => labelRefs.current[i] = el}>
-            <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-              <Text
-                fontSize={debugParams?.particleLabelFontSize ?? 12}
-                color="#334155"
-                anchorX="center"
-                anchorY="top"
-                onClick={(e) => { e.stopPropagation(); onClick(system.facet, sat.value); }}
-                onPointerEnter={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; setHoveredParticleIndex(i); }}
-                onPointerLeave={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; setHoveredParticleIndex(null); }}
-              >
-                {`${capitalize(sat.value)} (${sat[mode]})`}
-              </Text>
-            </Billboard>
-          </group>
-        ))}
       </group>
-      
-      {/* Canvas-native 3D Text Label to prevent HTML occlusion issues */}
-      <Billboard position={[0, -(particleScale * 0.45) - 10, 0]} follow={true}>
-        <Text 
-          fontSize={16} 
-          color={isActive ? "#1e293b" : "#94a3b8"} 
-          anchorX="center" 
-          anchorY="middle"
-        >
-          {capitalize(system.facet)}
-        </Text>
-      </Billboard>
-      <Billboard position={[0, -(particleScale * 0.45) - 28, 0]} follow={true}>
-        <Text 
-          fontSize={8} 
-          color={isActive ? "#64748b" : "#cbd5e1"} 
-          anchorX="center" 
-          anchorY="middle"
-        >
-          {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items`}
-        </Text>
-      </Billboard>
+
+      {/* Labels OUTSIDE localGroupRef to keep font size perfectly constant regardless of dynamic scaling */}
+      {isHovered && satellites.map((sat, i) => {
+        // We render all labels, removed the 50 item cutoff limit as requested!
+        return (
+        <group key={sat.id} ref={el => labelRefs.current[i] = el}>
+          <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+            <Text
+              fontSize={debugParams?.particleLabelFontSize ?? 12}
+              color="#334155"
+              anchorX="center"
+              anchorY="top"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (!isDragging) onNavigate(system.facet, sat.value); 
+              }}
+            >
+              {`${capitalize(sat.value)} (${sat[mode]})`}
+            </Text>
+          </Billboard>
+        </group>
+      )})}
+        
+      {!isHovered && (
+        <>
+          <Billboard position={[0, -(particleScale * 0.45) - 10, 0]} follow={true}>
+            <Text 
+              fontSize={16} 
+              color={isActive ? "#1e293b" : "#94a3b8"} 
+              anchorX="center" 
+              anchorY="middle"
+            >
+              {capitalize(system.facet)}
+            </Text>
+          </Billboard>
+          <Billboard position={[0, -(particleScale * 0.45) - 28, 0]} follow={true}>
+            <Text 
+              fontSize={8} 
+              color={isActive ? "#64748b" : "#cbd5e1"} 
+              anchorX="center" 
+              anchorY="middle"
+            >
+              {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items`}
+            </Text>
+          </Billboard>
+        </>
+      )}
     </group>
   );
 }
@@ -505,7 +570,8 @@ function CarouselScene({
   lightPoint1,
   lightPoint2,
   globalMaxCount,
-  debugParams
+  debugParams,
+  setParentHoveredIndex
 }: { 
   stats: NormalizedStats, 
   mode: "dataset" | "research", 
@@ -519,7 +585,8 @@ function CarouselScene({
   lightPoint1: number,
   lightPoint2: number,
   globalMaxCount: number,
-  debugParams: any
+  debugParams: any,
+  setParentHoveredIndex: (idx: number | null) => void
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -535,12 +602,14 @@ function CarouselScene({
     if (!groupRef.current) return;
 
     if (hoveredIndex === null && !isDragging) {
-      // Auto-rotation logic
       groupRef.current.rotation.y += rotationSpeed * delta;
+    } else if (hoveredIndex !== null && !isDragging) {
+      const targetRot = - (hoveredIndex * (Math.PI * 2) / total);
+      let diff = targetRot - groupRef.current.rotation.y;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff)); 
+      groupRef.current.rotation.y += diff * 0.08;
     }
-    // If hoveredIndex !== null or dragging, rotation pauses
 
-    // Determine which cluster is currently at the front (closest to camera Z)
     let normalizedRot = groupRef.current.rotation.y % (Math.PI * 2);
     if (normalizedRot < 0) normalizedRot += Math.PI * 2;
     
@@ -574,7 +643,7 @@ function CarouselScene({
     if (isDragging && groupRef.current) {
       e.stopPropagation();
       const dx = e.clientX - dragStartX;
-      groupRef.current.rotation.y = dragRotStart + dx * 0.005; // Drag sensitivity
+      groupRef.current.rotation.y = dragRotStart + dx * 0.005;
     }
   };
 
@@ -585,38 +654,41 @@ function CarouselScene({
 
   return (
     <>
-      {/* Fog flawlessly fades out distant objects without altering WebGL color pipelines or causing transparent canvas clipping artifacts */}
-      <fog attach="fog" args={['#f8fafc', debugParams?.fogNear ?? 500, debugParams?.fogFar ?? 3000]} />
-
-      {/* User controllable lighting */}
+      <fog attach="fog" args={['#f8fafc', debugParams?.fogNear ?? 500, (hoveredIndex !== null ? 6000 : (debugParams?.fogFar ?? 3000))]} />
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
       <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" castShadow />
-      
-      {/* Side lights to add colorful reflections to the glass */}
       <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#00f0ff" />
       <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ff00a0" />
 
-      {/* Invisible background sphere to catch drag events across the whole canvas */}
       <mesh 
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerOut={handlePointerUp}
+        onPointerOver={() => document.body.style.cursor = isDragging ? 'grabbing' : 'grab'}
+        onPointerDown={(e) => {
+          document.body.style.cursor = 'grabbing';
+          handlePointerDown(e);
+        }}
+        onPointerMove={(e) => {
+          document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
+          handlePointerMove(e);
+        }}
+        onPointerUp={(e) => {
+          document.body.style.cursor = 'grab';
+          handlePointerUp(e);
+        }}
+        onPointerOut={(e) => {
+          document.body.style.cursor = 'auto';
+          handlePointerUp(e);
+        }}
       >
         <sphereGeometry args={[4000, 16, 16]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.BackSide} />
       </mesh>
 
-      {/* Group tilted down slightly for a "carousel" projector view */}
       <group rotation={[-0.2, 0, 0]} position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}>
         <group ref={groupRef}>
           {stats.systems.map((sys, i) => {
             const angle = i * ((Math.PI * 2) / total);
-            // Distribute in a circle in the XZ plane
             const x = Math.sin(angle) * carouselRadius;
             const z = Math.cos(angle) * carouselRadius;
-            // Items face outwards
-            const ry = angle;
 
             return (
               <BlobCluster
@@ -627,11 +699,19 @@ function CarouselScene({
                 isActive={activeIndex === i}
                 position={[x, 0, z]}
                 rotation={[0, angle, 0]}
-                onClick={handleFacetClick}
+                onNavigate={handleFacetClick}
                 particleScale={particleScale}
                 globalMaxCount={globalMaxCount}
                 debugParams={debugParams}
-                onHover={(isHovered) => setHoveredIndex(isHovered ? i : null)}
+                isHovered={hoveredIndex === i}
+                onHover={(isHovered) => {
+                  if (!isDragging) {
+                    setHoveredIndex(isHovered ? i : null);
+                    setParentHoveredIndex(isHovered ? i : null);
+                  }
+                }}
+                isAnyHovered={hoveredIndex !== null}
+                isDragging={isDragging}
               />
             );
           })}
@@ -642,10 +722,25 @@ function CarouselScene({
 }
 
 // --- Dynamic Camera Updater ---
-// React Three Fiber's <Canvas camera={...}> prop is only used on initial mount.
-// To dynamically update the camera/fog during HMR or state changes, we must use this component.
-function CameraUpdater({ cameraY, cameraZ, radius }: { cameraY: number, cameraZ: number, radius: number }) {
+
+function CameraUpdater({ cameraY, cameraZ, radius, sceneOffsetY, isAnyHovered }: { cameraY: number, cameraZ: number, radius: number, sceneOffsetY: number, isAnyHovered: boolean }) {
   const { camera, scene } = useThree();
+  const lookAtTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+
+  useFrame(() => {
+    if (isAnyHovered) {
+      // Calculate world Y of the hovered cluster. Carousel rotates by -0.2 radians on X axis.
+      const focusY = sceneOffsetY - radius * Math.sin(-0.2);
+      // Frame it perfectly, move camera closer for better scale feeling
+      camera.position.lerp(new THREE.Vector3(0, focusY, radius + 1500), 0.06);
+      lookAtTarget.lerp(new THREE.Vector3(0, focusY, radius), 0.06);
+    } else {
+      // Return to user's custom debug camera settings
+      camera.position.lerp(new THREE.Vector3(0, cameraY, cameraZ), 0.06);
+      lookAtTarget.lerp(new THREE.Vector3(0, 0, 0), 0.06);
+    }
+    camera.lookAt(lookAtTarget);
+  });
 
   useEffect(() => {
     const fogStart = cameraZ - radius * 0.8;
@@ -671,7 +766,6 @@ export default function FrontStatsVisualizationNew() {
   const [mode, setMode] = useState<"dataset" | "research">("dataset");
   const [isMounted, setIsMounted] = useState(false);
   
-  // Real-time Debug Parameters with LocalStorage persistence
   const [debugParams, setDebugParams] = useState(() => {
     const defaults = {
       carouselRadius: INITIAL_CAROUSEL_RADIUS,
@@ -688,8 +782,8 @@ export default function FrontStatsVisualizationNew() {
       lightPoint2: INITIAL_LIGHT_POINT_2,
       physicsForce: INITIAL_PHYSICS_FORCE,
       particleLabelFontSize: 12,
-      fogNear: 500,
-      fogFar: 3000,
+      fogNear: INITIAL_FOG_NEAR,
+      fogFar: INITIAL_FOG_FAR,
     };
     
     if (typeof window !== "undefined") {
@@ -704,6 +798,8 @@ export default function FrontStatsVisualizationNew() {
     }
     return defaults;
   });
+
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     localStorage.setItem("blob_debug_params_v5", JSON.stringify(debugParams));
@@ -731,7 +827,6 @@ export default function FrontStatsVisualizationNew() {
     );
   }
 
-  // Calculate global max count across all systems to ensure volume scaling is consistent everywhere
   let globalMaxCount = 1;
   stats.systems.forEach(sys => {
     sys.satellites.forEach(s => {
@@ -742,7 +837,6 @@ export default function FrontStatsVisualizationNew() {
   return (
     <div className="w-full h-[640px] rounded-3xl mt-8 overflow-hidden bg-slate-50 shadow-inner relative flex justify-center">
       
-      {/* --- LIVE DEBUG PANEL (Development Only) --- */}
       <div className="absolute top-4 left-4 z-[9999] bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 w-80 text-xs overflow-y-auto max-h-[calc(100%-2rem)]">
         <h3 className="font-bold mb-3 text-slate-800 text-sm">Real-time Tweaks</h3>
         
@@ -776,7 +870,6 @@ export default function FrontStatsVisualizationNew() {
             <input type="range" min="100" max="2000" step="10" value={debugParams.cameraZ} onChange={(e) => setDebugParams(p => ({...p, cameraZ: Number(e.target.value)}))} />
           </label>
 
-          {/* Lighting Controls */}
           <div className="space-y-1 mt-4 border-t pt-2 border-slate-200">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
               <span className="whitespace-nowrap">Ambient Color</span>
@@ -882,10 +975,10 @@ export default function FrontStatsVisualizationNew() {
                 lightDirectional: INITIAL_LIGHT_DIRECTIONAL,
                 lightPoint1: INITIAL_LIGHT_POINT_1,
                 lightPoint2: INITIAL_LIGHT_POINT_2,
-                physicsForce: 0.1,
+                physicsForce: INITIAL_PHYSICS_FORCE,
                 particleLabelFontSize: 12,
-                fogNear: 500,
-                fogFar: 3000,
+                fogNear: INITIAL_FOG_NEAR,
+                fogFar: INITIAL_FOG_FAR,
               });
             }}
           >
@@ -894,7 +987,6 @@ export default function FrontStatsVisualizationNew() {
         </div>
       </div>
 
-      {/* Toggle Switch */}
       <div className="absolute top-6 z-10 flex items-center bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm border border-slate-200">
         <button
           onClick={() => setMode("dataset")}
@@ -918,7 +1010,6 @@ export default function FrontStatsVisualizationNew() {
         </button>
       </div>
 
-      {/* The Unified 3D Space */}
       <div className="absolute inset-0">
         {isMounted && stats && (
           <Canvas
@@ -926,11 +1017,16 @@ export default function FrontStatsVisualizationNew() {
             camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45 }}
             gl={{ alpha: false, antialias: true, powerPreference: "high-performance" }}
           >
-            {/* Solid warm gray background to match the fog and site theme */}
             <color attach="background" args={["#f8fafc"]} />
             
-            <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
-            {/* Environment map is CRITICAL for glass materials to look realistic and not blow out into white */}
+            <CameraUpdater 
+              cameraY={debugParams.cameraY} 
+              cameraZ={debugParams.cameraZ} 
+              radius={debugParams.carouselRadius} 
+              sceneOffsetY={debugParams.sceneOffsetY ?? 50}
+              isAnyHovered={hoveredIndex !== null}
+            />
+            
             <Environment preset="city" />
             
             <Suspense fallback={null}>
@@ -948,6 +1044,7 @@ export default function FrontStatsVisualizationNew() {
               lightPoint2={debugParams.lightPoint2}
               globalMaxCount={globalMaxCount}
               debugParams={debugParams}
+              setParentHoveredIndex={setHoveredIndex}
             />
           </Suspense>
         </Canvas>
@@ -955,5 +1052,5 @@ export default function FrontStatsVisualizationNew() {
       </div>
     </div>
   );
-}
 
+}
