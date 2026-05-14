@@ -913,6 +913,7 @@ export default function FrontStatsVisualizationNew() {
             />
           </Suspense>
         </Canvas>
+        )}
       </div>
     </div>
   );
