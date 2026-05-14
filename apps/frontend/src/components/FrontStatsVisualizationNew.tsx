@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html, Environment, ContactShadows } from "@react-three/drei";
+import { Html, Environment, ContactShadows, Text } from "@react-three/drei";
 import * as THREE from "three";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -151,6 +151,9 @@ type SimNode = StatsSatellite & {
   vx?: number;
   vy?: number;
   vz?: number;
+  targetX: number;
+  targetY: number;
+  targetZ: number;
 };
 
 // --- Single Blob Cluster Component ---
@@ -165,7 +168,8 @@ function BlobCluster({
   onClick,
   particleScale,
   globalMaxCount,
-  debugParams
+  debugParams,
+  onHover
 }: {
   system: StatsSystem;
   mode: "research" | "dataset";
@@ -177,10 +181,13 @@ function BlobCluster({
   particleScale: number;
   globalMaxCount: number;
   debugParams: any;
+  onHover: (state: boolean) => void;
 }) {
   const nodesRef = useRef<SimNode[]>([]);
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const [isHovered, setIsHovered] = useState(false);
+  const labelRefs = useRef<(THREE.Group | null)[]>([]);
   
   const satellites = useMemo(() => {
     return system.satellites.filter((s) => s[mode] > 0);
@@ -192,6 +199,12 @@ function BlobCluster({
     // We use cube root so that the VOLUME of the 3D sphere is STRICTLY proportional to the count.
     // To maintain strict proportionality, the range must start at 0.
     const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([0, 50]);
+    
+    // Pre-calculate target grid positions for when the facet is focused
+    const sorted = [...satellites].sort((a, b) => b[mode] - a[mode]);
+    const columns = Math.ceil(Math.sqrt(sorted.length));
+    const spacing = 18 * (particleScale / 260); // Base spacing scaled by user setting
+
     nodesRef.current = satellites.map((sat, i) => {
       const existing = nodesRef.current.find((n) => n.id === sat.id);
       // Math.max ensures that even count=1 items are at least barely visible (0.8 radius)
@@ -204,6 +217,14 @@ function BlobCluster({
       const lightness = isVivid ? MACRO_COLOR_L_VIVID : MACRO_COLOR_L_NEUTRAL;
       const color = oklchToThreeColor(lightness, MACRO_COLOR_CHROMA, hue);
 
+      // Grid position assignment
+      const orderIdx = sorted.findIndex(s => s.id === sat.id);
+      const row = Math.floor(orderIdx / columns);
+      const col = orderIdx % columns;
+      const targetX = (col - (columns - 1) / 2) * spacing;
+      const targetY = -(row - Math.floor(sorted.length / columns) / 2) * spacing + 40;
+      const targetZ = 0;
+
       return {
         ...sat,
         x: existing?.x ?? (Math.random() - 0.5) * 40,
@@ -214,6 +235,9 @@ function BlobCluster({
         vz: existing?.vz ?? 0,
         d3Radius,
         color, // Assign newly calculated color based on hash
+        targetX,
+        targetY,
+        targetZ,
       };
     });
   // Added paletteIndex back to dependency array to fix React Fast Refresh size error during HMR
@@ -228,6 +252,16 @@ function BlobCluster({
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
+      
+      if (isHovered) {
+        // Smoothly lerp to ordered grid positions
+        node.x = THREE.MathUtils.lerp(node.x || 0, node.targetX, 0.1);
+        node.y = THREE.MathUtils.lerp(node.y || 0, node.targetY, 0.1);
+        node.z = THREE.MathUtils.lerp(node.z || 0, node.targetZ, 0.1);
+        node.vx = 0; node.vy = 0; node.vz = 0;
+        continue; // Skip collision and velocity for hovered items
+      }
+
       // Pull to center - much weaker now to allow them to spread like a bunch of grapes
       const pull = isActive ? 0.03 : 0.1;
       node.vx = (node.vx || 0) + (0 - (node.x || 0)) * pull * dt;
@@ -267,26 +301,26 @@ function BlobCluster({
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      // Friction
-      node.vx = (node.vx || 0) * 0.85; 
-      node.vy = (node.vy || 0) * 0.85; 
-      node.vz = (node.vz || 0) * 0.85;
-      
-      // Velocity
-      node.x = (node.x || 0) + node.vx * dt * 10;
-      node.y = (node.y || 0) + node.vy * dt * 10;
-      node.z = (node.z || 0) + node.vz * dt * 10;
+      if (!isHovered) {
+        // Friction
+        node.vx = (node.vx || 0) * 0.85; 
+        node.vy = (node.vy || 0) * 0.85; 
+        node.vz = (node.vz || 0) * 0.85;
+        
+        // Velocity
+        node.x = (node.x || 0) + node.vx * dt * 10;
+        node.y = (node.y || 0) + node.vy * dt * 10;
+        node.z = (node.z || 0) + node.vz * dt * 10;
 
-      // Hard boundary
-      const bound = particleScale * 0.42;
-      if (node.x > bound) { node.x = bound; node.vx *= -0.5; }
-      if (node.x < -bound) { node.x = -bound; node.vx *= -0.5; }
-      if (node.y > bound) { node.y = bound; node.vy *= -0.5; }
-      if (node.y < -bound) { node.y = -bound; node.vy *= -0.5; }
-      if (node.z > bound) { node.z = bound; node.vz *= -0.5; }
-      if (node.z < -bound) { node.z = -bound; node.vz *= -0.5; }
-      
-      // (Removed MarchingCubes strength animation)
+        // Hard boundary
+        const bound = particleScale * 0.42;
+        if (node.x > bound) { node.x = bound; node.vx *= -0.5; }
+        if (node.x < -bound) { node.x = -bound; node.vx *= -0.5; }
+        if (node.y > bound) { node.y = bound; node.vy *= -0.5; }
+        if (node.y < -bound) { node.y = -bound; node.vy *= -0.5; }
+        if (node.z > bound) { node.z = bound; node.vz *= -0.5; }
+        if (node.z < -bound) { node.z = -bound; node.vz *= -0.5; }
+      }
     }
 
     if (instancedMeshRef.current) {
@@ -300,26 +334,22 @@ function BlobCluster({
         
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
         instancedMeshRef.current.setColorAt(i, node.color);
+        
+        // Update label position dynamically to track physics/lerp
+        if (isHovered && labelRefs.current[i]) {
+          labelRefs.current[i]!.position.set(node.x || 0, (node.y || 0) - visualRadius - 3, node.z || 0);
+        }
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
       if (instancedMeshRef.current.instanceColor) instancedMeshRef.current.instanceColor.needsUpdate = true;
     }
   });
 
-  // Calculate center of mass for label
-  const center = useMemo(() => {
-    if (nodesRef.current.length === 0) return new THREE.Vector3();
-    const x = d3.mean(nodesRef.current, (d) => d.x || 0) || 0;
-    const y = d3.mean(nodesRef.current, (d) => d.y || 0) || 0;
-    const z = d3.mean(nodesRef.current, (d) => d.z || 0) || 0;
-    return new THREE.Vector3(x, y, z);
-  }, [satellites, isActive]);
-
   return (
     <group position={position} rotation={rotation}>
       <group 
-        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
-        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+        onPointerEnter={() => { setIsHovered(true); onHover(true); document.body.style.cursor = 'pointer'; }}
+        onPointerLeave={() => { setIsHovered(false); onHover(false); document.body.style.cursor = 'auto'; }}
         onClick={(e) => { 
           e.stopPropagation(); 
           if (satellites.length > 0) {
@@ -341,23 +371,44 @@ function BlobCluster({
             envMapIntensity={0.2}
           />
         </instancedMesh>
+
+        {/* Render individual clickable 3D text labels for particles when focused */}
+        {isHovered && satellites.map((sat, i) => (
+          <group key={sat.id} ref={el => labelRefs.current[i] = el}>
+            <Text
+              fontSize={4}
+              color="#334155"
+              anchorX="center"
+              anchorY="top"
+              onClick={(e) => { e.stopPropagation(); onClick(system.facet, sat.value); }}
+              onPointerEnter={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+              onPointerLeave={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; }}
+            >
+              {`${sat.value.replace(/_/g, " ").toUpperCase()} (${sat[mode]})`}
+            </Text>
+          </group>
+        ))}
       </group>
       
-      {/* HTML Label positioned slightly below the cluster and z-sorted */}
-      <Html center position={[center.x, center.y - (particleScale * 0.45) - 30, center.z]} zIndexRange={[1000, 0]}>
-        <div 
-          className={`flex flex-col items-center justify-center transition-all duration-700 pointer-events-none 
-            ${isActive ? 'opacity-100 scale-110 drop-shadow-xl' : 'opacity-40 scale-90'}`}
-          style={{ width: 'max-content' }}
-        >
-          <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-white/20">
-            <h3 className="font-bold text-slate-800 text-base tracking-widest uppercase">{system.facet.replace(/_/g, " ")}</h3>
-            <p className="text-xs text-slate-500 font-medium text-center mt-0.5">
-              {d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items
-            </p>
-          </div>
-        </div>
-      </Html>
+      {/* Canvas-native 3D Text Label to prevent HTML occlusion issues */}
+      <Text 
+        position={[0, -(particleScale * 0.45) - 10, 0]} 
+        fontSize={16} 
+        color={isActive ? "#1e293b" : "#94a3b8"} 
+        anchorX="center" 
+        anchorY="middle"
+      >
+        {system.facet.replace(/_/g, " ").toUpperCase()}
+      </Text>
+      <Text 
+        position={[0, -(particleScale * 0.45) - 28, 0]} 
+        fontSize={8} 
+        color={isActive ? "#64748b" : "#cbd5e1"} 
+        anchorX="center" 
+        anchorY="middle"
+      >
+        {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} ITEMS`}
+      </Text>
     </group>
   );
 }
@@ -395,16 +446,24 @@ function CarouselScene({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const total = stats.systems.length;
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
-    // Auto-rotation logic
-    if (!isHovered) {
+    if (hoveredIndex === null) {
+      // Auto-rotation logic
       groupRef.current.rotation.y += rotationSpeed * delta;
+    } else {
+      // Smoothly rotate the entire carousel to center the focused cluster
+      const targetAngle = -hoveredIndex * ((Math.PI * 2) / total);
+      let currentAngle = groupRef.current.rotation.y;
+      while (currentAngle - targetAngle > Math.PI) currentAngle -= Math.PI * 2;
+      while (currentAngle - targetAngle < -Math.PI) currentAngle += Math.PI * 2;
+      groupRef.current.rotation.y = currentAngle;
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetAngle, 0.05);
     }
 
     // Determine which cluster is currently at the front (closest to camera Z)
@@ -444,11 +503,7 @@ function CarouselScene({
 
       {/* Group tilted down slightly for a "carousel" projector view */}
       <group rotation={[-0.2, 0, 0]} position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}>
-        <group 
-          ref={groupRef}
-          onPointerEnter={() => setIsHovered(true)}
-          onPointerLeave={() => setIsHovered(false)}
-        >
+        <group ref={groupRef}>
           {stats.systems.map((sys, i) => {
             const angle = i * ((Math.PI * 2) / total);
             // Distribute in a circle in the XZ plane
@@ -470,6 +525,7 @@ function CarouselScene({
                 particleScale={particleScale}
                 globalMaxCount={globalMaxCount}
                 debugParams={debugParams}
+                onHover={(isHovered) => setHoveredIndex(isHovered ? i : null)}
               />
             );
           })}
