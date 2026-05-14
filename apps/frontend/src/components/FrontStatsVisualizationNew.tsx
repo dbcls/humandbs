@@ -3,7 +3,6 @@ import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Environment, ContactShadows, Text, Billboard } from "@react-three/drei";
-import { EffectComposer, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -500,15 +499,8 @@ function CarouselScene({
 
   return (
     <>
-      {/* Postprocessing for depth blur (gradually blurs items further from the front) */}
-      <EffectComposer disableNormalPass multisampling={4}>
-        <DepthOfField 
-          target={[0, 0, carouselRadius]} 
-          focalLength={0.05} 
-          bokehScale={8} 
-          height={700} 
-        />
-      </EffectComposer>
+      {/* Fog creates a beautiful depth effect without the color space bugs of PostProcessing */}
+      <fog attach="fog" args={['#f8fafc', 300, 3000]} />
 
       {/* User controllable lighting */}
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
