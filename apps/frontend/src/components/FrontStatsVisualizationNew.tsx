@@ -94,9 +94,7 @@ function useStats() {
 // --- Configuration & Materials ---
 
 const INITIAL_CAROUSEL_RADIUS = 1480;
-const INITIAL_BLOB_SCALE = 260; // Scale of the [0,1] MarchingCubes grid in 3D units
-const BLOB_RESOLUTION = 40; // Optimized resolution for smooth rendering without hitting poly limits
-const INITIAL_BLOB_ISOLATION = 10; // Controls metaball fusion. Higher = less fusion, more distinct particles.
+const INITIAL_PARTICLE_SCALE = 260; // Global multiplier for physical marble size
 const INITIAL_CAROUSEL_ROTATION_SPEED = 0.03; // Radians per second
 const INITIAL_MATERIAL_TRANSMISSION = 0;
 const INITIAL_MATERIAL_CLEARCOAT = 0;
@@ -125,8 +123,6 @@ const COLOR_PALETTES = [
 
 type SimNode = StatsSatellite & { 
   d3Radius: number;
-  strength: number;
-  currentStrength: number;
   color: THREE.Color;
   x?: number;
   y?: number;
@@ -146,9 +142,7 @@ function BlobCluster({
   rotation,
   paletteIndex,
   onClick,
-  blobScale,
-  blobIsolation,
-  blobResolution,
+  particleScale,
   globalMaxCount,
   debugParams
 }: {
@@ -159,9 +153,7 @@ function BlobCluster({
   rotation: [number, number, number];
   paletteIndex: number;
   onClick: (facet: string, value: string) => void;
-  blobScale: number;
-  blobIsolation: number;
-  blobResolution: number;
+  particleScale: number;
   globalMaxCount: number;
   debugParams: any;
 }) {
@@ -180,13 +172,9 @@ function BlobCluster({
     const palette = COLOR_PALETTES[paletteIndex % COLOR_PALETTES.length]!;
     // Scale for physical collision using globalMaxCount so volumes are consistent across all clusters
     const radiusScale = d3.scaleSqrt().domain([0, globalMaxCount]).range([8, 25]);
-    // Scale for visual size in MarchingCubes (strength). 
-    const strengthScale = d3.scaleSqrt().domain([0, globalMaxCount]).range([0.15, 0.35]);
-
     nodesRef.current = satellites.map((sat, i) => {
       const existing = nodesRef.current.find((n) => n.id === sat.id);
       const d3Radius = radiusScale(sat[mode]);
-      const strength = strengthScale(sat[mode]);
       return {
         ...sat,
         x: existing?.x ?? (Math.random() - 0.5) * 40,
@@ -196,8 +184,6 @@ function BlobCluster({
         vy: existing?.vy ?? 0,
         vz: existing?.vz ?? 0,
         d3Radius,
-        strength,
-        currentStrength: existing?.currentStrength ?? strength,
         color: existing?.color ?? new THREE.Color(palette[i % palette.length]), // Use pure color without white blending so it's fully visible
       };
     });
@@ -224,7 +210,7 @@ function BlobCluster({
       node.vz += (Math.random() - 0.5) * 1.5;
 
       // 3D Collision Repulsion (Rigid Marble Physics)
-      const visualRadius = node.d3Radius * (blobScale / 260);
+      const visualRadius = node.d3Radius * (particleScale / 260);
       for (let j = i + 1; j < nodes.length; j++) {
         const other = nodes[j];
         const dx = (node.x || 0) - (other.x || 0);
@@ -232,7 +218,7 @@ function BlobCluster({
         const dz = (node.z || 0) - (other.z || 0);
         const distSq = dx*dx + dy*dy + dz*dz;
         const dist = Math.sqrt(distSq) + 0.001;
-        const otherRadius = other.d3Radius * (blobScale / 260);
+        const otherRadius = other.d3Radius * (particleScale / 260);
         const minDist = visualRadius + otherRadius + 1.0; // 1.0 padding to prevent visual intersection
 
         if (dist < minDist) {
@@ -261,8 +247,8 @@ function BlobCluster({
       node.y = (node.y || 0) + node.vy * dt * 10;
       node.z = (node.z || 0) + node.vz * dt * 10;
 
-      // Hard boundary to prevent MarchingCubes cutoff
-      const bound = blobScale * 0.42;
+      // Hard boundary
+      const bound = particleScale * 0.42;
       if (node.x > bound) { node.x = bound; node.vx *= -0.5; }
       if (node.x < -bound) { node.x = -bound; node.vx *= -0.5; }
       if (node.y > bound) { node.y = bound; node.vy *= -0.5; }
@@ -276,7 +262,7 @@ function BlobCluster({
     if (instancedMeshRef.current) {
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
-        const visualRadius = node.d3Radius * (blobScale / 260);
+        const visualRadius = node.d3Radius * (particleScale / 260);
         
         dummy.position.set(node.x || 0, node.y || 0, node.z || 0);
         dummy.scale.set(visualRadius, visualRadius, visualRadius);
@@ -355,9 +341,7 @@ function CarouselScene({
   navigate, 
   carouselRadius,
   rotationSpeed,
-  blobScale,
-  blobIsolation,
-  blobResolution,
+  particleScale,
   lightAmbient,
   lightAmbientColor,
   lightDirectional,
@@ -371,9 +355,7 @@ function CarouselScene({
   navigate: any,
   carouselRadius: number,
   rotationSpeed: number,
-  blobScale: number,
-  blobIsolation: number,
-  blobResolution: number,
+  particleScale: number,
   lightAmbient: number,
   lightAmbientColor: string,
   lightDirectional: number,
@@ -454,11 +436,9 @@ function CarouselScene({
                 paletteIndex={i}
                 isActive={activeIndex === i}
                 position={[x, 0, z]}
-                rotation={[0, ry, 0]}
+                rotation={[0, angle, 0]}
                 onClick={handleFacetClick}
-                blobScale={blobScale}
-                blobIsolation={blobIsolation}
-                blobResolution={blobResolution}
+                particleScale={particleScale}
                 globalMaxCount={globalMaxCount}
                 debugParams={debugParams}
               />
@@ -504,9 +484,7 @@ export default function FrontStatsVisualizationNew() {
   const [debugParams, setDebugParams] = useState(() => {
     const defaults = {
       carouselRadius: INITIAL_CAROUSEL_RADIUS,
-      blobScale: INITIAL_BLOB_SCALE,
-      blobResolution: BLOB_RESOLUTION,
-      blobIsolation: INITIAL_BLOB_ISOLATION,
+      particleScale: INITIAL_PARTICLE_SCALE,
       rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
       transmission: INITIAL_MATERIAL_TRANSMISSION,
       clearcoat: INITIAL_MATERIAL_CLEARCOAT,
@@ -581,16 +559,8 @@ export default function FrontStatsVisualizationNew() {
             <input type="range" min="100" max="3000" step="10" value={debugParams.carouselRadius} onChange={(e) => setDebugParams(p => ({...p, carouselRadius: Number(e.target.value)}))} />
           </label>
           <label className="block space-y-1">
-            <div className="flex justify-between"><span>Blob Scale</span><span className="font-mono text-accent">{debugParams.blobScale}</span></div>
-            <input type="range" min="50" max="400" step="10" value={debugParams.blobScale} onChange={(e) => setDebugParams(p => ({...p, blobScale: Number(e.target.value)}))} />
-          </label>
-          <label className="block space-y-1">
-            <div className="flex justify-between"><span>Blob Resolution</span><span className="font-mono text-accent">{debugParams.blobResolution}</span></div>
-            <input type="range" min="20" max="80" step="1" value={debugParams.blobResolution} onChange={(e) => setDebugParams(p => ({...p, blobResolution: Number(e.target.value)}))} />
-          </label>
-          <label className="block space-y-1">
-            <div className="flex justify-between"><span>Blob Fusion (Isolation)</span><span className="font-mono text-accent">{debugParams.blobIsolation}</span></div>
-            <input type="range" min="10" max="250" step="5" value={debugParams.blobIsolation} onChange={(e) => setDebugParams(p => ({...p, blobIsolation: Number(e.target.value)}))} />
+            <div className="flex justify-between"><span>Particle Scale</span><span className="font-mono text-accent">{debugParams.particleScale}</span></div>
+            <input type="range" min="50" max="400" step="10" value={debugParams.particleScale} onChange={(e) => setDebugParams(p => ({...p, particleScale: Number(e.target.value)}))} />
           </label>
           <label className="flex flex-col gap-1">
             <div className="flex justify-between"><span>Rotation Speed</span><span className="font-mono text-accent">{debugParams.rotationSpeed}</span></div>
@@ -654,9 +624,7 @@ export default function FrontStatsVisualizationNew() {
               localStorage.removeItem("blob_debug_params_v2");
               setDebugParams({
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
-                blobScale: INITIAL_BLOB_SCALE,
-                blobResolution: BLOB_RESOLUTION,
-                blobIsolation: INITIAL_BLOB_ISOLATION,
+                particleScale: INITIAL_PARTICLE_SCALE,
                 rotationSpeed: INITIAL_CAROUSEL_ROTATION_SPEED,
                 transmission: INITIAL_MATERIAL_TRANSMISSION,
                 clearcoat: INITIAL_MATERIAL_CLEARCOAT,
@@ -717,9 +685,7 @@ export default function FrontStatsVisualizationNew() {
               navigate={navigate} 
               carouselRadius={debugParams.carouselRadius}
               rotationSpeed={debugParams.rotationSpeed}
-              blobScale={debugParams.blobScale}
-              blobResolution={debugParams.blobResolution}
-              blobIsolation={debugParams.blobIsolation}
+              particleScale={debugParams.particleScale}
               lightAmbient={debugParams.lightAmbient}
               lightAmbientColor={debugParams.lightAmbientColor}
               lightDirectional={debugParams.lightDirectional}
