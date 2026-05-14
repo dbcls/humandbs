@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Environment, ContactShadows, Text, Billboard } from "@react-three/drei";
+import { EffectComposer, DepthOfField } from "@react-three/postprocessing";
 import * as THREE from "three";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -151,6 +152,7 @@ function capitalize(str: string) {
 type SimNode = StatsSatellite & { 
   d3Radius: number;
   color: THREE.Color;
+  baseColor: THREE.Color;
   x?: number;
   y?: number;
   z?: number;
@@ -193,6 +195,7 @@ function BlobCluster({
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const [isHovered, setIsHovered] = useState(false);
+  const [hoveredParticleIndex, setHoveredParticleIndex] = useState<number | null>(null);
   const labelRefs = useRef<(THREE.Group | null)[]>([]);
   
   const satellites = useMemo(() => {
@@ -206,30 +209,66 @@ function BlobCluster({
     // To maintain strict proportionality, the range must start at 0.
     const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([0, 50]);
     
-    // Pre-calculate target grid positions for when the facet is focused
+    // Pre-calculate target grid positions using a dynamic 2D row-packing algorithm
     const sorted = [...satellites].sort((a, b) => b[mode] - a[mode]);
-    const columns = Math.ceil(Math.sqrt(sorted.length));
-    const spacing = 18 * (particleScale / 260); // Base spacing scaled by user setting
-
-    nodesRef.current = satellites.map((sat, i) => {
-      const existing = nodesRef.current.find((n) => n.id === sat.id);
-      // Math.max ensures that even count=1 items are at least barely visible (0.8 radius)
+    
+    // Prepare items with exact physical sizes
+    const layoutItems = sorted.map(sat => {
       const d3Radius = Math.max(0.8, radiusScale(sat[mode]));
+      const visualRadius = d3Radius * (particleScale / 260);
+      return { sat, d3Radius, visualRadius };
+    });
+
+    // Row-wrap layout
+    const rows: (typeof layoutItems[0])[][] = [[]];
+    let currentRowWidth = 0;
+    const maxRowWidth = particleScale * 0.8; // wrap boundary
+    const padding = particleScale * 0.05; // Gap between particles
+
+    for (const item of layoutItems) {
+      const diam = item.visualRadius * 2;
+      if (currentRowWidth + diam + padding > maxRowWidth && rows[rows.length - 1].length > 0) {
+        rows.push([]);
+        currentRowWidth = 0;
+      }
+      rows[rows.length - 1].push(item);
+      currentRowWidth += diam + padding;
+    }
+
+    const layoutResults = new Map<string, {x: number, y: number, d3Radius: number}>();
+    let yCursor = 0;
+    for (const row of rows) {
+      const rowHeight = Math.max(...row.map(i => i.visualRadius * 2));
+      const rowWidth = row.reduce((sum, item) => sum + item.visualRadius * 2 + padding, 0) - padding;
+      
+      let xCursor = -rowWidth / 2;
+      const rowY = yCursor - rowHeight / 2;
+      
+      for (const item of row) {
+        xCursor += item.visualRadius;
+        layoutResults.set(item.sat.id, { x: xCursor, y: rowY, d3Radius: item.d3Radius });
+        xCursor += item.visualRadius + padding;
+      }
+      yCursor -= rowHeight + padding;
+    }
+    
+    // Center the whole block vertically
+    const totalHeight = -yCursor - padding;
+    const yOffset = totalHeight / 2;
+
+    nodesRef.current = satellites.map((sat) => {
+      const existing = nodesRef.current.find((n) => n.id === sat.id);
+      const layout = layoutResults.get(sat.id)!;
+      const { x: targetX, y: layoutY, d3Radius } = layout;
+      const targetY = layoutY + yOffset + (particleScale * 0.1); // slight upward offset
+      const targetZ = 0;
       
       // Macromolecule coloring logic (OKLCH)
       const hash = hashString(sat.value || sat.facet);
       const hue = hash % 360;
       const isVivid = (hash % 100) < (MACRO_VIVID_PROBABILITY * 100);
       const lightness = isVivid ? MACRO_COLOR_L_VIVID : MACRO_COLOR_L_NEUTRAL;
-      const color = oklchToThreeColor(lightness, MACRO_COLOR_CHROMA, hue);
-
-      // Grid position assignment
-      const orderIdx = sorted.findIndex(s => s.id === sat.id);
-      const row = Math.floor(orderIdx / columns);
-      const col = orderIdx % columns;
-      const targetX = (col - (columns - 1) / 2) * spacing;
-      const targetY = -(row - Math.floor(sorted.length / columns) / 2) * spacing + 40;
-      const targetZ = 0;
+      const baseColor = oklchToThreeColor(lightness, MACRO_COLOR_CHROMA, hue);
 
       return {
         ...sat,
@@ -240,7 +279,8 @@ function BlobCluster({
         vy: existing?.vy ?? 0,
         vz: existing?.vz ?? 0,
         d3Radius,
-        color, // Assign newly calculated color based on hash
+        color: baseColor,
+        baseColor,
         targetX,
         targetY,
         targetZ,
@@ -268,8 +308,8 @@ function BlobCluster({
         continue; // Skip collision and velocity for hovered items
       }
 
-      // Pull to center - much weaker now to allow them to spread like a bunch of grapes
-      const pull = isActive ? 0.03 : 0.1;
+      // Pull to center - parameterized physics force
+      const pull = isActive ? (debugParams?.physicsForce ?? 0.1) : (debugParams?.physicsForce ?? 0.1) * 3;
       node.vx = (node.vx || 0) + (0 - (node.x || 0)) * pull * dt;
       node.vy = (node.vy || 0) + (0 - (node.y || 0)) * pull * dt;
       node.vz = (node.vz || 0) + (0 - (node.z || 0)) * pull * dt;
@@ -338,6 +378,13 @@ function BlobCluster({
         dummy.scale.set(visualRadius, visualRadius, visualRadius);
         dummy.updateMatrix();
         
+        // Hover isolation logic: fade out other particles
+        if (hoveredParticleIndex !== null && hoveredParticleIndex !== i) {
+          node.color.copy(node.baseColor).lerp(new THREE.Color("#f8fafc"), 0.85); // Fade to background
+        } else {
+          node.color.copy(node.baseColor);
+        }
+        
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
         instancedMeshRef.current.setColorAt(i, node.color);
         
@@ -389,13 +436,13 @@ function BlobCluster({
           <group key={sat.id} ref={el => labelRefs.current[i] = el}>
             <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
               <Text
-                fontSize={4}
+                fontSize={debugParams?.particleLabelFontSize ?? 12}
                 color="#334155"
                 anchorX="center"
                 anchorY="top"
                 onClick={(e) => { e.stopPropagation(); onClick(system.facet, sat.value); }}
-                onPointerEnter={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-                onPointerLeave={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; }}
+                onPointerEnter={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; setHoveredParticleIndex(i); }}
+                onPointerLeave={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; setHoveredParticleIndex(null); }}
               >
                 {`${capitalize(sat.value)} (${sat[mode]})`}
               </Text>
@@ -499,8 +546,15 @@ function CarouselScene({
 
   return (
     <>
-      {/* Fog creates a beautiful depth effect without the color space bugs of PostProcessing */}
-      <fog attach="fog" args={['#f8fafc', 300, 3000]} />
+      {/* Postprocessing for depth blur (gradually blurs items further from the front) */}
+      <EffectComposer disableNormalPass multisampling={4}>
+        <DepthOfField 
+          target={[0, 0, carouselRadius]} 
+          focalLength={debugParams?.dofFocalLength ?? 0.05} 
+          bokehScale={debugParams?.dofBokehScale ?? 8} 
+          height={700} 
+        />
+      </EffectComposer>
 
       {/* User controllable lighting */}
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
@@ -592,10 +646,14 @@ export default function FrontStatsVisualizationNew() {
       lightDirectional: INITIAL_LIGHT_DIRECTIONAL,
       lightPoint1: INITIAL_LIGHT_POINT_1,
       lightPoint2: INITIAL_LIGHT_POINT_2,
+      physicsForce: 0.1,
+      particleLabelFontSize: 12,
+      dofFocalLength: 0.05,
+      dofBokehScale: 8,
     };
     
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("blob_debug_params_v2");
+      const saved = localStorage.getItem("blob_debug_params_v3");
       if (saved) {
         try {
           return { ...defaults, ...JSON.parse(saved) };
@@ -607,9 +665,8 @@ export default function FrontStatsVisualizationNew() {
     return defaults;
   });
 
-  // Save to localStorage whenever params change
   useEffect(() => {
-    localStorage.setItem("blob_debug_params_v2", JSON.stringify(debugParams));
+    localStorage.setItem("blob_debug_params_v3", JSON.stringify(debugParams));
   }, [debugParams]);
 
   const navigate = useNavigate();
@@ -691,6 +748,64 @@ export default function FrontStatsVisualizationNew() {
             </div>
             <input type="range" min="0" max="3" step="0.1" value={debugParams.lightAmbient} onChange={(e) => setDebugParams(p => ({...p, lightAmbient: parseFloat(e.target.value)}))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
             
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold text-gray-700">Physics Force</label>
+                <span className="text-xs font-mono text-pink-500">{debugParams.physicsForce.toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.01" max="0.5" step="0.01"
+                value={debugParams.physicsForce}
+                onChange={(e) => setDebugParams(p => ({ ...p, physicsForce: parseFloat(e.target.value) }))}
+                className="w-full mt-2 accent-blue-500"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold text-gray-700">Label Font Size</label>
+                <span className="text-xs font-mono text-pink-500">{debugParams.particleLabelFontSize}</span>
+              </div>
+              <input
+                type="range"
+                min="2" max="24" step="1"
+                value={debugParams.particleLabelFontSize}
+                onChange={(e) => setDebugParams(p => ({ ...p, particleLabelFontSize: parseInt(e.target.value) }))}
+                className="w-full mt-2 accent-blue-500"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold text-gray-700">Blur: Focal Length</label>
+                <span className="text-xs font-mono text-pink-500">{debugParams.dofFocalLength.toFixed(3)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.01" max="0.2" step="0.01"
+                value={debugParams.dofFocalLength}
+                onChange={(e) => setDebugParams(p => ({ ...p, dofFocalLength: parseFloat(e.target.value) }))}
+                className="w-full mt-2 accent-blue-500"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold text-gray-700">Blur: Bokeh Scale</label>
+                <span className="text-xs font-mono text-pink-500">{debugParams.dofBokehScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="1" max="20" step="0.5"
+                value={debugParams.dofBokehScale}
+                onChange={(e) => setDebugParams(p => ({ ...p, dofBokehScale: parseFloat(e.target.value) }))}
+                className="w-full mt-2 accent-blue-500"
+              />
+            </div>
+
+            <hr className="border-gray-200 my-2" />
+            
             <div className="flex justify-between items-center text-xs font-bold text-slate-700">
               <span>Directional Light</span>
               <span className="text-pink-500">{debugParams.lightDirectional.toFixed(1)}</span>
@@ -713,7 +828,7 @@ export default function FrontStatsVisualizationNew() {
           <button 
             className="mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 rounded font-bold transition-colors"
             onClick={() => {
-              localStorage.removeItem("blob_debug_params_v2");
+              localStorage.removeItem("blob_debug_params_v3");
               setDebugParams({
                 carouselRadius: INITIAL_CAROUSEL_RADIUS,
                 particleScale: INITIAL_PARTICLE_SCALE,
@@ -727,6 +842,10 @@ export default function FrontStatsVisualizationNew() {
                 lightDirectional: INITIAL_LIGHT_DIRECTIONAL,
                 lightPoint1: INITIAL_LIGHT_POINT_1,
                 lightPoint2: INITIAL_LIGHT_POINT_2,
+                physicsForce: 0.1,
+                particleLabelFontSize: 12,
+                dofFocalLength: 0.05,
+                dofBokehScale: 8,
               });
             }}
           >
@@ -760,16 +879,23 @@ export default function FrontStatsVisualizationNew() {
       </div>
 
       {/* The Unified 3D Space */}
-      <div className="absolute inset-0 cursor-grab active:cursor-grabbing">
-        {/* We use perspective camera for natural 3D depth. fov=45 gives a nice cinematic lens */}
-        <Canvas camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45, far: 5000 }}>
-          <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
-          {/* Environment map is CRITICAL for glass materials to look realistic and not blow out into white */}
-          <Environment preset="city" />
-          {/* Subtle atmospheric fog to blend the distant carousel items into the background */}
-          <fog attach="fog" args={['#f8fafc', debugParams.cameraZ - debugParams.carouselRadius * 0.8, debugParams.cameraZ + debugParams.carouselRadius * 1.5]} />
-          
-          <Suspense fallback={null}>
+      <div className="absolute inset-0">
+        {isMounted && stats && (
+          <Canvas
+            shadows
+            camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45 }}
+            gl={{ alpha: false, antialias: true, powerPreference: "high-performance" }}
+          >
+            {/* Solid background required to prevent transparency edge artifacts with PostProcessing */}
+            <color attach="background" args={["#f8fafc"]} />
+            
+            <CameraUpdater cameraY={debugParams.cameraY} cameraZ={debugParams.cameraZ} radius={debugParams.carouselRadius} />
+            {/* Environment map is CRITICAL for glass materials to look realistic and not blow out into white */}
+            <Environment preset="city" />
+            {/* Subtle atmospheric fog to blend the distant carousel items into the background */}
+            <fog attach="fog" args={['#f8fafc', debugParams.cameraZ - debugParams.carouselRadius * 0.8, debugParams.cameraZ + debugParams.carouselRadius * 1.5]} />
+            
+            <Suspense fallback={null}>
             <CarouselScene 
               stats={stats} 
               mode={mode} 
