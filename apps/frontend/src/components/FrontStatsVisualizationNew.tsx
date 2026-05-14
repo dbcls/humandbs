@@ -102,9 +102,10 @@ const INITIAL_SCENE_OFFSET_Y = 90; // Vertical offset to prevent cutoff at the b
 const INITIAL_MATERIAL_ROUGHNESS = 0.8; // High roughness for a matte look
 const INITIAL_LIGHT_AMBIENT = 3.0;
 const INITIAL_LIGHT_AMBIENT_COLOR = "#6ee0e2";
-const INITIAL_LIGHT_DIRECTIONAL = 0.0;
+const INITIAL_LIGHT_DIRECTIONAL = 1.0;
 const INITIAL_LIGHT_POINT_1 = 3.0;
 const INITIAL_LIGHT_POINT_2 = 3.0;
+const INITIAL_PHYSICS_FORCE = 0.1;
 
 // Macromolecule OKLCH Color Parameters
 const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
@@ -218,10 +219,11 @@ function BlobCluster({
       return { sat, d3Radius, visualRadius };
     });
 
-    // Row-wrap layout
+    // Row-wrap layout optimized for screen aspect ratio (16:9)
     const rows: (typeof layoutItems[0])[][] = [[]];
     let currentRowWidth = 0;
-    const maxRowWidth = particleScale * 0.8; // wrap boundary
+    const totalArea = layoutItems.reduce((sum, item) => sum + Math.PI * item.visualRadius * item.visualRadius, 0);
+    const maxRowWidth = Math.sqrt(totalArea * 1.77) * 1.2; // 1.77 is ~16:9, 1.2 is padding factor
     const padding = particleScale * 0.05; // Gap between particles
 
     for (const item of layoutItems) {
@@ -259,8 +261,9 @@ function BlobCluster({
       const existing = nodesRef.current.find((n) => n.id === sat.id);
       const layout = layoutResults.get(sat.id)!;
       const { x: targetX, y: layoutY, d3Radius } = layout;
-      const targetY = layoutY + yOffset + (particleScale * 0.1); // slight upward offset
-      const targetZ = 0;
+      // Push the active cluster UP and OUT towards the camera to fill the screen
+      const targetY = layoutY + yOffset + 250; 
+      const targetZ = 350; 
       
       // Macromolecule coloring logic (OKLCH)
       const hash = hashString(sat.value || sat.facet);
@@ -414,6 +417,18 @@ function BlobCluster({
           args={[undefined, undefined, satellites.length]}
           castShadow
           receiveShadow
+          onPointerMove={(e) => {
+            if (isHovered && e.instanceId !== undefined) {
+              e.stopPropagation();
+              setHoveredParticleIndex(e.instanceId);
+              document.body.style.cursor = 'pointer';
+            }
+          }}
+          onPointerOut={(e) => {
+            if (isHovered) {
+              setHoveredParticleIndex(null);
+            }
+          }}
         >
           <sphereGeometry args={[1, 32, 32]} />
           <meshStandardMaterial 
@@ -510,16 +525,20 @@ function CarouselScene({
   const [activeIndex, setActiveIndex] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragRotStart, setDragRotStart] = useState(0);
+
   const total = stats.systems.length;
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
-    if (hoveredIndex === null) {
+    if (hoveredIndex === null && !isDragging) {
       // Auto-rotation logic
       groupRef.current.rotation.y += rotationSpeed * delta;
     }
-    // If hoveredIndex !== null, we simply pause rotation so the user can interact.
+    // If hoveredIndex !== null or dragging, rotation pauses
 
     // Determine which cluster is currently at the front (closest to camera Z)
     let normalizedRot = groupRef.current.rotation.y % (Math.PI * 2);
@@ -543,6 +562,27 @@ function CarouselScene({
     });
   };
 
+  const handlePointerDown = (e: any) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    if (groupRef.current) setDragRotStart(groupRef.current.rotation.y);
+    if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: any) => {
+    if (isDragging && groupRef.current) {
+      e.stopPropagation();
+      const dx = e.clientX - dragStartX;
+      groupRef.current.rotation.y = dragRotStart + dx * 0.005; // Drag sensitivity
+    }
+  };
+
+  const handlePointerUp = (e: any) => {
+    setIsDragging(false);
+    if (e.target.releasePointerCapture) e.target.releasePointerCapture(e.pointerId);
+  };
+
   return (
     <>
       {/* Fog flawlessly fades out distant objects without altering WebGL color pipelines or causing transparent canvas clipping artifacts */}
@@ -555,6 +595,17 @@ function CarouselScene({
       {/* Side lights to add colorful reflections to the glass */}
       <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#00f0ff" />
       <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ff00a0" />
+
+      {/* Invisible background sphere to catch drag events across the whole canvas */}
+      <mesh 
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerOut={handlePointerUp}
+      >
+        <sphereGeometry args={[4000, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.BackSide} />
+      </mesh>
 
       {/* Group tilted down slightly for a "carousel" projector view */}
       <group rotation={[-0.2, 0, 0]} position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}>
@@ -635,7 +686,7 @@ export default function FrontStatsVisualizationNew() {
       lightDirectional: INITIAL_LIGHT_DIRECTIONAL,
       lightPoint1: INITIAL_LIGHT_POINT_1,
       lightPoint2: INITIAL_LIGHT_POINT_2,
-      physicsForce: 0.1,
+      physicsForce: INITIAL_PHYSICS_FORCE,
       particleLabelFontSize: 12,
       fogNear: 500,
       fogFar: 3000,
