@@ -25,6 +25,7 @@ import {
   CMS_DATA_TRANSFER_CATEGORIES,
   CMS_DATA_TRANSFER_CATEGORY_LABELS,
   MAX_CMS_ARCHIVE_SIZE_BYTES,
+  $downloadCmsDataArchive,
   $validateCmsDataArchiveUpload,
   type CmsDataArchiveUploadSummary,
   type CmsDataTransferCategory,
@@ -94,11 +95,8 @@ export function DataTransferPage() {
         }
 
         setSelectedArchive(result.archive);
-        setSelectedRestoreCategories([...CMS_DATA_TRANSFER_CATEGORIES]);
-        setPageStatus({
-          variant: "warning",
-          text: result.message,
-        });
+        setSelectedRestoreCategories([...result.archive.availableCategories]);
+        setPageStatus({ variant: "success", text: result.message });
       },
       onError: (error: Error) => {
         setSelectedArchive(null);
@@ -108,6 +106,11 @@ export function DataTransferPage() {
           text: error.message || "Failed to validate archive upload.",
         });
       },
+    });
+
+  const { mutateAsync: downloadArchive, isPending: isDownloadingArchive } =
+    useMutation({
+      mutationFn: $downloadCmsDataArchive,
     });
 
   function toggleExportCategory(category: CmsDataTransferCategory) {
@@ -142,24 +145,49 @@ export function DataTransferPage() {
     validateArchive({ data: formData });
   }
 
-  function handleDownloadArchive() {
+  async function handleDownloadArchive() {
     if (selectedExportCategories.length === 0) return;
 
-    const params = new URLSearchParams();
-    for (const category of selectedExportCategories) {
-      params.append("category", category);
+    try {
+      const response = await downloadArchive({
+        data: {
+          categories: selectedExportCategories,
+        },
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Failed to generate archive.");
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const fileNameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+      const fileName = fileNameMatch?.[1] ?? "cms-data-export.tar.gz";
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      setPageStatus({
+        variant: "success",
+        text: "Archive download started.",
+      });
+      setDownloadDialogOpen(false);
+    } catch (error) {
+      setPageStatus({
+        variant: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Failed to download archive.",
+      });
     }
-
-    const downloadUrl = `/admin/data-transfer-download?${params.toString()}`;
-    const anchor = document.createElement("a");
-    anchor.href = downloadUrl;
-    anchor.click();
-
-    setPageStatus({
-      variant: "success",
-      text: "Archive download started.",
-    });
-    setDownloadDialogOpen(false);
   }
 
   function handleConfirmRestore() {
@@ -246,9 +274,9 @@ export function DataTransferPage() {
                 Restore data from archive
               </div>
               <p className="text-foreground-light text-sm">
-                Upload a `.tar.gz` archive, run transport-level checks, review
-                the selected categories, and confirm the destructive restore
-                intent.
+                Upload a `.tar.gz` archive, validate its manifest and payloads,
+                review the included categories, and confirm the destructive
+                restore intent.
               </p>
             </div>
 
@@ -296,13 +324,34 @@ export function DataTransferPage() {
                           {formatFileSize(selectedArchive.size)} uploaded for
                           restore validation.
                         </p>
+                        <p className="text-slate-600">
+                          Created {new Date(selectedArchive.createdAt).toLocaleString()}.
+                        </p>
                       </div>
                     </div>
 
-                    <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                      Archive content introspection is not wired yet. Category
-                      availability below is UI scaffolding for the destructive
-                      restore flow.
+                    <div className="grid gap-3 rounded-sm border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 md:grid-cols-2">
+                      <div>
+                        <span className="font-medium">Schema:</span>{" "}
+                        v{selectedArchive.schemaVersion} ({selectedArchive.archiveFormat})
+                      </div>
+                      <div>
+                        <span className="font-medium">Included categories:</span>{" "}
+                        {selectedArchive.categories
+                          .map(
+                            (category) =>
+                              CMS_DATA_TRANSFER_CATEGORY_LABELS[category],
+                          )
+                          .join(", ")}
+                      </div>
+                      <div>
+                        <span className="font-medium">Archive author:</span>{" "}
+                        {selectedArchive.createdBy?.email ?? "Unknown"}
+                      </div>
+                      <div>
+                        <span className="font-medium">Asset files:</span>{" "}
+                        {selectedArchive.assetFileCount}
+                      </div>
                     </div>
 
                     <div className="space-y-3">
@@ -310,7 +359,7 @@ export function DataTransferPage() {
                         Categories to replace in this environment
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
-                        {exportCategories.map((category) => {
+                        {selectedArchive.availableCategories.map((category) => {
                           const checkboxId = `restore-${category}`;
 
                           return (
@@ -426,7 +475,9 @@ export function DataTransferPage() {
             </Button>
             <Button
               type="button"
-              disabled={selectedExportCategories.length === 0}
+              disabled={
+                selectedExportCategories.length === 0 || isDownloadingArchive
+              }
               onClick={handleDownloadArchive}
             >
               Download

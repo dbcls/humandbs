@@ -24,6 +24,7 @@ import {
 import {
   createCmsDataTransferArchiveBuilder,
   type CmsDataTransferArchiveManifest,
+  inspectCmsDataTransferArchive,
 } from "./cmsDataTransferArchive";
 
 const { db, pool } = createTestDb();
@@ -177,5 +178,148 @@ describe("createCmsDataTransferArchiveBuilder", () => {
 
     expect(files["assets/logo.txt"]).toBe("asset-root");
     expect(files["assets/nested/diagram.txt"]).toBe("asset-nested");
+  });
+
+  test("inspects a valid archive and reports available restore categories", async () => {
+    await seedContentFixture();
+    await seedAssetFixture();
+
+    const buildArchive = createCmsDataTransferArchiveBuilder({
+      database: db,
+      getAssetDir: () => tempAssetDir!,
+    });
+
+    const { bytes } = await buildArchive({
+      categories: ["content", "assets"],
+      createdBy: {
+        id: AUTHOR_ID,
+        email: "cms-transfer@test.local",
+        name: "CMS Transfer Tester",
+      },
+    });
+
+    const result = await inspectCmsDataTransferArchive({
+      fileName: "cms-data-export.tar.gz",
+      fileSize: bytes.byteLength,
+      lastModified: Date.now(),
+      bytes,
+    });
+
+    expect(result.archive.categories).toEqual(["content", "assets"]);
+    expect(result.archive.availableCategories).toEqual(["content", "assets"]);
+    expect(result.archive.counts.content).toBe(3);
+    expect(result.archive.assetFileCount).toBe(2);
+  });
+
+  test("rejects archives with a missing manifest", async () => {
+    const buildArchive = createCmsDataTransferArchiveBuilder({
+      database: db,
+      createArchive: async () => ({
+        bytes: async () => {
+          const pack = tar.pack();
+          const chunks: Buffer[] = [];
+          const done = new Promise<Uint8Array<ArrayBufferLike>>((resolve, reject) => {
+            pack.on("data", (chunk) => {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            });
+            pack.on("error", reject);
+            pack.on("end", () => {
+              const buffer = Buffer.concat(chunks);
+              resolve(
+                new Uint8Array(
+                  buffer.buffer,
+                  buffer.byteOffset,
+                  buffer.byteLength,
+                ),
+              );
+            });
+          });
+
+          pack.entry({ name: "categories/content.json" }, "{}");
+          pack.finalize();
+
+          return done;
+        },
+      }),
+    });
+
+    const { bytes } = await buildArchive({
+      categories: ["content"],
+      createdBy: null,
+    });
+
+    await expect(
+      inspectCmsDataTransferArchive({
+        fileName: "cms-data-export.tar",
+        fileSize: bytes.byteLength,
+        lastModified: Date.now(),
+        bytes,
+      }),
+    ).rejects.toThrow('Archive is missing required file "manifest.json".');
+  });
+
+  test("rejects archives when the manifest declares a missing payload file", async () => {
+    await seedContentFixture();
+
+    const buildArchive = createCmsDataTransferArchiveBuilder({
+      database: db,
+      createArchive: async (files) => {
+        const pack = tar.pack();
+        const chunks: Buffer[] = [];
+        const done = new Promise<Uint8Array<ArrayBufferLike>>((resolve, reject) => {
+          pack.on("data", (chunk) => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          });
+          pack.on("error", reject);
+          pack.on("end", () => {
+            const buffer = Buffer.concat(chunks);
+            resolve(
+              new Uint8Array(
+                buffer.buffer,
+                buffer.byteOffset,
+                buffer.byteLength,
+              ),
+            );
+          });
+        });
+
+        for (const [name, value] of Object.entries(files)) {
+          if (name === "categories/content.json") continue;
+
+          let entryValue = value;
+          if (typeof entryValue !== "string") {
+            entryValue = Buffer.from(await (entryValue as Blob).arrayBuffer()).toString(
+              "utf8",
+            );
+          }
+          pack.entry({ name }, entryValue as string);
+        }
+
+        pack.finalize();
+        return {
+          bytes: async () => done,
+        };
+      },
+    });
+
+    const { bytes } = await buildArchive({
+      categories: ["content"],
+      createdBy: {
+        id: AUTHOR_ID,
+        email: "cms-transfer@test.local",
+        name: "CMS Transfer Tester",
+      },
+    });
+
+    await expect(
+      inspectCmsDataTransferArchive({
+        fileName: "cms-data-export.tar",
+        fileSize: bytes.byteLength,
+        lastModified: Date.now(),
+        bytes,
+      }),
+    ).rejects.toThrow(
+      'Archive is missing required file "categories/content.json".',
+    );
   });
 });

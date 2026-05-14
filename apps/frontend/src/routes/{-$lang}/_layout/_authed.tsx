@@ -17,6 +17,7 @@ import { Link } from "@/components/Link";
 import { useCan } from "@/hooks/useCan";
 
 export const tabParamSchema = z.enum([
+  "data-transfer",
   "news",
   "alerts",
   "documents",
@@ -146,13 +147,14 @@ function NavPanel() {
           <section className="flex flex-col gap-5 text-sm">
             <span>Static Pages</span>
             <div className="flex flex-col items-stretch gap-5 pl-5">
-              <PanelRootItem
+              <PanelItem
                 title={
                   <span>
                     <ArchiveRestore className="mr-2 inline size-5 align-middle leading-normal" />
                     Data Transfer
                   </span>
                 }
+                tab="data-transfer"
               />
               <PanelItem
                 title={
@@ -233,19 +235,6 @@ function NavPanel() {
         />
       </section>
     </CollapsibleCard>
-  );
-}
-
-function PanelRootItem({ title }: { title: React.ReactNode }) {
-  return (
-    <Link
-      variant={"nav"}
-      activeOptions={{ exact: true }}
-      className="data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground w-auto rounded-sm px-4 py-2"
-      to={"/{-$lang}/admin" as never}
-    >
-      {title}
-    </Link>
   );
 }
 

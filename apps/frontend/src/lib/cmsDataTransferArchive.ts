@@ -1,9 +1,11 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { gzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { createServerOnlyFn } from "@tanstack/react-start";
 import tar from "tar-stream";
+import { z } from "zod";
 
+import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 import { db } from "@/db/database";
 import {
   alert,
@@ -20,6 +22,7 @@ import {
 } from "@/db/schema";
 import {
   CMS_DATA_TRANSFER_CATEGORIES,
+  cmsDataTransferCategorySchema,
   type CmsDataTransferCategory,
 } from "@/serverFunctions/cmsDataTransfer";
 
@@ -36,12 +39,121 @@ export interface CmsDataTransferArchiveManifest {
   counts: Partial<Record<CmsDataTransferCategory, number>>;
 }
 
+export interface InspectCmsDataTransferArchiveParams {
+  fileName: string;
+  fileSize: number;
+  lastModified: number;
+  bytes: Uint8Array<ArrayBufferLike>;
+}
+
+export interface InspectedCmsDataTransferArchive {
+  archive: {
+    name: string;
+    size: number;
+    lastModified: number;
+    schemaVersion: 1;
+    archiveFormat: "tar.gz";
+    createdAt: string;
+    createdBy: CmsDataTransferArchiveManifest["createdBy"];
+    categories: CmsDataTransferCategory[];
+    availableCategories: CmsDataTransferCategory[];
+    counts: Partial<Record<CmsDataTransferCategory, number>>;
+    assetFileCount: number;
+  };
+}
+
 type ArchiveFileInput = Record<
   string,
   string | Blob | ArrayBufferView | ArrayBufferLike
 >;
 
 type Database = typeof db;
+
+const looseObjectSchema = z.record(z.string(), z.unknown());
+
+const headerFooterActiveConfigSchema = z.object({
+  id: z.string(),
+  config: siteNavigationConfigSchema,
+  revision: z.number().int(),
+  updatedAt: z.string(),
+  updatedBy: z.string().nullable(),
+});
+
+const contentPayloadSchema = z.object({
+  items: z.array(looseObjectSchema),
+  translations: z.array(looseObjectSchema),
+});
+
+const documentsPayloadSchema = z.object({
+  documents: z.array(looseObjectSchema),
+  versions: z.array(looseObjectSchema),
+});
+
+const newsPayloadSchema = z.object({
+  items: z.array(looseObjectSchema),
+  translations: z.array(looseObjectSchema),
+  tags: z.array(looseObjectSchema),
+  itemTags: z.array(looseObjectSchema),
+});
+
+const alertsPayloadSchema = z.object({
+  items: z.array(looseObjectSchema),
+  translations: z.array(looseObjectSchema),
+});
+
+const headerFooterPayloadSchema = z.object({
+  activeConfig: headerFooterActiveConfigSchema.nullable(),
+});
+
+const flowchartRowSchema = z.object({
+  id: z.string(),
+  isEntryPoint: z.boolean(),
+  nameEn: z.string(),
+  nameJa: z.string(),
+  config: looseObjectSchema,
+  status: z.string(),
+  revision: z.number().int(),
+  updatedAt: z.string(),
+  updatedBy: z.string().nullable(),
+});
+
+const flowchartsPayloadSchema = z.object({
+  flowcharts: z.array(flowchartRowSchema),
+});
+
+const archiveManifestSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    archiveFormat: z.literal("tar.gz"),
+    createdAt: z.string(),
+    createdBy: z
+      .object({
+        id: z.string(),
+        email: z.string().email(),
+        name: z.string(),
+      })
+      .nullable(),
+    categories: z.array(cmsDataTransferCategorySchema),
+    counts: z.record(z.string(), z.number().int().nonnegative()).default({}),
+  })
+  .superRefine((manifest, ctx) => {
+    const uniqueCategories = new Set(manifest.categories);
+    if (uniqueCategories.size !== manifest.categories.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Manifest categories must be unique.",
+      });
+    }
+
+    for (const key of Object.keys(manifest.counts)) {
+      if (!CMS_DATA_TRANSFER_CATEGORIES.includes(key as CmsDataTransferCategory)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Manifest contains unsupported count key "${key}".`,
+        });
+      }
+    }
+  });
 
 const $$getAssetDir = createServerOnlyFn(() => {
   const filesSubdir =
@@ -193,6 +305,272 @@ async function createTarGzArchive(files: ArchiveFileInput) {
         gzipped.byteOffset,
         gzipped.byteLength,
       ),
+  };
+}
+
+function getCategoryPayloadPath(category: CmsDataTransferCategory) {
+  switch (category) {
+    case "content":
+      return "categories/content.json";
+    case "documents":
+      return "categories/documents.json";
+    case "news":
+      return "categories/news.json";
+    case "alerts":
+      return "categories/alerts.json";
+    case "header-footer":
+      return "categories/header-footer.json";
+    case "flowcharts":
+      return "categories/flowcharts.json";
+    case "assets":
+      return null;
+  }
+}
+
+function parseJsonFile<T>(
+  raw: Uint8Array<ArrayBufferLike>,
+  schema: z.ZodType<T>,
+  filePath: string,
+) {
+  let parsedJson: unknown;
+
+  try {
+    parsedJson = JSON.parse(Buffer.from(raw).toString("utf8"));
+  } catch {
+    throw new Error(`Archive file "${filePath}" is not valid JSON.`);
+  }
+
+  const parsed = schema.safeParse(parsedJson);
+
+  if (!parsed.success) {
+    throw new Error(`Archive file "${filePath}" does not match the expected schema.`);
+  }
+
+  return parsed.data;
+}
+
+function validateCategoryPayload(
+  category: CmsDataTransferCategory,
+  entryBytes: Uint8Array<ArrayBufferLike> | undefined,
+  assetFileCount: number,
+) {
+  switch (category) {
+    case "content":
+      if (!entryBytes) {
+        throw new Error('Archive is missing required file "categories/content.json".');
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          contentPayloadSchema,
+          "categories/content.json",
+        );
+        return {
+          count: payload.items.length + payload.translations.length,
+        };
+      }
+    case "documents":
+      if (!entryBytes) {
+        throw new Error('Archive is missing required file "categories/documents.json".');
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          documentsPayloadSchema,
+          "categories/documents.json",
+        );
+        return {
+          count: payload.documents.length + payload.versions.length,
+        };
+      }
+    case "news":
+      if (!entryBytes) {
+        throw new Error('Archive is missing required file "categories/news.json".');
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          newsPayloadSchema,
+          "categories/news.json",
+        );
+        return {
+          count:
+            payload.items.length +
+            payload.translations.length +
+            payload.tags.length +
+            payload.itemTags.length,
+        };
+      }
+    case "alerts":
+      if (!entryBytes) {
+        throw new Error('Archive is missing required file "categories/alerts.json".');
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          alertsPayloadSchema,
+          "categories/alerts.json",
+        );
+        return {
+          count: payload.items.length + payload.translations.length,
+        };
+      }
+    case "header-footer":
+      if (!entryBytes) {
+        throw new Error(
+          'Archive is missing required file "categories/header-footer.json".',
+        );
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          headerFooterPayloadSchema,
+          "categories/header-footer.json",
+        );
+        return {
+          count: payload.activeConfig ? 1 : 0,
+        };
+      }
+    case "flowcharts":
+      if (!entryBytes) {
+        throw new Error(
+          'Archive is missing required file "categories/flowcharts.json".',
+        );
+      }
+      {
+        const payload = parseJsonFile(
+          entryBytes,
+          flowchartsPayloadSchema,
+          "categories/flowcharts.json",
+        );
+        return {
+          count: payload.flowcharts.length,
+        };
+      }
+    case "assets":
+      return {
+        count: assetFileCount,
+      };
+  }
+}
+
+async function extractArchiveEntries(
+  archiveBytes: Uint8Array<ArrayBufferLike>,
+): Promise<Record<string, Uint8Array<ArrayBufferLike>>> {
+  const extract = tar.extract();
+  const entries: Record<string, Uint8Array<ArrayBufferLike>> = {};
+
+  const done = new Promise<Record<string, Uint8Array<ArrayBufferLike>>>(
+    (resolve, reject) => {
+      extract.on("entry", (header, stream, next) => {
+        if (header.type === "directory") {
+          stream.resume();
+          stream.on("end", next);
+          return;
+        }
+
+        if (
+          header.name.startsWith("/") ||
+          header.name.split("/").includes("..") ||
+          header.name.length === 0
+        ) {
+          reject(new Error(`Archive contains an invalid entry path "${header.name}".`));
+          stream.resume();
+          return;
+        }
+
+        if (Object.hasOwn(entries, header.name)) {
+          reject(new Error(`Archive contains duplicate entry "${header.name}".`));
+          stream.resume();
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+
+        stream.on("data", (chunk) => {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+        stream.on("error", reject);
+        stream.on("end", () => {
+          const buffer = Buffer.concat(chunks);
+          entries[header.name] = new Uint8Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.byteLength,
+          );
+          next();
+        });
+      });
+
+      extract.on("finish", () => resolve(entries));
+      extract.on("error", reject);
+    },
+  );
+
+  extract.end(Buffer.from(archiveBytes));
+
+  return done;
+}
+
+export async function inspectCmsDataTransferArchive(
+  params: InspectCmsDataTransferArchiveParams,
+): Promise<InspectedCmsDataTransferArchive> {
+  const lowerName = params.fileName.toLowerCase();
+  const tarBytes = lowerName.endsWith(".tar")
+    ? params.bytes
+    : new Uint8Array(gunzipSync(Buffer.from(params.bytes)));
+
+  const entries = await extractArchiveEntries(tarBytes);
+  const manifestBytes = entries["manifest.json"];
+
+  if (!manifestBytes) {
+    throw new Error('Archive is missing required file "manifest.json".');
+  }
+
+  const manifest = parseJsonFile(
+    manifestBytes,
+    archiveManifestSchema,
+    "manifest.json",
+  ) as CmsDataTransferArchiveManifest;
+
+  const availableCategories: CmsDataTransferCategory[] = [];
+  const assetFileCount = Object.keys(entries).filter((name) =>
+    name.startsWith("assets/"),
+  ).length;
+
+  for (const category of manifest.categories) {
+    const payloadPath = getCategoryPayloadPath(category);
+    const result = validateCategoryPayload(
+      category,
+      payloadPath ? entries[payloadPath] : undefined,
+      assetFileCount,
+    );
+    const actualCount = result.count;
+    const expectedCount = manifest.counts[category] ?? 0;
+
+    if (expectedCount !== actualCount) {
+      throw new Error(
+        `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
+      );
+    }
+
+    availableCategories.push(category);
+  }
+
+  return {
+    archive: {
+      name: params.fileName,
+      size: params.fileSize,
+      lastModified: params.lastModified,
+      schemaVersion: manifest.schemaVersion,
+      archiveFormat: manifest.archiveFormat,
+      createdAt: manifest.createdAt,
+      createdBy: manifest.createdBy,
+      categories: manifest.categories,
+      availableCategories,
+      counts: manifest.counts,
+      assetFileCount,
+    },
   };
 }
 

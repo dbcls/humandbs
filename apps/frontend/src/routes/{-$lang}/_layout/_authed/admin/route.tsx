@@ -1,11 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-import { DataTransferPage } from "./-components/DataTransferPage";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  return <DataTransferPage />;
+  return <Outlet />;
 }

@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { $$createCmsDataTransferArchive } from "@/lib/cmsDataTransferArchive";
+import { inspectCmsDataTransferArchive } from "@/lib/cmsDataTransferArchive";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 
 export const CMS_DATA_TRANSFER_CATEGORIES = [
@@ -39,7 +41,64 @@ export interface CmsDataArchiveUploadSummary {
   name: string;
   size: number;
   lastModified: number;
+  schemaVersion: 1;
+  archiveFormat: "tar.gz";
+  createdAt: string;
+  createdBy: {
+    id: string;
+    email: string;
+    name: string;
+  } | null;
+  categories: CmsDataTransferCategory[];
+  availableCategories: CmsDataTransferCategory[];
+  counts: Partial<Record<CmsDataTransferCategory, number>>;
+  assetFileCount: number;
 }
+
+const downloadCmsDataArchiveInputSchema = z.object({
+  categories: z
+    .array(cmsDataTransferCategorySchema)
+    .min(1)
+    .transform((categories) =>
+      CMS_DATA_TRANSFER_CATEGORIES.filter((category) =>
+        categories.includes(category),
+      ),
+    ),
+});
+
+export const $downloadCmsDataArchive = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(downloadCmsDataArchiveInputSchema)
+  .handler(async ({ context, data }) => {
+    context.checkPermission("admin-panel", "view-cms");
+
+    const user = context.user;
+
+    const { bytes } = await $$createCmsDataTransferArchive({
+      categories: data.categories,
+      createdBy: user
+        ? {
+            id: user.id,
+            email: user.email ?? "",
+            name: user.name ?? "",
+          }
+        : null,
+    });
+
+    const timestamp = new Date()
+      .toISOString()
+      .replaceAll(":", "-")
+      .replace(/\.\d{3}Z$/, "Z");
+
+    return new Response(Buffer.from(bytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/gzip",
+        "Content-Disposition": `attachment; filename=\"cms-data-export-${timestamp}.tar.gz\"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  });
 
 export const $validateCmsDataArchiveUpload = createServerFn({ method: "POST" })
   .middleware([hasPermissionMiddleware])
@@ -89,15 +148,29 @@ export const $validateCmsDataArchiveUpload = createServerFn({ method: "POST" })
       };
     }
 
-    return {
-      ok: true as const,
-      code: "BASIC_VALIDATION_ONLY" as const,
-      message:
-        "Archive transport checks passed. Deep manifest and payload validation will be added in the next restore slice.",
-      archive: {
-        name: archive.name,
-        size: archive.size,
+    try {
+      const summary = await inspectCmsDataTransferArchive({
+        fileName: archive.name,
+        fileSize: archive.size,
         lastModified: archive.lastModified,
-      } satisfies CmsDataArchiveUploadSummary,
-    };
+        bytes: new Uint8Array(await archive.arrayBuffer()),
+      });
+
+      return {
+        ok: true as const,
+        code: "VALID_ARCHIVE" as const,
+        message:
+          "Archive validated. Review the included categories before running restore.",
+        archive: summary.archive satisfies CmsDataArchiveUploadSummary,
+      };
+    } catch (error) {
+      return {
+        ok: false as const,
+        code: "INVALID_ARCHIVE_CONTENT" as const,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Archive validation failed.",
+      };
+    }
   });
