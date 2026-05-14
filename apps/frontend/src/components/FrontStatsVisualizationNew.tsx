@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import * as d3 from "d3";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html, Environment, ContactShadows, Text } from "@react-three/drei";
+import { Html, Environment, ContactShadows, Text, Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import stubStats from "./stats.stub.json";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -138,6 +138,12 @@ function oklchToThreeColor(l: number, c: number, h: number): THREE.Color {
     return v > 0.0031308 ? 1.055 * Math.pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
   };
   return new THREE.Color(gamma(r_lin), gamma(g_lin), gamma(b_lin));
+}
+
+function capitalize(str: string) {
+  if (!str) return "";
+  const s = str.replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
 // Removed global blobMaterial. Using inline material per cluster.
@@ -375,40 +381,44 @@ function BlobCluster({
         {/* Render individual clickable 3D text labels for particles when focused */}
         {isHovered && satellites.map((sat, i) => (
           <group key={sat.id} ref={el => labelRefs.current[i] = el}>
-            <Text
-              fontSize={4}
-              color="#334155"
-              anchorX="center"
-              anchorY="top"
-              onClick={(e) => { e.stopPropagation(); onClick(system.facet, sat.value); }}
-              onPointerEnter={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-              onPointerLeave={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; }}
-            >
-              {`${sat.value.replace(/_/g, " ").toUpperCase()} (${sat[mode]})`}
-            </Text>
+            <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+              <Text
+                fontSize={4}
+                color="#334155"
+                anchorX="center"
+                anchorY="top"
+                onClick={(e) => { e.stopPropagation(); onClick(system.facet, sat.value); }}
+                onPointerEnter={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+                onPointerLeave={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; }}
+              >
+                {`${capitalize(sat.value)} (${sat[mode]})`}
+              </Text>
+            </Billboard>
           </group>
         ))}
       </group>
       
       {/* Canvas-native 3D Text Label to prevent HTML occlusion issues */}
-      <Text 
-        position={[0, -(particleScale * 0.45) - 10, 0]} 
-        fontSize={16} 
-        color={isActive ? "#1e293b" : "#94a3b8"} 
-        anchorX="center" 
-        anchorY="middle"
-      >
-        {system.facet.replace(/_/g, " ").toUpperCase()}
-      </Text>
-      <Text 
-        position={[0, -(particleScale * 0.45) - 28, 0]} 
-        fontSize={8} 
-        color={isActive ? "#64748b" : "#cbd5e1"} 
-        anchorX="center" 
-        anchorY="middle"
-      >
-        {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} ITEMS`}
-      </Text>
+      <Billboard position={[0, -(particleScale * 0.45) - 10, 0]} follow={true}>
+        <Text 
+          fontSize={16} 
+          color={isActive ? "#1e293b" : "#94a3b8"} 
+          anchorX="center" 
+          anchorY="middle"
+        >
+          {capitalize(system.facet)}
+        </Text>
+      </Billboard>
+      <Billboard position={[0, -(particleScale * 0.45) - 28, 0]} follow={true}>
+        <Text 
+          fontSize={8} 
+          color={isActive ? "#64748b" : "#cbd5e1"} 
+          anchorX="center" 
+          anchorY="middle"
+        >
+          {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items`}
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -456,15 +466,8 @@ function CarouselScene({
     if (hoveredIndex === null) {
       // Auto-rotation logic
       groupRef.current.rotation.y += rotationSpeed * delta;
-    } else {
-      // Smoothly rotate the entire carousel to center the focused cluster
-      const targetAngle = -hoveredIndex * ((Math.PI * 2) / total);
-      let currentAngle = groupRef.current.rotation.y;
-      while (currentAngle - targetAngle > Math.PI) currentAngle -= Math.PI * 2;
-      while (currentAngle - targetAngle < -Math.PI) currentAngle += Math.PI * 2;
-      groupRef.current.rotation.y = currentAngle;
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetAngle, 0.05);
     }
+    // If hoveredIndex !== null, we simply pause rotation so the user can interact.
 
     // Determine which cluster is currently at the front (closest to camera Z)
     let normalizedRot = groupRef.current.rotation.y % (Math.PI * 2);
