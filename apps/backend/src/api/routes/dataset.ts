@@ -6,6 +6,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
+import { validateParentResearchForMutation } from "@/api/es-client/auth"
 import {
   deleteDataset,
   getDataset,
@@ -43,8 +44,8 @@ import {
   ErrorSpec409,
   ErrorSpec500,
   ConflictError,
-  ForbiddenError,
   NotFoundError,
+  ValidationError,
 } from "@/api/routes/errors"
 import {
   DatasetDetailResponseSchema,
@@ -191,6 +192,7 @@ const deleteDatasetRoute = createRoute({
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -344,13 +346,22 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const seqNo = body._seq_no
   const primaryTerm = body._primary_term
 
+  // body.humId / humVersionId must match the dataset's existing parent linkage.
+  // Without this check, an owner of Research A could try to repoint Dataset X
+  // to Research B via the body. The ES layer (`updateDataset`) is a second
+  // backstop — it ignores humId / humVersionId in updates outright — but this
+  // 400 short-circuits the call so the client gets a clear error.
+  if (body.humId !== preloaded.humId || body.humVersionId !== preloaded.humVersionId) {
+    throw new ValidationError(
+      "body.humId and body.humVersionId must match the dataset's parent Research",
+    )
+  }
+
   const updated = await updateDataset(datasetId, version, {
     releaseDate: body.releaseDate,
     criteria: body.criteria,
     typeOfData: body.typeOfData,
     experiments: body.experiments,
-    humId: body.humId,
-    humVersionId: body.humVersionId,
   }, seqNo, primaryTerm)
 
   if (!updated) {
@@ -392,17 +403,11 @@ datasetRouter.openapi(deleteDatasetRoute, async (c) => {
     return c.body(null, 204)
   }
 
-  // D2: Check that parent Research is in draft status
+  // D2: Check that parent Research is in draft status (architecture.md § deleted 状態
+  // hides deleted Research as 404 for everyone except admin; this also keeps the
+  // dataset/parent linkage invariant: only draft Research can lose Datasets).
   const research = await getResearchDoc(dataset.humId)
-  if (!research) {
-    throw new NotFoundError(`Parent Research ${dataset.humId} not found`)
-  }
-  if (research.status === "deleted") {
-    throw new NotFoundError(`Parent Research ${dataset.humId} not found`)
-  }
-  if (research.status !== "draft") {
-    throw new ForbiddenError("Cannot delete dataset: parent Research is not in draft status")
-  }
+  validateParentResearchForMutation(research, dataset.humId)
 
   await deleteDataset(datasetId, version)
 

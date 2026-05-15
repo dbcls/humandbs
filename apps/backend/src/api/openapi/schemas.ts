@@ -12,6 +12,7 @@
  */
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
+import { ProblemDetailsSchema } from "@/api/types/errors"
 import {
   DatasetSearchBodySchema,
   ResearchSearchBodySchema,
@@ -21,7 +22,6 @@ import {
   CreateDatasetForResearchRequestSchema,
   CreateResearchRequestSchema,
   CreateVersionRequestSchema,
-  ProblemDetailsSchema,
   UpdateDatasetRequestSchema,
   UpdateResearchRequestSchema,
   UpdateUidsRequestSchema,

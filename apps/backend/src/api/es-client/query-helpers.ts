@@ -6,6 +6,8 @@
  */
 import type { estypes } from "@elastic/elasticsearch"
 
+import { escapeEsWildcard } from "@/api/es-client/utils"
+
 /** nested + terms query */
 export const nestedTermsQuery = (
   path: string,
@@ -30,7 +32,7 @@ export const nestedRangeQuery = (
   },
 })
 
-/** double nested + wildcard query */
+/** double nested + wildcard query (escapes user-controlled wildcard syntax) */
 export const doubleNestedWildcardQuery = (
   outerPath: string,
   innerPath: string,
@@ -43,7 +45,7 @@ export const doubleNestedWildcardQuery = (
       nested: {
         path: innerPath,
         query: {
-          wildcard: { [field]: { value: `*${value}*`, case_insensitive: true } },
+          wildcard: { [field]: { value: `*${escapeEsWildcard(value)}*`, case_insensitive: true } },
         },
       },
     },

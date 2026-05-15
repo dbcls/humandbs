@@ -90,63 +90,10 @@ export const ApiDatasetSchema = z.object({
     ),
 })
 
-// === Error Responses ===
-
-/**
- * Error codes
- */
-export const ERROR_CODES = [
-  "VALIDATION_ERROR",
-  "UNAUTHORIZED",
-  "FORBIDDEN",
-  "NOT_FOUND",
-  "CONFLICT",
-  "INTERNAL_ERROR",
-] as const
-export type ErrorCode = (typeof ERROR_CODES)[number]
-
-/**
- * RFC 7807 Problem Details for HTTP APIs
- * @see https://tools.ietf.org/html/rfc7807
- */
-export const ProblemDetailsSchema = z.object({
-  type: z
-    .url()
-    .describe(
-      "URI reference identifying the problem type (e.g., 'https://api.humandbs.dbcls.jp/errors/not-found')",
-    ),
-  title: z
-    .string()
-    .describe(
-      "Short, human-readable summary of the problem type (e.g., 'Not Found', 'Validation Error')",
-    ),
-  status: z
-    .number()
-    .int()
-    .min(400)
-    .max(599)
-    .describe("HTTP status code for this error (e.g., 400, 401, 404, 500)"),
-  detail: z
-    .string()
-    .optional()
-    .describe(
-      "Human-readable explanation specific to this occurrence of the problem",
-    ),
-  instance: z
-    .string()
-    .optional()
-    .describe(
-      "URI reference for the specific occurrence, usually the request path",
-    ),
-  timestamp: z
-    .string()
-    .describe("ISO 8601 timestamp of when the error occurred"),
-  requestId: z
-    .string()
-    .optional()
-    .describe("Unique request identifier for tracing and debugging"),
-})
-export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>
+// Error response schemas live in `./errors.ts`. Path params live in
+// `./path-params.ts`. Stats schemas live in `./stats.ts`. The barrel
+// (./index.ts) re-exports all of those alongside the request/response
+// schemas defined in this file.
 
 // === API-specific Person / Publication schemas ===
 // Person/Publication sub-fields are selectively included based on context:
@@ -447,43 +394,7 @@ export type FacetFieldResponse = z.infer<typeof FacetFieldResponseSchema>
 export const AllFacetsResponseSchema = FacetsMapSchema
 export type AllFacetsResponse = z.infer<typeof AllFacetsResponseSchema>
 
-// === Path Parameters ===
-
-export const HumIdParamsSchema = z.object({
-  humId: z
-    .string()
-    .describe(
-      "Research identifier (e.g., 'hum0001'). Unique across all Research resources.",
-    ),
-})
-export type HumIdParams = z.infer<typeof HumIdParamsSchema>
-
-export const DatasetIdParamsSchema = z.object({
-  datasetId: z
-    .string()
-    .describe(
-      "Dataset identifier (e.g., 'JGAD000001'). Unique across all Dataset resources.",
-    ),
-})
-export type DatasetIdParams = z.infer<typeof DatasetIdParamsSchema>
-
-export const VersionParamsSchema = z.object({
-  humId: z.string().describe("Research identifier (e.g., 'hum0001')"),
-  version: z
-    .string()
-    .regex(/^v\d+$/)
-    .describe("Version number in format v1, v2, v3, etc. (e.g., 'v1', 'v2')"),
-})
-export type VersionParams = z.infer<typeof VersionParamsSchema>
-
-export const DatasetVersionParamsSchema = z.object({
-  datasetId: z.string().describe("Dataset identifier (e.g., 'JGAD000001')"),
-  version: z
-    .string()
-    .regex(/^v\d+$/)
-    .describe("Version number in format v1, v2, v3, etc. (e.g., 'v1', 'v2')"),
-})
-export type DatasetVersionParams = z.infer<typeof DatasetVersionParamsSchema>
+// Path parameter schemas are defined in `./path-params.ts`.
 
 // === Simple Response Schemas ===
 
@@ -500,46 +411,7 @@ export const IsAdminResponseSchema = z.object({
 })
 export type IsAdminResponse = z.infer<typeof IsAdminResponseSchema>
 
-// === Stats API ===
-
-/**
- * Stats facet counts per Research/Dataset
- */
-export const StatsFacetCountSchema = z.object({
-  research: z
-    .number()
-    .describe("Number of Research resources with this facet value"),
-  dataset: z
-    .number()
-    .describe("Number of Dataset resources with this facet value"),
-})
-export type StatsFacetCount = z.infer<typeof StatsFacetCountSchema>
-
-/**
- * Stats response (GET /stats)
- * Returns counts and facets for published resources
- * Facets include both Research and Dataset counts per value
- */
-export const StatsResponseSchema = z.object({
-  research: z
-    .object({
-      total: z
-        .number()
-        .describe("Total number of published Research resources"),
-    })
-    .describe("Research resource statistics"),
-  dataset: z
-    .object({
-      total: z.number().describe("Total number of published Dataset resources"),
-    })
-    .describe("Dataset resource statistics"),
-  facets: z
-    .record(z.string(), z.record(z.string(), StatsFacetCountSchema))
-    .describe(
-      "Facet aggregations with Research/Dataset counts per value. Outer key is field name (e.g., 'criteria'), inner key is facet value.",
-    ),
-})
-export type StatsResponse = z.infer<typeof StatsResponseSchema>
+// Stats schemas are defined in `./stats.ts`.
 
 /**
  * Create single response schema (with optimistic locking)
@@ -734,19 +606,7 @@ export const LinkedResearchesListResponseSchema =
   createListResponseSchema(ResearchDetailSchema)
 export type LinkedResearchesListResponse = z.infer<typeof LinkedResearchesListResponseSchema>
 
-export const JdsIdParamsSchema = z.object({
-  jdsId: z.string()
-    .regex(/^J-DS\d+$/)
-    .describe("DS application ID (e.g., 'J-DS002494')"),
-})
-export type JdsIdParams = z.infer<typeof JdsIdParamsSchema>
-
-export const JduIdParamsSchema = z.object({
-  jduId: z.string()
-    .regex(/^J-DU\d+$/)
-    .describe("DU application ID (e.g., 'J-DU006498')"),
-})
-export type JduIdParams = z.infer<typeof JduIdParamsSchema>
+// JGA Shinsei path params (JdsIdParamsSchema / JduIdParamsSchema) live in `./path-params.ts`.
 
 // DS
 export const DsApplicationListResponseSchema =

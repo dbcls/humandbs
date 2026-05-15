@@ -20,14 +20,21 @@ researchRouter.use("*", optionalAuth)
 
 // Apply resource authorization middleware to routes that modify research
 // These routes require authentication and ownership check
-researchRouter.use("/:humId/update", loadResearchAndAuthorize({ requireOwnership: true }))
-researchRouter.use("/:humId/delete", loadResearchAndAuthorize({ adminOnly: true }))
+researchRouter.use(
+  "/:humId/update",
+  loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true }),
+)
+researchRouter.use("/:humId/delete", loadResearchAndAuthorize({ requireAdmin: true }))
 researchRouter.use("/:humId/versions/new", loadResearchAndAuthorize({ requireOwnership: true }))
 researchRouter.use("/:humId/submit", loadResearchAndAuthorize({ requireOwnership: true }))
-researchRouter.use("/:humId/approve", loadResearchAndAuthorize({ adminOnly: true }))
-researchRouter.use("/:humId/reject", loadResearchAndAuthorize({ adminOnly: true }))
-researchRouter.use("/:humId/unpublish", loadResearchAndAuthorize({ adminOnly: true }))
-researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ adminOnly: true }))
+researchRouter.use("/:humId/approve", loadResearchAndAuthorize({ requireAdmin: true }))
+researchRouter.use("/:humId/reject", loadResearchAndAuthorize({ requireAdmin: true }))
+researchRouter.use("/:humId/unpublish", loadResearchAndAuthorize({ requireAdmin: true }))
+researchRouter.use("/:humId/uids", loadResearchAndAuthorize({ requireAdmin: true }))
+researchRouter.use(
+  "/:humId/dataset/new",
+  loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true }),
+)
 
 // Register handlers
 registerCrudHandlers(researchRouter)

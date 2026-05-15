@@ -7,13 +7,15 @@
 import { describe, expect, it } from "bun:test"
 import fc from "fast-check"
 
+import { ForbiddenError } from "@/api/errors"
 import {
   buildStatusFilter,
   canAccessResearchDoc,
   canPerformTransition,
+  validateRequestedStatus,
   validateStatusTransition,
 } from "@/api/es-client/auth"
-import type { AuthUser, EsResearch } from "@/api/types"
+import type { AuthUser, EsResearch, ResearchStatus } from "@/api/types"
 
 import { createMockResearchDoc, createMockAuthUser } from "../helpers/mock-es"
 
@@ -149,6 +151,42 @@ describe("canAccessResearchDoc", () => {
   it("other user can access draft with latestVersion (public visible)", () => {
     expect(canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
   })
+})
+
+// === validateRequestedStatus ===
+
+describe("validateRequestedStatus", () => {
+  const cases: { user: "public" | "auth" | "admin"; status: ResearchStatus | undefined; allowed: boolean }[] = [
+    { user: "public", status: undefined, allowed: true },
+    { user: "auth", status: undefined, allowed: true },
+    { user: "admin", status: undefined, allowed: true },
+    { user: "public", status: "published", allowed: true },
+    { user: "auth", status: "published", allowed: true },
+    { user: "admin", status: "published", allowed: true },
+    { user: "public", status: "draft", allowed: false },
+    { user: "auth", status: "draft", allowed: true },
+    { user: "admin", status: "draft", allowed: true },
+    { user: "public", status: "review", allowed: false },
+    { user: "auth", status: "review", allowed: true },
+    { user: "admin", status: "review", allowed: true },
+    { user: "public", status: "deleted", allowed: false },
+    { user: "auth", status: "deleted", allowed: false },
+    { user: "admin", status: "deleted", allowed: true },
+  ]
+
+  for (const { user, status, allowed } of cases) {
+    it(`${user} requesting status=${status ?? "(none)"} -> ${allowed ? "allow" : "throw"}`, () => {
+      const authUser = user === "public"
+        ? null
+        : createMockAuthUser({ isAdmin: user === "admin" })
+      const call = () => { validateRequestedStatus(authUser, status) }
+      if (allowed) {
+        expect(call).not.toThrow()
+      } else {
+        expect(call).toThrow(ForbiddenError)
+      }
+    })
+  }
 })
 
 // === validateStatusTransition ===

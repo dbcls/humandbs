@@ -11,10 +11,10 @@ import { createRoute } from "@hono/zod-openapi"
 
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
-import { requireAuth } from "@/api/middleware/auth"
+import { getAuthenticatedUser, requireAuth } from "@/api/middleware/auth"
 import { SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import { exampleIsAdminSingleResponse } from "@/api/openapi/examples"
-import { ErrorSpec401, ErrorSpec500, UnauthorizedError } from "@/api/routes/errors"
+import { ErrorSpec401, ErrorSpec500 } from "@/api/routes/errors"
 import { createSingleReadOnlyResponseSchema, IsAdminResponseSchema } from "@/api/types"
 
 // === Response Schemas ===
@@ -51,9 +51,6 @@ adminRouter.use("*", requireAuth)
 
 // GET /admin/is-admin - requires auth but not admin
 adminRouter.openapi(isAdminRoute, (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    throw new UnauthorizedError()
-  }
+  const authUser = getAuthenticatedUser(c)
   return singleReadOnlyResponse(c, { isAdmin: authUser.isAdmin })
 })

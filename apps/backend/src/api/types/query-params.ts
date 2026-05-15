@@ -11,7 +11,7 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
-import { LANG_TYPES, BilingualTextSchema } from "./common"
+import { LANG_TYPES, BilingualTextSchema, VersionStringSchema } from "./common"
 import {
   PaginationQuerySchema,
   LangQueryBase,
@@ -40,9 +40,7 @@ export const LangVersionQuerySchema = z.object({
     .enum(LANG_TYPES)
     .default("ja")
     .describe("Response language for bilingual fields ('ja' or 'en')"),
-  version: z
-    .string()
-    .regex(/^v\d+$/)
+  version: VersionStringSchema
     .nullable()
     .optional()
     .describe(
@@ -102,8 +100,8 @@ export const ResearchSearchQuerySchema = PaginationQuerySchema
   .extend(ResearchDateFilterQuerySchema.shape)
   .extend(DatasetFilterQuerySchema.shape)
   .extend({
-    sort: z.enum(RESEARCH_SEARCH_SORT).default("humId")
-      .describe("Sort field. Use 'relevance' for full-text search ranking"),
+    sort: z.enum(RESEARCH_SEARCH_SORT).optional()
+      .describe("Sort field. Defaults to 'relevance' when q is provided, 'humId' otherwise"),
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
     status: z.enum(RESEARCH_STATUS).optional()
@@ -140,14 +138,14 @@ export const DatasetSearchQuerySchema = PaginationQuerySchema
   .extend(FulltextQuerySchema.shape)
   .extend(DatasetFilterQuerySchema.shape)
   .extend({
-    sort: z.enum(DATASET_SEARCH_SORT).default("datasetId")
-      .describe("Sort field. Use 'relevance' for full-text search ranking"),
+    sort: z.enum(DATASET_SEARCH_SORT).optional()
+      .describe("Sort field. Defaults to 'relevance' when q is provided, 'datasetId' otherwise"),
     order: z.enum(SORT_ORDER).default("asc")
       .describe("Sort order (default: desc when sort=relevance)"),
     humId: z.string().optional()
       .describe("Filter by parent Research ID (exact match)"),
-    typeOfData: z.string().optional()
-      .describe("Filter by data type (partial match)"),
+    typeOfData: z.string().max(256).optional()
+      .describe("Filter by data type (partial match, max 256 chars)"),
   })
 export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 

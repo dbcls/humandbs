@@ -9,7 +9,11 @@
  */
 import { createRoute, z } from "@hono/zod-openapi"
 
-import { ARRAY_FIELD_MAPPINGS, RANGE_FIELD_MAPPINGS } from "@/api/es-client/filters"
+import { validateRequestedStatus } from "@/api/es-client/auth"
+import {
+  convertDatasetBodyToQuery,
+  convertResearchBodyToQuery,
+} from "@/api/es-client/query-builders"
 import { searchDatasets, searchResearches } from "@/api/es-client/search"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
@@ -26,127 +30,24 @@ import {
   exampleResearchSearchBody,
   exampleResearchSearchResponse,
 } from "@/api/openapi/examples"
-import { ErrorSpec400, ErrorSpec403, ErrorSpec500, ForbiddenError } from "@/api/routes/errors"
+import { ErrorSpec400, ErrorSpec403, ErrorSpec500 } from "@/api/routes/errors"
 import {
-  createSearchResponseSchema,
   createSingleReadOnlyResponseSchema,
   DATASET_FACET_NAMES,
   DatasetSearchBodySchema,
-  EsDatasetSchema,
+  DatasetSearchResponseSchema,
   FacetFieldResponseSchema,
   FacetFilterQuerySchema,
   FacetsMapSchema,
   ResearchSearchBodySchema,
-  ResearchSummarySchema,
+  ResearchSearchResponseSchema,
 } from "@/api/types"
-import type { DatasetSearchBody, DatasetSearchQuery, ResearchSearchBody, ResearchSearchQuery } from "@/api/types"
+import type { DatasetSearchQuery } from "@/api/types"
 import { createPagination } from "@/api/types/response"
 
-// === Helper: Convert POST body to GET query format ===
-
-interface RangeValue { min?: string | number; max?: string | number }
-
-/**
- * Convert DatasetFilters (POST format) to query params (GET format)
- * POST uses arrays, GET uses comma-separated strings
- */
-const convertDatasetFiltersToQuery = (filters: DatasetSearchBody["filters"]): Partial<DatasetSearchQuery> => {
-  if (!filters) return {}
-
-  const query: Record<string, unknown> = {}
-  const f = filters as Record<string, unknown>
-
-  // Convert array fields to comma-separated strings
-  for (const { from, to } of ARRAY_FIELD_MAPPINGS) {
-    const value = f[from]
-    if (Array.isArray(value) && value.length > 0) {
-      query[to] = value.join(",")
-    }
-  }
-
-  // Convert range fields
-  for (const { from, minTo, maxTo } of RANGE_FIELD_MAPPINGS) {
-    const range = f[from] as RangeValue | undefined
-    if (range?.min !== undefined) {
-      query[minTo] = range.min
-    }
-    if (range?.max !== undefined) {
-      query[maxTo] = range.max
-    }
-  }
-
-  // Direct string fields
-  if (filters.disease) query.disease = filters.disease
-
-  // String enum field
-  if (filters.isTumor !== undefined) query.isTumor = filters.isTumor
-
-  // Boolean fields
-  if (filters.hasPhenotypeData !== undefined) query.hasPhenotypeData = filters.hasPhenotypeData
-
-  return query as Partial<DatasetSearchQuery>
-}
-
-/**
- * Convert ResearchSearchBody (POST) to ResearchSearchQuery (GET format)
- */
-const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSearchQuery => {
-  const datasetFilters = convertDatasetFiltersToQuery(body.datasetFilters)
-
-  const sortMap: Record<string, "humId" | "title" | "releaseDate" | "datePublished" | "dateModified" | "relevance"> = {
-    humId: "humId",
-    title: "title",
-    releaseDate: "releaseDate",
-    datePublished: "datePublished",
-    dateModified: "dateModified",
-    relevance: "relevance",
-  }
-
-  return {
-    page: body.page,
-    limit: body.limit,
-    lang: body.lang ?? "ja",
-    sort: body.sort ? sortMap[body.sort] ?? "humId" : "humId",
-    order: body.order,
-    q: body.query,
-    // datePublished range (first release date)
-    minDatePublished: body.datePublished?.min ? String(body.datePublished.min) : undefined,
-    maxDatePublished: body.datePublished?.max ? String(body.datePublished.max) : undefined,
-    // dateModified range (last update date)
-    minDateModified: body.dateModified?.min ? String(body.dateModified.min) : undefined,
-    maxDateModified: body.dateModified?.max ? String(body.dateModified.max) : undefined,
-    status: body.status,
-    includeFacets: body.includeFacets,
-    ...datasetFilters,
-  } as ResearchSearchQuery
-}
-
-/**
- * Convert DatasetSearchBody (POST) to DatasetSearchQuery (GET format)
- */
-const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearchQuery => {
-  const filters = convertDatasetFiltersToQuery(body.filters)
-
-  return {
-    page: body.page,
-    limit: body.limit,
-    lang: body.lang ?? "ja",
-    sort: body.sort ?? "datasetId",
-    order: body.order,
-    q: body.query, // Unified query parameter (S2)
-    humId: body.humId,
-    includeFacets: body.includeFacets,
-    ...filters,
-  } as DatasetSearchQuery
-}
-
 // === Response Schemas ===
-
-// Research search response
-const ResearchSearchResponseSchema = createSearchResponseSchema(ResearchSummarySchema)
-
-// Dataset search response
-const DatasetSearchResponseSchema = createSearchResponseSchema(EsDatasetSchema)
+// Search response schemas live in `@/api/types` (ResearchSearchResponseSchema /
+// DatasetSearchResponseSchema). Only facet helpers are still composed locally.
 
 // All facets response (read-only)
 const AllFacetsResponseSchema = createSingleReadOnlyResponseSchema(FacetsMapSchema)
@@ -297,13 +198,7 @@ searchRouter.openapi(postResearchSearchRoute, async (c) => {
   const body = c.req.valid("json")
   const authUser = c.get("authUser")
 
-  // Validate status filter permissions (same logic as GET /research)
-  if (body.status) {
-    if (!authUser && body.status !== "published") {
-      throw new ForbiddenError("Public users can only access published resources")
-    }
-    // authenticated (non-admin): can request any status (own resources only for non-published)
-  }
+  validateRequestedStatus(authUser, body.status)
 
   // Convert POST body to GET query format for existing searchResearches function
   const query = convertResearchBodyToQuery(body)

@@ -215,6 +215,8 @@ Elasticsearch の `index.max_result_window` (デフォルト 10000) を超える
 - **`POST /research/search`**: Dataset 属性によるフィルタは `datasetFilters` 配下にネスト。Research 自身の属性（`status`, `datePublished`, `dateModified`）はトップレベル
 - **`POST /dataset/search`**: フィルタは `filters` 配下にネスト
 
+`datePublished` / `dateModified` の `min` / `max` には **ISO 8601 の date または date-time** を渡すこと（例: `"2024-01-01"`、`"2024-01-01T00:00:00Z"`、`"2024-12-31T23:59:59+09:00"`）。スキーマ層で形式バリデーションを行うため、不正な文字列は 400 を返す。
+
 構造を分けている理由: Research 検索は内部で「Dataset を引いて親 Research をヒットさせる」処理を含むため、Research 自身の属性と Dataset 属性をクエリビルダ上で明確に分離する必要があるため。
 
 ### フリーテキスト検索の挙動

@@ -279,7 +279,7 @@ export const createDataset = async (
 export const updateDataset = async (
   datasetId: string,
   version: string,
-  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term">>,
+  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term" | "humId" | "humVersionId">>,
   seqNo: number,
   primaryTerm: number,
 ): Promise<EsDataset | null> => {
@@ -308,12 +308,14 @@ export const updateDataset = async (
     }
   }
 
+  // humId / humVersionId are intentionally not writable here: parent linkage is
+  // pinned by the URL-resolved Dataset doc + parent Research preload. Anything
+  // the caller passes in the request body is rejected at the handler boundary
+  // (routes/dataset.ts), and this layer is a second backstop.
   const hydratedDoc: Record<string, unknown> = {}
   if (updates.releaseDate !== undefined) hydratedDoc.releaseDate = updates.releaseDate
   if (updates.criteria !== undefined) hydratedDoc.criteria = updates.criteria
   if (updates.typeOfData !== undefined) hydratedDoc.typeOfData = updates.typeOfData
-  if (updates.humId !== undefined) hydratedDoc.humId = updates.humId
-  if (updates.humVersionId !== undefined) hydratedDoc.humVersionId = updates.humVersionId
   if (updates.experiments !== undefined) hydratedDoc.experiments = updates.experiments.map(hydrateExperiment)
 
   try {
@@ -345,7 +347,7 @@ export const updateDataset = async (
 const bumpDatasetVersion = async (
   datasetId: string,
   currentDoc: EsDataset,
-  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term">>,
+  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term" | "humId" | "humVersionId">>,
   draftVersion: string,
 ): Promise<EsDataset | null> => {
   const humId = currentDoc.humId
@@ -353,14 +355,17 @@ const bumpDatasetVersion = async (
   const nextVersion = await getNextDatasetVersion(datasetId)
   const nextEsId = `${datasetId}-${nextVersion}`
 
+  // humId / humVersionId are derived from the existing dataset doc and the
+  // parent's draftVersion — never from `updates` — so a request body cannot
+  // repoint the dataset to a different parent Research.
   const newDoc: EsDataset = {
     ...currentDoc,
     version: nextVersion,
     humVersionId: draftHumVersionId,
+    humId,
     releaseDate: updates.releaseDate ?? currentDoc.releaseDate,
     criteria: updates.criteria ?? currentDoc.criteria,
     typeOfData: updates.typeOfData ?? currentDoc.typeOfData,
-    humId: updates.humId ?? humId,
     experiments: updates.experiments !== undefined
       ? updates.experiments.map(hydrateExperiment)
       : currentDoc.experiments,

@@ -6,3 +6,4 @@
 
 export * from "./test-app"
 export * from "./mock-es"
+export * from "./mock-auth"

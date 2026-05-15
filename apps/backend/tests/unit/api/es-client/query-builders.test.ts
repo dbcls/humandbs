@@ -10,6 +10,8 @@ import {
   buildResearchDateRangeFilters,
   buildResearchMultiMatchQuery,
   buildResearchSortSpec,
+  resolveDatasetSort,
+  resolveResearchSort,
   versionSortSpec,
 } from "@/api/es-client/query-builders"
 
@@ -38,6 +40,51 @@ describe("versionSortSpec", () => {
         order: "asc",
       },
     })
+  })
+})
+
+// === resolveResearchSort / resolveDatasetSort ===
+
+describe("resolveResearchSort", () => {
+  it("returns the explicit sort when provided", () => {
+    expect(resolveResearchSort("title", true)).toBe("title")
+    expect(resolveResearchSort("releaseDate", false)).toBe("releaseDate")
+    expect(resolveResearchSort("relevance", false)).toBe("relevance")
+  })
+
+  it("falls back to 'relevance' when sort is undefined and a query is present", () => {
+    expect(resolveResearchSort(undefined, true)).toBe("relevance")
+  })
+
+  it("falls back to 'humId' when both sort and query are missing", () => {
+    expect(resolveResearchSort(undefined, false)).toBe("humId")
+  })
+
+  it("PBT: an explicit sort is preserved regardless of hasQuery", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("humId" as const, "title" as const, "releaseDate" as const, "datePublished" as const, "dateModified" as const, "relevance" as const),
+        fc.boolean(),
+        (sort, hasQuery) => resolveResearchSort(sort, hasQuery) === sort,
+      ),
+      { numRuns: 50 },
+    )
+  })
+})
+
+describe("resolveDatasetSort", () => {
+  it("returns the explicit sort when provided", () => {
+    expect(resolveDatasetSort("datasetId", true)).toBe("datasetId")
+    expect(resolveDatasetSort("releaseDate", false)).toBe("releaseDate")
+    expect(resolveDatasetSort("relevance", false)).toBe("relevance")
+  })
+
+  it("falls back to 'relevance' when sort is undefined and a query is present", () => {
+    expect(resolveDatasetSort(undefined, true)).toBe("relevance")
+  })
+
+  it("falls back to 'datasetId' when both sort and query are missing", () => {
+    expect(resolveDatasetSort(undefined, false)).toBe("datasetId")
   })
 })
 
@@ -337,6 +384,39 @@ describe("buildDatasetMultiMatchQuery", () => {
           return result.bool.minimum_should_match === 1
         },
       ),
+    )
+  })
+
+  // PBT: hostile / boundary inputs must still produce a structurally-valid
+  // ES query (no object injection, no missing should clause).
+  it("PBT: ES reserved chars / unicode / huge / null-byte inputs remain literal in the query", () => {
+    const reserved = fc.constantFrom(
+      "+", "-", "=", "&", "|", ">", "<", "!", "(", ")", "{", "}", "[", "]",
+      "^", "\"", "~", "*", "?", ":", "\\", "/",
+    )
+    const hostile = fc.oneof(
+      // ES reserved characters in arbitrary combinations
+      fc.array(reserved, { minLength: 1, maxLength: 32 }).map(a => a.join("")),
+      // Newlines + tabs
+      fc.constantFrom("\n", "\r\n", "\t", " \t\n "),
+      // Emoji / surrogate pair
+      fc.constantFrom("🌸", "👩‍🔬", "𝕏"),
+      // Long input (1024+ chars)
+      fc.string({ minLength: 1024, maxLength: 2048 }),
+      // Null byte
+      fc.constantFrom("\0", "abc\0def"),
+      // Pure whitespace
+      fc.constantFrom("   ", "\t\t", "  \t  "),
+    )
+    fc.assert(
+      fc.property(hostile, (q) => {
+        const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
+        const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+        return mm?.query === q
+          && typeof mm.query === "string"
+          && result.bool.should.some(c => c.term?.humId?.value === q)
+      }),
+      { numRuns: 80 },
     )
   })
 })

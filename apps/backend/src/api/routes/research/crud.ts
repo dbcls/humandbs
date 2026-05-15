@@ -5,6 +5,7 @@
  */
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
+import { validateRequestedStatus } from "@/api/es-client/auth"
 import {
   createResearch,
   deleteResearch,
@@ -48,14 +49,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const query = c.req.valid("query")
     const authUser = c.get("authUser")
 
-    // Validate status filter permissions per architecture.md
-    if (query.status) {
-      // public: can only request "published"
-      if (!authUser && query.status !== "published") {
-        throw new ForbiddenError("Public users can only access published resources")
-      }
-      // authenticated (non-admin): can request any status (own resources only for non-published)
-    }
+    validateRequestedStatus(authUser, query.status)
 
     // Convert listing query to search query format
     const result = await searchResearches({
@@ -149,18 +143,12 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // PUT /research/{humId}/update
-  // Middleware: loadResearchAndAuthorize({ requireOwnership: true })
+  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true })
+  // — 401 / 403 / 404 / 409 are all surfaced before validators run.
   router.openapi(updateResearchRoute, async (c) => {
-    // Research is preloaded by middleware with auth/ownership checks
+    // Research is preloaded by middleware; status === "draft" is guaranteed.
     const research = c.get("research")
     const { humId } = research
-
-    // Only draft Research can be edited (review/published require workflow actions)
-    if (research.status !== "draft") {
-      throw new ConflictError(
-        `Cannot update: Research is in '${research.status}' status, expected 'draft'`,
-      )
-    }
 
     const body = c.req.valid("json")
 
@@ -198,7 +186,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // POST /research/{humId}/delete
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(deleteResearchRoute, async (c) => {
     // Research is preloaded by middleware with admin check
     const research = c.get("research")
@@ -213,7 +201,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // PUT /research/{humId}/uids
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(updateUidsRoute, async (c) => {
     // Research is preloaded by middleware with admin check
     const research = c.get("research")

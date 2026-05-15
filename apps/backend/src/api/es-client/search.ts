@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds } from "@/api/es-client/auth"
+import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds, validateRequestedStatus } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -27,6 +27,8 @@ import {
   buildResearchDateRangeFilters,
   buildResearchMultiMatchQuery,
   buildResearchSortSpec,
+  resolveDatasetSort,
+  resolveResearchSort,
   versionSortSpec,
 } from "@/api/es-client/query-builders"
 import {
@@ -37,7 +39,7 @@ import {
   doubleNestedTermsQuery,
   nestedBooleanTermQuery,
 } from "@/api/es-client/query-helpers"
-import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
+import { escapeEsWildcard, esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import { logger } from "@/api/logger"
 import {
   EsDatasetSchema,
@@ -137,11 +139,12 @@ export const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchS
 
   // typeOfData filter (partial match, bilingual wildcard)
   if ("typeOfData" in params && params.typeOfData) {
+    const escaped = escapeEsWildcard(params.typeOfData)
     must.push({
       bool: {
         should: [
-          { wildcard: { "typeOfData.ja": { value: `*${params.typeOfData}*`, case_insensitive: true } } },
-          { wildcard: { "typeOfData.en": { value: `*${params.typeOfData}*`, case_insensitive: true } } },
+          { wildcard: { "typeOfData.ja": { value: `*${escaped}*`, case_insensitive: true } } },
+          { wildcard: { "typeOfData.en": { value: `*${escaped}*`, case_insensitive: true } } },
         ],
         minimum_should_match: 1,
       },
@@ -504,6 +507,9 @@ export const searchDatasets = async (
   const { page, limit, sort, order, q, includeFacets } = params
   const from = (page - 1) * limit
   const facetCountField: FacetCountField = opts.facetCountField ?? "datasetId"
+  // Resolve sort default here so GET and POST search paths share the same
+  // "query → relevance, otherwise datasetId" rule (docs/api-guide.md).
+  const resolvedSort = resolveDatasetSort(sort, !!q)
 
   // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
   // empty page; callers see a regular SearchResponse with `data: []`.
@@ -541,7 +547,7 @@ export const searchDatasets = async (
   }
 
   // Sort configuration
-  const sortSpec = buildDatasetSortSpec(sort, order, !!q)
+  const sortSpec = buildDatasetSortSpec(resolvedSort, order, !!q)
 
   interface Aggs {
     uniq_ids: estypes.AggregationsCardinalityAggregate
@@ -660,6 +666,9 @@ export const searchResearches = async (
     includeFacets, status: requestedStatus,
   } = params
   const from = (page - 1) * limit
+  // Resolve sort default here so GET and POST paths share the same
+  // "query → relevance, otherwise humId" rule (docs/api-guide.md).
+  const resolvedSort = resolveResearchSort(sort, !!q)
 
   // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
   // empty page; callers see a regular SearchResponse with `data: []`.
@@ -690,22 +699,10 @@ export const searchResearches = async (
   const must: estypes.QueryDslQueryContainer[] = []
 
   // Status filter logic:
-  // - If explicit status requested, use it (with authorization check)
+  // - If explicit status requested, use it (defense-in-depth permission check)
   // - Otherwise, apply default authorization filter
   if (requestedStatus) {
-    // Check authorization for requested status
-    // public: can only request "published"
-    // authenticated: can request "draft", "review", "published" (own resources only)
-    // admin: can request any status including "deleted"
-    if (!authUser && requestedStatus !== "published") {
-      // Public user requesting non-published - return empty (forbidden handled in route)
-      return {
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
-        facets: includeFacets ? {} : undefined,
-      }
-    }
-    // Apply status filter
+    validateRequestedStatus(authUser, requestedStatus)
     must.push({ term: { status: requestedStatus } })
 
     // For non-admin authenticated users requesting non-published status, also filter by uids
@@ -746,7 +743,7 @@ export const searchResearches = async (
   }))
 
   // Sort configuration
-  const sortSpec = buildResearchSortSpec(sort, order, lang, !!q)
+  const sortSpec = buildResearchSortSpec(resolvedSort, order, lang, !!q)
 
   interface ResearchAggs {
     all_humIds?: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>

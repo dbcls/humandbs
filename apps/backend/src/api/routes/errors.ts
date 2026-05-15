@@ -12,7 +12,7 @@
  * The global error handler in app.ts catches these and returns RFC 7807 responses.
  */
 
-import { ProblemDetailsSchema, type ProblemDetails } from "@/api/types/request-response"
+import { ProblemDetailsSchema, type ProblemDetails } from "@/api/types/errors"
 
 interface ErrorSpecParams {
   status: number

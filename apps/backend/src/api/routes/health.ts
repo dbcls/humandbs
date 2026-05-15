@@ -4,7 +4,7 @@ import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { SECURITY_PUBLIC } from "@/api/openapi/document"
 import { exampleHealthResponse } from "@/api/openapi/examples"
 import { ErrorSpec500 } from "@/api/routes/errors"
-import { HealthResponseSchema } from "@/types"
+import { HealthResponseSchema } from "@/api/types"
 
 const healthRoute = createRoute({
   method: "get",

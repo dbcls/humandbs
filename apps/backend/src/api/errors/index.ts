@@ -7,6 +7,8 @@
 
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 
+import type { ProblemDetails } from "@/api/types/errors"
+
 /**
  * HTTP status codes used by the API
  */
@@ -183,18 +185,8 @@ export const ERROR_TITLES: Record<string, string> = {
   INTERNAL_ERROR: "Internal Server Error",
 }
 
-/**
- * RFC 7807 Problem Details response structure
- */
-export interface ProblemDetails {
-  type: string
-  title: string
-  status: number
-  detail?: string
-  instance?: string
-  timestamp: string
-  requestId?: string
-}
+// The ProblemDetails type is derived from the Zod schema in `types/errors.ts`
+// so there is no separate hand-written shape to keep in sync.
 
 /**
  * Create RFC 7807 Problem Details from AppError

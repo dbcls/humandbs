@@ -13,6 +13,7 @@ export {
   buildStatusFilter,
   canAccessResearchDoc,
   getPublishedHumIds,
+  validateRequestedStatus,
   validateStatusTransition,
   canPerformTransition,
 } from "@/api/es-client/auth"
@@ -32,7 +33,7 @@ export type {
 } from "@/api/es-client/filters"
 
 // Utilities
-export { esTotal, uniq, mgetMap } from "@/api/es-client/utils"
+export { escapeEsWildcard, esTotal, uniq, mgetMap } from "@/api/es-client/utils"
 
 // Query helpers
 export {
@@ -46,7 +47,6 @@ export {
 // Helpers
 export {
   splitComma,
-  canAccessDataset,
   nestedFacetAgg,
   doubleNestedFacetAgg,
   platformFacetAgg,
@@ -105,3 +105,6 @@ export {
   searchDatasets,
   searchResearches,
 } from "@/api/es-client/search"
+
+// Stats operations
+export { getPublicStats } from "@/api/es-client/stats"

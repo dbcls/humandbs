@@ -133,7 +133,7 @@ describe("IT-AUTH-*: authentication & authorization", () => {
     expect(json.data.isAdmin).toBe(false)
   })
 
-  // === requireOwnership / adminOnly / loadResearchAndAuthorize ===
+  // === requireOwnership / requireAdmin / loadResearchAndAuthorize ===
 
   itWithNonAdminToken("IT-AUTH-12: requireOwnership rejects non-owner non-admin with 403", async (token) => {
     // IT-AUTH-12
@@ -158,7 +158,7 @@ describe("IT-AUTH-*: authentication & authorization", () => {
     expect(json.title).toBe("Forbidden")
   })
 
-  itWithNonAdminToken("IT-AUTH-13: adminOnly rejects non-admin with 403", async (token) => {
+  itWithNonAdminToken("IT-AUTH-13: requireAdmin rejects non-admin with 403", async (token) => {
     // IT-AUTH-13
     const app = getApp()
     const res = await app.request(url("/research/hum0001/approve"), {

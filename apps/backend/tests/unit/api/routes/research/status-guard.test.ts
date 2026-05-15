@@ -2,16 +2,22 @@
  * Research update status guard tests
  *
  * Verifies that PUT /research/{humId}/update rejects non-draft Research.
- * ES client and auth middleware are mocked (external boundaries).
+ * The full router is exercised (not a custom mini-app) via the shared
+ * header-based auth mock so the route order (`requireAuth` → resource auth
+ * → handler) stays in scope of the regression.
  */
-import { OpenAPIHono } from "@hono/zod-openapi"
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-import type { AuthUser, EsResearch } from "@/api/types"
+import type { EsResearch } from "@/api/types"
 
-import { createMockResearchDoc, createMockAuthUser } from "../../helpers/mock-es"
+import { buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
+import { createMockResearchDoc } from "../../helpers/mock-es"
 
-// === Mock external boundaries ===
+// === Auth mock ===
+
+void mock.module("@/api/middleware/auth", buildMockAuthModule)
+
+// === ES mocks (external boundary) ===
 
 const mockUpdateResearch = mock<(...args: unknown[]) => Promise<EsResearch | null>>()
 const mockGetResearchWithSeqNo = mock<
@@ -26,61 +32,27 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
   updateResearch: (...args: unknown[]) => mockUpdateResearch(...args),
   updateResearchUids: mock(() => Promise.resolve(null)),
+  getPendingReviews: mock(() => Promise.resolve([])),
+  updateResearchStatus: mock(() => Promise.resolve(null)),
+  generateNextHumId: mock(() => Promise.resolve("hum0001")),
 }))
 
 void mock.module("@/api/es-client/search", () => ({
-  searchResearches: mock(() => Promise.resolve({ data: [], pagination: { total: 0, page: 1, limit: 10 } })),
+  searchResearches: mock(() => Promise.resolve({
+    data: [],
+    pagination: { page: 1, limit: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+  })),
+  searchDatasets: mock(() => Promise.resolve({
+    data: [],
+    pagination: { page: 1, limit: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+  })),
 }))
 
-// Mock auth middleware to inject test user
-let testAuthUser: AuthUser | null = null
-
-void mock.module("@/api/middleware/auth", () => {
-  const fakeAuth = async (c: { set: (key: string, value: unknown) => void }, next: () => Promise<void>) => {
-    c.set("authUser", testAuthUser)
-    await next()
-  }
-
-  return {
-    optionalAuth: fakeAuth,
-    requireAuth: fakeAuth,
-    requireAdmin: fakeAuth,
-    isAdminUser: mock(() => Promise.resolve(false)),
-    canDeleteResource: (user: AuthUser | null) => user?.isAdmin ?? false,
-  }
-})
-
-// Import AFTER mock setup
-const { registerCrudHandlers } = await import("@/api/routes/research/crud")
-const { loadResearchAndAuthorize } = await import("@/api/middleware/resource-auth")
-
-// === Test app factory ===
-
-const createUpdateTestApp = () => {
-  const router = new OpenAPIHono()
-
-  // Error handler: convert AppError to proper HTTP status
-  router.onError((err, c) => {
-    if (err && typeof err === "object" && "statusCode" in err) {
-      const statusCode = (err as { statusCode: number }).statusCode as 409
-      return c.json({ detail: (err as Error).message }, statusCode)
-    }
-    return c.json({ detail: "Internal error" }, 500)
-  })
-
-  router.use("*", async (c, next) => {
-    c.set("authUser", testAuthUser)
-    await next()
-  })
-  router.use("/:humId/update", loadResearchAndAuthorize({ requireOwnership: true }))
-
-  registerCrudHandlers(router)
-  return router
-}
+const { getTestApp } = await import("../../helpers")
 
 // === Tests ===
 
-const owner = createMockAuthUser({ userId: "owner-1" })
+const owner = userAuthHeader({ userId: "owner-1" })
 
 const updateBody = {
   title: { ja: "更新", en: "Updated" },
@@ -89,11 +61,7 @@ const updateBody = {
 }
 
 describe("PUT /research/{humId}/update status guard", () => {
-  let app: ReturnType<typeof createUpdateTestApp>
-
   beforeEach(() => {
-    app = createUpdateTestApp()
-    testAuthUser = owner
     mockUpdateResearch.mockReset()
     mockGetResearchWithSeqNo.mockReset()
   })
@@ -106,20 +74,17 @@ describe("PUT /research/{humId}/update status guard", () => {
       latestVersion: null,
       draftVersion: "v1",
     })
-
     const updatedDoc = { ...draftDoc, title: { ja: "更新", en: "Updated" } }
 
-    // First call: middleware loads research
-    // Second call: handler fetches updated seqNo
     mockGetResearchWithSeqNo
       .mockResolvedValueOnce({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
       .mockResolvedValueOnce({ doc: updatedDoc, seqNo: 2, primaryTerm: 1 })
 
     mockUpdateResearch.mockResolvedValue(updatedDoc)
 
-    const res = await app.request("/hum0001/update", {
+    const res = await getTestApp().request("/research/hum0001/update", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...owner },
       body: JSON.stringify(updateBody),
     })
 
@@ -137,9 +102,9 @@ describe("PUT /research/{humId}/update status guard", () => {
 
     mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
 
-    const res = await app.request("/hum0001/update", {
+    const res = await getTestApp().request("/research/hum0001/update", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...owner },
       body: JSON.stringify(updateBody),
     })
 
@@ -159,9 +124,9 @@ describe("PUT /research/{humId}/update status guard", () => {
 
     mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
 
-    const res = await app.request("/hum0001/update", {
+    const res = await getTestApp().request("/research/hum0001/update", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...owner },
       body: JSON.stringify(updateBody),
     })
 
@@ -179,12 +144,80 @@ describe("PUT /research/{humId}/update status guard", () => {
 
     mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
 
-    await app.request("/hum0001/update", {
+    await getTestApp().request("/research/hum0001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("rejects unauthenticated update with 401 before status check", async () => {
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      uids: ["owner-1"],
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/research/hum0001/update", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updateBody),
     })
 
+    expect(res.status).toBe(401)
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("rejects non-owner authenticated update with 403 — ownership check precedes status guard", async () => {
+    // A non-owner / non-admin user must be refused at the ownership gate (403)
+    // BEFORE the requireDraftStatus check runs. If the order were reversed,
+    // a stranger hitting a draft Research would still see 403 (same outcome),
+    // but a stranger hitting a non-draft Research would get a 409 — which
+    // leaks status of resources they have no business knowing about.
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      uids: ["owner-1"],
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+
+    const stranger = userAuthHeader({ userId: "stranger-9" })
+    const res = await getTestApp().request("/research/hum0001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...stranger },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(403)
+    expect(mockUpdateResearch).not.toHaveBeenCalled()
+  })
+
+  it("returns 403 (not 409) when a stranger hits a non-draft Research — ownership fails first", async () => {
+    // Regression anchor for the ordering invariant above with a non-draft
+    // resource: the response must be 403, never 409. A 409 would imply the
+    // server inspected status before authorising the caller.
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      uids: ["owner-1"],
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+
+    const stranger = userAuthHeader({ userId: "stranger-9" })
+    const res = await getTestApp().request("/research/hum0001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...stranger },
+      body: JSON.stringify(updateBody),
+    })
+
+    expect(res.status).toBe(403)
     expect(mockUpdateResearch).not.toHaveBeenCalled()
   })
 })

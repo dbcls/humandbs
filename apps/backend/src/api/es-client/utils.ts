@@ -17,6 +17,20 @@ export const esTotal = (t: number | { value: number } | undefined) => {
 }
 
 /**
+ * Escape Elasticsearch wildcard query special characters.
+ *
+ * The ES `wildcard` query treats `*`, `?`, and `\` as syntax. When user input
+ * is embedded into a `wildcard` value (e.g. `*${value}*` for partial match),
+ * unescaped `*` / `?` let the caller widen the match to "anything", which can
+ * be used to inflate ES CPU cost on already-leading-wildcard queries.
+ *
+ * Reference: Elasticsearch query DSL — wildcard query.
+ */
+export const escapeEsWildcard = (value: string): string => {
+  return value.replace(/[\\*?]/g, m => `\\${m}`)
+}
+
+/**
  * Remove duplicates from array
  */
 export const uniq = <T>(arr: T[]): T[] => {

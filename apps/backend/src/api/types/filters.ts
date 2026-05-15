@@ -23,13 +23,42 @@ import { RESEARCH_STATUS } from "./workflow"
 // === Range Filter ===
 
 /**
- * Range filter for numeric/date values
+ * Range filter for numeric values
  */
 export const RangeFilterSchema = z.object({
   min: z.union([z.string(), z.number()]).optional(),
   max: z.union([z.string(), z.number()]).optional(),
 })
 export type RangeFilter = z.infer<typeof RangeFilterSchema>
+
+/**
+ * ISO 8601 date or date-time string (YYYY-MM-DD or YYYY-MM-DDTHH:MM[:SS[.fff]][Z|±HH:MM]).
+ * Accepting both forms keeps the schema permissive for clients that send
+ * either a calendar date or a precise UTC/offset timestamp.
+ */
+const ISO_DATE_OR_DATETIME_REGEX =
+  /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/
+
+/**
+ * Range filter for ISO 8601 date / date-time values.
+ *
+ * Used by `datePublished` / `dateModified` on the POST search body, where a
+ * malformed string (e.g. "not-a-date") would otherwise reach the ES query as
+ * a raw value and either crash or be silently ignored.
+ */
+export const DateRangeFilterSchema = z.object({
+  min: z
+    .string()
+    .regex(ISO_DATE_OR_DATETIME_REGEX)
+    .optional()
+    .describe("ISO 8601 date or date-time (e.g., '2024-01-01' or '2024-01-01T00:00:00Z')"),
+  max: z
+    .string()
+    .regex(ISO_DATE_OR_DATETIME_REGEX)
+    .optional()
+    .describe("ISO 8601 date or date-time (e.g., '2024-12-31' or '2024-12-31T23:59:59Z')"),
+})
+export type DateRangeFilter = z.infer<typeof DateRangeFilterSchema>
 
 // === Dataset Filters (POST search) ===
 
@@ -55,8 +84,9 @@ export const DatasetFiltersSchema = z.object({
     .describe("Health status: healthy, affected, or mixed"),
   disease: z
     .string()
+    .max(256)
     .optional()
-    .describe("Disease label partial match (free-text search)"),
+    .describe("Disease label partial match (free-text search, max 256 chars)"),
   diseaseIcd10: z
     .array(z.string())
     .optional()
@@ -200,11 +230,11 @@ export const ResearchSearchBodySchema = z.object({
     ),
 
   // Date range filters
-  datePublished: RangeFilterSchema.optional().describe(
-    "Filter by datePublished range (ISO 8601 format)",
+  datePublished: DateRangeFilterSchema.optional().describe(
+    "Filter by datePublished range (ISO 8601 date or date-time)",
   ),
-  dateModified: RangeFilterSchema.optional().describe(
-    "Filter by dateModified range (ISO 8601 format)",
+  dateModified: DateRangeFilterSchema.optional().describe(
+    "Filter by dateModified range (ISO 8601 date or date-time)",
   ),
 
   // Dataset attribute filters (parent-child filter)

@@ -12,12 +12,14 @@ import { ERROR_MESSAGES } from "@/api/constants"
 import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
 import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
 import {
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
 } from "@/api/routes/errors"
 import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
+import { VERSION_STRING_REGEX } from "@/api/types/common"
 
 // Extend Hono context with resource preload data
 declare module "hono" {
@@ -32,7 +34,9 @@ interface ResourceAuthOptions {
   /** Require user to be admin or owner of the resource */
   requireOwnership?: boolean
   /** Require user to be admin */
-  adminOnly?: boolean
+  requireAdmin?: boolean
+  /** Require the Research to be in `draft` status (409 otherwise) */
+  requireDraftStatus?: boolean
 }
 
 interface DatasetAuthOptions extends ResourceAuthOptions {
@@ -71,12 +75,12 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
     }
 
     // Check authentication requirements
-    if ((options.requireOwnership || options.adminOnly) && !authUser) {
+    if ((options.requireOwnership || options.requireAdmin) && !authUser) {
       throw new UnauthorizedError(ERROR_MESSAGES.UNAUTHORIZED)
     }
 
     // Check admin requirement
-    if (options.adminOnly && !authUser?.isAdmin) {
+    if (options.requireAdmin && !authUser?.isAdmin) {
       throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN_ADMIN)
     }
 
@@ -100,8 +104,23 @@ export const loadResearchAndAuthorize = (options: ResourceAuthOptions = {}): Mid
       }
     }
 
+    // Some mutations are only valid against a draft Research (e.g. dataset
+    // creation, dataset update). Surface a 409 here so handlers can rely on
+    // c.get("research").status === "draft" without re-checking.
+    if (options.requireDraftStatus && doc.status !== "draft") {
+      throw new ConflictError(
+        `Cannot mutate: Research is in '${doc.status}' status, expected 'draft'`,
+      )
+    }
+
     // Set research data for route handler
     c.set("research", { ...doc, seqNo, primaryTerm })
+
+    // When auth was required to reach here, expose a non-null variant so
+    // handlers can read the authenticated user without an extra null-check.
+    if (authUser && (options.requireOwnership || options.requireAdmin)) {
+      c.set("authenticatedUser", authUser)
+    }
 
     await next()
   })
@@ -123,13 +142,14 @@ export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): b
  * callers receive 401 / 403 / 404 without leaking body schema details from a
  * validation 400.
  *
- *  1. authUser presence (UnauthorizedError 401 when requireOwnership/adminOnly)
- *  2. admin requirement (ForbiddenError 403 when adminOnly)
+ *  1. authUser presence (UnauthorizedError 401 when requireOwnership/requireAdmin)
+ *  2. admin requirement (ForbiddenError 403 when requireAdmin)
  *  3. Dataset preload via `?version=<v>` (defaults to `v1`, matching the
  *     handler's prior default). Missing dataset → 404.
  *  4. parent Research preload via `getResearchDoc`. Missing or `status="deleted"` → 404.
  *  5. ownership check (`canModifyResource`) when requireOwnership.
  *  6. parent-draft check (`parentResearch.status === "draft"`) when requireParentDraft.
+ *     Surfaced as 409 ConflictError to match `loadResearchAndAuthorize.requireDraftStatus`.
  *  7. Sets `c.set("dataset", ...)` and `c.set("parentResearch", ...)` for the handler.
  */
 export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): MiddlewareHandler => {
@@ -141,11 +161,11 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
       throw new ValidationError("datasetId parameter is required")
     }
 
-    if ((options.requireOwnership || options.adminOnly) && !authUser) {
+    if ((options.requireOwnership || options.requireAdmin) && !authUser) {
       throw new UnauthorizedError(ERROR_MESSAGES.UNAUTHORIZED)
     }
 
-    if (options.adminOnly && !authUser?.isAdmin) {
+    if (options.requireAdmin && !authUser?.isAdmin) {
       throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN_ADMIN)
     }
 
@@ -155,7 +175,7 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
     // is picked up. Strict format validation remains the validators' job.
     const versionRaw = c.req.query("version")
     let version: string
-    if (versionRaw && /^v\d+$/.test(versionRaw)) {
+    if (versionRaw && VERSION_STRING_REGEX.test(versionRaw)) {
       version = versionRaw
     } else {
       const latest = await resolveLatestDatasetVersion(datasetId)
@@ -181,13 +201,17 @@ export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): Middl
     }
 
     if (options.requireParentDraft && parentResearch.status !== "draft") {
-      throw new ForbiddenError(
-        "Cannot update dataset: parent Research is not in draft status",
+      throw new ConflictError(
+        `Cannot mutate dataset: parent Research is in '${parentResearch.status}' status, expected 'draft'`,
       )
     }
 
     c.set("dataset", { ...doc, seqNo, primaryTerm })
     c.set("parentResearch", parentResearch)
+
+    if (authUser && (options.requireOwnership || options.requireAdmin)) {
+      c.set("authenticatedUser", authUser)
+    }
 
     await next()
   })

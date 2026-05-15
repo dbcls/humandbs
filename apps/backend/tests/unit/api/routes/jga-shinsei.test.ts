@@ -55,6 +55,13 @@ void mock.module("@/api/middleware/auth", () => ({
   requireAuth: mockRequireAuth,
   requireAdmin: mockRequireAdmin,
   optionalAuth: mockOptionalAuth,
+  // routes/admin.ts imports this; surface it on the mock so registry-time
+  // imports of `@/api/middleware/auth` see the same export shape as production.
+  getAuthenticatedUser: (c: { get: (k: string) => AuthUser | undefined }): AuthUser => {
+    const u = c.get("authenticatedUser")
+    if (!u) throw new Error("mock getAuthenticatedUser: authenticatedUser not set")
+    return u
+  },
   isAdminUser: async (_: string) => false,
   canDeleteResource: (u: AuthUser | null) => u?.isAdmin ?? false,
   __testing: { clearJwksCache: () => undefined, clearAdminUidsCache: () => undefined },

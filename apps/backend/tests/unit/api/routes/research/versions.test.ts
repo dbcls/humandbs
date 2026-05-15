@@ -18,30 +18,15 @@
  *   (returns null for optimistic-lock conflict)
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { createMiddleware } from "hono/factory"
 
 import type { AuthUser, EsResearch, ResearchVersion } from "@/api/types"
 
+import { TEST_AUTH_HEADER, buildMockAuthModule } from "../../helpers/mock-auth"
 import { createMockAuthUser, createMockResearchDoc, createMockResearchVersionDoc } from "../../helpers/mock-es"
 
-// === Auth mock ===
+// === Auth mock (shared header-based factory) ===
 
-const TEST_AUTH_HEADER = "X-Test-Auth"
-
-const mockOptionalAuth = createMiddleware(async (c, next) => {
-  const raw = c.req.header(TEST_AUTH_HEADER)
-  c.set("authUser", raw ? (JSON.parse(raw) as AuthUser) : null)
-  await next()
-})
-
-void mock.module("@/api/middleware/auth", () => ({
-  optionalAuth: mockOptionalAuth,
-  requireAuth: mockOptionalAuth, // not used in this file but exported for symmetry
-  requireAdmin: createMiddleware(async (_c, next) => { await next() }),
-  isAdminUser: async (_: string) => false,
-  canDeleteResource: (u: AuthUser | null) => u?.isAdmin ?? false,
-  __testing: { clearJwksCache: () => undefined, clearAdminUidsCache: () => undefined },
-}))
+void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
 // === ES mocks ===
 
@@ -95,7 +80,7 @@ const owner = createMockAuthUser({ userId: "owner-1" })
 const stranger = createMockAuthUser({ userId: "stranger-1" })
 const admin = createMockAuthUser({ userId: "admin-1", isAdmin: true })
 
-const authHeader = (u: AuthUser) => ({ [TEST_AUTH_HEADER]: JSON.stringify(u) })
+const authHeader = (u: AuthUser): Record<string, string> => ({ [TEST_AUTH_HEADER]: JSON.stringify(u) })
 
 const publishedDoc = (): EsResearch => createMockResearchDoc({
   humId: "hum0001",
