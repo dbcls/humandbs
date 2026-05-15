@@ -158,5 +158,5 @@ const LazyFrontStats = lazy(
 );
 
 const LazyFrontStatsNew = lazy(
-  () => import("@/components/FrontStatsVisualizationNew"),
+  () => import("@/components/FrontStatsVisualizationNew/index"),
 );
