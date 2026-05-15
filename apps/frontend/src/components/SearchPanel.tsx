@@ -375,10 +375,7 @@ function PanelHeader({
   const t = useTranslations("Filters");
   return (
     <div className="p-3">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <ChevronRight className="size-6" />
-        </Button>
+      <div className="flex items-center justify-between pl-2">
         <span className="text-sm font-medium">{t("panel-title")}</span>
         <div className="flex items-center gap-1">
           {hasAnyFilter && (
