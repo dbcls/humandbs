@@ -518,11 +518,13 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     }
   })
 
-  itWithIsolationIndex("IT-DATASET-T8: PUT update rejects body.humId / humVersionId that do not match the dataset's parent linkage", async ({ admin, nonAdmin }) => {
+  itWithIsolationIndex("IT-DATASET-T8: PUT update rejects body.humId that does not match the dataset's parent linkage", async ({ admin, nonAdmin }) => {
     // The handler authorizes against the URL-resolved parent Research only; a
-    // body that overrides humId/humVersionId would otherwise reattach the
-    // dataset to an unrelated Research. The handler must reject such bodies
-    // with 400 before reaching the writer.
+    // body that overrides humId would otherwise try to reattach the dataset
+    // to an unrelated Research. The handler rejects such bodies with 400
+    // before reaching the writer. (humVersionId rotates across draft cycles
+    // so it is not compared at the handler boundary; the ES layer pins it
+    // from the existing dataset doc + parent.draftVersion regardless.)
     const sub = decodeJwtSub(nonAdmin)
     expect(sub).toBeTruthy()
     let humIdA = ""

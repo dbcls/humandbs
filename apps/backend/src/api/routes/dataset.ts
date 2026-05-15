@@ -346,14 +346,19 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const seqNo = body._seq_no
   const primaryTerm = body._primary_term
 
-  // body.humId / humVersionId must match the dataset's existing parent linkage.
-  // Without this check, an owner of Research A could try to repoint Dataset X
-  // to Research B via the body. The ES layer (`updateDataset`) is a second
+  // body.humId must match the dataset's existing parent linkage. Without
+  // this check, an owner of Research A could try to repoint Dataset X to
+  // Research B via the body. The ES layer (`updateDataset`) is a second
   // backstop — it ignores humId / humVersionId in updates outright — but this
   // 400 short-circuits the call so the client gets a clear error.
-  if (body.humId !== preloaded.humId || body.humVersionId !== preloaded.humVersionId) {
+  //
+  // body.humVersionId is NOT compared because the value rotates across draft
+  // cycles (v1 → v2 when a new Research version is created). Pinning the
+  // correct humVersionId is the ES layer's job (`bumpDatasetVersion` derives
+  // it from `currentDoc.humId` + `parentResearch.draftVersion`).
+  if (body.humId !== preloaded.humId) {
     throw new ValidationError(
-      "body.humId and body.humVersionId must match the dataset's parent Research",
+      "body.humId must match the dataset's parent Research",
     )
   }
 
