@@ -31,12 +31,13 @@ const mockGetDatasetWithSeqNo = mock<
   (datasetId: string, version: string) =>
   Promise<{ doc: EsDataset; seqNo: number; primaryTerm: number } | null>
 >()
+const mockGetDataset = mock<(...args: unknown[]) => Promise<EsDataset | null>>()
 const mockUpdateDataset = mock<(...args: unknown[]) => Promise<EsDataset | null>>()
 const mockDeleteDataset = mock<(...args: unknown[]) => Promise<boolean>>()
 const mockGetResearchDoc = mock<(humId: string) => Promise<EsResearch | null>>()
 
 void mock.module("@/api/es-client/dataset", () => ({
-  getDataset: mock(() => Promise.resolve(null)),
+  getDataset: (...args: unknown[]) => mockGetDataset(...args),
   getDatasetWithSeqNo: (datasetId: string, version: string) =>
     mockGetDatasetWithSeqNo(datasetId, version),
   resolveLatestDatasetVersion: (datasetId: string) =>
@@ -111,6 +112,7 @@ const wireDatasetAndParent = (
   })
   mockResolveLatestDatasetVersion.mockResolvedValue(dataset.version)
   mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+  mockGetDataset.mockResolvedValue(dataset)
   mockGetResearchDoc.mockResolvedValue(parent)
   return { parent, dataset }
 }
@@ -118,6 +120,7 @@ const wireDatasetAndParent = (
 const resetMocks = () => {
   mockResolveLatestDatasetVersion.mockReset()
   mockGetDatasetWithSeqNo.mockReset()
+  mockGetDataset.mockReset()
   mockUpdateDataset.mockReset()
   mockDeleteDataset.mockReset()
   mockGetResearchDoc.mockReset()
@@ -247,7 +250,6 @@ describe("POST /dataset/{datasetId}/delete mutation auth", () => {
   })
 
   it("403 when authenticated non-admin (even owner)", async () => {
-    wireDatasetAndParent()
     const res = await getTestApp().request("/dataset/JGAD000001/delete", {
       method: "POST",
       headers: { ...owner },
@@ -256,23 +258,33 @@ describe("POST /dataset/{datasetId}/delete mutation auth", () => {
     expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 
-  it("404 when dataset does not exist (no longer 204 — middleware-based check)", async () => {
-    mockResolveLatestDatasetVersion.mockResolvedValue(null)
+  it("204 (idempotent) when dataset does not exist", async () => {
+    mockGetDataset.mockResolvedValue(null)
     const res = await getTestApp().request("/dataset/JGAD999/delete", {
       method: "POST",
       headers: { ...admin },
     })
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(204)
     expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 
-  it("409 when parent Research is published (requireParentDraft)", async () => {
+  it("409 when parent Research is published (requireParentDraft inline check)", async () => {
     wireDatasetAndParent({ status: "published", latestVersion: "v1", draftVersion: null })
     const res = await getTestApp().request("/dataset/JGAD000001/delete", {
       method: "POST",
       headers: { ...admin },
     })
     expect(res.status).toBe(409)
+    expect(mockDeleteDataset).not.toHaveBeenCalled()
+  })
+
+  it("404 when parent Research is deleted (cloak)", async () => {
+    wireDatasetAndParent({ status: "deleted", latestVersion: "v1", draftVersion: null })
+    const res = await getTestApp().request("/dataset/JGAD000001/delete", {
+      method: "POST",
+      headers: { ...admin },
+    })
+    expect(res.status).toBe(404)
     expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 

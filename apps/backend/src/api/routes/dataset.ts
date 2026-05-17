@@ -15,6 +15,7 @@ import {
   listDatasetVersions,
   updateDataset,
 } from "@/api/es-client/dataset"
+import { getResearchDoc } from "@/api/es-client/research"
 import { searchDatasets } from "@/api/es-client/search"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
@@ -23,7 +24,7 @@ import {
   singleReadOnlyResponse,
   singleResponse,
 } from "@/api/helpers/response"
-import { optionalAuth } from "@/api/middleware/auth"
+import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
 import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
@@ -283,10 +284,10 @@ datasetRouter.use(
   "/:datasetId/update",
   loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraft: true }),
 )
-datasetRouter.use(
-  "/:datasetId/delete",
-  loadDatasetAndAuthorize({ requireAdmin: true, requireParentDraft: true }),
-)
+// DELETE uses requireAuth + requireAdmin so the handler can still return
+// idempotent 204 when the dataset is already gone (matching REST DELETE
+// semantics). Parent-draft is enforced inline by the handler.
+datasetRouter.use("/:datasetId/delete", requireAuth, requireAdmin)
 
 // GET /dataset
 datasetRouter.openapi(listDatasetsRoute, async (c) => {
@@ -389,12 +390,36 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 })
 
 // POST /dataset/{datasetId}/delete
-// auth / admin / parent-draft are validated by loadDatasetAndAuthorize.
-// Missing dataset surfaces as 404 from the middleware (architecture.md § Dataset 削除).
+// auth / admin are validated by requireAuth + requireAdmin before validators run.
+// Idempotent: missing dataset → 204. Parent-draft is enforced inline because
+// `loadDatasetAndAuthorize` would 404 on missing dataset and break idempotency.
 datasetRouter.openapi(deleteDatasetRoute, async (c) => {
-  const { datasetId } = c.get("dataset")
+  const authUser = c.get("authUser")
+  const { datasetId } = c.req.valid("param")
   const query = c.req.valid("query")
   const version = query.version ?? undefined // If undefined, deletes all versions
+
+  // Pass authUser so admin can resolve datasets whose parent Research is still
+  // in draft — without it the visibility filter on `getDataset` returns null and
+  // the handler short-circuits to 204 without actually deleting.
+  const dataset = await getDataset(datasetId, { version }, authUser)
+  if (!dataset) {
+    // Already deleted or doesn't exist - idempotent success
+    return c.body(null, 204)
+  }
+
+  // Parent Research must be in `draft` status. Mirrors the
+  // `loadDatasetAndAuthorize({ requireParentDraft })` middleware check kept
+  // inline here so the idempotent 204 short-circuit above stays in place.
+  const research = await getResearchDoc(dataset.humId)
+  if (!research || research.status === "deleted") {
+    throw new NotFoundError(`Parent Research ${dataset.humId} not found`)
+  }
+  if (research.status !== "draft") {
+    throw new ConflictError(
+      `Cannot mutate dataset: parent Research is in '${research.status}' status, expected 'draft'`,
+    )
+  }
 
   await deleteDataset(datasetId, version)
 
