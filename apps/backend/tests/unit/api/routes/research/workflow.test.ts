@@ -30,7 +30,6 @@ void mock.module("@/api/es-client/research", () => ({
   updateResearch: mock(() => Promise.resolve(null)),
   updateResearchStatus: (...args: unknown[]) => mockUpdateResearchStatus(...args),
   updateResearchUids: mock(() => Promise.resolve(null)),
-  getPendingReviews: mock(() => Promise.resolve([])),
   generateNextHumId: mock(() => Promise.resolve("hum0001")),
 }))
 

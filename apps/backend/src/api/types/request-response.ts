@@ -494,10 +494,10 @@ export type UidsResponse = z.infer<typeof UidsResponseSchema>
 
 /**
  * Research detail response for authenticated users (GET /research/{humId})
- * Omits internal ES locking fields from data — they are surfaced in meta instead.
+ * `_seq_no`/`_primary_term` live in `meta` (see `singleResponse` helper).
  */
 export const ResearchDetailResponseSchema = createSingleResponseSchema(
-  ResearchDetailSchema.omit({ _seq_no: true, _primary_term: true }),
+  ResearchDetailSchema,
 )
 export type ResearchDetailResponse = z.infer<
   typeof ResearchDetailResponseSchema

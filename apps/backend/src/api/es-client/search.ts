@@ -10,7 +10,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import facetOrder from "@/api/data/facet-order.json"
-import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds, validateRequestedStatus } from "@/api/es-client/auth"
+import { buildStatusFilter, canAccessResearchDoc, getPublishedHumIds } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { NESTED_TERMS_FILTERS, NESTED_RANGE_FILTERS, hasDatasetFilters } from "@/api/es-client/filters"
 import {
@@ -702,7 +702,6 @@ export const searchResearches = async (
   // - If explicit status requested, use it (defense-in-depth permission check)
   // - Otherwise, apply default authorization filter
   if (requestedStatus) {
-    validateRequestedStatus(authUser, requestedStatus)
     must.push({ term: { status: requestedStatus } })
 
     // For non-admin authenticated users requesting non-published status, also filter by uids
@@ -771,11 +770,21 @@ export const searchResearches = async (
       humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true, status: true,
     }).parse(doc))
 
-  // Defense-in-depth: post-filter results that ES query should have excluded
+  // Defense-in-depth: ES side should have already filtered by latestVersion
+  // mapping, but if a stale/broken doc slips through we drop it here and emit
+  // an error log so the mismatch is observable. `pagination.total` is corrected
+  // below so the page count tracks the visible rows; we accept the per-page
+  // discrepancy in exchange for surfacing the underlying mapping bug.
   const base = baseAll.filter(doc => canAccessResearchDoc(authUser, doc))
   const postFilterExcluded = baseAll.length - base.length
   if (postFilterExcluded > 0) {
-    logger.error(`searchResearches post-filter excluded ${postFilterExcluded} documents that should have been filtered by ES query. Check ES index mapping for latestVersion field.`)
+    const leakedHumIds = baseAll
+      .filter(doc => !canAccessResearchDoc(authUser, doc))
+      .map(doc => doc.humId)
+    logger.error(
+      `searchResearches post-filter excluded ${postFilterExcluded} document(s) that ES query should have filtered out. Check ES index mapping for latestVersion.`,
+      { humIds: leakedHumIds },
+    )
   }
 
   // Fetch version and dataset details

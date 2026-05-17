@@ -9,7 +9,8 @@
  */
 import { createRoute, z } from "@hono/zod-openapi"
 
-import { validateRequestedStatus } from "@/api/es-client/auth"
+import { ForbiddenError } from "@/api/errors"
+import { checkRequestedStatus } from "@/api/es-client/auth"
 import {
   convertDatasetBodyToQuery,
   convertResearchBodyToQuery,
@@ -198,7 +199,8 @@ searchRouter.openapi(postResearchSearchRoute, async (c) => {
   const body = c.req.valid("json")
   const authUser = c.get("authUser")
 
-  validateRequestedStatus(authUser, body.status)
+  const statusCheck = checkRequestedStatus(authUser, body.status)
+  if (!statusCheck.allowed) throw new ForbiddenError(statusCheck.message)
 
   // Convert POST body to GET query format for existing searchResearches function
   const query = convertResearchBodyToQuery(body)
@@ -238,7 +240,8 @@ searchRouter.openapi(getFacetsRoute, async (c) => {
     sort: "datasetId",
     order: "asc",
     includeFacets: true,
-  } as DatasetSearchQuery, authUser, { facetCountField })
+    includeRawHtml: false,
+  } satisfies DatasetSearchQuery, authUser, { facetCountField })
 
   // Return facets with counts (read-only response)
   return singleReadOnlyResponse(c, result.facets ?? {})
@@ -260,7 +263,8 @@ searchRouter.openapi(getFacetFieldRoute, async (c) => {
     sort: "datasetId",
     order: "asc",
     includeFacets: true,
-  } as DatasetSearchQuery, authUser, { facetCountField })
+    includeRawHtml: false,
+  } satisfies DatasetSearchQuery, authUser, { facetCountField })
 
   // Return facet values with counts (read-only response)
   const fieldFacet = result.facets?.[fieldName] ?? []

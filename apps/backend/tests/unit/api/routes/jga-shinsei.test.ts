@@ -18,7 +18,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { createMiddleware } from "hono/factory"
 
-import { ForbiddenError, UnauthorizedError } from "@/api/routes/errors"
+import { ForbiddenError, UnauthorizedError } from "@/api/errors"
 import type { AuthUser } from "@/api/types"
 
 import { createMockAuthUser } from "../helpers/mock-es"
@@ -63,7 +63,6 @@ void mock.module("@/api/middleware/auth", () => ({
     return u
   },
   isAdminUser: async (_: string) => false,
-  canDeleteResource: (u: AuthUser | null) => u?.isAdmin ?? false,
   __testing: { clearJwksCache: () => undefined, clearAdminUidsCache: () => undefined },
 }))
 

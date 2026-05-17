@@ -92,7 +92,6 @@ void mock.module("@/api/es-client/research", () => ({
   updateResearchStatus: mockUpdateResearchStatus,
   updateResearchUids: mockUpdateResearchUids,
   deleteResearch: mockDeleteResearch,
-  getPendingReviews: mock(async () => []),
 }))
 
 void mock.module("@/api/es-client/research-version", () => ({

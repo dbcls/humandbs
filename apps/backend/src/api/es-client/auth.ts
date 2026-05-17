@@ -8,7 +8,6 @@
  */
 import type { estypes } from "@elastic/elasticsearch"
 
-import { ConflictError, ForbiddenError, NotFoundError } from "@/api/errors"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import type { AuthUser, EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 import { StatusTransitions } from "@/api/types"
@@ -54,61 +53,37 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
 }
 
 /**
- * Validate that a parent Research is in a state that allows child-dataset
- * mutations (create / update / delete). Throws NotFoundError when the parent
- * is missing or logically deleted (preserves the 404 cloak for deleted
- * Research per architecture.md § deleted 状態) and a ConflictError when it
- * is not in draft (RFC 7231 § 6.5.8 — "the request could not be completed
- * due to a conflict with the current state of the target resource").
+ * Result of `checkRequestedStatus` — pure data, no HTTP semantics.
  *
- * 409 matches `loadResearchAndAuthorize.requireDraftStatus` and
- * `loadDatasetAndAuthorize.requireParentDraft` so the API surface is uniform.
- */
-export function validateParentResearchForMutation(
-  research: EsResearch | null,
-  humId: string,
-): asserts research is EsResearch {
-  if (!research) {
-    throw new NotFoundError(`Parent Research ${humId} not found`)
-  }
-  if (research.status === "deleted") {
-    throw new NotFoundError(`Parent Research ${humId} not found`)
-  }
-  if (research.status !== "draft") {
-    throw new ConflictError(
-      `Cannot mutate dataset: parent Research is in '${research.status}' status, expected 'draft'`,
-    )
-  }
-}
-
-/**
- * Validate that the caller is allowed to request `status` in listing/search.
- * Throws ForbiddenError on violation, no-op when the request is allowed or when
- * no status was requested. Status-aware result filtering (own-resources
- * scoping for authenticated non-admins) is performed separately in the
- * search/listing layer; this function only gates entry.
+ * The route layer translates `{ allowed: false }` to `ForbiddenError`.
+ * Status-aware result filtering (own-resources scoping for authenticated
+ * non-admins) is performed separately in the search/listing layer; this
+ * function only gates entry.
  *
  * Rules (architecture.md § deleted 状態, § status フィルタの権限):
- * - undefined: no-op (default visibility applies)
+ * - undefined: allowed (default visibility applies)
  * - "published": allowed for everyone
  * - "deleted": admin only
  * - others ("draft", "review"): authenticated only
  */
-export const validateRequestedStatus = (
+export type RequestedStatusCheck =
+  | { allowed: true }
+  | { allowed: false; message: string }
+
+export const checkRequestedStatus = (
   authUser: AuthUser | null,
   requestedStatus: ResearchStatus | undefined,
-): void => {
-  if (!requestedStatus) return
-  if (requestedStatus === "published") return
+): RequestedStatusCheck => {
+  if (!requestedStatus) return { allowed: true }
+  if (requestedStatus === "published") return { allowed: true }
   if (requestedStatus === "deleted") {
-    if (!authUser?.isAdmin) {
-      throw new ForbiddenError("Only admins can access deleted resources")
-    }
-    return
+    if (authUser?.isAdmin) return { allowed: true }
+    return { allowed: false, message: "Only admins can access deleted resources" }
   }
   if (!authUser) {
-    throw new ForbiddenError("Public users can only access published resources")
+    return { allowed: false, message: "Public users can only access published resources" }
   }
+  return { allowed: true }
 }
 
 /**

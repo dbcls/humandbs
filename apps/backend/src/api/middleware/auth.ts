@@ -14,8 +14,8 @@ import * as jose from "jose"
 import * as fs from "node:fs/promises"
 
 import { CACHE_TTL } from "../constants"
+import { ForbiddenError, InternalError, UnauthorizedError } from "../errors"
 import { logger } from "../logger"
-import { ForbiddenError, InternalError, UnauthorizedError } from "../routes/errors"
 import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
@@ -304,10 +304,3 @@ export const requireAdmin: MiddlewareHandler = createMiddleware(async (c, next) 
   await next()
 })
 
-/**
- * Check if user can delete a resource
- * Returns true only for admin
- */
-export function canDeleteResource(authUser: AuthUser | null): boolean {
-  return authUser?.isAdmin ?? false
-}

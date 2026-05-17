@@ -43,7 +43,6 @@ void mock.module("@/api/es-client/research", () => ({
   updateResearchStatus: mock(async () => null),
   updateResearchUids: mock(async () => null),
   deleteResearch: mock(async () => false),
-  getPendingReviews: mock(async () => []),
 }))
 
 const mockCreateResearchVersion = mock<(...args: unknown[]) => Promise<ResearchVersion | null>>()

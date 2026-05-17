@@ -31,7 +31,7 @@ export const buildMockAuthModule = () => ({
   requireAuth: createMiddleware(async (c, next) => {
     const raw = c.req.header(TEST_AUTH_HEADER)
     if (!raw) {
-      const { UnauthorizedError } = await import("@/api/routes/errors")
+      const { UnauthorizedError } = await import("@/api/errors")
       throw new UnauthorizedError("Authentication required")
     }
     const user = JSON.parse(raw) as AuthUser
@@ -42,7 +42,7 @@ export const buildMockAuthModule = () => ({
   requireAdmin: createMiddleware(async (c, next) => {
     const user = c.get("authUser")
     if (!user?.isAdmin) {
-      const { ForbiddenError } = await import("@/api/routes/errors")
+      const { ForbiddenError } = await import("@/api/errors")
       throw new ForbiddenError("Admin access required")
     }
     await next()
@@ -57,7 +57,6 @@ export const buildMockAuthModule = () => ({
     return user
   },
   isAdminUser: async () => false,
-  canDeleteResource: (u: AuthUser | null) => u?.isAdmin ?? false,
   __testing: { clearJwksCache: () => undefined, clearAdminUidsCache: () => undefined },
 })
 

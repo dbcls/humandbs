@@ -9,15 +9,15 @@ import type { MiddlewareHandler } from "hono"
 import { createMiddleware } from "hono/factory"
 
 import { ERROR_MESSAGES } from "@/api/constants"
-import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
-import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
 import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
-} from "@/api/routes/errors"
+} from "@/api/errors"
+import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
+import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
 import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
 import { VERSION_STRING_REGEX } from "@/api/types/common"
 

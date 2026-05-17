@@ -4,12 +4,12 @@
  * This module provides:
  * - Dataset retrieval (getDataset, getDatasetWithSeqNo, listDatasetVersions)
  * - Dataset creation (createDataset, generateDraftDatasetId)
- * - Dataset updates (updateDataset, replaceDatasetId)
+ * - Dataset updates (updateDataset)
  * - Dataset deletion (deleteDataset)
  */
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
+import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
 import { versionSortSpec } from "@/api/es-client/query-builders"
 import { getResearchDoc } from "@/api/es-client/research"
 import {
@@ -48,7 +48,7 @@ export const getDataset = async (
   let dataset: EsDataset | null = null
 
   if (version) {
-    const id = `${datasetId}-${version}` // lang suffix removed (BilingualText format)
+    const id = `${datasetId}-${version}`
     const res = await esClient.get<EsDataset>({
       index: ES_INDEX.dataset,
       id,
@@ -285,13 +285,7 @@ export const updateDataset = async (
 ): Promise<EsDataset | null> => {
   const esId = `${datasetId}-${version}`
 
-  // Determine whether this PUT is the first update in a draft cycle for a previously
-  // published Dataset (architecture.md § Dataset のバージョン).
-  // Bump condition: the dataset.version is still "pinned" by parent.latestVersion's
-  // ResearchVersion.datasets — i.e. it equals the version published in the previous cycle.
-  // In that case a new dataset version doc is created and parent.draftVersion's
-  // ResearchVersion.datasets reference is swapped to it. Otherwise the existing doc is
-  // overwritten in place.
+  // 初回ドラフトサイクル検出 (architecture.md § Dataset のバージョン)
   const existing = await getDatasetWithSeqNo(datasetId, version)
   if (!existing) return null
   if (existing.seqNo !== seqNo || existing.primaryTerm !== primaryTerm) return null
@@ -333,13 +327,7 @@ export const updateDataset = async (
     const result = await getDatasetWithSeqNo(datasetId, version)
     return result?.doc ?? null
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return null // Conflict
-      }
-    }
+    if (isConflictError(error)) return null
     throw error
   }
 }
@@ -416,112 +404,8 @@ const bumpDatasetVersion = async (
       refresh: "wait_for",
     }, { ignore: [404] })
 
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) return null
-    }
+    if (isConflictError(error)) return null
     throw new Error(`Failed to update parent ResearchVersion references: ${error}`)
-  }
-
-  return EsDatasetSchema.parse(newDoc)
-}
-
-/**
- * Replace Dataset ID (for converting draft ID to official ID)
- * Owner or admin can replace
- *
- * This is a complex operation:
- * 1. Get old Dataset document
- * 2. Create new document with new datasetId
- * 3. Update ResearchVersion.datasets references
- * 4. Delete old document
- *
- * @param oldDatasetId - Current dataset ID
- * @param version - Dataset version
- * @param newDatasetId - New dataset ID
- * @returns Updated Dataset document, null on not found
- */
-export const replaceDatasetId = async (
-  oldDatasetId: string,
-  version: string,
-  newDatasetId: string,
-): Promise<EsDataset | null> => {
-  // Get old dataset
-  const oldResult = await getDatasetWithSeqNo(oldDatasetId, version)
-  if (!oldResult) {
-    return null
-  }
-
-  const oldDoc = oldResult.doc
-  const oldEsId = `${oldDatasetId}-${version}`
-  const newEsId = `${newDatasetId}-${version}`
-
-  // Create new document with new datasetId
-  const newDoc: EsDataset = {
-    ...oldDoc,
-    datasetId: newDatasetId,
-  }
-
-  // Index the new document
-  // Use op_type: "create" to prevent overwriting existing documents
-  try {
-    await esClient.index({
-      index: ES_INDEX.dataset,
-      id: newEsId,
-      body: newDoc,
-      op_type: "create",
-      refresh: "wait_for",
-    })
-  } catch (error) {
-    if (isDocumentExistsError(error)) {
-      throw ConflictError.forDuplicate("Dataset", newEsId)
-    }
-    throw new Error(`Failed to create new Dataset with ID ${newDatasetId}: ${error}`)
-  }
-
-  // Update ResearchVersion.datasets references (use the exact version the dataset belongs to)
-  try {
-    const versionWithSeq = await getResearchVersionWithSeqNo(oldDoc.humVersionId)
-    {
-      if (versionWithSeq) {
-        const { doc: versionDoc, seqNo, primaryTerm } = versionWithSeq
-        const newDatasets = versionDoc.datasets.map(d =>
-          d.datasetId === oldDatasetId && d.version === version
-            ? { datasetId: newDatasetId, version }
-            : d,
-        )
-
-        await esClient.update({
-          index: ES_INDEX.researchVersion,
-          id: oldDoc.humVersionId,
-          if_seq_no: seqNo,
-          if_primary_term: primaryTerm,
-          body: {
-            doc: { datasets: newDatasets },
-          },
-          refresh: "wait_for",
-        })
-      }
-    }
-  } catch (error) {
-    // If reference update fails, delete the new document and rethrow
-    await esClient.delete({
-      index: ES_INDEX.dataset,
-      id: newEsId,
-    }, { ignore: [404] })
-    throw new Error(`Failed to update ResearchVersion references: ${error}`)
-  }
-
-  // Delete old document
-  try {
-    await esClient.delete({
-      index: ES_INDEX.dataset,
-      id: oldEsId,
-      refresh: "wait_for",
-    })
-  } catch (error) {
-    // Log warning but don't fail - new document exists
-    logger.warn("Failed to delete old Dataset", { oldEsId, error: String(error) })
   }
 
   return EsDatasetSchema.parse(newDoc)

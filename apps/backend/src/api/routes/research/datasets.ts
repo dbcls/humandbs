@@ -5,6 +5,10 @@
  */
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
+import {
+  InternalError,
+  NotFoundError,
+} from "@/api/errors"
 import { createDataset, getDatasetWithSeqNo } from "@/api/es-client/dataset"
 import { getResearchDetail } from "@/api/es-client/research"
 import { getResearchVersion } from "@/api/es-client/research-version"
@@ -12,10 +16,6 @@ import {
   createdResponse,
   listResponse,
 } from "@/api/helpers/response"
-import {
-  InternalError,
-  NotFoundError,
-} from "@/api/routes/errors"
 import { createPagination } from "@/api/types/response"
 
 import {

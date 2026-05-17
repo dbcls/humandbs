@@ -1,15 +1,8 @@
 /**
- * Error Response Utilities
+ * OpenAPI error response specs for route definitions.
  *
- * This module provides:
- * - OpenAPI error response specs for route definitions
- * - Convenience re-exports of error classes from @/api/errors
- *
- * Error handling is done via throw:
- * - throw new ValidationError("message")
- * - throw new NotFoundError.forResource("Research", humId)
- *
- * The global error handler in app.ts catches these and returns RFC 7807 responses.
+ * Error classes (`ValidationError`, `NotFoundError`, ...) live in `@/api/errors`
+ * and the global error handler in `app.ts` converts them to RFC 7807 responses.
  */
 
 import { ProblemDetailsSchema, type ProblemDetails } from "@/api/types/errors"
@@ -101,14 +94,3 @@ export const ErrorSpec500 = createErrorSpec({
   description: "Internal Server Error - Unexpected error occurred",
 })
 
-// Re-export error classes for convenience
-export {
-  AppError,
-  ValidationError,
-  UnauthorizedError,
-  ForbiddenError,
-  NotFoundError,
-  ConflictError,
-  InternalError,
-  isAppError,
-} from "@/api/errors"

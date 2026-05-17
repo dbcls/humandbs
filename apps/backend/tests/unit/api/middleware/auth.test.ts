@@ -57,7 +57,7 @@ void mock.module("node:fs/promises", () => ({
 // Import AFTER mock.module so the middleware picks up mocked dependencies.
 const { __testing, getAuthenticatedUser } = await import("@/api/middleware/auth")
 const { getTestApp } = await import("../helpers")
-const { InternalError } = await import("@/api/routes/errors")
+const { InternalError } = await import("@/api/errors")
 
 // === Helpers ===
 

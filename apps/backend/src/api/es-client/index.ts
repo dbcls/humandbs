@@ -13,10 +13,11 @@ export {
   buildStatusFilter,
   canAccessResearchDoc,
   getPublishedHumIds,
-  validateRequestedStatus,
+  checkRequestedStatus,
   validateStatusTransition,
   canPerformTransition,
 } from "@/api/es-client/auth"
+export type { RequestedStatusCheck } from "@/api/es-client/auth"
 
 // Filters
 export {
@@ -64,7 +65,6 @@ export {
   updateResearchStatus,
   updateResearchUids,
   deleteResearch,
-  getPendingReviews,
 } from "@/api/es-client/research"
 
 // Research version operations
@@ -82,11 +82,11 @@ export {
 export {
   getDataset,
   getDatasetWithSeqNo,
+  resolveLatestDatasetVersion,
   listDatasetVersions,
   generateDraftDatasetId,
   createDataset,
   updateDataset,
-  replaceDatasetId,
   deleteDataset,
   getResearchByDatasetId,
 } from "@/api/es-client/dataset"

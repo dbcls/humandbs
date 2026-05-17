@@ -33,24 +33,16 @@ const researchVersionFields = {
 }
 
 /**
- * Research detail view model (unified for all users)
- * All fields included; values are controlled per-user in the route handler.
+ * Research detail view model (unified for all users).
+ * Values are controlled per-user in the route handler.
  *
- * `_seq_no` / `_primary_term` handling differs by response envelope:
- * - Detail endpoint (`ResearchDetailResponseSchema`) omits these from `data`
- *   and surfaces them in `meta` so the lock travels alongside the request id.
- * - List endpoint (`LinkedResearchesListResponseSchema`) keeps them on each
- *   `data[]` item because the envelope's `meta` carries pagination instead.
+ * `_seq_no` / `_primary_term` are surfaced in the response envelope's `meta`
+ * (see `ResearchDetailResponseSchema`), not in `data`, matching the Dataset
+ * detail pattern (architecture.md § detail レスポンスの meta).
  */
 export const ResearchDetailSchema = EsResearchSchema
   .omit({ versionIds: true })
-  .extend({
-    ...researchVersionFields,
-    _seq_no: z.number()
-      .describe("Elasticsearch sequence number for optimistic concurrency control"),
-    _primary_term: z.number()
-      .describe("Elasticsearch primary term for optimistic concurrency control"),
-  })
+  .extend(researchVersionFields)
 export type ResearchDetail = z.infer<typeof ResearchDetailSchema>
 
 // === Dataset Version Item ===

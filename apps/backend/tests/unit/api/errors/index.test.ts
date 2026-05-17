@@ -2,7 +2,6 @@
  * Tests for error classes and utilities
  */
 import { describe, expect, it } from "bun:test"
-import fc from "fast-check"
 
 import {
   AppError,
@@ -14,7 +13,6 @@ import {
   NotFoundError,
   UnauthorizedError,
   ValidationError,
-  createErrorFromStatus,
   createProblemDetails,
   isAppError,
   toProblemDetails,
@@ -201,31 +199,6 @@ describe("isAppError", () => {
   })
 })
 
-// === createErrorFromStatus ===
-
-describe("createErrorFromStatus", () => {
-  it.each([
-    [400, ValidationError],
-    [401, UnauthorizedError],
-    [403, ForbiddenError],
-    [404, NotFoundError],
-    [409, ConflictError],
-    [500, InternalError],
-  ] as const)("status %d -> correct class", (status, ErrorClass) => {
-    const err = createErrorFromStatus(status, "msg")
-
-    expect(err).toBeInstanceOf(ErrorClass)
-    expect(err.message).toBe("msg")
-  })
-
-  it("unknown status (502) -> InternalError", () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-    const err = createErrorFromStatus(502 as any, "bad gateway")
-
-    expect(err).toBeInstanceOf(InternalError)
-  })
-})
-
 // === toProblemDetails ===
 
 describe("toProblemDetails", () => {
@@ -291,16 +264,4 @@ describe("PBT: statusCode consistency", () => {
     expect(new InternalError().statusCode).toBe(500)
   })
 
-  it("PBT: createErrorFromStatus preserves message", () => {
-    fc.assert(
-      fc.property(
-        fc.constantFrom(400 as const, 401 as const, 403 as const, 404 as const, 409 as const, 500 as const),
-        fc.string({ minLength: 1 }),
-        (status, msg) => {
-          const err = createErrorFromStatus(status, msg)
-          return err.message === msg && isAppError(err)
-        },
-      ),
-    )
-  })
 })

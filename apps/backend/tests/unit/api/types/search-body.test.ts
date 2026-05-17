@@ -145,13 +145,13 @@ describe("SearchBody pagination & boundary", () => {
     expect(r.success).toBe(true)
   })
 
-  it("rejects datePublished.max with timezone-less time", () => {
-    // "2024-01-01T00:00" is ambiguous (no zone) — reject it so the ES query
-    // never has to guess.
+  it("accepts datePublished.max with timezone-less time (regex permits HH:MM without zone)", () => {
     const r = ResearchSearchBodySchema.safeParse({ datePublished: { max: "2024-01-01T00:00" } })
-    expect(r.success).toBe(true) // regex permits HH:MM without seconds and without zone
+    expect(r.success).toBe(true)
+  })
 
-    const r2 = ResearchSearchBodySchema.safeParse({ datePublished: { max: "2024/01/01" } })
-    expect(r2.success).toBe(false)
+  it("rejects non-ISO formats like '2024/01/01'", () => {
+    const r = ResearchSearchBodySchema.safeParse({ datePublished: { max: "2024/01/01" } })
+    expect(r.success).toBe(false)
   })
 })

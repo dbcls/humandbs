@@ -207,19 +207,10 @@ describe("searchResearches: post-filter defence-in-depth", () => {
   })
 })
 
-describe("searchResearches: explicit status request authorization", () => {
-  it("public requesting non-published throws ForbiddenError without contacting ES research index", async () => {
-    // Defence-in-depth: routes already enforce 403, but searchResearches must not silently
-    // run a non-published query for a public caller either.
-    let caught: unknown
-    try {
-      await searchResearches({ ...baseQuery, status: "draft" }, null)
-    } catch (e) {
-      caught = e
-    }
-    expect(caught).toBeDefined()
-    expect(searchCalls.some(c => c.index === "research")).toBe(false)
-  })
+describe("searchResearches: explicit status request scoping", () => {
+  // Authorization (e.g. forbidding public from requesting `draft`) is the route
+  // layer's job; this layer just builds the ES query. The route caller is
+  // expected to short-circuit with 403 before reaching here.
 
   it("authenticated non-admin requesting draft scopes to own uids (IT-AUTH-17 / IT-RESEARCH-03)", async () => {
     mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 0 }, hits: [] } }))

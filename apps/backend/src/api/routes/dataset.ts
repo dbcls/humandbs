@@ -6,7 +6,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
-import { validateParentResearchForMutation } from "@/api/es-client/auth"
+import { ConflictError, NotFoundError, ValidationError } from "@/api/errors"
 import {
   deleteDataset,
   getDataset,
@@ -15,7 +15,6 @@ import {
   listDatasetVersions,
   updateDataset,
 } from "@/api/es-client/dataset"
-import { getResearchDoc } from "@/api/es-client/research"
 import { searchDatasets } from "@/api/es-client/search"
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
@@ -24,7 +23,7 @@ import {
   singleReadOnlyResponse,
   singleResponse,
 } from "@/api/helpers/response"
-import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
+import { optionalAuth } from "@/api/middleware/auth"
 import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
 import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
@@ -43,9 +42,6 @@ import {
   ErrorSpec404,
   ErrorSpec409,
   ErrorSpec500,
-  ConflictError,
-  NotFoundError,
-  ValidationError,
 } from "@/api/routes/errors"
 import {
   DatasetDetailResponseSchema,
@@ -287,7 +283,10 @@ datasetRouter.use(
   "/:datasetId/update",
   loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraft: true }),
 )
-datasetRouter.use("/:datasetId/delete", requireAuth, requireAdmin)
+datasetRouter.use(
+  "/:datasetId/delete",
+  loadDatasetAndAuthorize({ requireAdmin: true, requireParentDraft: true }),
+)
 
 // GET /dataset
 datasetRouter.openapi(listDatasetsRoute, async (c) => {
@@ -390,29 +389,12 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 })
 
 // POST /dataset/{datasetId}/delete
-// auth / admin are validated by requireAuth + requireAdmin before validators run.
-// The handler keeps the idempotent 204 semantics (missing dataset → 204).
+// auth / admin / parent-draft are validated by loadDatasetAndAuthorize.
+// Missing dataset surfaces as 404 from the middleware (architecture.md § Dataset 削除).
 datasetRouter.openapi(deleteDatasetRoute, async (c) => {
-  const authUser = c.get("authUser")
-  const { datasetId } = c.req.valid("param")
+  const { datasetId } = c.get("dataset")
   const query = c.req.valid("query")
   const version = query.version ?? undefined // If undefined, deletes all versions
-
-  // Check if dataset exists (pass authUser so admin can resolve datasets whose
-  // parent Research is still in draft — without this, the visibility filter on
-  // `getDataset` returns null for a draft-parent dataset even to admin and the
-  // handler would short-circuit to an idempotent 204 without actually deleting).
-  const dataset = await getDataset(datasetId, { version }, authUser)
-  if (!dataset) {
-    // Already deleted or doesn't exist - idempotent success
-    return c.body(null, 204)
-  }
-
-  // D2: Check that parent Research is in draft status (architecture.md § deleted 状態
-  // hides deleted Research as 404 for everyone except admin; this also keeps the
-  // dataset/parent linkage invariant: only draft Research can lose Datasets).
-  const research = await getResearchDoc(dataset.humId)
-  validateParentResearchForMutation(research, dataset.humId)
 
   await deleteDataset(datasetId, version)
 

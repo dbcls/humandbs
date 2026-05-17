@@ -235,6 +235,11 @@ export const convertResearchBodyToQuery = (body: ResearchSearchBody): ResearchSe
     status: body.status,
     includeFacets: body.includeFacets,
     ...datasetFilters,
+    // body has zod defaults for `lang` / `order` etc., but the body schemas
+    // mark some fields optional that the query schemas surface as required
+    // (e.g. `includeRawHtml` defaults to `false` only on the query side).
+    // The downstream `searchResearches` handles these as optional, so the cast
+    // is safe; field-level type-checking above stays in scope.
   } as ResearchSearchQuery
 }
 
@@ -257,6 +262,7 @@ export const convertDatasetBodyToQuery = (body: DatasetSearchBody): DatasetSearc
     humId: body.humId,
     includeFacets: body.includeFacets,
     ...filters,
+    // See note on convertResearchBodyToQuery — same body-vs-query optionality.
   } as DatasetSearchQuery
 }
 

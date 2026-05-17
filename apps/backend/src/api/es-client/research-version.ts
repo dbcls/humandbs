@@ -8,7 +8,7 @@
  */
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
+import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
 import { versionSortSpec } from "@/api/es-client/query-builders"
 import { mgetMap } from "@/api/es-client/utils"
 import {
@@ -30,7 +30,7 @@ export const getResearchVersion = async (
   { version }: { version?: string },
 ): Promise<ResearchVersion | null> => {
   if (version) {
-    const id = `${humId}-${version}` // lang suffix removed (BilingualText format)
+    const id = `${humId}-${version}`
     const res = await esClient.get<ResearchVersion>({
       index: ES_INDEX.researchVersion,
       id,
@@ -80,7 +80,7 @@ export const listResearchVersions = async (
 ): Promise<ResearchVersion[] | null> => {
   const res = await esClient.get<EsResearch>({
     index: ES_INDEX.research,
-    id: humId, // lang suffix removed (BilingualText format)
+    id: humId,
   }, { ignore: [404] })
   if (!res.found || !res._source) return null
   const researchDoc = EsResearchSchema.parse(res._source)
@@ -206,13 +206,7 @@ export const createResearchVersion = async (
       id: newHumVersionId,
     }, { ignore: [404] })
 
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return null // Conflict
-      }
-    }
+    if (isConflictError(error)) return null
     throw error
   }
 
@@ -278,13 +272,7 @@ export const linkDatasetToResearch = async (
 
     return newDatasets
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return null // Conflict
-      }
-    }
+    if (isConflictError(error)) return null
     throw error
   }
 }
@@ -345,13 +333,7 @@ export const unlinkDatasetFromResearch = async (
 
     return true
   } catch (error: unknown) {
-    // Check for version conflict
-    if (error && typeof error === "object" && "meta" in error) {
-      const esError = error as { meta?: { statusCode?: number } }
-      if (esError.meta?.statusCode === 409) {
-        return false // Conflict
-      }
-    }
+    if (isConflictError(error)) return false
     throw error
   }
 }

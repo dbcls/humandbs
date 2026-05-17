@@ -5,8 +5,6 @@
  * All errors extend AppError base class for type-safe error handling.
  */
 
-import type { ContentfulStatusCode } from "hono/utils/http-status"
-
 import type { ProblemDetails } from "@/api/types/errors"
 
 /**
@@ -128,29 +126,6 @@ export class InternalError extends AppError {
  */
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError
-}
-
-/**
- * Create appropriate error from HTTP status code
- */
-export function createErrorFromStatus(
-  status: ContentfulStatusCode,
-  message: string,
-): AppError {
-  switch (status) {
-    case 400:
-      return new ValidationError(message)
-    case 401:
-      return new UnauthorizedError(message)
-    case 403:
-      return new ForbiddenError(message)
-    case 404:
-      return new NotFoundError(message)
-    case 409:
-      return new ConflictError(message)
-    default:
-      return new InternalError(message)
-  }
 }
 
 // === RFC 7807 Problem Details ===

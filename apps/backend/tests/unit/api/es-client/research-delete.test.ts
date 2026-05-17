@@ -26,6 +26,10 @@ void mock.module("@/api/es-client/client", () => ({
     researchVersion: "research-version",
     dataset: "dataset",
   },
+  isConflictError: (e: unknown) => Boolean(
+    e && typeof e === "object" && "meta" in e
+    && (e as { meta?: { statusCode?: number } }).meta?.statusCode === 409,
+  ),
   isDocumentExistsError: () => false,
 }))
 

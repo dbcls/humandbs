@@ -7,12 +7,11 @@
 import { describe, expect, it } from "bun:test"
 import fc from "fast-check"
 
-import { ForbiddenError } from "@/api/errors"
 import {
   buildStatusFilter,
   canAccessResearchDoc,
   canPerformTransition,
-  validateRequestedStatus,
+  checkRequestedStatus,
   validateStatusTransition,
 } from "@/api/es-client/auth"
 import type { AuthUser, EsResearch, ResearchStatus } from "@/api/types"
@@ -153,9 +152,9 @@ describe("canAccessResearchDoc", () => {
   })
 })
 
-// === validateRequestedStatus ===
+// === checkRequestedStatus ===
 
-describe("validateRequestedStatus", () => {
+describe("checkRequestedStatus", () => {
   const cases: { user: "public" | "auth" | "admin"; status: ResearchStatus | undefined; allowed: boolean }[] = [
     { user: "public", status: undefined, allowed: true },
     { user: "auth", status: undefined, allowed: true },
@@ -175,15 +174,15 @@ describe("validateRequestedStatus", () => {
   ]
 
   for (const { user, status, allowed } of cases) {
-    it(`${user} requesting status=${status ?? "(none)"} -> ${allowed ? "allow" : "throw"}`, () => {
+    it(`${user} requesting status=${status ?? "(none)"} -> ${allowed ? "allow" : "deny"}`, () => {
       const authUser = user === "public"
         ? null
         : createMockAuthUser({ isAdmin: user === "admin" })
-      const call = () => { validateRequestedStatus(authUser, status) }
-      if (allowed) {
-        expect(call).not.toThrow()
-      } else {
-        expect(call).toThrow(ForbiddenError)
+      const result = checkRequestedStatus(authUser, status)
+      expect(result.allowed).toBe(allowed)
+      if (!allowed && !result.allowed) {
+        expect(result.message).toBeString()
+        expect(result.message.length).toBeGreaterThan(0)
       }
     })
   }

@@ -32,7 +32,6 @@ void mock.module("@/api/es-client/research", () => ({
   getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
   updateResearch: (...args: unknown[]) => mockUpdateResearch(...args),
   updateResearchUids: mock(() => Promise.resolve(null)),
-  getPendingReviews: mock(() => Promise.resolve([])),
   updateResearchStatus: mock(() => Promise.resolve(null)),
   generateNextHumId: mock(() => Promise.resolve("hum0001")),
 }))
