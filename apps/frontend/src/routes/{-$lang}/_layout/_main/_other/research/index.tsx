@@ -1,9 +1,5 @@
 import type { ResearchSearchResponse } from "@humandbs/backend/types";
-import {
-  queryOptions,
-  useQuery,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   ClientOnly,
   createFileRoute,
@@ -19,24 +15,24 @@ import { useTranslations } from "use-intl";
 
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 
+import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
 import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
+import { cn } from "@/lib/utils";
+import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { useCartTableHeader } from "@/hooks/useCart";
-import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/research/",
@@ -55,9 +51,6 @@ export const Route = createFileRoute(
 
       context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
     ]);
-  },
-  errorComponent: ({ error }) => {
-    return <div>{error.message}</div>;
   },
 });
 
