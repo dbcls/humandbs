@@ -18,8 +18,9 @@ export const INITIAL_FOG_NEAR = 650;
 export const INITIAL_FOG_FAR = 5000;
 export const INITIAL_MAX_PARTICLES = 100;
 
-// Macromolecule OKLCH Color Parameters
-export const MACRO_COLOR_CHROMA = 0.16; // Constant C (Vividness)
-export const MACRO_COLOR_L_NEUTRAL = 0.98; // High L (Neutral/Off-white base)
-export const MACRO_COLOR_L_VIVID = 0.5;   // Low L (Vivid point)
-export const MACRO_VIVID_PROBABILITY = 0.1; // 20% chance for a particle to be a vivid point
+// Macromolecule HSL Color Parameters
+export const MACRO_COLOR_S_NEUTRAL = 0.25; // Low saturation for neutral base
+export const MACRO_COLOR_L_NEUTRAL = 0.90; // High lightness for neutral base
+export const MACRO_COLOR_S_VIVID = 0.60;   // Moderate saturation for vivid points (soft)
+export const MACRO_COLOR_L_VIVID = 0.50;   // Moderate lightness for vivid points (soft)
+export const MACRO_VIVID_PROBABILITY = 0.1; // 10% chance for a particle to be a vivid point

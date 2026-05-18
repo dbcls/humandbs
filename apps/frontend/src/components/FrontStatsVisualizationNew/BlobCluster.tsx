@@ -3,10 +3,10 @@ import * as d3 from "d3";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { StatsSystem, SimNode, StatsSatellite } from "./types";
-import { hashString, oklchToThreeColor, capitalize } from "./utils";
+import { hashString, capitalize } from "./utils";
 import { Billboard, Text } from "@react-three/drei";
 import AnimatedParticleLabel from "./AnimatedParticleLabel";
-import { INITIAL_MATERIAL_ROUGHNESS, MACRO_VIVID_PROBABILITY, MACRO_COLOR_L_VIVID, MACRO_COLOR_L_NEUTRAL, MACRO_COLOR_CHROMA } from "./constants";
+import { INITIAL_MATERIAL_ROUGHNESS, MACRO_VIVID_PROBABILITY, MACRO_COLOR_L_VIVID, MACRO_COLOR_S_VIVID, MACRO_COLOR_L_NEUTRAL, MACRO_COLOR_S_NEUTRAL } from "./constants";
 
 export default function BlobCluster({
   system,
@@ -131,10 +131,11 @@ export default function BlobCluster({
       // Give them a slight deterministic Z variation based on their hash to prevent specular flattening (bleaching)
       const targetZ = ((hash % 100) / 100 - 0.5) * 40; 
       
-      const hue = hash % 360;
+      const hue = (hash % 360) / 360; // THREE.Color().setHSL takes 0-1 for Hue
       const isVivid = (hash % 100) < (MACRO_VIVID_PROBABILITY * 100);
       const lightness = isVivid ? MACRO_COLOR_L_VIVID : MACRO_COLOR_L_NEUTRAL;
-      const baseColor = oklchToThreeColor(lightness, MACRO_COLOR_CHROMA, hue);
+      const saturation = isVivid ? MACRO_COLOR_S_VIVID : MACRO_COLOR_S_NEUTRAL;
+      const baseColor = new THREE.Color().setHSL(hue, saturation, lightness);
 
       return {
         ...sat,
