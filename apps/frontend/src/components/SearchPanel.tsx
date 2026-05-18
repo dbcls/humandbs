@@ -361,19 +361,19 @@ export function SearchPanel({
               }}
               asChild
             >
-              <section className="border-b border-gray-300 last:border-b-0 px-4 pt-2 overflow-hidden">
+              <section className="border-b border-gray-400 last:border-b-0">
                 {!isTopLevel && (
                   <CollapsibleTrigger asChild>
-                    <div className="bg-secondary/10 -mx-4 -mt-2 px-5 py-2 flex items-center justify-between cursor-pointer hover:bg-secondary/20 transition-colors group">
+                    <div className="sticky top-0 z-20 bg-[#e8eff8] px-5 py-2.5 flex items-center justify-between cursor-pointer hover:bg-[#d1dff2] transition-colors group">
                       <h3 className="text-sm font-bold text-secondary-foreground">{t(key as any)}</h3>
                       <ChevronRight className="h-5 w-5 text-secondary-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </div>
                   </CollapsibleTrigger>
                 )}
                 
-                <CollapsibleContent>
+                <CollapsibleContent className="px-4">
                   <Accordion
-                    className={cn("px-1 pb-4", !isTopLevel && "pt-3")}
+                    className="px-1 pb-4"
                     type="multiple"
                     value={openFacets[key] ?? getActiveFacets(val)}
                     onValueChange={(newVal) => {
@@ -417,11 +417,10 @@ function PanelHeader({
   const t = useTranslations("Filters");
   if (!hasAnyFilter) return null;
   return (
-    <div className="flex justify-end p-2 pb-0 bg-secondary/10">
+    <div className="flex justify-end p-2 pb-[3px] bg-secondary/10">
       <Button
-        variant="outline"
-        size="slim"
-        className="text-2xs text-muted-foreground py-0"
+        variant="tableAction"
+        className="h-[21px] text-[10px] px-2"
         onClick={onReset}
       >
         {t("panel-reset-all")}
@@ -537,37 +536,41 @@ function FacetItemWrapper({
   hasValue,
   onReset,
   children,
+  headerAction,
 }: {
   id: string;
   hasValue: boolean;
   onReset: () => void;
   children: React.ReactNode;
+  headerAction?: React.ReactNode;
 }) {
   const tFilters = useTranslations("Filters");
-
   const t = useTranslations(`Filters.${id}` as any);
 
   return (
-    <AccordionItem value={id} className="border-b-primary-translucent relative">
-      <AccordionTrigger className="text-secondary font-bold">
-        <span>{t("title" as any)}</span>
+    <AccordionItem value={id} className="border-b-primary-translucent">
+      <AccordionTrigger className="text-secondary font-bold py-2.5 hover:no-underline relative">
+        <span className="truncate pr-[80px]">{t("title" as any)}</span>
+        
+        <div className="absolute right-7 top-0 bottom-0 flex items-center gap-1 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1">
+            {headerAction}
+            {hasValue && (
+              <Button
+                variant="tableAction"
+                className="h-[21px] px-2 text-[10px] shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReset();
+                }}
+              >
+                {tFilters("panel-reset")}
+              </Button>
+            )}
+          </div>
+        </div>
       </AccordionTrigger>
-      {hasValue && (
-        <Button
-          variant={"outline"}
-          size={"slim"}
-          className="text-2xs text-muted-foreground absolute top-1 right-0 z-10 py-0"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onReset();
-          }}
-        >
-          {tFilters("panel-reset")}
-        </Button>
-      )}
+      
       <AccordionContent className="py-1 px-1">{children}</AccordionContent>
     </AccordionItem>
   );
@@ -587,8 +590,6 @@ function SortButton({
   dir: CheckboxSortDir;
   onClick: () => void;
 }) {
-  const Icon =
-    dir === "asc" ? ChevronUp : dir === "desc" ? ChevronDown : ChevronsUpDown;
   return (
     <p className="flex items-center gap-1 text-gray-700">
       <span>{label}</span>
@@ -597,9 +598,12 @@ function SortButton({
         onClick={onClick}
         variant={"ghost"}
         size={"icon"}
-        className={"h-8 w-8 text-gray-700 hover:bg-hover [&_svg]:size-5"}
+        className={"h-8 w-8 text-gray-700 hover:bg-hover"}
       >
-        <Icon className={cn(active ? "opacity-100" : "opacity-40")} />
+        <span className="flex flex-col items-center justify-center text-[8px] leading-[0.8]">
+          <span className={cn("inline-block scale-y-[0.6] scale-x-125", dir === "asc" ? "opacity-100" : "opacity-40")}>▲</span>
+          <span className={cn("inline-block scale-y-[0.6] scale-x-125", dir === "desc" ? "opacity-100" : "opacity-40")}>▼</span>
+        </span>
       </Button>
     </p>
   );
@@ -915,6 +919,15 @@ function TextListFacetItem({
       onReset={() => {
         onUpdate(id, undefined);
       }}
+      headerAction={
+        <Button
+          variant="tableAction"
+          className="size-[21px] p-0 shrink-0 flex items-center justify-center"
+          onClick={handleAdd}
+        >
+          <Plus className="size-4" />
+        </Button>
+      }
     >
       <div className="space-y-2">
         {draftValue.map((val, index) => (
@@ -929,9 +942,8 @@ function TextListFacetItem({
               className={cn("h-[28px] flex-1 text-sm")}
             />
             <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 shrink-0"
+              variant="tableAction"
+              className="size-[21px] shrink-0 p-0 flex items-center justify-center"
               onClick={() => {
                 handleRemove(index);
               }}
@@ -940,15 +952,6 @@ function TextListFacetItem({
             </Button>
           </div>
         ))}
-        <Button
-          variant="ghost"
-          size="slim"
-          className="text-muted-foreground text-xs"
-          onClick={handleAdd}
-        >
-          <Plus className="mr-1 size-3.5" />
-          Add
-        </Button>
       </div>
     </FacetItemWrapper>
   );

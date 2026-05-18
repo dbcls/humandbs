@@ -166,18 +166,18 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
   const sortingState = ctx.column.getIsSorted();
 
   return (
-    <p className="flex gap-2 text-white">
+    <p className="flex items-center gap-2 text-white">
       <span>{label}</span>
       <Button
         variant={"ghost"}
-        className="text-white [&_svg]:size-5"
+        size="icon"
+        className="text-white h-8 w-8 hover:bg-white/20"
         onClick={ctx.column.getToggleSortingHandler()}
       >
-        {sortingState ? (
-          <>{sortingState === "asc" ? <ChevronUp /> : <ChevronDown />}</>
-        ) : (
-          <ChevronsUpDown />
-        )}
+        <span className="flex flex-col items-center justify-center text-[10px] leading-[0.8]">
+          <span className={cn("inline-block scale-y-[0.6] scale-x-125", sortingState === "asc" ? "opacity-100" : "opacity-40")}>▲</span>
+          <span className={cn("inline-block scale-y-[0.6] scale-x-125", sortingState === "desc" ? "opacity-100" : "opacity-40")}>▼</span>
+        </span>
       </Button>
     </p>
   );
