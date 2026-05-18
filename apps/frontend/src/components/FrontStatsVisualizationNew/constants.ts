@@ -13,6 +13,7 @@ export const INITIAL_LIGHT_DIRECTIONAL = 1.0;
 export const INITIAL_LIGHT_POINT_1 = 3.0;
 export const INITIAL_LIGHT_POINT_2 = 3.0;
 export const INITIAL_PHYSICS_FORCE = 0.1;
+export const INITIAL_PARTICLE_LABEL_FONT_SIZE = 22;
 export const INITIAL_FOG_NEAR = 650;
 export const INITIAL_FOG_FAR = 5000;
 export const INITIAL_MAX_PARTICLES = 100;

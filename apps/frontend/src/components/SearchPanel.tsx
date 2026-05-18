@@ -303,7 +303,6 @@ export function SearchPanel({
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onReset={handleResetAll}
-        onSearch={handleSearch}
         onClose={onClose}
       />
 
@@ -512,12 +511,12 @@ function FacetItemWrapper({
 }) {
   const tFilters = useTranslations("Filters");
 
-  const t = useTranslations(`Filters.${id}` as any);
+  const t = useTranslations(`Filters.${id}` as any) as any;
 
   return (
     <AccordionItem value={id} className="border-b-primary-translucent relative">
       <AccordionTrigger className="text-secondary font-bold">
-        <span>{t("title" as any)}</span>
+        <span>{t("title")}</span>
       </AccordionTrigger>
       {hasValue && (
         <Button
@@ -595,14 +594,14 @@ function CheckboxFacetItem({
   const [sortMode, setSortMode] = useState<CheckboxSortMode>("count");
   const [sortDir, setSortDir] = useState<CheckboxSortDir>("desc");
 
-  const t = useTranslations(`Filters.${id}.options` as any);
+  const t = useTranslations(`Filters.${id}.options` as any) as any;
   const tFilters = useTranslations("Filters");
 
   if (options.length === 0) return null;
 
   const getLabel = (optionValue: string): string => {
     try {
-      const translated = t(optionValue as any);
+      const translated = t(optionValue);
       if (typeof translated === "string") return translated;
     } catch {
       // fall through to raw value
@@ -761,7 +760,7 @@ function BooleanFacetItem({
 
   const realOptions = ["any", "true", "false"];
 
-  const t = useTranslations(`Filters.${id}.options` as any);
+  const t = useTranslations(`Filters.${id}.options` as any) as any;
 
   return (
     <FacetItemWrapper
@@ -818,7 +817,7 @@ function EnumFacetItem({
   draftValue: string | undefined;
   onUpdate: (id: string, value: unknown) => void;
 }) {
-  const t = useTranslations(`Filters.${id}.options` as any);
+  const t = useTranslations(`Filters.${id}.options` as any) as any;
 
   const realOptions = ["any", ...options];
   const isEnabled = draftValue != null && draftValue !== "any";

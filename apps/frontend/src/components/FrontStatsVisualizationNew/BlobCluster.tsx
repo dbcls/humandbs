@@ -155,6 +155,7 @@ export default function BlobCluster({
   }, [satellites, mode, paletteIndex, globalMaxCount]);
 
   const localGroupRef = useRef<THREE.Group>(null);
+  const facetLabelRef = useRef<THREE.Group>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const particleHoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -209,6 +210,13 @@ export default function BlobCluster({
       localGroupRef.current.position.y = THREE.MathUtils.lerp(localGroupRef.current.position.y, pushDownY, 0.08);
       
       localGroupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
+    }
+
+    if (facetLabelRef.current) {
+      const targetLabelY = isHovered 
+        ? -(gridDims.current.height / 2) * targetScale - 80 
+        : -(particleScale * 0.45) - 10;
+      facetLabelRef.current.position.y = THREE.MathUtils.lerp(facetLabelRef.current.position.y, targetLabelY, 0.08);
     }
 
     const nodes = nodesRef.current;
@@ -406,30 +414,32 @@ export default function BlobCluster({
         </group>
       )})}
         
-      {!isHovered && (
-        <>
-          <Billboard position={[0, -(particleScale * 0.45) - 10, 0]} follow={true}>
-            <Text 
-              fontSize={16} 
-              color={isActive ? "#1e293b" : "#94a3b8"} 
-              anchorX="center" 
-              anchorY="middle"
-            >
-              {capitalize(system.facet)}
-            </Text>
-          </Billboard>
-          <Billboard position={[0, -(particleScale * 0.45) - 28, 0]} follow={true}>
-            <Text 
-              fontSize={8} 
-              color={isActive ? "#64748b" : "#cbd5e1"} 
-              anchorX="center" 
-              anchorY="middle"
-            >
-              {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items`}
-            </Text>
-          </Billboard>
-        </>
-      )}
+      <group 
+        ref={facetLabelRef} 
+        visible={!(isAnyHovered && !isHovered)}
+        position={[0, -(particleScale * 0.45) - 10, 0]}
+      >
+        <Billboard position={[0, 0, 0]} follow={true}>
+          <Text 
+            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.8 : 16} 
+            color={isActive ? "#1e293b" : "#94a3b8"} 
+            anchorX="center" 
+            anchorY="middle"
+          >
+            {capitalize(system.facet)}
+          </Text>
+        </Billboard>
+        <Billboard position={[0, isHovered ? -((debugParams?.particleLabelFontSize ?? 12) * 2.0) : -18, 0]} follow={true}>
+          <Text 
+            fontSize={isHovered ? (debugParams?.particleLabelFontSize ?? 12) * 1.0 : 8} 
+            color={isActive ? "#64748b" : "#cbd5e1"} 
+            anchorX="center" 
+            anchorY="middle"
+          >
+            {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items`}
+          </Text>
+        </Billboard>
+      </group>
     </group>
   );
 }

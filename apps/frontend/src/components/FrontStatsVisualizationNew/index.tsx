@@ -22,7 +22,8 @@ import {
   INITIAL_PHYSICS_FORCE,
   INITIAL_FOG_NEAR,
   INITIAL_FOG_FAR,
-  INITIAL_MAX_PARTICLES
+  INITIAL_MAX_PARTICLES,
+  INITIAL_PARTICLE_LABEL_FONT_SIZE
 } from "./constants";
 
 export default function FrontStatsVisualizationNew() {
@@ -45,7 +46,7 @@ export default function FrontStatsVisualizationNew() {
       lightPoint1: INITIAL_LIGHT_POINT_1,
       lightPoint2: INITIAL_LIGHT_POINT_2,
       physicsForce: INITIAL_PHYSICS_FORCE,
-      particleLabelFontSize: 12,
+      particleLabelFontSize: INITIAL_PARTICLE_LABEL_FONT_SIZE,
       fogNear: INITIAL_FOG_NEAR,
       fogFar: INITIAL_FOG_FAR,
       maxParticles: INITIAL_MAX_PARTICLES,
@@ -245,7 +246,7 @@ export default function FrontStatsVisualizationNew() {
                 lightPoint1: INITIAL_LIGHT_POINT_1,
                 lightPoint2: INITIAL_LIGHT_POINT_2,
                 physicsForce: INITIAL_PHYSICS_FORCE,
-                particleLabelFontSize: 12,
+                particleLabelFontSize: INITIAL_PARTICLE_LABEL_FONT_SIZE,
                 fogNear: INITIAL_FOG_NEAR,
                 fogFar: INITIAL_FOG_FAR,
                 maxParticles: INITIAL_MAX_PARTICLES,
