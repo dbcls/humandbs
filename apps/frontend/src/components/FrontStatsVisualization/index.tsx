@@ -26,9 +26,9 @@ import {
   INITIAL_PARTICLE_LABEL_FONT_SIZE
 } from "./constants";
 
-export default function FrontStatsVisualizationNew() {
+export default function FrontStatsVisualization() {
   const { loading, error, stats } = useStats();
-  const [mode, setMode] = useState<"dataset" | "research">("dataset");
+  const [mode, setMode] = useState<"dataset" | "research">("research");
   const [isMounted, setIsMounted] = useState(false);
   
   const [debugParams, setDebugParams] = useState<any>(() => {
@@ -258,26 +258,26 @@ export default function FrontStatsVisualizationNew() {
         </div>
       </div>
 
-      <div className="absolute top-6 z-10 flex items-center bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm border border-slate-200">
-        <button
-          onClick={() => setMode("dataset")}
-          className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
-            mode === "dataset"
-              ? "bg-secondary text-white shadow-md"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-          }`}
-        >
-          Dataset <span className="ml-2 opacity-80 font-normal">({stats.datasetTotal.toLocaleString()})</span>
-        </button>
+      <div className="absolute top-6 z-10 flex items-center bg-white/90 backdrop-blur-sm p-1.5 rounded-full">
         <button
           onClick={() => setMode("research")}
           className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
             mode === "research"
-              ? "bg-accent text-white shadow-md"
+              ? "bg-accent text-white"
               : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
           }`}
         >
-          Research <span className="ml-2 opacity-80 font-normal">({stats.researchTotal.toLocaleString()})</span>
+          Research <span className="ml-2 opacity-80 font-normal text-xs">{stats.researchTotal.toLocaleString()} items</span>
+        </button>
+        <button
+          onClick={() => setMode("dataset")}
+          className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
+            mode === "dataset"
+              ? "bg-secondary text-white"
+              : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          Dataset <span className="ml-2 opacity-80 font-normal text-xs">{stats.datasetTotal.toLocaleString()} items</span>
         </button>
       </div>
 

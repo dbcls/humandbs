@@ -138,24 +138,13 @@ function RouteComponent() {
       </section>
       <div className="w-full">
         <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Loading...</div>}>
-          <LazyFrontStatsNew />
-        </Suspense>
-      </div>
-
-      <div className="hidden w-full mt-12">
-        <h2 className="text-xl font-bold mb-4 text-center text-secondary">Old Visualization (Planet Chart)</h2>
-        <Card className="overflow-hidden bg-transparent p-0">
           <LazyFrontStats />
-        </Card>
+        </Suspense>
       </div>
     </section>
   );
 }
 
 const LazyFrontStats = lazy(
-  () => import("@/components/FrontStatsVisualization"),
-);
-
-const LazyFrontStatsNew = lazy(
-  () => import("@/components/FrontStatsVisualizationNew/index"),
+  () => import("@/components/FrontStatsVisualization/index"),
 );
