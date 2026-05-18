@@ -67,7 +67,10 @@ export default function BlobCluster({
   }, [system, mode, debugParams?.maxParticles]);
 
   useEffect(() => {
-    if (satellites.length === 0) return;
+    if (satellites.length === 0) {
+      nodesRef.current = [];
+      return;
+    }
 
     const radiusScale = d3.scalePow().exponent(1/3).domain([0, globalMaxCount]).range([0, 50]);
     
@@ -237,7 +240,8 @@ export default function BlobCluster({
       localGroupRef.current.position.z = THREE.MathUtils.lerp(localGroupRef.current.position.z, pushBackZ, 0.08);
       localGroupRef.current.position.y = THREE.MathUtils.lerp(localGroupRef.current.position.y, pushDownY, 0.08);
       
-      localGroupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
+      dummy.scale.set(targetScale, targetScale, targetScale);
+      localGroupRef.current.scale.lerp(dummy.scale, 0.08);
     }
 
     if (facetLabelRef.current) {
@@ -276,7 +280,8 @@ export default function BlobCluster({
       node.vz += (Math.sin(time * 1.3 * facetDriftParams.freqZ + offset * 3.2 + facetDriftParams.phaseZ) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
 
       const visualRadius = node.d3Radius * (particleScale / 260);
-      for (let j = i + 1; j < nodes.length; j++) {
+      if (isActive) {
+        for (let j = i + 1; j < nodes.length; j++) {
         const other = nodes[j];
         const dx = (node.x || 0) - (other.x || 0);
         const dy = (node.y || 0) - (other.y || 0);
@@ -299,6 +304,7 @@ export default function BlobCluster({
           other.vy = (other.vy || 0) - fy; 
           other.vz = (other.vz || 0) - fz;
         }
+      }
       }
     }
 

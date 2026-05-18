@@ -44,6 +44,12 @@ export default function CarouselScene({
   const [dragStartX, setDragStartX] = useState(0);
   const [dragRotStart, setDragRotStart] = useState(0);
 
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, []);
+
   const total = stats.systems.length;
 
   useFrame((_state, delta) => {
@@ -100,7 +106,7 @@ export default function CarouselScene({
   };
 
   const handlePointerUp = (e: any) => {
-    setIsDragging(false);
+    setTimeout(() => setIsDragging(false), 50);
     if (e.target.releasePointerCapture) e.target.releasePointerCapture(e.pointerId);
   };
 
