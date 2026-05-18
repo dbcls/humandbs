@@ -5,12 +5,12 @@ import {
   useRouteContext,
   useSearch,
 } from "@tanstack/react-router";
-import { createClientOnlyFn, createIsomorphicFn } from "@tanstack/react-start";
+import { createIsomorphicFn } from "@tanstack/react-start";
 import { useCallback, useEffect } from "react";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
-export type CartItem = DatasetDoc | { datasetId: string };
+export type CartItem = DatasetDoc;
 
 function isQuotaExceeded(error: unknown) {
   return (
@@ -111,13 +111,10 @@ export function useAutoAddToCart(data: DatasetDoc) {
 export function useCartTableHeader({
   tableDatasets,
 }: {
-  tableDatasets: CartItem[];
+  tableDatasets: (CartItem | { datasetId: string })[];
 }) {
   const { add, remove, cart } = useCart();
 
-  console.log("cart", cart);
-
-  console.log("useCartTableHeader tableDatasets", tableDatasets);
   const datasetIdsInCart = cart.map((item) => item.datasetId);
 
   const allInCart = tableDatasets.every((ds) =>
@@ -130,11 +127,11 @@ export function useCartTableHeader({
 
   const handleClickCart = useCallback(() => {
     if (allInCart) {
-      tableDatasets.forEach((dataset) => remove(dataset));
+      tableDatasets.forEach((dataset) => remove(dataset as DatasetDoc));
     } else {
       tableDatasets.forEach((dataset) => {
         if (!datasetIdsInCart.includes(dataset.datasetId)) {
-          add(dataset);
+          add(dataset as DatasetDoc);
         }
       });
     }

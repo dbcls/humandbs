@@ -3,10 +3,15 @@ import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
-import { Table } from "@/components/Table";
+import { SortHeader, Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
-import { useCart, type CartItem } from "@/hooks/useCart";
+import { useCart } from "@/hooks/useCart";
 
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { TextWithIcon } from "@/components/TextWithIcon";
+import { i18n } from "@/config/i18n";
+import { FA_ICONS } from "@/lib/faIcons";
+import type { DatasetDoc } from "@humandbs/backend/types";
 import { createColumnHelper } from "@tanstack/react-table";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
@@ -15,12 +20,52 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   loader: () => ({ crumb: "Cart" }),
 });
 
-const cartColumnsHelper = createColumnHelper<CartItem>();
+const cartColumnsHelper = createColumnHelper<DatasetDoc>();
 
 const cartDatasetColumns = [
+  // ...datasetsColumns.filter((col) => col.id !== "cart"),
   cartColumnsHelper.accessor("datasetId", {
-    header: "Dataset ID",
-    cell: (ctx) => ctx.getValue(),
+    id: "datasetId",
+    header: (ctx) => (
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
+    ),
+    cell: (ctx) => (
+      <Route.Link
+        to="/{-$lang}/dataset/$datasetId"
+        params={{ datasetId: ctx.getValue() }}
+      >
+        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+          {ctx.renderValue()}
+        </TextWithIcon>
+      </Route.Link>
+    ),
+    maxSize: 10,
+  }),
+  cartColumnsHelper.accessor("experiments", {
+    id: "experiments",
+    header: (ctx) => ctx.table.options.meta?.t("experiments"),
+    cell: (ctx) => (
+      <CollapsiblePreview
+        items={ctx.getValue().map((item, i) => ({
+          id: i,
+          content: (
+            <span>
+              {
+                item.header?.[
+                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
+                ]?.text
+              }
+            </span>
+          ),
+        }))}
+      />
+    ),
+  }),
+  cartColumnsHelper.accessor("criteria", {
+    id: "criteria",
+    header: (ctx) => ctx.table.options.meta?.t("criteria"),
+    //@ts-ignore TODO fix types`
+    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 
   cartColumnsHelper.display({
@@ -39,7 +84,8 @@ const cartDatasetColumns = [
         </Button>
       );
     },
-    maxSize: 10,
+    maxSize: 2,
+    size: 2,
   }),
 ];
 
@@ -61,7 +107,7 @@ function RouteComponent() {
   }
 
   return (
-    <CardWithCaption size={"sm"}>
+    <CardWithCaption size={"sm"} containerClassName="p-8">
       {cart.length === 0 ? (
         <p className="text-center text-gray-400">Cart is empty</p>
       ) : (
