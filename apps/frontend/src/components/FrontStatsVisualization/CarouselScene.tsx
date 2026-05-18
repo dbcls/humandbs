@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { NormalizedStats } from "./types";
+import type { NormalizedStats, DebugParams } from "./types";
 import BlobCluster from "./BlobCluster";
 import { INITIAL_SCENE_OFFSET_Y } from "./constants";
 
@@ -23,7 +23,7 @@ export default function CarouselScene({
 }: { 
   stats: NormalizedStats, 
   mode: "dataset" | "research", 
-  navigate: any,
+  navigate: (opts: { to: string; search: any }) => void,
   carouselRadius: number,
   rotationSpeed: number,
   particleScale: number,
@@ -33,7 +33,7 @@ export default function CarouselScene({
   lightPoint1: number,
   lightPoint2: number,
   globalMaxCount: number,
-  debugParams: any,
+  debugParams: DebugParams,
   setParentHoveredIndex: (idx: number | null) => void
 }) {
   const groupRef = useRef<THREE.Group>(null);

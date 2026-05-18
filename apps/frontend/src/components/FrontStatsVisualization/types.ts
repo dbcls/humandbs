@@ -41,3 +41,23 @@ export type SimNode = StatsSatellite & {
   targetY: number;
   targetZ: number;
 };
+
+export type DebugParams = {
+  carouselRadius: number;
+  particleScale: number;
+  rotationSpeed: number;
+  sceneOffsetY: number;
+  roughness: number;
+  cameraY: number;
+  cameraZ: number;
+  lightAmbient: number;
+  lightAmbientColor: string;
+  lightDirectional: number;
+  lightPoint1: number;
+  lightPoint2: number;
+  physicsForce: number;
+  particleLabelFontSize: number;
+  fogNear: number;
+  fogFar: number;
+  maxParticles: number;
+};

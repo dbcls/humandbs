@@ -3,8 +3,25 @@ import { useFrame } from "@react-three/fiber";
 import { Text, Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { capitalize } from "./utils";
+import type { StatsSatellite, DebugParams } from "./types";
 
-export default function AnimatedParticleLabel({ sat, mode, isDimmed, debugParams, onNavigate, facet, onPointerEnter, onPointerLeave, isDragging }: any) {
+export default function AnimatedParticleLabel({ 
+  sat, 
+  mode, 
+  isDimmed, 
+  debugParams, 
+  onNavigate, 
+  facet, 
+  isDragging 
+}: {
+  sat: StatsSatellite,
+  mode: "dataset" | "research",
+  isDimmed: boolean,
+  debugParams: DebugParams,
+  onNavigate: (facet: string, value: string) => void,
+  facet: string,
+  isDragging: boolean
+}) {
   const titleRef = useRef<any>(null);
   const countRef = useRef<any>(null);
 

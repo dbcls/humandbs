@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import * as d3 from "d3";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { StatsSystem, SimNode, StatsSatellite } from "./types";
+import type { StatsSystem, SimNode, StatsSatellite, DebugParams } from "./types";
 import { hashString, capitalize } from "./utils";
 import { Billboard, Text } from "@react-three/drei";
 import AnimatedParticleLabel from "./AnimatedParticleLabel";
@@ -33,7 +33,7 @@ export default function BlobCluster({
   onNavigate: (facet: string, value: string) => void;
   particleScale: number;
   globalMaxCount: number;
-  debugParams: any;
+  debugParams: DebugParams;
   isHovered: boolean;
   onHover: (state: boolean) => void;
   isAnyHovered: boolean;
