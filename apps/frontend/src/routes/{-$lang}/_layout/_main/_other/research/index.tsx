@@ -1,6 +1,14 @@
 import type { ResearchSearchResponse } from "@humandbs/backend/types";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
+import {
+  queryOptions,
+  useQuery,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import {
+  ClientOnly,
+  createFileRoute,
+  functionalUpdate,
+} from "@tanstack/react-router";
 import {
   createColumnHelper,
   type SortingState,
@@ -26,6 +34,9 @@ import { researchesSearchParamsSchema } from "@/utils/queryParams";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { useCartTableHeader } from "@/hooks/useCart";
+import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/research/",
@@ -273,10 +284,16 @@ const columns = [
   columnHelper.accessor("datasetIds", {
     id: "datasets",
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
-    cell: (ctx) => {
-      return (
+    cell: (ctx) => (
+      <>
+        <ClientOnly fallback={null}>
+          <AddToCartAllDatasetsButton
+            humId={ctx.row.original.humId}
+            tableDatasets={ctx.getValue().map((id) => ({ datasetId: id }))}
+          />
+        </ClientOnly>
         <CollapsiblePreview
-          items={ctx.row.original.datasetIds.map((id) => ({
+          items={ctx.getValue().map((id) => ({
             id,
             content: (
               <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
@@ -285,8 +302,9 @@ const columns = [
             ),
           }))}
         />
-      );
-    },
+      </>
+    ),
+
     size: 15,
   }),
   columnHelper.accessor("title", {
@@ -400,3 +418,38 @@ const columns = [
     ),
   }),
 ];
+
+function AddToCartAllDatasetsButton({
+  tableDatasets,
+  humId,
+}: {
+  humId: string;
+  tableDatasets: { datasetId: string }[];
+}) {
+  const t = useTranslations("common");
+  const datasetsQO = getDatasetsOfResearchQueryOptions(humId);
+
+  const { data, refetch } = useQuery(datasetsQO);
+
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets:
+      // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
+      data?.data || tableDatasets,
+  });
+
+  async function handleAddAllToCart() {
+    await refetch();
+    // data updates, so need to wait until next render, in order to `data?.data` to have values
+    Promise.resolve().then(() => handleClickCart());
+  }
+
+  return (
+    <AddToCartToggle
+      state={allInCart ? true : someInCart ? "indeterminate" : false}
+      onClick={handleAddAllToCart}
+      className="text-sm font-normal"
+    >
+      <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
+    </AddToCartToggle>
+  );
+}

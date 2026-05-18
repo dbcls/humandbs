@@ -5,11 +5,30 @@ import {
   useRouteContext,
   useSearch,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createClientOnlyFn, createIsomorphicFn } from "@tanstack/react-start";
+import { useCallback, useEffect } from "react";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
-export type CartItem = DatasetDoc;
+export type CartItem = DatasetDoc | { datasetId: string };
+
+function isQuotaExceeded(error: unknown) {
+  return (
+    error instanceof DOMException &&
+    (error.name === "QuotaExceededError" ||
+      error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+  );
+}
+
+const getLocalStorageValues = createIsomorphicFn()
+  .client((userId: string | undefined): CartItem[] => {
+    const raw = localStorage.getItem(keyFor(userId));
+    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+  })
+  .server(() => {
+    // Server-side rendering doesn't have access to localStorage, so we return an empty cart.
+    return [];
+  });
 
 export function useCart() {
   const { user } = useRouteContext({ from: "__root__" });
@@ -17,16 +36,24 @@ export function useCart() {
 
   const { data: cart = [] } = useQuery<CartItem[]>({
     queryKey: ["cart", user?.id],
-    queryFn: () => {
-      const raw = localStorage.getItem(keyFor(user?.id));
-      return raw ? (JSON.parse(raw) as CartItem[]) : [];
-    },
+    queryFn: () => getLocalStorageValues(user?.id),
+    initialData: () => getLocalStorageValues(user?.id),
     staleTime: Infinity,
     gcTime: Infinity,
   });
 
   useEffect(() => {
-    localStorage.setItem(keyFor(user?.id), JSON.stringify(cart));
+    try {
+      localStorage.setItem(keyFor(user?.id), JSON.stringify(cart));
+    } catch (error) {
+      if (isQuotaExceeded(error)) {
+        console.warn(
+          "Cart data exceeds localStorage quota and cannot be saved.",
+        );
+      } else {
+        throw error;
+      }
+    }
   }, [cart, user?.id]);
 
   const setCart = (updater: (prev: CartItem[]) => CartItem[]) => {
@@ -55,6 +82,9 @@ export function useCart() {
   };
 }
 
+/**
+ * Hook for adding to cart after redirect
+ */
 export function useAutoAddToCart(data: DatasetDoc) {
   const { user } = useRouteContext({ from: "__root__" });
   const navigate = useNavigate({
@@ -72,4 +102,69 @@ export function useAutoAddToCart(data: DatasetDoc) {
       replace: true,
     });
   }, [addToCart, user?.id]);
+}
+
+/**
+ * Custom hook to toggle all datasets in given array.
+ * useful for table header's "add to cart" button.
+ */
+export function useCartTableHeader({
+  tableDatasets,
+}: {
+  tableDatasets: CartItem[];
+}) {
+  const { add, remove, cart } = useCart();
+
+  console.log("cart", cart);
+
+  console.log("useCartTableHeader tableDatasets", tableDatasets);
+  const datasetIdsInCart = cart.map((item) => item.datasetId);
+
+  const allInCart = tableDatasets.every((ds) =>
+    datasetIdsInCart.includes(ds.datasetId),
+  );
+
+  const someInCart = tableDatasets.some((ds) =>
+    datasetIdsInCart.includes(ds.datasetId),
+  );
+
+  const handleClickCart = useCallback(() => {
+    if (allInCart) {
+      tableDatasets.forEach((dataset) => remove(dataset));
+    } else {
+      tableDatasets.forEach((dataset) => {
+        if (!datasetIdsInCart.includes(dataset.datasetId)) {
+          add(dataset);
+        }
+      });
+    }
+  }, [tableDatasets, datasetIdsInCart, allInCart]);
+
+  return {
+    handleClickCart,
+    allInCart,
+    someInCart,
+  };
+}
+
+export function useCartTableRow({ dataset }: { dataset: DatasetDoc }): {
+  handleClickCart: () => void;
+  inCart: boolean;
+} {
+  const { add, remove, cart } = useCart();
+
+  const inCart = cart.some((item) => item.datasetId === dataset.datasetId);
+
+  const handleClickCart = useCallback(() => {
+    if (inCart) {
+      remove(dataset);
+    } else {
+      add(dataset);
+    }
+  }, [dataset, inCart]);
+
+  return {
+    handleClickCart,
+    inCart,
+  };
 }

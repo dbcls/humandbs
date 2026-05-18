@@ -1,4 +1,7 @@
-import { type ResearchDetailResponse } from "@humandbs/backend/types";
+import {
+  type DatasetDoc,
+  type ResearchDetailResponse,
+} from "@humandbs/backend/types";
 import { useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMessages, useTranslations } from "use-intl";
@@ -13,6 +16,11 @@ import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
+import { ShoppingCartIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCart, useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
+import { cn } from "@/lib/utils";
+import { AddToCartToggle } from "@/components/AddToCartToggle";
 
 export function VersionCard({
   versionData,
@@ -147,6 +155,32 @@ const datasetColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["datasets"][number]>();
 
 const datasetColumns = [
+  datasetColumnHelper.display({
+    id: "cart",
+    header: (ctx) => {
+      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+        tableDatasets: ctx.table.options.data,
+      });
+
+      return (
+        <AddToCartToggle
+          variant={"header"}
+          state={allInCart ? true : someInCart ? "indeterminate" : false}
+          onClick={handleClickCart}
+        />
+      );
+    },
+    cell: (ctx) => {
+      const { handleClickCart, inCart } = useCartTableRow({
+        dataset: ctx.row.original,
+      });
+
+      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
+    },
+
+    size: 1,
+    maxSize: 1,
+  }),
   datasetColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => ctx.table.options.meta?.t("datasetId"),

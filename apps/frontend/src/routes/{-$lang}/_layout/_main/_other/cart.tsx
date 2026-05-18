@@ -5,9 +5,9 @@ import { useLocale, useTranslations } from "use-intl";
 import { CardWithCaption } from "@/components/Card";
 import { Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/hooks/useCart";
+import { useCart, type CartItem } from "@/hooks/useCart";
 
-import { datasetsColumnHelper, datasetsColumns } from "./dataset";
+import { createColumnHelper } from "@tanstack/react-table";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
@@ -15,9 +15,15 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   loader: () => ({ crumb: "Cart" }),
 });
 
+const cartColumnsHelper = createColumnHelper<CartItem>();
+
 const cartDatasetColumns = [
-  ...datasetsColumns,
-  datasetsColumnHelper.display({
+  cartColumnsHelper.accessor("datasetId", {
+    header: "Dataset ID",
+    cell: (ctx) => ctx.getValue(),
+  }),
+
+  cartColumnsHelper.display({
     id: "delete",
     cell: function Cell(ctx) {
       const { remove } = useCart();

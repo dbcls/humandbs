@@ -1,4 +1,5 @@
 import {
+  ClientOnly,
   useNavigate,
   useRouteContext,
   useRouter,
@@ -161,7 +162,11 @@ export function Navbar() {
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
-        <ShoppingCartButton />
+        <ClientOnly
+          fallback={<ShoppingCart className="text-secondary size-6" />}
+        >
+          <ShoppingCartButton />
+        </ClientOnly>
         <UserMenu />
       </div>
     </header>
@@ -192,10 +197,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
     <NavigationMenuItem>
       {item.children ? (
         <>
-          <NavigationMenuTrigger
-            className="text-sm"
-            onClick={handleClick}
-          >
+          <NavigationMenuTrigger className="text-sm" onClick={handleClick}>
             <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
@@ -252,7 +254,7 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
               <Fragment key={item.id}>
                 {index > 0 && (
                   <li
-                    className="my-2 h-px bg-primary-translucent -mx-4"
+                    className="bg-primary-translucent -mx-4 my-2 h-px"
                     role="separator"
                   />
                 )}
@@ -275,7 +277,10 @@ const OverflowTrigger = forwardRef<
       ref={ref}
       variant="plain"
       size="icon"
-      className={cn("rounded-full hover:bg-hover text-secondary transition-colors", className ?? "size-10")}
+      className={cn(
+        "hover:bg-hover text-secondary rounded-full transition-colors",
+        className ?? "size-10",
+      )}
       {...props}
     >
       <MoreVertical className="size-6" strokeWidth={2.5} />
@@ -303,7 +308,7 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   };
 
   return (
-    <NavigationMenuItem className="w-full flex flex-col">
+    <NavigationMenuItem className="flex w-full flex-col">
       {item.linkOptions ? (
         <NavigationMenuLink asChild>
           <Link

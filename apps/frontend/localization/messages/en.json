@@ -10,7 +10,10 @@
     "no-data": "No data",
     "total-results": "{count} results",
     "dataset": "Dataset",
-    "research": "Research"
+    "research": "Research",
+    "already-in-cart": "Already in cart",
+    "add-to-cart": "Add to cart",
+    "add-all-to-cart": "Add all to cart"
   },
   "Footer": {
     "sitemap": "Sitemap"

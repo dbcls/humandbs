@@ -27,6 +27,7 @@ import {
   type WorkflowResponse,
   type VersionCreateResponse,
   type DatasetCreateResponse,
+  type LinkedDatasetsListResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -151,6 +152,10 @@ interface APIService {
     search: LangQuery;
     accessToken?: string;
   }): Promise<ResearchVersionsListResponse>;
+  getResearchDatasets(
+    query: { humId: string },
+    accessToken?: string,
+  ): Promise<LinkedDatasetsListResponse>;
   getDatasetsPaginated(query: {
     search: DatasetListingQuery;
   }): Promise<DatasetSearchResponse>;
@@ -248,6 +253,14 @@ const api: APIService = {
       `/research/${query.params.humId}/versions`,
       query.search as Record<string, unknown>,
       query.accessToken ? authHeader(query.accessToken) : undefined,
+    );
+  },
+
+  getResearchDatasets(query, accessToken) {
+    return get<LinkedDatasetsListResponse>(
+      `research/${query.humId}/dataset`,
+      undefined,
+      accessToken ? authHeader(accessToken) : undefined,
     );
   },
 
