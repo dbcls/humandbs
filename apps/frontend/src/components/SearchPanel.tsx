@@ -366,7 +366,7 @@ export function SearchPanel({
                   <CollapsibleTrigger asChild>
                     <div className="bg-secondary/10 -mx-4 -mt-2 px-5 py-2 flex items-center justify-between cursor-pointer hover:bg-secondary/20 transition-colors group">
                       <h3 className="text-sm font-bold text-secondary-foreground">{t(key as any)}</h3>
-                      <ChevronRight className="h-4 w-4 text-secondary-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      <ChevronRight className="h-5 w-5 text-secondary-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </div>
                   </CollapsibleTrigger>
                 )}
@@ -568,7 +568,7 @@ function FacetItemWrapper({
           {tFilters("panel-reset")}
         </Button>
       )}
-      <AccordionContent className="py-1 pl-5">{children}</AccordionContent>
+      <AccordionContent className="py-1 px-1">{children}</AccordionContent>
     </AccordionItem>
   );
 }
@@ -590,18 +590,18 @@ function SortButton({
   const Icon =
     dir === "asc" ? ChevronUp : dir === "desc" ? ChevronDown : ChevronsUpDown;
   return (
-    <div>
+    <p className="flex items-center gap-1 text-gray-700">
+      <span>{label}</span>
       <Button
         type="button"
         onClick={onClick}
         variant={"ghost"}
-        size={"slim"}
-        className={"hover:bg-hover font-normal"}
+        size={"icon"}
+        className={"h-8 w-8 text-gray-700 hover:bg-hover [&_svg]:size-5"}
       >
-        {label}
-        <Icon className={cn("size-4", active ? "opacity-100" : "opacity-40")} />
+        <Icon className={cn(active ? "opacity-100" : "opacity-40")} />
       </Button>
-    </div>
+    </p>
   );
 }
 
@@ -642,9 +642,7 @@ function CheckboxFacetItem({
 
   const handleSortClick = (mode: CheckboxSortMode) => {
     if (sortMode === mode) {
-      setSortDir((d) =>
-        d === "asc" ? "desc" : d === "desc" ? undefined : "asc",
-      );
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortMode(mode);
       setSortDir(mode === "count" ? "desc" : "asc");
@@ -684,23 +682,23 @@ function CheckboxFacetItem({
     >
       {showSearch && (
         <Input
-          className="mb-2 h-7 text-xs"
+          className="mb-2 h-[28px] text-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search…"
         />
       )}
-      <div className="text-muted-foreground mb-1 flex items-center justify-between gap-2 text-xs">
+      <div className="text-gray-700 mb-1 flex items-center justify-between gap-2 text-sm font-medium">
         <SortButton
           label={tFilters("sort-by-name")}
-          active={sortMode === "name" && !!sortDir}
-          dir={sortMode === "name" ? sortDir : "asc"}
+          active={sortMode === "name"}
+          dir={sortMode === "name" ? sortDir : undefined}
           onClick={() => handleSortClick("name")}
         />
         <SortButton
           label={tFilters("sort-by-count")}
-          active={sortMode === "count" && !!sortDir}
-          dir={sortMode === "count" ? sortDir : "desc"}
+          active={sortMode === "count"}
+          dir={sortMode === "count" ? sortDir : undefined}
           onClick={() => handleSortClick("count")}
         />
       </div>
@@ -712,7 +710,7 @@ function CheckboxFacetItem({
 
           return (
             <li key={`${id}-${optionValue}`}>
-              <Label className="grid grid-cols-[auto_1fr_auto] items-start gap-x-2 text-xs">
+              <Label className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 text-sm text-gray-700">
                 <Checkbox
                   checked={isChecked}
                   onCheckedChange={(checked) => {
@@ -734,7 +732,7 @@ function CheckboxFacetItem({
                 >
                   {getLabel(optionValue)}
                 </span>
-                <span className="text-muted-foreground">{count}</span>
+                <span className="text-gray-500">{count}</span>
               </Label>
             </li>
           );
@@ -770,7 +768,7 @@ function TextFacetItem({
           onUpdate(id, e.target.value);
         }}
         placeholder={`Search ${id}...`}
-        className="h-7 text-sm"
+        className="h-[28px] text-sm"
       />
     </FacetItemWrapper>
   );
@@ -928,7 +926,7 @@ function TextListFacetItem({
                 handleChange(index, e.target.value);
               }}
               placeholder={`${id}...`}
-              className={cn("h-7 flex-1 text-sm")}
+              className={cn("h-[28px] flex-1 text-sm")}
             />
             <Button
               variant="ghost"
@@ -987,7 +985,7 @@ function RangeFacetItem({
               min: val === "" ? undefined : Number(val),
             });
           }}
-          className="h-7 text-sm"
+          className="h-[28px] text-sm"
         />
         <span className="text-muted-foreground text-xs">—</span>
         <Input
@@ -1001,7 +999,7 @@ function RangeFacetItem({
               max: val === "" ? undefined : Number(val),
             });
           }}
-          className="h-7 text-sm"
+          className="h-[28px] text-sm"
         />
       </div>
     </FacetItemWrapper>
@@ -1039,7 +1037,7 @@ function DateRangeFacetItem({
               min: val === "" ? undefined : val,
             });
           }}
-          className="h-7 text-sm"
+          className="h-[28px] text-sm"
         />
         <span className="text-muted-foreground text-xs">—</span>
         <Input
@@ -1053,7 +1051,7 @@ function DateRangeFacetItem({
               max: val === "" ? undefined : val,
             });
           }}
-          className="h-7 text-sm"
+          className="h-[28px] text-sm"
         />
       </div>
     </FacetItemWrapper>
