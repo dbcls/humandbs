@@ -15,7 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import type {
   BiosampleDetail,
   SraExperimentDetail,
+  SraRunDetail,
   SraSampleDetail,
+  SraStudyDetail,
   SraSubmissionDetail,
 } from "@/api/external/ddbj-search/entries"
 
@@ -25,8 +27,12 @@ const dblinkMap = new Map<string, { type: string; identifier: string }[]>()
 const experimentMap = new Map<string, SraExperimentDetail>()
 const sampleMap = new Map<string, SraSampleDetail>()
 const biosampleMap = new Map<string, BiosampleDetail>()
+const studyMap = new Map<string, SraStudyDetail>()
+const runMap = new Map<string, SraRunDetail>()
 const sampleFailures = new Set<string>()
 const biosampleFailures = new Set<string>()
+const runFailures = new Set<string>()
+const studyFailures = new Set<string>()
 
 let nextSubmission: SraSubmissionDetail | null = null
 let dblinkSubmissionThrows: string | null = null
@@ -61,6 +67,24 @@ const fetchBiosampleMock = mock(
   },
 )
 
+const fetchSraStudyMock = mock(
+  async (id: string, _requestId?: string): Promise<SraStudyDetail | null> => {
+    if (studyFailures.has(id)) {
+      throw new Error(`simulated DRP fetch failure for ${id}`)
+    }
+    return studyMap.get(id) ?? null
+  },
+)
+
+const fetchSraRunMock = mock(
+  async (id: string, _requestId?: string): Promise<SraRunDetail | null> => {
+    if (runFailures.has(id)) {
+      throw new Error(`simulated DRR fetch failure for ${id}`)
+    }
+    return runMap.get(id) ?? null
+  },
+)
+
 const fetchDblinkMock = mock(
   async (type: string, id: string, _requestId?: string) => {
     const dbXrefs = dblinkMap.get(dblinkKey(type, id)) ?? []
@@ -86,6 +110,8 @@ void mock.module("@/api/external/ddbj-search/entries", () => ({
   fetchSraExperiment: fetchSraExperimentMock,
   fetchSraSample: fetchSraSampleMock,
   fetchBiosample: fetchBiosampleMock,
+  fetchSraStudy: fetchSraStudyMock,
+  fetchSraRun: fetchSraRunMock,
 }))
 
 void mock.module("@/api/external/ddbj-search/dblink", () => ({
@@ -119,8 +145,12 @@ const resetState = (): void => {
   experimentMap.clear()
   sampleMap.clear()
   biosampleMap.clear()
+  studyMap.clear()
+  runMap.clear()
   sampleFailures.clear()
   biosampleFailures.clear()
+  studyFailures.clear()
+  runFailures.clear()
   nextSubmission = null
   dblinkSubmissionThrows = null
   dblinkStudyThrows = null
@@ -154,6 +184,8 @@ beforeEach(() => {
   fetchSraExperimentMock.mockClear()
   fetchSraSampleMock.mockClear()
   fetchBiosampleMock.mockClear()
+  fetchSraStudyMock.mockClear()
+  fetchSraRunMock.mockClear()
   fetchDblinkMock.mockClear()
   fetchDblinkTargetsMock.mockClear()
 })
@@ -397,6 +429,170 @@ describe("mapDraSubmissionToDatasetTemplate", () => {
     expect(result?.experiments).toEqual([])
     expect(
       result?.warnings.some((w) => w.includes("dblink to sra-study failed")),
+    ).toBe(true)
+  })
+
+  it("prefers the DRP STUDY title for typeOfData over the submission's own (accession-shaped) title", async () => {
+    // Real-world quirk: many submissions have title === accession ID, which
+    // is uninformative as a dataset typeOfData. We expect the STUDY title
+    // wins, even when submission.title is non-null.
+    nextSubmission = {
+      identifier: "DRA000001",
+      title: "DRA000001",
+      description: null,
+      datePublished: null,
+    }
+    setDblink("sra-submission", "DRA000001", [
+      { type: "sra-study", identifier: "DRP000001" },
+    ])
+    studyMap.set("DRP000001", {
+      identifier: "DRP000001",
+      title: "Whole genome sequencing of B. subtilis natto BEST195",
+    })
+    const result = await mapDraSubmissionToDatasetTemplate("DRA000001")
+    expect(result?.typeOfData?.en).toBe(
+      "Whole genome sequencing of B. subtilis natto BEST195",
+    )
+  })
+
+  it("falls back to submission.title when DRP study has no title", async () => {
+    nextSubmission = {
+      identifier: "DRA000002",
+      title: "Informative submission title",
+      description: "ignored description",
+      datePublished: null,
+    }
+    setDblink("sra-submission", "DRA000002", [
+      { type: "sra-study", identifier: "DRP000002" },
+    ])
+    studyMap.set("DRP000002", { identifier: "DRP000002", title: null })
+    const result = await mapDraSubmissionToDatasetTemplate("DRA000002")
+    expect(result?.typeOfData?.en).toBe("Informative submission title")
+  })
+
+  it("falls back to submission.description when neither study nor non-accession submission title is available", async () => {
+    nextSubmission = {
+      identifier: "DRA000003",
+      title: "DRA000003",
+      description: "Useful description",
+      datePublished: null,
+    }
+    // No DRP linked -> studyTitleEn stays null
+    const result = await mapDraSubmissionToDatasetTemplate("DRA000003")
+    expect(result?.typeOfData?.en).toBe("Useful description")
+  })
+
+  it("records DRP study fetch failure as a warning and continues (typeOfData falls back)", async () => {
+    nextSubmission = {
+      identifier: "DRA000001",
+      title: "Submission Fallback Title",
+      description: null,
+      datePublished: null,
+    }
+    setDblink("sra-submission", "DRA000001", [
+      { type: "sra-study", identifier: "DRP000001" },
+    ])
+    studyFailures.add("DRP000001")
+    const result = await mapDraSubmissionToDatasetTemplate("DRA000001")
+    expect(result?.typeOfData?.en).toBe("Submission Fallback Title")
+    expect(
+      result?.warnings.some((w) => w.includes("sra-study fetch failed")),
+    ).toBe(true)
+  })
+
+  it("populates Run Date / Run Center / Nominal Insert Size / Center Name from deep properties", async () => {
+    nextSubmission = {
+      identifier: "DRA000001",
+      title: "DRA000001",
+      description: null,
+      datePublished: null,
+    }
+    setDblink("sra-submission", "DRA000001", [
+      { type: "sra-study", identifier: "DRP000001" },
+    ])
+    setDblink("sra-study", "DRP000001", [
+      { type: "sra-experiment", identifier: "DRX000001" },
+    ])
+    setDblink("sra-experiment", "DRX000001", [
+      { type: "sra-run", identifier: "DRR000001" },
+    ])
+    experimentMap.set("DRX000001", {
+      identifier: "DRX000001",
+      title: "Exp",
+      libraryStrategy: ["WGS"],
+      libraryLayout: "PAIRED",
+      platform: "ILLUMINA",
+      instrumentModel: ["Illumina Genome Analyzer II"],
+      properties: {
+        EXPERIMENT_SET: {
+          EXPERIMENT: {
+            center_name: "KEIO",
+            DESIGN: {
+              LIBRARY_DESCRIPTOR: {
+                LIBRARY_LAYOUT: {
+                  PAIRED: { NOMINAL_LENGTH: "163", NOMINAL_SDEV: "24.7558" },
+                },
+              },
+              SPOT_DESCRIPTOR: {
+                SPOT_DECODE_SPEC: { SPOT_LENGTH: "72" },
+              },
+            },
+          },
+        },
+      },
+    })
+    runMap.set("DRR000001", {
+      identifier: "DRR000001",
+      properties: {
+        RUN_SET: {
+          RUN: { run_date: "2008-09-13T01:27:27+09:00", run_center: "NIG" },
+        },
+      },
+    })
+
+    const result = await mapDraSubmissionToDatasetTemplate("DRA000001")
+    const row = result?.experiments?.[0]
+    expect(row?.data["Nominal Insert Size"]?.en?.text).toBe("163")
+    expect(row?.data["Nominal Insert SDEV"]?.en?.text).toBe("24.7558")
+    expect(row?.data["Spot Length"]?.en?.text).toBe("72")
+    expect(row?.data["Center Name"]?.en?.text).toBe("KEIO")
+    expect(row?.data["Run Date"]?.en?.text).toBe(
+      "2008-09-13T01:27:27+09:00",
+    )
+    expect(row?.data["Run Center"]?.en?.text).toBe("NIG")
+    expect(row?.searchable?.readLength).toBe(36)
+  })
+
+  it("records DRR fetch failure as a warning and leaves Run Date / Run Center blank", async () => {
+    nextSubmission = {
+      identifier: "DRA000001",
+      title: "DRA000001",
+      description: null,
+      datePublished: null,
+    }
+    setDblink("sra-submission", "DRA000001", [
+      { type: "sra-study", identifier: "DRP000001" },
+    ])
+    setDblink("sra-study", "DRP000001", [
+      { type: "sra-experiment", identifier: "DRX000001" },
+    ])
+    setDblink("sra-experiment", "DRX000001", [
+      { type: "sra-run", identifier: "DRR000001" },
+    ])
+    experimentMap.set("DRX000001", {
+      identifier: "DRX000001",
+      libraryLayout: "PAIRED",
+    })
+    runFailures.add("DRR000001")
+
+    const result = await mapDraSubmissionToDatasetTemplate("DRA000001")
+    const row = result?.experiments?.[0]
+    expect(row?.data["Run Date"]).toBeUndefined()
+    expect(row?.data["Run Center"]).toBeUndefined()
+    expect(
+      result?.warnings.some((w) =>
+        w.includes("DRX000001 DRR DRR000001: fetch failed"),
+      ),
     ).toBe(true)
   })
 })

@@ -20,6 +20,23 @@ export interface SraExperimentDetail {
   libraryConstructionProtocol?: string | null
   platform?: string | null
   instrumentModel?: string[] | null
+  // DDBJ Search exposes the raw xmltodict-flavored XML payload too. The
+  // mapper digs into this for EXPERIMENT-level fields that are not surfaced
+  // as top-level flat columns (NOMINAL_LENGTH / SPOT_LENGTH / center_name etc).
+  properties?: unknown
+}
+
+export interface SraStudyDetail {
+  identifier: string
+  title?: string | null
+  description?: string | null
+  datePublished?: string | null
+}
+
+export interface SraRunDetail {
+  identifier: string
+  // RUN exposes run_date / run_center only inside the deep properties payload.
+  properties?: unknown
 }
 
 export interface SraSampleDetail {
@@ -76,3 +93,15 @@ export const fetchBiosample = (
   requestId?: string,
 ): Promise<BiosampleDetail | null> =>
   fetchEntry<BiosampleDetail>("biosample", accession, requestId)
+
+export const fetchSraStudy = (
+  accession: string,
+  requestId?: string,
+): Promise<SraStudyDetail | null> =>
+  fetchEntry<SraStudyDetail>("sra-study", accession, requestId)
+
+export const fetchSraRun = (
+  accession: string,
+  requestId?: string,
+): Promise<SraRunDetail | null> =>
+  fetchEntry<SraRunDetail>("sra-run", accession, requestId)

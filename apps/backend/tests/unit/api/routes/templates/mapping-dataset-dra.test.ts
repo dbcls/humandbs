@@ -12,6 +12,23 @@ const baseExperiment = (
   ...overrides,
 })
 
+/** Construct a minimal experiment.properties payload exposing SPOT_LENGTH. */
+const withSpotLength = (
+  spotLength: string | number,
+): Pick<SraExperimentDetail, "properties"> => ({
+  properties: {
+    EXPERIMENT_SET: {
+      EXPERIMENT: {
+        DESIGN: {
+          SPOT_DESCRIPTOR: {
+            SPOT_DECODE_SPEC: { SPOT_LENGTH: String(spotLength) },
+          },
+        },
+      },
+    },
+  },
+})
+
 describe("buildSearchableFromDrx", () => {
   it("fills assayType from libraryStrategy", () => {
     const r = buildSearchableFromDrx(
@@ -97,5 +114,41 @@ describe("buildSearchableFromDrx", () => {
     )
     expect(r.assayType).toEqual(["WGS"])
     expect(r.platforms).toEqual([{ vendor: "ILLUMINA", model: "HiSeq" }])
+  })
+
+  it("derives readLength = SPOT_LENGTH / 2 for paired-end", () => {
+    // DRX000001 (real example): SPOT_LENGTH=72, paired -> 36 bp per read.
+    const r = buildSearchableFromDrx(
+      baseExperiment({ libraryLayout: "PAIRED", ...withSpotLength(72) }),
+    )
+    expect(r.readLength).toBe(36)
+  })
+
+  it("derives readLength = SPOT_LENGTH for single-end", () => {
+    const r = buildSearchableFromDrx(
+      baseExperiment({ libraryLayout: "SINGLE", ...withSpotLength(150) }),
+    )
+    expect(r.readLength).toBe(150)
+  })
+
+  it("leaves readLength null when SPOT_LENGTH is absent", () => {
+    const r = buildSearchableFromDrx(
+      baseExperiment({ libraryLayout: "PAIRED" }),
+    )
+    expect(r.readLength).toBeNull()
+  })
+
+  it("leaves readLength null when libraryLayout is unknown even if SPOT_LENGTH is present", () => {
+    const r = buildSearchableFromDrx(
+      baseExperiment({ libraryLayout: "UNKNOWN", ...withSpotLength(72) }),
+    )
+    expect(r.readLength).toBeNull()
+  })
+
+  it("leaves readLength null when SPOT_LENGTH parses to a non-positive integer", () => {
+    const r = buildSearchableFromDrx(
+      baseExperiment({ libraryLayout: "PAIRED", ...withSpotLength("0") }),
+    )
+    expect(r.readLength).toBeNull()
   })
 })

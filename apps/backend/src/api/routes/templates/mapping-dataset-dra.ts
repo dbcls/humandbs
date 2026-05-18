@@ -23,11 +23,14 @@ import {
 import {
   fetchBiosample,
   fetchSraExperiment,
+  fetchSraRun,
   fetchSraSample,
+  fetchSraStudy,
   fetchSraSubmission,
 } from "@/api/external/ddbj-search/entries"
 import type {
   SraExperimentDetail,
+  SraRunDetail,
   SraSampleDetail,
 } from "@/api/external/ddbj-search/entries"
 import type { DatasetTemplateData } from "@/api/types/templates"
@@ -84,11 +87,87 @@ const toReadType = (layout: string | null | undefined): ReadType | null => {
   return null
 }
 
+// xmltodict-flavored JSON safe accessor.
+const getPath = (obj: unknown, path: string[]): unknown => {
+  let cur: unknown = obj
+  for (const k of path) {
+    if (cur && typeof cur === "object") {
+      cur = (cur as Record<string, unknown>)[k]
+    } else {
+      return undefined
+    }
+  }
+  return cur
+}
+
+const asStringOrNull = (v: unknown): string | null =>
+  typeof v === "string" ? v : null
+
+const asPositiveInt = (v: unknown): number | null => {
+  const s = typeof v === "string" ? v : null
+  if (!s) return null
+  const n = Number.parseInt(s, 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Pull EXPERIMENT-level deep fields that are not exposed as flat columns. */
+interface ExperimentDeepFields {
+  centerName: string | null
+  nominalLength: string | null
+  nominalSdev: string | null
+  spotLength: number | null
+}
+
+const extractExperimentDeepFields = (
+  experiment: SraExperimentDetail,
+): ExperimentDeepFields => {
+  const exp = getPath(experiment.properties, ["EXPERIMENT_SET", "EXPERIMENT"])
+  const layout = getPath(exp, [
+    "DESIGN",
+    "LIBRARY_DESCRIPTOR",
+    "LIBRARY_LAYOUT",
+  ])
+  // PAIRED / SINGLE のどちらに値が入っているかは libraryLayout で区別済み。
+  // どちらが来ても NOMINAL_LENGTH / NOMINAL_SDEV を拾えるよう両方見る。
+  const paired = getPath(layout, ["PAIRED"])
+  const single = getPath(layout, ["SINGLE"])
+  return {
+    centerName: asStringOrNull(getPath(exp, ["center_name"])),
+    nominalLength:
+      asStringOrNull(getPath(paired, ["NOMINAL_LENGTH"])) ??
+      asStringOrNull(getPath(single, ["NOMINAL_LENGTH"])),
+    nominalSdev:
+      asStringOrNull(getPath(paired, ["NOMINAL_SDEV"])) ??
+      asStringOrNull(getPath(single, ["NOMINAL_SDEV"])),
+    spotLength: asPositiveInt(
+      getPath(exp, ["DESIGN", "SPOT_DESCRIPTOR", "SPOT_DECODE_SPEC", "SPOT_LENGTH"]),
+    ),
+  }
+}
+
+/** Pull RUN-level deep fields. */
+interface RunDeepFields {
+  runDate: string | null
+  runCenter: string | null
+}
+
+const extractRunDeepFields = (run: SraRunDetail | null): RunDeepFields => {
+  if (!run) return { runDate: null, runCenter: null }
+  const r = getPath(run.properties, ["RUN_SET", "RUN"])
+  return {
+    runDate: asStringOrNull(getPath(r, ["run_date"])),
+    runCenter: asStringOrNull(getPath(r, ["run_center"])),
+  }
+}
+
 /**
  * Build a SearchableExperimentFields populated with what DDBJ Search API
  * exposes mechanically. Other fields (subject info / diseases / tissues /
  * population / etc.) stay at their empty defaults; admins fill them in (or a
  * downstream LLM extract step does, when applicable).
+ *
+ * `readLength` is derived from SPOT_LENGTH: paired-end SPOT spans both reads
+ * so we halve it, single-end SPOT is one read. Unknown layouts leave it null.
  *
  * Exported for unit tests; not part of the public mapping surface.
  */
@@ -105,6 +184,16 @@ export const buildSearchableFromDrx = (
       ? models.map((model) => ({ vendor, model }))
       : [{ vendor, model: null }]
   }
+
+  const { spotLength } = extractExperimentDeepFields(experiment)
+  if (spotLength !== null) {
+    if (base.readType === "paired-end" && spotLength >= 2) {
+      base.readLength = Math.floor(spotLength / 2)
+    } else if (base.readType === "single-end") {
+      base.readLength = spotLength
+    }
+  }
+
   return base
 }
 
@@ -116,6 +205,8 @@ interface ExperimentRowSource {
   drsDetail: SraSampleDetail | null
   bsId: string | null
   bsAttrs: Record<string, string>
+  /** First DRR's detail. Used for run_date / run_center; null when no DRR or fetch failed. */
+  drrDetail: SraRunDetail | null
 }
 
 const buildExperimentRow = (src: ExperimentRowSource) => {
@@ -127,6 +218,9 @@ const buildExperimentRow = (src: ExperimentRowSource) => {
     data[key] = { ja: null, en: { text: v } }
   }
 
+  const expDeep = extractExperimentDeepFields(src.experiment)
+  const runDeep = extractRunDeepFields(src.drrDetail)
+
   set("Title", src.experiment.title)
   set("Description", src.experiment.description)
   set("Library Strategy", joinArray(src.experiment.libraryStrategy))
@@ -135,9 +229,15 @@ const buildExperimentRow = (src: ExperimentRowSource) => {
   set("Library Layout", src.experiment.libraryLayout)
   set("Library Name", src.experiment.libraryName)
   set("Library Construction Protocol", src.experiment.libraryConstructionProtocol)
+  set("Nominal Insert Size", expDeep.nominalLength)
+  set("Nominal Insert SDEV", expDeep.nominalSdev)
+  set("Spot Length", expDeep.spotLength !== null ? String(expDeep.spotLength) : null)
   set("Platform", src.experiment.platform)
   set("Instrument Model", joinArray(src.experiment.instrumentModel))
+  set("Center Name", expDeep.centerName)
   set("Run Accessions", joinArray(src.drrIds))
+  set("Run Date", runDeep.runDate)
+  set("Run Center", runDeep.runCenter)
   set("Sample Accession", src.drsId)
   set("BioSample", src.bsId)
   if (src.drsDetail?.organism) {
@@ -209,12 +309,18 @@ const processOneDrx = async (
         return null
       }
     }
-    const [drsDetail, bsDetail] = await Promise.all([
+    // First DRR is enough — run_date / run_center are the only fields we read,
+    // and multi-run DRX usually share the same run center anyway.
+    const firstDrrId = firstOrNull(drrIds)
+    const [drsDetail, bsDetail, drrDetail] = await Promise.all([
       drsId
         ? safeFetch(() => fetchSraSample(drsId, requestId), `DRS ${drsId}`)
         : Promise.resolve(null),
       bsId
         ? safeFetch(() => fetchBiosample(bsId, requestId), `BioSample ${bsId}`)
+        : Promise.resolve(null),
+      firstDrrId
+        ? safeFetch(() => fetchSraRun(firstDrrId, requestId), `DRR ${firstDrrId}`)
         : Promise.resolve(null),
     ])
     const bsAttrs = bsDetail ? parseBiosampleAttributes(bsDetail.properties) : {}
@@ -228,6 +334,7 @@ const processOneDrx = async (
         drsDetail,
         bsId,
         bsAttrs,
+        drrDetail,
       }),
       warnings,
     }
@@ -296,6 +403,22 @@ export const mapDraSubmissionToDatasetTemplate = async (
     )
   }
 
+  // The first DRP is fetched once to back-fill typeOfData with a descriptive
+  // STUDY title when the submission's own title is just the accession ID.
+  // Fetch failure is non-fatal — typeOfData simply falls back to submission.
+  const firstDrpId = drpIds[0]
+  let studyTitleEn: string | null = null
+  if (firstDrpId) {
+    try {
+      const study = await fetchSraStudy(firstDrpId, requestId)
+      studyTitleEn = orNull(study?.title)
+    } catch (err) {
+      warnings.push(
+        `${firstDrpId}: sra-study fetch failed (${err instanceof Error ? err.message : String(err)})`,
+      )
+    }
+  }
+
   // study -> experiments (collect all DRX across all DRP)
   const drxIds: string[] = []
   for (const drp of drpIds) {
@@ -328,13 +451,23 @@ export const mapDraSubmissionToDatasetTemplate = async (
     if (r.row) experiments.push(r.row)
   }
 
+  // Submissions often have title === the accession itself ("DRA000001"),
+  // which is no help as a Dataset typeOfData. Prefer the DRP STUDY title when
+  // it adds information beyond the accession.
+  const submissionTitle = orNull(submission.title)
+  const submissionTitleIsAccession =
+    submissionTitle !== null && submissionTitle === draSubmissionId
+  const typeOfDataEn =
+    studyTitleEn ??
+    (submissionTitleIsAccession ? null : submissionTitle) ??
+    orNull(submission.description) ??
+    submissionTitle
+
   return {
     datasetId: undefined,
     releaseDate: isoDateOnly(submission.datePublished) ?? undefined,
     criteria: "Unrestricted-access",
-    typeOfData: toBilingualTextEn(
-      orNull(submission.title) ?? orNull(submission.description),
-    ),
+    typeOfData: toBilingualTextEn(typeOfDataEn),
     experiments,
     warnings,
   }
