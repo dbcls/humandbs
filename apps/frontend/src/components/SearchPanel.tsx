@@ -628,17 +628,14 @@ function CheckboxFacetItem({
   const [sortMode, setSortMode] = useState<CheckboxSortMode>("count");
   const [sortDir, setSortDir] = useState<CheckboxSortDir>("desc");
 
-  const t = useTranslations(`Filters.${id}.options` as any);
   const tFilters = useTranslations("Filters");
 
   if (options.length === 0) return null;
 
   const getLabel = (optionValue: string): string => {
-    try {
-      const translated = t(optionValue as any);
-      if (typeof translated === "string") return translated;
-    } catch {
-      // fall through to raw value
+    const key = `${id}.options.${optionValue}` as any;
+    if (tFilters.has(key)) {
+      return tFilters(key);
     }
     return optionValue;
   };
