@@ -23,6 +23,7 @@ export const FACET_CATEGORY = {
   SEQUENCING_QUALITY: "sequencing-quality",
   DATA_FORMAT: "data-format",
   POLICY: "policy",
+  DATES: "dates",
 } as const;
 
 type FacetType = (typeof FACET_TYPES)[keyof typeof FACET_TYPES];
@@ -87,7 +88,7 @@ export const DATASET_FACET_CONFIG: Record<keyof DatasetFilters, FacetConfig> = {
   // === Policy (ポリシー) ===
   policyId: { type: "checkbox", category: "policy" },
 
-  // === Top-level dataset fields (no category — rendered outside category groups) ===
-  criteria: { type: "checkbox" },
-  releaseDate: { type: "date-range" },
+  // === Dates (期間) ===
+  criteria: { type: "checkbox", category: "dates" },
+  releaseDate: { type: "date-range", category: "dates" },
 };

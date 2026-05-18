@@ -17,6 +17,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -289,6 +294,41 @@ export function SearchPanel({
     return acc;
   }, {} as GroupedSections);
 
+  const [openSections, setOpenSections] = useState<string[]>([]);
+  const [openFacets, setOpenFacets] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    try {
+      const savedSections = localStorage.getItem("searchPanel_openSections");
+      if (savedSections) setOpenSections(JSON.parse(savedSections));
+      
+      const savedFacets = localStorage.getItem("searchPanel_openFacets");
+      if (savedFacets) setOpenFacets(JSON.parse(savedFacets));
+    } catch (e) {
+      console.error("Failed to load searchPanel local storage", e);
+    }
+  }, []);
+
+  const handleSectionToggle = (key: string, isOpen: boolean, val: SectionConfig[]) => {
+    const nextSections = isOpen
+      ? [...openSections, key]
+      : openSections.filter((k) => k !== key);
+    setOpenSections(nextSections);
+    localStorage.setItem("searchPanel_openSections", JSON.stringify(nextSections));
+
+    if (isOpen) {
+      const nextFacets = { ...openFacets, [key]: val.map((s) => s.id) };
+      setOpenFacets(nextFacets);
+      localStorage.setItem("searchPanel_openFacets", JSON.stringify(nextFacets));
+    }
+  };
+
+  const getActiveFacets = (val: SectionConfig[]) => {
+    return val
+      .filter((s) => normalizeValue(draft[s.id]) !== undefined)
+      .map((s) => s.id);
+  };
+
   useEffect(() => {
     const timeout = setTimeout(handleSearch, 500);
 
@@ -310,35 +350,52 @@ export function SearchPanel({
       <div className="flex-1 overflow-y-auto">
         {Object.entries(groupedSections).map(([key, val]) => {
           const isTopLevel = key === "top-level";
+          const isSectionOpen = isTopLevel || openSections.includes(key);
+
           return (
-            <section
+            <Collapsible
               key={key}
-              className="border-b border-gray-300 last:border-b-0 px-4 pt-2 pb-4 overflow-hidden"
+              open={isSectionOpen}
+              onOpenChange={(isOpen) => {
+                if (!isTopLevel) handleSectionToggle(key, isOpen, val);
+              }}
+              asChild
             >
-              {!isTopLevel && (
-                <div className="bg-secondary/10 -mx-4 -mt-2 mb-3 px-5 py-2">
-                  <h3 className="text-sm font-bold text-secondary-foreground">{t(key as any)}</h3>
-                </div>
-              )}
-              <Accordion
-                className="px-1"
-                type="multiple"
-                defaultValue={val
-                  .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-                  .map((s) => s.id)}
-              >
-                {val.map((v, i) => (
-                  <AccordionFilterItem
-                    key={v.id || `${v.groupKey}-${i}`}
-                    section={v}
-                    facetCounts={facetCounts}
-                    onUpdate={updateDraftField}
-                    isFetching={isFetching}
-                    draft={draft}
-                  />
-                ))}
-              </Accordion>
-            </section>
+              <section className="border-b border-gray-300 last:border-b-0 px-4 pt-2 overflow-hidden">
+                {!isTopLevel && (
+                  <CollapsibleTrigger asChild>
+                    <div className="bg-secondary/10 -mx-4 -mt-2 px-5 py-2 flex items-center justify-between cursor-pointer hover:bg-secondary/20 transition-colors group">
+                      <h3 className="text-sm font-bold text-secondary-foreground">{t(key as any)}</h3>
+                      <ChevronRight className="h-4 w-4 text-secondary-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                    </div>
+                  </CollapsibleTrigger>
+                )}
+                
+                <CollapsibleContent>
+                  <Accordion
+                    className={cn("px-1 pb-4", !isTopLevel && "pt-3")}
+                    type="multiple"
+                    value={openFacets[key] ?? getActiveFacets(val)}
+                    onValueChange={(newVal) => {
+                      const nextFacets = { ...openFacets, [key]: newVal };
+                      setOpenFacets(nextFacets);
+                      localStorage.setItem("searchPanel_openFacets", JSON.stringify(nextFacets));
+                    }}
+                  >
+                    {val.map((v, i) => (
+                      <AccordionFilterItem
+                        key={v.id || `${v.groupKey}-${i}`}
+                        section={v}
+                        facetCounts={facetCounts}
+                        onUpdate={updateDraftField}
+                        isFetching={isFetching}
+                        draft={draft}
+                      />
+                    ))}
+                  </Accordion>
+                </CollapsibleContent>
+              </section>
+            </Collapsible>
           );
         })}
       </div>
