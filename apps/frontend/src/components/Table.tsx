@@ -78,9 +78,9 @@ function Table<T extends Record<string, unknown>>({
 
   return (
     <table
-      className={cn("w-full table-fixed align-top text-pretty", className)}
+      className={cn("w-full table-auto align-top text-pretty", className)}
     >
-      <thead className="relative z-10 text-white">
+      <thead className="sticky top-0 z-30 text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
             <tr
@@ -91,9 +91,8 @@ function Table<T extends Record<string, unknown>>({
                 <th
                   key={header.id}
                   className={
-                    "p-2 first-of-type:rounded-l last-of-type:rounded-r"
+                    "p-2 first-of-type:rounded-l last-of-type:rounded-r max-w-[300px]"
                   }
-                  style={{ width: `${header.getSize()}rem` }}
                 >
                   {header.isPlaceholder
                     ? null
@@ -120,7 +119,7 @@ function Table<T extends Record<string, unknown>>({
             {row.getVisibleCells().map((cell) => (
               <td
                 key={cell.id}
-                className="border-foreground-light/50 border-b-2 p-2 align-top"
+                className="border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]"
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
