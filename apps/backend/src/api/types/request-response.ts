@@ -14,6 +14,7 @@ import {
   DsApplicationTransformedSchema,
   DuApplicationTransformedSchema,
 } from "../../crawler/types/jga-shinsei"
+import { SearchableExperimentFieldsSchema } from "../../crawler/types/structured"
 // Import from es/types
 import {
   BilingualTextSchema,
@@ -52,10 +53,14 @@ import { EditableResearchStatusSchema, RESEARCH_STATUS } from "./workflow"
 
 // === Experiment Schema ===
 
-// Experiment schema for API requests (without searchable field)
+// Experiment schema for API requests and responses.
+// `searchable` is optional: GET responses surface it when ES has it (LLM-
+// extracted or admin-provided); POST/PUT bodies may include it when an admin
+// chooses to seed the searchable fields directly (e.g., from a template).
 export const ExperimentSchemaBase = z.object({
   header: BilingualTextValueSchema,
   data: z.record(z.string(), BilingualTextValueSchema.nullable()),
+  searchable: SearchableExperimentFieldsSchema.optional(),
 })
 
 // Dataset schema for API requests
@@ -322,12 +327,17 @@ export type DatasetWithMetadata = z.infer<typeof DatasetWithMetadataSchema>
  * Experiment schema for draft initialization. Unlike ExperimentRequestSchema
  * (used by Create/Update dataset), header and data both default so that
  * frontend form init (e.g. "Add experiment" button) can post `{}`.
+ *
+ * `searchable` is optional in the draft as well — templates seed it when DRA
+ * metadata makes the values mechanical (platforms / assayType / readType), and
+ * admins can edit before posting.
  */
 const ExperimentForDraftSchema = z.object({
   header: BilingualTextValueRequestSchema.default({ ja: null, en: null }),
   data: z
     .record(z.string(), BilingualTextValueRequestSchema.nullable())
     .default({}),
+  searchable: SearchableExperimentFieldsSchema.optional(),
 })
 
 /**

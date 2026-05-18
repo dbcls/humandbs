@@ -20,6 +20,7 @@ import {
   PeriodOfDataUseSchema,
   UrlValueSchema,
 } from "../../crawler/types/common"
+import { SearchableExperimentFieldsSchema } from "../../crawler/types/structured"
 
 /** TextValue without rawHtml (request-only) */
 export const TextValueRequestSchema = z.object({
@@ -76,9 +77,16 @@ export const ResearchProjectRequestSchema = z.object({
 })
 export type ResearchProjectRequest = z.infer<typeof ResearchProjectRequestSchema>
 
-/** Experiment without rawHtml (request-only). header/data を request 版に置換 */
+/** Experiment without rawHtml (request-only). header/data を request 版に置換。
+ *
+ * `searchable` は元々 LLM 抽出 step (crawler) で生成されるサーバー側フィールド
+ * だが、admin が template 経由で取得した雛形を編集して POST/PUT する用途のため
+ * リクエストでも optional で受け付ける。指定された場合はそのまま ES に書き込み、
+ * 未指定なら ES 上は undefined のまま (後段の LLM 抽出 step が走れば上書きされる)。
+ */
 export const ExperimentRequestSchema = z.object({
   header: BilingualTextValueRequestSchema,
   data: z.record(z.string(), BilingualTextValueRequestSchema.nullable()),
+  searchable: SearchableExperimentFieldsSchema.optional(),
 })
 export type ExperimentRequest = z.infer<typeof ExperimentRequestSchema>

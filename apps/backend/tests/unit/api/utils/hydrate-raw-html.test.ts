@@ -147,4 +147,49 @@ describe("hydrateExperiment", () => {
     expect(result.data.row1?.ja).toEqual({ text: "値", rawHtml: null })
     expect(result.data.row2).toBeNull()
   })
+
+  it("omits searchable when the request leaves it undefined", () => {
+    const result = hydrateExperiment({
+      header: { ja: { text: "h" }, en: null },
+      data: {},
+    })
+    expect(result.searchable).toBeUndefined()
+    expect("searchable" in result).toBe(false)
+  })
+
+  it("forwards searchable verbatim when present in the request", () => {
+    const searchable = {
+      subjectCount: 12,
+      subjectCountType: null,
+      healthStatus: null,
+      diseases: [],
+      tissues: ["blood"],
+      isTumor: null,
+      cellLine: [],
+      population: [],
+      sex: null,
+      ageGroup: null,
+      assayType: ["WGS"],
+      libraryKits: [],
+      platforms: [{ vendor: "ILLUMINA", model: "HiSeq" }],
+      readType: "paired-end" as const,
+      readLength: null,
+      sequencingDepth: null,
+      targetCoverage: null,
+      referenceGenome: [],
+      variantCounts: null,
+      hasPhenotypeData: null,
+      targets: null,
+      fileTypes: [],
+      processedDataTypes: [],
+      dataVolumeGb: null,
+      policies: [],
+    }
+    const result = hydrateExperiment({
+      header: { ja: null, en: null },
+      data: {},
+      searchable,
+    })
+    expect(result.searchable).toEqual(searchable)
+  })
 })

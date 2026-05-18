@@ -117,6 +117,8 @@ describe("OpenAPI document - per-operation contract", () => {
       "get /jga-shinsei/ds/{jdsId}",
       "get /jga-shinsei/du",
       "get /jga-shinsei/du/{jduId}",
+      "get /templates/research/{jdsId}",
+      "get /templates/dataset/{externalId}",
     ].map((entry) => {
       const [method, path] = entry.split(" ")
       return `${method} ${prefix}${path}`

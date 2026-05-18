@@ -66,8 +66,13 @@ export const hydrateExperiment = (v: ExperimentRequest): Experiment => {
   for (const [key, value] of Object.entries(v.data)) {
     data[key] = value === null ? null : hydrateBilingualTextValue(value)
   }
+  // searchable carries no TextValue, so no rawHtml hydration is needed —
+  // forward it through verbatim. If the request omits searchable, leave it
+  // undefined so ES stores the field as missing (consistent with crawler's
+  // pre-LLM-extract state).
   return {
     header: hydrateBilingualTextValue(v.header),
     data,
+    ...(v.searchable !== undefined ? { searchable: v.searchable } : {}),
   }
 }

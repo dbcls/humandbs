@@ -33,6 +33,11 @@ import {
   ResponseMetaWithPaginationSchema,
 } from "@/api/types/response"
 import {
+  DatasetTemplateDataSchema,
+  RelatedAccessionsSchema,
+  ResearchTemplateDataSchema,
+} from "@/api/types/templates"
+import {
   DatasetDocWithMergedSchema,
   DatasetVersionItemSchema,
   MergedSearchableSchema,
@@ -191,4 +196,9 @@ export const registerOpenAPISchemas = (app: OpenAPIHono): void => {
   r.register("JgaReport", ReportSchema)
   r.register("DsApplication", DsApplicationTransformedSchema)
   r.register("DuApplication", DuApplicationTransformedSchema)
+
+  // --- Templates ---
+  r.register("TemplateRelatedAccessions", RelatedAccessionsSchema)
+  r.register("ResearchTemplateData", ResearchTemplateDataSchema)
+  r.register("DatasetTemplateData", DatasetTemplateDataSchema)
 }

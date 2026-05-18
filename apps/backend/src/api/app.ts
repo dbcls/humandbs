@@ -18,6 +18,7 @@ import { jgaShinseiRouter } from "@/api/routes/jga-shinsei"
 import { researchRouter } from "@/api/routes/research/index"
 import { searchRouter } from "@/api/routes/search"
 import { statsRouter } from "@/api/routes/stats"
+import { templatesRouter } from "@/api/routes/templates"
 
 export const createApp = () => {
   const URL_PREFIX = process.env.HUMANDBS_BACKEND_URL_PREFIX ?? ""
@@ -56,6 +57,7 @@ export const createApp = () => {
   api.route("/dataset", datasetRouter)
   api.route("/admin", adminRouter)
   api.route("/jga-shinsei", jgaShinseiRouter)
+  api.route("/templates", templatesRouter)
 
   // Search routes mounted at root level for POST /research/search, POST /dataset/search, GET /facets
   api.route("/", searchRouter)

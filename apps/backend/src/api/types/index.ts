@@ -117,6 +117,25 @@ export type {
   DuApplicationTransformed,
 } from "../../crawler/types/jga-shinsei"
 
+// === Templates ===
+export {
+  EXTERNAL_ID_REGEX,
+  RelatedAccessionsSchema,
+  TemplateDatasetParamsSchema,
+  ResearchTemplateDataSchema,
+  ResearchTemplateResponseSchema,
+  DatasetTemplateDataSchema,
+  DatasetTemplateResponseSchema,
+} from "./templates"
+export type {
+  RelatedAccessions,
+  TemplateDatasetParams,
+  ResearchTemplateData,
+  ResearchTemplateResponse,
+  DatasetTemplateData,
+  DatasetTemplateResponse,
+} from "./templates"
+
 // === API View Models ===
 export {
   ResearchDetailSchema,

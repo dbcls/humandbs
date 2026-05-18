@@ -238,6 +238,67 @@ describe("PUT /dataset/{datasetId}/update mutation auth", () => {
     })
     expect(res.status).toBe(409)
   })
+
+  // Templates seed experiments[].searchable from upstream DRA metadata. Admins
+  // can edit the JSON and POST/PUT it back; here we assert the wire payload
+  // reaches the ES client unchanged (no silent strip / no over-validation).
+  it("forwards experiments[].searchable verbatim to updateDataset", async () => {
+    const { dataset } = wireDatasetAndParent()
+    mockUpdateDataset.mockResolvedValue(dataset)
+    mockGetDatasetWithSeqNo
+      .mockResolvedValueOnce({ doc: dataset, seqNo: 1, primaryTerm: 1 })
+      .mockResolvedValueOnce({ doc: dataset, seqNo: 2, primaryTerm: 1 })
+
+    const searchable = {
+      subjectCount: 24,
+      subjectCountType: null,
+      healthStatus: null,
+      diseases: [],
+      tissues: ["blood"],
+      isTumor: null,
+      cellLine: [],
+      population: [],
+      sex: null,
+      ageGroup: null,
+      assayType: ["WGS"],
+      libraryKits: [],
+      platforms: [{ vendor: "ILLUMINA", model: "HiSeq 2000" }],
+      readType: "paired-end" as const,
+      readLength: null,
+      sequencingDepth: null,
+      targetCoverage: null,
+      referenceGenome: [],
+      variantCounts: null,
+      hasPhenotypeData: null,
+      targets: null,
+      fileTypes: [],
+      processedDataTypes: [],
+      dataVolumeGb: null,
+      policies: [],
+    }
+    const body = {
+      ...updateBody,
+      experiments: [{
+        header: { ja: { text: "DRX000001" }, en: { text: "DRX000001" } },
+        data: {},
+        searchable,
+      }],
+    }
+
+    const res = await getTestApp().request("/dataset/JGAD000001/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: JSON.stringify(body),
+    })
+    expect(res.status).toBe(200)
+
+    // updateDataset(datasetId, version, payload, ...)
+    const call = mockUpdateDataset.mock.calls.at(-1)
+    expect(call).toBeDefined()
+    const payload = call![2] as { experiments: { searchable?: typeof searchable }[] }
+    expect(payload.experiments).toHaveLength(1)
+    expect(payload.experiments[0].searchable).toEqual(searchable)
+  })
 })
 
 describe("POST /dataset/{datasetId}/delete mutation auth", () => {
