@@ -50,7 +50,7 @@ function RouteComponent() {
 
   return (
     // All that after the Navbar component
-    <section className="flex w-full flex-col items-stretch gap-8">
+    <section className="flex w-full flex-col items-stretch gap-4">
       <section className="flex h-fit items-start justify-between gap-4">
         <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-24">
           <div className="flex w-full max-w-5xl flex-col items-center">
@@ -136,14 +136,13 @@ function RouteComponent() {
           </Suspense>
         </Card>
       </section>
-      <div className="w-full mt-12">
-        <h2 className="text-xl font-bold mb-4 text-center text-secondary">New Visualization (Carousel)</h2>
+      <div className="w-full">
         <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Loading...</div>}>
           <LazyFrontStatsNew />
         </Suspense>
       </div>
 
-      <div className="w-full mt-12">
+      <div className="hidden w-full mt-12">
         <h2 className="text-xl font-bold mb-4 text-center text-secondary">Old Visualization (Planet Chart)</h2>
         <Card className="overflow-hidden bg-transparent p-0">
           <LazyFrontStats />

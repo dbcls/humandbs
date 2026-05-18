@@ -79,7 +79,7 @@ export default function FrontStatsVisualizationNew() {
 
   if (!isMounted || loading) {
     return (
-      <div className="w-full h-[540px] flex items-center justify-center mt-8">
+      <div className="w-full h-[540px] flex items-center justify-center">
         <SkeletonLoading />
       </div>
     );
@@ -87,7 +87,7 @@ export default function FrontStatsVisualizationNew() {
 
   if (error || !stats) {
     return (
-      <div className="w-full p-8 bg-red-50 text-red-600 mt-8 rounded-xl">
+      <div className="w-full p-8 bg-red-50 text-red-600 rounded-xl">
         {error || "No data available"}
       </div>
     );
@@ -101,9 +101,9 @@ export default function FrontStatsVisualizationNew() {
   });
 
   return (
-    <div className="w-full h-[640px] rounded-3xl mt-8 overflow-hidden bg-slate-50 shadow-inner relative flex justify-center">
+    <div className="w-full h-[640px] rounded-3xl overflow-hidden bg-slate-50 shadow-inner relative flex justify-center">
       
-      <div className="absolute top-4 left-4 z-[9999] bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 w-80 text-xs overflow-y-auto max-h-[calc(100%-2rem)]">
+      <div className="hidden absolute top-4 left-4 z-[9999] bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 w-80 text-xs overflow-y-auto max-h-[calc(100%-2rem)]">
         <h3 className="font-bold mb-3 text-slate-800 text-sm">Real-time Tweaks</h3>
         
         <div className="flex flex-col gap-3">
