@@ -18,6 +18,7 @@ export function SearchCaption({
   onCsv,
   onExcel,
   onResetFilters,
+  filterButtonRef,
 }: {
   title: string;
   filtersCount: number | undefined;
@@ -30,6 +31,7 @@ export function SearchCaption({
   onCsv?: () => void;
   onExcel?: () => void;
   onResetFilters: () => void;
+  filterButtonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("common");
   const [inputValue, setInputValue] = useState(committedQuery);
@@ -107,6 +109,7 @@ export function SearchCaption({
             }}
           />
           <Button
+            ref={filterButtonRef}
             variant="tableAction"
             size="tableAction"
             className={cn(

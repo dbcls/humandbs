@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 
 import { Card } from "@/components/Card";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -19,6 +19,7 @@ export function FilterableCard({
   caption: (props: {
     onFilterClick: () => void;
     isOpen: boolean;
+    filterButtonRef: React.RefObject<HTMLButtonElement | null>;
   }) => React.ReactNode;
   captionSize?: "lg";
   className?: string;
@@ -26,6 +27,22 @@ export function FilterableCard({
   renderPanel: (props: { onClose: () => void }) => React.ReactNode;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const [arrowOffset, setArrowOffset] = useState(56);
+
+  useEffect(() => {
+    if (!filterButtonRef.current) return;
+    const el = filterButtonRef.current;
+    
+    const updateOffset = () => {
+      setArrowOffset(el.offsetWidth / 2);
+    };
+    
+    // updateOffset(); // ResizeObserver fires immediately on observe
+    const observer = new ResizeObserver(updateOffset);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [caption]);
 
   return (
     <Card
@@ -35,6 +52,7 @@ export function FilterableCard({
           setPanelOpen((v) => !v);
         },
         isOpen: panelOpen,
+        filterButtonRef,
       })}
       captionSize={captionSize}
       hideCaptionBorder={true}
@@ -63,7 +81,12 @@ export function FilterableCard({
         )}
       >
         {/* The arrow (caret) pointing up */}
-        <div className="absolute -top-[5px] right-[3.5rem] z-10 h-4 w-4 rotate-45 rounded-tl-[2px] border-l border-t border-gray-200 bg-white"></div>
+        <div 
+          className="absolute -top-[5px] z-10 h-4 w-4 rotate-45 overflow-hidden rounded-tl-[2px] border-l border-t border-gray-200 bg-white transition-all"
+          style={{ right: `${arrowOffset}px` }}
+        >
+          <div className="h-full w-full bg-secondary/10"></div>
+        </div>
 
         {/* The actual panel container */}
         <div className="relative z-0 flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white">

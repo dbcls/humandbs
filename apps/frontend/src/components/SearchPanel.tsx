@@ -309,19 +309,27 @@ export function SearchPanel({
 
       <div className="flex-1 overflow-y-auto">
         {Object.entries(groupedSections).map(([key, val]) => {
-          if (key === "top-level") {
-            return (
+          const isTopLevel = key === "top-level";
+          return (
+            <section
+              key={key}
+              className="border-b border-gray-300 last:border-b-0 px-4 pt-2 pb-4 overflow-hidden"
+            >
+              {!isTopLevel && (
+                <div className="bg-secondary/10 -mx-4 -mt-2 mb-3 px-5 py-2">
+                  <h3 className="text-sm font-bold text-secondary-foreground">{t(key as any)}</h3>
+                </div>
+              )}
               <Accordion
-                className="px-3 pb-2"
+                className="px-1"
                 type="multiple"
-                key={key}
                 defaultValue={val
                   .filter((s) => normalizeValue(draft[s.id]) !== undefined)
                   .map((s) => s.id)}
               >
                 {val.map((v, i) => (
                   <AccordionFilterItem
-                    key={`${v.groupKey}-${i}`}
+                    key={v.id || `${v.groupKey}-${i}`}
                     section={v}
                     facetCounts={facetCounts}
                     onUpdate={updateDraftField}
@@ -330,31 +338,8 @@ export function SearchPanel({
                   />
                 ))}
               </Accordion>
-            );
-          } else {
-            return (
-              <Accordion
-                className="mt-6 px-3 pb-2"
-                type="multiple"
-                key={key}
-                defaultValue={val
-                  .filter((s) => normalizeValue(draft[s.id]) !== undefined)
-                  .map((s) => s.id)}
-              >
-                <p className="py-3 text-sm font-medium">{t(key as any)}</p>
-                {val.map((v) => (
-                  <AccordionFilterItem
-                    key={v.id}
-                    section={v}
-                    facetCounts={facetCounts}
-                    onUpdate={updateDraftField}
-                    isFetching={isFetching}
-                    draft={draft}
-                  />
-                ))}
-              </Accordion>
-            );
-          }
+            </section>
+          );
         })}
       </div>
     </div>
@@ -373,23 +358,17 @@ function PanelHeader({
   onClose: () => void;
 }) {
   const t = useTranslations("Filters");
+  if (!hasAnyFilter) return null;
   return (
-    <div className="p-3">
-      <div className="flex items-center justify-between pl-2">
-        <span className="text-sm font-medium">{t("panel-title")}</span>
-        <div className="flex items-center gap-1">
-          {hasAnyFilter && (
-            <Button
-              variant="outline"
-              size="slim"
-              className="text-2xs text-muted-foreground py-0"
-              onClick={onReset}
-            >
-              {t("panel-reset-all")}
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="flex justify-end p-2 pb-0 bg-secondary/10">
+      <Button
+        variant="outline"
+        size="slim"
+        className="text-2xs text-muted-foreground py-0"
+        onClick={onReset}
+      >
+        {t("panel-reset-all")}
+      </Button>
     </div>
   );
 }

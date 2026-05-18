@@ -412,7 +412,9 @@
     "data-format": "Data Format",
     "policy": "Policy",
     "sort-by-name": "Filter name",
-    "sort-by-count": "Results count"
+    "sort-by-count": "Results count",
+    "dates": "Dates",
+    "basic-info": "Basic Information"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",
