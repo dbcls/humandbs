@@ -9,6 +9,7 @@ import CarouselScene from "./CarouselScene";
 import CameraUpdater from "./CameraUpdater";
 import useDebugParams from "./useDebugParams";
 import DebugPanel from "./DebugPanel";
+import { capitalize } from "./utils";
 
 export default function FrontStatsVisualization() {
   const { loading, error, stats } = useStats();
@@ -59,6 +60,7 @@ export default function FrontStatsVisualization() {
 
       <div className="absolute top-6 z-10 flex items-center bg-white/90 backdrop-blur-sm p-1.5 rounded-full">
         <button
+          aria-pressed={mode === "research"}
           onClick={() => setMode("research")}
           className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
             mode === "research"
@@ -69,6 +71,7 @@ export default function FrontStatsVisualization() {
           {tCommon("research")} <span className="ml-2 opacity-80 font-normal text-xs">{stats.researchTotal.toLocaleString()}</span>
         </button>
         <button
+          aria-pressed={mode === "dataset"}
           onClick={() => setMode("dataset")}
           className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
             mode === "dataset"
@@ -120,7 +123,26 @@ export default function FrontStatsVisualization() {
         </Canvas>
         )}
       </div>
+
+      {/* Accessibility fallback for screen readers */}
+      <div className="sr-only">
+        <h2>{mode === "research" ? tCommon("research") : tCommon("dataset")}</h2>
+        <ul>
+          {stats?.systems.map(sys => (
+            <li key={sys.facet}>
+              <h3>{capitalize(sys.facet)}</h3>
+              <ul>
+                {sys.satellites.filter(s => s[mode] > 0).map(s => (
+                  <li key={s.id}>
+                    {capitalize(s.value)}: {s[mode]}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 
-} // Force HMR reload
+}

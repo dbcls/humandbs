@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import type { StatsState } from "./types";
 import { normalizeStatsResponse } from "./utils";
-import { api } from "@/services/backend";
 
 export default function useStats() {
   const [state, setState] = useState<StatsState>({ loading: true, error: "", stats: null });
@@ -10,7 +9,11 @@ export default function useStats() {
     let mounted = true;
     async function load() {
       try {
-        const payload = await api.getStats();
+        const response = await fetch("https://humandbs-staging.ddbj.nig.ac.jp/api/stats");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const payload = await response.json();
         const normalized = normalizeStatsResponse(payload);
         if (!normalized) throw new Error("Unexpected stats payload format");
         if (mounted) setState({ loading: false, error: "", stats: normalized });

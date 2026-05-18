@@ -31,7 +31,6 @@ export default function AnimatedParticleLabel({
       titleRef.current._currentColor.lerp(targetColorTitle, 0.15);
       titleRef.current.color = titleRef.current._currentColor;
       
-      titleRef.current.sync();
     }
 
     if (countRef.current) {
@@ -41,7 +40,6 @@ export default function AnimatedParticleLabel({
       countRef.current._currentColor.lerp(targetColorCount, 0.15);
       countRef.current.color = countRef.current._currentColor;
       
-      countRef.current.sync();
     }
   });
 

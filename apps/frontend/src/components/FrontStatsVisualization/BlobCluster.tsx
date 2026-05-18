@@ -153,7 +153,7 @@ export default function BlobCluster({
         targetZ,
       };
     });
-  }, [satellites, mode, paletteIndex, globalMaxCount]);
+  }, [satellites, mode, paletteIndex, globalMaxCount, particleScale]);
 
   const localGroupRef = useRef<THREE.Group>(null);
   const facetLabelRef = useRef<THREE.Group>(null);
@@ -166,6 +166,7 @@ export default function BlobCluster({
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      document.body.style.cursor = 'auto';
     };
   }, []);
 
