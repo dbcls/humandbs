@@ -1,4 +1,5 @@
-import React, { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useTranslations } from "use-intl";
 import { useNavigate } from "@tanstack/react-router";
 import { Canvas } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
@@ -6,25 +7,6 @@ import { SkeletonLoading } from "@/components/Skeleton";
 import useStats from "./useStats";
 import CarouselScene from "./CarouselScene";
 import CameraUpdater from "./CameraUpdater";
-import { 
-  INITIAL_CAROUSEL_RADIUS,
-  INITIAL_PARTICLE_SCALE,
-  INITIAL_CAROUSEL_ROTATION_SPEED,
-  INITIAL_CAMERA_Y,
-  INITIAL_CAMERA_Z,
-  INITIAL_SCENE_OFFSET_Y,
-  INITIAL_MATERIAL_ROUGHNESS,
-  INITIAL_LIGHT_AMBIENT,
-  INITIAL_LIGHT_AMBIENT_COLOR,
-  INITIAL_LIGHT_DIRECTIONAL,
-  INITIAL_LIGHT_POINT_1,
-  INITIAL_LIGHT_POINT_2,
-  INITIAL_PHYSICS_FORCE,
-  INITIAL_FOG_NEAR,
-  INITIAL_FOG_FAR,
-  INITIAL_MAX_PARTICLES,
-  INITIAL_PARTICLE_LABEL_FONT_SIZE
-} from "./constants";
 import useDebugParams from "./useDebugParams";
 import DebugPanel from "./DebugPanel";
 
@@ -37,6 +19,7 @@ export default function FrontStatsVisualization() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const navigate = useNavigate();
+  const tCommon = useTranslations("common");
 
   useEffect(() => {
     setIsMounted(true);
@@ -83,7 +66,7 @@ export default function FrontStatsVisualization() {
               : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
           }`}
         >
-          Research <span className="ml-2 opacity-80 font-normal text-xs">{stats.researchTotal.toLocaleString()} items</span>
+          {tCommon("research")} <span className="ml-2 opacity-80 font-normal text-xs">{stats.researchTotal.toLocaleString()}</span>
         </button>
         <button
           onClick={() => setMode("dataset")}
@@ -93,7 +76,7 @@ export default function FrontStatsVisualization() {
               : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
           }`}
         >
-          Dataset <span className="ml-2 opacity-80 font-normal text-xs">{stats.datasetTotal.toLocaleString()} items</span>
+          {tCommon("dataset")} <span className="ml-2 opacity-80 font-normal text-xs">{stats.datasetTotal.toLocaleString()}</span>
         </button>
       </div>
 

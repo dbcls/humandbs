@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import type { StatsSatellite, StatsSystem, NormalizedStats } from "./types";
 
 export function hashString(str: string): number {
@@ -12,7 +11,7 @@ export function hashString(str: string): number {
 export function capitalize(str: string) {
   if (!str) return "";
   const s = str.replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // Removed global blobMaterial. Using inline material per cluster.

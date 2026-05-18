@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import * as d3 from "d3";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -158,7 +158,6 @@ export default function BlobCluster({
   const localGroupRef = useRef<THREE.Group>(null);
   const facetLabelRef = useRef<THREE.Group>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const particleHoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleParticleHover = (index: number | null) => {
     setHoveredParticleIndex(index);
@@ -181,7 +180,7 @@ export default function BlobCluster({
     document.body.style.cursor = 'pointer';
   };
 
-  const handlePointerLeave = (e: any) => {
+  const handlePointerLeave = (_e: any) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
       onHover(false);
@@ -408,9 +407,6 @@ export default function BlobCluster({
             mode={mode}
             isDimmed={hoveredParticleIndex !== null && hoveredParticleIndex !== i}
             debugParams={debugParams}
-            onNavigate={onNavigate}
-            facet={system.facet}
-            isDragging={isDragging}
           />
         </group>
       )})}

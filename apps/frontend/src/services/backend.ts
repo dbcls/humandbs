@@ -27,6 +27,7 @@ import {
   type WorkflowResponse,
   type VersionCreateResponse,
   type DatasetCreateResponse,
+  type StatsResponse,
 } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -171,6 +172,7 @@ interface APIService {
     accessToken?: string,
     signal?: AbortSignal,
   ): Promise<DatasetSearchResponse>;
+  getStats(): Promise<StatsResponse>;
   getAllFacets(): Promise<{ data: AllFacetsResponse }>;
   createResearch(
     body: CreateResearchRequest,
@@ -284,6 +286,10 @@ const api: APIService = {
       accessToken ? authHeader(accessToken) : undefined,
       signal,
     );
+  },
+
+  getStats() {
+    return get<StatsResponse>(`/stats`);
   },
 
   getAllFacets() {

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Text, Billboard } from "@react-three/drei";
 import * as THREE from "three";
@@ -9,18 +9,12 @@ export default function AnimatedParticleLabel({
   sat, 
   mode, 
   isDimmed, 
-  debugParams, 
-  onNavigate, 
-  facet, 
-  isDragging 
+  debugParams
 }: {
   sat: StatsSatellite,
   mode: "dataset" | "research",
   isDimmed: boolean,
-  debugParams: DebugParams,
-  onNavigate: (facet: string, value: string) => void,
-  facet: string,
-  isDragging: boolean
+  debugParams: DebugParams
 }) {
   const titleRef = useRef<any>(null);
   const countRef = useRef<any>(null);

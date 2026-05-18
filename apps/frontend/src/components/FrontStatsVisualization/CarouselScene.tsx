@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { NormalizedStats, DebugParams } from "./types";
@@ -46,7 +46,7 @@ export default function CarouselScene({
 
   const total = stats.systems.length;
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (!groupRef.current) return;
 
     if (hoveredIndex === null && !isDragging) {
@@ -71,11 +71,15 @@ export default function CarouselScene({
   });
 
   const handleFacetClick = (facet: string, value: string) => {
-    const filters = encodeURIComponent(JSON.stringify({ [facet]: [value] }));
-    const to = `/${mode === 'dataset' ? 'dataset' : 'research'}` as any;
+    const filtersObj = { [facet]: [value] };
+    const to = mode === 'dataset' ? '/{-$lang}/dataset' : '/{-$lang}/research';
+    const searchPayload = mode === 'dataset' 
+      ? { filters: filtersObj, page: 1, limit: 20, order: 'asc' }
+      : { datasetFilters: filtersObj, page: 1, limit: 20, order: 'asc' };
+      
     navigate({
-      to,
-      search: { filters: JSON.parse(decodeURIComponent(filters)), page: 1, limit: 20, order: 'asc' } as any
+      to: to as any,
+      search: searchPayload as any
     });
   };
 
