@@ -43,6 +43,7 @@ export default function BlobCluster({
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const [hoveredParticleIndex, setHoveredParticleIndex] = useState<number | null>(null);
+  const [renderedLabelCount, setRenderedLabelCount] = useState(0);
   const labelRefs = useRef<(THREE.Group | null)[]>([]);
   const gridDims = useRef({ width: 100, height: 100 });
 
@@ -169,6 +170,32 @@ export default function BlobCluster({
       document.body.style.cursor = 'auto';
     };
   }, []);
+
+  // Stagger label rendering to prevent frame drops
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (isHovered) {
+      setRenderedLabelCount(0);
+      let count = 0;
+      const mountNextBatch = () => {
+        count += 1; // Mount 1 label per tick for a beautiful sequential fade-in
+        if (count >= satellites.length) {
+          setRenderedLabelCount(satellites.length);
+        } else {
+          setRenderedLabelCount(count);
+          timeout = setTimeout(mountNextBatch, 30); // Slower interval for 1-by-1
+        }
+      };
+      // Delay enough time (600ms) for the particle layout animation to finish settling
+      // before we start mounting any Text, to guarantee perfectly smooth movement.
+      timeout = setTimeout(mountNextBatch, 600);
+    } else {
+      setRenderedLabelCount(0);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isHovered, satellites.length]);
 
   const handlePointerEnter = (e: any) => {
     if (isDragging) return;
@@ -399,7 +426,7 @@ export default function BlobCluster({
       </group>
 
       {/* Labels OUTSIDE localGroupRef to keep font size perfectly constant regardless of dynamic scaling */}
-      {isHovered && satellites.map((sat, i) => {
+      {isHovered && satellites.slice(0, renderedLabelCount).map((sat, i) => {
         // We render all labels, removed the 50 item cutoff limit as requested!
         return (
         <group key={sat.id} ref={el => labelRefs.current[i] = el}>

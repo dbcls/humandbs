@@ -25,19 +25,19 @@ export default function AnimatedParticleLabel({
     const targetColorCount = new THREE.Color(isDimmed ? "#cbd5e1" : "#64748b");
 
     if (titleRef.current) {
-      titleRef.current.fillOpacity = THREE.MathUtils.lerp(titleRef.current.fillOpacity ?? 1.0, targetOpacity, 0.15);
+      titleRef.current.fillOpacity = THREE.MathUtils.lerp(titleRef.current.fillOpacity ?? 0, targetOpacity, 0.05);
       
       if (!titleRef.current._currentColor) titleRef.current._currentColor = new THREE.Color("#334155");
-      titleRef.current._currentColor.lerp(targetColorTitle, 0.15);
+      titleRef.current._currentColor.lerp(targetColorTitle, 0.05);
       titleRef.current.color = titleRef.current._currentColor;
       
     }
 
     if (countRef.current) {
-      countRef.current.fillOpacity = THREE.MathUtils.lerp(countRef.current.fillOpacity ?? 1.0, targetOpacity, 0.15);
+      countRef.current.fillOpacity = THREE.MathUtils.lerp(countRef.current.fillOpacity ?? 0, targetOpacity, 0.05);
       
       if (!countRef.current._currentColor) countRef.current._currentColor = new THREE.Color("#64748b");
-      countRef.current._currentColor.lerp(targetColorCount, 0.15);
+      countRef.current._currentColor.lerp(targetColorCount, 0.05);
       countRef.current.color = countRef.current._currentColor;
       
     }
@@ -53,6 +53,7 @@ export default function AnimatedParticleLabel({
         fontSize={baseFontSize}
         material-transparent={true}
         material-depthWrite={false}
+        fillOpacity={0}
         depthOffset={-1}
         anchorX="center"
         anchorY="top"
@@ -66,6 +67,7 @@ export default function AnimatedParticleLabel({
         fontSize={baseFontSize * 0.75}
         material-transparent={true}
         material-depthWrite={false}
+        fillOpacity={0}
         depthOffset={-1}
         anchorX="center"
         anchorY="top"
