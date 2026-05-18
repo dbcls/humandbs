@@ -238,9 +238,9 @@ function CardContent() {
 
   return (
     <>
-      <div className="flex max-h-[calc(100vh-16rem)] min-w-full flex-1 flex-col overflow-auto">
+      <div className="flex max-h-[calc(100vh-16rem)] min-w-full flex-1 flex-col overflow-auto mt-4">
         <Table
-          className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+          className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
           onSortingChange={handleSortingChange}
           sorting={sorting}
           meta={{ t, lang }}

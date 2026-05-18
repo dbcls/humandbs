@@ -549,28 +549,28 @@ function FacetItemWrapper({
   const t = useTranslations(`Filters.${id}` as any);
 
   return (
-    <AccordionItem value={id} className="border-b-primary-translucent data-[state=open]:pb-[4px]">
-      <AccordionTrigger className="text-secondary font-bold py-2.5 hover:no-underline relative">
+    <AccordionItem value={id} className="border-b-primary-translucent data-[state=open]:pb-[4px] relative">
+      <AccordionTrigger className="text-secondary font-bold py-2.5 hover:no-underline">
         <span className="truncate pr-[80px]">{t("title" as any)}</span>
-        
-        <div className="absolute right-7 top-0 bottom-0 flex items-center gap-1 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-1">
-            {headerAction}
-            {hasValue && (
-              <Button
-                variant="tableAction"
-                className="h-[21px] px-2 text-[10px] shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReset();
-                }}
-              >
-                {tFilters("panel-reset")}
-              </Button>
-            )}
-          </div>
-        </div>
       </AccordionTrigger>
+        
+      <div className="absolute right-7 top-0 bottom-0 flex items-center gap-1 z-10 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-1">
+          {headerAction}
+          {hasValue && (
+            <Button
+              variant="tableAction"
+              className="h-[21px] px-2 text-[10px] shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReset();
+              }}
+            >
+              {tFilters("panel-reset")}
+            </Button>
+          )}
+        </div>
+      </div>
       
       <AccordionContent className="py-1 px-1">{children}</AccordionContent>
     </AccordionItem>
@@ -795,7 +795,7 @@ function BooleanFacetItem({
 }) {
   const isEnabled = draftValue != null;
 
-  const realOptions = ["any", "true", "false"];
+  const realOptions = ["true", "false"];
 
   const t = useTranslations(`Filters.${id}.options` as any);
 
@@ -811,28 +811,22 @@ function BooleanFacetItem({
         <RadioGroup
           value={String(draftValue)}
           onValueChange={(val) => {
-            if (val === "any") {
-              onUpdate(id, undefined);
-              return;
-            }
             onUpdate(id, val === "true");
           }}
         >
           {realOptions.map((option) => (
             <Label
               key={option}
-              className="flex items-center justify-between gap-2"
+              className="flex items-center justify-between gap-2 text-sm text-gray-700"
             >
               <span>
                 <RadioGroupItem value={option} />
                 <span className="ml-2">{t(option)}</span>
               </span>
-              <span>
-                {option !== "any"
-                  ? facetCounts?.find(
-                      (f) => f.value === (option === "true" ? "1" : "0"),
-                    )?.count || 0
-                  : null}
+              <span className="text-gray-500">
+                {facetCounts?.find(
+                  (f) => f.value === (option === "true" ? "1" : "0"),
+                )?.count || 0}
               </span>
             </Label>
           ))}
@@ -1031,8 +1025,8 @@ function DateRangeFacetItem({
         onUpdate(id, undefined);
       }}
     >
-      <div className="flex items-center gap-2">
-        <Input
+      <div className="flex items-center gap-1">
+        <SearchInput
           type="date"
           placeholder="From"
           value={(draftValue.min as string) ?? ""}
@@ -1043,10 +1037,10 @@ function DateRangeFacetItem({
               min: val === "" ? undefined : val,
             });
           }}
-          className="h-[28px] text-sm"
+          className="h-[28px] text-xs flex-1 min-w-0 -mx-[2px] [&_input]:px-1"
         />
         <span className="text-muted-foreground text-xs">—</span>
-        <Input
+        <SearchInput
           type="date"
           placeholder="To"
           value={(draftValue.max as string) ?? ""}
@@ -1057,7 +1051,7 @@ function DateRangeFacetItem({
               max: val === "" ? undefined : val,
             });
           }}
-          className="h-[28px] text-sm"
+          className="h-[28px] text-xs flex-1 min-w-0 -mx-[2px] [&_input]:px-1"
         />
       </div>
     </FacetItemWrapper>
