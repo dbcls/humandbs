@@ -7,6 +7,7 @@ import {
   Plus,
   Trash2,
   X as XIcon,
+  Search as SearchIcon,
 } from "lucide-react";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
@@ -25,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Input as SearchInput } from "@/components/Input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
@@ -343,7 +345,6 @@ export function SearchPanel({
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onReset={handleResetAll}
-        onSearch={handleSearch}
         onClose={onClose}
       />
 
@@ -373,7 +374,7 @@ export function SearchPanel({
                 
                 <CollapsibleContent className="px-4">
                   <Accordion
-                    className="px-1 pb-4"
+                    className="px-1 pb-4 pt-[2px]"
                     type="multiple"
                     value={openFacets[key] ?? getActiveFacets(val)}
                     onValueChange={(newVal) => {
@@ -548,7 +549,7 @@ function FacetItemWrapper({
   const t = useTranslations(`Filters.${id}` as any);
 
   return (
-    <AccordionItem value={id} className="border-b-primary-translucent">
+    <AccordionItem value={id} className="border-b-primary-translucent data-[state=open]:pb-[4px]">
       <AccordionTrigger className="text-secondary font-bold py-2.5 hover:no-underline relative">
         <span className="truncate pr-[80px]">{t("title" as any)}</span>
         
@@ -633,6 +634,7 @@ function CheckboxFacetItem({
   const [sortDir, setSortDir] = useState<CheckboxSortDir>("desc");
 
   const tFilters = useTranslations("Filters");
+  const tCommon = useTranslations("common");
 
   if (options.length === 0) return null;
 
@@ -685,11 +687,12 @@ function CheckboxFacetItem({
       }}
     >
       {showSearch && (
-        <Input
-          className="mb-2 h-[28px] text-sm"
+        <SearchInput
+          className="mb-2 h-[28px] text-sm -mx-[2px]"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search…"
+          placeholder={tCommon("search")}
+          beforeIcon={<SearchIcon size={16} className="text-muted-foreground ml-1" />}
         />
       )}
       <div className="text-gray-700 mb-1 flex items-center justify-between gap-2 text-sm font-medium">
@@ -765,14 +768,15 @@ function TextFacetItem({
         onUpdate(id, undefined);
       }}
     >
-      <Input
+      <SearchInput
         type="text"
         value={draftValue}
         onChange={(e) => {
           onUpdate(id, e.target.value);
         }}
-        placeholder={`Search ${id}...`}
-        className="h-[28px] text-sm"
+        placeholder={useTranslations("common")("search")}
+        beforeIcon={<SearchIcon size={16} className="text-muted-foreground ml-1" />}
+        className="h-[28px] text-sm -mx-[2px]"
       />
     </FacetItemWrapper>
   );
@@ -805,7 +809,6 @@ function BooleanFacetItem({
     >
       <div className="space-y-2">
         <RadioGroup
-          className="pl-6"
           value={String(draftValue)}
           onValueChange={(val) => {
             if (val === "any") {
@@ -932,14 +935,14 @@ function TextListFacetItem({
       <div className="space-y-2">
         {draftValue.map((val, index) => (
           <div key={index} className="flex items-center gap-1">
-            <Input
+            <SearchInput
               type="text"
               value={val}
               onChange={(e) => {
                 handleChange(index, e.target.value);
               }}
               placeholder={`${id}...`}
-              className={cn("h-[28px] flex-1 text-sm")}
+              className={cn("h-[28px] flex-1 text-sm -mx-[2px]")}
             />
             <Button
               variant="tableAction"
@@ -977,7 +980,7 @@ function RangeFacetItem({
       }}
     >
       <div className="flex items-center gap-2">
-        <Input
+        <SearchInput
           type="number"
           placeholder="Min"
           value={draftValue.min ?? ""}
@@ -988,10 +991,10 @@ function RangeFacetItem({
               min: val === "" ? undefined : Number(val),
             });
           }}
-          className="h-[28px] text-sm"
+          className="h-[28px] text-sm flex-1 -mx-[2px]"
         />
         <span className="text-muted-foreground text-xs">—</span>
-        <Input
+        <SearchInput
           type="number"
           placeholder="Max"
           value={draftValue.max ?? ""}
@@ -1002,7 +1005,7 @@ function RangeFacetItem({
               max: val === "" ? undefined : Number(val),
             });
           }}
-          className="h-[28px] text-sm"
+          className="h-[28px] text-sm flex-1 -mx-[2px]"
         />
       </div>
     </FacetItemWrapper>
