@@ -72,10 +72,14 @@ export function FilterableCard({
           >
             {/* The arrow (caret) pointing up */}
             <div 
-              className="absolute -top-[5px] z-10 h-4 w-4 rotate-45 overflow-hidden rounded-tl-[2px] border-l border-t border-gray-200 bg-white transition-all"
-              style={{ right: `${arrowOffset}px` }}
+              className="absolute bottom-[calc(100%-1px)] z-10 w-[16px] h-[8px] transition-all"
+              style={{ right: `${arrowOffset - 8}px` }}
             >
-              <div className="h-full w-full bg-secondary/10"></div>
+              <svg viewBox="0 0 16 8" width="16" height="8" className="block" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 1L15 8H1L8 1Z" className="fill-white" />
+                <path d="M8 1L15 8H1L8 1Z" className="fill-secondary/10" />
+                <path d="M1 8L8 1L15 8" className="stroke-gray-200" strokeWidth="1" fill="none" />
+              </svg>
             </div>
 
             {/* The actual panel container */}
