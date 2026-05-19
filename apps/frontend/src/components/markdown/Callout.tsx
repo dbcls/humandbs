@@ -15,7 +15,7 @@ export function Callout({
       className={cn(
         "border-secondary mt-2 flex items-center gap-4 rounded-md border px-6 py-4",
         {
-          "border-blue-600": type === "info",
+          "border-secondary": type === "info",
           "border-secondary-light": type === "tip",
           "border-amber-300": type === "warning",
           "border-red-600": type === "error",
