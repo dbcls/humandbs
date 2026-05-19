@@ -190,3 +190,15 @@ export function Pagination({
     </div>
   );
 }
+
+export function PaginationLoadingSkeleton() {
+  return (
+    <div className="mt-4 flex animate-pulse items-center justify-between gap-4 sm:flex-row">
+      <div className="h-8 w-24 rounded bg-gray-300" />
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <div className="h-5 w-20 rounded bg-gray-300" />
+        <div className="h-8 w-16 rounded bg-gray-300" />
+      </div>
+    </div>
+  );
+}

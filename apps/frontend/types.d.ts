@@ -14,5 +14,10 @@ declare module "@tanstack/react-table" {
     t: ReturnType<typeof useTranslations>;
     messages?: Messages;
     lang: Locale;
+    loadingSortColumnId?: string;
+    activeSort?: {
+      id: string;
+      desc: boolean;
+    };
   }
 }
