@@ -28,6 +28,9 @@ export default defineConfig(async () => {
     server: {
       port: 3000,
       allowedHosts: ["frontend"],
+      watch: {
+        usePolling: true,
+      },
     },
     resolve: {
       alias: {
