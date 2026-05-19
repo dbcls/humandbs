@@ -16,6 +16,7 @@ export default function FrontStatsVisualization() {
   const [mode, setMode] = useState<"dataset" | "research">("research");
   const [isMounted, setIsMounted] = useState(false);
   const { debugParams, setDebugParams, resetDebugParams } = useDebugParams();
+  const tFilters = useTranslations("Filters");
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -48,6 +49,24 @@ export default function FrontStatsVisualization() {
       if (s[mode] > globalMaxCount) globalMaxCount = s[mode];
     });
   });
+
+  const handleFacetClick = (facet: string, value: string) => {
+    let filterValue: any = [value];
+    if (facet === 'disease') filterValue = value;
+    else if (facet === 'isTumor') filterValue = value;
+    else if (facet === 'hasPhenotypeData') filterValue = value === '1' || value === 'true';
+
+    const filtersObj = { [facet]: filterValue };
+    const to = mode === 'dataset' ? '/{-$lang}/dataset' : '/{-$lang}/research';
+    const searchPayload = mode === 'dataset' 
+      ? { filters: filtersObj, page: 1, limit: 20, order: 'asc' }
+      : { datasetFilters: filtersObj, page: 1, limit: 20, order: 'asc' };
+      
+    navigate({
+      to: to as any,
+      search: searchPayload as any
+    });
+  };
 
   return (
     <div className="w-full h-[640px] rounded-3xl overflow-hidden bg-slate-50 shadow-inner relative flex justify-center">
@@ -106,7 +125,7 @@ export default function FrontStatsVisualization() {
             <CarouselScene 
               stats={stats} 
               mode={mode} 
-              navigate={navigate} 
+              onNavigate={handleFacetClick} 
               carouselRadius={debugParams.carouselRadius}
               rotationSpeed={debugParams.rotationSpeed}
               particleScale={debugParams.particleScale}
@@ -130,11 +149,13 @@ export default function FrontStatsVisualization() {
         <ul>
           {stats?.systems.map(sys => (
             <li key={sys.facet}>
-              <h3>{capitalize(sys.facet)}</h3>
+              <h3>{tFilters.has(`${sys.facet}.title` as any) ? tFilters(`${sys.facet}.title` as any) : capitalize(sys.facet)}</h3>
               <ul>
                 {sys.satellites.filter(s => s[mode] > 0).map(s => (
                   <li key={s.id}>
-                    {capitalize(s.value)}: {s[mode]}
+                    <button onClick={() => handleFacetClick(sys.facet, s.value)}>
+                      {capitalize(s.value)}: {s[mode]} {tCommon("items")}
+                    </button>
                   </li>
                 ))}
               </ul>

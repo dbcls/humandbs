@@ -6,6 +6,7 @@ import type { StatsSystem, SimNode, StatsSatellite, DebugParams } from "./types"
 import { hashString, capitalize } from "./utils";
 import { Billboard, Text } from "@react-three/drei";
 import AnimatedParticleLabel from "./AnimatedParticleLabel";
+import { useTranslations } from "use-intl";
 import { INITIAL_MATERIAL_ROUGHNESS, MACRO_VIVID_PROBABILITY, MACRO_COLOR_L_VIVID, MACRO_COLOR_S_VIVID, MACRO_COLOR_L_NEUTRAL, MACRO_COLOR_S_NEUTRAL } from "./constants";
 
 export default function BlobCluster({
@@ -39,6 +40,8 @@ export default function BlobCluster({
   isAnyHovered: boolean;
   isDragging: boolean;
 }) {
+  const tCommon = useTranslations("common");
+  const tFilters = useTranslations("Filters");
   const nodesRef = useRef<SimNode[]>([]);
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -176,7 +179,7 @@ export default function BlobCluster({
 
   // Stagger label rendering to prevent frame drops
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: NodeJS.Timeout | undefined;
     if (isHovered) {
       setRenderedLabelCount(0);
       let count = 0;
@@ -435,7 +438,7 @@ export default function BlobCluster({
       {isHovered && satellites.slice(0, renderedLabelCount).map((sat, i) => {
         // We render all labels, removed the 50 item cutoff limit as requested!
         return (
-        <group key={sat.id} ref={el => labelRefs.current[i] = el}>
+        <group key={sat.id} ref={el => { labelRefs.current[i] = el; }}>
           <AnimatedParticleLabel
             sat={sat}
             mode={mode}
@@ -457,7 +460,7 @@ export default function BlobCluster({
             anchorX="center" 
             anchorY="middle"
           >
-            {capitalize(system.facet)}
+            {tFilters.has(`${system.facet}.title` as any) ? tFilters(`${system.facet}.title` as any) : capitalize(system.facet)}
           </Text>
         </Billboard>
         <Billboard position={[0, isHovered ? -((debugParams?.particleLabelFontSize ?? 12) * 2.0) : -18, 0]} follow={true}>
@@ -467,7 +470,7 @@ export default function BlobCluster({
             anchorX="center" 
             anchorY="middle"
           >
-            {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} items`}
+            {`${d3.sum(satellites, (d: StatsSatellite) => d[mode]).toLocaleString()} ${tCommon("items")}`}
           </Text>
         </Billboard>
       </group>

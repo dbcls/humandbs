@@ -8,7 +8,7 @@ import { INITIAL_SCENE_OFFSET_Y } from "./constants";
 export default function CarouselScene({ 
   stats, 
   mode, 
-  navigate, 
+  onNavigate, 
   carouselRadius,
   rotationSpeed,
   particleScale,
@@ -23,7 +23,7 @@ export default function CarouselScene({
 }: { 
   stats: NormalizedStats, 
   mode: "dataset" | "research", 
-  navigate: (opts: { to: string; search: any }) => void,
+  onNavigate: (facet: string, value: string) => void,
   carouselRadius: number,
   rotationSpeed: number,
   particleScale: number,
@@ -54,6 +54,7 @@ export default function CarouselScene({
 
   useFrame((_state, delta) => {
     if (!groupRef.current) return;
+    if (total === 0) return;
 
     if (hoveredIndex === null && !isDragging) {
       groupRef.current.rotation.y += rotationSpeed * delta;
@@ -76,18 +77,7 @@ export default function CarouselScene({
     }
   });
 
-  const handleFacetClick = (facet: string, value: string) => {
-    const filtersObj = { [facet]: [value] };
-    const to = mode === 'dataset' ? '/{-$lang}/dataset' : '/{-$lang}/research';
-    const searchPayload = mode === 'dataset' 
-      ? { filters: filtersObj, page: 1, limit: 20, order: 'asc' }
-      : { datasetFilters: filtersObj, page: 1, limit: 20, order: 'asc' };
-      
-    navigate({
-      to: to as any,
-      search: searchPayload as any
-    });
-  };
+  // Navigation logic handled by parent
 
   const handlePointerDown = (e: any) => {
     e.stopPropagation();
@@ -157,7 +147,7 @@ export default function CarouselScene({
                 isActive={activeIndex === i}
                 position={[x, 0, z]}
                 rotation={[0, angle, 0]}
-                onNavigate={handleFacetClick}
+                onNavigate={onNavigate}
                 particleScale={particleScale}
                 globalMaxCount={globalMaxCount}
                 debugParams={debugParams}

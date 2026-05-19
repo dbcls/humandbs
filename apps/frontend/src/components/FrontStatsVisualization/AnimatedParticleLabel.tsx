@@ -4,6 +4,7 @@ import { Text, Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { capitalize } from "./utils";
 import type { StatsSatellite, DebugParams } from "./types";
+import { useTranslations } from "use-intl";
 
 export default function AnimatedParticleLabel({ 
   sat, 
@@ -16,6 +17,7 @@ export default function AnimatedParticleLabel({
   isDimmed: boolean,
   debugParams: DebugParams
 }) {
+  const tCommon = useTranslations("common");
   const titleRef = useRef<any>(null);
   const countRef = useRef<any>(null);
 
@@ -73,7 +75,7 @@ export default function AnimatedParticleLabel({
         anchorY="top"
         raycast={() => null} 
       >
-        {`${sat[mode].toLocaleString()} items`}
+        {`${sat[mode].toLocaleString()} ${tCommon("items")}`}
       </Text>
     </Billboard>
   );
