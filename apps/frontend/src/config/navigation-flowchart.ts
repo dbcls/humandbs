@@ -9,6 +9,7 @@ export interface NavigationFlowchartOption {
   description?: LocalizedText;
   nextStep?: string;
   linkedFlowchartId?: string;
+  linkedStepId?: string;
   link?: string;
   linkText?: LocalizedText;
 }

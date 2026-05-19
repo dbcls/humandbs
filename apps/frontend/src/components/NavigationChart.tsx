@@ -46,6 +46,8 @@ interface NavigationChartProps {
   entryPoint?: boolean;
   /** The key used to namespace answers for this flowchart in the answers map. */
   answerKey?: string;
+  /** Step ID to start from when this flowchart is opened via a linked option. */
+  initialStepId?: string;
   locale?: Locale;
   answers?: FlowchartAnswers;
   onAnswerChange?: (
@@ -54,7 +56,7 @@ interface NavigationChartProps {
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart?: (flowchartId: string) => void;
+  onNavigateToFlowchart?: (flowchartId: string, stepId?: string) => void;
   // Legacy prop
   data?: NavigationData;
   navigate?: (options: { to: string }) => void;
@@ -362,6 +364,7 @@ function NavigationChartInner({
   linkedFlowchartNames,
   onAnswerChange,
   onNavigateToFlowchart,
+  initialStepId,
 }: {
   flowchartId: string;
   slug: string;
@@ -375,12 +378,17 @@ function NavigationChartInner({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart: (flowchartId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
+  initialStepId?: string;
 }) {
   const stepAnswers = answers[slug] ?? {};
 
   // Compute the furthest unlocked step index from existing answers
   const computeEnabledIndex = () => {
+    if (initialStepId) {
+      const idx = data.steps.findIndex((s) => s.id === initialStepId);
+      if (idx !== -1) return idx;
+    }
     let idx = 0;
     for (let i = 0; i < data.steps.length; i++) {
       const step = data.steps[i];
@@ -412,7 +420,7 @@ function NavigationChartInner({
     onAnswerChange(slug, step.id, option.id, stepsAfter);
 
     if (option.linkedFlowchartId) {
-      onNavigateToFlowchart(option.linkedFlowchartId);
+      onNavigateToFlowchart(option.linkedFlowchartId, option.linkedStepId);
       return;
     }
 
@@ -468,6 +476,7 @@ function NavigationChart({
   flowchartId,
   entryPoint = false,
   answerKey,
+  initialStepId,
   locale,
   answers = {},
   onAnswerChange,
@@ -500,6 +509,7 @@ function NavigationChart({
     <NavigationChartByIdDB
       flowchartId={flowchartId}
       answerKey={answerKey ?? flowchartId}
+      initialStepId={initialStepId}
       locale={locale}
       answers={answers}
       onAnswerChange={onAnswerChange}
@@ -528,7 +538,7 @@ function NavigationChartEntryPointDB({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart: (flowchartId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
 }) {
   const { data } = useQuery(getNavigationEntryPointQueryOptions(locale));
 
@@ -579,6 +589,7 @@ function NavigationChartByIdDB({
   answers,
   onAnswerChange,
   onNavigateToFlowchart,
+  initialStepId,
 }: {
   flowchartId: string;
   answerKey: string;
@@ -590,7 +601,8 @@ function NavigationChartByIdDB({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart: (flowchartId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
+  initialStepId?: string;
 }) {
   const { data } = useQuery(
     getNavigationFlowchartByIdQueryOptions(flowchartId, locale),
@@ -628,6 +640,7 @@ function NavigationChartByIdDB({
       linkedFlowchartNames={linkedFlowchartNames}
       onAnswerChange={onAnswerChange}
       onNavigateToFlowchart={onNavigateToFlowchart}
+      initialStepId={initialStepId}
     />
   );
 }

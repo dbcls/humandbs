@@ -1414,31 +1414,47 @@ function OptionRow({
         )}
 
         {destType === "linked-flowchart" && (
-          <Select
-            value={option.linkedFlowchartId ?? ""}
-            onValueChange={(v) =>
-              onUpdate({
-                linkedFlowchartId: v,
-                nextStep: undefined,
-                link: undefined,
-                linkText: undefined,
-              })
-            }
-          >
-            <SelectTrigger className="max-w-full data-[size=default]:h-fit">
-              <SelectValue placeholder="Select flowchart…" />
-            </SelectTrigger>
-            <SelectContent>
-              {otherFlowcharts.map((fc) => (
-                <SelectItem key={fc.id} value={fc.id}>
-                  <div className="text-left [&>p]:text-xs">
-                    {fc.nameJa && <p>{fc.nameJa}</p>}
-                    <p>{fc.nameEn || fc.id}</p>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-2xs font-medium text-gray-400 uppercase">Flowchart</span>
+              <Select
+                value={option.linkedFlowchartId ?? ""}
+                onValueChange={(v) =>
+                  onUpdate({
+                    linkedFlowchartId: v,
+                    linkedStepId: undefined,
+                    nextStep: undefined,
+                    link: undefined,
+                    linkText: undefined,
+                  })
+                }
+              >
+                <SelectTrigger className="max-w-full data-[size=default]:h-fit">
+                  <SelectValue placeholder="Select flowchart…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {otherFlowcharts.map((fc) => (
+                    <SelectItem key={fc.id} value={fc.id}>
+                      <div className="text-left [&>p]:text-xs">
+                        {fc.nameJa && <p>{fc.nameJa}</p>}
+                        <p>{fc.nameEn || fc.id}</p>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {option.linkedFlowchartId && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xs font-medium text-gray-400 uppercase">Starting step</span>
+                <LinkedFlowchartStepSelector
+                  flowchartId={option.linkedFlowchartId}
+                  value={option.linkedStepId}
+                  onChange={(linkedStepId) => onUpdate({ linkedStepId })}
+                />
+              </div>
+            )}
+          </div>
         )}
 
         {destType === "external-link" && (
@@ -1475,6 +1491,41 @@ function OptionRow({
 // ---------------------------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------------------------
+
+function LinkedFlowchartStepSelector({
+  flowchartId,
+  value,
+  onChange,
+}: {
+  flowchartId: string;
+  value: string | undefined;
+  onChange: (stepId: string | undefined) => void;
+}) {
+  const { data } = useQuery(getNavigationFlowchartByIdQueryOptions(flowchartId));
+  const steps = data?.config.steps ?? [];
+
+  return (
+    <Select
+      value={value ?? "__none__"}
+      onValueChange={(v) => onChange(v === "__none__" ? undefined : v)}
+    >
+      <SelectTrigger className="max-w-full data-[size=default]:h-fit">
+        <SelectValue placeholder="Start from beginning…" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">Start from beginning</SelectItem>
+        {steps.map((s, idx) => (
+          <SelectItem key={s.id} value={s.id}>
+            <div className="text-left [&>p]:text-xs">
+              {s.title.ja && <p>{s.title.ja}</p>}
+              <p>{s.title.en || `Step ${idx + 1}`}</p>
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function FieldRow({
   label,
