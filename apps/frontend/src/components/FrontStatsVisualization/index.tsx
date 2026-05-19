@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useTranslations } from "use-intl";
 import { useNavigate } from "@tanstack/react-router";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
 import { SkeletonLoading } from "@/components/Skeleton";
@@ -105,7 +106,7 @@ export default function FrontStatsVisualization() {
       <div className="absolute inset-0">
         {isMounted && stats && (
           <Canvas
-            shadows
+            shadows={{ type: THREE.PCFShadowMap }}
             camera={{ position: [0, debugParams.cameraY, debugParams.cameraZ], fov: 45 }}
             gl={{ alpha: false, antialias: true, powerPreference: "high-performance" }}
           >
