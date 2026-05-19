@@ -70,6 +70,8 @@ export default function BlobCluster({
     return valid.slice(0, debugParams?.maxParticles ?? 100);
   }, [system, mode, debugParams?.maxParticles]);
 
+  const colorsInitializedRef = useRef(false);
+
   useEffect(() => {
     if (satellites.length === 0) {
       nodesRef.current = [];
@@ -161,6 +163,8 @@ export default function BlobCluster({
         targetZ,
       };
     });
+
+    colorsInitializedRef.current = false;
   }, [satellites, mode, paletteIndex, globalMaxCount, particleScale]);
 
   const localGroupRef = useRef<THREE.Group>(null);
@@ -291,9 +295,14 @@ export default function BlobCluster({
       const logCount = Math.log10(((node as any)[mode] as number) || 1) + 1;
       const speedScale = 1.5 / logCount;
       const offset = i * 0.13;
-      node.vx += (Math.sin(time * 1.2 * facetDriftParams.freqX + offset + facetDriftParams.phaseX) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
-      node.vy += (Math.cos(time * 1.1 * facetDriftParams.freqY + offset * 2.1 + facetDriftParams.phaseY) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
-      node.vz += (Math.sin(time * 1.3 * facetDriftParams.freqZ + offset * 3.2 + facetDriftParams.phaseZ) * 0.4 + (Math.random() - 0.5) * 0.5) * speedScale;
+      
+      const jitterX = isActive || isHovered ? (Math.random() - 0.5) * 0.5 : 0;
+      const jitterY = isActive || isHovered ? (Math.random() - 0.5) * 0.5 : 0;
+      const jitterZ = isActive || isHovered ? (Math.random() - 0.5) * 0.5 : 0;
+
+      node.vx += (Math.sin(time * 1.2 * facetDriftParams.freqX + offset + facetDriftParams.phaseX) * 0.4 + jitterX) * speedScale;
+      node.vy += (Math.cos(time * 1.1 * facetDriftParams.freqY + offset * 2.1 + facetDriftParams.phaseY) * 0.4 + jitterY) * speedScale;
+      node.vz += (Math.sin(time * 1.3 * facetDriftParams.freqZ + offset * 3.2 + facetDriftParams.phaseZ) * 0.4 + jitterZ) * speedScale;
 
       const visualRadius = node.d3Radius * (particleScale / 260);
       if (isActive) {
@@ -345,6 +354,7 @@ export default function BlobCluster({
     }
 
     if (instancedMeshRef.current) {
+      let needsColorUpdate = !colorsInitializedRef.current;
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         const visualRadius = node.d3Radius * (particleScale / 260);
@@ -354,7 +364,9 @@ export default function BlobCluster({
         dummy.updateMatrix();
         
         instancedMeshRef.current.setMatrixAt(i, dummy.matrix);
-        instancedMeshRef.current.setColorAt(i, node.baseColor);
+        if (needsColorUpdate) {
+          instancedMeshRef.current.setColorAt(i, node.baseColor);
+        }
         
         if (isHovered && labelRefs.current[i]) {
           const currentScale = localGroupRef.current?.scale.x ?? 1.0;
@@ -366,7 +378,10 @@ export default function BlobCluster({
         }
       }
       instancedMeshRef.current.instanceMatrix.needsUpdate = true;
-      if (instancedMeshRef.current.instanceColor) instancedMeshRef.current.instanceColor.needsUpdate = true;
+      if (needsColorUpdate) {
+        if (instancedMeshRef.current.instanceColor) instancedMeshRef.current.instanceColor.needsUpdate = true;
+        colorsInitializedRef.current = true;
+      }
     }
   });
 

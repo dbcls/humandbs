@@ -6,6 +6,11 @@ import { capitalize } from "./utils";
 import type { StatsSatellite, DebugParams } from "./types";
 import { useTranslations } from "use-intl";
 
+const COLOR_TITLE_NORMAL = new THREE.Color("#334155");
+const COLOR_TITLE_DIMMED = new THREE.Color("#94a3b8");
+const COLOR_COUNT_NORMAL = new THREE.Color("#64748b");
+const COLOR_COUNT_DIMMED = new THREE.Color("#cbd5e1");
+
 export default function AnimatedParticleLabel({ 
   sat, 
   mode, 
@@ -23,13 +28,13 @@ export default function AnimatedParticleLabel({
 
   useFrame(() => {
     const targetOpacity = isDimmed ? 0.15 : 1.0;
-    const targetColorTitle = new THREE.Color(isDimmed ? "#94a3b8" : "#334155");
-    const targetColorCount = new THREE.Color(isDimmed ? "#cbd5e1" : "#64748b");
+    const targetColorTitle = isDimmed ? COLOR_TITLE_DIMMED : COLOR_TITLE_NORMAL;
+    const targetColorCount = isDimmed ? COLOR_COUNT_DIMMED : COLOR_COUNT_NORMAL;
 
     if (titleRef.current) {
       titleRef.current.fillOpacity = THREE.MathUtils.lerp(titleRef.current.fillOpacity ?? 0, targetOpacity, 0.05);
       
-      if (!titleRef.current._currentColor) titleRef.current._currentColor = new THREE.Color("#334155");
+      if (!titleRef.current._currentColor) titleRef.current._currentColor = new THREE.Color(COLOR_TITLE_NORMAL);
       titleRef.current._currentColor.lerp(targetColorTitle, 0.05);
       titleRef.current.color = titleRef.current._currentColor;
       
@@ -38,7 +43,7 @@ export default function AnimatedParticleLabel({
     if (countRef.current) {
       countRef.current.fillOpacity = THREE.MathUtils.lerp(countRef.current.fillOpacity ?? 0, targetOpacity, 0.05);
       
-      if (!countRef.current._currentColor) countRef.current._currentColor = new THREE.Color("#64748b");
+      if (!countRef.current._currentColor) countRef.current._currentColor = new THREE.Color(COLOR_COUNT_NORMAL);
       countRef.current._currentColor.lerp(targetColorCount, 0.05);
       countRef.current.color = countRef.current._currentColor;
       
