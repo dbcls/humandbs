@@ -10,7 +10,8 @@
     "no-data": "データなし",
     "total-results": "全{count}件",
     "dataset": "データセット",
-    "research": "研究"
+    "research": "研究",
+    "items": "件"
   },
   "Footer": {
     "sitemap": "サイトマップ"

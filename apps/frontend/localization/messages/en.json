@@ -10,7 +10,8 @@
     "no-data": "No data",
     "total-results": "{count} results",
     "dataset": "Dataset",
-    "research": "Research"
+    "research": "Research",
+    "items": "items"
   },
   "Footer": {
     "sitemap": "Sitemap"
