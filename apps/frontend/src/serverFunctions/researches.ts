@@ -323,7 +323,7 @@ export function getResearchesQueryOptions(
     queryFn: ({ signal }) =>
       $getResearches({ data: { ...data, includeFacets: true }, signal }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
-    placeholderData: keepPreviousData,
+    // placeholderData: keepPreviousData,
   });
 }
 

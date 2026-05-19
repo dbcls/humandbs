@@ -1,5 +1,8 @@
-import type { ResearchSearchResponse } from "@humandbs/backend/types";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import type {
+  ResearchSearchBody,
+  ResearchSearchResponse,
+} from "@humandbs/backend/types";
+import { useQuery } from "@tanstack/react-query";
 import {
   ClientOnly,
   createFileRoute,
@@ -10,18 +13,23 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { startTransition, Suspense, useCallback, useMemo } from "react";
-import { useTranslations } from "use-intl";
-
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
+import { useLocale, useTranslations } from "use-intl";
 
-import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { FilterableCard } from "@/components/FilterableCard";
-import { Pagination } from "@/components/Pagination";
+import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
 import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
-import { SortHeader, Table } from "@/components/Table";
+import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCartTableHeader } from "@/hooks/useCart";
@@ -39,16 +47,14 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
-  loaderDeps: ({ search }) => search,
-  loader: ({ deps, context }) => {
+  loader: ({ context, location }) => {
     return Promise.all([
       context.queryClient.ensureQueryData(
         getResearchesQueryOptions({
-          ...deps,
+          ...(location.search as Omit<ResearchSearchBody, "includeFacets">),
           lang: context.lang,
         }),
       ),
-
       context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
     ]);
   },
@@ -60,9 +66,7 @@ function RouteComponent() {
   const { lang } = Route.useRouteContext();
   const { setFilters, resetFilters, filters } = useFilters(Route.id);
 
-  const { data: researchesData } = useQuery(
-    getResearchesQueryOptions({ ...search, lang }),
-  );
+  const { data: researchesData } = useResearchesSearchQuery();
 
   const exportData = useMemo(() => {
     type Row = ResearchSearchResponse["data"][number];
@@ -111,13 +115,7 @@ function RouteComponent() {
           onResetFilters={() => {
             resetFilters();
           }}
-          resultsCount={
-            <Suspense
-              fallback={<Skeleton className="h-9 w-24 animate-pulse" />}
-            >
-              <ResultsCount />
-            </Suspense>
-          }
+          resultsCount={<ResultsCount />}
           filtersCount={Object.keys(filters.datasetFilters || {}).length}
           onFilterClick={onFilterClick}
           isPanelOpen={isOpen}
@@ -134,15 +132,13 @@ function RouteComponent() {
 }
 
 function ResultsCount() {
-  const { lang } = Route.useRouteContext();
-
-  const search = Route.useSearch();
-
   const t = useTranslations("common");
 
-  const { data: researchesData } = useSuspenseQuery(
-    getResearchesQueryOptions({ ...search, lang }),
-  );
+  const { data: researchesData } = useResearchesSearchQuery();
+
+  if (!researchesData) {
+    return <Skeleton className="h-9 w-24 animate-pulse" />;
+  }
 
   return (
     <p className="text-muted-foreground text-sm">
@@ -158,11 +154,13 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 
   const { filters, setFilters } = useFilters(Route.id);
 
-  const { data: searchResults, isFetching } = useQuery(
+  const { data: searchResults, isPending: isDataPending } = useQuery(
     getResearchesQueryOptions({ ...filters, lang }),
   );
 
-  const { data: allFacetsData } = useSuspenseQuery(getAllFacetsQueryOptions());
+  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(
+    getAllFacetsQueryOptions(),
+  );
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
@@ -191,7 +189,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
   return (
     <SearchPanel
       onClose={onClose}
-      isFetching={isFetching}
+      isFetching={isFacetsPending || isDataPending}
       facetCounts={searchResults?.facets}
       //@ts-ignore TODO fix types
       onSetFilters={setFilters}
@@ -201,20 +199,129 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
-  const { lang } = Route.useRouteContext();
+  return (
+    <>
+      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
+        <TableWrapper />
+      </div>
+      <PaginationWrapper />
+    </>
+  );
+}
 
+function useResearchesSearchQuery() {
+  const search = Route.useSearch();
+  const lang = useLocale();
+  const searchParams = { ...search, lang };
+  const lastResolvedSearchRef = useRef<
+    Omit<ResearchSearchBody, "includeFacets"> | undefined
+  >(undefined);
+
+  const query = useQuery({
+    ...getResearchesQueryOptions(searchParams),
+    placeholderData: (previousData, previousQuery) => {
+      const previousSearch = previousQuery
+        ? (previousQuery.queryKey as readonly unknown[])[2]
+        : undefined;
+
+      return isBackgroundTransition(previousSearch, searchParams)
+        ? previousData
+        : undefined;
+    },
+  });
+
+  const transitionType = getSearchTransitionType(
+    lastResolvedSearchRef.current,
+    searchParams,
+  );
+
+  useEffect(() => {
+    if (!query.isFetching && query.data) {
+      lastResolvedSearchRef.current = searchParams;
+    }
+  }, [query.isFetching, query.data, searchParams]);
+
+  return { ...query, transitionType };
+}
+
+function isBackgroundTransition(
+  previousSearch: unknown,
+  currentSearch: Omit<ResearchSearchBody, "includeFacets">,
+) {
+  const transitionType = getSearchTransitionType(previousSearch, currentSearch);
+
+  return transitionType === "sort" || transitionType === "pagination";
+}
+
+function getSearchTransitionType(
+  previousSearch: unknown,
+  currentSearch: Omit<ResearchSearchBody, "includeFacets">,
+): "sort" | "pagination" | "replace" {
+  if (!previousSearch || typeof previousSearch !== "object") return "replace";
+
+  if (
+    stableSerialize(omitSortParams(previousSearch)) ===
+    stableSerialize(omitSortParams(currentSearch))
+  ) {
+    return "sort";
+  }
+
+  if (
+    stableSerialize(omitPageParams(previousSearch)) ===
+    stableSerialize(omitPageParams(currentSearch))
+  ) {
+    return "pagination";
+  }
+
+  return "replace";
+}
+
+function omitSortParams(value: unknown) {
+  const {
+    sort: _sort,
+    order: _order,
+    ...rest
+  } = value as Record<string, unknown>;
+
+  return rest;
+}
+
+function omitPageParams(value: unknown) {
+  const { page: _page, ...rest } = value as Record<string, unknown>;
+
+  return rest;
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerialize).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(
+        ([key, entryValue]) =>
+          `${JSON.stringify(key)}:${stableSerialize(entryValue)}`,
+      )
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function TableWrapper() {
   const search = Route.useSearch();
 
-  const t = useTranslations("Research");
+  const lang = useLocale();
 
-  const { data: researchesData } = useSuspenseQuery(
-    getResearchesQueryOptions({ ...search, lang }),
-  );
+  const t = useTranslations("Research");
 
   const sorting = useMemo((): SortingState => {
     if (!search.sort) return [];
     return [{ id: search.sort, desc: search.order === "desc" }];
   }, [search.sort, search.order]);
+  const activeSort = sorting[0];
 
   const { filters, setFilters } = useFilters(Route.id);
 
@@ -235,23 +342,54 @@ function CardContent() {
     [setFilters, filters],
   );
 
-  return (
-    <>
-      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
-        <Table
-          className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
-          columns={columns}
-          data={researchesData.data}
-          sorting={sorting}
-          onSortingChange={handleSortingChange}
-          meta={{ t, lang }}
-        />
-      </div>
-      <Pagination
-        className="pr-5"
-        pagination={researchesData.meta.pagination}
+  const {
+    data: researchesData,
+    isFetching,
+    isPlaceholderData,
+    transitionType,
+  } = useResearchesSearchQuery();
+
+  const loadingSortColumnId =
+    isFetching && isPlaceholderData && transitionType === "sort"
+      ? (search.sort ?? "humId")
+      : undefined;
+  const isPaginating =
+    isFetching && isPlaceholderData && transitionType === "pagination";
+
+  if (!researchesData || (isFetching && !isPlaceholderData))
+    return (
+      <TableLoadingSpinner
+        className="mt-4 min-h-full w-max min-w-full flex-1 text-sm"
+        columns={columns}
+        meta={{ t, lang }}
       />
-    </>
+    );
+
+  return (
+    <Table
+      className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+      columns={columns}
+      data={researchesData.data}
+      sorting={sorting}
+      onSortingChange={handleSortingChange}
+      meta={{ t, lang, loadingSortColumnId, activeSort }}
+      isDimmed={isPaginating}
+    />
+  );
+}
+
+function PaginationWrapper() {
+  const {
+    data: researchesData,
+    isFetching,
+    isPlaceholderData,
+  } = useResearchesSearchQuery();
+
+  if (!researchesData || (isFetching && !isPlaceholderData))
+    return <PaginationLoadingSkeleton />;
+
+  return (
+    <Pagination className="pr-5" pagination={researchesData.meta.pagination} />
   );
 }
 

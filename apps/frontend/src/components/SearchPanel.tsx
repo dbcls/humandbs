@@ -1,4 +1,5 @@
 import type { DatasetFilters, RangeFilter } from "@humandbs/backend/types";
+import type { Messages } from "@/config/i18n";
 import {
   ChevronsUpDown,
   ChevronUp,
@@ -6,10 +7,9 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  X as XIcon,
 } from "lucide-react";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "use-intl";
+import { useMessages, useTranslations } from "use-intl";
 
 import {
   Accordion,
@@ -242,6 +242,32 @@ function hasAnyDraftValue(draft: DraftState): boolean {
   return Object.values(draft).some((v) => normalizeValue(v) !== undefined);
 }
 
+function getMessageAtPath(messages: unknown, path: string[]): string | null {
+  let current = messages;
+
+  for (const key of path) {
+    if (!current || typeof current !== "object") return null;
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return typeof current === "string" ? current : null;
+}
+
+function getFilterTitle(messages: Messages, id: string) {
+  return getMessageAtPath(messages, ["Filters", id, "title"]) ?? id;
+}
+
+function getFilterOptionLabel(
+  messages: Messages,
+  id: string,
+  optionValue: string,
+) {
+  return (
+    getMessageAtPath(messages, ["Filters", id, "options", optionValue]) ??
+    optionValue
+  );
+}
+
 type GroupedSections = Record<"top-level" | (string & {}), SectionConfig[]>;
 
 // === Main component ===
@@ -258,6 +284,7 @@ export function SearchPanel({
   const committedDraft = useMemo(() => buildDraftState(sections), [sections]);
 
   const [draft, setDraft] = useState<DraftState>(committedDraft);
+  const hasUserDraftChangeRef = useRef(false);
 
   useEffect(() => {
     setDraft(committedDraft);
@@ -266,33 +293,41 @@ export function SearchPanel({
   const hasAnyFilter = hasAnyDraftValue(draft);
 
   const updateDraftField = (id: string, value: unknown) => {
+    hasUserDraftChangeRef.current = true;
     setDraft((prev) => ({ ...prev, [id]: value }));
   };
 
   function handleResetAll() {
+    hasUserDraftChangeRef.current = true;
     setDraft(Object.fromEntries(sections.map((s) => [s.id, undefined])));
   }
 
-  const handleSearch = () => {
+  function handleSearch() {
     const payload = buildPayload(sections, draft);
 
     startTransition(() => {
       onSetFilters({ ...payload, page: 1 });
     });
-  };
+    hasUserDraftChangeRef.current = false;
+  }
 
-  const groupedSections = sections.reduce((acc, curr) => {
-    const displayKey =
-      "uiGroup" in curr && curr.uiGroup ? curr.uiGroup : "top-level";
-    if (!acc[displayKey]) acc[displayKey] = [];
-    acc[displayKey].push(curr);
-    return acc;
-  }, {} as GroupedSections);
+  const groupedSections = useMemo(
+    () =>
+      sections.reduce((acc, curr) => {
+        const displayKey =
+          "uiGroup" in curr && curr.uiGroup ? curr.uiGroup : "top-level";
+        if (!acc[displayKey]) acc[displayKey] = [];
+        acc[displayKey].push(curr);
+        return acc;
+      }, {} as GroupedSections),
+    [sections],
+  );
 
   useEffect(() => {
+    if (!hasUserDraftChangeRef.current) return;
+
     const timeout = setTimeout(handleSearch, 500);
 
-    console.log("debounce effect");
     return () => {
       clearTimeout(timeout);
     };
@@ -320,12 +355,12 @@ export function SearchPanel({
               >
                 {val.map((v, i) => (
                   <AccordionFilterItem
-                    key={`${v.groupKey}-${i}`}
+                    key={`${v.id}-${i}`}
                     section={v}
                     facetCounts={facetCounts}
                     onUpdate={updateDraftField}
                     isFetching={isFetching}
-                    draft={draft}
+                    draftValue={draft[v.id]}
                   />
                 ))}
               </Accordion>
@@ -348,7 +383,7 @@ export function SearchPanel({
                     facetCounts={facetCounts}
                     onUpdate={updateDraftField}
                     isFetching={isFetching}
-                    draft={draft}
+                    draftValue={draft[v.id]}
                   />
                 ))}
               </Accordion>
@@ -399,13 +434,13 @@ function PanelHeader({
 function AccordionFilterItem({
   section,
   onUpdate,
-  draft,
+  draftValue,
   facetCounts,
   isFetching,
 }: {
   section: SectionConfig;
-  onUpdate: (id: string, value: any) => void;
-  draft: DraftState;
+  onUpdate: (id: string, value: unknown) => void;
+  draftValue: unknown;
   facetCounts: Record<string, { value: string; count: number }[]> | undefined;
   isFetching: boolean;
 }) {
@@ -415,7 +450,7 @@ function AccordionFilterItem({
         <CheckboxFacetItem
           key={section.id}
           id={section.id}
-          draftValue={draft[section.id]}
+          draftValue={draftValue}
           onUpdate={onUpdate}
           options={section.options}
           facetCounts={facetCounts?.[section.id]}
@@ -427,7 +462,7 @@ function AccordionFilterItem({
         <TextFacetItem
           key={section.id}
           id={section.id}
-          draftValue={(draft[section.id] as string) ?? ""}
+          draftValue={(draftValue as string) ?? ""}
           onUpdate={onUpdate}
         />
       );
@@ -436,7 +471,7 @@ function AccordionFilterItem({
         <TextFacetItem
           key={section.id}
           id={section.id}
-          draftValue={(draft[section.id] as string) ?? ""}
+          draftValue={(draftValue as string) ?? ""}
           onUpdate={onUpdate}
         />
       );
@@ -445,7 +480,7 @@ function AccordionFilterItem({
         <BooleanFacetItem
           key={section.id}
           id={section.id}
-          draftValue={draft[section.id] as boolean | undefined}
+          draftValue={draftValue as boolean | undefined}
           onUpdate={onUpdate}
           facetCounts={facetCounts?.[section.id]}
         />
@@ -455,7 +490,7 @@ function AccordionFilterItem({
         <EnumFacetItem
           id={section.id}
           key={section.id}
-          draftValue={draft[section.id] as string}
+          draftValue={draftValue as string}
           onUpdate={onUpdate}
           options={section.options}
         />
@@ -465,11 +500,7 @@ function AccordionFilterItem({
         <TextListFacetItem
           key={section.id}
           id={section.id}
-          draftValue={
-            Array.isArray(draft[section.id])
-              ? (draft[section.id] as string[])
-              : []
-          }
+          draftValue={Array.isArray(draftValue) ? (draftValue as string[]) : []}
           onUpdate={onUpdate}
         />
       );
@@ -479,7 +510,7 @@ function AccordionFilterItem({
         <RangeFacetItem
           key={section.id}
           id={section.id}
-          draftValue={(draft[section.id] as RangeFilter | undefined) ?? {}}
+          draftValue={(draftValue as RangeFilter | undefined) ?? {}}
           onUpdate={onUpdate}
         />
       );
@@ -489,7 +520,7 @@ function AccordionFilterItem({
         <DateRangeFacetItem
           key={section.id}
           id={section.id}
-          draftValue={(draft[section.id] as RangeFilter | undefined) ?? {}}
+          draftValue={(draftValue as RangeFilter | undefined) ?? {}}
           onUpdate={onUpdate}
         />
       );
@@ -510,13 +541,12 @@ function FacetItemWrapper({
   children: React.ReactNode;
 }) {
   const tFilters = useTranslations("Filters");
-
-  const t = useTranslations(`Filters.${id}` as any) as any;
+  const messages = useMessages();
 
   return (
     <AccordionItem value={id} className="border-b-primary-translucent relative">
       <AccordionTrigger className="text-secondary font-bold">
-        <span>{t("title")}</span>
+        <span>{getFilterTitle(messages, id)}</span>
       </AccordionTrigger>
       {hasValue && (
         <Button
@@ -591,22 +621,21 @@ function CheckboxFacetItem({
     : [];
   const hasValue = selectedValues.length > 0;
   const [search, setSearch] = useState("");
-  const [sortMode, setSortMode] = useState<CheckboxSortMode>("count");
-  const [sortDir, setSortDir] = useState<CheckboxSortDir>("desc");
+  const [sortMode, setSortMode] = useState<CheckboxSortMode>("name");
+  const [sortDir, setSortDir] = useState<CheckboxSortDir>("asc");
+  const previousFacetCountsRef = useRef(facetCounts);
 
-  const t = useTranslations(`Filters.${id}.options` as any) as any;
+  const messages = useMessages();
   const tFilters = useTranslations("Filters");
 
   if (options.length === 0) return null;
 
+  if (!isFetching) {
+    previousFacetCountsRef.current = facetCounts;
+  }
+
   const getLabel = (optionValue: string): string => {
-    try {
-      const translated = t(optionValue);
-      if (typeof translated === "string") return translated;
-    } catch {
-      // fall through to raw value
-    }
-    return optionValue;
+    return getFilterOptionLabel(messages, id, optionValue);
   };
 
   const handleSortClick = (mode: CheckboxSortMode) => {
@@ -631,17 +660,24 @@ function CheckboxFacetItem({
         })
       : [...options];
 
-  filteredOptions.sort((a, b) => {
-    let cmp: number;
-    if (sortMode === "name") {
-      cmp = getLabel(a).localeCompare(getLabel(b));
-    } else {
-      const countA = facetCounts?.find((f) => f.value === a)?.count ?? 0;
-      const countB = facetCounts?.find((f) => f.value === b)?.count ?? 0;
-      cmp = countA - countB;
-    }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+  if (sortDir) {
+    const countsForSorting =
+      sortMode === "count" && isFetching
+        ? previousFacetCountsRef.current
+        : facetCounts;
+
+    filteredOptions.sort((a, b) => {
+      let cmp: number;
+      if (sortMode === "name") {
+        cmp = getLabel(a).localeCompare(getLabel(b));
+      } else {
+        const countA = countsForSorting?.find((f) => f.value === a)?.count ?? 0;
+        const countB = countsForSorting?.find((f) => f.value === b)?.count ?? 0;
+        cmp = countA - countB;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }
 
   return (
     <FacetItemWrapper
@@ -760,7 +796,7 @@ function BooleanFacetItem({
 
   const realOptions = ["any", "true", "false"];
 
-  const t = useTranslations(`Filters.${id}.options` as any) as any;
+  const messages = useMessages();
 
   return (
     <FacetItemWrapper
@@ -789,7 +825,9 @@ function BooleanFacetItem({
             >
               <span>
                 <RadioGroupItem value={option} />
-                <span className="ml-2">{t(option)}</span>
+                <span className="ml-2">
+                  {getFilterOptionLabel(messages, id, option)}
+                </span>
               </span>
               <span>
                 {option !== "any"
@@ -817,7 +855,7 @@ function EnumFacetItem({
   draftValue: string | undefined;
   onUpdate: (id: string, value: unknown) => void;
 }) {
-  const t = useTranslations(`Filters.${id}.options` as any) as any;
+  const messages = useMessages();
 
   const realOptions = ["any", ...options];
   const isEnabled = draftValue != null && draftValue !== "any";
@@ -844,7 +882,7 @@ function EnumFacetItem({
           {realOptions.map((option) => (
             <Label key={option} className="flex items-center gap-2">
               <RadioGroupItem value={option} />
-              <span>{t(option)}</span>
+              <span>{getFilterOptionLabel(messages, id, option)}</span>
             </Label>
           ))}
         </RadioGroup>
