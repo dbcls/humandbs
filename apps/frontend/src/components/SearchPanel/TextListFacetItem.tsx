@@ -57,7 +57,7 @@ export function TextListFacetItem({
                 handleChange(index, e.target.value);
               }}
               placeholder={`${id}...`}
-              className={cn("h-[28px] flex-1 text-sm -mx-[2px]")}
+              className={cn("h-[28px] flex-1 text-sm")}
             />
             <Button
               variant="tableAction"

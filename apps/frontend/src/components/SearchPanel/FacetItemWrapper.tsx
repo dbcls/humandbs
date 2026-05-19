@@ -28,7 +28,7 @@ export function FacetItemWrapper({
         <span className="truncate pr-[80px]">{t("title" as any)}</span>
       </AccordionTrigger>
         
-      <div className="absolute right-7 top-0 bottom-0 flex items-center gap-1 z-10 pointer-events-none">
+      <div className="absolute right-7 top-0 h-[40px] flex items-center gap-1 z-10 pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-1">
           {headerAction}
           {hasValue && (

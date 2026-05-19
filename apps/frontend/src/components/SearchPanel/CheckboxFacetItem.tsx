@@ -119,7 +119,7 @@ export function CheckboxFacetItem({
     >
       {showSearch && (
         <SearchInput
-          className="mb-2 h-[28px] text-sm -mx-[2px]"
+          className="mb-2 h-[28px] text-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={tCommon("search")}
