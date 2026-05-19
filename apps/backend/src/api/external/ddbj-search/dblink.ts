@@ -35,6 +35,8 @@ export const DblinkAccessionType = {
   BIOPROJECT: "bioproject",
   BIOSAMPLE: "biosample",
   HUMANDBS: "humandbs",
+  // JGAS dblink exposes pubmed IDs for the study's reference paper.
+  PUBMED: "pubmed",
 } as const
 
 export type DblinkAccessionType =

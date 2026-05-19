@@ -50,7 +50,7 @@ const main = async () => {
     return
   }
   const jds = transformDsApplication(raws[0])
-  const research = mapDsApplicationToResearchTemplate(jds)
+  const research = await mapDsApplicationToResearchTemplate(jds)
   console.log(JSON.stringify(research, null, 2))
 }
 

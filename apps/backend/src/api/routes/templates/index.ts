@@ -121,9 +121,10 @@ templatesRouter.use("*", requireAdmin)
 
 templatesRouter.openapi(getResearchTemplateRoute, async (c) => {
   const { jdsId } = c.req.valid("param")
+  const requestId = getRequestId(c)
   // getDsApplication throws NotFoundError if J-DS is not in the JGA-Shinsei DB
   const jds = await getDsApplication(jdsId)
-  const data = mapDsApplicationToResearchTemplate(jds)
+  const data = await mapDsApplicationToResearchTemplate(jds, requestId)
   return singleReadOnlyResponse(c, data)
 })
 
