@@ -4,14 +4,15 @@ import {
   type ResearchSummary,
 } from "@humandbs/backend/types";
 import {
-  useInfiniteQuery,
   useMutation,
   useQueryClient,
-  type QueryKey,
+  useSuspenseInfiniteQuery,
 } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
+import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/config/i18n";
 import { useCan } from "@/hooks/useCan";
@@ -22,16 +23,28 @@ import {
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { FilterSearchInput } from "@/components/FilterSearchInput";
-import { Tag } from "@/components/StatusTag";
-import { Skeleton } from "@/components/ui/skeleton";
+import { StatusTag } from "@/components/StatusTag";
+import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
+import { Trash2Icon } from "lucide-react";
+import { AdminListItem } from "../-components/AdminListItem";
 import {
   createDummyResearch,
   DUMMY_HUM_ID,
   isDummyResearch,
 } from "./-dummyResearch";
+import { NoItemsMessage } from "../-components/NoItemsMessage";
+
+type ResearchesInfiniteData = {
+  pages: Array<{ data: ResearchSummary[] }>;
+  pageParams: unknown[];
+};
+
+function markResearchDeleted(research: ResearchSummary): ResearchSummary {
+  return { ...research, status: "deleted" };
+}
 
 export function ResearchesList({
   lang,
@@ -55,69 +68,42 @@ export function ResearchesList({
 
   const { filters } = useFilters("/{-$lang}/_layout/_authed/admin/researches/");
 
-  const infiniteOpts = getAuthedResearchesInfiniteQueryOptions({
-    lang,
-    ...filters,
-  });
-
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    isPending,
-  } = useInfiniteQuery(infiniteOpts);
-
-  const allResearches =
-    (data?.pages.flatMap((page) => page.data) as
-      | ResearchSummary[]
-      | undefined) ?? [];
-  const hasDummy = allResearches.some((r) => isDummyResearch(r.humId));
+  const hasDummy =
+    (selectedHumId ? isDummyResearch(selectedHumId) : false) ||
+    queryClient
+      .getQueriesData<ResearchesInfiniteData>({
+        queryKey: ["researches", "list", "infinite"],
+      })
+      .some(([, data]) =>
+        data?.pages.some((page) => page.data.some(hasDummyResearch)),
+      );
 
   function handleAddNew() {
-    if (hasDummy) return;
     const dummy = createDummyResearch(lang);
-    queryClient.setQueriesData<{
-      pages: Array<{ data: ResearchSummary[] }>;
-      pageParams: unknown[];
-    }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page, i) =>
-          i === 0 ? { ...page, data: [dummy, ...page.data] } : page,
-        ),
-      };
-    });
+    const updatedLists = queryClient.setQueriesData<ResearchesInfiniteData>(
+      { queryKey: ["researches", "list", "infinite"] },
+      (old) => {
+        if (!old) return old;
+        if (
+          old.pages.some((page) => page.data.some((r) => hasDummyResearch(r)))
+        ) {
+          return old;
+        }
+        return {
+          ...old,
+          pages: old.pages.map((page, i) =>
+            i === 0 ? { ...page, data: [dummy, ...page.data] } : page,
+          ),
+        };
+      },
+    );
+    if (updatedLists.length === 0) return;
     onSelectResearch(DUMMY_HUM_ID);
   }
-  // Infinite scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   // Delete mutation with optimistic update
-  const { mutate: deleteResearch } = useMutation<
-    void,
-    Error,
-    string,
-    { previousLists: [QueryKey, ResearchSearchResponse | undefined][] }
-  >({
-    mutationFn: async (humId) => {
+  const { mutate: deleteResearch } = useMutation({
+    mutationFn: async (humId: string) => {
       const result = await $deleteResearch({ data: { humId } });
       if (!result.ok && result.code !== "NOT_FOUND") {
         throw new Error(result.error);
@@ -126,20 +112,36 @@ export function ResearchesList({
     onMutate: async (humId) => {
       await queryClient.cancelQueries({ queryKey: ["researches", "list"] });
 
-      const previousLists = queryClient.getQueriesData<ResearchSearchResponse>({
+      const previousLists = queryClient.getQueriesData<unknown>({
         queryKey: ["researches", "list"],
       });
 
-      queryClient.setQueriesData<ResearchSearchResponse>(
-        { queryKey: ["researches", "list"] },
-        (oldData) => {
-          if (!oldData) return oldData;
+      queryClient.setQueriesData<
+        ResearchSearchResponse | ResearchesInfiniteData
+      >({ queryKey: ["researches", "list"] }, (oldData) => {
+        if (!oldData) return oldData;
+
+        if ("pages" in oldData) {
           return {
             ...oldData,
-            data: oldData.data.filter((r) => r.humId !== humId),
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              data: page.data.map((research) =>
+                research.humId === humId
+                  ? markResearchDeleted(research)
+                  : research,
+              ),
+            })),
           };
-        },
-      );
+        }
+
+        return {
+          ...oldData,
+          data: oldData.data.map((research) =>
+            research.humId === humId ? markResearchDeleted(research) : research,
+          ),
+        };
+      });
 
       return { previousLists };
     },
@@ -154,19 +156,16 @@ export function ResearchesList({
     },
   });
 
-  const handleDelete = useCallback(
-    (humId: string) => {
-      openConfirmation({
-        title: "Delete Research",
-        description: `are you really want to delete research ${humId} ?`,
-        actionLabel: "Delete",
-        onAction: () => {
-          deleteResearch(humId);
-        },
-      });
-    },
-    [deleteResearch, openConfirmation],
-  );
+  function handleDelete(humId: string) {
+    openConfirmation({
+      title: "Delete Research",
+      description: `Are you really want to delete research \`${humId}\` ?`,
+      actionLabel: "Delete",
+      onAction: () => {
+        deleteResearch(humId);
+      },
+    });
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -186,84 +185,156 @@ export function ResearchesList({
       </div>
 
       <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">
-        {isPending && !data ? (
-          <div className="flex h-full flex-col gap-2">
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-          </div>
-        ) : (
-          <div
-            className={cn(
-              "h-full overflow-x-hidden overflow-y-auto transition-opacity",
-              isFetching && !isFetchingNextPage && "opacity-60",
-            )}
-          >
-            <ul>
-              {allResearches.map((research) => {
-                const isActive = research.humId === selectedHumId;
-                const isDummy = isDummyResearch(research.humId);
-                const title =
-                  research.title[lang] ||
-                  research.title.ja ||
-                  research.title.en;
-                const englishTitle = research.title.en;
-
-                return (
-                  <ListItem
-                    key={research.humId}
-                    role="menuitem"
-                    onClick={() => onSelectResearch(research.humId)}
-                    isActive={isActive}
-                    className={cn("flex-1 flex-col items-start gap-1", {
-                      "border border-dashed": isDummy,
-                    })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="block font-mono text-xs">
-                        {research.humId}
-                      </span>
-                      {research.status ? <Tag tag={research.status} /> : null}
-                    </div>
-                    <span className="block max-w-full truncate text-xs opacity-70">
-                      {title}
-                    </span>
-                    {englishTitle && englishTitle !== title ? (
-                      <span className="block max-w-full truncate text-xs opacity-70">
-                        {englishTitle}
-                      </span>
-                    ) : null}
-                  </ListItem>
-                );
-              })}
-            </ul>
-
-            <div ref={sentinelRef} className="h-4 shrink-0">
-              {isFetchingNextPage && (
-                <span className="text-foreground-light block py-2 text-center text-xs">
-                  Loading more…
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {isFetching && !isFetchingNextPage && data ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-            <div className="bg-primary/20 mx-2 h-1 rounded-full">
-              <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
-            </div>
-          </div>
-        ) : null}
-
-        {!isPending && data && allResearches.length === 0 ? (
-          <div className="text-foreground-light flex h-full items-center justify-center text-sm">
-            No researches found
-          </div>
-        ) : null}
+        <ErrorResetBoundary getResetKey={() => JSON.stringify(filters)}>
+          <Suspense fallback={<SkeletonLoadingPanelItems />}>
+            <ListItems
+              lang={lang}
+              selectedHumId={selectedHumId}
+              onSelectResearch={onSelectResearch}
+              onDeleteResearch={handleDelete}
+              canDelete={canDelete}
+            />
+          </Suspense>
+        </ErrorResetBoundary>
       </div>
     </div>
   );
+}
+
+function ListItems({
+  lang,
+  selectedHumId,
+  onSelectResearch,
+  onDeleteResearch,
+  canDelete,
+}: {
+  lang: Locale;
+  selectedHumId: string | null;
+  onSelectResearch: (humId: string) => void;
+  onDeleteResearch: (humId: string) => void;
+  canDelete: boolean;
+}) {
+  const { filters } = useFilters("/{-$lang}/_layout/_authed/admin/researches/");
+
+  const infiniteOpts = getAuthedResearchesInfiniteQueryOptions({
+    lang,
+    ...filters,
+  });
+
+  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
+    useSuspenseInfiniteQuery(infiniteOpts);
+
+  const allResearches = data.pages.flatMap((page) => page.data);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  if (allResearches.length === 0) {
+    return <NoItemsMessage>No researches found</NoItemsMessage>;
+  }
+
+  return (
+    <>
+      <div
+        className={cn(
+          "h-full overflow-x-hidden overflow-y-auto transition-opacity",
+          isFetching && !isFetchingNextPage && "opacity-60",
+        )}
+      >
+        <ul>
+          {allResearches.map((research, index) => {
+            const isActive = research.humId === selectedHumId;
+            const isDummy = isDummyResearch(research.humId);
+
+            const translations = Object.entries(research.title).map(
+              ([lang, title]) => ({
+                lang,
+                statuses: { [research.status]: title },
+              }),
+            );
+
+            return (
+              <li key={`${research.humId}-${index}`}>
+                <ListItem
+                  role="menuitem"
+                  onClick={() => onSelectResearch(research.humId)}
+                  isActive={isActive}
+                  className={cn("mb-2", {
+                    "border border-dashed": isDummy,
+                  })}
+                >
+                  <AdminListItem
+                    id={research.humId}
+                    translations={translations}
+                    meta={
+                      <StatusTag
+                        className="capitalize"
+                        status={research.status}
+                      />
+                    }
+                    hideUnpublishedDot
+                    menuItems={
+                      canDelete && !isDummy
+                        ? [
+                            {
+                              label: (
+                                <Label>
+                                  <Trash2Icon />
+                                  Delete
+                                </Label>
+                              ),
+                              onSelect: () => onDeleteResearch(research.humId),
+                              variant: "destructive",
+                            },
+                          ]
+                        : []
+                    }
+                  />
+                </ListItem>
+                {index < allResearches.length - 1 && (
+                  <hr className="my-2 border-gray-200" />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div ref={sentinelRef} className="h-4 shrink-0">
+          {isFetchingNextPage && (
+            <span className="text-foreground-light block py-2 text-center text-xs">
+              Loading more…
+            </span>
+          )}
+        </div>
+      </div>
+
+      {isFetching && !isFetchingNextPage ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+          <div className="bg-primary/20 mx-2 h-1 rounded-full">
+            <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function hasDummyResearch(research: ResearchSummary) {
+  return isDummyResearch(research.humId);
 }
 
 const statuses = [...ResearchStatusSchema.options, "all"] as const;

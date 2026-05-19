@@ -7,8 +7,9 @@
  * Note: /admin/pending-reviews has been removed.
  * Use GET /research?status=review instead (admin only).
  */
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute } from "@hono/zod-openapi"
 
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
 import { requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec500, UnauthorizedError } from "@/api/routes/errors"
@@ -39,7 +40,7 @@ const isAdminRoute = createRoute({
 
 // === Router ===
 
-export const adminRouter = new OpenAPIHono()
+export const adminRouter = createOpenAPIHono()
 
 // Apply requireAuth to all routes
 adminRouter.use("*", requireAuth)

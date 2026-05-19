@@ -136,7 +136,7 @@ bun run crawler:structure
 | 出力 | `crawler-results/structured-json/` |
 | 処理内容 | ja/en を統合したマルチリンガル構造に変換。Research/ResearchVersion/Dataset オブジェクトを生成。 |
 
-**注意**: `--hum-id` 指定なしの全体処理時は、`structured-json/dataset/` 内の既存ファイルを自動削除する（ID 変更時の残骸を防ぐため）。
+**注意**: `--hum-id` 指定なしの全体処理時は、`structured-json/dataset/` 内の既存ファイルを自動削除する。
 
 ### Step 5: enrich
 

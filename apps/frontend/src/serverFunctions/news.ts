@@ -30,7 +30,7 @@ export interface NewsTitleResponse {
 export const $getNewsTitles = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
-      limit: z.number().min(1).max(100).optional().default(5),
+      limit: z.number().min(1).max(100).optional().default(3),
       offset: z.number().min(0).optional().default(0),
       locale: z.string(),
     }),

@@ -66,7 +66,6 @@ docker stop humandbs-joomla-db && docker rm humandbs-joomla-db
 | `output/paths*.txt` | tracked | list-paths-categorized.sh で生成するパス一覧 |
 
 **最終 JSON 3 種は commit 対象** (frontend 担当者への納品物)。raw JSON は `.gitignore` で除外する。
-frontend へのハンドオフ指示は `.claude/api-to-front-joomla-handoff.md` を参照。
 
 **出力フォーマット (menu / misc):**
 
@@ -91,7 +90,7 @@ interface MiscPageContent {
 
 **出力フォーマット (news):**
 
-news は Joomla の個別記事パスを持たず旧 URL も廃止するため、`path` / `originalUrl` を持たない。
+news は Joomla の個別記事パスを持たないため、`path` / `originalUrl` を持たない。
 frontend の `newsItemCreateSchema` にそのまま流し込める最小フィールド構成。
 
 ```typescript

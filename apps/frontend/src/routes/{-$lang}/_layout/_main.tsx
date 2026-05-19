@@ -2,7 +2,6 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { Alerts } from "@/components/Alerts";
 import { Footer } from "@/components/Footer";
-import { Navbar } from "@/components/Navbar";
 import { $getHiddenAlertIds } from "@/serverFunctions/alert";
 import { getActiveAlertsQueryOptions } from "@/utils/query-options/alerts";
 // import { getActiveAlertsQueryOptions } from "@/utils/query-options/alerts";

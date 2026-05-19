@@ -109,8 +109,6 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/research
 
 **依存:** `curl`, `jq`
 
-**詳細なテスト手順:** [apps/backend/tests/api-manual-testing.md](../apps/backend/tests/api-manual-testing.md) を参照。
-
 ## Keycloak クライアント設定
 
 Keycloak 管理コンソールで HumanDBs 用のクライアントを作成する際の設定。

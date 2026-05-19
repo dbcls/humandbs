@@ -9,8 +9,11 @@
  */
 import { z } from "zod"
 
+import {
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
+} from "../../crawler/types/jga-shinsei"
 // Import from es/types
-
 import {
   BilingualTextSchema,
   BilingualTextValueSchema,
@@ -22,11 +25,7 @@ import {
   ResearchVersionSchema,
 } from "../../es/types"
 
-import {
-  EsDatasetSchema,
-  DsApplicationTransformedSchema,
-  DuApplicationTransformedSchema,
-} from "./es-docs"
+import { EsDatasetSchema } from "./es-docs"
 import { FacetsMapSchema } from "./facets"
 import { ResearchSummarySchema } from "./query-params"
 import {
@@ -46,7 +45,7 @@ import {
   ResearchDetailSchema,
   DatasetVersionItemSchema,
 } from "./views"
-import { RESEARCH_STATUS } from "./workflow"
+import { EditableResearchStatusSchema, RESEARCH_STATUS } from "./workflow"
 
 // === Response Schemas ===
 
@@ -271,9 +270,12 @@ export const ResearchWithStatusSchema = ResearchSchema.extend({
 export type ResearchWithStatus = z.infer<typeof ResearchWithStatusSchema>
 
 /**
- * Research response with status info
+ * Research response for POST /research/new and PUT /research/{humId}/update.
+ * These endpoints can never observe `status: "deleted"` — deletion is a separate
+ * route — so the response status is narrowed to the editable subset.
  */
 export const ResearchResponseSchema = ResearchWithStatusSchema.extend({
+  status: EditableResearchStatusSchema,
   datasets: z.array(ApiDatasetSchema).optional(), // Embedded datasets (for detail view)
 })
 export type ResearchResponse = z.infer<typeof ResearchResponseSchema>
@@ -369,6 +371,18 @@ export type DatasetWithMetadata = z.infer<typeof DatasetWithMetadataSchema>
 // === Create Dataset for Research ===
 
 /**
+ * Experiment schema for draft initialization. Unlike ExperimentRequestSchema
+ * (used by Create/Update dataset), header and data both default so that
+ * frontend form init (e.g. "Add experiment" button) can post `{}`.
+ */
+const ExperimentForDraftSchema = z.object({
+  header: BilingualTextValueRequestSchema.default({ ja: null, en: null }),
+  data: z
+    .record(z.string(), BilingualTextValueRequestSchema.nullable())
+    .default({}),
+})
+
+/**
  * Create dataset request for POST /research/{humId}/dataset/new
  * All fields are optional - defaults will be used
  */
@@ -390,9 +404,11 @@ export const CreateDatasetForResearchRequestSchema = z.object({
     "Bilingual description of the data type",
   ),
   experiments: z
-    .array(ExperimentSchemaBase)
+    .array(ExperimentForDraftSchema)
     .optional()
-    .describe("Array of experiment records. Defaults to empty array."),
+    .describe(
+      "Array of experiment records. Defaults to []. Each element's header defaults to {ja:null,en:null} and data defaults to {}.",
+    ),
 })
 export type CreateDatasetForResearchRequest = z.infer<
   typeof CreateDatasetForResearchRequestSchema

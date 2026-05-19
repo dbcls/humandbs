@@ -4,14 +4,15 @@
  * DS (データ提供申請) / DU (データ利用申請) の read-only エンドポイント。
  * 全ルートに admin 認証が必要。
  */
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute } from "@hono/zod-openapi"
 
 import {
   listDsApplications,
   getDsApplication,
   listDuApplications,
   getDuApplication,
-} from "@/api/es-client/jga-shinsei"
+} from "@/api/db-client/jga-shinsei"
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { listResponse, singleReadOnlyResponse } from "@/api/helpers/response"
 import { requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
@@ -112,7 +113,7 @@ const getDuRoute = createRoute({
 
 // === Router ===
 
-export const jgaShinseiRouter = new OpenAPIHono()
+export const jgaShinseiRouter = createOpenAPIHono()
 
 // All routes require admin auth
 jgaShinseiRouter.use("*", requireAuth)

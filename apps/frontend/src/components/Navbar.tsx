@@ -1,4 +1,5 @@
 import {
+  ClientOnly,
   useNavigate,
   useRouteContext,
   useRouter,
@@ -9,7 +10,7 @@ import {
   MoreVertical,
   ShoppingCart,
 } from "lucide-react";
-import { forwardRef, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, forwardRef, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import Logo from "@/assets/Logo.png";
@@ -161,7 +162,11 @@ export function Navbar() {
       <div className="flex items-center gap-1 md:gap-2">
         <LangSwitcher />
         <Search />
-        <ShoppingCartButton />
+        <ClientOnly
+          fallback={<ShoppingCart className="text-secondary size-6" />}
+        >
+          <ShoppingCartButton />
+        </ClientOnly>
         <UserMenu />
       </div>
     </header>
@@ -192,10 +197,7 @@ function NavItem({ item }: { item: ResolvedNavbarItem }) {
     <NavigationMenuItem>
       {item.children ? (
         <>
-          <NavigationMenuTrigger
-            className="text-sm"
-            onClick={handleClick}
-          >
+          <NavigationMenuTrigger className="text-sm" onClick={handleClick}>
             <span className="whitespace-nowrap">{item.label}</span>
           </NavigationMenuTrigger>
           <NavigationMenuContent className="z-10">
@@ -248,8 +250,16 @@ function OverflowMenu({ items }: { items: ResolvedNavbarItem[] }) {
       >
         <NavigationMenu viewport={false} className="w-full max-w-none">
           <NavigationMenuList className="flex w-full flex-col items-stretch justify-start gap-1">
-            {items.map((item) => (
-              <OverflowMenuItem key={item.id} item={item} />
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {index > 0 && (
+                  <li
+                    className="bg-primary-translucent -mx-4 my-2 h-px"
+                    role="separator"
+                  />
+                )}
+                <OverflowMenuItem item={item} />
+              </Fragment>
             ))}
           </NavigationMenuList>
         </NavigationMenu>
@@ -267,7 +277,10 @@ const OverflowTrigger = forwardRef<
       ref={ref}
       variant="plain"
       size="icon"
-      className={cn("rounded-full hover:bg-hover text-secondary transition-colors", className ?? "size-10")}
+      className={cn(
+        "hover:bg-hover text-secondary rounded-full transition-colors",
+        className ?? "size-10",
+      )}
       {...props}
     >
       <MoreVertical className="size-6" strokeWidth={2.5} />
@@ -295,22 +308,24 @@ function OverflowMenuItem({ item }: { item: ResolvedNavbarItem }) {
   };
 
   return (
-    <NavigationMenuItem className="w-full">
-      <NavigationMenuLink asChild>
-        {item.linkOptions ? (
+    <NavigationMenuItem className="flex w-full flex-col">
+      {item.linkOptions ? (
+        <NavigationMenuLink asChild>
           <Link
             variant="nav"
             {...asLinkProps(item.linkOptions)}
-            className="w-full rounded-sm px-2 py-2"
+            className="w-full rounded-sm px-2 py-2 text-sm"
           >
             {item.label}
           </Link>
-        ) : (
-          <span>{item.label}</span>
-        )}
-      </NavigationMenuLink>
+        </NavigationMenuLink>
+      ) : (
+        <span className="block w-full px-2 py-1.5 text-xs text-neutral-400">
+          {item.label}
+        </span>
+      )}
       {item.children?.length ? (
-        <ul className="mt-1 flex flex-col gap-1 pl-4">
+        <ul className="flex flex-col gap-1">
           {item.children.map((child) => (
             <li key={child.id}>
               <NavigationMenuLink asChild>

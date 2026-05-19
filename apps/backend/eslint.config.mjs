@@ -45,4 +45,12 @@ export default defineConfig([
       }],
     },
   },
+  {
+    // Test files create lots of zero-await async mocks to match real signatures.
+    // The require-await rule is not informative there — disable it for tests.
+    files: ["tests/**/*.{js,mjs,cjs,ts,tsx}"],
+    rules: {
+      "@typescript-eslint/require-await": "off",
+    },
+  },
 ])

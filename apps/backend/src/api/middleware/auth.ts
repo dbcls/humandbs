@@ -22,7 +22,8 @@ import { JwtClaimsSchema } from "../types"
 // Environment variables
 const AUTH_ISSUER_URL = process.env.HUMANDBS_AUTH_ISSUER_URL ?? "https://idp-staging.ddbj.nig.ac.jp/realms/master"
 const AUTH_CLIENT_ID = process.env.HUMANDBS_AUTH_CLIENT_ID ?? "humandbs-dev"
-const ADMIN_UID_FILE = process.env.HUMANDBS_BACKEND_ADMIN_UID_FILE
+// Read each call so tests can toggle the env between cases; production reads it once per cache miss
+const getAdminUidFile = () => process.env.HUMANDBS_BACKEND_ADMIN_UID_FILE
 
 // === TTL Cache Factory ===
 
@@ -56,6 +57,12 @@ const createTtlCache = <T>(ttl: number): TtlCache<T> => {
 const jwksCache = createTtlCache<jose.JWTVerifyGetKey>(CACHE_TTL.JWKS)
 const adminUidsCache = createTtlCache<string[]>(CACHE_TTL.ADMIN_UIDS)
 
+// Test-only: reset caches between tests (do not call from production code)
+export const __testing = {
+  clearJwksCache: () => { jwksCache.clear() },
+  clearAdminUidsCache: () => { adminUidsCache.clear() },
+}
+
 /**
  * Get JWKS from Keycloak (with caching)
  */
@@ -78,16 +85,17 @@ async function getAdminUids(): Promise<string[]> {
   if (cached) return cached
 
   let uids: string[] = []
+  const adminUidFile = getAdminUidFile()
 
   // 環境変数が未設定の場合は空リストを返す（管理者なし）
-  if (!ADMIN_UID_FILE) {
+  if (!adminUidFile) {
     logger.info("HUMANDBS_BACKEND_ADMIN_UID_FILE is not set, no admin users configured")
     adminUidsCache.set(uids)
     return uids
   }
 
   try {
-    const content = await fs.readFile(ADMIN_UID_FILE, "utf-8")
+    const content = await fs.readFile(adminUidFile, "utf-8")
     const parsed: unknown = JSON.parse(content)
     if (Array.isArray(parsed)) {
       uids = parsed.filter((uid): uid is string => typeof uid === "string")
@@ -97,7 +105,7 @@ async function getAdminUids(): Promise<string[]> {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       // ファイルが存在しない場合は空リスト（エラーではない）
-      logger.info("Admin UID file not found, no admin users configured", { path: ADMIN_UID_FILE })
+      logger.info("Admin UID file not found, no admin users configured", { path: adminUidFile })
     } else {
       logger.error("Error loading admin UIDs", { error: String(error) })
     }

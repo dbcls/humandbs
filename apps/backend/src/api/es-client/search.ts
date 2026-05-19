@@ -59,6 +59,15 @@ import type {
 } from "@/api/types"
 import { isOwnerOrAdmin, parseVersionNum } from "@/api/utils/version"
 
+// === Constants ===
+
+/**
+ * Elasticsearch default `index.max_result_window`. When `from + size` exceeds this,
+ * ES returns 500. The list/search code paths cap pagination at this boundary and
+ * return an empty page instead of issuing the doomed request.
+ */
+export const MAX_RESULT_WINDOW = 10000
+
 // === Types ===
 
 /** Internal search result (not the API response shape) */
@@ -496,7 +505,17 @@ export const searchDatasets = async (
   const from = (page - 1) * limit
   const facetCountField: FacetCountField = opts.facetCountField ?? "datasetId"
 
-  // Build query (lang filter removed - documents are BilingualText)
+  // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
+  // empty page; callers see a regular SearchResponse with `data: []`.
+  if (from + limit > MAX_RESULT_WINDOW) {
+    return {
+      data: [],
+      pagination: createPagination(0, page, limit),
+      facets: includeFacets ? {} : undefined,
+    }
+  }
+
+  // Build query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
   // Apply authorization filter: Dataset visibility depends on parent Research status
@@ -579,7 +598,7 @@ export const searchDatasets = async (
 const getHumIdsByDatasetFilters = async (
   params: ResearchSearchQuery,
 ): Promise<string[]> => {
-  // lang filter removed - documents are BilingualText
+  // BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
   must.push(...buildDatasetFilterClauses(params))
 
@@ -642,7 +661,18 @@ export const searchResearches = async (
   } = params
   const from = (page - 1) * limit
 
-  // Step 1: If Dataset filters are present, get humIds from Dataset index
+  // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
+  // empty page; callers see a regular SearchResponse with `data: []`.
+  if (from + limit > MAX_RESULT_WINDOW) {
+    return {
+      data: [],
+      pagination: createPagination(0, page, limit),
+      facets: includeFacets ? {} : undefined,
+    }
+  }
+
+  // Dataset filters (parent-child): resolve a humId allowlist from the Dataset
+  // index first, so the Research query can constrain by it.
   let humIdFilter: string[] | null = null
   if (hasDatasetFilters(params)) {
     humIdFilter = await getHumIdsByDatasetFilters(params)
@@ -656,7 +686,7 @@ export const searchResearches = async (
     }
   }
 
-  // Step 2: Build Research query (lang filter removed - documents are BilingualText)
+  // Build the Research query. BilingualText documents do not need a lang filter.
   const must: estypes.QueryDslQueryContainer[] = []
 
   // Status filter logic:

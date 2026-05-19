@@ -120,10 +120,10 @@ export const crawlOne = (
 }
 
 /**
- * Parse all versions for a humId
+ * Parse all versions for a humId.
  *
- * Phase 1: Parse the latest version's release HTML once per lang
- * Phase 2: Pass the shared releases to crawlOne for all versions
+ * The latest version's release HTML lists the release notes for every version,
+ * so it is parsed once per lang and shared across all versions of this humId.
  */
 const crawlAllVersionsForHumId = (
   humId: string,
@@ -137,7 +137,7 @@ const crawlAllVersionsForHumId = (
 
   const htmlDir = getHtmlDir()
 
-  // Phase 1: Parse latest version's release HTML once per lang
+  // Parse the latest version's release HTML once per lang; reused for every version.
   const releasesByLang = new Map<LangType, RawRelease[]>()
   const latestHumVersionId = `${humId}-v${latestVersion}`
   for (const lang of langs) {
@@ -148,7 +148,7 @@ const crawlAllVersionsForHumId = (
     }
   }
 
-  // Phase 2: Parse all versions, passing shared releases
+  // Parse each version, passing the shared release list parsed above.
   let parsed = 0
   let errors = 0
   let noRelease = 0

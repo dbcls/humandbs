@@ -132,6 +132,12 @@ describe("canAccessResearchDoc", () => {
   it("owner can access own published", () => {
     expect(canAccessResearchDoc(owner, published)).toBe(true)
   })
+  it("owner cannot access own deleted (admin only)", () => {
+    expect(canAccessResearchDoc(owner, deleted)).toBe(false)
+  })
+  it("owner cannot access own deleted (never published)", () => {
+    expect(canAccessResearchDoc(owner, deletedNeverPublished)).toBe(false)
+  })
 
   // Other authenticated user
   it("other user can access published", () => {
@@ -258,6 +264,10 @@ describe("canAccessResearchDoc as post-filter", () => {
     expect(canAccessResearchDoc(null, deleted)).toBe(false)
   })
 
+  it("owner excludes own deleted (admin only)", () => {
+    expect(canAccessResearchDoc(owner, deleted)).toBe(false)
+  })
+
   it("public includes published", () => {
     expect(canAccessResearchDoc(null, published)).toBe(true)
   })
@@ -290,10 +300,10 @@ describe("canAccessResearchDoc as post-filter", () => {
     expect(canAccessResearchDoc(otherUser, reviewWithPublished)).toBe(true)
   })
 
-  it("PBT: post-filter never allows deleted for non-owner non-admin", () => {
+  it("PBT: post-filter never allows deleted for non-admin (owner included)", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom(null, otherUser),
+        fc.constantFrom(null, otherUser, owner),
         fc.constantFrom("v1", "v2", null),
         (user, latestVersion) => {
           const doc = { latestVersion, status: "deleted" as const, uids: ["owner-1"] }

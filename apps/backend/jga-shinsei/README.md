@@ -1,52 +1,66 @@
 # JGA Shinsei
 
-JGA 申請システムのデータ (J-DS: データ提供申請、J-DU: データ利用申請) を取得・変換し、Elasticsearch 経由で API として提供するパイプライン。
+JGA 申請システム (J-DS: データ提供申請、J-DU: データ利用申請) の PostgreSQL を per-request で直接クエリし、EAV → ネスト構造に変換した上で REST API として提供する。
 
 ## アーキテクチャ
 
 ```plaintext
-[PostgreSQL DB]
+[PostgreSQL DB] (jgadb / jgasys schema)
        |
-       v  (dump-all-data.sh / 日次バッチ)
-[json-data/*.json]  (EAV パターン)
-       |
-       v  (transform)
-[*-applications-transformed.json]  (API フレンドリー)
-       |
-       v  (load-jga-shinsei-docs)
-[Elasticsearch]  (jga-shinsei-ds / jga-shinsei-du インデックス)
-       |
-       v  (API ルート)
+       v  (per-request: SQL クエリ + transform)
 [REST API]  (/jga-shinsei/ds, /jga-shinsei/du)
 ```
+
+検索・フィルタ要件がないため、API リクエストごとに PostgreSQL を直接叩いてレスポンスを組み立てる。EAV → ネスト構造への変換は `src/crawler/processors/jga-shinsei/transform.ts` の純粋関数を共用する。
+
+`scripts/dump-all-data.sh` は SQL リファレンス・手動デバッグ用のダンプスクリプトで、live API は経由しない。
 
 ### ソースコード配置
 
 | パス | 内容 |
 |------|------|
 | `src/crawler/processors/jga-shinsei/transform.ts` | EAV → API フレンドリー変換 |
-| `src/crawler/processors/jga-shinsei/reverse-transform.ts` | API フレンドリー → EAV 逆変換 |
-| `src/crawler/types/jga-shinsei.ts` | 型定義 (Zod スキーマ) |
-| `src/es/load-jga-shinsei-docs.ts` | ES ドキュメントロード |
-| `src/es/jga-shinsei-{common,ds,du}-schema.ts` | ES マッピングスキーマ |
+| `src/crawler/types/jga-shinsei.ts` | 型定義 (Zod スキーマ、SSOT) |
+| `src/api/db-client/client.ts` | PostgreSQL シングルトン Pool (postgres.js) |
+| `src/api/db-client/jga-shinsei.ts` | SQL クエリ + transform 適用 |
 | `src/api/routes/jga-shinsei.ts` | API エンドポイント |
-| `src/api/es-client/jga-shinsei.ts` | ES クエリ関数 |
-| `tests/unit/crawler/processors/jga-shinsei-*.test.ts` | テスト |
+| `tests/unit/crawler/processors/jga-shinsei-*.test.ts` | 変換ロジックのユニットテスト |
+| `tests/unit/api/db-client/jga-shinsei.test.ts` | クエリ関数のユニットテスト (sql クライアントモック) |
+| `tests/integration/api/jga-shinsei.test.ts` | 実 DB に対する統合テスト |
 
 ## 環境変数
 
+### dump スクリプト用 (`scripts/dump-all-data.sh` など、`apps/backend/jga-shinsei/.env` で設定)
+
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
-| `JGA_CONTAINER_NAME` | `humandbs-jga-shinsei-db` | Docker container 名 |
+| `JGA_DB_HOST` | (必須) | PostgreSQL ホスト |
+| `JGA_DB_PORT` | `5432` | PostgreSQL ポート |
 | `JGA_DB_USER` | `postgres` | PostgreSQL ユーザー名 |
+| `JGA_DB_PASSWORD` | (必須) | PostgreSQL パスワード |
 | `JGA_DB_NAME` | `jgadb` | PostgreSQL データベース名 |
+| `JGA_DB_SCHEMA` | `jgasys` | スキーマ名 |
 | `JGA_OUTPUT_DIR` | `./json-data` | JSON 出力ディレクトリ |
+| `JGA_CONTAINER_NAME` | `humandbs-jga-shinsei-db` | `dump-all-data-docker.sh` 用 container 名 |
 
-## パイプライン
+### API サーバー用 (root の `.env` / `compose.yml` で設定)
 
-### 1. DB ダンプ
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `HUMANDBS_JGA_DB_HOST` | (必須) | PostgreSQL ホスト |
+| `HUMANDBS_JGA_DB_PORT` | `5432` | PostgreSQL ポート |
+| `HUMANDBS_JGA_DB_USER` | (必須) | PostgreSQL ユーザー名 |
+| `HUMANDBS_JGA_DB_PASSWORD` | (必須) | PostgreSQL パスワード |
+| `HUMANDBS_JGA_DB_NAME` | `jgadb` | PostgreSQL データベース名 |
+| `HUMANDBS_JGA_DB_SCHEMA` | `jgasys` | スキーマ名 |
 
-DB から全データを JSON ファイルにダンプする。
+## 補助スクリプト・変換ロジック
+
+ここから先のスクリプト・変換ロジック解説は live API の経路ではなく、デバッグおよび `transform.ts` の理解のためのリファレンス。
+
+### 1. DB ダンプ (デバッグ用)
+
+DB から全データを JSON ファイルにダンプする。live API はこのファイルを参照しない。
 
 ```bash
 # 環境設定 (初回のみ)
@@ -95,8 +109,7 @@ metadata XML の `nbdc_number` を経由しない経路で、担当者が DB に
 
 ### 2. EAV → API フレンドリー変換
 
-DB ダンプの `components` 配列は EAV (Entity-Attribute-Value) パターンで、そのままでは扱いにくい。
-`src/crawler/processors/jga-shinsei/transform.ts` で API フレンドリーなネスト構造に変換する。
+DB の `nbdc_application_component` テーブル (および dump JSON の `components` 配列) は EAV (Entity-Attribute-Value) パターンで、そのままでは扱いにくい。`src/crawler/processors/jga-shinsei/transform.ts` で API フレンドリーなネスト構造に変換する。同じロジックは API でも per-request で適用される。
 
 #### コンポーネントキー定義の生成
 
@@ -162,22 +175,11 @@ bun run scripts/convert-java-source.ts
 }
 ```
 
-### 3. Elasticsearch ロード
+## API エンドポイント
 
-変換済み JSON を Elasticsearch にバルクインデックスする。
+API サーバーは `HUMANDBS_JGA_DB_*` 環境変数で指定された PostgreSQL に対し、リクエストごとに直接 SQL を発行する。バッチや事前インデックスは不要。
 
-```bash
-bun run es:load-jga-shinsei-docs
-```
-
-### 4. API エンドポイント
-
-| メソッド | パス | 認証 | 説明 |
-|---------|------|------|------|
-| GET | `/jga-shinsei/ds` | admin | DS 申請一覧 |
-| GET | `/jga-shinsei/ds/{jdsId}` | admin | DS 申請詳細 |
-| GET | `/jga-shinsei/du` | admin | DU 申請一覧 |
-| GET | `/jga-shinsei/du/{jduId}` | admin | DU 申請詳細 |
+エンドポイント一覧と request / response schema は Swagger UI (`/api/docs`) を参照。全エンドポイント admin 認証必須。一覧系は `page` + `limit` ページネーションで `jdsId` / `jduId` 昇順。
 
 ## テスト
 
@@ -192,7 +194,6 @@ bun test
 - [ID の種類と関係](docs/id-relationships.md)
 - [データベーススキーマ](docs/database-schema.md)
 - [出力スキーマ定義](docs/output-schema.md)
-- [DB Insert API 仕様](docs/db-insert-api-spec.md)
 
 ## 開発者向け
 

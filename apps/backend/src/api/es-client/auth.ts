@@ -60,7 +60,9 @@ export const canAccessResearchDoc = (
   researchDoc: Pick<EsResearch, "latestVersion" | "status" | "uids">,
 ): boolean => {
   if (authUser?.isAdmin) return true
-  if (researchDoc.latestVersion !== null && researchDoc.status !== "deleted") return true
+  // deleted は admin 以外 (owner 含む) には 404
+  if (researchDoc.status === "deleted") return false
+  if (researchDoc.latestVersion !== null) return true
   if (authUser && researchDoc.uids.includes(authUser.userId)) return true
 
   return false

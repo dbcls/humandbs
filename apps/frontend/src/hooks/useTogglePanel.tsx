@@ -10,11 +10,19 @@ export function useTogglePanel() {
   }
 
   function handleTransitionEnd() {
-    if (open) {
-      setRenderContent(true);
-    } else {
+    // Open transition end - do nothing (already render=true)
+    // Close transition end - hide content (set render=false)
+    if (!open) {
       setRenderContent(false);
     }
+  }
+
+  function handleTransitionStart() {
+    // if opened, before transition first show content, and then transition
+    if (open) {
+      setRenderContent(true);
+    }
+    // on close, dont do anything
   }
 
   return {
@@ -22,5 +30,6 @@ export function useTogglePanel() {
     renderContent,
     togglePanel,
     handleTransitionEnd,
+    handleTransitionStart,
   };
 }

@@ -68,8 +68,6 @@ export {
   EsDatasetSchema,
   EsResearchSchema,
   ResearchVersionSchema,
-  DsApplicationTransformedSchema,
-  DuApplicationTransformedSchema,
 } from "./es-docs"
 export type {
   DatasetRef,
@@ -81,9 +79,17 @@ export type {
   Grant,
   Publication,
   Summary,
+} from "./es-docs"
+
+// === JGA Shinsei (sourced directly from crawler/types) ===
+export {
+  DsApplicationTransformedSchema,
+  DuApplicationTransformedSchema,
+} from "../../crawler/types/jga-shinsei"
+export type {
   DsApplicationTransformed,
   DuApplicationTransformed,
-} from "./es-docs"
+} from "../../crawler/types/jga-shinsei"
 
 // === API View Models ===
 export {

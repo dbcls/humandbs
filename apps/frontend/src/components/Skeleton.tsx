@@ -10,3 +10,13 @@ export function SkeletonLoading() {
     </div>
   );
 }
+
+export function SkeletonLoadingPanelItems() {
+  return (
+    <div className="flex flex-col gap-2">
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
+    </div>
+  );
+}

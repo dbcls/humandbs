@@ -5,11 +5,12 @@
  * Queries ES directly for accurate Research/Dataset counts per facet value.
  */
 import type { estypes } from "@elastic/elasticsearch"
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute } from "@hono/zod-openapi"
 
 import { buildStatusFilter, getPublishedHumIds } from "@/api/es-client/auth"
 import { esClient, ES_INDEX } from "@/api/es-client/client"
 import { esTotal } from "@/api/es-client/utils"
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { singleReadOnlyResponse } from "@/api/helpers/response"
 import { ErrorSpec500 } from "@/api/routes/errors"
 import { createSingleReadOnlyResponseSchema, StatsResponseSchema } from "@/api/types"
@@ -292,7 +293,7 @@ const getStatsRoute = createRoute({
 
 // === Router ===
 
-export const statsRouter = new OpenAPIHono()
+export const statsRouter = createOpenAPIHono()
 
 // GET /stats
 statsRouter.openapi(getStatsRoute, async (c) => {

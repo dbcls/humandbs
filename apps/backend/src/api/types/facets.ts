@@ -27,6 +27,8 @@ export const DATASET_FACET_NAMES = [
   "diseaseIcd10",
   "cellLine",
   "policyId",
+  "isTumor",
+  "hasPhenotypeData",
 ] as const
 
 export type DatasetFacetName = (typeof DATASET_FACET_NAMES)[number]
@@ -62,7 +64,7 @@ export const FacetValueSchema = z.object({
 export type FacetValue = z.infer<typeof FacetValueSchema>
 
 /**
- * Facets map (explicit object with all 18 facet fields)
+ * Facets map (explicit object with all 20 facet fields)
  */
 const facetField = z.array(FacetValueSchema).optional()
 export const FacetsMapSchema = z.object({
@@ -84,6 +86,8 @@ export const FacetsMapSchema = z.object({
   diseaseIcd10: facetField,
   cellLine: facetField,
   policyId: facetField,
+  isTumor: facetField,
+  hasPhenotypeData: facetField,
 }).describe("Map of facet field names to their available values with counts")
 export type FacetsMap = z.infer<typeof FacetsMapSchema>
 

@@ -12,6 +12,9 @@
     "dataset": "データセット",
     "research": "研究",
     "items": "件"
+    "already-in-cart": "カートに追加済み",
+    "add-to-cart": "カートに追加",
+    "add-all-to-cart": "全てカートに追加"
   },
   "Footer": {
     "sitemap": "サイトマップ"
@@ -114,9 +117,9 @@
     "typeOfData": "データの種類",
     "criteria": "アクセス制限",
     "experiments": "実験一覧",
-    "Unrestricted-access": "日制限公開",
-    "Controlled-access (Type I)": "制限（Type I）",
-    "Controlled-access (Type II)": "制限（Type II）",
+    "Unrestricted-access": "非制限公開",
+    "Controlled-access (Type I)": "制限公開（Type I）",
+    "Controlled-access (Type II)": "制限公開（Type II）",
 
     "Analysis Methods": "解析方法",
     "Antigen Activation": "抗原賦活化方法",

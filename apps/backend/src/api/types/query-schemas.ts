@@ -11,6 +11,7 @@
 import { z } from "zod"
 
 import { IsTumorSchema } from "../../es/types"
+import { PAGINATION } from "../constants"
 
 import { LANG_TYPES, booleanFromString } from "./common"
 
@@ -19,8 +20,8 @@ import { LANG_TYPES, booleanFromString } from "./common"
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1)
     .describe("Page number for pagination (1-indexed)"),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
-    .describe("Number of items per page (max: 100)"),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT)
+    .describe(`Number of items per page (max: ${PAGINATION.MAX_LIMIT})`),
 })
 
 // === Language ===

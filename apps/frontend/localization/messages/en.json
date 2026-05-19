@@ -12,6 +12,9 @@
     "dataset": "Dataset",
     "research": "Research",
     "items": "items"
+    "already-in-cart": "Already in cart",
+    "add-to-cart": "Add to cart",
+    "add-all-to-cart": "Add all to cart"
   },
   "Footer": {
     "sitemap": "Sitemap"

@@ -10,6 +10,7 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  CreateDatasetForResearchRequestSchema,
   CreateDatasetRequestSchema,
   CreateResearchRequestSchema,
   CreateVersionRequestSchema,
@@ -300,6 +301,77 @@ describe("rawHtml exclusion from request schemas", () => {
     if (result.success) {
       const cell = result.data.experiments[0].data.row1?.ja as Record<string, unknown>
       expect("rawHtml" in cell).toBe(false)
+    }
+  })
+
+  it("CreateDatasetForResearchRequestSchema: rawHtml in experiments is stripped", () => {
+    const result = CreateDatasetForResearchRequestSchema.safeParse({
+      experiments: [
+        {
+          header: {
+            ja: { text: "ヘッダ", rawHtml: "<th>ヘッダ</th>" },
+            en: { text: "Header", rawHtml: "<th>Header</th>" },
+          },
+          data: {
+            row1: {
+              ja: { text: "値", rawHtml: "<td>値</td>" },
+              en: { text: "Value", rawHtml: "<td>Value</td>" },
+            },
+          },
+        },
+      ],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const header = result.data.experiments?.[0].header.ja as Record<string, unknown>
+      expect("rawHtml" in header).toBe(false)
+      const cell = result.data.experiments?.[0].data.row1?.ja as Record<string, unknown>
+      expect("rawHtml" in cell).toBe(false)
+    }
+  })
+
+  it("CreateDatasetForResearchRequestSchema: empty payload is valid (all fields optional)", () => {
+    const result = CreateDatasetForResearchRequestSchema.safeParse({})
+
+    expect(result.success).toBe(true)
+  })
+
+  it("CreateDatasetForResearchRequestSchema: empty experiment `{}` defaults header and data", () => {
+    const result = CreateDatasetForResearchRequestSchema.safeParse({
+      experiments: [{}],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.experiments?.[0]).toEqual({
+        header: { ja: null, en: null },
+        data: {},
+      })
+    }
+  })
+
+  it("CreateDatasetForResearchRequestSchema: experiment with only header defaults data to {}", () => {
+    const result = CreateDatasetForResearchRequestSchema.safeParse({
+      experiments: [{ header: bilingualTextValue }],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.experiments?.[0].data).toEqual({})
+      expect(result.data.experiments?.[0].header).toEqual(bilingualTextValue)
+    }
+  })
+
+  it("CreateDatasetForResearchRequestSchema: experiment with only data defaults header to {ja:null,en:null}", () => {
+    const result = CreateDatasetForResearchRequestSchema.safeParse({
+      experiments: [{ data: { row1: bilingualTextValue } }],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.experiments?.[0].header).toEqual({ ja: null, en: null })
+      expect(result.data.experiments?.[0].data.row1).toEqual(bilingualTextValue)
     }
   })
 })

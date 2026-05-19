@@ -188,6 +188,9 @@ mise.toml
 # Elasticsearch backup
 humandbs-es-backup
 
+# Joomla-era static files (dev auto-created by compose; staging/production are repo-external)
+joomla-files-dev/
+
 # Docker Compose override (local)
 compose.override.yml
 

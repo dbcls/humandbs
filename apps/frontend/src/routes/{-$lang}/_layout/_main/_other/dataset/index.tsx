@@ -32,6 +32,8 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { useCart, useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
 
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
@@ -256,6 +258,31 @@ export const datasetsColumnHelper =
   createColumnHelper<DatasetSearchResponse["data"][number]>();
 
 export const datasetsColumns = [
+  datasetsColumnHelper.display({
+    id: "cart",
+    header: (ctx) => {
+      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+        tableDatasets: ctx.table.options.data,
+      });
+
+      return (
+        <AddToCartToggle
+          variant={"header"}
+          state={allInCart || (someInCart ? "indeterminate" : false)}
+          onClick={handleClickCart}
+        />
+      );
+    },
+    cell: (ctx) => {
+      const { handleClickCart, inCart } = useCartTableRow({
+        dataset: ctx.row.original,
+      });
+
+      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
+    },
+    maxSize: 1,
+    size: 1,
+  }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
     header: (ctx) => (

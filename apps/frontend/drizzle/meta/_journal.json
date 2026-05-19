@@ -29,6 +29,13 @@
       "when": 1778515200000,
       "tag": "0003_alert_updated_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778658356000,
+      "tag": "0004_navigation_flowchart_canonical_config",
+      "breakpoints": true
     }
   ]
 }

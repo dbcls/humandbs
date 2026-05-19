@@ -9,19 +9,22 @@ import type { MiddlewareHandler } from "hono"
 import { createMiddleware } from "hono/factory"
 
 import { ERROR_MESSAGES } from "@/api/constants"
-import { getResearchWithSeqNo } from "@/api/es-client/research"
+import { getDatasetWithSeqNo, resolveLatestDatasetVersion } from "@/api/es-client/dataset"
+import { getResearchDoc, getResearchWithSeqNo } from "@/api/es-client/research"
 import {
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
 } from "@/api/routes/errors"
-import type { AuthUser, EsResearch } from "@/api/types"
+import type { AuthUser, EsDataset, EsResearch } from "@/api/types"
 
-// Extend Hono context with research data
+// Extend Hono context with resource preload data
 declare module "hono" {
   interface ContextVariableMap {
     research: EsResearch & { seqNo: number; primaryTerm: number }
+    dataset: EsDataset & { seqNo: number; primaryTerm: number }
+    parentResearch: EsResearch
   }
 }
 
@@ -30,6 +33,11 @@ interface ResourceAuthOptions {
   requireOwnership?: boolean
   /** Require user to be admin */
   adminOnly?: boolean
+}
+
+interface DatasetAuthOptions extends ResourceAuthOptions {
+  /** Require the parent Research to be in `draft` status (403 otherwise) */
+  requireParentDraft?: boolean
 }
 
 /**
@@ -106,4 +114,81 @@ export const canModifyResource = (authUser: AuthUser | null, doc: EsResearch): b
   if (!authUser) return false
   if (authUser.isAdmin) return true
   return doc.uids.includes(authUser.userId)
+}
+
+/**
+ * Middleware to load Dataset (+ parent Research) and verify authorization.
+ *
+ * Runs BEFORE zod validators, so unauthenticated / non-owner / non-draft-parent
+ * callers receive 401 / 403 / 404 without leaking body schema details from a
+ * validation 400.
+ *
+ *  1. authUser presence (UnauthorizedError 401 when requireOwnership/adminOnly)
+ *  2. admin requirement (ForbiddenError 403 when adminOnly)
+ *  3. Dataset preload via `?version=<v>` (defaults to `v1`, matching the
+ *     handler's prior default). Missing dataset → 404.
+ *  4. parent Research preload via `getResearchDoc`. Missing or `status="deleted"` → 404.
+ *  5. ownership check (`canModifyResource`) when requireOwnership.
+ *  6. parent-draft check (`parentResearch.status === "draft"`) when requireParentDraft.
+ *  7. Sets `c.set("dataset", ...)` and `c.set("parentResearch", ...)` for the handler.
+ */
+export const loadDatasetAndAuthorize = (options: DatasetAuthOptions = {}): MiddlewareHandler => {
+  return createMiddleware(async (c, next) => {
+    const authUser = c.get("authUser")
+    const datasetId = c.req.param("datasetId")
+
+    if (!datasetId) {
+      throw new ValidationError("datasetId parameter is required")
+    }
+
+    if ((options.requireOwnership || options.adminOnly) && !authUser) {
+      throw new UnauthorizedError(ERROR_MESSAGES.UNAUTHORIZED)
+    }
+
+    if (options.adminOnly && !authUser?.isAdmin) {
+      throw new ForbiddenError(ERROR_MESSAGES.FORBIDDEN_ADMIN)
+    }
+
+    // validators have not yet run, so `c.req.valid("query")` is unavailable.
+    // Read raw query; on missing/malformed values, resolve the latest dataset version
+    // (matching `getDataset`'s default behaviour) so a draft-cycle bump's new version
+    // is picked up. Strict format validation remains the validators' job.
+    const versionRaw = c.req.query("version")
+    let version: string
+    if (versionRaw && /^v\d+$/.test(versionRaw)) {
+      version = versionRaw
+    } else {
+      const latest = await resolveLatestDatasetVersion(datasetId)
+      if (!latest) {
+        throw new NotFoundError(`Dataset ${datasetId} not found`)
+      }
+      version = latest
+    }
+
+    const result = await getDatasetWithSeqNo(datasetId, version)
+    if (!result) {
+      throw new NotFoundError(`Dataset ${datasetId} version ${version} not found`)
+    }
+    const { doc, seqNo, primaryTerm } = result
+
+    const parentResearch = await getResearchDoc(doc.humId)
+    if (!parentResearch || parentResearch.status === "deleted") {
+      throw new NotFoundError(`Parent Research ${doc.humId} not found`)
+    }
+
+    if (options.requireOwnership && !canModifyResource(authUser, parentResearch)) {
+      throw new ForbiddenError("Not authorized to update this dataset")
+    }
+
+    if (options.requireParentDraft && parentResearch.status !== "draft") {
+      throw new ForbiddenError(
+        "Cannot update dataset: parent Research is not in draft status",
+      )
+    }
+
+    c.set("dataset", { ...doc, seqNo, primaryTerm })
+    c.set("parentResearch", parentResearch)
+
+    await next()
+  })
 }

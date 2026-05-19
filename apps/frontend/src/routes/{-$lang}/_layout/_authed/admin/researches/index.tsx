@@ -1,14 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { ResearchDetails } from "./-ResearchDetails";
-import { ResearchesList } from "./-ResearchesList";
-import { NewResearchForm } from "./-NewResearchForm";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
+import { NewResearchForm } from "./-NewResearchForm";
+import { ResearchDetails } from "./-ResearchDetails";
+import { ResearchesList } from "./-ResearchesList";
+
+import {
+  ErrorContent,
+  ErrorResetBoundary,
+} from "@/components/ErrorResetBoundary";
+import { FA_ICONS } from "@/lib/faIcons";
+import { NoSelectedItemMessage } from "../-components/NoSelectedItemMessage";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_authed/admin/researches/",
@@ -22,57 +30,72 @@ function RouteComponent() {
   const { lang, queryClient } = Route.useRouteContext();
   const [selectedHumId, setSelectedHumId] = useState<string | null>(null);
 
+  const removeDummyResearch = useCallback(() => {
+    queryClient.setQueriesData<{
+      pages: Array<{ data: Array<{ humId: string }> }>;
+      pageParams: unknown[];
+    }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          data: page.data.filter((r) => r.humId !== DUMMY_HUM_ID),
+        })),
+      };
+    });
+  }, [queryClient]);
+
+  function handleDiscardNewResearch() {
+    removeDummyResearch();
+    setSelectedHumId(null);
+  }
+
   // Clean up dummy entry when navigating away from this route
   useEffect(() => {
     return () => {
-      queryClient.setQueriesData<{
-        pages: Array<{ data: Array<{ humId: string }> }>;
-        pageParams: unknown[];
-      }>({ queryKey: ["researches", "list", "infinite"] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            data: page.data.filter((r) => r.humId !== DUMMY_HUM_ID),
-          })),
-        };
-      });
+      removeDummyResearch();
     };
-  }, [queryClient]);
+  }, [removeDummyResearch]);
 
   return (
     <>
-      <Card
-        className="w-cms-list-panel flex h-full flex-col"
-        caption="Researches"
-        containerClassName="flex-1 w-full min-h-0 max-h-full overflow-hidden"
-      >
+      <CollapsibleCard title="Researches">
         <ResearchesList
           lang={lang}
           selectedHumId={selectedHumId}
           onSelectResearch={setSelectedHumId}
         />
-      </Card>
+      </CollapsibleCard>
 
       {selectedHumId && isDummyResearch(selectedHumId) ? (
         <NewResearchForm
           lang={lang}
           onCreated={(humId) => setSelectedHumId(humId)}
+          onDiscard={handleDiscardNewResearch}
         />
       ) : selectedHumId ? (
-        <Suspense fallback={<ResearchDetailsFallback humId={selectedHumId} />}>
-          <ResearchDetails
-            key={selectedHumId}
-            humId={selectedHumId}
-            lang={lang}
-            onDeselect={() => setSelectedHumId(null)}
-          />
-        </Suspense>
+        <ErrorResetBoundary
+          getResetKey={() => selectedHumId}
+          errorComponent={(props) => (
+            <Card className="flex-1" caption={<span>{selectedHumId}</span>}>
+              <ErrorContent {...props} />
+            </Card>
+          )}
+        >
+          <Suspense
+            fallback={<ResearchDetailsFallback humId={selectedHumId} />}
+          >
+            <ResearchDetails
+              key={selectedHumId}
+              humId={selectedHumId}
+              lang={lang}
+              onDeselect={() => setSelectedHumId(null)}
+            />
+          </Suspense>
+        </ErrorResetBoundary>
       ) : (
-        <div className="text-foreground-light flex flex-1 items-center justify-center">
-          No research selected
-        </div>
+        <NoSelectedItemMessage icon={FA_ICONS.books} />
       )}
     </>
   );

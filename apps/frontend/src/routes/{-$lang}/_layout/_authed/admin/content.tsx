@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, useCallback } from "react";
 
-import { Card } from "@/components/Card";
-import { Skeleton } from "@/components/ui/skeleton";
-
 import { ContentItemDetails } from "./-components/ContentItemDetails";
 import { ContentList } from "./-components/ContentList";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 
-import { z } from "zod";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { getContentQueryOptions } from "@/serverFunctions/contentItem";
+import { z } from "zod";
+import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { Pen } from "lucide-react";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/content")(
   {
@@ -45,23 +45,20 @@ function RouteComponent() {
 
   return (
     <>
-      <Card
-        className="w-cms-list-panel flex h-full flex-col"
-        caption="Content"
-        containerClassName="flex-1 flex flex-col"
-      >
+      <CollapsibleCard title={"Content"}>
         <p className="mb-5 text-sm">"Oprhan pages" list</p>
-        <Suspense fallback={<Skeleton />}>
-          <ContentList
-            selectedContentId={selectedId}
-            onSelectContent={setSelectedId}
-          />
-        </Suspense>
-      </Card>
-      {selectedId && (
+
+        <ContentList
+          selectedContentId={selectedId}
+          onSelectContent={setSelectedId}
+        />
+      </CollapsibleCard>
+      {selectedId ? (
         <Suspense fallback={<FallbackDetailsCard />}>
           <ContentItemDetails key={selectedId} id={selectedId} />
         </Suspense>
+      ) : (
+        <NoSelectedItemMessage icon={<Pen />} />
       )}
     </>
   );

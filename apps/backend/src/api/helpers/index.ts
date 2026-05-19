@@ -4,6 +4,7 @@
 
 export {
   singleResponse,
+  createdResponse,
   singleReadOnlyResponse,
   listResponse,
   searchResponse,

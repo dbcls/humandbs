@@ -4,7 +4,7 @@
  * Handles CRUD operations and versioning for Dataset resources.
  * Dataset visibility is determined by linked Research status.
  */
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi"
+import { createRoute } from "@hono/zod-openapi"
 
 import {
   deleteDataset,
@@ -16,14 +16,15 @@ import {
 } from "@/api/es-client/dataset"
 import { getResearchDoc } from "@/api/es-client/research"
 import { searchDatasets } from "@/api/es-client/search"
+import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import {
   listResponse,
   searchResponse,
   singleReadOnlyResponse,
   singleResponse,
 } from "@/api/helpers/response"
-import { canDeleteResource, optionalAuth } from "@/api/middleware/auth"
-import { canModifyResource } from "@/api/middleware/resource-auth"
+import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
+import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
 import {
   ErrorSpec401,
   ErrorSpec403,
@@ -33,7 +34,6 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
-  UnauthorizedError,
 } from "@/api/routes/errors"
 import {
   DatasetDetailResponseSchema,
@@ -241,9 +241,18 @@ A Dataset belongs to exactly one Research (1:N relationship). Returns an array w
 
 // === Router ===
 
-export const datasetRouter = new OpenAPIHono()
+export const datasetRouter = createOpenAPIHono()
 
 datasetRouter.use("*", optionalAuth)
+
+// Path-specific middleware: run BEFORE zod validators so unauthenticated /
+// non-owner / non-draft-parent callers get 401/403/404 instead of a 400 that
+// would leak the body schema (security).
+datasetRouter.use(
+  "/:datasetId/update",
+  loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraft: true }),
+)
+datasetRouter.use("/:datasetId/delete", requireAuth, requireAdmin)
 
 // GET /dataset
 datasetRouter.openapi(listDatasetsRoute, async (c) => {
@@ -293,46 +302,12 @@ datasetRouter.openapi(getDatasetRoute, async (c) => {
 })
 
 // PUT /dataset/{datasetId}/update
+// auth / ownership / parent-draft are validated by loadDatasetAndAuthorize before validators run.
 datasetRouter.openapi(updateDatasetRoute, async (c) => {
-  const authUser = c.get("authUser")
-  if (!authUser) {
-    throw new UnauthorizedError()
-  }
-
-  const { datasetId } = c.req.valid("param")
-  const query = c.req.valid("query")
-  const version = query.version ?? "v1"
-
-  const result = await getDatasetWithSeqNo(datasetId, version)
-  if (!result) {
-    throw new NotFoundError(`Dataset ${datasetId} version ${version} not found`)
-  }
-
-  const { doc } = result
-
-  // Check if user has access to parent Research
-  const research = await getResearchDoc(doc.humId)
-  if (!research) {
-    throw new NotFoundError(`Parent Research ${doc.humId} not found`)
-  }
-
-  // Deleted research is not accessible
-  if (research.status === "deleted") {
-    throw new NotFoundError(`Parent Research ${doc.humId} not found`)
-  }
-
-  // Check permission (owner or admin can update)
-  if (!canModifyResource(authUser, research)) {
-    throw new ForbiddenError("Not authorized to update this dataset")
-  }
-
-  // D1: Check that parent Research is in draft status
-  if (research.status !== "draft") {
-    throw new ForbiddenError("Cannot update dataset: parent Research is not in draft status")
-  }
+  const preloaded = c.get("dataset")
+  const { datasetId, version } = preloaded
 
   const body = c.req.valid("json")
-
   const seqNo = body._seq_no
   const primaryTerm = body._primary_term
 
@@ -349,8 +324,10 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
     throw new ConflictError()
   }
 
-  // Get updated seqNo/primaryTerm
-  const updatedWithSeqNo = await getDatasetWithSeqNo(datasetId, version)
+  // Get updated seqNo/primaryTerm — use the post-update version, which may
+  // differ from `version` (the URL-resolved current version) when a draft-cycle
+  // bump created a new Dataset version document.
+  const updatedWithSeqNo = await getDatasetWithSeqNo(datasetId, updated.version)
   if (!updatedWithSeqNo) {
     throw new NotFoundError("Updated dataset not found")
   }
@@ -364,21 +341,19 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 })
 
 // POST /dataset/{datasetId}/delete
+// auth / admin are validated by requireAuth + requireAdmin before validators run.
+// The handler keeps the idempotent 204 semantics (missing dataset → 204).
 datasetRouter.openapi(deleteDatasetRoute, async (c) => {
   const authUser = c.get("authUser")
-  if (!authUser) {
-    throw new UnauthorizedError()
-  }
-  if (!canDeleteResource(authUser)) {
-    throw new ForbiddenError("Admin access required")
-  }
-
   const { datasetId } = c.req.valid("param")
   const query = c.req.valid("query")
   const version = query.version ?? undefined // If undefined, deletes all versions
 
-  // Check if dataset exists
-  const dataset = await getDataset(datasetId, { version })
+  // Check if dataset exists (pass authUser so admin can resolve datasets whose
+  // parent Research is still in draft — without this, the visibility filter on
+  // `getDataset` returns null for a draft-parent dataset even to admin and the
+  // handler would short-circuit to an idempotent 204 without actually deleting).
+  const dataset = await getDataset(datasetId, { version }, authUser)
   if (!dataset) {
     // Already deleted or doesn't exist - idempotent success
     return c.body(null, 204)

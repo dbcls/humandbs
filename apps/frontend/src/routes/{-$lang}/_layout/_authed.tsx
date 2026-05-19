@@ -1,34 +1,23 @@
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
-  createFileRoute,
-  Outlet,
-  redirect,
-  useRouteContext,
-} from "@tanstack/react-router";
-import {
+  ArchiveRestore,
   Bell,
   Cuboid,
   Files,
   GitBranch,
   LibraryBig,
-  PanelsTopLeft,
   Newspaper,
+  PanelsTopLeft,
   PenTool,
-  SidebarOpenIcon,
-  SidebarCloseIcon,
-  SidebarOpen,
 } from "lucide-react";
 import { z } from "zod";
 
-import { Navbar } from "@/components/Navbar";
-import { hasPermission } from "@/config/permissions";
-import { useCan } from "@/hooks/useCan";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { Link } from "@/components/Link";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { useTogglePanel } from "@/hooks/useTogglePanel";
+import { useCan } from "@/hooks/useCan";
 
 export const tabParamSchema = z.enum([
+  "data-transfer",
   "news",
   "alerts",
   "documents",
@@ -125,12 +114,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
         },
       });
     }
-
-    const tab = getTabRoute(matches.at(-1)?.fullPath);
-
-    return {
-      tab,
-    };
   },
 
   component: RouteComponent,
@@ -146,122 +129,106 @@ function RouteComponent() {
 }
 
 function NavPanel() {
-  const { user } = useRouteContext({ from: "__root__" });
   const { can: canViewCms } = useCan({
     resource: "admin-panel",
     action: "view-cms",
   });
 
-  const { open, togglePanel, renderContent, handleTransitionEnd } =
-    useTogglePanel();
-
-  const canListAlerts = hasPermission(user, "alerts", "list");
-
   return (
-    <aside
-      className={cn(
-        "flex flex-col gap-5 overflow-x-clip rounded-md bg-white px-4 py-3 transition-[width]",
-        {
-          "w-cms-side-panel": open,
-          "w-16 [&_a]:min-w-max [&_span]:min-w-max": !open,
-        },
-      )}
-      onTransitionEnd={handleTransitionEnd}
-    >
-      <Button variant={"ghost"} size={"icon"} onClick={togglePanel}>
-        {open ? (
-          <SidebarCloseIcon className="size-4" />
-        ) : (
-          <SidebarOpenIcon className="size-4" />
-        )}
-      </Button>
+    <CollapsibleCard wLeftPanel>
+      <section className="flex flex-col gap-5">
+        {canViewCms && (
+          <section className="flex flex-col gap-5 text-sm">
+            <span>Static Pages</span>
+            <div className="flex flex-col items-stretch gap-5 pl-5">
+              <PanelItem
+                title={
+                  <span>
+                    <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
+                    Content
+                  </span>
+                }
+                tab="content"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <Files className="mr-2 inline size-5 align-middle leading-normal" />
+                    Documents
+                  </span>
+                }
+                tab="documents"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
+                    News
+                  </span>
+                }
+                tab="news"
+              />
 
-      {renderContent && (
-        <>
-          {canViewCms && (
-            <section className="flex flex-col gap-5 text-sm">
-              <span>Static Pages</span>
-              <div className="flex flex-col items-stretch gap-5 pl-5">
-                <PanelItem
-                  title={
-                    <span>
-                      <PenTool className="mr-2 inline size-5 align-middle leading-normal" />
-                      Content
-                    </span>
-                  }
-                  tab="content"
-                />
-                <PanelItem
-                  title={
-                    <span>
-                      <Files className="mr-2 inline size-5 align-middle leading-normal" />
-                      Documents
-                    </span>
-                  }
-                  tab="documents"
-                />
-                <PanelItem
-                  title={
-                    <span>
-                      <Newspaper className="mr-2 inline size-5 align-middle leading-normal" />
-                      News
-                    </span>
-                  }
-                  tab="news"
-                />
-                {canListAlerts ? (
-                  <PanelItem
-                    title={
-                      <span>
-                        <Bell className="mr-2 inline size-5 align-middle leading-normal" />
-                        Alerts
-                      </span>
-                    }
-                    tab="alerts"
-                  />
-                ) : null}
-                <PanelItem
-                  title={
-                    <span>
-                      <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
-                      Assets
-                    </span>
-                  }
-                  tab="assets"
-                />
-                <PanelItem
-                  title={
-                    <span>
-                      <PanelsTopLeft className="mr-2 inline size-5 align-middle leading-normal" />
-                      Header & Footer
-                    </span>
-                  }
-                  tab="header-footer"
-                />
-                <PanelItem
-                  title={
-                    <span>
-                      <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
-                      Flowcharts
-                    </span>
-                  }
-                  tab="flowcharts"
-                />
-              </div>
-            </section>
-          )}
-          <PanelItem
-            title={
-              <span>
-                <LibraryBig className="mr-2 inline size-5 align-middle leading-normal" />
-                Researches
-              </span>
-            }
-            tab="researches"
-          />
-        </>
-      )}
-    </aside>
+              <PanelItem
+                title={
+                  <span>
+                    <Bell className="mr-2 inline size-5 align-middle leading-normal" />
+                    Alerts
+                  </span>
+                }
+                tab="alerts"
+              />
+
+              <PanelItem
+                title={
+                  <span>
+                    <Cuboid className="mr-2 inline size-5 align-middle leading-normal" />
+                    Assets
+                  </span>
+                }
+                tab="assets"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <PanelsTopLeft className="mr-2 inline size-5 align-middle leading-normal" />
+                    Header & Footer
+                  </span>
+                }
+                tab="header-footer"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <GitBranch className="mr-2 inline size-5 align-middle leading-normal" />
+                    Flowcharts
+                  </span>
+                }
+                tab="flowcharts"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <ArchiveRestore className="mr-2 inline size-5 align-middle leading-normal" />
+                    Data Transfer
+                  </span>
+                }
+                tab="data-transfer"
+              />
+            </div>
+          </section>
+        )}
+        <PanelItem
+          title={
+            <span>
+              <LibraryBig className="mr-2 inline size-5 align-middle leading-normal" />
+              Researches
+            </span>
+          }
+          tab="researches"
+        />
+      </section>
+    </CollapsibleCard>
   );
 }
 

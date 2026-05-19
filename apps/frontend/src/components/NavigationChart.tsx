@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ import {
   getNavigationFlowchartNamesQueryOptions,
 } from "@/serverFunctions/navigationFlowchart";
 import type { Locale } from "@/config/i18n";
+
+const MarkdownClientPreview = lazy(
+  () => import("@/components/markdown/MarkdownClientPreview"),
+);
 
 // Legacy shape kept for backward compat with callers not yet migrated
 export interface NavigationData {
@@ -50,7 +54,7 @@ interface NavigationChartProps {
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToChild?: (childId: string) => void;
+  onNavigateToFlowchart?: (flowchartId: string) => void;
   // Legacy prop
   data?: NavigationData;
   navigate?: (options: { to: string }) => void;
@@ -135,11 +139,11 @@ const OptionComponent = ({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [buttonHeight, setButtonHeight] = useState<number>(0);
 
-  const title = locale === "ja" ? option.titleJa : option.titleEn;
+  const title = locale === "ja" ? option.title.ja : option.title.en;
   const linkText =
     locale === "ja"
-      ? (option.linkTextJa ?? option.linkTextEn)
-      : (option.linkTextEn ?? option.linkTextJa);
+      ? (option.linkText?.ja ?? option.linkText?.en)
+      : (option.linkText?.en ?? option.linkText?.ja);
 
   function updateHeight() {
     if (buttonRef.current) setButtonHeight(buttonRef.current.offsetHeight);
@@ -154,7 +158,7 @@ const OptionComponent = ({
   const optionBaseClasses =
     "border-tetriary w-full rounded-xl border-3 bg-white p-3 font-bold transition-colors text-3xl";
 
-  // Child flowchart: show title + navigation button (same layout as external link)
+  // Linked flowchart: show title + navigation button (same layout as external link)
   if (option.linkedFlowchartId) {
     const buttonLabel = linkedFlowchartName ?? "Continue →";
     return (
@@ -269,9 +273,12 @@ const StepComponent = ({
   isCurrent?: boolean;
   selectedOptionId?: string;
 }) => {
-  const title = locale === "ja" ? step.titleJa : step.titleEn;
-  const text = locale === "ja" ? step.textJa : step.textEn;
+  const title = locale === "ja" ? step.title.ja : step.title.en;
+  const text = locale === "ja" ? step.text.ja : step.text.en;
 
+  const sortedOptions = step.options
+    .slice()
+    .sort((a, b) => (a.nextStep ? 1 : 0) - (b.nextStep ? 1 : 0));
   return (
     <div className="relative">
       <div
@@ -283,11 +290,16 @@ const StepComponent = ({
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
           {title}
         </h2>
-        <p className="m-auto mb-5 w-2/3 max-w-3xl">{text}</p>
-        <div className="text-tetriary flex justify-center gap-8">
-          {step.options.map((option) => {
+
+        <MarkdownClientPreview
+          className="m-auto mb-5 w-2/3 max-w-3xl"
+          source={text}
+        />
+
+        <div className="text-tetriary flex flex-wrap justify-center gap-8">
+          {sortedOptions.map((option) => {
             // Arrow only for nextStep pointing to the immediately following step.
-            // Child flowchart options never get an arrow.
+            // Linked flowchart options never get an arrow.
             const targetIdx = option.nextStep
               ? allSteps.findIndex((s) => s.id === option.nextStep)
               : -1;
@@ -324,7 +336,7 @@ const StepComponent = ({
  *
  * When the user clicks an option on any already-enabled step, all answers for
  * steps that come after it are cleared (`clearStepIds`) so stale downstream
- * state is removed. The `slug` (or UUID for child flowcharts) is used as the
+ * state is removed. The `slug` (or UUID for linked flowcharts) is used as the
  * namespace key inside the `answers` map.
  */
 function NavigationChartInner({
@@ -335,7 +347,7 @@ function NavigationChartInner({
   answers,
   linkedFlowchartNames,
   onAnswerChange,
-  onNavigateToChild,
+  onNavigateToFlowchart,
 }: {
   flowchartId: string;
   slug: string;
@@ -349,7 +361,7 @@ function NavigationChartInner({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToChild: (childSlug: string) => void;
+  onNavigateToFlowchart: (flowchartId: string) => void;
 }) {
   const stepAnswers = answers[slug] ?? {};
 
@@ -386,7 +398,7 @@ function NavigationChartInner({
     onAnswerChange(slug, step.id, option.id, stepsAfter);
 
     if (option.linkedFlowchartId) {
-      onNavigateToChild(option.linkedFlowchartId);
+      onNavigateToFlowchart(option.linkedFlowchartId);
       return;
     }
 
@@ -436,7 +448,7 @@ function NavigationChartInner({
  * Routes to the correct data-fetching variant:
  * - `data` prop (legacy): static JSON, no DB.
  * - `entryPoint=true`: fetches the single entry-point flowchart (isEntryPoint = true).
- * - `flowchartId`: fetches a flowchart by UUID (used for child flowcharts).
+ * - `flowchartId`: fetches a flowchart by UUID (used for linked flowcharts).
  */
 function NavigationChart({
   flowchartId,
@@ -445,7 +457,7 @@ function NavigationChart({
   locale,
   answers = {},
   onAnswerChange,
-  onNavigateToChild,
+  onNavigateToFlowchart,
   data: legacyData,
   navigate,
 }: NavigationChartProps) {
@@ -454,7 +466,7 @@ function NavigationChart({
     return <LegacyNavigationChart data={legacyData} navigate={navigate} />;
   }
 
-  if (!locale || !onAnswerChange || !onNavigateToChild) return null;
+  if (!locale || !onAnswerChange || !onNavigateToFlowchart) return null;
 
   if (entryPoint) {
     return (
@@ -463,7 +475,7 @@ function NavigationChart({
         locale={locale}
         answers={answers}
         onAnswerChange={onAnswerChange}
-        onNavigateToChild={onNavigateToChild}
+        onNavigateToFlowchart={onNavigateToFlowchart}
       />
     );
   }
@@ -477,21 +489,21 @@ function NavigationChart({
       locale={locale}
       answers={answers}
       onAnswerChange={onAnswerChange}
-      onNavigateToChild={onNavigateToChild}
+      onNavigateToFlowchart={onNavigateToFlowchart}
     />
   );
 }
 
 /**
  * Fetches the entry-point flowchart (isEntryPoint = true) and renders it.
- * Also fetches display names for any linked child flowcharts referenced by options.
+ * Also fetches display names for any linked flowcharts referenced by options.
  */
 function NavigationChartEntryPointDB({
   answerKey,
   locale,
   answers,
   onAnswerChange,
-  onNavigateToChild,
+  onNavigateToFlowchart,
 }: {
   answerKey: string;
   locale: Locale;
@@ -502,7 +514,7 @@ function NavigationChartEntryPointDB({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToChild: (childId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string) => void;
 }) {
   const { data } = useQuery(getNavigationEntryPointQueryOptions(locale));
 
@@ -537,14 +549,14 @@ function NavigationChartEntryPointDB({
       answers={answers}
       linkedFlowchartNames={linkedFlowchartNames}
       onAnswerChange={onAnswerChange}
-      onNavigateToChild={onNavigateToChild}
+      onNavigateToFlowchart={onNavigateToFlowchart}
     />
   );
 }
 
 /**
  * Fetches a flowchart by UUID and renders it via NavigationChartInner.
- * Uses `answerKey` as the answers namespace key (UUID for child flowcharts).
+ * Uses `answerKey` as the answers namespace key (UUID for linked flowcharts).
  */
 function NavigationChartByIdDB({
   flowchartId,
@@ -552,7 +564,7 @@ function NavigationChartByIdDB({
   locale,
   answers,
   onAnswerChange,
-  onNavigateToChild,
+  onNavigateToFlowchart,
 }: {
   flowchartId: string;
   answerKey: string;
@@ -564,7 +576,7 @@ function NavigationChartByIdDB({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToChild: (childId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string) => void;
 }) {
   const { data } = useQuery(
     getNavigationFlowchartByIdQueryOptions(flowchartId, locale),
@@ -601,7 +613,7 @@ function NavigationChartByIdDB({
       answers={answers}
       linkedFlowchartNames={linkedFlowchartNames}
       onAnswerChange={onAnswerChange}
-      onNavigateToChild={onNavigateToChild}
+      onNavigateToFlowchart={onNavigateToFlowchart}
     />
   );
 }
@@ -626,18 +638,14 @@ function LegacyNavigationChart({
   // Convert legacy steps to new shape for rendering
   const newSteps: NavigationFlowchartStep[] = data.steps.map((s) => ({
     id: s.id,
-    titleEn: s.title,
-    titleJa: s.title,
-    textEn: s.text,
-    textJa: s.text,
+    title: { en: s.title, ja: s.title },
+    text: { en: s.text, ja: s.text },
     options: s.options.map((o) => ({
       id: o.id,
-      titleEn: o.title,
-      titleJa: o.title,
+      title: { en: o.title, ja: o.title },
       nextStep: o.nextStep,
       link: o.link,
-      linkTextEn: o.linkText,
-      linkTextJa: o.linkText,
+      ...(o.linkText ? { linkText: { en: o.linkText, ja: o.linkText } } : {}),
     })),
   }));
 

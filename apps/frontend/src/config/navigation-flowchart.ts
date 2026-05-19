@@ -1,20 +1,21 @@
+export interface LocalizedText {
+  en: string;
+  ja: string;
+}
+
 export interface NavigationFlowchartOption {
   id: string;
-  titleEn: string;
-  titleJa: string;
+  title: LocalizedText;
   nextStep?: string;
   linkedFlowchartId?: string;
   link?: string;
-  linkTextEn?: string;
-  linkTextJa?: string;
+  linkText?: LocalizedText;
 }
 
 export interface NavigationFlowchartStep {
   id: string;
-  titleEn: string;
-  titleJa: string;
-  textEn: string;
-  textJa: string;
+  title: LocalizedText;
+  text: LocalizedText;
   options: NavigationFlowchartOption[];
 }
 
@@ -22,7 +23,4 @@ export interface NavigationFlowchartData {
   steps: NavigationFlowchartStep[];
 }
 
-export interface NavigationFlowchartConfig {
-  en: NavigationFlowchartData;
-  ja: NavigationFlowchartData;
-}
+export type NavigationFlowchartConfig = NavigationFlowchartData;

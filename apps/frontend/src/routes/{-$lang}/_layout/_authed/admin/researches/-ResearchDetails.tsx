@@ -17,7 +17,7 @@ import {
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
-import { Tag } from "@/components/StatusTag";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
 import type {
   ResearchDetailResponse,
@@ -57,6 +57,8 @@ import {
 import { cn } from "@/lib/utils";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearchDialog";
+import type { MergeResearchResult } from "./-mergeJDSResearch";
 
 export function ResearchDetails({
   humId,
@@ -80,6 +82,7 @@ export function ResearchDetails({
       initialData.data.version,
   );
 
+  // TODO - clean up so RQ wont fetch same twice
   // Re-fetch when selectedVersion changes
   const { data } = useSuspenseQuery(
     getResearchQueryOptions({ humId, lang, version: selectedVersion }),
@@ -378,6 +381,32 @@ export function ResearchDetails({
       }
     },
   });
+
+  function applyMergedJDSValues(values: MergeResearchResult["values"]) {
+    form.setFieldValue("title", values.title);
+    form.setFieldValue(
+      "summary",
+      values.summary as typeof researchValues.summary,
+    );
+    form.setFieldValue(
+      "dataProvider",
+      values.dataProvider as typeof researchValues.dataProvider,
+    );
+    form.setFieldValue(
+      "researchProject",
+      values.researchProject as typeof researchValues.researchProject,
+    );
+    form.setFieldValue("grant", values.grant as typeof researchValues.grant);
+    form.setFieldValue(
+      "relatedPublication",
+      values.relatedPublication as typeof researchValues.relatedPublication,
+    );
+    form.setFieldValue(
+      "controlledAccessUser",
+      values.controlledAccessUser as typeof researchValues.controlledAccessUser,
+    );
+  }
+
   const previewValues = useStore(form.store, (state) => state.values);
   const [preview, setPreview] = useState(false);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
@@ -428,7 +457,7 @@ export function ResearchDetails({
       caption={
         <>
           <span>{researchValues.humId}</span>
-          <Tag tag={researchValues.status} size="md" className="ml-3" />
+          <StatusTag status={researchValues.status} className="mx-3" />
           <ResearchVersionSelector
             humId={humId}
             lang={lang}
@@ -516,59 +545,64 @@ export function ResearchDetails({
           >
             {/* Workflow action row */}
             <div className="mx-5 mt-5 flex shrink-0 items-center gap-2">
-              <div className="ml-auto flex items-center gap-2">
-                {canDelete && (
-                  <Button type="button" size="lg" onClick={handleDelete}>
-                    Delete
-                  </Button>
-                )}
+              <MergeJDSResearchDialog
+                className="mr-auto"
+                currentValues={formValues}
+                disabled={!isViewingDraft || !canUpdate}
+                onMerge={applyMergedJDSValues}
+              />
 
-                {isViewingDraft && canSubmit && (
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Submitting…" : "Submit for review"}
-                  </Button>
-                )}
-                {isViewingDraft && canReject && (
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={handleReject}
-                    disabled={isRejecting}
-                  >
-                    {isRejecting ? "Rejecting…" : "Reject"}
-                  </Button>
-                )}
-                {isViewingDraft && canApprove && (
-                  <Button
-                    variant="action"
-                    size="lg"
-                    onClick={handleApprove}
-                    disabled={isApproving}
-                  >
-                    {isApproving ? "Approving…" : "Approve"}
-                  </Button>
-                )}
-                {canUnpublish && (
-                  <Button variant="outline" size="lg">
-                    Unpublish
-                  </Button>
-                )}
+              {canDelete && (
+                <Button type="button" size="lg" onClick={handleDelete}>
+                  Delete
+                </Button>
+              )}
 
-                {isViewingDraft && canUpdate && (
-                  <Button
-                    size="lg"
-                    onClick={() => form.handleSubmit()}
-                    disabled={isSaving || !isModified}
-                  >
-                    {isSaving ? "Saving…" : "Save draft"}
-                  </Button>
-                )}
-              </div>
+              {isViewingDraft && canSubmit && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Submitting…" : "Submit for review"}
+                </Button>
+              )}
+              {isViewingDraft && canReject && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleReject}
+                  disabled={isRejecting}
+                >
+                  {isRejecting ? "Rejecting…" : "Reject"}
+                </Button>
+              )}
+              {isViewingDraft && canApprove && (
+                <Button
+                  variant="action"
+                  size="lg"
+                  onClick={handleApprove}
+                  disabled={isApproving}
+                >
+                  {isApproving ? "Approving…" : "Approve"}
+                </Button>
+              )}
+              {canUnpublish && (
+                <Button variant="outline" size="lg">
+                  Unpublish
+                </Button>
+              )}
+
+              {isViewingDraft && canUpdate && (
+                <Button
+                  size="lg"
+                  onClick={() => form.handleSubmit()}
+                  disabled={isSaving || !isModified}
+                >
+                  {isSaving ? "Saving…" : "Save draft"}
+                </Button>
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">

@@ -4,11 +4,13 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
+import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { type ContentId } from "@/config/content-config";
 import { PROTECTED_DOC_IDS } from "@/config/routing-config";
 import { useFilters } from "@/hooks/useFilters";
@@ -31,6 +33,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslations } from "use-intl";
 import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { NoItemsMessage } from "./NoItemsMessage";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/documents");
 
@@ -42,9 +46,8 @@ export function DocumentsList({
   selectedContentId: string | undefined;
 }) {
   const { q } = routeApi.useSearch();
-  const { setFilters } = useFilters("/{-$lang}/_layout/_authed/admin/documents");
+  const { setFilters } = useFilters(routeApi.id);
   const documentsListQO = getDocumentsQueryOptions({ q });
-  const { data: documents } = useSuspenseQuery(documentsListQO);
 
   const queryClient = useQueryClient();
 
@@ -164,19 +167,6 @@ export function DocumentsList({
     });
   }
 
-  const groupedDocs = useMemo(() => {
-    const groups = new Map<string, DocumentsListItemResponse[]>();
-    for (const doc of documents) {
-      const topSegment = doc.contentId.split("/")[0];
-      if (!groups.has(topSegment)) groups.set(topSegment, []);
-      groups.get(topSegment)!.push(doc);
-    }
-    for (const docs of groups.values()) {
-      docs.sort((a, b) => a.contentId.localeCompare(b.contentId));
-    }
-    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [documents]);
-
   const validate = useServerFn($validateEntityId);
 
   const tErrors = useTranslations("Errors");
@@ -234,105 +224,111 @@ export function DocumentsList({
         onSubmit={handleRenameSubmit}
       />
 
-      <ul className="overflow-y-auto">
-        {groupedDocs.map(([topSegment, docs], groupIndex) => (
-          <li key={topSegment}>
-            <ul>
-              {docs
-                .filter((doc) => !doc.contentId.includes("/"))
-                .map((doc) => {
-                  const isActive = doc.contentId === selectedContentId;
-                  const isProtected = PROTECTED_DOC_IDS.includes(
-                    doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
-                  );
-
-                  return (
-                    <ListItem
-                      key={doc.contentId}
-                      role="menuitem"
-                      className="mb-2"
-                      onClick={() => onSelectDoc(doc.contentId)}
-                      isActive={isActive}
-                    >
-                      <AdminListItem
-                        id={doc.contentId}
-                        translations={doc.translations}
-                        menuItems={
-                          isProtected
-                            ? []
-                            : [
-                                {
-                                  label: <Label>Change ID...</Label>,
-                                  onSelect: () => setRenamingId(doc.contentId),
-                                },
-                                {
-                                  label: (
-                                    <Label className="text-danger flex justify-between">
-                                      <Trash2 className="size-4" />
-                                      Delete
-                                    </Label>
-                                  ),
-                                  onSelect: () =>
-                                    handleClickDeleteDoc(doc.contentId),
-                                  variant: "destructive",
-                                },
-                              ]
-                        }
-                      />
-                    </ListItem>
-                  );
-                })}
-              {docs.some((doc) => doc.contentId.includes("/")) && (
-                <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-gray-200 pl-2">
-                  {docs
-                    .filter((doc) => doc.contentId.includes("/"))
-                    .map((doc) => {
-                      const isActive = doc.contentId === selectedContentId;
-                      const isProtected = PROTECTED_DOC_IDS.includes(
-                        doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
-                      );
-                      return (
-                        <ListItem
-                          key={doc.contentId}
-                          role="menuitem"
-                          className="mb-2"
-                          onClick={() => onSelectDoc(doc.contentId)}
-                          isActive={isActive}
-                        >
-                          <AdminListItem
-                            id={doc.contentId}
-                            translations={doc.translations}
-                            menuItems={
-                              isProtected
-                                ? []
-                                : [
-                                    {
-                                      label: "Change id...",
-                                      onSelect: () =>
-                                        setRenamingId(doc.contentId),
-                                    },
-                                    {
-                                      label: "Delete",
-                                      onSelect: () =>
-                                        handleClickDeleteDoc(doc.contentId),
-                                      variant: "destructive",
-                                    },
-                                  ]
-                            }
-                          />
-                        </ListItem>
-                      );
-                    })}
-                </ul>
-              )}
-            </ul>
-            {groupIndex < groupedDocs.length - 1 && (
-              <hr className="my-2 border-gray-200" />
-            )}
-          </li>
-        ))}
-      </ul>
+      <ErrorResetBoundary getResetKey={() => `${q}`}>
+        <Suspense fallback={<SkeletonLoadingPanelItems />}>
+          <ListItems
+            selectedContentId={selectedContentId}
+            onSelectDoc={onSelectDoc}
+            onRenameDoc={setRenamingId}
+            onDeleteDoc={handleClickDeleteDoc}
+          />
+        </Suspense>
+      </ErrorResetBoundary>
     </>
+  );
+}
+
+function ListItems({
+  selectedContentId,
+  onSelectDoc,
+  onRenameDoc,
+  onDeleteDoc,
+}: {
+  onSelectDoc: (id: string) => void;
+  selectedContentId: string | undefined;
+  onRenameDoc: (id: string) => void;
+  onDeleteDoc: (id: string) => void;
+}) {
+  const { q } = routeApi.useSearch();
+  const documentsListQO = getDocumentsQueryOptions({ q });
+  const { data: documents } = useSuspenseQuery(documentsListQO);
+
+  const groupedDocs = useMemo(() => {
+    const groups = new Map<string, DocumentsListItemResponse[]>();
+    for (const doc of documents) {
+      const topSegment = doc.contentId.split("/")[0];
+      if (!groups.has(topSegment)) groups.set(topSegment, []);
+      groups.get(topSegment)!.push(doc);
+    }
+    for (const docs of groups.values()) {
+      docs.sort((a, b) => {
+        const aDepth = a.contentId.split("/").length - 1;
+        const bDepth = b.contentId.split("/").length - 1;
+        if (aDepth !== bDepth) return aDepth - bDepth;
+        return a.contentId.localeCompare(b.contentId);
+      });
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [documents]);
+
+  if (documents.length === 0) {
+    return <NoItemsMessage>No documents found</NoItemsMessage>;
+  }
+  return (
+    <ul className="overflow-y-auto">
+      {groupedDocs.map(([topSegment, docs], groupIndex) => (
+        <li key={topSegment}>
+          {docs.map((doc, level) => {
+            const isActive = doc.contentId === selectedContentId;
+            const isProtected = PROTECTED_DOC_IDS.includes(
+              doc.contentId as (typeof PROTECTED_DOC_IDS)[number],
+            );
+
+            return (
+              <ListItem
+                key={doc.contentId}
+                role="menuitem"
+                className={cn("relative mb-2", {
+                  "pl-6 before:absolute before:top-0 before:left-1 before:block before:h-full before:w-1 before:bg-gray-200":
+                    level > 0,
+                })}
+                onClick={() => onSelectDoc(doc.contentId)}
+                isActive={isActive}
+              >
+                <AdminListItem
+                  id={doc.contentId}
+                  translations={doc.translations}
+                  menuItems={
+                    isProtected
+                      ? []
+                      : [
+                          {
+                            label: <Label>Change ID...</Label>,
+                            onSelect: () => onRenameDoc(doc.contentId),
+                          },
+                          {
+                            label: (
+                              <Label>
+                                <Trash2 />
+                                Delete
+                              </Label>
+                            ),
+                            onSelect: () => onDeleteDoc(doc.contentId),
+                            variant: "destructive",
+                          },
+                        ]
+                  }
+                />
+              </ListItem>
+            );
+          })}
+
+          {groupIndex < groupedDocs.length - 1 && (
+            <hr className="my-2 border-gray-200" />
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

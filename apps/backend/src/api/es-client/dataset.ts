@@ -81,6 +81,25 @@ export const getDataset = async (
 }
 
 /**
+ * Resolve the latest version string of a Dataset (by version desc, then releaseDate desc).
+ * Returns null when no document with the given datasetId exists.
+ */
+export const resolveLatestDatasetVersion = async (datasetId: string): Promise<string | null> => {
+  const { hits } = await esClient.search<EsDataset>({
+    index: ES_INDEX.dataset,
+    size: 1,
+    query: { term: { datasetId } },
+    sort: [
+      versionSortSpec("desc"),
+      { releaseDate: { order: "desc" } },
+    ],
+    _source: ["version"],
+    track_total_hits: false,
+  })
+  return hits.hits[0]?._source?.version ?? null
+}
+
+/**
  * Get Dataset document with sequence number for optimistic locking
  */
 export const getDatasetWithSeqNo = async (
@@ -266,6 +285,29 @@ export const updateDataset = async (
 ): Promise<EsDataset | null> => {
   const esId = `${datasetId}-${version}`
 
+  // Determine whether this PUT is the first update in a draft cycle for a previously
+  // published Dataset (architecture.md § Dataset のバージョン).
+  // Bump condition: the dataset.version is still "pinned" by parent.latestVersion's
+  // ResearchVersion.datasets — i.e. it equals the version published in the previous cycle.
+  // In that case a new dataset version doc is created and parent.draftVersion's
+  // ResearchVersion.datasets reference is swapped to it. Otherwise the existing doc is
+  // overwritten in place.
+  const existing = await getDatasetWithSeqNo(datasetId, version)
+  if (!existing) return null
+  if (existing.seqNo !== seqNo || existing.primaryTerm !== primaryTerm) return null
+
+  const currentDoc = existing.doc
+  const parentResearch = await getResearchDoc(currentDoc.humId)
+
+  if (parentResearch?.latestVersion && parentResearch.draftVersion) {
+    const latestHumVersionId = `${currentDoc.humId}-${parentResearch.latestVersion}`
+    const latestVersionInfo = await getResearchVersionWithSeqNo(latestHumVersionId)
+    const pinnedEntry = latestVersionInfo?.doc.datasets.find(d => d.datasetId === datasetId)
+    if (pinnedEntry?.version === currentDoc.version) {
+      return bumpDatasetVersion(datasetId, currentDoc, updates, parentResearch.draftVersion)
+    }
+  }
+
   const hydratedDoc: Record<string, unknown> = {}
   if (updates.releaseDate !== undefined) hydratedDoc.releaseDate = updates.releaseDate
   if (updates.criteria !== undefined) hydratedDoc.criteria = updates.criteria
@@ -298,6 +340,85 @@ export const updateDataset = async (
     }
     throw error
   }
+}
+
+const bumpDatasetVersion = async (
+  datasetId: string,
+  currentDoc: EsDataset,
+  updates: Partial<Omit<UpdateDatasetRequest, "_seq_no" | "_primary_term">>,
+  draftVersion: string,
+): Promise<EsDataset | null> => {
+  const humId = currentDoc.humId
+  const draftHumVersionId = `${humId}-${draftVersion}`
+  const nextVersion = await getNextDatasetVersion(datasetId)
+  const nextEsId = `${datasetId}-${nextVersion}`
+
+  const newDoc: EsDataset = {
+    ...currentDoc,
+    version: nextVersion,
+    humVersionId: draftHumVersionId,
+    releaseDate: updates.releaseDate ?? currentDoc.releaseDate,
+    criteria: updates.criteria ?? currentDoc.criteria,
+    typeOfData: updates.typeOfData ?? currentDoc.typeOfData,
+    humId: updates.humId ?? humId,
+    experiments: updates.experiments !== undefined
+      ? updates.experiments.map(hydrateExperiment)
+      : currentDoc.experiments,
+  }
+
+  try {
+    await esClient.index({
+      index: ES_INDEX.dataset,
+      id: nextEsId,
+      body: newDoc,
+      op_type: "create",
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    if (isDocumentExistsError(error)) {
+      throw ConflictError.forDuplicate("Dataset", nextEsId)
+    }
+    throw new Error(`Failed to create new Dataset version: ${error}`)
+  }
+
+  try {
+    const draftVersionInfo = await getResearchVersionWithSeqNo(draftHumVersionId)
+    if (!draftVersionInfo) {
+      throw new Error(`Parent draft ResearchVersion ${draftHumVersionId} not found`)
+    }
+    const { doc: versionDoc, seqNo: parentSeqNo, primaryTerm: parentPrimaryTerm } = draftVersionInfo
+    const newDatasets = versionDoc.datasets.map(d =>
+      d.datasetId === datasetId && d.version === currentDoc.version
+        ? { datasetId, version: nextVersion }
+        : d,
+    )
+    await esClient.update({
+      index: ES_INDEX.researchVersion,
+      id: draftHumVersionId,
+      if_seq_no: parentSeqNo,
+      if_primary_term: parentPrimaryTerm,
+      body: { doc: { datasets: newDatasets } },
+      refresh: "wait_for",
+    })
+  } catch (error) {
+    // Compensating delete on the freshly-created new-version doc when the
+    // parent ResearchVersion reference swap fails. `refresh: "wait_for"` so
+    // a follow-up GET / list does not observe the orphan during the visible
+    // refresh window (the caller will see the 409 we return below).
+    await esClient.delete({
+      index: ES_INDEX.dataset,
+      id: nextEsId,
+      refresh: "wait_for",
+    }, { ignore: [404] })
+
+    if (error && typeof error === "object" && "meta" in error) {
+      const esError = error as { meta?: { statusCode?: number } }
+      if (esError.meta?.statusCode === 409) return null
+    }
+    throw new Error(`Failed to update parent ResearchVersion references: ${error}`)
+  }
+
+  return EsDatasetSchema.parse(newDoc)
 }
 
 /**
