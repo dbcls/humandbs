@@ -383,13 +383,13 @@ export default function BlobCluster({
       <mesh 
         position={[0, 0, -100]} 
         visible={!(isAnyHovered && !isHovered)}
-        onClick={(e) => { 
+        onClick={!isHovered ? (e) => { 
           e.stopPropagation(); 
           if (isDragging) return;
           if (satellites.length > 0) {
             onNavigate(system.facet, satellites[0].value); 
           }
-        }}
+        } : undefined}
       >
         {isHovered ? (
           <planeGeometry args={[Math.max(300, gridDims.current.width * targetScale * 1.8), Math.max(300, gridDims.current.height * targetScale * 1.8)]} />
@@ -403,6 +403,12 @@ export default function BlobCluster({
         <instancedMesh
           ref={instancedMeshRef}
           args={[undefined, undefined, satellites.length]}
+          onPointerDown={isHovered ? (e) => {
+            e.stopPropagation();
+          } : undefined}
+          onPointerUp={isHovered ? (e) => {
+            e.stopPropagation();
+          } : undefined}
           onClick={isHovered ? (e) => {
             e.stopPropagation();
             if (!isDragging && e.instanceId !== undefined) {
