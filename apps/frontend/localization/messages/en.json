@@ -11,11 +11,8 @@
     "total-results": "{count} results",
     "dataset": "Dataset",
     "research": "Research",
-<<<<<<< penqe/modify-filter-style
     "filters": "Filters",
-=======
     "items": "items",
->>>>>>> penqe/work
     "already-in-cart": "Already in cart",
     "add-to-cart": "Add to cart",
     "add-all-to-cart": "Add all to cart"
