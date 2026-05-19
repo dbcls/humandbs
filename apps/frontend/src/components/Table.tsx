@@ -176,13 +176,19 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
   ctx: HeaderContext<T, V>;
   label: React.ReactNode;
 }) {
-  const sortingState = ctx.column.getIsSorted();
+  const activeSort = ctx.table.options.meta?.activeSort;
+  const sortingState =
+    activeSort?.id === ctx.column.id
+      ? activeSort.desc
+        ? "desc"
+        : "asc"
+      : ctx.column.getIsSorted();
 
   return (
-    <p className="flex gap-2 text-white">
+    <p className="flex items-center gap-2 text-white">
       <span>{label}</span>
       {ctx.table.options.meta?.loadingSortColumnId === ctx.column.id ? (
-        <div className="px-4 py-2">
+        <div className="h-fit px-4 py-2">
           <LoaderCircle className="size-5 animate-spin" />
         </div>
       ) : (
@@ -256,67 +262,4 @@ function TableLoadingSpinner<T extends Record<string, unknown>>({
   );
 }
 
-function TableLoadingSkeleton<T extends Record<string, unknown>>({
-  columns,
-  className,
-  meta,
-}: {
-  columns: ColumnDef<T, any>[];
-  className?: string;
-  meta?: TableMeta<T>;
-}) {
-  const table = useReactTable({
-    data: [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    defaultColumn: { maxSize: 20, minSize: 5 },
-    meta,
-  });
-
-  return (
-    <table
-      className={cn(
-        "w-full table-fixed animate-pulse rounded-md bg-gray-100 align-top text-pretty",
-        className,
-      )}
-    >
-      <thead className="relative z-10 text-white">
-        {table.getHeaderGroups().map((headerGroup) => (
-          <tr key={headerGroup.id} className={tableHeaderRowVariants()}>
-            {headerGroup.headers.map((header) => (
-              <th
-                key={header.id}
-                className={"p-2 first-of-type:rounded-l last-of-type:rounded-r"}
-                style={{ width: `${header.getSize()}rem` }}
-              >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
-              </th>
-            ))}
-          </tr>
-        ))}
-      </thead>
-
-      <tbody>
-        {Array.from({ length: 5 }).map((_, index) => (
-          <tr key={index}>
-            {columns.map((col) => (
-              <td
-                key={col.id}
-                className="border-foreground-light/50 border-b-2 p-2 align-top"
-              >
-                <span className="block h-4 w-full rounded bg-gray-300" />
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-export { Table, SortHeader, TableLoadingSkeleton, TableLoadingSpinner };
+export { Table, SortHeader, TableLoadingSpinner };

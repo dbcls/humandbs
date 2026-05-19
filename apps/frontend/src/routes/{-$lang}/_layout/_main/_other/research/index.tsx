@@ -15,7 +15,6 @@ import {
 } from "@tanstack/react-table";
 import {
   startTransition,
-  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -116,13 +115,7 @@ function RouteComponent() {
           onResetFilters={() => {
             resetFilters();
           }}
-          resultsCount={
-            <Suspense
-              fallback={<Skeleton className="h-9 w-24 animate-pulse" />}
-            >
-              <ResultsCount />
-            </Suspense>
-          }
+          resultsCount={<ResultsCount />}
           filtersCount={Object.keys(filters.datasetFilters || {}).length}
           onFilterClick={onFilterClick}
           isPanelOpen={isOpen}
@@ -211,9 +204,7 @@ function CardContent() {
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
         <TableWrapper />
       </div>
-      <Suspense fallback={<PaginationLoadingSkeleton />}>
-        <PaginationWrapper />
-      </Suspense>
+      <PaginationWrapper />
     </>
   );
 }
@@ -330,6 +321,7 @@ function TableWrapper() {
     if (!search.sort) return [];
     return [{ id: search.sort, desc: search.order === "desc" }];
   }, [search.sort, search.order]);
+  const activeSort = sorting[0];
 
   const { filters, setFilters } = useFilters(Route.id);
 
@@ -380,7 +372,7 @@ function TableWrapper() {
       data={researchesData.data}
       sorting={sorting}
       onSortingChange={handleSortingChange}
-      meta={{ t, lang, loadingSortColumnId }}
+      meta={{ t, lang, loadingSortColumnId, activeSort }}
       isDimmed={isPaginating}
     />
   );
