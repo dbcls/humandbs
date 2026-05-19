@@ -38,6 +38,7 @@ export default function CarouselScene({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const [isDragging, setIsDragging] = useState(false);
@@ -72,7 +73,8 @@ export default function CarouselScene({
     let closestIdx = Math.round(normalizedRot / slice) % total;
     closestIdx = (total - closestIdx) % total;
 
-    if (closestIdx !== activeIndex) {
+    if (closestIdx !== activeIndexRef.current) {
+      activeIndexRef.current = closestIdx;
       setActiveIndex(closestIdx);
     }
   });
@@ -104,7 +106,7 @@ export default function CarouselScene({
     <>
       <fog attach="fog" args={['#f8fafc', debugParams?.fogNear ?? 500, (hoveredIndex !== null ? 6000 : (debugParams?.fogFar ?? 3000))]} />
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
-      <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" castShadow />
+      <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" />
       <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#00f0ff" />
       <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ff00a0" />
 

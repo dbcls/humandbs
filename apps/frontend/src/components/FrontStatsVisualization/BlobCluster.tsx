@@ -46,6 +46,7 @@ export default function BlobCluster({
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const [hoveredParticleIndex, setHoveredParticleIndex] = useState<number | null>(null);
+  const hoveredParticleIndexRef = useRef<number | null>(null);
   const [renderedLabelCount, setRenderedLabelCount] = useState(0);
   const labelRefs = useRef<(THREE.Group | null)[]>([]);
   const gridDims = useRef({ width: 100, height: 100 });
@@ -167,6 +168,8 @@ export default function BlobCluster({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleParticleHover = (index: number | null) => {
+    if (hoveredParticleIndexRef.current === index) return;
+    hoveredParticleIndexRef.current = index;
     setHoveredParticleIndex(index);
   };
 
@@ -176,6 +179,13 @@ export default function BlobCluster({
       document.body.style.cursor = 'auto';
     };
   }, []);
+
+  useEffect(() => {
+    if (!isHovered) {
+      hoveredParticleIndexRef.current = null;
+      setHoveredParticleIndex(null);
+    }
+  }, [isHovered]);
 
   // Stagger label rendering to prevent frame drops
   useEffect(() => {
@@ -233,6 +243,7 @@ export default function BlobCluster({
   const maxDim = Math.max(gridDims.current.width, gridDims.current.height * 1.77);
   // Target a visible size of ~1600 units, capped at 8x scale so single items aren't huge
   const targetScale = isHovered ? Math.min(8.0, 1600 / (maxDim || 1)) : 1.0;
+  const hideForFocusedCluster = isAnyHovered && !isHovered;
 
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;
@@ -253,6 +264,8 @@ export default function BlobCluster({
         : -(particleScale * 0.45) - 10;
       facetLabelRef.current.position.y = THREE.MathUtils.lerp(facetLabelRef.current.position.y, targetLabelY, 0.08);
     }
+
+    if (hideForFocusedCluster) return;
 
     const nodes = nodesRef.current;
     const dt = Math.min(delta, 0.05);
@@ -390,33 +403,33 @@ export default function BlobCluster({
         <instancedMesh
           ref={instancedMeshRef}
           args={[undefined, undefined, satellites.length]}
-          castShadow
-          receiveShadow
-          onClick={(e) => {
+          onClick={isHovered ? (e) => {
             e.stopPropagation();
             if (!isDragging && e.instanceId !== undefined) {
               const sat = satellites[e.instanceId];
               if (onNavigate) onNavigate(system.facet, sat.value);
             }
-          }}
-          onPointerMove={(e) => {
-            if (isDragging) return;
-            if (isHovered && e.instanceId !== undefined) {
-              handleParticleHover(e.instanceId);
+          } : undefined}
+          onPointerMove={isHovered ? (e) => {
+            if (isDragging || e.instanceId === undefined) return;
+            handleParticleHover(e.instanceId);
+            if (document.body.style.cursor !== 'pointer') {
               document.body.style.cursor = 'pointer';
             }
-          }}
-          onPointerOut={(e) => {
-            if (isHovered && e.instanceId !== undefined) {
-              // Only clear if we are leaving the CURRENTLY hovered particle!
-              // This prevents race conditions where out(A) fires AFTER move(B) and clears the state incorrectly.
-              setHoveredParticleIndex((prev) => prev === e.instanceId ? null : prev);
-              document.body.style.cursor = 'auto';
+          } : undefined}
+          onPointerOut={isHovered ? (e) => {
+            if (e.instanceId === undefined) return;
+            // Only clear if we are leaving the CURRENTLY hovered particle.
+            // This prevents out(A) firing after move(B) and clearing B incorrectly.
+            if (hoveredParticleIndexRef.current === e.instanceId) {
+              hoveredParticleIndexRef.current = null;
+              setHoveredParticleIndex(null);
             }
-          }}
+            document.body.style.cursor = 'auto';
+          } : undefined}
         >
           <sphereGeometry 
-            args={[1, 32, 32]} 
+            args={[1, 16, 16]}
             onUpdate={(geo) => {
               // CRITICAL: Three.js InstancedMesh raycaster uses the geometry's bounding sphere 
               // for early frustum culling. Since instances are spread far beyond the base 
