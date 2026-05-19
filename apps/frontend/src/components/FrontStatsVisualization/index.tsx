@@ -6,7 +6,6 @@ import { Environment } from "@react-three/drei";
 import { SkeletonLoading } from "@/components/Skeleton";
 import useStats from "./useStats";
 import CarouselScene from "./CarouselScene";
-import CameraUpdater from "./CameraUpdater";
 import useDebugParams from "./useDebugParams";
 import DebugPanel from "./DebugPanel";
 import { capitalize } from "./utils";
@@ -17,8 +16,6 @@ export default function FrontStatsVisualization() {
   const [isMounted, setIsMounted] = useState(false);
   const { debugParams, setDebugParams, resetDebugParams } = useDebugParams();
   const tFilters = useTranslations("Filters");
-
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const navigate = useNavigate();
   const tCommon = useTranslations("common");
@@ -111,15 +108,7 @@ export default function FrontStatsVisualization() {
             performance={{ min: 0.5 }}
           >
             <color attach="background" args={["#f8fafc"]} />
-            
-            <CameraUpdater 
-              cameraY={debugParams.cameraY} 
-              cameraZ={debugParams.cameraZ} 
-              radius={ debugParams.carouselRadius } 
-              sceneOffsetY={debugParams.sceneOffsetY ?? 50}
-              isAnyHovered={hoveredIndex !== null}
-            />
-            
+
             <Environment preset="city" />
             
             <Suspense fallback={null}>
@@ -137,7 +126,6 @@ export default function FrontStatsVisualization() {
               lightPoint2={debugParams.lightPoint2}
               globalMaxCount={globalMaxCount}
               debugParams={debugParams}
-              setParentHoveredIndex={setHoveredIndex}
             />
           </Suspense>
         </Canvas>

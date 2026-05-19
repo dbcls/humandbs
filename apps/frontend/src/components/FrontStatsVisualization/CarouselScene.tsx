@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { NormalizedStats, DebugParams } from "./types";
 import BlobCluster from "./BlobCluster";
+import CameraUpdater from "./CameraUpdater";
 import { INITIAL_SCENE_OFFSET_Y } from "./constants";
 
 export default function CarouselScene({ 
@@ -18,8 +19,7 @@ export default function CarouselScene({
   lightPoint1,
   lightPoint2,
   globalMaxCount,
-  debugParams,
-  setParentHoveredIndex
+  debugParams
 }: { 
   stats: NormalizedStats, 
   mode: "dataset" | "research", 
@@ -33,8 +33,7 @@ export default function CarouselScene({
   lightPoint1: number,
   lightPoint2: number,
   globalMaxCount: number,
-  debugParams: DebugParams,
-  setParentHoveredIndex: (idx: number | null) => void
+  debugParams: DebugParams
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -60,9 +59,9 @@ export default function CarouselScene({
     if (hoveredIndex === null && !isDragging) {
       groupRef.current.rotation.y += rotationSpeed * delta;
     } else if (hoveredIndex !== null && !isDragging) {
-      const targetRot = - (hoveredIndex * (Math.PI * 2) / total);
+      const targetRot = -(hoveredIndex * (Math.PI * 2)) / total;
       let diff = targetRot - groupRef.current.rotation.y;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff)); 
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       groupRef.current.rotation.y += diff * 0.08;
     }
 
@@ -104,6 +103,14 @@ export default function CarouselScene({
 
   return (
     <>
+      <CameraUpdater
+        cameraY={debugParams.cameraY}
+        cameraZ={debugParams.cameraZ}
+        radius={carouselRadius}
+        sceneOffsetY={debugParams.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y}
+        isAnyHovered={hoveredIndex !== null}
+      />
+
       <fog attach="fog" args={['#f8fafc', debugParams?.fogNear ?? 500, (hoveredIndex !== null ? 6000 : (debugParams?.fogFar ?? 3000))]} />
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
       <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" />
@@ -116,10 +123,7 @@ export default function CarouselScene({
           document.body.style.cursor = 'grabbing';
           handlePointerDown(e);
         }}
-        onPointerMove={(e) => {
-          document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
-          handlePointerMove(e);
-        }}
+        onPointerMove={handlePointerMove}
         onPointerUp={(e) => {
           document.body.style.cursor = 'grab';
           handlePointerUp(e);
@@ -157,7 +161,6 @@ export default function CarouselScene({
                 onHover={(isHovered) => {
                   if (!isDragging) {
                     setHoveredIndex(isHovered ? i : null);
-                    setParentHoveredIndex(isHovered ? i : null);
                   }
                 }}
                 isAnyHovered={hoveredIndex !== null}

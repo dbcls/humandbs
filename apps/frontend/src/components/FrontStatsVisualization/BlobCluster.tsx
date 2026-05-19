@@ -44,7 +44,9 @@ export default function BlobCluster({
   const tFilters = useTranslations("Filters");
   const nodesRef = useRef<SimNode[]>([]);
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
+  const hitboxRef = useRef<THREE.Mesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const pointerLocal = useMemo(() => new THREE.Vector3(), []);
   const [hoveredParticleIndex, setHoveredParticleIndex] = useState<number | null>(null);
   const hoveredParticleIndexRef = useRef<number | null>(null);
   const [renderedLabelCount, setRenderedLabelCount] = useState(0);
@@ -171,7 +173,7 @@ export default function BlobCluster({
   const facetLabelRef = useRef<THREE.Group>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleParticleHover = (index: number | null) => {
+  const setHoveredParticle = (index: number | null) => {
     if (hoveredParticleIndexRef.current === index) return;
     hoveredParticleIndexRef.current = index;
     setHoveredParticleIndex(index);
@@ -186,8 +188,7 @@ export default function BlobCluster({
 
   useEffect(() => {
     if (!isHovered) {
-      hoveredParticleIndexRef.current = null;
-      setHoveredParticleIndex(null);
+      setHoveredParticle(null);
     }
   }, [isHovered]);
 
@@ -228,15 +229,17 @@ export default function BlobCluster({
     document.body.style.cursor = 'pointer';
   };
 
-  const handlePointerLeave = (_e: any) => {
+  const handlePointerLeave = (e: any) => {
+    e.stopPropagation();
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
       onHover(false);
+      setHoveredParticle(null);
       document.body.style.cursor = 'auto';
-    }, 200); // 200ms delay to prevent instant drop
+    }, 120);
   };
 
-  // Force collapse if user starts dragging
+  // Force collapse if user starts dragging.
   useEffect(() => {
     if (isDragging && isHovered) {
       onHover(false);
@@ -248,6 +251,52 @@ export default function BlobCluster({
   // Target a visible size of ~1600 units, capped at 8x scale so single items aren't huge
   const targetScale = isHovered ? Math.min(8.0, 1600 / (maxDim || 1)) : 1.0;
   const hideForFocusedCluster = isAnyHovered && !isHovered;
+
+  const getParticleIndexFromPointer = (e: any) => {
+    if (!hitboxRef.current || !localGroupRef.current) return null;
+
+    pointerLocal.copy(e.point);
+    hitboxRef.current.worldToLocal(pointerLocal);
+
+    const currentScale = localGroupRef.current.scale.x || 1;
+    const nodes = nodesRef.current;
+    let closestIndex: number | null = null;
+    let closestDistanceSq = Infinity;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const visualRadius = node.d3Radius * (particleScale / 260) * currentScale;
+      const dx = pointerLocal.x - (node.x || 0) * currentScale;
+      const dy = pointerLocal.y - (node.y || 0) * currentScale;
+      const distanceSq = dx * dx + dy * dy;
+      const hitRadius = Math.max(visualRadius * 1.25, 18);
+      const hitRadiusSq = hitRadius * hitRadius;
+
+      if (distanceSq <= hitRadiusSq && distanceSq < closestDistanceSq) {
+        closestDistanceSq = distanceSq;
+        closestIndex = i;
+      }
+    }
+
+    return closestIndex;
+  };
+
+  const handleExpandedPointerMove = (e: any) => {
+    if (!isHovered || isDragging) return;
+    e.stopPropagation();
+    const particleIndex = getParticleIndexFromPointer(e);
+    setHoveredParticle(particleIndex);
+    document.body.style.cursor = particleIndex === null ? 'pointer' : 'pointer';
+  };
+
+  const handleHitboxClick = (e: any) => {
+    e.stopPropagation();
+    if (isDragging || satellites.length === 0) return;
+
+    const particleIndex = isHovered ? getParticleIndexFromPointer(e) : null;
+    const target = particleIndex === null ? satellites[0] : satellites[particleIndex];
+    onNavigate(system.facet, target.value);
+  };
 
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;
@@ -389,22 +438,24 @@ export default function BlobCluster({
     <group 
       position={position} 
       rotation={rotation}
-      onPointerEnter={isAnyHovered && !isHovered ? undefined : handlePointerEnter}
-      onPointerLeave={isAnyHovered && !isHovered ? undefined : handlePointerLeave}
     >
       
       {/* Hit box OUTSIDE of localGroupRef so it doesn't shrink during layout scaling.
           This prevents the object from slipping out from under the mouse. */}
       <mesh 
+        ref={hitboxRef}
         position={[0, 0, -100]} 
         visible={!(isAnyHovered && !isHovered)}
-        onClick={!isHovered ? (e) => { 
-          e.stopPropagation(); 
-          if (isDragging) return;
-          if (satellites.length > 0) {
-            onNavigate(system.facet, satellites[0].value); 
-          }
-        } : undefined}
+        onPointerEnter={isAnyHovered && !isHovered ? undefined : handlePointerEnter}
+        onPointerLeave={isAnyHovered && !isHovered ? undefined : handlePointerLeave}
+        onPointerMove={isHovered ? handleExpandedPointerMove : undefined}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+        }}
+        onClick={handleHitboxClick}
       >
         {isHovered ? (
           <planeGeometry args={[Math.max(300, gridDims.current.width * targetScale * 1.8), Math.max(300, gridDims.current.height * targetScale * 1.8)]} />
@@ -418,36 +469,6 @@ export default function BlobCluster({
         <instancedMesh
           ref={instancedMeshRef}
           args={[undefined, undefined, satellites.length]}
-          onPointerDown={isHovered ? (e) => {
-            e.stopPropagation();
-          } : undefined}
-          onPointerUp={isHovered ? (e) => {
-            e.stopPropagation();
-          } : undefined}
-          onClick={isHovered ? (e) => {
-            e.stopPropagation();
-            if (!isDragging && e.instanceId !== undefined) {
-              const sat = satellites[e.instanceId];
-              if (onNavigate) onNavigate(system.facet, sat.value);
-            }
-          } : undefined}
-          onPointerMove={isHovered ? (e) => {
-            if (isDragging || e.instanceId === undefined) return;
-            handleParticleHover(e.instanceId);
-            if (document.body.style.cursor !== 'pointer') {
-              document.body.style.cursor = 'pointer';
-            }
-          } : undefined}
-          onPointerOut={isHovered ? (e) => {
-            if (e.instanceId === undefined) return;
-            // Only clear if we are leaving the CURRENTLY hovered particle.
-            // This prevents out(A) firing after move(B) and clearing B incorrectly.
-            if (hoveredParticleIndexRef.current === e.instanceId) {
-              hoveredParticleIndexRef.current = null;
-              setHoveredParticleIndex(null);
-            }
-            document.body.style.cursor = 'auto';
-          } : undefined}
         >
           <sphereGeometry 
             args={[1, 16, 16]}
