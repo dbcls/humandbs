@@ -22,8 +22,6 @@ export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
       search: cleanEmptyParams({ ...filters, ...partialFilters }) as any,
       resetScroll: false,
     });
-  // startTransition(() => {
-  // });
 
   const preservedSearch = Object.entries(filters).reduce<
     Record<string, unknown>
@@ -33,7 +31,7 @@ export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
     }
     return acc;
   }, {});
-  
+
   const resetFilters = () => {
     navigate({
       to: ".",
