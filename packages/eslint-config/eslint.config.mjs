@@ -7,7 +7,6 @@ import { default as baseConfig } from "./base.mjs"
  */
 export default defineConfig([
   {
-    files: ["./*.mjs"],
+    ignores: ["./*.mjs"],
   },
-  ...baseConfig,
 ])

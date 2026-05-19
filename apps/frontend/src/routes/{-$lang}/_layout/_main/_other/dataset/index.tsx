@@ -203,7 +203,7 @@ function CardContent() {
   const search = Route.useSearch();
 
   const { lang } = Route.useRouteContext();
-  const { data } = useSuspenseQuery(
+  const { data, isFetching } = useSuspenseQuery(
     getDatasetsPaginatedQueryOptions({
       ...search,
       lang,
@@ -237,6 +237,8 @@ function CardContent() {
     [setFilters, filters],
   );
 
+  console.log("isFetching", isFetching);
+
   return (
     <>
       <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
@@ -247,6 +249,7 @@ function CardContent() {
           meta={{ t, lang }}
           columns={datasetsColumns}
           data={data.data}
+          isLoading={isFetching}
         />
       </div>
       <Pagination className="pr-5" pagination={data.meta.pagination} />

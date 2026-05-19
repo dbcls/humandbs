@@ -86,6 +86,7 @@
     "@rsbuild/core": "^2.0.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/eslint-plugin-query": "^5.100.10",
     "@tanstack/eslint-plugin-router": "^1.161.6",
     "@types/node": "^22.5.4",
     "@types/pg": "^8.16.0",

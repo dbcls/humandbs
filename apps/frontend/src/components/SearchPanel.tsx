@@ -258,6 +258,7 @@ export function SearchPanel({
   const committedDraft = useMemo(() => buildDraftState(sections), [sections]);
 
   const [draft, setDraft] = useState<DraftState>(committedDraft);
+  const hasUserDraftChangeRef = useRef(false);
 
   useEffect(() => {
     setDraft(committedDraft);
@@ -266,10 +267,12 @@ export function SearchPanel({
   const hasAnyFilter = hasAnyDraftValue(draft);
 
   const updateDraftField = (id: string, value: unknown) => {
+    hasUserDraftChangeRef.current = true;
     setDraft((prev) => ({ ...prev, [id]: value }));
   };
 
   function handleResetAll() {
+    hasUserDraftChangeRef.current = true;
     setDraft(Object.fromEntries(sections.map((s) => [s.id, undefined])));
   }
 
@@ -279,6 +282,7 @@ export function SearchPanel({
     startTransition(() => {
       onSetFilters({ ...payload, page: 1 });
     });
+    hasUserDraftChangeRef.current = false;
   };
 
   const groupedSections = sections.reduce((acc, curr) => {
@@ -290,9 +294,10 @@ export function SearchPanel({
   }, {} as GroupedSections);
 
   useEffect(() => {
+    if (!hasUserDraftChangeRef.current) return;
+
     const timeout = setTimeout(handleSearch, 500);
 
-    console.log("debounce effect");
     return () => {
       clearTimeout(timeout);
     };
@@ -303,7 +308,6 @@ export function SearchPanel({
       <PanelHeader
         hasAnyFilter={hasAnyFilter}
         onReset={handleResetAll}
-        onSearch={handleSearch}
         onClose={onClose}
       />
 
@@ -790,7 +794,7 @@ function BooleanFacetItem({
             >
               <span>
                 <RadioGroupItem value={option} />
-                <span className="ml-2">{t(option)}</span>
+                <span className="ml-2">{t(option as any)}</span>
               </span>
               <span>
                 {option !== "any"

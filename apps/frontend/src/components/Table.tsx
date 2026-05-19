@@ -12,7 +12,12 @@ import {
   type TableMeta,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
+  LoaderCircle,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -43,6 +48,7 @@ function Table<T extends Record<string, unknown>>({
   onRowClick,
   meta,
   variant,
+  isDimmed,
 }: {
   className?: string;
   columns: ColumnDef<T, any>[];
@@ -52,6 +58,7 @@ function Table<T extends Record<string, unknown>>({
   onRowClick?: (row: T) => void;
   meta?: TableMeta<T>;
   variant?: VariantProps<typeof tableHeaderRowVariants>["variant"];
+  isDimmed?: boolean;
 }) {
   const t = useTranslations("common");
   const table = useReactTable({
@@ -108,14 +115,19 @@ function Table<T extends Record<string, unknown>>({
         })}
       </thead>
 
-      <tbody className={cn({ relative: data.length === 0 })}>
+      <tbody
+        className={cn("transition-opacity", {
+          relative: data.length === 0,
+          "pointer-events-none opacity-40": isDimmed,
+        })}
+      >
         {table.getRowModel().rows.map((row) => (
           <tr
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            className={
-              onRowClick ? "cursor-pointer hover:bg-gray-50" : undefined
-            }
+            className={cn({
+              "cursor-pointer hover:bg-gray-50": onRowClick,
+            })}
           >
             {row.getVisibleCells().map((cell) => (
               <td
@@ -169,19 +181,142 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
   return (
     <p className="flex gap-2 text-white">
       <span>{label}</span>
-      <Button
-        variant={"ghost"}
-        className="text-white [&_svg]:size-5"
-        onClick={ctx.column.getToggleSortingHandler()}
-      >
-        {sortingState ? (
-          <>{sortingState === "asc" ? <ChevronUp /> : <ChevronDown />}</>
-        ) : (
-          <ChevronsUpDown />
-        )}
-      </Button>
+      {ctx.table.options.meta?.loadingSortColumnId === ctx.column.id ? (
+        <div className="px-4 py-2">
+          <LoaderCircle className="size-5 animate-spin" />
+        </div>
+      ) : (
+        <Button
+          variant={"ghost"}
+          className="text-white [&_svg]:size-5"
+          onClick={ctx.column.getToggleSortingHandler()}
+        >
+          {sortingState ? (
+            <>{sortingState === "asc" ? <ChevronUp /> : <ChevronDown />}</>
+          ) : (
+            <ChevronsUpDown />
+          )}
+        </Button>
+      )}
     </p>
   );
 }
 
-export { Table, SortHeader };
+function TableLoadingSpinner<T extends Record<string, unknown>>({
+  columns,
+  className,
+  meta,
+}: {
+  columns: ColumnDef<T, any>[];
+  className?: string;
+  meta?: TableMeta<T>;
+}) {
+  const table = useReactTable({
+    data: [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    defaultColumn: { maxSize: 20, minSize: 5 },
+    meta,
+  });
+
+  return (
+    <table
+      className={cn("w-full table-fixed align-top text-pretty", className)}
+    >
+      <thead className="relative z-10 text-white">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id} className={tableHeaderRowVariants()}>
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                className={"p-2 first-of-type:rounded-l last-of-type:rounded-r"}
+                style={{ width: `${header.getSize()}rem` }}
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody>
+        <tr>
+          <td colSpan={columns.length} className="h-32">
+            <div className="flex items-center justify-center">
+              <LoaderCircle className="text-secondary size-8 animate-spin" />
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function TableLoadingSkeleton<T extends Record<string, unknown>>({
+  columns,
+  className,
+  meta,
+}: {
+  columns: ColumnDef<T, any>[];
+  className?: string;
+  meta?: TableMeta<T>;
+}) {
+  const table = useReactTable({
+    data: [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    defaultColumn: { maxSize: 20, minSize: 5 },
+    meta,
+  });
+
+  return (
+    <table
+      className={cn(
+        "w-full table-fixed animate-pulse rounded-md bg-gray-100 align-top text-pretty",
+        className,
+      )}
+    >
+      <thead className="relative z-10 text-white">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id} className={tableHeaderRowVariants()}>
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                className={"p-2 first-of-type:rounded-l last-of-type:rounded-r"}
+                style={{ width: `${header.getSize()}rem` }}
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+
+      <tbody>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <tr key={index}>
+            {columns.map((col) => (
+              <td
+                key={col.id}
+                className="border-foreground-light/50 border-b-2 p-2 align-top"
+              >
+                <span className="block h-4 w-full rounded bg-gray-300" />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export { Table, SortHeader, TableLoadingSkeleton, TableLoadingSpinner };

@@ -3,7 +3,7 @@ import {
   type RegisteredRouter,
   type RouteIds,
 } from "@tanstack/react-router";
-import { startTransition } from "react";
+// import { startTransition } from "react";
 
 import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
@@ -18,13 +18,13 @@ export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
   const filters = routeApi.useSearch();
 
   const setFilters = (partialFilters: Record<string, unknown>) =>
-    startTransition(() => {
-      navigate({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        search: cleanEmptyParams({ ...filters, ...partialFilters }) as any,
-        resetScroll: false,
-      });
+    navigate({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search: cleanEmptyParams({ ...filters, ...partialFilters }) as any,
+      resetScroll: false,
     });
+  // startTransition(() => {
+  // });
 
   const preservedSearch = Object.entries(filters).reduce<
     Record<string, unknown>

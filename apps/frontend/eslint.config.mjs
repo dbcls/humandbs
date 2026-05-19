@@ -17,6 +17,7 @@ const file_scope = (cfg) =>
     : [{ ...cfg, files: FRONT_FILES }];
 
 export default defineConfig([
+  { ignores: ["eslint.config.mjs"] },
   ...baseConfig,
   {
     files: FRONT_FILES,
