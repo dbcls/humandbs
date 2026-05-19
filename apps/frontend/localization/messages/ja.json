@@ -12,6 +12,9 @@
     "dataset": "データセット",
     "research": "研究",
     "filters": "フィルタ"
+    "already-in-cart": "カートに追加済み",
+    "add-to-cart": "カートに追加",
+    "add-all-to-cart": "全てカートに追加"
   },
   "Footer": {
     "sitemap": "サイトマップ"

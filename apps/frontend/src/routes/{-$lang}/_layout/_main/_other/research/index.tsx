@@ -1,6 +1,10 @@
 import type { ResearchSearchResponse } from "@humandbs/backend/types";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, functionalUpdate } from "@tanstack/react-router";
+import {
+  ClientOnly,
+  createFileRoute,
+  functionalUpdate,
+} from "@tanstack/react-router";
 import {
   createColumnHelper,
   type SortingState,
@@ -11,21 +15,24 @@ import { useTranslations } from "use-intl";
 
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 
+import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
 import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
+import { cn } from "@/lib/utils";
+import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute(
   "/{-$lang}/_layout/_main/_other/research/",
@@ -44,9 +51,6 @@ export const Route = createFileRoute(
 
       context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
     ]);
-  },
-  errorComponent: ({ error }) => {
-    return <div>{error.message}</div>;
   },
 });
 
@@ -276,10 +280,16 @@ const columns = [
   columnHelper.accessor("datasetIds", {
     id: "datasets",
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
-    cell: (ctx) => {
-      return (
+    cell: (ctx) => (
+      <>
+        <ClientOnly fallback={null}>
+          <AddToCartAllDatasetsButton
+            humId={ctx.row.original.humId}
+            tableDatasets={ctx.getValue().map((id) => ({ datasetId: id }))}
+          />
+        </ClientOnly>
         <CollapsiblePreview
-          items={ctx.row.original.datasetIds.map((id) => ({
+          items={ctx.getValue().map((id) => ({
             id,
             content: (
               <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
@@ -288,8 +298,9 @@ const columns = [
             ),
           }))}
         />
-      );
-    },
+      </>
+    ),
+
     size: 15,
   }),
   columnHelper.accessor("title", {
@@ -403,3 +414,38 @@ const columns = [
     ),
   }),
 ];
+
+function AddToCartAllDatasetsButton({
+  tableDatasets,
+  humId,
+}: {
+  humId: string;
+  tableDatasets: { datasetId: string }[];
+}) {
+  const t = useTranslations("common");
+  const datasetsQO = getDatasetsOfResearchQueryOptions(humId);
+
+  const { data, refetch } = useQuery(datasetsQO);
+
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets:
+      // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
+      data?.data || tableDatasets,
+  });
+
+  async function handleAddAllToCart() {
+    await refetch();
+    // data updates, so need to wait until next render, in order to `data?.data` to have values
+    Promise.resolve().then(() => handleClickCart());
+  }
+
+  return (
+    <AddToCartToggle
+      state={allInCart ? true : someInCart ? "indeterminate" : false}
+      onClick={handleAddAllToCart}
+      className="text-sm font-normal"
+    >
+      <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
+    </AddToCartToggle>
+  );
+}

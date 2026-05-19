@@ -276,6 +276,9 @@ const StepComponent = ({
   const title = locale === "ja" ? step.title.ja : step.title.en;
   const text = locale === "ja" ? step.text.ja : step.text.en;
 
+  const sortedOptions = step.options
+    .slice()
+    .sort((a, b) => (a.nextStep ? 1 : 0) - (b.nextStep ? 1 : 0));
   return (
     <div className="relative">
       <div
@@ -287,11 +290,14 @@ const StepComponent = ({
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
           {title}
         </h2>
-        <p className="m-auto mb-5 w-2/3 max-w-3xl">
-          <MarkdownClientPreview source={text} />
-        </p>
-        <div className="text-tetriary flex justify-center gap-8">
-          {step.options.map((option) => {
+
+        <MarkdownClientPreview
+          className="m-auto mb-5 w-2/3 max-w-3xl"
+          source={text}
+        />
+
+        <div className="text-tetriary flex flex-wrap justify-center gap-8">
+          {sortedOptions.map((option) => {
             // Arrow only for nextStep pointing to the immediately following step.
             // Linked flowchart options never get an arrow.
             const targetIdx = option.nextStep

@@ -34,16 +34,27 @@ export function SearchCaption({
   filterButtonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("common");
-  const [inputValue, setInputValue] = useState(committedQuery);
+  const [inputValue, setInputValue] = useState<string>(committedQuery);
 
   useEffect(() => {
     setInputValue(committedQuery);
   }, [committedQuery]);
 
+  function handleResetInput() {
+    setInputValue("");
+    if (committedQuery.trim().length > 0) {
+      startTransition(() => {
+        onQueryChange(undefined);
+      });
+    }
+  }
+
   return (
     <div className="flex h-fit items-center justify-between">
       <div className="flex items-baseline gap-10">
-        <h3 className="text-lg relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3">{title}</h3>
+        <h3 className="before:bg-secondary relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2">
+          {title}
+        </h3>
         {resultsCount}
       </div>
 
@@ -83,22 +94,19 @@ export function SearchCaption({
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
+            className="h-14 w-md"
             beforeIcon={<Search size={22} />}
             afterIcon={
-              <Button
-                variant={"plain"}
-                size={"icon"}
-                className={"text-foreground-light pointer-events-auto"}
-                disabled={!committedQuery}
-                onClick={() => {
-                  setInputValue("");
-                  startTransition(() => {
-                    onQueryChange(undefined);
-                  });
-                }}
-              >
-                <X size={22} />
-              </Button>
+              inputValue ? (
+                <Button
+                  variant={"plain"}
+                  size={"icon"}
+                  className={"text-foreground-light pointer-events-auto"}
+                  onClick={handleResetInput}
+                >
+                  <X size={22} />
+                </Button>
+              ) : null
             }
             onKeyDown={(e) => {
               if (e.key === "Enter") {

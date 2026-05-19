@@ -26,6 +26,7 @@ import { Route as Char123LangChar125LayoutAuthedAdminNewsRouteImport } from './r
 import { Route as Char123LangChar125LayoutAuthedAdminHeaderFooterRouteImport } from './routes/{-$lang}/_layout/_authed/admin/header-footer'
 import { Route as Char123LangChar125LayoutAuthedAdminFlowchartsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/flowcharts'
 import { Route as Char123LangChar125LayoutAuthedAdminDocumentsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/documents'
+import { Route as Char123LangChar125LayoutAuthedAdminDataTransferRouteImport } from './routes/{-$lang}/_layout/_authed/admin/data-transfer'
 import { Route as Char123LangChar125LayoutAuthedAdminContentRouteImport } from './routes/{-$lang}/_layout/_authed/admin/content'
 import { Route as Char123LangChar125LayoutAuthedAdminAssetsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/assets'
 import { Route as Char123LangChar125LayoutAuthedAdminAlertsRouteImport } from './routes/{-$lang}/_layout/_authed/admin/alerts'
@@ -146,6 +147,12 @@ const Char123LangChar125LayoutAuthedAdminDocumentsRoute =
   Char123LangChar125LayoutAuthedAdminDocumentsRouteImport.update({
     id: '/documents',
     path: '/documents',
+    getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
+  } as any)
+const Char123LangChar125LayoutAuthedAdminDataTransferRoute =
+  Char123LangChar125LayoutAuthedAdminDataTransferRouteImport.update({
+    id: '/data-transfer',
+    path: '/data-transfer',
     getParentRoute: () => Char123LangChar125LayoutAuthedAdminRouteRoute,
   } as any)
 const Char123LangChar125LayoutAuthedAdminContentRoute =
@@ -344,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -381,6 +389,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   '/{-$lang}/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -424,6 +433,7 @@ export interface FileRoutesById {
   '/{-$lang}/_layout/_authed/admin/alerts': typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   '/{-$lang}/_layout/_authed/admin/assets': typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   '/{-$lang}/_layout/_authed/admin/content': typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  '/{-$lang}/_layout/_authed/admin/data-transfer': typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   '/{-$lang}/_layout/_authed/admin/documents': typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   '/{-$lang}/_layout/_authed/admin/flowcharts': typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   '/{-$lang}/_layout/_authed/admin/header-footer': typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/alerts'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
+    | '/{-$lang}/admin/data-transfer'
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/flowcharts'
     | '/{-$lang}/admin/header-footer'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/admin/alerts'
     | '/{-$lang}/admin/assets'
     | '/{-$lang}/admin/content'
+    | '/{-$lang}/admin/data-transfer'
     | '/{-$lang}/admin/documents'
     | '/{-$lang}/admin/flowcharts'
     | '/{-$lang}/admin/header-footer'
@@ -547,6 +559,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/_layout/_authed/admin/alerts'
     | '/{-$lang}/_layout/_authed/admin/assets'
     | '/{-$lang}/_layout/_authed/admin/content'
+    | '/{-$lang}/_layout/_authed/admin/data-transfer'
     | '/{-$lang}/_layout/_authed/admin/documents'
     | '/{-$lang}/_layout/_authed/admin/flowcharts'
     | '/{-$lang}/_layout/_authed/admin/header-footer'
@@ -702,6 +715,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/{-$lang}/admin/documents'
       preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRouteImport
+      parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
+    }
+    '/{-$lang}/_layout/_authed/admin/data-transfer': {
+      id: '/{-$lang}/_layout/_authed/admin/data-transfer'
+      path: '/data-transfer'
+      fullPath: '/{-$lang}/admin/data-transfer'
+      preLoaderRoute: typeof Char123LangChar125LayoutAuthedAdminDataTransferRouteImport
       parentRoute: typeof Char123LangChar125LayoutAuthedAdminRouteRoute
     }
     '/{-$lang}/_layout/_authed/admin/content': {
@@ -900,6 +920,7 @@ interface Char123LangChar125LayoutAuthedAdminRouteRouteChildren {
   Char123LangChar125LayoutAuthedAdminAlertsRoute: typeof Char123LangChar125LayoutAuthedAdminAlertsRoute
   Char123LangChar125LayoutAuthedAdminAssetsRoute: typeof Char123LangChar125LayoutAuthedAdminAssetsRoute
   Char123LangChar125LayoutAuthedAdminContentRoute: typeof Char123LangChar125LayoutAuthedAdminContentRoute
+  Char123LangChar125LayoutAuthedAdminDataTransferRoute: typeof Char123LangChar125LayoutAuthedAdminDataTransferRoute
   Char123LangChar125LayoutAuthedAdminDocumentsRoute: typeof Char123LangChar125LayoutAuthedAdminDocumentsRoute
   Char123LangChar125LayoutAuthedAdminFlowchartsRoute: typeof Char123LangChar125LayoutAuthedAdminFlowchartsRoute
   Char123LangChar125LayoutAuthedAdminHeaderFooterRoute: typeof Char123LangChar125LayoutAuthedAdminHeaderFooterRoute
@@ -916,6 +937,8 @@ const Char123LangChar125LayoutAuthedAdminRouteRouteChildren: Char123LangChar125L
       Char123LangChar125LayoutAuthedAdminAssetsRoute,
     Char123LangChar125LayoutAuthedAdminContentRoute:
       Char123LangChar125LayoutAuthedAdminContentRoute,
+    Char123LangChar125LayoutAuthedAdminDataTransferRoute:
+      Char123LangChar125LayoutAuthedAdminDataTransferRoute,
     Char123LangChar125LayoutAuthedAdminDocumentsRoute:
       Char123LangChar125LayoutAuthedAdminDocumentsRoute,
     Char123LangChar125LayoutAuthedAdminFlowchartsRoute:
