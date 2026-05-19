@@ -710,8 +710,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
                       nameJa: undefined,
                     }));
                   }}
-                  displayLocale={lang}
-                  displayClassName="text-sm font-medium"
+                  className="text-sm font-medium"
                   required
                 />
                 {metaErrors.nameEn && (
@@ -1090,8 +1089,7 @@ function StepCard({
             value={step.title}
             onChange={(title) => onUpdate({ title })}
             placeholder="Step title"
-            displayClassName="text-sm font-medium"
-            displayLocale={lang}
+            className="text-sm font-medium"
           />
           {isInvalid && (
             <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
@@ -1333,8 +1331,8 @@ function OptionRow({
     <div
       ref={ref as Ref<HTMLDivElement>}
       className={cn(
-        "flex w-64 shrink-0 flex-col gap-2 rounded border border-gray-100 bg-gray-50 p-2 transition-opacity",
-        isDragSource ? "opacity-40" : "",
+        "flex w-96 shrink-0 flex-col gap-4 rounded border border-gray-100 bg-gray-50 p-4 transition-opacity",
+        { "opacity-40": isDragSource },
       )}
     >
       <div className="flex items-center gap-1.5">
@@ -1345,15 +1343,14 @@ function OptionRow({
         >
           <GripVertical className="size-3.5" />
         </button>
-        <div className="min-w-0 flex-1">
-          <LocaleInlineEditor
-            value={option.title}
-            onChange={(title) => onUpdate({ title })}
-            placeholder="Option label"
-            displayClassName="text-xs"
-            displayLocale={lang}
-          />
-        </div>
+
+        <LocaleInlineEditor
+          value={option.title}
+          onChange={(title) => onUpdate({ title })}
+          placeholder="Option label"
+          className="min-w-0 flex-1 text-xs"
+        />
+
         <button
           type="button"
           onClick={onDelete}
@@ -1457,9 +1454,8 @@ function OptionRow({
                 ja: option.linkText?.ja ?? "",
               }}
               onChange={(linkText) => onUpdate({ linkText })}
-              displayLocale={lang}
               placeholder="Link label"
-              displayClassName="text-xs"
+              className="text-xs"
             />
           </div>
         )}

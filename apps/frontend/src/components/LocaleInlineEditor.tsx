@@ -11,7 +11,7 @@ interface LocaleInlineEditorProps {
   value: LocaleValue;
   onChange: (value: LocaleValue) => void;
   placeholder?: string;
-  displayClassName?: string;
+  className?: string;
   /** If true, EN field is required (won't commit with empty EN) */
   required?: boolean;
   /** @deprecated Both locales are always shown. Kept for API compatibility. */
@@ -22,7 +22,7 @@ export function LocaleInlineEditor({
   value,
   onChange,
   placeholder = "Click to edit",
-  displayClassName,
+  className,
   required = false,
 }: LocaleInlineEditorProps) {
   const [editingLocale, setEditingLocale] = useState<"en" | "ja" | null>(null);
@@ -75,7 +75,7 @@ export function LocaleInlineEditor({
   const isEditing = editingLocale !== null;
 
   return (
-    <div ref={containerRef} className={cn("flex min-w-0 flex-col", displayClassName)}>
+    <div ref={containerRef} className={cn("flex min-w-0 flex-col", className)}>
       {(["ja", "en"] as const).map((locale) => {
         const isFocused = editingLocale === locale;
         const displayValue = locale === "en" ? value.en : value.ja;

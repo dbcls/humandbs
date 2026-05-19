@@ -1913,13 +1913,12 @@ function NavbarGroupColumn({
           </button>
           <div className="min-w-0 flex-1">
             <LocaleInlineEditor
-              displayLocale={lang}
               value={{
                 en: g.group.label["en"] ?? "",
                 ja: g.group.label["ja"] ?? "",
               }}
               onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
-              displayClassName="text-xs font-semibold uppercase text-gray-500"
+              className="text-xs font-semibold text-gray-500 uppercase"
               required
             />
           </div>
@@ -3456,9 +3455,8 @@ function FooterGroupColumn({
               en: g.group.label["en"] ?? "",
               ja: g.group.label["ja"] ?? "",
             }}
-            displayLocale={lang}
             onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
-            displayClassName="text-xs font-semibold uppercase text-gray-500"
+            className="text-xs font-semibold text-gray-500 uppercase"
             required
           />
         </div>
