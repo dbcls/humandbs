@@ -105,8 +105,9 @@ function RouteComponent() {
   return (
     <FilterableCard
       className="flex flex-col"
-      caption={({ onFilterClick, isOpen }) => (
+      caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
+          filterButtonRef={filterButtonRef}
           title={t("research-list")}
           committedQuery={search.query ?? ""}
           onQueryChange={(query) => {
@@ -168,11 +169,13 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
         type: "date-range-filter",
         id: "datePublished",
         value: filters.datePublished ?? {},
+        uiGroup: "dates",
       },
       {
         type: "date-range-filter",
         id: "dateModified",
         value: filters.dateModified ?? {},
+        uiGroup: "dates",
       },
     ];
 

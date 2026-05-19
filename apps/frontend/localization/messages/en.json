@@ -11,6 +11,7 @@
     "total-results": "{count} results",
     "dataset": "Dataset",
     "research": "Research",
+    "filters": "Filters",
     "items": "items",
     "already-in-cart": "Already in cart",
     "add-to-cart": "Add to cart",
@@ -415,7 +416,9 @@
     "data-format": "Data Format",
     "policy": "Policy",
     "sort-by-name": "Filter name",
-    "sort-by-count": "Results count"
+    "sort-by-count": "Results count",
+    "dates": "Period",
+    "basic-info": "Basic Information"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",

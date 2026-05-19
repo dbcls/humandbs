@@ -18,6 +18,7 @@ export function SearchCaption({
   onCsv,
   onExcel,
   onResetFilters,
+  filterButtonRef,
 }: {
   title: string;
   filtersCount: number | undefined;
@@ -30,6 +31,7 @@ export function SearchCaption({
   onCsv?: () => void;
   onExcel?: () => void;
   onResetFilters: () => void;
+  filterButtonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("common");
   const [inputValue, setInputValue] = useState<string>(committedQuery);
@@ -84,7 +86,7 @@ export function SearchCaption({
           </Button>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
           <Input
             type="text"
             placeholder={t("search")}
@@ -114,37 +116,27 @@ export function SearchCaption({
               }
             }}
           />
-          <div
-            itemType="button"
+          <Button
+            ref={filterButtonRef}
+            variant="tableAction"
+            size="tableAction"
             className={cn(
-              "text-secondary-light border-secondary-light pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full border px-3 text-xs hover:opacity-100",
-              {
-                "opacity-50": !isPanelOpen,
-              },
+              "flex items-center gap-2",
+              { "bg-secondary": isPanelOpen }
             )}
             onClick={onFilterClick}
+            type="button"
           >
-            <Filter size={10} />
-            <span>
+            <Filter size={14} />
+            <span className="flex items-center gap-1.5">
+              {t("filters")}
               {filtersCount && filtersCount > 0 ? (
-                <span className="mr-1">{filtersCount}</span>
+                <span className="bg-white text-secondary rounded-full px-1.5 py-0.5 text-[10px] leading-none font-bold min-w-[1.2rem] text-center">
+                  {filtersCount}
+                </span>
               ) : null}
-              Filters
             </span>
-            {filtersCount && filtersCount > 0 ? (
-              <Button
-                variant={"ghost"}
-                className="p-0 text-inherit"
-                size={"icon"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onResetFilters();
-                }}
-              >
-                <X size={10} />
-              </Button>
-            ) : null}
-          </div>
+          </Button>
         </div>
       </div>
     </div>

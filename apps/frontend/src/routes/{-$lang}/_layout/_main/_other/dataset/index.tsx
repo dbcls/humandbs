@@ -107,8 +107,9 @@ function RouteComponent() {
   return (
     <FilterableCard
       captionSize="lg"
-      caption={({ onFilterClick, isOpen }) => (
+      caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
+          filterButtonRef={filterButtonRef}
           title={t("dataset-list")}
           committedQuery={search.query ?? ""}
           onQueryChange={(query) => {
@@ -169,7 +170,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
-      { type: "text-filter", id: "humId", value: filters.humId ?? "" },
+      { type: "text-filter", id: "humId", value: filters.humId ?? "", uiGroup: "basic-info" },
     ];
 
     return [

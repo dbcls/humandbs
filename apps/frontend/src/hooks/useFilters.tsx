@@ -1,5 +1,6 @@
 import {
-  getRouteApi,
+  useNavigate,
+  useSearch,
   type RegisteredRouter,
   type RouteIds,
 } from "@tanstack/react-router";
@@ -12,10 +13,8 @@ const preservedKeys = ["sort", "limit", "order"];
 export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
   routeId: TId,
 ) {
-  const routeApi = getRouteApi<TId>(routeId);
-
-  const navigate = routeApi.useNavigate();
-  const filters = routeApi.useSearch();
+  const navigate = useNavigate();
+  const filters = useSearch({ from: routeId });
 
   const setFilters = (partialFilters: Record<string, unknown>) =>
     navigate({
@@ -23,8 +22,6 @@ export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
       search: cleanEmptyParams({ ...filters, ...partialFilters }) as any,
       resetScroll: false,
     });
-  // startTransition(() => {
-  // });
 
   const preservedSearch = Object.entries(filters).reduce<
     Record<string, unknown>
@@ -34,8 +31,10 @@ export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
     }
     return acc;
   }, {});
+
   const resetFilters = () => {
     navigate({
+      to: ".",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       search: cleanEmptyParams({ ...preservedSearch, page: 1 }) as any,
       resetScroll: false,
