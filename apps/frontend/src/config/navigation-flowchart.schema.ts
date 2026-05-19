@@ -14,6 +14,7 @@ export const localizedTextSchema = z.object({
 export const navigationFlowchartOptionSchema = z.object({
   id: z.string().min(1),
   title: localizedTextSchema,
+  description: localizedTextSchema.optional(),
   nextStep: z.string().optional(),
   linkedFlowchartId: z.string().uuid().optional(),
   link: z.string().optional(),

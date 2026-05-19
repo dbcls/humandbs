@@ -1344,12 +1344,20 @@ function OptionRow({
           <GripVertical className="size-3.5" />
         </button>
 
-        <LocaleInlineEditor
-          value={option.title}
-          onChange={(title) => onUpdate({ title })}
-          placeholder="Option label"
-          className="min-w-0 flex-1 text-xs"
-        />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <LocaleInlineEditor
+            value={option.title}
+            onChange={(title) => onUpdate({ title })}
+            placeholder="Option label"
+            className="min-w-0 flex-1 text-xs"
+          />
+          <LocaleInlineEditor
+            value={option.description ?? { en: "", ja: "" }}
+            onChange={(description) => onUpdate({ description })}
+            placeholder="Sub-label (optional)"
+            className="min-w-0 flex-1 text-xs text-gray-400"
+          />
+        </div>
 
         <button
           type="button"

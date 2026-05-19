@@ -6,6 +6,7 @@ export interface LocalizedText {
 export interface NavigationFlowchartOption {
   id: string;
   title: LocalizedText;
+  description?: LocalizedText;
   nextStep?: string;
   linkedFlowchartId?: string;
   link?: string;

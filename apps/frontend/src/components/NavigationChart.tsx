@@ -140,6 +140,11 @@ const OptionComponent = ({
   const [buttonHeight, setButtonHeight] = useState<number>(0);
 
   const title = locale === "ja" ? option.title.ja : option.title.en;
+  const description = option.description
+    ? locale === "ja"
+      ? (option.description.ja || option.description.en)
+      : (option.description.en || option.description.ja)
+    : null;
   const linkText =
     locale === "ja"
       ? (option.linkText?.ja ?? option.linkText?.en)
@@ -158,6 +163,15 @@ const OptionComponent = ({
   const optionBaseClasses =
     "border-tetriary w-full rounded-xl border-3 bg-white p-3 font-bold transition-colors text-3xl";
 
+  const titleBlock = (
+    <>
+      {title}
+      {description && (
+        <span className="block text-base font-normal">{description}</span>
+      )}
+    </>
+  );
+
   // Linked flowchart: show title + navigation button (same layout as external link)
   if (option.linkedFlowchartId) {
     const buttonLabel = linkedFlowchartName ?? "Continue →";
@@ -167,7 +181,7 @@ const OptionComponent = ({
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
         })}
       >
-        {title}
+        {titleBlock}
         <Button
           onClick={onOptionClick}
           className="px-8 text-sm disabled:opacity-100"
@@ -190,7 +204,7 @@ const OptionComponent = ({
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
         })}
       >
-        {title}
+        {titleBlock}
         {isExternal ? (
           <a
             href={option.link}
@@ -238,7 +252,7 @@ const OptionComponent = ({
             isEnabled && !isSelected,
         })}
       >
-        {title}
+        {titleBlock}
       </button>
       {arrow}
     </div>
