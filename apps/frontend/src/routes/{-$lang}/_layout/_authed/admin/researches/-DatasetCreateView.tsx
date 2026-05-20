@@ -18,11 +18,14 @@ import { Button } from "@/components/ui/button";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
 import { TabContentLayout } from "./-TabContentLayout";
 import { cn } from "@/lib/utils";
+import { AccessionChips } from "./-AccessionChips";
+import { mergeDatasetTemplate } from "./-mergeDatasetTemplate";
+import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 
 interface DatasetCreateViewProps {
   humId: string;
@@ -37,17 +40,25 @@ export function DatasetCreateView({
   onBack,
   onCreated,
   preview = false,
-  relatedAccessions: _relatedAccessions = [],
+  relatedAccessions: initialAccessions = [],
 }: DatasetCreateViewProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-
-  const defaultValues = useMemo(
+  const [accessions, setAccessions] = useState<string[]>(initialAccessions);
+  const [defaultValues, setDefaultValues] = useState<DatasetFormValues>(
     () => getDefaultDatasetFormValues(humId),
-    [humId],
   );
+  const formKey = useRef(0);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
   const [previewValues, setPreviewValues] = useState(defaultValues);
+
+  function applyTemplate(data: DatasetTemplateData) {
+    setDefaultValues((prev) => {
+      const merged = mergeDatasetTemplate(prev, data);
+      formKey.current += 1;
+      return merged;
+    });
+  }
 
   const { mutateAsync: create, isPending: isSaving } = useMutation({
     mutationFn: async (values: DatasetFormValues) => {
@@ -131,7 +142,15 @@ export function DatasetCreateView({
           hidden: preview,
         })}
       >
+        <div className="mb-4">
+          <AccessionChips
+            accessions={accessions}
+            onAccessionsChange={setAccessions}
+            onApply={applyTemplate}
+          />
+        </div>
         <DatasetForm
+          key={formKey.current}
           defaultValues={defaultValues}
           readOnly={false}
           onSubmit={async (values) => {
