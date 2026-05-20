@@ -16,7 +16,8 @@
     "already-in-cart": "カートに追加済み",
     "add-to-cart": "カートに追加",
     "add-all-to-cart": "全てカートに追加",
-    "add-all-datasets-to-cart": "すべてのデータセットをカートに追加"
+    "add-all-datasets-to-cart": "すべてのデータセットをカートに追加",
+    "read-more": "もっと見る"
   },
   "Footer": {
     "sitemap": "サイトマップ"

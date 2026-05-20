@@ -23,7 +23,7 @@ import {
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 import { useLocale, useTranslations } from "use-intl";
 
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { ModalCell } from "@/components/ModalCell";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
@@ -426,16 +426,17 @@ const columns = [
     id: "datasets",
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.getValue().map((id) => ({
-          id,
-          content: (
-            <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
-              <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
-            </Route.Link>
-          ),
-        }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue().map((id) => (
+            <li key={id}>
+              <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
+                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
+              </Route.Link>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
 
     size: 15,
@@ -444,7 +445,11 @@ const columns = [
     id: "title",
     header: (ctx) => ctx.table.options.meta?.t?.("title"),
     cell: function Cell(ctx) {
-      return ctx.renderValue()?.[ctx.table.options.meta?.lang!];
+      return (
+        <ModalCell maxHeight={96}>
+          <p className="text-sm">{ctx.renderValue()?.[ctx.table.options.meta?.lang!]}</p>
+        </ModalCell>
+      );
     },
   }),
   columnHelper.accessor((row) => row.versions[0], {
@@ -505,49 +510,74 @@ const columns = [
   columnHelper.accessor("methods", {
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("methods"),
-    cell: (ctx) => <p className="text-sm break-all">{ctx.renderValue()}</p>,
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="text-sm break-all whitespace-pre-wrap">{ctx.renderValue()}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   columnHelper.accessor("platforms", {
     id: "platforms",
     header: (ctx) => ctx.table.options.meta?.t("platforms"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   columnHelper.accessor("targets", {
     id: "targets",
     header: (ctx) => ctx.table.options.meta?.t("targets"),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="text-sm whitespace-pre-wrap">{ctx.getValue()}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
     // @ts-ignore TODO fix types
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="text-sm whitespace-pre-wrap">{ctx.table.options.meta?.t(ctx.getValue())}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
     header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
 ];
@@ -585,7 +615,7 @@ function AddToCartAllDatasetsButton({
       className="shrink-0"
       title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
     >
-      <ShoppingCartIcon className="size-4" />
+      <ShoppingCartIcon className="size-5" />
     </Button>
   );
 }

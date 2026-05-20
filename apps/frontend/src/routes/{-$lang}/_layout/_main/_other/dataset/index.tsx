@@ -36,7 +36,7 @@ import { FA_ICONS } from "@/lib/faIcons";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/buildFacetSections";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { ModalCell } from "@/components/ModalCell";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
@@ -418,27 +418,32 @@ export const datasetsColumns = [
     id: "experiments",
     header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.getValue().map((item, i) => ({
-          id: i,
-          content: (
-            <span>
-              {
-                item.header?.[
-                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                ]?.text
-              }
-            </span>
-          ),
-        }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue().map((item, i) => (
+            <li key={i}>
+              <span>
+                {
+                  item.header?.[
+                    ctx.table.options.meta?.lang ?? i18n.defaultLocale
+                  ]?.text
+                }
+              </span>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
     //@ts-ignore TODO fix types`
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="text-sm whitespace-pre-wrap">{ctx.table.options.meta?.t(ctx.getValue())}</p>
+      </ModalCell>
+    ),
   }),
 ];
 

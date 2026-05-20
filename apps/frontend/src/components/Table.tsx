@@ -129,7 +129,7 @@ function Table<T extends Record<string, unknown>>({
           <tr
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            className={cn("bg-white transition-colors hover:bg-gray-50", {
+            className={cn("bg-white transition-colors hover:bg-gray-50 group", {
               "cursor-pointer": onRowClick,
             })}
           >
