@@ -195,7 +195,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 function CardContent() {
   return (
     <>
-      <div className="flex min-w-full flex-1 flex-col mt-4">
+      <div className="flex min-w-full flex-1 flex-col">
         <TableWrapper />
       </div>
       <PaginationWrapper />

@@ -44,10 +44,25 @@ export function FilterableCard({
     return () => observer.disconnect();
   }, [caption]);
 
+  useEffect(() => {
+    const captionEl = document.getElementById("caption");
+    if (!captionEl) return;
+    const updateHeight = () => {
+      document.documentElement.style.setProperty(
+        "--caption-height",
+        `${captionEl.offsetHeight}px`
+      );
+    };
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(captionEl);
+    updateHeight();
+    return () => observer.disconnect();
+  }, [caption]);
+
   return (
     <Card
       className={cn("flex-1", className)}
-      captionClassName="sticky top-0 z-40 bg-white py-4 -my-4"
+      captionClassName="sticky top-0 z-40 bg-white py-4"
       caption={
         <div className="relative">
           {caption({
