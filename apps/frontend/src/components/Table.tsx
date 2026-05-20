@@ -87,10 +87,7 @@ function Table<T extends Record<string, unknown>>({
     <table
       className={cn("w-full table-auto align-top text-pretty", className)}
     >
-      <thead 
-        className="sticky z-30 text-white" 
-        style={{ top: 'var(--caption-height, 0px)' }}
-      >
+      <thead className="sticky top-0 z-30 text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
             <tr
