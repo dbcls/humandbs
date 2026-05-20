@@ -201,7 +201,7 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
       ) : (
         <Button
           variant={"ghost"}
-          className="text-white h-8 w-8 p-0 hover:bg-white/20"
+          className="text-white h-8 w-8 p-0 justify-center hover:bg-white/20"
           onClick={ctx.column.getToggleSortingHandler()}
         >
           <span className="flex flex-col items-center justify-center text-[10px] leading-[0.8]">
