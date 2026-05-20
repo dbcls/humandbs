@@ -64,10 +64,12 @@ export function ResearchDetails({
   humId,
   lang,
   onDeselect,
+  initialRelatedAccessions = [],
 }: {
   humId: string;
   lang: Locale;
   onDeselect?: () => void;
+  initialRelatedAccessions?: string[];
 }) {
   const queryClient = useQueryClient();
 
@@ -142,7 +144,7 @@ export function ResearchDetails({
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
   const [datasetDirty, setDatasetDirty] = useState(false);
-  const [jdsRelatedAccessions, setJdsRelatedAccessions] = useState<string[]>([]);
+  const [jdsRelatedAccessions, setJdsRelatedAccessions] = useState<string[]>(initialRelatedAccessions);
   const [activeTab, setActiveTab] = useState<"metadata" | "datasets">(
     "metadata",
   );
