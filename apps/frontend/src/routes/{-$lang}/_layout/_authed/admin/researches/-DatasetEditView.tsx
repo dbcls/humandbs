@@ -4,17 +4,21 @@ import {
   datasetToFormValues,
   formValuesToDatasetUpdate,
   type DatasetFormValues,
+  type DatasetFormHandle,
 } from "@/components/form-context/datasetFields/DatasetForm";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/Breadcrumb";
+import { ChevronLeft } from "lucide-react";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { $getDataset, $updateDataset } from "@/serverFunctions/datasets";
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 import {
@@ -25,7 +29,7 @@ import {
 } from "@tanstack/react-query";
 import { useState, useRef, Suspense } from "react";
 import { AccessionChips } from "./-AccessionChips";
-import { mergeDatasetTemplate } from "./-mergeDatasetTemplate";
+import { mergeDatasetTemplate, templateWouldOverwrite } from "./-mergeDatasetTemplate";
 import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { IntlProvider } from "use-intl";
@@ -93,7 +97,6 @@ function DatasetEditViewInner({
       }
       setSeqNo(result.data.meta._seq_no);
       setPrimaryTerm(result.data.meta._primary_term);
-      setDefaultValues(submittedValues);
       setError(null);
       setConflictError(false);
       queryClient.invalidateQueries({ queryKey: ["researches", "byId"] });
@@ -107,46 +110,54 @@ function DatasetEditViewInner({
     setConflictError(false);
   }
 
-  const [defaultValues, setDefaultValues] = useState<DatasetFormValues>(() =>
-    datasetToFormValues({
-      humId: dataset.humId,
-      humVersionId: dataset.humVersionId,
-      releaseDate: dataset.releaseDate,
-      criteria: dataset.criteria,
-      typeOfData: dataset.typeOfData,
-      experiments: dataset.experiments,
-    }),
-  );
-  const baseValues = useRef<DatasetFormValues>(defaultValues);
-  const formKey = useRef(0);
+  const initialFormValues = datasetToFormValues({
+    humId: dataset.humId,
+    humVersionId: dataset.humVersionId,
+    releaseDate: dataset.releaseDate,
+    criteria: dataset.criteria,
+    typeOfData: dataset.typeOfData,
+    experiments: dataset.experiments,
+  });
+
+  const [defaultValues] = useState<DatasetFormValues>(initialFormValues);
   const [accessions, setAccessions] = useState<string[]>([]);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">(lang);
   const [previewValues, setPreviewValues] = useState(defaultValues);
+  const [pendingTemplate, setPendingTemplate] = useState<{ data: DatasetTemplateData; accession: string } | null>(null);
+  const [lastAppliedId, setLastAppliedId] = useState<string | null>(null);
+  const [chipsResetKey, setChipsResetKey] = useState(0);
+  const currentValuesRef = useRef<DatasetFormValues>(defaultValues);
+  const isApplyingRef = useRef(false);
+  const formRef = useRef<DatasetFormHandle>(null);
 
-  function applyTemplate(data: DatasetTemplateData) {
-    setDefaultValues((prev) => {
-      const merged = mergeDatasetTemplate(prev, data);
-      formKey.current += 1;
-      return merged;
-    });
+  function doApplyTemplate(data: DatasetTemplateData, accession: string) {
+    const merged = mergeDatasetTemplate(currentValuesRef.current, data);
+    isApplyingRef.current = true;
+    formRef.current?.applyValues(merged);
+    setLastAppliedId(accession);
   }
 
-  const breadcrumb = (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <button type="button" onClick={onBack}>
-              Datasets
-            </button>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="font-mono">{datasetId}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+  function applyTemplate(data: DatasetTemplateData, accession: string) {
+    if (templateWouldOverwrite(currentValuesRef.current, data)) {
+      setPendingTemplate({ data, accession });
+    } else {
+      doApplyTemplate(data, accession);
+    }
+  }
+
+  const header = (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+      >
+        <ChevronLeft className="size-4" />
+        All datasets
+      </button>
+      <span className="text-gray-300">/</span>
+      <span className="font-mono text-sm font-medium">{datasetId}</span>
+    </div>
   );
 
   const actions = preview ? (
@@ -169,7 +180,29 @@ function DatasetEditViewInner({
   ) : undefined;
 
   return (
-    <TabContentLayout header={breadcrumb} actions={actions}>
+    <TabContentLayout header={header} actions={actions}>
+      <AlertDialog open={pendingTemplate !== null} onOpenChange={(open) => { if (!open) setPendingTemplate(null); }}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Overwrite existing fields?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some fields already have values. Applying this template will overwrite them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingTemplate) doApplyTemplate(pendingTemplate.data, pendingTemplate.accession);
+                setPendingTemplate(null);
+              }}
+            >
+              Overwrite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className={cn(preview && "hidden")}>
         {isDraft && (
           <div className="mb-4">
@@ -177,13 +210,14 @@ function DatasetEditViewInner({
               accessions={accessions}
               onAccessionsChange={setAccessions}
               onApply={applyTemplate}
+              lastAppliedId={lastAppliedId}
+              pendingAccession={pendingTemplate?.accession}
+              resetKey={chipsResetKey}
             />
           </div>
         )}
         <DatasetForm
-          key={formKey.current}
           defaultValues={defaultValues}
-          cleanValues={isDraft ? baseValues.current : undefined}
           readOnly={!isDraft}
           onSubmit={async (values) => {
             await save(values);
@@ -193,8 +227,18 @@ function DatasetEditViewInner({
           conflictError={conflictError}
           onReload={handleReload}
           onDirtyChange={onDirtyChange}
-          onValuesChange={setPreviewValues}
+          onValuesChange={(values) => {
+            if (isApplyingRef.current) {
+              isApplyingRef.current = false;
+            } else {
+              setChipsResetKey((k) => k + 1);
+              setLastAppliedId(null);
+            }
+            currentValuesRef.current = values;
+            setPreviewValues(values);
+          }}
           hideSaveButton
+          imperativeRef={formRef}
         />
       </div>
       <div className={cn(!preview && "hidden")}>

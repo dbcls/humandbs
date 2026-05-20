@@ -33,6 +33,7 @@ import type {
   ResearchTemplateResponse,
   DatasetTemplateResponse,
 } from "../../../backend/src/api/types/templates";
+import type { DsApplicationListResponse } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -232,6 +233,10 @@ interface APIService {
     externalId: string,
     accessToken: string,
   ): Promise<DatasetTemplateResponse>;
+  listDsApplications(
+    query: { page: number; limit: number },
+    accessToken: string,
+  ): Promise<DsApplicationListResponse>;
 }
 
 export const FixedPaginationSchema =
@@ -425,6 +430,14 @@ const api: APIService = {
     return get<DatasetTemplateResponse>(
       `/templates/dataset/${externalId}`,
       undefined,
+      authHeader(accessToken),
+    );
+  },
+
+  listDsApplications(query, accessToken) {
+    return get<DsApplicationListResponse>(
+      `/jga-shinsei/ds`,
+      query as Record<string, unknown>,
       authHeader(accessToken),
     );
   },

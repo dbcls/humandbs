@@ -3,18 +3,22 @@ import {
   datasetFormValuesToPreviewDataset,
   getDefaultDatasetFormValues,
   type DatasetFormValues,
+  type DatasetFormHandle,
 } from "@/components/form-context/datasetFields/DatasetForm";
 import { entriesToExperimentData } from "@/components/form-context/datasetFields/ExperimentsArrayField";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/Breadcrumb";
+import { ChevronLeft } from "lucide-react";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,7 +28,7 @@ import { messages } from "@/config/messages";
 import { TabContentLayout } from "./-TabContentLayout";
 import { cn } from "@/lib/utils";
 import { AccessionChips } from "./-AccessionChips";
-import { mergeDatasetTemplate } from "./-mergeDatasetTemplate";
+import { mergeDatasetTemplate, templateWouldOverwrite } from "./-mergeDatasetTemplate";
 import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 
 interface DatasetCreateViewProps {
@@ -45,20 +49,29 @@ export function DatasetCreateView({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [accessions, setAccessions] = useState<string[]>(initialAccessions);
-  const baseValues = useRef<DatasetFormValues>(getDefaultDatasetFormValues(humId));
-  const [defaultValues, setDefaultValues] = useState<DatasetFormValues>(
-    () => getDefaultDatasetFormValues(humId),
-  );
-  const formKey = useRef(0);
+  const defaultValues = getDefaultDatasetFormValues(humId);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
   const [previewValues, setPreviewValues] = useState(defaultValues);
+  const [pendingTemplate, setPendingTemplate] = useState<{ data: DatasetTemplateData; accession: string } | null>(null);
+  const [lastAppliedId, setLastAppliedId] = useState<string | null>(null);
+  const [chipsResetKey, setChipsResetKey] = useState(0);
+  const currentValuesRef = useRef<DatasetFormValues>(defaultValues);
+  const isApplyingRef = useRef(false);
+  const formRef = useRef<DatasetFormHandle>(null);
 
-  function applyTemplate(data: DatasetTemplateData) {
-    setDefaultValues((prev) => {
-      const merged = mergeDatasetTemplate(prev, data);
-      formKey.current += 1;
-      return merged;
-    });
+  function doApplyTemplate(data: DatasetTemplateData, accession: string) {
+    const merged = mergeDatasetTemplate(currentValuesRef.current, data);
+    isApplyingRef.current = true;
+    formRef.current?.applyValues(merged);
+    setLastAppliedId(accession);
+  }
+
+  function applyTemplate(data: DatasetTemplateData, accession: string) {
+    if (templateWouldOverwrite(currentValuesRef.current, data)) {
+      setPendingTemplate({ data, accession });
+    } else {
+      doApplyTemplate(data, accession);
+    }
   }
 
   const { mutateAsync: create, isPending: isSaving } = useMutation({
@@ -99,22 +112,19 @@ export function DatasetCreateView({
     },
   });
 
-  const breadcrumb = (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <button type="button" onClick={onBack}>
-              Datasets
-            </button>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>New Dataset</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+  const header = (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+      >
+        <ChevronLeft className="size-4" />
+        All datasets
+      </button>
+      <span className="text-gray-300">/</span>
+      <span className="text-sm font-medium">New dataset</span>
+    </div>
   );
 
   const actions = preview ? (
@@ -137,7 +147,29 @@ export function DatasetCreateView({
   );
 
   return (
-    <TabContentLayout header={breadcrumb} actions={actions}>
+    <TabContentLayout header={header} actions={actions}>
+      <AlertDialog open={pendingTemplate !== null} onOpenChange={(open) => { if (!open) setPendingTemplate(null); }}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Overwrite existing fields?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some fields already have values. Applying this template will overwrite them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingTemplate) doApplyTemplate(pendingTemplate.data, pendingTemplate.accession);
+                setPendingTemplate(null);
+              }}
+            >
+              Overwrite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div
         className={cn({
           hidden: preview,
@@ -148,12 +180,13 @@ export function DatasetCreateView({
             accessions={accessions}
             onAccessionsChange={setAccessions}
             onApply={applyTemplate}
+            lastAppliedId={lastAppliedId}
+            pendingAccession={pendingTemplate?.accession}
+            resetKey={chipsResetKey}
           />
         </div>
         <DatasetForm
-          key={formKey.current}
           defaultValues={defaultValues}
-          cleanValues={baseValues.current}
           readOnly={false}
           onSubmit={async (values) => {
             await create(values);
@@ -161,8 +194,18 @@ export function DatasetCreateView({
           isSaving={isSaving}
           error={error}
           showDatasetIdField
-          onValuesChange={setPreviewValues}
+          onValuesChange={(values) => {
+            if (isApplyingRef.current) {
+              isApplyingRef.current = false;
+            } else {
+              setChipsResetKey((k) => k + 1);
+              setLastAppliedId(null);
+            }
+            currentValuesRef.current = values;
+            setPreviewValues(values);
+          }}
           hideSaveButton
+          imperativeRef={formRef}
         />
       </div>
       <div

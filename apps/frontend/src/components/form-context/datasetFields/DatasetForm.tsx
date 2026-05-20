@@ -1,5 +1,5 @@
 import { useStore } from "@tanstack/react-form";
-import { useEffect } from "react";
+import { useEffect, useImperativeHandle, type Ref } from "react";
 
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
@@ -123,6 +123,10 @@ export function getDefaultDatasetFormValues(humId: string): DatasetFormValues {
   };
 }
 
+export interface DatasetFormHandle {
+  applyValues: (values: Partial<DatasetFormValues>) => void;
+}
+
 interface DatasetFormProps {
   defaultValues: DatasetFormValues;
   /** If provided, used as the baseline for modified comparison instead of defaultValues */
@@ -138,6 +142,7 @@ interface DatasetFormProps {
   showDatasetIdField?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
   onValuesChange?: (values: DatasetFormValues) => void;
+  imperativeRef?: Ref<DatasetFormHandle>;
 }
 
 export function DatasetForm({
@@ -154,6 +159,7 @@ export function DatasetForm({
   showDatasetIdField = false,
   onDirtyChange,
   onValuesChange,
+  imperativeRef,
 }: DatasetFormProps) {
   const form = useAppForm({
     defaultValues,
@@ -163,6 +169,16 @@ export function DatasetForm({
       formApi.reset(value);
     },
   });
+
+  useImperativeHandle(imperativeRef, () => ({
+    applyValues(values) {
+      if (values.releaseDate !== undefined) form.setFieldValue("releaseDate", values.releaseDate);
+      if (values.criteria !== undefined) form.setFieldValue("criteria", values.criteria);
+      if (values.typeOfData !== undefined) form.setFieldValue("typeOfData", values.typeOfData);
+      if (values.datasetId !== undefined) form.setFieldValue("datasetId", values.datasetId);
+      if (values.experiments !== undefined) form.setFieldValue("experiments", values.experiments);
+    },
+  }), [form]);
 
   const t = useTranslations("Dataset");
 

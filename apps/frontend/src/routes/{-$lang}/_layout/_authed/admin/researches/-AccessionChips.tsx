@@ -1,10 +1,12 @@
-import { $getDatasetTemplate } from "@/serverFunctions/researches";
-import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
-import React, { useState } from "react";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Check, RotateCcw, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+
 import { Badge } from "@/components/ui/badge";
-import { Check, X, RotateCcw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { $getDatasetTemplate } from "@/serverFunctions/researches";
+
+import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 
 const ACCESSION_REGEX = /^(JGAD|DRA)\d+$/;
 
@@ -17,17 +19,52 @@ type ChipState =
 interface AccessionChipsProps {
   accessions: string[];
   onAccessionsChange: (accessions: string[]) => void;
-  onApply: (data: DatasetTemplateData) => void;
+  onApply: (data: DatasetTemplateData, accession: string) => void;
+  lastAppliedId?: string | null;
+  pendingAccession?: string | null;
+  resetKey?: number;
 }
 
 export function AccessionChips({
   accessions,
   onAccessionsChange,
   onApply,
+  lastAppliedId,
+  pendingAccession,
+  resetKey,
 }: AccessionChipsProps) {
   const [chipStates, setChipStates] = useState<Record<string, ChipState>>({});
   const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setChipStates({});
+  }, [resetKey]);
+
+  useEffect(() => {
+    if (!lastAppliedId) return;
+    setChipStates((prev) => {
+      const next: Record<string, ChipState> = { [lastAppliedId]: { status: "done" } };
+      for (const key of Object.keys(prev)) {
+        if (key !== lastAppliedId) next[key] = { status: "idle" };
+      }
+      return next;
+    });
+  }, [lastAppliedId]);
+
+  useEffect(() => {
+    if (pendingAccession) return;
+    // Dialog was dismissed — reset any chip stuck in loading back to idle
+    setChipStates((prev) => {
+      const hasLoading = Object.values(prev).some((s) => s.status === "loading");
+      if (!hasLoading) return prev;
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        if (next[key].status === "loading") next[key] = { status: "idle" };
+      }
+      return next;
+    });
+  }, [pendingAccession]);
 
   function setChipState(accession: string, state: ChipState) {
     setChipStates((prev) => ({ ...prev, [accession]: state }));
@@ -36,13 +73,14 @@ export function AccessionChips({
   async function fetchAndApply(accession: string) {
     setChipState(accession, { status: "loading" });
     try {
-      const result = await $getDatasetTemplate({ data: { externalId: accession } });
+      const result = await $getDatasetTemplate({
+        data: { externalId: accession },
+      });
       if (!result.ok) {
         setChipState(accession, { status: "error", message: result.error });
         return;
       }
-      onApply(result.data);
-      setChipState(accession, { status: "done" });
+      onApply(result.data, accession);
     } catch (e) {
       setChipState(accession, {
         status: "error",
@@ -78,7 +116,8 @@ export function AccessionChips({
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-foreground-light text-xs">
-        Related accessions{accessions.length > 0 ? " — click to apply dataset template" : ""}
+        Related accessions
+        {accessions.length > 0 ? " — click to apply dataset template" : ""}
       </span>
       <div className="focus-within:ring-ring flex flex-wrap items-start gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 focus-within:ring-1">
         {accessions.map((accession) => {
@@ -96,16 +135,21 @@ export function AccessionChips({
         <div className="flex min-w-[140px] flex-1 flex-col gap-0.5">
           <Input
             value={inputValue}
-            onChange={(e) => { setInputValue(e.target.value); setInputError(null); }}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              setInputError(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
                 if (inputValue.trim()) addAccession(inputValue);
               }
             }}
-            onBlur={() => { if (inputValue.trim()) addAccession(inputValue); }}
+            onBlur={() => {
+              if (inputValue.trim()) addAccession(inputValue);
+            }}
             placeholder="JGAD… or DRA…"
-            className="h-6 border-0 p-0 font-mono text-xs shadow-none focus-visible:ring-0"
+            className="border-0 p-0 font-mono text-xs shadow-none focus-visible:ring-0"
           />
           {inputError && (
             <span className="text-xs text-red-600">{inputError}</span>
@@ -134,15 +178,20 @@ function AccessionChip({
       <Badge
         className={cn(
           "inline-flex cursor-pointer items-center gap-1 font-mono text-xs font-normal transition-colors",
-          state.status === "idle" && "border-gray-300 bg-gray-100 text-gray-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800",
-          state.status === "loading" && "cursor-wait border-gray-200 bg-gray-100 text-gray-500 opacity-70",
-          state.status === "done" && "border-green-300 bg-green-100 text-green-800",
+          state.status === "idle" &&
+            "border-gray-300 bg-gray-100 text-gray-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800",
+          state.status === "loading" &&
+            "cursor-wait border-gray-200 bg-gray-100 text-gray-500 opacity-70",
+          state.status === "done" &&
+            "border-green-300 bg-green-100 text-green-800",
           state.status === "error" && "border-red-300 bg-red-100 text-red-800",
         )}
         onClick={isLoading ? undefined : onClick}
         role="button"
         tabIndex={isLoading ? -1 : 0}
-        onKeyDown={(e: React.KeyboardEvent) => { if (!isLoading && e.key === "Enter") onClick(); }}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (!isLoading && e.key === "Enter") onClick();
+        }}
       >
         {state.status === "loading" && (
           <span className="size-3 animate-spin rounded-full border border-current border-t-transparent" />
@@ -152,7 +201,10 @@ function AccessionChip({
         {accession}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
           className="ml-0.5 opacity-50 hover:opacity-100"
           tabIndex={-1}
         >

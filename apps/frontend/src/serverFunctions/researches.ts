@@ -5,6 +5,7 @@ import {
   ResearchSearchBodySchema,
   type CreateResearchRequest,
   type CreateVersionRequest,
+  type DsApplicationListResponse,
   type ResearchDetailResponse,
   type ResearchSearchBody,
   type ResearchSearchResponse,
@@ -459,6 +460,28 @@ export const $getResearchForEdit = createServerFn()
       accessToken: accessToken ?? undefined,
     });
   });
+
+const ListDsApplicationsInputSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
+export const $listDsApplications = createServerFn({ method: "POST" })
+  .inputValidator(ListDsApplicationsInputSchema)
+  .handler<Promise<DsApplicationListResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    return api.listDsApplications({ page: data.page, limit: data.limit }, accessToken);
+  });
+
+export function getDsApplicationsQueryOptions(page: number, limit = 20) {
+  return queryOptions({
+    queryKey: ["jga-shinsei", "ds", { page, limit }],
+    queryFn: () => $listDsApplications({ data: { page, limit } }),
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
+  });
+}
 
 export function getResearchForEditQueryOptions(
   query: z.infer<typeof ResearchEditQuerySchema>,
