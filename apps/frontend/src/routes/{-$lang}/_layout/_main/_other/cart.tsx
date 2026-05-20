@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
@@ -7,7 +7,7 @@ import { SortHeader, Table } from "@/components/Table";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { ModalCell } from "@/components/ModalCell";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { FA_ICONS } from "@/lib/faIcons";
@@ -16,7 +16,6 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
-  ssr: false,
   loader: () => ({ crumb: "Cart" }),
 });
 
@@ -45,20 +44,21 @@ const cartDatasetColumns = [
     id: "experiments",
     header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.getValue().map((item, i) => ({
-          id: i,
-          content: (
-            <span>
-              {
-                item.header?.[
-                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                ]?.text
-              }
-            </span>
-          ),
-        }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {(ctx.getValue() ?? []).map((item, i) => (
+            <li key={i}>
+              <span>
+                {
+                  item.header?.[
+                    ctx.table.options.meta?.lang ?? i18n.defaultLocale
+                  ]?.text
+                }
+              </span>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   cartColumnsHelper.accessor("criteria", {
@@ -108,20 +108,22 @@ function RouteComponent() {
 
   return (
     <CardWithCaption size={"sm"} containerClassName="p-8">
-      {cart.length === 0 ? (
-        <p className="text-center text-gray-400">Cart is empty</p>
-      ) : (
-        <>
-          <Button className="mb-4 ml-auto" onClick={handleSubmit}>
-            Copy Cart Contents
-          </Button>
-          <Table
-            columns={cartDatasetColumns}
-            data={cart}
-            meta={{ t, lang: locale }}
-          />
-        </>
-      )}
+      <ClientOnly fallback={<p className="text-center text-gray-400">Loading...</p>}>
+        {cart.length === 0 ? (
+          <p className="text-center text-gray-400">Cart is empty</p>
+        ) : (
+          <>
+            <Button className="mb-4 ml-auto" onClick={handleSubmit}>
+              Copy Cart Contents
+            </Button>
+            <Table
+              columns={cartDatasetColumns}
+              data={cart}
+              meta={{ t, lang: locale }}
+            />
+          </>
+        )}
+      </ClientOnly>
     </CardWithCaption>
   );
 }
