@@ -142,6 +142,7 @@ export function ResearchDetails({
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
   const [datasetDirty, setDatasetDirty] = useState(false);
+  const [jdsRelatedAccessions, setJdsRelatedAccessions] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"metadata" | "datasets">(
     "metadata",
   );
@@ -382,11 +383,11 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedJDSValues(values: MergeResearchResult["values"]) {
+  function applyMergedJDSValues(values: MergeResearchResult["values"], relatedAccessions: string[]) {
     form.setFieldValue("title", values.title);
     form.setFieldValue(
       "summary",
-      values.summary as typeof researchValues.summary,
+      values.summary as unknown as typeof researchValues.summary,
     );
     form.setFieldValue(
       "dataProvider",
@@ -401,10 +402,7 @@ export function ResearchDetails({
       "relatedPublication",
       values.relatedPublication as typeof researchValues.relatedPublication,
     );
-    form.setFieldValue(
-      "controlledAccessUser",
-      values.controlledAccessUser as typeof researchValues.controlledAccessUser,
-    );
+    setJdsRelatedAccessions(relatedAccessions);
   }
 
   const previewValues = useStore(form.store, (state) => state.values);
@@ -766,6 +764,7 @@ export function ResearchDetails({
               <DatasetCreateView
                 humId={humId}
                 preview={datasetPreview}
+                relatedAccessions={jdsRelatedAccessions}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetPreview(false);

@@ -29,6 +29,7 @@ interface DatasetCreateViewProps {
   onBack: () => void;
   onCreated: (datasetId: string) => void;
   preview?: boolean;
+  relatedAccessions?: string[];
 }
 
 export function DatasetCreateView({
@@ -36,6 +37,7 @@ export function DatasetCreateView({
   onBack,
   onCreated,
   preview = false,
+  relatedAccessions: _relatedAccessions = [],
 }: DatasetCreateViewProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);

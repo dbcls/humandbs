@@ -108,7 +108,7 @@ export function NewResearchForm({
   });
   const formValues = useStore(form.store, (state) => state.values);
 
-  function applyMergedJDSValues(values: NewResearchMergeValues) {
+  function applyMergedJDSValues(values: NewResearchMergeValues, _relatedAccessions: string[]) {
     if (values.title !== undefined) form.setFieldValue("title", values.title);
     if (values.summary !== undefined)
       form.setFieldValue("summary", values.summary);
@@ -145,8 +145,8 @@ export function NewResearchForm({
             <MergeJDSResearchDialog
               className="mr-auto"
               currentValues={toResearchValuesForMerge(formValues)}
-              onMerge={(values) =>
-                applyMergedJDSValues(pickNewResearchMergeValues(values))
+              onMerge={(values, relatedAccessions) =>
+                applyMergedJDSValues(pickNewResearchMergeValues(values), relatedAccessions)
               }
             />
             <Button

@@ -1,4 +1,5 @@
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
+import type { ResearchTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -19,10 +20,8 @@ import {
   mergeEmptyResearchFields,
   type MergeResearchResult,
 } from "./-mergeJDSResearch";
-import type { DeepOmit } from "@/utils/typeUtils";
 
 type ResearchValues = ResearchDetailResponse["data"];
-type JDSResearchValues = DeepOmit<ResearchValues, "rawHtml">;
 
 export function MergeJDSResearchDialog({
   currentValues,
@@ -30,15 +29,15 @@ export function MergeJDSResearchDialog({
   onMerge,
   className,
 }: {
-  currentValues: ResearchValues | JDSResearchValues;
+  currentValues: ResearchValues | ResearchTemplateData;
   disabled?: boolean;
-  onMerge: (values: MergeResearchResult["values"]) => void;
+  onMerge: (values: MergeResearchResult["values"], relatedAccessions: string[]) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [jdsId, setJdsId] = useState("");
   const [fetchedResearch, setFetchedResearch] =
-    useState<JDSResearchValues | null>(null);
+    useState<ResearchTemplateData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { mutate: getJDSResearch, isPending } = useMutation({
@@ -50,7 +49,7 @@ export function MergeJDSResearchDialog({
         return;
       }
 
-      setFetchedResearch(result.data.data);
+      setFetchedResearch(result.data);
       setError(null);
     },
     onError: (err: Error) => {
@@ -84,12 +83,13 @@ export function MergeJDSResearchDialog({
 
   function handleMerge() {
     if (!mergeResult || mergeResult.changedFields.length === 0) return;
-    onMerge(mergeResult.values);
+    onMerge(mergeResult.values, fetchedResearch?.relatedAccessions?.jgad ?? []);
     handleOpenChange(false);
   }
 
   const displayTitle =
-    fetchedResearch?.title.en || fetchedResearch?.title.ja || "Untitled";
+    fetchedResearch?.title?.en || fetchedResearch?.title?.ja || "Untitled";
+  const warnings = fetchedResearch?.warnings ?? [];
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -152,6 +152,15 @@ export function MergeJDSResearchDialog({
                 ? `${mergeResult.changedFields.length} field group(s) can be filled.`
                 : "No empty fields can be filled from this J-DS record."}
             </div>
+            {warnings.length > 0 ? (
+              <ul className="mt-1 flex flex-col gap-1">
+                {warnings.map((w, i) => (
+                  <li key={i} className="text-warning text-xs">
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 

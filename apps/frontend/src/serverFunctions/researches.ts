@@ -14,6 +14,10 @@ import {
   type VersionCreateResponse,
   type WorkflowResponse,
 } from "@humandbs/backend/types";
+import type {
+  ResearchTemplateData,
+  DatasetTemplateData,
+} from "../../../backend/src/api/types/templates";
 import {
   infiniteQueryOptions,
   keepPreviousData,
@@ -56,7 +60,15 @@ export type DeleteResearchResult =
       code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
     };
 export type GetJDSResearchResult =
-  | { ok: true; data: DeepOmit<ResearchDetailResponse, "rawHtml"> }
+  | { ok: true; data: ResearchTemplateData }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+
+export type GetDatasetTemplateResult =
+  | { ok: true; data: DatasetTemplateData }
   | {
       ok: false;
       error: string;
@@ -158,11 +170,30 @@ const GetJDSResearchInputSchema = z.object({
 export const $getJDSResearch = createServerFn({ method: "POST" })
   .inputValidator(GetJDSResearchInputSchema)
   .handler<Promise<GetJDSResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.getJDSResearch(data.id);
-      return { ok: true, data: result };
+      const result = await api.getResearchTemplate(data.id, accessToken);
+      return { ok: true, data: result.data };
     } catch (error) {
       return mapApiError(error, "Failed to get J-DS research.");
+    }
+  });
+
+const GetDatasetTemplateInputSchema = z.object({
+  externalId: z.string().trim().min(1),
+});
+
+export const $getDatasetTemplate = createServerFn({ method: "POST" })
+  .inputValidator(GetDatasetTemplateInputSchema)
+  .handler<Promise<GetDatasetTemplateResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.getDatasetTemplate(data.externalId, accessToken);
+      return { ok: true, data: result.data };
+    } catch (error) {
+      return mapApiError(error, "Failed to get dataset template.");
     }
   });
 
