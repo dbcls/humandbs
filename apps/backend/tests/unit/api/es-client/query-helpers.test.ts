@@ -85,6 +85,20 @@ describe("doubleNestedWildcardQuery", () => {
       },
     })
   })
+
+  it("escapes user-supplied wildcard syntax so naked `*` and `?` cannot widen the match", () => {
+    // disease="*****" would otherwise produce a `*` * 7 wildcard that matches everything.
+    const result = doubleNestedWildcardQuery(
+      "experiments",
+      "experiments.searchable.diseases",
+      "experiments.searchable.diseases.label",
+      "*****",
+    )
+    const inner = (result as { nested: { query: { nested: { query: { wildcard: Record<string, { value: string }> } } } } })
+      .nested.query.nested.query.wildcard
+    const value = Object.values(inner)[0].value
+    expect(value).toBe("*\\*\\*\\*\\*\\**")
+  })
 })
 
 // === doubleNestedTermsQuery ===

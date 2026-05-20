@@ -9,6 +9,7 @@
  *
  * All API responses should use these schemas for consistency.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import type { FacetsMap } from "./facets"

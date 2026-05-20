@@ -27,6 +27,8 @@ import {
   buildResearchDateRangeFilters,
   buildResearchMultiMatchQuery,
   buildResearchSortSpec,
+  resolveDatasetSort,
+  resolveResearchSort,
   versionSortSpec,
 } from "@/api/es-client/query-builders"
 import {
@@ -135,15 +137,14 @@ export const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchS
     must.push({ terms: { criteria: criteriaValues } })
   }
 
-  // typeOfData filter (partial match, bilingual wildcard)
+  // typeOfData filter は tokenize 済み text に対する match。
+  // filter なので fuzziness は付けず厳密 predicate として扱う (query 側は relevance/fuzzy)。
   if ("typeOfData" in params && params.typeOfData) {
     must.push({
-      bool: {
-        should: [
-          { wildcard: { "typeOfData.ja": { value: `*${params.typeOfData}*`, case_insensitive: true } } },
-          { wildcard: { "typeOfData.en": { value: `*${params.typeOfData}*`, case_insensitive: true } } },
-        ],
-        minimum_should_match: 1,
+      multi_match: {
+        query: params.typeOfData,
+        fields: ["typeOfData.ja", "typeOfData.en"],
+        type: "best_fields",
       },
     })
   }
@@ -504,6 +505,9 @@ export const searchDatasets = async (
   const { page, limit, sort, order, q, includeFacets } = params
   const from = (page - 1) * limit
   const facetCountField: FacetCountField = opts.facetCountField ?? "datasetId"
+  // Resolve sort default here so GET and POST search paths share the same
+  // "query → relevance, otherwise datasetId" rule (docs/api-guide.md).
+  const resolvedSort = resolveDatasetSort(sort, !!q)
 
   // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
   // empty page; callers see a regular SearchResponse with `data: []`.
@@ -541,7 +545,7 @@ export const searchDatasets = async (
   }
 
   // Sort configuration
-  const sortSpec = buildDatasetSortSpec(sort, order, !!q)
+  const sortSpec = buildDatasetSortSpec(resolvedSort, order, !!q)
 
   interface Aggs {
     uniq_ids: estypes.AggregationsCardinalityAggregate
@@ -660,6 +664,9 @@ export const searchResearches = async (
     includeFacets, status: requestedStatus,
   } = params
   const from = (page - 1) * limit
+  // Resolve sort default here so GET and POST paths share the same
+  // "query → relevance, otherwise humId" rule (docs/api-guide.md).
+  const resolvedSort = resolveResearchSort(sort, !!q)
 
   // Pagination beyond ES `index.max_result_window` would 500. Short-circuit with an
   // empty page; callers see a regular SearchResponse with `data: []`.
@@ -690,22 +697,9 @@ export const searchResearches = async (
   const must: estypes.QueryDslQueryContainer[] = []
 
   // Status filter logic:
-  // - If explicit status requested, use it (with authorization check)
+  // - If explicit status requested, use it (defense-in-depth permission check)
   // - Otherwise, apply default authorization filter
   if (requestedStatus) {
-    // Check authorization for requested status
-    // public: can only request "published"
-    // authenticated: can request "draft", "review", "published" (own resources only)
-    // admin: can request any status including "deleted"
-    if (!authUser && requestedStatus !== "published") {
-      // Public user requesting non-published - return empty (forbidden handled in route)
-      return {
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
-        facets: includeFacets ? {} : undefined,
-      }
-    }
-    // Apply status filter
     must.push({ term: { status: requestedStatus } })
 
     // For non-admin authenticated users requesting non-published status, also filter by uids
@@ -746,7 +740,7 @@ export const searchResearches = async (
   }))
 
   // Sort configuration
-  const sortSpec = buildResearchSortSpec(sort, order, lang, !!q)
+  const sortSpec = buildResearchSortSpec(resolvedSort, order, lang, !!q)
 
   interface ResearchAggs {
     all_humIds?: estypes.AggregationsTermsAggregateBase<{ key: string; doc_count: number }>
@@ -774,11 +768,21 @@ export const searchResearches = async (
       humId: true, title: true, versionIds: true, latestVersion: true, dataProvider: true, summary: true, uids: true, status: true,
     }).parse(doc))
 
-  // Defense-in-depth: post-filter results that ES query should have excluded
+  // Defense-in-depth: ES side should have already filtered by latestVersion
+  // mapping, but if a stale/broken doc slips through we drop it here and emit
+  // an error log so the mismatch is observable. `pagination.total` is corrected
+  // below so the page count tracks the visible rows; we accept the per-page
+  // discrepancy in exchange for surfacing the underlying mapping bug.
   const base = baseAll.filter(doc => canAccessResearchDoc(authUser, doc))
   const postFilterExcluded = baseAll.length - base.length
   if (postFilterExcluded > 0) {
-    logger.error(`searchResearches post-filter excluded ${postFilterExcluded} documents that should have been filtered by ES query. Check ES index mapping for latestVersion field.`)
+    const leakedHumIds = baseAll
+      .filter(doc => !canAccessResearchDoc(authUser, doc))
+      .map(doc => doc.humId)
+    logger.error(
+      `searchResearches post-filter excluded ${postFilterExcluded} document(s) that ES query should have filtered out. Check ES index mapping for latestVersion.`,
+      { humIds: leakedHumIds },
+    )
   }
 
   // Fetch version and dataset details

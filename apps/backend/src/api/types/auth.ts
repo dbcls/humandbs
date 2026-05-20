@@ -5,6 +5,7 @@
  * - JWT claims from Keycloak
  * - Authenticated user context
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 // === Authentication & Authorization ===

@@ -16,39 +16,15 @@
  *   payload so we can inspect the response shape independent of ES.
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { createMiddleware } from "hono/factory"
 
 import type { AuthUser } from "@/api/types"
 
-import { createMockAuthUser, createMockResearchDoc } from "../../helpers/mock-es"
+import { adminAuthHeader, buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
+import { createMockResearchDoc } from "../../helpers/mock-es"
 
-// === Auth mock ===
+// === Auth mock (shared header-based factory) ===
 
-const TEST_AUTH_HEADER = "X-Test-Auth"
-
-const mockOptionalAuth = createMiddleware(async (c, next) => {
-  const raw = c.req.header(TEST_AUTH_HEADER)
-  c.set("authUser", raw ? (JSON.parse(raw) as AuthUser) : null)
-  await next()
-})
-
-void mock.module("@/api/middleware/auth", () => ({
-  optionalAuth: mockOptionalAuth,
-  requireAuth: createMiddleware(async (c, next) => {
-    const raw = c.req.header(TEST_AUTH_HEADER)
-    if (!raw) throw new (await import("@/api/routes/errors")).UnauthorizedError("Authentication required")
-    c.set("authUser", JSON.parse(raw) as AuthUser)
-    await next()
-  }),
-  requireAdmin: createMiddleware(async (c, next) => {
-    const user = c.get("authUser")
-    if (!user?.isAdmin) throw new (await import("@/api/routes/errors")).ForbiddenError("Admin access required")
-    await next()
-  }),
-  isAdminUser: async () => false,
-  canDeleteResource: (u: AuthUser | null) => u?.isAdmin ?? false,
-  __testing: { clearJwksCache: () => undefined, clearAdminUidsCache: () => undefined },
-}))
+void mock.module("@/api/middleware/auth", buildMockAuthModule)
 
 // === ES mocks ===
 
@@ -116,7 +92,6 @@ void mock.module("@/api/es-client/research", () => ({
   updateResearchStatus: mockUpdateResearchStatus,
   updateResearchUids: mockUpdateResearchUids,
   deleteResearch: mockDeleteResearch,
-  getPendingReviews: mock(async () => []),
 }))
 
 void mock.module("@/api/es-client/research-version", () => ({
@@ -131,13 +106,8 @@ void mock.module("@/api/es-client/research-version", () => ({
 
 const { getTestApp } = await import("../../helpers")
 
-const userAuth = (overrides: Partial<AuthUser> = {}) => ({
-  [TEST_AUTH_HEADER]: JSON.stringify(createMockAuthUser({ userId: "user-1", isAdmin: false, ...overrides })),
-})
-
-const adminAuth = () => ({
-  [TEST_AUTH_HEADER]: JSON.stringify(createMockAuthUser({ userId: "admin-1", isAdmin: true })),
-})
+const userAuth = userAuthHeader
+const adminAuth = adminAuthHeader
 
 beforeEach(() => {
   searchCalls.length = 0
@@ -202,16 +172,20 @@ describe("api/routes/research", () => {
   })
 
   describe("status filter authorization (IT-AUTH-16 / IT-RESEARCH-02)", () => {
-    it.each(["draft", "review", "deleted"] as const)(
+    it.each([
+      ["draft", /Public users can only access published/],
+      ["review", /Public users can only access published/],
+      ["deleted", /Only admins can access deleted/],
+    ] as const)(
       "public requesting status=%s returns 403",
-      async (status) => {
+      async (status, detailPattern) => {
         const app = getTestApp()
         const res = await app.request(`/research?status=${status}`)
         expect(res.status).toBe(403)
         expect(res.headers.get("content-type")).toContain("application/problem+json")
         const body = await res.json() as { title?: string; detail?: string }
         expect(body.title).toBe("Forbidden")
-        expect(body.detail).toContain("Public users can only access published")
+        expect(body.detail).toMatch(detailPattern)
         // route-layer 403 short-circuits before ES is contacted
         expect(mockSearchResearches).not.toHaveBeenCalled()
       },

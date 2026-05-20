@@ -6,13 +6,28 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
+import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
-  ErrorSpec401,
-  ErrorSpec403,
-  ErrorSpec404,
-  ErrorSpec409,
-  ErrorSpec500,
-} from "@/api/routes/errors"
+  exampleApproveResearchResponse,
+  exampleCreateDatasetForResearchRequest,
+  exampleCreateResearchRequest,
+  exampleCreateVersionRequest,
+  exampleDatasetCreateResponse,
+  exampleLinkedDatasetsListResponse,
+  exampleRejectResearchResponse,
+  exampleResearchDetailResponse,
+  exampleResearchSearchResponse,
+  exampleResearchVersionsListResponse,
+  exampleResearchWithLockResponse,
+  exampleSubmitResearchResponse,
+  exampleUidsResponse,
+  exampleUnpublishResearchResponse,
+  exampleUpdateResearchRequest,
+  exampleUpdateUidsRequest,
+  exampleVersionCreateResponse,
+  exampleVersionDetailResponse,
+} from "@/api/openapi/examples"
+import { ErrorSpec400, ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec409, ErrorSpec500 } from "@/api/routes/errors"
 import {
   CreateDatasetForResearchRequestSchema,
   CreateResearchRequestSchema,
@@ -42,7 +57,9 @@ export const listResearchRoute = createRoute({
   method: "get",
   path: "/",
   tags: ["Research"],
+  operationId: "listResearch",
   summary: "List Research",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get a paginated list of Research resources.
 
 **Visibility by role:**
@@ -57,10 +74,11 @@ export const listResearchRoute = createRoute({
   responses: {
     200: {
       content: {
-        "application/json": { schema: ResearchSearchResponseSchema },
+        "application/json": { schema: ResearchSearchResponseSchema, example: exampleResearchSearchResponse },
       },
       description: "List of research with optional facets",
     },
+    400: ErrorSpec400,
     403: ErrorSpec403,
     500: ErrorSpec500,
   },
@@ -70,7 +88,10 @@ export const createResearchRoute = createRoute({
   method: "post",
   path: "/new",
   tags: ["Research"],
+  operationId: "createResearch",
   summary: "Create Research",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Create a new Research with initial version (v1).
 
 **Authorization:** Admin only
@@ -82,16 +103,17 @@ export const createResearchRoute = createRoute({
 - Admin can assign uids (owner list) to grant edit access to other users`,
   request: {
     body: {
-      content: { "application/json": { schema: CreateResearchRequestSchema } },
+      content: { "application/json": { schema: CreateResearchRequestSchema, example: exampleCreateResearchRequest } },
     },
   },
   responses: {
     201: {
       content: {
-        "application/json": { schema: ResearchWithLockResponseSchema },
+        "application/json": { schema: ResearchWithLockResponseSchema, example: exampleResearchWithLockResponse },
       },
       description: "Research created successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     500: ErrorSpec500,
@@ -102,7 +124,9 @@ export const getResearchRoute = createRoute({
   method: "get",
   path: "/{humId}",
   tags: ["Research"],
+  operationId: "getResearch",
   summary: "Get Research Detail",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get detailed information about a specific Research by its humId.
 
 **Visibility:**
@@ -120,10 +144,12 @@ Returns the latest version by default. Use GET /research/{humId}/versions/{versi
       content: {
         "application/json": {
           schema: ResearchDetailResponseSchema,
+          example: exampleResearchDetailResponse,
         },
       },
       description: "Research detail (authenticated: full fields with lock, public: read-only)",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -133,7 +159,9 @@ export const updateResearchRoute = createRoute({
   method: "put",
   path: "/{humId}/update",
   tags: ["Research"],
+  operationId: "updateResearch",
   summary: "Update Research",
+  security: SECURITY_REQUIRES_AUTH,
   description: `Update a Research entry (full replacement).
 
 **Authorization:** Owner (user in uids) or admin
@@ -144,16 +172,17 @@ export const updateResearchRoute = createRoute({
   request: {
     params: HumIdParamsSchema,
     body: {
-      content: { "application/json": { schema: UpdateResearchRequestSchema } },
+      content: { "application/json": { schema: UpdateResearchRequestSchema, example: exampleUpdateResearchRequest } },
     },
   },
   responses: {
     200: {
       content: {
-        "application/json": { schema: ResearchWithLockResponseSchema },
+        "application/json": { schema: ResearchWithLockResponseSchema, example: exampleResearchWithLockResponse },
       },
       description: "Research updated successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -166,7 +195,10 @@ export const deleteResearchRoute = createRoute({
   method: "post",
   path: "/{humId}/delete",
   tags: ["Research"],
+  operationId: "deleteResearch",
   summary: "Delete Research",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Delete a Research (logical deletion).
 
 **Authorization:** Admin only
@@ -180,6 +212,7 @@ export const deleteResearchRoute = createRoute({
   },
   responses: {
     204: { description: "Research deleted successfully" },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -194,7 +227,9 @@ export const listVersionsRoute = createRoute({
   method: "get",
   path: "/{humId}/versions",
   tags: ["Research Versions"],
+  operationId: "listResearchVersions",
   summary: "List Research Versions",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `List all versions of a Research.
 
 Returns version history including:
@@ -209,10 +244,11 @@ Returns version history including:
   responses: {
     200: {
       content: {
-        "application/json": { schema: ResearchVersionsListResponseSchema },
+        "application/json": { schema: ResearchVersionsListResponseSchema, example: exampleResearchVersionsListResponse },
       },
       description: "List of versions",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -222,7 +258,9 @@ export const getVersionRoute = createRoute({
   method: "get",
   path: "/{humId}/versions/{version}",
   tags: ["Research Versions"],
+  operationId: "getResearchVersion",
   summary: "Get Specific Version",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get a specific version of a Research.
 
 Version format: v1, v2, v3, etc.`,
@@ -232,9 +270,10 @@ Version format: v1, v2, v3, etc.`,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: VersionDetailResponseSchema } },
+      content: { "application/json": { schema: VersionDetailResponseSchema, example: exampleVersionDetailResponse } },
       description: "Version detail",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -244,7 +283,9 @@ export const createVersionRoute = createRoute({
   method: "post",
   path: "/{humId}/versions/new",
   tags: ["Research Versions"],
+  operationId: "createResearchVersion",
   summary: "Create New Version",
+  security: SECURITY_REQUIRES_AUTH,
   description: `Create a new version of a Research.
 
 **Authorization:** Owner or admin
@@ -257,14 +298,15 @@ export const createVersionRoute = createRoute({
   request: {
     params: HumIdParamsSchema,
     body: {
-      content: { "application/json": { schema: CreateVersionRequestSchema } },
+      content: { "application/json": { schema: CreateVersionRequestSchema, example: exampleCreateVersionRequest } },
     },
   },
   responses: {
     201: {
-      content: { "application/json": { schema: VersionCreateResponseSchema } },
+      content: { "application/json": { schema: VersionCreateResponseSchema, example: exampleVersionCreateResponse } },
       description: "Version created successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -279,7 +321,9 @@ export const listLinkedDatasetsRoute = createRoute({
   method: "get",
   path: "/{humId}/dataset",
   tags: ["Research Datasets"],
+  operationId: "listResearchDatasets",
   summary: "List Linked Datasets",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `List all Datasets linked to this Research.
 
 **Visibility:**
@@ -293,10 +337,11 @@ export const listLinkedDatasetsRoute = createRoute({
   responses: {
     200: {
       content: {
-        "application/json": { schema: LinkedDatasetsListResponseSchema },
+        "application/json": { schema: LinkedDatasetsListResponseSchema, example: exampleLinkedDatasetsListResponse },
       },
       description: "List of linked datasets",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -306,7 +351,9 @@ export const createDatasetForResearchRoute = createRoute({
   method: "post",
   path: "/{humId}/dataset/new",
   tags: ["Research Datasets"],
+  operationId: "createResearchDataset",
   summary: "Create Dataset for Research",
+  security: SECURITY_REQUIRES_AUTH,
   description: `Create a new Dataset and link it to this Research.
 
 **Authorization:** Owner or admin
@@ -321,15 +368,16 @@ export const createDatasetForResearchRoute = createRoute({
     params: HumIdParamsSchema,
     body: {
       content: {
-        "application/json": { schema: CreateDatasetForResearchRequestSchema },
+        "application/json": { schema: CreateDatasetForResearchRequestSchema, example: exampleCreateDatasetForResearchRequest },
       },
     },
   },
   responses: {
     201: {
-      content: { "application/json": { schema: DatasetCreateResponseSchema } },
+      content: { "application/json": { schema: DatasetCreateResponseSchema, example: exampleDatasetCreateResponse } },
       description: "Dataset created and linked successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -344,7 +392,9 @@ export const submitRoute = createRoute({
   method: "post",
   path: "/{humId}/submit",
   tags: ["Research Status"],
+  operationId: "submitResearch",
   summary: "Submit for Review",
+  security: SECURITY_REQUIRES_AUTH,
   description: `Submit a draft Research for review.
 
 **Authorization:** Owner or admin
@@ -358,10 +408,11 @@ Returns 409 Conflict if Research is not in draft status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema, example: exampleSubmitResearchResponse },
       },
       description: "Status changed to review",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -374,7 +425,10 @@ export const approveRoute = createRoute({
   method: "post",
   path: "/{humId}/approve",
   tags: ["Research Status"],
+  operationId: "approveResearch",
   summary: "Approve Research",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Approve a Research in review status and publish it.
 
 **Authorization:** Admin only
@@ -392,10 +446,11 @@ Returns 409 Conflict if Research is not in review status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema, example: exampleApproveResearchResponse },
       },
       description: "Status changed to published",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -408,7 +463,10 @@ export const rejectRoute = createRoute({
   method: "post",
   path: "/{humId}/reject",
   tags: ["Research Status"],
+  operationId: "rejectResearch",
   summary: "Reject Research",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Reject a Research in review status and return it to draft.
 
 **Authorization:** Admin only
@@ -424,10 +482,11 @@ Returns 409 Conflict if Research is not in review status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema, example: exampleRejectResearchResponse },
       },
       description: "Status changed to draft",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -440,7 +499,10 @@ export const unpublishRoute = createRoute({
   method: "post",
   path: "/{humId}/unpublish",
   tags: ["Research Status"],
+  operationId: "unpublishResearch",
   summary: "Unpublish Research",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Unpublish a published Research and return it to draft.
 
 **Authorization:** Admin only
@@ -456,10 +518,11 @@ Returns 409 Conflict if Research is not in published status.`,
   responses: {
     200: {
       content: {
-        "application/json": { schema: WorkflowResponseSchema },
+        "application/json": { schema: WorkflowResponseSchema, example: exampleUnpublishResearchResponse },
       },
       description: "Status changed to draft",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -474,7 +537,10 @@ export const updateUidsRoute = createRoute({
   method: "put",
   path: "/{humId}/uids",
   tags: ["Research"],
+  operationId: "updateResearchUids",
   summary: "Update Research UIDs",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Update the UIDs (owner list) of a Research.
 
 **Authorization:** Admin only
@@ -488,14 +554,15 @@ export const updateUidsRoute = createRoute({
   request: {
     params: HumIdParamsSchema,
     body: {
-      content: { "application/json": { schema: UpdateUidsRequestSchema } },
+      content: { "application/json": { schema: UpdateUidsRequestSchema, example: exampleUpdateUidsRequest } },
     },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: UidsResponseSchema } },
+      content: { "application/json": { schema: UidsResponseSchema, example: exampleUidsResponse } },
       description: "UIDs updated successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,

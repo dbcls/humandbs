@@ -6,6 +6,12 @@
 import type { OpenAPIHono } from "@hono/zod-openapi"
 
 import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/api/errors"
+import { checkRequestedStatus } from "@/api/es-client/auth"
+import {
   createResearch,
   deleteResearch,
   getResearchDetail,
@@ -19,12 +25,7 @@ import {
   searchResponse,
   singleResponse,
 } from "@/api/helpers"
-import {
-  ConflictError,
-  ForbiddenError,
-  NotFoundError,
-  UnauthorizedError,
-} from "@/api/routes/errors"
+import { getAuthenticatedUser } from "@/api/middleware/auth"
 import { createPagination } from "@/api/types/response"
 import { EditableResearchStatusSchema } from "@/api/types/workflow"
 import { maybeStripRawHtml } from "@/api/utils/strip-raw-html"
@@ -48,14 +49,8 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
     const query = c.req.valid("query")
     const authUser = c.get("authUser")
 
-    // Validate status filter permissions per architecture.md
-    if (query.status) {
-      // public: can only request "published"
-      if (!authUser && query.status !== "published") {
-        throw new ForbiddenError("Public users can only access published resources")
-      }
-      // authenticated (non-admin): can request any status (own resources only for non-published)
-    }
+    const statusCheck = checkRequestedStatus(authUser, query.status)
+    if (!statusCheck.allowed) throw new ForbiddenError(statusCheck.message)
 
     // Convert listing query to search query format
     const result = await searchResearches({
@@ -70,21 +65,17 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       includeRawHtml: query.includeRawHtml,
     }, authUser)
 
-    const strippedData = maybeStripRawHtml(result.data, query.includeRawHtml ?? false)
+    // searchResearches returns ResearchSummary[] which has no rawHtml fields;
+    // strip is reserved for the detail endpoint (crud.ts:140).
     const pagination = createPagination(result.pagination.total, result.pagination.page, result.pagination.limit)
 
-    return searchResponse(c, strippedData, pagination, result.facets)
+    return searchResponse(c, result.data, pagination, result.facets)
   })
 
-  // POST /research/new (admin only - admin creates research and assigns researcherUids)
+  // POST /research/new
+  // Middleware: requireAuth + requireAdmin (registered in routes/research/index.ts).
   router.openapi(createResearchRoute, async (c) => {
-    const authUser = c.get("authUser")
-    if (!authUser) {
-      throw new UnauthorizedError()
-    }
-    if (!authUser.isAdmin) {
-      throw new ForbiddenError("Admin access required")
-    }
+    getAuthenticatedUser(c) // assert middleware ran; admin already enforced
 
     const body = c.req.valid("json")
 
@@ -127,17 +118,17 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
       throw NotFoundError.forResource("Research", humId)
     }
 
-    // Extract lock fields (present for all users, consistent with Dataset)
-    const { _seq_no, _primary_term, ...detailData } = detail
-    const seqNo = _seq_no ?? 0
-    const primaryTerm = _primary_term ?? 1
+    // Fetch lock fields separately (Dataset detail pattern, architecture.md § detail レスポンスの meta)
+    const lock = await getResearchWithSeqNo(humId)
+    const seqNo = lock?.seqNo ?? 0
+    const primaryTerm = lock?.primaryTerm ?? 1
 
     // Value-based access control: owner/admin sees actual values, others see sanitized values
-    const isOwner = isOwnerOrAdmin(authUser, detailData.uids)
+    const isOwner = isOwnerOrAdmin(authUser, detail.uids)
     const responseData = isOwner
-      ? detailData
+      ? detail
       : {
-        ...detailData,
+        ...detail,
         status: "published" as const,
         uids: [],
         draftVersion: null,
@@ -149,18 +140,12 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // PUT /research/{humId}/update
-  // Middleware: loadResearchAndAuthorize({ requireOwnership: true })
+  // Middleware: loadResearchAndAuthorize({ requireOwnership: true, requireDraftStatus: true })
+  // — 401 / 403 / 404 / 409 are all surfaced before validators run.
   router.openapi(updateResearchRoute, async (c) => {
-    // Research is preloaded by middleware with auth/ownership checks
+    // Research is preloaded by middleware; status === "draft" is guaranteed.
     const research = c.get("research")
     const { humId } = research
-
-    // Only draft Research can be edited (review/published require workflow actions)
-    if (research.status !== "draft") {
-      throw new ConflictError(
-        `Cannot update: Research is in '${research.status}' status, expected 'draft'`,
-      )
-    }
 
     const body = c.req.valid("json")
 
@@ -198,7 +183,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // POST /research/{humId}/delete
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(deleteResearchRoute, async (c) => {
     // Research is preloaded by middleware with admin check
     const research = c.get("research")
@@ -213,7 +198,7 @@ export function registerCrudHandlers(router: OpenAPIHono): void {
   })
 
   // PUT /research/{humId}/uids
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(updateUidsRoute, async (c) => {
     // Research is preloaded by middleware with admin check
     const research = c.get("research")

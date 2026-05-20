@@ -5,7 +5,13 @@
  * including searchable fields for search functionality.
  *
  * ES で使う型は Zod スキーマで定義し、TypeScript 型を推論する。
+ *
+ * The bare `@hono/zod-openapi` import is a side-effect: it calls
+ * `extendZodWithOpenApi(z)` on load, so the `.openapi(...)` method below works
+ * regardless of whether the consumer (test runner, crawler CLI, API server)
+ * imported `@hono/zod-openapi` itself.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import {
@@ -329,6 +335,10 @@ export type ResearchVersion = z.infer<typeof ResearchVersionSchema>
 
 /** Dataset with additional metadata for LLM extraction */
 export const SearchableDatasetSchema = DatasetSchema.extend({
-  originalMetadata: z.record(z.string(), z.any()).nullable().optional(),
+  // `.openapi({ type: "object" })` is required so that the generated schema
+  // has a `type` sibling to `nullable: true` (OpenAPI 3.0 forbids `nullable`
+  // without a `type`; `z.any()` alone emits `{ nullable: true }`).
+  originalMetadata: z.record(z.string(), z.any()).nullable().optional()
+    .openapi({ type: "object" }),
 })
 export type SearchableDataset = z.infer<typeof SearchableDatasetSchema>

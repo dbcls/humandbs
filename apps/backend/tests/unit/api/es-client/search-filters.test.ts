@@ -102,13 +102,17 @@ describe("buildDatasetFilterClauses", () => {
     expect(result[0]).toEqual({ terms: { criteria: ["Controlled-access (Type I)"] } })
   })
 
-  it("typeOfData -> wildcard (ja + en)", () => {
+  it("typeOfData -> multi_match (ja + en, no fuzziness)", () => {
     const result = buildDatasetFilterClauses({ ...baseParams, typeOfData: "NGS" })
 
     expect(result).toHaveLength(1)
-    const bool = result[0].bool!
-    expect(bool.should).toHaveLength(2)
-    expect(bool.minimum_should_match).toBe(1)
+    const clause = result[0] as Record<string, Record<string, unknown>>
+    expect(clause.multi_match).toBeDefined()
+    expect(clause.multi_match.query).toBe("NGS")
+    expect(clause.multi_match.fields).toEqual(["typeOfData.ja", "typeOfData.en"])
+    expect(clause.multi_match.type).toBe("best_fields")
+    // filter なので fuzziness は付けない (query 側だけ fuzzy)
+    expect(clause.multi_match.fuzziness).toBeUndefined()
   })
 
   it("releaseDate range -> range.releaseDate", () => {

@@ -10,6 +10,8 @@ import {
   buildResearchDateRangeFilters,
   buildResearchMultiMatchQuery,
   buildResearchSortSpec,
+  resolveDatasetSort,
+  resolveResearchSort,
   versionSortSpec,
 } from "@/api/es-client/query-builders"
 
@@ -38,6 +40,51 @@ describe("versionSortSpec", () => {
         order: "asc",
       },
     })
+  })
+})
+
+// === resolveResearchSort / resolveDatasetSort ===
+
+describe("resolveResearchSort", () => {
+  it("returns the explicit sort when provided", () => {
+    expect(resolveResearchSort("title", true)).toBe("title")
+    expect(resolveResearchSort("releaseDate", false)).toBe("releaseDate")
+    expect(resolveResearchSort("relevance", false)).toBe("relevance")
+  })
+
+  it("falls back to 'relevance' when sort is undefined and a query is present", () => {
+    expect(resolveResearchSort(undefined, true)).toBe("relevance")
+  })
+
+  it("falls back to 'humId' when both sort and query are missing", () => {
+    expect(resolveResearchSort(undefined, false)).toBe("humId")
+  })
+
+  it("PBT: an explicit sort is preserved regardless of hasQuery", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("humId" as const, "title" as const, "releaseDate" as const, "datePublished" as const, "dateModified" as const, "relevance" as const),
+        fc.boolean(),
+        (sort, hasQuery) => resolveResearchSort(sort, hasQuery) === sort,
+      ),
+      { numRuns: 50 },
+    )
+  })
+})
+
+describe("resolveDatasetSort", () => {
+  it("returns the explicit sort when provided", () => {
+    expect(resolveDatasetSort("datasetId", true)).toBe("datasetId")
+    expect(resolveDatasetSort("releaseDate", false)).toBe("releaseDate")
+    expect(resolveDatasetSort("relevance", false)).toBe("relevance")
+  })
+
+  it("falls back to 'relevance' when sort is undefined and a query is present", () => {
+    expect(resolveDatasetSort(undefined, true)).toBe("relevance")
+  })
+
+  it("falls back to 'datasetId' when both sort and query are missing", () => {
+    expect(resolveDatasetSort(undefined, false)).toBe("datasetId")
   })
 })
 
@@ -234,10 +281,20 @@ interface IdMatchPart {
   boost?: number
 }
 
+interface NestedMatchClause {
+  nested: {
+    path: string
+    query: {
+      match: Record<string, { query: string; fuzziness: string }>
+    }
+  }
+}
+
 interface ShouldClause {
   multi_match?: { query: string; fields: string[]; type: string; fuzziness: string }
   term?: Record<string, IdMatchPart>
   prefix?: Record<string, IdMatchPart>
+  nested?: NestedMatchClause["nested"]
 }
 
 interface BoolShouldQuery {
@@ -248,26 +305,60 @@ interface BoolShouldQuery {
 }
 
 describe("buildDatasetMultiMatchQuery", () => {
-  it("returns bool.should with multi_match plus term/prefix for humId and datasetId", () => {
+  it("returns bool.should with typeOfData multi_match, nested targets match, and term/prefix for humId and datasetId", () => {
     const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
 
     expect(result.bool.minimum_should_match).toBe(1)
+    // typeOfData は top-level text として multi_match で叩く。
     expect(result.bool.should).toContainEqual({
       multi_match: {
         query: "cancer",
         fields: [
           "typeOfData.ja^2",
           "typeOfData.en^2",
-          "experiments.searchable.targets",
         ],
         type: "best_fields",
         fuzziness: "AUTO:5,12",
+      },
+    })
+    // experiments.searchable.targets は nested 配下なので nested クエリで包む。
+    expect(result.bool.should).toContainEqual({
+      nested: {
+        path: "experiments",
+        query: {
+          match: {
+            "experiments.searchable.targets": {
+              query: "cancer",
+              fuzziness: "AUTO:5,12",
+            },
+          },
+        },
       },
     })
     expect(result.bool.should).toContainEqual({ term: { humId: { value: "cancer", case_insensitive: true, boost: 10 } } })
     expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "cancer", case_insensitive: true, boost: 5 } } })
     expect(result.bool.should).toContainEqual({ term: { datasetId: { value: "cancer", case_insensitive: true, boost: 10 } } })
     expect(result.bool.should).toContainEqual({ prefix: { datasetId: { value: "cancer", case_insensitive: true, boost: 5 } } })
+  })
+
+  it("does not include nested fields inside the top-level multi_match (nested fields require a nested wrapper)", () => {
+    const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
+    const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+
+    expect(mm?.fields).not.toContain("experiments.searchable.targets")
+    // top-level fields only
+    expect(mm?.fields).toEqual(["typeOfData.ja^2", "typeOfData.en^2"])
+  })
+
+  it("nested targets clause carries the same fuzziness as the top-level multi_match", () => {
+    const result = buildDatasetMultiMatchQuery("AR-V7") as BoolShouldQuery
+    const nested = result.bool.should.find(c => c.nested)?.nested
+    const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+
+    const targetsMatch = nested?.query.match["experiments.searchable.targets"]
+    expect(targetsMatch?.fuzziness).toBe("AUTO:5,12")
+    expect(targetsMatch?.fuzziness).toBe(mm?.fuzziness)
+    expect(targetsMatch?.query).toBe("AR-V7")
   })
 
   it("uses case_insensitive: true on every id match clause", () => {
@@ -337,6 +428,39 @@ describe("buildDatasetMultiMatchQuery", () => {
           return result.bool.minimum_should_match === 1
         },
       ),
+    )
+  })
+
+  // PBT: hostile / boundary inputs must still produce a structurally-valid
+  // ES query (no object injection, no missing should clause).
+  it("PBT: ES reserved chars / unicode / huge / null-byte inputs remain literal in the query", () => {
+    const reserved = fc.constantFrom(
+      "+", "-", "=", "&", "|", ">", "<", "!", "(", ")", "{", "}", "[", "]",
+      "^", "\"", "~", "*", "?", ":", "\\", "/",
+    )
+    const hostile = fc.oneof(
+      // ES reserved characters in arbitrary combinations
+      fc.array(reserved, { minLength: 1, maxLength: 32 }).map(a => a.join("")),
+      // Newlines + tabs
+      fc.constantFrom("\n", "\r\n", "\t", " \t\n "),
+      // Emoji / surrogate pair
+      fc.constantFrom("🌸", "👩‍🔬", "𝕏"),
+      // Long input (1024+ chars)
+      fc.string({ minLength: 1024, maxLength: 2048 }),
+      // Null byte
+      fc.constantFrom("\0", "abc\0def"),
+      // Pure whitespace
+      fc.constantFrom("   ", "\t\t", "  \t  "),
+    )
+    fc.assert(
+      fc.property(hostile, (q) => {
+        const result = buildDatasetMultiMatchQuery(q) as BoolShouldQuery
+        const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+        return mm?.query === q
+          && typeof mm.query === "string"
+          && result.bool.should.some(c => c.term?.humId?.value === q)
+      }),
+      { numRuns: 80 },
     )
   })
 })

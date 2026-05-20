@@ -9,55 +9,79 @@ import fc from "fast-check"
 
 import { canAccessResearchDoc } from "@/api/es-client/auth"
 import { computeVersionUpdates } from "@/api/routes/research/workflow"
-import type { ResearchStatus, StatusAction } from "@/api/types"
+import type { StatusAction } from "@/api/types"
 
 import { createMockResearchDoc } from "../helpers/mock-es"
 
-/** All valid (status, latestVersion, draftVersion) combinations */
-const validStates: { status: ResearchStatus; latestVersion: string | null; draftVersion: string | null }[] = [
-  // Initial creation
-  { status: "draft", latestVersion: null, draftVersion: "v1" },
-  // After submit (first time)
-  { status: "review", latestVersion: null, draftVersion: "v1" },
-  // After first approve
-  { status: "published", latestVersion: "v1", draftVersion: null },
-  // After new version creation
-  { status: "draft", latestVersion: "v1", draftVersion: "v2" },
-  // After submit (new version)
-  { status: "review", latestVersion: "v1", draftVersion: "v2" },
-  // After second approve
-  { status: "published", latestVersion: "v2", draftVersion: null },
-  // After unpublish
-  { status: "draft", latestVersion: null, draftVersion: "v1" },
-  // Deleted
-  { status: "deleted", latestVersion: "v1", draftVersion: null },
-  { status: "deleted", latestVersion: null, draftVersion: null },
-]
-
-describe("version field invariants", () => {
-  it("published => latestVersion !== null && draftVersion === null", () => {
-    for (const state of validStates) {
-      if (state.status === "published") {
-        expect(state.latestVersion).not.toBeNull()
-        expect(state.draftVersion).toBeNull()
-      }
-    }
+describe("version field invariants enforced by computeVersionUpdates", () => {
+  // approve transitions a "review" doc to a state where `latestVersion` is the
+  // accepted draftVersion and `draftVersion` is cleared. The post-state must
+  // satisfy: status==="published" => latestVersion!==null && draftVersion===null.
+  it("approve produces a state where (status=published) implies latestVersion non-null and draftVersion null", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 99 }),
+        fc.option(fc.integer({ min: 1, max: 99 }), { nil: null }),
+        (draftN, latestN) => {
+          const research = createMockResearchDoc({
+            status: "review",
+            draftVersion: `v${draftN}`,
+            latestVersion: latestN !== null ? `v${latestN}` : null,
+          })
+          const updates = computeVersionUpdates("approve", research)!
+          // Spread merges explicit `null` over `research`, mirroring the ES update body.
+          const post = { ...research, ...updates, status: "published" as const }
+          return post.latestVersion !== null && post.draftVersion === null
+        },
+      ),
+    )
   })
 
-  it("draftVersion !== null => status is draft or review", () => {
-    for (const state of validStates) {
-      if (state.draftVersion !== null) {
-        expect(["draft", "review"]).toContain(state.status)
-      }
-    }
+  // unpublish transitions a "published" doc back to "draft" with the prior
+  // latestVersion moved to draftVersion. The post-state must satisfy:
+  // draftVersion !== null => status is draft or review.
+  it("unpublish produces a state where draftVersion non-null implies status in {draft, review}", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 99 }),
+        (latestN) => {
+          const research = createMockResearchDoc({
+            status: "published",
+            latestVersion: `v${latestN}`,
+            draftVersion: null,
+          })
+          const updates = computeVersionUpdates("unpublish", research)!
+          const post = { ...research, ...updates, status: "draft" as const }
+          if (post.draftVersion !== null) {
+            return post.status === "draft" || post.status === "review"
+          }
+          return true
+        },
+      ),
+    )
   })
 
-  it("latestVersion === null && draftVersion === null => status is deleted", () => {
-    for (const state of validStates) {
-      if (state.latestVersion === null && state.draftVersion === null) {
-        expect(state.status).toBe("deleted")
-      }
-    }
+  // approve must throw when there's no draftVersion to promote, preserving the
+  // invariant that you can't end up "published" without a version to publish.
+  it("approve throws when draftVersion is null (cannot publish nothing)", () => {
+    fc.assert(
+      fc.property(
+        fc.option(fc.integer({ min: 1, max: 99 }), { nil: null }),
+        (latestN) => {
+          const research = createMockResearchDoc({
+            status: "review",
+            draftVersion: null,
+            latestVersion: latestN !== null ? `v${latestN}` : null,
+          })
+          try {
+            computeVersionUpdates("approve", research)
+            return false
+          } catch {
+            return true
+          }
+        },
+      ),
+    )
   })
 
   // PBT: version number ordering

@@ -366,7 +366,7 @@ JGA 関連 (`IT-JGA-*`) は staging PostgreSQL と staging Keycloak admin トー
 
 ## IT-AUTH-*: 認証・認可
 
-Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`loadResearchAndAuthorize` (`requireOwnership` / `adminOnly`)、`isAdminUser` (admin\_uids.json)、JWKS rotation、JWT 期限切れ、claim 不正。
+Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`loadResearchAndAuthorize` (`requireOwnership` / `requireAdmin`)、`isAdminUser` (admin\_uids.json)、JWKS rotation、JWT 期限切れ、claim 不正。
 
 > staging Keycloak の credential を使う。トークン取得不可なら IT-AUTH-* は全て skip。詳細は [integration-note.md § Keycloak](integration-note.md#keycloak-oidc) 参照。
 
@@ -515,7 +515,7 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
 
-### IT-AUTH-13: adminOnly: 非 admin は 403
+### IT-AUTH-13: requireAdmin: 非 admin は 403
 
 **endpoint**: `POST /research/{humId}/approve` (authenticated だが非 admin)
 
@@ -1263,13 +1263,13 @@ Keycloak Bearer 認証、`optionalAuth` / `requireAuth` / `requireAdmin`、`load
 
 **関連 unit テスト**: `tests/unit/api/middleware/resource-auth.test.ts`
 
-### IT-DATASET-11: PUT /dataset/{datasetId}/update は親 Research が draft でないと 403
+### IT-DATASET-11: PUT /dataset/{datasetId}/update は親 Research が draft でないと 409
 
 **endpoint**: `PUT /dataset/{review_research_datasetId}/update` (owner token、親が review)
 
 **不変条件**:
-- `status === 403`
-- `detail` に「parent Research is not in draft status」相当
+- `status === 409`
+- `detail` に「expected 'draft'」相当 (現在の status と期待 status を含む 409 Conflict メッセージ)
 - 同じ Dataset に対し親が draft に戻れば 200
 
 **回帰元**: `architecture.md § Dataset の status 依存` / `src/api/routes/dataset.ts § updateDatasetRoute § D1 check`

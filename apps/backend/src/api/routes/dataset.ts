@@ -6,6 +6,7 @@
  */
 import { createRoute } from "@hono/zod-openapi"
 
+import { ConflictError, NotFoundError, ValidationError } from "@/api/errors"
 import {
   deleteDataset,
   getDataset,
@@ -25,15 +26,23 @@ import {
 } from "@/api/helpers/response"
 import { optionalAuth, requireAdmin, requireAuth } from "@/api/middleware/auth"
 import { loadDatasetAndAuthorize } from "@/api/middleware/resource-auth"
+import { SECURITY_OPTIONAL_AUTH, SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
 import {
+  exampleDatasetDetailResponse,
+  exampleDatasetSearchResponse,
+  exampleDatasetUpdateResponse,
+  exampleDatasetVersionDetailResponse,
+  exampleDatasetVersionsListResponse,
+  exampleLinkedResearchesListResponse,
+  exampleUpdateDatasetRequest,
+} from "@/api/openapi/examples"
+import {
+  ErrorSpec400,
   ErrorSpec401,
   ErrorSpec403,
   ErrorSpec404,
   ErrorSpec409,
   ErrorSpec500,
-  ConflictError,
-  ForbiddenError,
-  NotFoundError,
 } from "@/api/routes/errors"
 import {
   DatasetDetailResponseSchema,
@@ -59,7 +68,9 @@ const listDatasetsRoute = createRoute({
   method: "get",
   path: "/",
   tags: ["Dataset"],
+  operationId: "listDatasets",
   summary: "List Datasets",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get a paginated list of Dataset resources.
 
 **Visibility by role:**
@@ -73,9 +84,10 @@ const listDatasetsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetSearchResponseSchema } },
+      content: { "application/json": { schema: DatasetSearchResponseSchema, example: exampleDatasetSearchResponse } },
       description: "List of datasets with optional facets",
     },
+    400: ErrorSpec400,
     500: ErrorSpec500,
   },
 })
@@ -84,7 +96,9 @@ const getDatasetRoute = createRoute({
   method: "get",
   path: "/{datasetId}",
   tags: ["Dataset"],
+  operationId: "getDataset",
   summary: "Get Dataset Detail",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get detailed information about a specific Dataset.
 
 **Visibility:**
@@ -101,9 +115,10 @@ Response includes \`mergedSearchable\` field which aggregates all experiment sea
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetDetailResponseSchema } },
+      content: { "application/json": { schema: DatasetDetailResponseSchema, example: exampleDatasetDetailResponse } },
       description: "Dataset detail with merged searchable fields",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -113,7 +128,9 @@ const updateDatasetRoute = createRoute({
   method: "put",
   path: "/{datasetId}/update",
   tags: ["Dataset"],
+  operationId: "updateDataset",
   summary: "Update Dataset",
+  security: SECURITY_REQUIRES_AUTH,
   description: `Update a Dataset (full replacement).
 
 **Authorization:** Owner (user in parent Research's uids) or admin
@@ -128,13 +145,14 @@ const updateDatasetRoute = createRoute({
   request: {
     params: DatasetIdParamsSchema,
     query: LangVersionQuerySchema,
-    body: { content: { "application/json": { schema: UpdateDatasetRequestSchema } } },
+    body: { content: { "application/json": { schema: UpdateDatasetRequestSchema, example: exampleUpdateDatasetRequest } } },
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetUpdateResponseSchema } },
+      content: { "application/json": { schema: DatasetUpdateResponseSchema, example: exampleDatasetUpdateResponse } },
       description: "Dataset updated successfully",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -147,7 +165,10 @@ const deleteDatasetRoute = createRoute({
   method: "post",
   path: "/{datasetId}/delete",
   tags: ["Dataset"],
+  operationId: "deleteDataset",
   summary: "Delete Dataset",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   description: `Delete a Dataset (physical deletion).
 
 **Authorization:** Admin only
@@ -164,9 +185,11 @@ const deleteDatasetRoute = createRoute({
   },
   responses: {
     204: { description: "Dataset deleted successfully" },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
+    409: ErrorSpec409,
     500: ErrorSpec500,
   },
 })
@@ -175,7 +198,9 @@ const listVersionsRoute = createRoute({
   method: "get",
   path: "/{datasetId}/versions",
   tags: ["Dataset Versions"],
+  operationId: "listDatasetVersions",
   summary: "List Dataset Versions",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `List all versions of a Dataset.
 
 Dataset versions are tied to Research versions. Each time a Research is published, the current Dataset versions are finalized.`,
@@ -185,9 +210,10 @@ Dataset versions are tied to Research versions. Each time a Research is publishe
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetVersionsListResponseSchema } },
+      content: { "application/json": { schema: DatasetVersionsListResponseSchema, example: exampleDatasetVersionsListResponse } },
       description: "List of versions",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -197,7 +223,9 @@ const getVersionRoute = createRoute({
   method: "get",
   path: "/{datasetId}/versions/{version}",
   tags: ["Dataset Versions"],
+  operationId: "getDatasetVersion",
   summary: "Get Specific Version",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get a specific version of a Dataset.
 
 Version format: v1, v2, v3, etc.
@@ -209,9 +237,10 @@ Response includes \`mergedSearchable\` field which aggregates all experiment sea
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DatasetVersionDetailResponseSchema } },
+      content: { "application/json": { schema: DatasetVersionDetailResponseSchema, example: exampleDatasetVersionDetailResponse } },
       description: "Version detail with merged searchable fields",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -221,7 +250,9 @@ const listLinkedResearchesRoute = createRoute({
   method: "get",
   path: "/{datasetId}/research",
   tags: ["Dataset"],
+  operationId: "listLinkedResearches",
   summary: "Get Parent Research",
+  security: SECURITY_OPTIONAL_AUTH,
   description: `Get the parent Research that this Dataset belongs to.
 
 A Dataset belongs to exactly one Research (1:N relationship). Returns an array with a single Research element.`,
@@ -231,9 +262,10 @@ A Dataset belongs to exactly one Research (1:N relationship). Returns an array w
   },
   responses: {
     200: {
-      content: { "application/json": { schema: LinkedResearchesListResponseSchema } },
+      content: { "application/json": { schema: LinkedResearchesListResponseSchema, example: exampleLinkedResearchesListResponse } },
       description: "Parent Research",
     },
+    400: ErrorSpec400,
     404: ErrorSpec404,
     500: ErrorSpec500,
   },
@@ -252,6 +284,9 @@ datasetRouter.use(
   "/:datasetId/update",
   loadDatasetAndAuthorize({ requireOwnership: true, requireParentDraft: true }),
 )
+// DELETE uses requireAuth + requireAdmin so the handler can still return
+// idempotent 204 when the dataset is already gone (matching REST DELETE
+// semantics). Parent-draft is enforced inline by the handler.
 datasetRouter.use("/:datasetId/delete", requireAuth, requireAdmin)
 
 // GET /dataset
@@ -311,13 +346,27 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
   const seqNo = body._seq_no
   const primaryTerm = body._primary_term
 
+  // body.humId must match the dataset's existing parent linkage. Without
+  // this check, an owner of Research A could try to repoint Dataset X to
+  // Research B via the body. The ES layer (`updateDataset`) is a second
+  // backstop — it ignores humId / humVersionId in updates outright — but this
+  // 400 short-circuits the call so the client gets a clear error.
+  //
+  // body.humVersionId is NOT compared because the value rotates across draft
+  // cycles (v1 → v2 when a new Research version is created). Pinning the
+  // correct humVersionId is the ES layer's job (`bumpDatasetVersion` derives
+  // it from `currentDoc.humId` + `parentResearch.draftVersion`).
+  if (body.humId !== preloaded.humId) {
+    throw new ValidationError(
+      "body.humId must match the dataset's parent Research",
+    )
+  }
+
   const updated = await updateDataset(datasetId, version, {
     releaseDate: body.releaseDate,
     criteria: body.criteria,
     typeOfData: body.typeOfData,
     experiments: body.experiments,
-    humId: body.humId,
-    humVersionId: body.humVersionId,
   }, seqNo, primaryTerm)
 
   if (!updated) {
@@ -342,33 +391,34 @@ datasetRouter.openapi(updateDatasetRoute, async (c) => {
 
 // POST /dataset/{datasetId}/delete
 // auth / admin are validated by requireAuth + requireAdmin before validators run.
-// The handler keeps the idempotent 204 semantics (missing dataset → 204).
+// Idempotent: missing dataset → 204. Parent-draft is enforced inline because
+// `loadDatasetAndAuthorize` would 404 on missing dataset and break idempotency.
 datasetRouter.openapi(deleteDatasetRoute, async (c) => {
   const authUser = c.get("authUser")
   const { datasetId } = c.req.valid("param")
   const query = c.req.valid("query")
   const version = query.version ?? undefined // If undefined, deletes all versions
 
-  // Check if dataset exists (pass authUser so admin can resolve datasets whose
-  // parent Research is still in draft — without this, the visibility filter on
-  // `getDataset` returns null for a draft-parent dataset even to admin and the
-  // handler would short-circuit to an idempotent 204 without actually deleting).
+  // Pass authUser so admin can resolve datasets whose parent Research is still
+  // in draft — without it the visibility filter on `getDataset` returns null and
+  // the handler short-circuits to 204 without actually deleting.
   const dataset = await getDataset(datasetId, { version }, authUser)
   if (!dataset) {
     // Already deleted or doesn't exist - idempotent success
     return c.body(null, 204)
   }
 
-  // D2: Check that parent Research is in draft status
+  // Parent Research must be in `draft` status. Mirrors the
+  // `loadDatasetAndAuthorize({ requireParentDraft })` middleware check kept
+  // inline here so the idempotent 204 short-circuit above stays in place.
   const research = await getResearchDoc(dataset.humId)
-  if (!research) {
-    throw new NotFoundError(`Parent Research ${dataset.humId} not found`)
-  }
-  if (research.status === "deleted") {
+  if (!research || research.status === "deleted") {
     throw new NotFoundError(`Parent Research ${dataset.humId} not found`)
   }
   if (research.status !== "draft") {
-    throw new ForbiddenError("Cannot delete dataset: parent Research is not in draft status")
+    throw new ConflictError(
+      `Cannot mutate dataset: parent Research is in '${research.status}' status, expected 'draft'`,
+    )
   }
 
   await deleteDataset(datasetId, version)

@@ -55,8 +55,9 @@ void mock.module("node:fs/promises", () => ({
 }))
 
 // Import AFTER mock.module so the middleware picks up mocked dependencies.
-const { __testing } = await import("@/api/middleware/auth")
+const { __testing, getAuthenticatedUser } = await import("@/api/middleware/auth")
 const { getTestApp } = await import("../helpers")
+const { InternalError } = await import("@/api/errors")
 
 // === Helpers ===
 
@@ -161,6 +162,9 @@ describe("api/middleware/auth", () => {
       expect(res.status).toBe(401)
       const body = await res.json() as { detail?: string }
       expect(body.detail).toContain("Invalid or expired token")
+      // JWTInvalid is independent of JWKS; we must NOT spend a JWKS fetch on it.
+      // Anything else would let attackers cycle the cache by spamming garbage tokens.
+      expect(mockJwtVerify).toHaveBeenCalledTimes(1)
     })
 
     it("returns 401 when JWT is expired (IT-AUTH-04)", async () => {
@@ -377,6 +381,23 @@ describe("api/middleware/auth", () => {
       // Sanity: createMockAuthUser shape stays consistent with the response shape
       const mockUser = createMockAuthUser({ userId: ADMIN_USER_ID, isAdmin: true })
       expect(mockUser.isAdmin).toBe(true)
+    })
+  })
+
+  describe("getAuthenticatedUser helper", () => {
+    it("returns the AuthUser that prior middleware set on the context", () => {
+      const user = createMockAuthUser({ userId: REGULAR_USER_ID, isAdmin: false })
+      const fakeContext = {
+        get: (key: string) => key === "authenticatedUser" ? user : undefined,
+      } as unknown as Parameters<typeof getAuthenticatedUser>[0]
+      expect(getAuthenticatedUser(fakeContext)).toBe(user)
+    })
+
+    it("throws InternalError if no prior middleware set authenticatedUser (route misconfiguration)", () => {
+      const fakeContext = {
+        get: () => undefined,
+      } as unknown as Parameters<typeof getAuthenticatedUser>[0]
+      expect(() => getAuthenticatedUser(fakeContext)).toThrow(InternalError)
     })
   })
 })

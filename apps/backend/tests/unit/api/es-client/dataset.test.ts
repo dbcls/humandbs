@@ -69,7 +69,6 @@ void mock.module("@/api/es-client/research", () => ({
   updateResearchStatus: mock(async () => null),
   updateResearchUids: mock(async () => null),
   deleteResearch: mock(async () => false),
-  getPendingReviews: mock(async () => []),
 }))
 
 const mockLinkDataset = mock(async (..._args: unknown[]) => undefined)

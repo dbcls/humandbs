@@ -10,7 +10,9 @@ import type { EsResearch, ResearchVersion, EsDataset, AuthUser } from "@/api/typ
 
 // === Mock Data Factories ===
 
-export const createMockResearchDoc = (overrides: Partial<EsResearch> = {}): EsResearch => ({
+export type ResearchPreset = "minimal" | "realistic" | "edge"
+
+const baseResearchDoc: EsResearch = {
   humId: "hum0001",
   url: { ja: "https://humandbs.dbcls.jp/hum0001", en: "https://humandbs.dbcls.jp/en/hum0001" },
   title: { ja: "テスト研究", en: "Test Research" },
@@ -32,8 +34,57 @@ export const createMockResearchDoc = (overrides: Partial<EsResearch> = {}): EsRe
   dateModified: "2024-01-01",
   status: "published",
   uids: [],
-  ...overrides,
-})
+}
+
+const buildResearchPreset = (preset: ResearchPreset): EsResearch => {
+  switch (preset) {
+    case "realistic":
+      return {
+        ...baseResearchDoc,
+        dataProvider: [
+          {
+            name: {
+              ja: { text: "ヒトデータベース", rawHtml: null },
+              en: { text: "Human Database", rawHtml: null },
+            },
+            email: null,
+            orcid: null,
+            organization: {
+              name: {
+                ja: { text: "DBCLS", rawHtml: null },
+                en: { text: "DBCLS", rawHtml: null },
+              },
+              address: null,
+            },
+          },
+        ] as EsResearch["dataProvider"],
+      }
+    case "edge":
+      // Bilingual fallbacks cleared: forces extractText / value-masking paths
+      // to handle missing ja/en pairs explicitly.
+      return {
+        ...baseResearchDoc,
+        summary: {
+          ...baseResearchDoc.summary,
+          aims: { ja: null, en: null },
+          methods: { ja: null, en: null },
+        } as EsResearch["summary"],
+        latestVersion: null,
+        draftVersion: "v1",
+        status: "draft",
+      }
+    case "minimal":
+    default:
+      return baseResearchDoc
+  }
+}
+
+export const createMockResearchDoc = (
+  overrides: Partial<EsResearch> & { preset?: ResearchPreset } = {},
+): EsResearch => {
+  const { preset, ...rest } = overrides
+  return { ...buildResearchPreset(preset ?? "minimal"), ...rest }
+}
 
 export const createMockResearchVersionDoc = (overrides: Partial<ResearchVersion> = {}): ResearchVersion => ({
   humId: "hum0001",
