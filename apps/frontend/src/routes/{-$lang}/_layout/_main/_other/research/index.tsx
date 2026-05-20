@@ -399,6 +399,20 @@ const columnHelper =
   createColumnHelper<ResearchSearchResponse["data"][number]>();
 
 const columns = [
+  columnHelper.display({
+    id: "cart",
+    header: () => null,
+    cell: (ctx) => (
+      <ClientOnly fallback={<div className="size-8 shrink-0" />}>
+        <AddToCartAllDatasetsButton
+          humId={ctx.row.original.humId}
+          tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
+        />
+      </ClientOnly>
+    ),
+    maxSize: 1,
+    size: 1,
+  }),
   columnHelper.accessor("humId", {
     id: "humId",
     header: (ctx) => (
@@ -407,17 +421,9 @@ const columns = [
 
     cell: function Cell(ctx) {
       return (
-        <div className="flex items-center gap-3">
-          <ClientOnly fallback={<div className="size-8 shrink-0" />}>
-            <AddToCartAllDatasetsButton
-              humId={ctx.getValue()}
-              tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
-            />
-          </ClientOnly>
-          <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
-            <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-          </Route.Link>
-        </div>
+        <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
+          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+        </Route.Link>
       );
     },
     size: 15,
