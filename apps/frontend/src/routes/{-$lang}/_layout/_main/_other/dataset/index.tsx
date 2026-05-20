@@ -115,9 +115,6 @@ function RouteComponent() {
           onQueryChange={(query) => {
             setFilters({ query });
           }}
-          onResetFilters={() => {
-            resetFilters();
-          }}
           resultsCount={<ResultsCount />}
           filtersCount={filtersCount}
           isPanelOpen={isOpen}
@@ -385,44 +382,12 @@ function PaginationWrapper() {
 export const datasetsColumnHelper =
   createColumnHelper<DatasetSearchResponse["data"][number]>();
 
+
 export const datasetsColumns = [
-  datasetsColumnHelper.display({
-    id: "cart",
-    header: (ctx) => {
-      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-        tableDatasets: ctx.table.options.data,
-      });
-
-      return (
-        <AddToCartToggle
-          variant={"header"}
-          state={allInCart || (someInCart ? "indeterminate" : false)}
-          onClick={handleClickCart}
-        />
-      );
-    },
-    cell: (ctx) => {
-      const { handleClickCart, inCart } = useCartTableRow({
-        dataset: ctx.row.original,
-      });
-
-      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
-    },
-    maxSize: 1,
-    size: 1,
-  }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
-    ),
-    cell: (ctx) => (
-      <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
-        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
-          {ctx.renderValue()}
-        </TextWithIcon>
-      </Route.Link>
-    ),
+    header: (ctx) => <DatasetIdHeader ctx={ctx} />,
+    cell: (ctx) => <DatasetIdCell ctx={ctx} />,
     maxSize: 10,
   }),
 
@@ -476,3 +441,37 @@ export const datasetsColumns = [
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 ];
+
+function DatasetIdHeader({ ctx }: { ctx: any }) {
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets: ctx.table.options.data,
+  });
+
+  return (
+    <div className="flex items-center gap-3">
+      <AddToCartToggle
+        variant={"header"}
+        state={allInCart || (someInCart ? "indeterminate" : false)}
+        onClick={handleClickCart}
+      />
+      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
+    </div>
+  );
+}
+
+function DatasetIdCell({ ctx }: { ctx: any }) {
+  const { handleClickCart, inCart } = useCartTableRow({
+    dataset: ctx.row.original,
+  });
+
+  return (
+    <div className="flex items-center gap-3">
+      <AddToCartToggle state={inCart} onClick={handleClickCart} />
+      <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
+        <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
+          {ctx.renderValue()}
+        </TextWithIcon>
+      </Route.Link>
+    </div>
+  );
+}
