@@ -201,7 +201,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 function CardContent() {
   return (
     <>
-      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
+      <div className="flex max-h-[calc(100vh-16rem)] min-w-full flex-1 flex-col overflow-auto mt-4">
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -359,7 +359,7 @@ function TableWrapper() {
   if (!researchesData || (isFetching && !isPlaceholderData))
     return (
       <TableLoadingSpinner
-        className="mt-4 min-h-full w-max min-w-full flex-1 text-sm"
+        className="min-h-full w-max min-w-full flex-1 text-sm"
         columns={columns}
         meta={{ t, lang }}
       />
@@ -367,7 +367,7 @@ function TableWrapper() {
 
   return (
     <Table
-      className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+      className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
       columns={columns}
       data={researchesData.data}
       sorting={sorting}

@@ -124,8 +124,8 @@ function Table<T extends Record<string, unknown>>({
           <tr
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            className={cn({
-              "cursor-pointer hover:bg-gray-50": onRowClick,
+            className={cn("transition-colors hover:bg-gray-50", {
+              "cursor-pointer": onRowClick,
             })}
           >
             {row.getVisibleCells().map((cell) => (
