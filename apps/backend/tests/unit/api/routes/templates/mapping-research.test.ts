@@ -261,12 +261,12 @@ describe("mapDsApplicationToResearchTemplate", () => {
     ])
   })
 
-  it("wraps publication string into relatedPublication[0]", async () => {
+  it("wraps publication string into relatedPublication[0] mirrored across ja and en", async () => {
     const result = await mapDsApplicationToResearchTemplate(
       buildJds({ publication: "Nakamura et al., 2024" }),
     )
     expect(result.relatedPublication).toEqual([
-      { title: { ja: null, en: "Nakamura et al., 2024" } },
+      { title: { ja: "Nakamura et al., 2024", en: "Nakamura et al., 2024" } },
     ])
   })
 
@@ -355,12 +355,17 @@ describe("mapDsApplicationToResearchTemplate", () => {
       }),
     )
     expect(result.relatedPublication).toEqual([
-      { title: { ja: null, en: "doi: 10.1093/bioinformatics/btt647" } },
-      { title: { ja: null, en: "PubMed: 24215022" } },
+      {
+        title: {
+          ja: "doi: 10.1093/bioinformatics/btt647",
+          en: "doi: 10.1093/bioinformatics/btt647",
+        },
+      },
+      { title: { ja: "PubMed: 24215022", en: "PubMed: 24215022" } },
     ])
   })
 
-  it("de-duplicates PubMed IDs across multiple JGAS entries", async () => {
+  it("de-duplicates PubMed IDs across multiple JGAS entries and mirrors text in ja/en", async () => {
     pubmedMap.set("JGAS000001", ["111", "222"])
     pubmedMap.set("JGAS000002", ["222", "333"])
     const result = await mapDsApplicationToResearchTemplate(
@@ -369,12 +374,9 @@ describe("mapDsApplicationToResearchTemplate", () => {
         publication: null,
       }),
     )
-    const ids = result.relatedPublication?.map((p) => p.title.en)
-    expect(ids).toEqual([
-      "PubMed: 111",
-      "PubMed: 222",
-      "PubMed: 333",
-    ])
+    const expected = ["PubMed: 111", "PubMed: 222", "PubMed: 333"]
+    expect(result.relatedPublication?.map((p) => p.title.en)).toEqual(expected)
+    expect(result.relatedPublication?.map((p) => p.title.ja)).toEqual(expected)
   })
 
   it("records dblink failure as a warning and continues", async () => {
@@ -387,7 +389,7 @@ describe("mapDsApplicationToResearchTemplate", () => {
       }),
     )
     expect(result.relatedPublication).toEqual([
-      { title: { ja: null, en: "PubMed: 999" } },
+      { title: { ja: "PubMed: 999", en: "PubMed: 999" } },
     ])
     expect(result.warnings).toHaveLength(1)
     expect(result.warnings[0]).toContain("JGAS000002")

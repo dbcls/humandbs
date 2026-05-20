@@ -145,7 +145,7 @@ test("returns 200 for /research with pagination", async () => {
 
 ## CI
 
-`bun test` は `tests/unit/` のみを実行する。integration は手動 (`bun run test:integration`) で、運用は **dev で手動実行 → staging deploy 前に smoke** で行う。
+`bun run test` (= `test:api && test:es && test:crawler`) は `tests/unit/` のみを実行する。integration は手動 (`bun run test:integration`) で、運用は **dev で手動実行 → staging deploy 前に smoke** で行う。
 
 GitHub Actions で integration を回すには、ES service container を `services:` で起動 + converter の最小データセットを bring-up する必要がある。JGA は staging 環境にしかないため、CI では skip するか staging への secure tunnel が要る。
 

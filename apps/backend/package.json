@@ -25,7 +25,7 @@
     "es:load-mappings": "bun run src/es/load-mappings.ts",
     "es:validate-docs": "bun run src/es/validate-docs.ts",
     "es:load-docs": "bun run src/es/load-docs.ts",
-    "test": "bun test",
+    "test": "bun run test:api && bun run test:es && bun run test:crawler",
     "test:crawler": "bun test tests/unit/crawler",
     "test:es": "bun test tests/unit/es",
     "test:api": "FAIL=0; for f in $(find tests/unit/api -name '*.test.ts' | sort); do echo \"--- $f ---\"; timeout 120 bun test \"$f\" || FAIL=$((FAIL+1)); done; if [ $FAIL -gt 0 ]; then echo \"Failed files: $FAIL\"; exit 1; fi",

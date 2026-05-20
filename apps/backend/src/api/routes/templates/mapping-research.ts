@@ -21,7 +21,9 @@
  *   - relatedPublication wraps jds.publication (free-text) into one entry and
  *     also folds in pubmed IDs reached from JGAS via DDBJ Search /dblink, so
  *     boilerplate jds.publication values like "投稿中" are backed up by a
- *     verifiable reference when available.
+ *     verifiable reference when available. Each entry's title is mirrored
+ *     across `ja` and `en` because the source is a language-agnostic
+ *     citation / identifier and a frontend locale switch should not blank it.
  */
 import {
   DblinkAccessionType,
@@ -187,7 +189,7 @@ export const mapDsApplicationToResearchTemplate = async (
   const relatedPublication: { title: { ja: string | null; en: string | null } }[] = []
   const pubText = orNull(jds.publication)
   if (pubText) {
-    relatedPublication.push({ title: { ja: null, en: pubText } })
+    relatedPublication.push({ title: { ja: pubText, en: pubText } })
   }
 
   const jgasIds = jds.jgaIds.filter(isJgasAccession)
@@ -196,7 +198,8 @@ export const mapDsApplicationToResearchTemplate = async (
     requestId,
   )
   for (const id of pubmedIds) {
-    relatedPublication.push({ title: { ja: null, en: `PubMed: ${id}` } })
+    const label = `PubMed: ${id}`
+    relatedPublication.push({ title: { ja: label, en: label } })
   }
 
   return {
