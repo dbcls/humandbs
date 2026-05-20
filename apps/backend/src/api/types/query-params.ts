@@ -145,7 +145,7 @@ export const DatasetSearchQuerySchema = PaginationQuerySchema
     humId: z.string().optional()
       .describe("Filter by parent Research ID (exact match)"),
     typeOfData: z.string().max(256).optional()
-      .describe("Filter by data type (partial match, max 256 chars)"),
+      .describe("Filter by data type (tokenized match against typeOfData.ja / .en, max 256 chars)"),
   })
 export type DatasetSearchQuery = z.infer<typeof DatasetSearchQuerySchema>
 

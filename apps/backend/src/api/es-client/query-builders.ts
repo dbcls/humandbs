@@ -119,16 +119,30 @@ export const buildDatasetMultiMatchQuery = (q: string): QueryContainer => ({
   bool: {
     minimum_should_match: 1,
     should: [
+      // typeOfData は top-level text なので multi_match で直接叩く。
       {
         multi_match: {
           query: q,
           fields: [
             "typeOfData.ja^2",
             "typeOfData.en^2",
-            "experiments.searchable.targets",
           ],
           type: "best_fields",
           fuzziness: FULL_TEXT_FUZZINESS,
+        },
+      },
+      // experiments.searchable.targets は nested 配下なので nested クエリで包む必要がある。
+      {
+        nested: {
+          path: "experiments",
+          query: {
+            match: {
+              "experiments.searchable.targets": {
+                query: q,
+                fuzziness: FULL_TEXT_FUZZINESS,
+              },
+            },
+          },
         },
       },
       ...buildIdMatchClauses(["humId", "datasetId"], q),

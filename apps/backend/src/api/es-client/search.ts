@@ -39,7 +39,7 @@ import {
   doubleNestedTermsQuery,
   nestedBooleanTermQuery,
 } from "@/api/es-client/query-helpers"
-import { escapeEsWildcard, esTotal, mgetMap, uniq } from "@/api/es-client/utils"
+import { esTotal, mgetMap, uniq } from "@/api/es-client/utils"
 import { logger } from "@/api/logger"
 import {
   EsDatasetSchema,
@@ -137,16 +137,14 @@ export const buildDatasetFilterClauses = (params: DatasetSearchQuery | ResearchS
     must.push({ terms: { criteria: criteriaValues } })
   }
 
-  // typeOfData filter (partial match, bilingual wildcard)
+  // typeOfData filter は tokenize 済み text に対する match。
+  // filter なので fuzziness は付けず厳密 predicate として扱う (query 側は relevance/fuzzy)。
   if ("typeOfData" in params && params.typeOfData) {
-    const escaped = escapeEsWildcard(params.typeOfData)
     must.push({
-      bool: {
-        should: [
-          { wildcard: { "typeOfData.ja": { value: `*${escaped}*`, case_insensitive: true } } },
-          { wildcard: { "typeOfData.en": { value: `*${escaped}*`, case_insensitive: true } } },
-        ],
-        minimum_should_match: 1,
+      multi_match: {
+        query: params.typeOfData,
+        fields: ["typeOfData.ja", "typeOfData.en"],
+        type: "best_fields",
       },
     })
   }

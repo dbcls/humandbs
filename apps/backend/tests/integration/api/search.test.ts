@@ -23,6 +23,8 @@ interface ResearchSummary {
 interface DatasetSummary {
   datasetId: string
   humId: string
+  typeOfData?: { ja: string | null; en: string | null } | null
+  experiments?: { searchable?: { targets?: string | null } }[]
 }
 
 const fetchJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -419,4 +421,100 @@ describe("IT-SEARCH-*: Research / Dataset search", () => {
   // tokens to assert "must hit / must not hit". They are covered in unit
   // (`tests/unit/api/es-client/query-builders.test.ts`); here we additionally rely on
   // staging-side smoke (`tests/api-manual-testing.md`).
+
+  // `typeOfData` の mapping を keyword から text+kw に変えた結果、トークン単位の全文検索が効くようになったことを
+  // 実 ES で確認する。バグが残っていたら typeOfData は keyword 全体一致でしか引けないため、
+  // 1 トークンでの query は (fuzziness を含めても) typeOfData 経由でヒット 0 になる。
+  // humId で絞ったうえでさらに query=<typeOfData の 1 トークン> を重ねても source がヒットすることを assert する。
+  itWithEs("IT-SEARCH-31: POST /dataset/search query is a token from typeOfData -> dataset is in results", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      // 2 文字以上の英数字トークンを抽出 (記号や日本語は CJK 分割の挙動が異なるので英数字に絞る)
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 2)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; humId: string; token: string } | null = null
+    for (const d of list.data) {
+      const token = pickToken(d.typeOfData?.en) ?? pickToken(d.typeOfData?.ja)
+      if (token) {
+        target = { datasetId: d.datasetId, humId: d.humId, token }
+        break
+      }
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-31: no Dataset with multi-token typeOfData")
+      return
+    }
+    // humId フィルタで親 Research の Dataset 群に絞り、query で typeOfData の 1 トークンを足す。
+    // mapping が text 化された後だけ source がヒットする (keyword 全体一致のままだと 0 件)。
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, lang: "en", humId: target.humId, query: target.token,
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // `experiments.searchable.targets` は nested 配下の text。multi_match が nested ラッパー無しだと
+  // 0 ヒットになるバグの再発防止: query=<targets の 1 トークン> でその Dataset がヒットすることを assert。
+  itWithEs("IT-SEARCH-32: POST /dataset/search query is a token from experiments.searchable.targets -> dataset is in results", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 2)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; token: string } | null = null
+    for (const d of list.data) {
+      for (const exp of d.experiments ?? []) {
+        const token = pickToken(exp.searchable?.targets)
+        if (token) {
+          target = { datasetId: d.datasetId, token }
+          break
+        }
+      }
+      if (target) break
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-32: no Dataset with non-empty searchable.targets")
+      return
+    }
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, lang: "en", query: target.token,
+    })
+    expect(status).toBe(200)
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
+
+  // filter 側の typeOfData (POST `filters.typeOfData`) も match query に統一されたので、
+  // トークン単位で narrow できることを実 ES で確認する。
+  itWithEs("IT-SEARCH-33: POST /dataset/search filters.typeOfData by token narrows results and matches the source dataset", async () => {
+    const list = await fetchJson<SearchResponse<DatasetSummary>>("/dataset?limit=100")
+    const pickToken = (s: string | null | undefined): string | null => {
+      if (!s) return null
+      const tokens = s.split(/[^A-Za-z0-9]+/).filter(t => t.length >= 2)
+      return tokens.length > 0 ? tokens[0] : null
+    }
+    let target: { datasetId: string; token: string } | null = null
+    for (const d of list.data) {
+      const token = pickToken(d.typeOfData?.en) ?? pickToken(d.typeOfData?.ja)
+      if (token) {
+        target = { datasetId: d.datasetId, token }
+        break
+      }
+    }
+    if (!target) {
+      console.log("  SKIP IT-SEARCH-33: no Dataset with multi-token typeOfData")
+      return
+    }
+    const baseline = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 1,
+    })
+    const { status, json } = await postSearch<SearchResponse<DatasetSummary>>("/dataset/search", {
+      page: 1, limit: 100, filters: { typeOfData: target.token },
+    })
+    expect(status).toBe(200)
+    expect(json.meta.pagination.total).toBeLessThanOrEqual(baseline.json.meta.pagination.total)
+    expect(json.data.some((d) => d.datasetId === target.datasetId)).toBe(true)
+  })
 })

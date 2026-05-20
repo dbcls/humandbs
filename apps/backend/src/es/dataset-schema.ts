@@ -22,7 +22,7 @@ export const datasetSchema = {
 
   // Classification
   criteria: f.keyword(),
-  typeOfData: f.bilingualKeyword(),
+  typeOfData: f.bilingualTextKw(),
 
   // Experiments (nested for independent querying)
   experiments: f.nested({

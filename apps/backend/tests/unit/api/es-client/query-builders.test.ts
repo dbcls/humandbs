@@ -281,10 +281,20 @@ interface IdMatchPart {
   boost?: number
 }
 
+interface NestedMatchClause {
+  nested: {
+    path: string
+    query: {
+      match: Record<string, { query: string; fuzziness: string }>
+    }
+  }
+}
+
 interface ShouldClause {
   multi_match?: { query: string; fields: string[]; type: string; fuzziness: string }
   term?: Record<string, IdMatchPart>
   prefix?: Record<string, IdMatchPart>
+  nested?: NestedMatchClause["nested"]
 }
 
 interface BoolShouldQuery {
@@ -295,26 +305,60 @@ interface BoolShouldQuery {
 }
 
 describe("buildDatasetMultiMatchQuery", () => {
-  it("returns bool.should with multi_match plus term/prefix for humId and datasetId", () => {
+  it("returns bool.should with typeOfData multi_match, nested targets match, and term/prefix for humId and datasetId", () => {
     const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
 
     expect(result.bool.minimum_should_match).toBe(1)
+    // typeOfData は top-level text として multi_match で叩く。
     expect(result.bool.should).toContainEqual({
       multi_match: {
         query: "cancer",
         fields: [
           "typeOfData.ja^2",
           "typeOfData.en^2",
-          "experiments.searchable.targets",
         ],
         type: "best_fields",
         fuzziness: "AUTO:5,12",
+      },
+    })
+    // experiments.searchable.targets は nested 配下なので nested クエリで包む。
+    expect(result.bool.should).toContainEqual({
+      nested: {
+        path: "experiments",
+        query: {
+          match: {
+            "experiments.searchable.targets": {
+              query: "cancer",
+              fuzziness: "AUTO:5,12",
+            },
+          },
+        },
       },
     })
     expect(result.bool.should).toContainEqual({ term: { humId: { value: "cancer", case_insensitive: true, boost: 10 } } })
     expect(result.bool.should).toContainEqual({ prefix: { humId: { value: "cancer", case_insensitive: true, boost: 5 } } })
     expect(result.bool.should).toContainEqual({ term: { datasetId: { value: "cancer", case_insensitive: true, boost: 10 } } })
     expect(result.bool.should).toContainEqual({ prefix: { datasetId: { value: "cancer", case_insensitive: true, boost: 5 } } })
+  })
+
+  it("does not include nested fields inside the top-level multi_match (nested fields require a nested wrapper)", () => {
+    const result = buildDatasetMultiMatchQuery("cancer") as BoolShouldQuery
+    const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+
+    expect(mm?.fields).not.toContain("experiments.searchable.targets")
+    // top-level fields only
+    expect(mm?.fields).toEqual(["typeOfData.ja^2", "typeOfData.en^2"])
+  })
+
+  it("nested targets clause carries the same fuzziness as the top-level multi_match", () => {
+    const result = buildDatasetMultiMatchQuery("AR-V7") as BoolShouldQuery
+    const nested = result.bool.should.find(c => c.nested)?.nested
+    const mm = result.bool.should.find(c => c.multi_match)?.multi_match
+
+    const targetsMatch = nested?.query.match["experiments.searchable.targets"]
+    expect(targetsMatch?.fuzziness).toBe("AUTO:5,12")
+    expect(targetsMatch?.fuzziness).toBe(mm?.fuzziness)
+    expect(targetsMatch?.query).toBe("AR-V7")
   })
 
   it("uses case_insensitive: true on every id match clause", () => {
