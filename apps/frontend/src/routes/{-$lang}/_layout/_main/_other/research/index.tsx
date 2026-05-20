@@ -203,7 +203,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 function CardContent() {
   return (
     <>
-      <div className="flex min-w-full flex-1 flex-col">
+      <div className="flex min-w-full flex-1 flex-col overflow-x-auto">
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -613,15 +613,11 @@ function AddToCartAllDatasetsButton({
   }
 
   return (
-    <Button
-      variant="tableAction"
-      size="icon"
-      disabled={allInCart}
+    <AddToCartToggle
+      state={allInCart || (someInCart ? "indeterminate" : false)}
       onClick={handleAddAllToCart}
       className="shrink-0"
       title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
-    >
-      <ShoppingCartIcon className="size-5" />
-    </Button>
+    />
   );
 }
