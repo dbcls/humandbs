@@ -193,8 +193,8 @@ function RouteComponent() {
         containerClassName="main-content mt-8 min-w-0"
       >
         <PreviousVersionsList
-          versions={previousVersions!}
-          revisionsBasePath={revisionsBasePath!}
+          versions={previousVersions}
+          revisionsBasePath={revisionsBasePath}
         />
       </Card>
     );

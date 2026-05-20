@@ -29,6 +29,7 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { lang, queryClient } = Route.useRouteContext();
   const [selectedHumId, setSelectedHumId] = useState<string | null>(null);
+  const [pendingAccessions, setPendingAccessions] = useState<string[]>([]);
 
   const removeDummyResearch = useCallback(() => {
     queryClient.setQueriesData<{
@@ -49,6 +50,7 @@ function RouteComponent() {
   function handleDiscardNewResearch() {
     removeDummyResearch();
     setSelectedHumId(null);
+    setPendingAccessions([]);
   }
 
   // Clean up dummy entry when navigating away from this route
@@ -71,7 +73,10 @@ function RouteComponent() {
       {selectedHumId && isDummyResearch(selectedHumId) ? (
         <NewResearchForm
           lang={lang}
-          onCreated={(humId) => setSelectedHumId(humId)}
+          onCreated={(humId, relatedAccessions) => {
+            setPendingAccessions(relatedAccessions);
+            setSelectedHumId(humId);
+          }}
           onDiscard={handleDiscardNewResearch}
         />
       ) : selectedHumId ? (
@@ -90,7 +95,11 @@ function RouteComponent() {
               key={selectedHumId}
               humId={selectedHumId}
               lang={lang}
-              onDeselect={() => setSelectedHumId(null)}
+              initialRelatedAccessions={pendingAccessions}
+              onDeselect={() => {
+                setSelectedHumId(null);
+                setPendingAccessions([]);
+              }}
             />
           </Suspense>
         </ErrorResetBoundary>

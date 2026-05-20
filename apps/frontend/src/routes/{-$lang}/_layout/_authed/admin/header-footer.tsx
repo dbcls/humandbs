@@ -151,6 +151,23 @@ function NavigationItemLeadingIcon({ item }: { item: NavigationItem }) {
   return <Link2 className="mt-0.5 size-3 shrink-0 text-amber-600" />;
 }
 
+function CardWithPath({
+  path,
+  children,
+}: {
+  path: string | undefined;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="text-2xs font-mono leading-none text-gray-400">
+        {path}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Route component
 // ---------------------------------------------------------------------------
@@ -1663,10 +1680,7 @@ function NavbarPoolDocCard({
       ].join(" ")}
       title={isAssigned ? `Assigned to: ${groupName ?? "navbar"}` : undefined}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {doc.contentId}
-        </span>
+      <CardWithPath path={doc.contentId}>
         <div className="flex items-start gap-1.5">
           <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
           <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
@@ -1679,7 +1693,7 @@ function NavbarPoolDocCard({
             )}
           </div>
         </div>
-      </div>
+      </CardWithPath>
     </li>
   );
 }
@@ -1899,13 +1913,12 @@ function NavbarGroupColumn({
           </button>
           <div className="min-w-0 flex-1">
             <LocaleInlineEditor
-              displayLocale={lang}
               value={{
                 en: g.group.label["en"] ?? "",
                 ja: g.group.label["ja"] ?? "",
               }}
               onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
-              displayClassName="text-xs font-semibold uppercase text-gray-500"
+              className="text-xs font-semibold text-gray-500 uppercase"
               required
             />
           </div>
@@ -2142,10 +2155,7 @@ function NavbarLinkedItemRow({
         isDragSource ? "opacity-40" : "",
       ].join(" ")}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {itemPath}
-        </span>
+      <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <button
             type="button"
@@ -2163,7 +2173,7 @@ function NavbarLinkedItemRow({
             onSave={onSave}
           />
         </div>
-      </div>
+      </CardWithPath>
       <button
         type="button"
         onClick={onRemove}
@@ -2219,10 +2229,7 @@ function NavbarSubItemRow({
         !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {itemPath}
-        </span>
+      <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <button
             type="button"
@@ -2240,7 +2247,7 @@ function NavbarSubItemRow({
             onSave={onSave}
           />
         </div>
-      </div>
+      </CardWithPath>
       <Switch
         checked={enabled}
         onCheckedChange={onToggleEnabled}
@@ -2440,17 +2447,14 @@ function NavbarItemOverlay({
 
   return (
     <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {itemPath}
-        </span>
+      <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <NavigationItemLeadingIcon item={item} />
           <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
             {getEditorItemLabel(item, lang, documentTitleByContentId)}
           </span>
         </div>
-      </div>
+      </CardWithPath>
     </li>
   );
 }
@@ -3159,10 +3163,7 @@ function FooterPoolDocCard({
       ].join(" ")}
       title={isAssigned ? `Assigned to: ${groupName ?? "a group"}` : undefined}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {doc.contentId}
-        </span>
+      <CardWithPath path={doc.contentId}>
         <div className="flex items-start gap-1.5">
           <GripVertical className="mt-0.5 size-3 shrink-0 text-gray-400" />
           <FileText className="mt-0.5 size-3 shrink-0 text-sky-600" />
@@ -3175,7 +3176,7 @@ function FooterPoolDocCard({
             )}
           </div>
         </div>
-      </div>
+      </CardWithPath>
     </li>
   );
 }
@@ -3454,9 +3455,8 @@ function FooterGroupColumn({
               en: g.group.label["en"] ?? "",
               ja: g.group.label["ja"] ?? "",
             }}
-            displayLocale={lang}
             onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
-            displayClassName="text-xs font-semibold uppercase text-gray-500"
+            className="text-xs font-semibold text-gray-500 uppercase"
             required
           />
         </div>
@@ -3628,10 +3628,7 @@ function FooterItemRow({
         !enabled ? "opacity-50" : "",
       ].join(" ")}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {itemPath}
-        </span>
+      <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <button
             type="button"
@@ -3649,7 +3646,7 @@ function FooterItemRow({
             onSave={(value) => onUpdateLinkLabel(item.id, value)}
           />
         </div>
-      </div>
+      </CardWithPath>
       <Switch
         checked={enabled}
         onCheckedChange={(checked) => onToggleEnabled(item.id, checked)}
@@ -3735,17 +3732,14 @@ function FooterItemOverlay({
 
   return (
     <li className="flex items-start gap-1 rounded bg-white px-1 py-1 shadow-lg ring-2 ring-blue-300">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-2xs font-mono leading-none text-gray-400">
-          {itemPath}
-        </span>
+      <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <NavigationItemLeadingIcon item={item} />
           <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
             {getEditorItemLabel(item, lang, documentTitleByContentId)}
           </span>
         </div>
-      </div>
+      </CardWithPath>
     </li>
   );
 }

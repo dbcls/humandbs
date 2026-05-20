@@ -12,29 +12,44 @@ const ToggleGroupContext = React.createContext<
   variant: "default",
 });
 
-function ToggleGroup({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ToggleGroupRoot = ToggleGroupPrimitive.Root as any;
+
+function ToggleGroup<T extends string>({
   className,
   variant,
   size,
   children,
+  onValueChange,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
-  VariantProps<typeof toggleVariants>) {
+}: Omit<
+  React.ComponentProps<typeof ToggleGroupPrimitive.Root>,
+  "onValueChange" | "value"
+> &
+  VariantProps<typeof toggleVariants> & {
+    value?: T;
+    onValueChange?: (value: T) => void;
+  }) {
   return (
-    <ToggleGroupPrimitive.Root
+    <ToggleGroupRoot
       data-slot="toggle-group"
       data-variant={variant}
       data-size={size}
       className={cn(
-        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs",
+        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs data-[variant=pill]:gap-2",
+        {
+          "flex items-center rounded-full bg-white/90 p-1.5 backdrop-blur-sm":
+            variant === "pill",
+        },
         className,
       )}
+      onValueChange={onValueChange as ((value: string) => void) | undefined}
       {...props}
     >
       <ToggleGroupContext.Provider value={{ variant, size }}>
         {children}
       </ToggleGroupContext.Provider>
-    </ToggleGroupPrimitive.Root>
+    </ToggleGroupRoot>
   );
 }
 
@@ -43,9 +58,10 @@ function ToggleGroupItem({
   children,
   variant,
   size,
+  activeClassName,
   ...props
 }: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
-  VariantProps<typeof toggleVariants>) {
+  VariantProps<typeof toggleVariants> & { activeClassName?: string }) {
   const context = React.useContext(ToggleGroupContext);
 
   return (
@@ -54,12 +70,13 @@ function ToggleGroupItem({
       data-variant={context.variant || variant}
       data-size={context.size || size}
       className={cn(
+        "data-[state=off]:bg-foreground-light/20 min-w-0 shrink-0 cursor-pointer shadow-none first:rounded-l-md last:rounded-r-md focus:z-10 focus-visible:z-10 data-[state=on]:text-white data-[variant=outline]:border-l-0 data-[variant=outline]:first:border-l",
         toggleVariants({
           variant: context.variant || variant,
           size: context.size || size,
         }),
-        "data-[state=off]:bg-foreground-light/20 min-w-0 shrink-0 cursor-pointer rounded-none shadow-none first:rounded-l-md last:rounded-r-md focus:z-10 focus-visible:z-10 data-[state=on]:text-white data-[variant=outline]:border-l-0 data-[variant=outline]:first:border-l",
         className,
+        activeClassName,
       )}
       {...props}
     >

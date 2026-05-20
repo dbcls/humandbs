@@ -1,10 +1,13 @@
+import { useLocation, Link } from "@tanstack/react-router";
 import { Filter, Search, X } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
+import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
 export function SearchCaption({
   title,
@@ -17,7 +20,7 @@ export function SearchCaption({
   onCopy,
   onCsv,
   onExcel,
-  onResetFilters,
+  filterButtonRef,
 }: {
   title: string;
   filtersCount: number | undefined;
@@ -29,24 +32,85 @@ export function SearchCaption({
   onCopy?: () => void;
   onCsv?: () => void;
   onExcel?: () => void;
-  onResetFilters: () => void;
+  filterButtonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("common");
-  const [inputValue, setInputValue] = useState(committedQuery);
+  const [inputValue, setInputValue] = useState<string>(committedQuery);
 
   useEffect(() => {
     setInputValue(committedQuery);
   }, [committedQuery]);
 
+  function handleResetInput() {
+    setInputValue("");
+    if (committedQuery.trim().length > 0) {
+      startTransition(() => {
+        onQueryChange(undefined);
+      });
+    }
+  }
+
+  function handleSearch() {
+    startTransition(() => {
+      onQueryChange(inputValue || undefined);
+    });
+  }
+
+  const location = useLocation();
+
+  const place = location.pathname.split("/").at(-1) as "dataset" | "research";
+  const switchSearch = getTableSwitchSearch(
+    location.search as Record<string, unknown>,
+  );
+
+  const tCommon = useTranslations("common");
+
   return (
-    <div className="flex h-fit items-center justify-between">
+    <div className="flex h-fit flex-wrap items-center justify-between">
       <div className="flex items-baseline gap-10">
-        <h3 className="text-lg relative before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary pl-3">{title}</h3>
+        <h3 className="before:bg-secondary relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2">
+          {title}
+        </h3>
         {resultsCount}
       </div>
 
-      <div className="flex gap-4">
-        <div className="mt-0.5 flex gap-1">
+      <div className="flex flex-wrap items-center gap-4">
+        <ToggleGroup
+          variant="pill"
+          type="single"
+          value={place}
+          className="border border-gray-200"
+        >
+          <ToggleGroupItem
+            asChild
+            value="research"
+            variant="pill"
+            className="data-[state=on]:bg-accent px-8"
+          >
+            <Link
+              className="no-underline"
+              to="/{-$lang}/research"
+              search={switchSearch.research}
+            >
+              {tCommon("research")}
+            </Link>
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            asChild
+            value="dataset"
+            variant="pill"
+            className="data-[state=on]:bg-secondary px-8"
+          >
+            <Link
+              className="no-underline"
+              to="/{-$lang}/dataset"
+              search={switchSearch.dataset}
+            >
+              {tCommon("dataset")}
+            </Link>
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <div className="flex gap-1">
           <Button
             variant={"tableAction"}
             className="h-fit"
@@ -73,7 +137,7 @@ export function SearchCaption({
           </Button>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
           <Input
             type="text"
             placeholder={t("search")}
@@ -81,64 +145,113 @@ export function SearchCaption({
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            beforeIcon={<Search size={22} />}
+            className="h-14 w-md py-2 pr-0 pl-8"
             afterIcon={
-              <Button
-                variant={"plain"}
-                size={"icon"}
-                className={"text-foreground-light pointer-events-auto"}
-                disabled={!committedQuery}
-                onClick={() => {
-                  setInputValue("");
-                  startTransition(() => {
-                    onQueryChange(undefined);
-                  });
-                }}
-              >
-                <X size={22} />
-              </Button>
+              <>
+                {inputValue ? (
+                  <Button
+                    variant={"plain"}
+                    size={"icon"}
+                    className={"text-foreground-light pointer-events-auto"}
+                    onClick={handleResetInput}
+                  >
+                    <X size={22} />
+                  </Button>
+                ) : null}
+                <Button
+                  disabled={inputValue.trim().length === 0}
+                  variant="accent"
+                  size="default"
+                  className="pointer-events-auto gap-2 rounded-full px-6 py-2 text-sm"
+                  onClick={handleSearch}
+                >
+                  <Search size={18} />
+                </Button>
+              </>
             }
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                startTransition(() => {
-                  onQueryChange(inputValue || undefined);
-                });
+                handleSearch();
               }
             }}
           />
-          <div
-            itemType="button"
-            className={cn(
-              "text-secondary-light border-secondary-light pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full border px-3 text-xs hover:opacity-100",
-              {
-                "opacity-50": !isPanelOpen,
-              },
-            )}
+          <Button
+            ref={filterButtonRef}
+            variant="tableAction"
+            size="tableAction"
+            className={cn("flex items-center gap-2", {
+              "bg-secondary": isPanelOpen,
+            })}
             onClick={onFilterClick}
+            type="button"
           >
-            <Filter size={10} />
-            <span>
+            <Filter size={14} />
+            <span className="flex items-center gap-1.5">
+              {t("filters")}
               {filtersCount && filtersCount > 0 ? (
-                <span className="mr-1">{filtersCount}</span>
+                <span className="text-secondary min-w-[1.2rem] rounded-full bg-white px-1.5 py-0.5 text-center text-[10px] leading-none font-bold">
+                  {filtersCount}
+                </span>
               ) : null}
-              Filters
             </span>
-            {filtersCount && filtersCount > 0 ? (
-              <Button
-                variant={"ghost"}
-                className="p-0 text-inherit"
-                size={"icon"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onResetFilters();
-                }}
-              >
-                <X size={10} />
-              </Button>
-            ) : null}
-          </div>
+          </Button>
         </div>
       </div>
     </div>
   );
+}
+
+const researchSorts = new Set([
+  "humId",
+  "title",
+  "releaseDate",
+  "datePublished",
+  "dateModified",
+  "relevance",
+]);
+const datasetSorts = new Set(["datasetId", "releaseDate", "relevance"]);
+
+function getTableSwitchSearch(currentSearch: Record<string, unknown>) {
+  return {
+    research: cleanEmptyParams(
+      buildTableSwitchSearch(currentSearch, "research"),
+    ),
+    dataset: cleanEmptyParams(buildTableSwitchSearch(currentSearch, "dataset")),
+  };
+}
+
+function buildTableSwitchSearch(
+  currentSearch: Record<string, unknown>,
+  target: "dataset" | "research",
+) {
+  if (target === "research") {
+    return {
+      page: 1,
+      limit: currentSearch.limit,
+      sort: isStringInSet(currentSearch.sort, researchSorts)
+        ? currentSearch.sort
+        : undefined,
+      order: currentSearch.order,
+      query: currentSearch.query,
+      datePublished: currentSearch.datePublished,
+      dateModified: currentSearch.dateModified,
+      datasetFilters: currentSearch.datasetFilters ?? currentSearch.filters,
+    };
+  }
+
+  return {
+    page: 1,
+    limit: currentSearch.limit,
+    sort: isStringInSet(currentSearch.sort, datasetSorts)
+      ? currentSearch.sort
+      : undefined,
+    order: currentSearch.order,
+    query: currentSearch.query,
+    humId: currentSearch.humId,
+    filters: currentSearch.filters ?? currentSearch.datasetFilters,
+  };
+}
+
+function isStringInSet(value: unknown, set: Set<string>): value is string {
+  return typeof value === "string" && set.has(value);
 }

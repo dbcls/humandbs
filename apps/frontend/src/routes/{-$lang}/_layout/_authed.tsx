@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
+  ArchiveRestore,
   Bell,
   Cuboid,
   Files,
@@ -16,6 +17,7 @@ import { Link } from "@/components/Link";
 import { useCan } from "@/hooks/useCan";
 
 export const tabParamSchema = z.enum([
+  "data-transfer",
   "news",
   "alerts",
   "documents",
@@ -112,12 +114,6 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
         },
       });
     }
-
-    const tab = getTabRoute(matches.at(-1)?.fullPath);
-
-    return {
-      tab,
-    };
   },
 
   component: RouteComponent,
@@ -209,6 +205,15 @@ function NavPanel() {
                   </span>
                 }
                 tab="flowcharts"
+              />
+              <PanelItem
+                title={
+                  <span>
+                    <ArchiveRestore className="mr-2 inline size-5 align-middle leading-normal" />
+                    Data Transfer
+                  </span>
+                }
+                tab="data-transfer"
               />
             </div>
           </section>

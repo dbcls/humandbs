@@ -55,7 +55,8 @@ export function Markdown({ contentHtml, className, title }: MarkdownProps) {
 
         if (domNode.name === "img") {
           // Add lazy loading to images
-          return <img {...domNode.attribs} loading="lazy" />;
+          const { "class": className, ...rest } = domNode.attribs;
+          return <img className={className} {...rest} loading="lazy" />;
         }
 
         if (domNode.name === "callout") {
@@ -78,7 +79,7 @@ export function Markdown({ contentHtml, className, title }: MarkdownProps) {
 
   return (
     <div className={cn("custom-prose", className)}>
-      {typeof title === "string" ? <h1>{title}</h1> : !!title ? title : null}
+      {typeof title === "string" ? <h1>{title}</h1> : (title || null)}
       {parse(contentHtml.markup ?? "", options)}
     </div>
   );

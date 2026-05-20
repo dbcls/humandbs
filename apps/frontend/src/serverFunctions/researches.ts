@@ -5,6 +5,7 @@ import {
   ResearchSearchBodySchema,
   type CreateResearchRequest,
   type CreateVersionRequest,
+  type DsApplicationListResponse,
   type ResearchDetailResponse,
   type ResearchSearchBody,
   type ResearchSearchResponse,
@@ -14,6 +15,10 @@ import {
   type VersionCreateResponse,
   type WorkflowResponse,
 } from "@humandbs/backend/types";
+import type {
+  ResearchTemplateData,
+  DatasetTemplateData,
+} from "../../../backend/src/api/types/templates";
 import {
   infiniteQueryOptions,
   keepPreviousData,
@@ -56,7 +61,15 @@ export type DeleteResearchResult =
       code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
     };
 export type GetJDSResearchResult =
-  | { ok: true; data: DeepOmit<ResearchDetailResponse, "rawHtml"> }
+  | { ok: true; data: ResearchTemplateData }
+  | {
+      ok: false;
+      error: string;
+      code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
+    };
+
+export type GetDatasetTemplateResult =
+  | { ok: true; data: DatasetTemplateData }
   | {
       ok: false;
       error: string;
@@ -158,11 +171,30 @@ const GetJDSResearchInputSchema = z.object({
 export const $getJDSResearch = createServerFn({ method: "POST" })
   .inputValidator(GetJDSResearchInputSchema)
   .handler<Promise<GetJDSResearchResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
     try {
-      const result = await api.getJDSResearch(data.id);
-      return { ok: true, data: result };
+      const result = await api.getResearchTemplate(data.id, accessToken);
+      return { ok: true, data: result.data };
     } catch (error) {
       return mapApiError(error, "Failed to get J-DS research.");
+    }
+  });
+
+const GetDatasetTemplateInputSchema = z.object({
+  externalId: z.string().trim().min(1),
+});
+
+export const $getDatasetTemplate = createServerFn({ method: "POST" })
+  .inputValidator(GetDatasetTemplateInputSchema)
+  .handler<Promise<GetDatasetTemplateResult>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    try {
+      const result = await api.getDatasetTemplate(data.externalId, accessToken);
+      return { ok: true, data: result.data };
+    } catch (error) {
+      return mapApiError(error, "Failed to get dataset template.");
     }
   });
 
@@ -323,7 +355,7 @@ export function getResearchesQueryOptions(
     queryFn: ({ signal }) =>
       $getResearches({ data: { ...data, includeFacets: true }, signal }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
-    placeholderData: keepPreviousData,
+    // placeholderData: keepPreviousData,
   });
 }
 
@@ -428,6 +460,28 @@ export const $getResearchForEdit = createServerFn()
       accessToken: accessToken ?? undefined,
     });
   });
+
+const ListDsApplicationsInputSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
+export const $listDsApplications = createServerFn({ method: "POST" })
+  .inputValidator(ListDsApplicationsInputSchema)
+  .handler<Promise<DsApplicationListResponse>>(async ({ data }) => {
+    const accessToken = $$getJWT();
+    if (!accessToken) throw new Error("Unauthorized");
+    return api.listDsApplications({ page: data.page, limit: data.limit }, accessToken);
+  });
+
+export function getDsApplicationsQueryOptions(page: number, limit = 20) {
+  return queryOptions({
+    queryKey: ["jga-shinsei", "ds", { page, limit }],
+    queryFn: () => $listDsApplications({ data: { page, limit } }),
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
+  });
+}
 
 export function getResearchForEditQueryOptions(
   query: z.infer<typeof ResearchEditQuerySchema>,

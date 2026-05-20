@@ -11,6 +11,7 @@ import {
   type DatasetSearchBody,
   type CreateDatasetForResearchRequest,
   type UpdateDatasetRequest,
+  type LinkedDatasetsListResponse,
 } from "@humandbs/backend/types";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -73,6 +74,33 @@ export function getDatasetsPaginatedQueryOptions(
     },
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 60,
+  });
+}
+
+/**
+ * Gets all linked datasets for a given humId, non-paginated
+ */
+export const $getDatasetsOfResearch = createServerFn()
+  .inputValidator(
+    z.object({
+      humId: z.string(),
+    }),
+  )
+  .handler<Promise<LinkedDatasetsListResponse>>(async ({ data }) => {
+    const token = $$getJWT();
+    return await api.getResearchDatasets(data, token ?? undefined);
+  });
+
+/**
+ * Query options getter.
+ * Disabled by default (for explicid fetch on add to cart button click)
+ */
+export function getDatasetsOfResearchQueryOptions(humId: string) {
+  return queryOptions({
+    queryKey: ["datasets", "ofResearch", humId],
+    queryFn: () => $getDatasetsOfResearch({ data: { humId } }),
+    staleTime: 1000 * 60 * 60,
+    enabled: false,
   });
 }
 

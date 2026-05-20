@@ -1,37 +1,24 @@
-import {
-  useLoaderData,
-  useRouteContext,
-  useRouter,
-} from "@tanstack/react-router";
-import { LucideX } from "lucide-react";
+import { useState } from "react";
 
-import { $saveHiddenAlertIds } from "@/serverFunctions/alert";
+import { useLoaderData } from "@tanstack/react-router";
+import { LucideX, TriangleAlert } from "lucide-react";
 
 import { Button } from "./ui/button";
 
 export function Alerts() {
   const { alerts } = useLoaderData({ from: "/{-$lang}/_layout/_main" });
-  const { lang } = useRouteContext({ from: "/{-$lang}/_layout/_main" });
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
-  const router = useRouter();
+  const visibleAlerts = alerts?.filter((a) => !hiddenIds.has(a.id));
 
-  async function handleHideAlert(alertId: string) {
-    await $saveHiddenAlertIds({ data: { alertId, locale: lang } });
-    await router.invalidate({
-      filter: (r) => r.fullPath !== "/{-$lang}/admin",
-    });
-  }
-
-  if (!alerts || alerts.length === 0) return null;
+  if (!visibleAlerts || visibleAlerts.length === 0) return null;
   return (
     <ul className="flex flex-col gap-2">
-      {alerts.map((alert) => (
+      {visibleAlerts.map((alert) => (
         <AlertMessage
           key={alert.id}
           {...alert}
-          onHide={(alertId) => {
-            handleHideAlert(alertId);
-          }}
+          onHide={(alertId) => setHiddenIds((prev) => new Set(prev).add(alertId))}
         />
       ))}
     </ul>
@@ -48,8 +35,11 @@ export function AlertMessage({
   content: string;
 }) {
   return (
-    <div className="border-secondary text-foreground-dark flex items-center justify-between gap-2 rounded-sm border bg-white px-4 py-2">
-      <p className="text-xs whitespace-pre-wrap">{content}</p>
+    <div className="text-foreground-dark flex items-center justify-between gap-2 rounded-sm border border-amber-600 bg-amber-50 px-4 py-2">
+      <div className="flex items-center gap-4">
+        <TriangleAlert className="size-5 text-amber-700" />
+        <p className="text-xs whitespace-pre-wrap">{content}</p>
+      </div>
       <Button
         onClick={() => onHide?.(id)}
         variant={"ghost"}

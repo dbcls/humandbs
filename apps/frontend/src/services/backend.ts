@@ -27,7 +27,13 @@ import {
   type WorkflowResponse,
   type VersionCreateResponse,
   type DatasetCreateResponse,
+  type LinkedDatasetsListResponse,
 } from "@humandbs/backend/types";
+import type {
+  ResearchTemplateResponse,
+  DatasetTemplateResponse,
+} from "../../../backend/src/api/types/templates";
+import type { DsApplicationListResponse } from "@humandbs/backend/types";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -151,6 +157,10 @@ interface APIService {
     search: LangQuery;
     accessToken?: string;
   }): Promise<ResearchVersionsListResponse>;
+  getResearchDatasets(
+    query: { humId: string },
+    accessToken?: string,
+  ): Promise<LinkedDatasetsListResponse>;
   getDatasetsPaginated(query: {
     search: DatasetListingQuery;
   }): Promise<DatasetSearchResponse>;
@@ -215,9 +225,18 @@ interface APIService {
     accessToken: string,
   ): Promise<DatasetUpdateResponse>;
   deleteDataset(datasetId: string, accessToken: string): Promise<void>;
-  getJDSResearch(
-    id: string,
-  ): Promise<DeepOmit<ResearchDetailResponse, "rawHtml">>;
+  getResearchTemplate(
+    jdsId: string,
+    accessToken: string,
+  ): Promise<ResearchTemplateResponse>;
+  getDatasetTemplate(
+    externalId: string,
+    accessToken: string,
+  ): Promise<DatasetTemplateResponse>;
+  listDsApplications(
+    query: { page: number; limit: number },
+    accessToken: string,
+  ): Promise<DsApplicationListResponse>;
 }
 
 export const FixedPaginationSchema =
@@ -248,6 +267,14 @@ const api: APIService = {
       `/research/${query.params.humId}/versions`,
       query.search as Record<string, unknown>,
       query.accessToken ? authHeader(query.accessToken) : undefined,
+    );
+  },
+
+  getResearchDatasets(query, accessToken) {
+    return get<LinkedDatasetsListResponse>(
+      `research/${query.humId}/dataset`,
+      undefined,
+      accessToken ? authHeader(accessToken) : undefined,
     );
   },
 
@@ -391,13 +418,28 @@ const api: APIService = {
     );
   },
 
-  getJDSResearch(id) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const research = getEmptyResearchDetails();
-        resolve({ ...research, data: { ...research.data, humId: id } });
-      }, 1000);
-    });
+  getResearchTemplate(jdsId, accessToken) {
+    return get<ResearchTemplateResponse>(
+      `/templates/research/${jdsId}`,
+      undefined,
+      authHeader(accessToken),
+    );
+  },
+
+  getDatasetTemplate(externalId, accessToken) {
+    return get<DatasetTemplateResponse>(
+      `/templates/dataset/${externalId}`,
+      undefined,
+      authHeader(accessToken),
+    );
+  },
+
+  listDsApplications(query, accessToken) {
+    return get<DsApplicationListResponse>(
+      `/jga-shinsei/ds`,
+      query as Record<string, unknown>,
+      authHeader(accessToken),
+    );
   },
 };
 
@@ -429,52 +471,4 @@ export function mapApiError<C extends string = never>(
       return { ok: false, error: detail, code: "UNAUTHORIZED" };
   }
   throw error;
-}
-
-/** Returns dummy data. For testing purposes only */
-function getEmptyResearchDetails(): DeepOmit<
-  ResearchDetailResponse,
-  "rawHtml"
-> {
-  const now = new Date().toISOString();
-
-  return {
-    data: {
-      humId: "",
-      url: { ja: null, en: null },
-      title: { ja: "Dummy Ja title", en: "Dummy en title" },
-      summary: {
-        aims: { ja: { text: "Dummy Ja aims" }, en: { text: "Dummy En aims" } },
-        methods: { ja: { text: "Dummy Ja methods" }, en: null },
-        targets: { ja: null, en: null },
-        url: { ja: [], en: [] },
-      },
-      dataProvider: [
-        {
-          name: { ja: { text: "dummy Ja data provider name" }, en: null },
-        },
-      ],
-      researchProject: [],
-      grant: [],
-      relatedPublication: [],
-      controlledAccessUser: [],
-      latestVersion: null,
-      datePublished: null,
-      dateModified: now,
-      status: "draft",
-      uids: [],
-      draftVersion: null,
-      humVersionId: "",
-      version: "",
-      versionReleaseDate: now,
-      datasets: [],
-      releaseNote: { ja: null, en: null },
-    },
-    meta: {
-      requestId: "",
-      timestamp: now,
-      _seq_no: 0,
-      _primary_term: 1,
-    },
-  };
 }

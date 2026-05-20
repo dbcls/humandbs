@@ -24,11 +24,16 @@ const answersSchema = z
   .optional()
   .default({});
 
+const chainItemSchema = z.object({
+  id: z.string(),
+  stepId: z.string().optional(),
+});
+
 const navigationSearchSchema = z.object({
   answers: answersSchema,
-  // Ordered stack of linked flowchart uuids navigated into (entry point is always root).
+  // Ordered stack of linked flowchart entries navigated into (entry point is always root).
   // Last element is the currently displayed linked flowchart.
-  chain: z.array(z.string()).optional().default([]),
+  chain: z.array(chainItemSchema).optional().default([]),
 });
 
 export const Route = createFileRoute(
@@ -63,8 +68,8 @@ function RouteComponent() {
   const t = useTranslations("Data-submission");
 
   // The currently displayed flowchart: last in chain, or the entry point
-  const currentLinkedFlowchartId =
-    chain.length > 0 ? chain[chain.length - 1] : null;
+  const currentChainItem = chain.length > 0 ? chain[chain.length - 1] : null;
+  const currentLinkedFlowchartId = currentChainItem?.id ?? null;
 
   // Load entry point metadata
   const { data: entryPointData } = useQuery(
@@ -73,8 +78,8 @@ function RouteComponent() {
 
   // Load metadata for every id in the chain (for breadcrumb names + caption)
   const chainQueries = useQueries({
-    queries: chain.map((id) => ({
-      ...getNavigationFlowchartByIdQueryOptions(id, lang),
+    queries: chain.map((item) => ({
+      ...getNavigationFlowchartByIdQueryOptions(item.id, lang),
     })),
   });
 
@@ -87,10 +92,10 @@ function RouteComponent() {
       nameJa: entryPointData?.nameJa ?? "ナビゲーション",
       linkedDepth: null, // entry point = go back to no chain
     },
-    ...chain.map((id, idx) => {
+    ...chain.map((item, idx) => {
       const data = chainQueries[idx]?.data;
       return {
-        slug: id,
+        slug: item.id,
         nameEn: data?.nameEn ?? "…",
         nameJa: data?.nameJa ?? "…",
         linkedDepth: idx + 1, // truncate chain to this depth
@@ -134,12 +139,12 @@ function RouteComponent() {
     });
   };
 
-  /** Pushes a linked flowchart UUID onto the chain, making it the active view. */
-  const handleNavigateToFlowchart = (linkedFlowchartId: string) => {
+  /** Pushes a linked flowchart onto the chain, making it the active view. */
+  const handleNavigateToFlowchart = (linkedFlowchartId: string, stepId?: string) => {
     navigate({
       search: (prev) => ({
         ...prev,
-        chain: [...(prev.chain ?? []), linkedFlowchartId],
+        chain: [...(prev.chain ?? []), { id: linkedFlowchartId, stepId }],
       }),
     });
   };
@@ -152,7 +157,7 @@ function RouteComponent() {
   const handleBreadcrumbClick = (linkedDepth: number | null) => {
     const newChain = linkedDepth === null ? [] : chain.slice(0, linkedDepth);
     // Keep only answers for flowcharts still in scope (entry point + newChain ids)
-    const keepKeys = new Set([ENTRY_POINT_KEY, ...newChain]);
+    const keepKeys = new Set([ENTRY_POINT_KEY, ...newChain.map((i) => i.id)]);
     const newAnswers: FlowchartAnswers = {};
     for (const [key, val] of Object.entries(answers ?? {})) {
       if (keepKeys.has(key)) newAnswers[key] = val;
@@ -194,6 +199,7 @@ function RouteComponent() {
         answerKey={
           currentLinkedFlowchartId ? currentLinkedFlowchartId : ENTRY_POINT_KEY
         }
+        initialStepId={currentChainItem?.stepId}
         locale={lang}
         answers={answers ?? {}}
         onAnswerChange={handleAnswerChange}

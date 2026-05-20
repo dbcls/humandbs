@@ -1,29 +1,23 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import SubmitDataIcon from "@/assets/submit-data.svg?react";
 import UseDataIcon from "@/assets/use-data.svg?react";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { SkeletonLoading } from "@/components/Skeleton";
+import searchSamples from "@/config/frontpageSearchSamples.json";
 
 import { News } from "../../-components/FrontNews";
-import { SkeletonLoading } from "@/components/Skeleton";
-import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     context.queryClient.ensureQueryData(
       getNewsTitlesQueryOptions({ locale: context.lang }),
     );
@@ -31,50 +25,28 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   errorComponent: () => <div>Oh no, an error!</div>,
 });
 
-type SearchTarget = "dataset" | "research";
-
 function RouteComponent() {
   const navigate = Route.useNavigate();
+  const lang = useLocale();
   const t = useTranslations("Front");
   const tCommon = useTranslations("common");
   const [query, setQuery] = useState("");
-  const [searchTarget, setSearchTarget] = useState<SearchTarget>("dataset");
 
   function handleSearch() {
     if (!query.trim()) return;
-    if (searchTarget === "dataset") {
-      navigate({ to: "/{-$lang}/dataset", search: { query: query.trim() } });
-    } else {
-      navigate({ to: "/{-$lang}/research", search: { query: query.trim() } });
-    }
+    navigate({ to: "/{-$lang}/research", search: { query: query.trim() } });
   }
 
   return (
     // All that after the Navbar component
-    <section className="flex w-full flex-col items-stretch gap-8">
+    <section className="flex w-full flex-col items-stretch gap-4">
       <section className="flex h-fit items-start justify-between gap-4">
         <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-24">
           <div className="flex w-full max-w-5xl flex-col items-center">
             <Outlet />
 
-            <div className="mt-8 flex w-full max-w-full items-center gap-8 rounded-md bg-black/15 p-8 text-base">
+            <div className="mt-8 grid w-full max-w-full grid-cols-[auto_1fr] grid-rows-2 items-center gap-x-8 rounded-md bg-black/15 p-8 text-base">
               <p>{tCommon("search")}</p>
-              <Select
-                value={searchTarget}
-                onValueChange={(v) => {
-                  setSearchTarget(v as SearchTarget);
-                }}
-              >
-                <SelectTrigger className="bg-primary border-primary min-w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dataset">{tCommon("dataset")}</SelectItem>
-                  <SelectItem value="research">
-                    {tCommon("research")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
 
               <Input
                 type="text"
@@ -100,6 +72,22 @@ function RouteComponent() {
                   }
                 }}
               />
+              <div className="ga-3 col-start-2 flex gap-4 text-xs">
+                {searchSamples[lang]?.map((sample, i) => (
+                  <Button
+                    onClick={() => {
+                      navigate({
+                        to: "/{-$lang}/research",
+                        search: { query: sample.query },
+                      });
+                    }}
+                    variant={"tableAction"}
+                    key={i}
+                  >
+                    {sample.query}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
@@ -142,13 +130,21 @@ function RouteComponent() {
           </ErrorResetBoundary>
         </Card>
       </section>
-      <Card className="overflow-hidden bg-transparent p-0">
-        <LazyFrontStats />
-      </Card>
+      <div className="w-full">
+        <Suspense
+          fallback={
+            <div className="flex h-40 w-full items-center justify-center">
+              Loading...
+            </div>
+          }
+        >
+          <LazyFrontStats />
+        </Suspense>
+      </div>
     </section>
   );
 }
 
 const LazyFrontStats = lazy(
-  () => import("@/components/FrontStatsVisualization"),
+  () => import("@/components/FrontStatsVisualization/index"),
 );

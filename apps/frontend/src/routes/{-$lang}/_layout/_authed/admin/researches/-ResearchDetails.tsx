@@ -48,12 +48,6 @@ import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { DatasetEditView } from "./-DatasetEditView";
 import { DatasetCreateView } from "./-DatasetCreateView";
 import { TabContentLayout } from "./-TabContentLayout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/Breadcrumb";
 import { cn } from "@/lib/utils";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
@@ -64,10 +58,12 @@ export function ResearchDetails({
   humId,
   lang,
   onDeselect,
+  initialRelatedAccessions = [],
 }: {
   humId: string;
   lang: Locale;
   onDeselect?: () => void;
+  initialRelatedAccessions?: string[];
 }) {
   const queryClient = useQueryClient();
 
@@ -142,6 +138,9 @@ export function ResearchDetails({
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
   const [datasetDirty, setDatasetDirty] = useState(false);
+  const [jdsRelatedAccessions, setJdsRelatedAccessions] = useState<string[]>(
+    initialRelatedAccessions,
+  );
   const [activeTab, setActiveTab] = useState<"metadata" | "datasets">(
     "metadata",
   );
@@ -382,11 +381,14 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedJDSValues(values: MergeResearchResult["values"]) {
+  function applyMergedJDSValues(
+    values: MergeResearchResult["values"],
+    relatedAccessions: string[],
+  ) {
     form.setFieldValue("title", values.title);
     form.setFieldValue(
       "summary",
-      values.summary as typeof researchValues.summary,
+      values.summary as unknown as typeof researchValues.summary,
     );
     form.setFieldValue(
       "dataProvider",
@@ -401,10 +403,7 @@ export function ResearchDetails({
       "relatedPublication",
       values.relatedPublication as typeof researchValues.relatedPublication,
     );
-    form.setFieldValue(
-      "controlledAccessUser",
-      values.controlledAccessUser as typeof researchValues.controlledAccessUser,
-    );
+    setJdsRelatedAccessions(relatedAccessions);
   }
 
   const previewValues = useStore(form.store, (state) => state.values);
@@ -544,7 +543,7 @@ export function ResearchDetails({
             className="flex max-h-full min-h-0 flex-1 flex-col"
           >
             {/* Workflow action row */}
-            <div className="mx-5 mt-5 flex shrink-0 items-center gap-2">
+            <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
               <MergeJDSResearchDialog
                 className="mr-auto"
                 currentValues={formValues}
@@ -723,15 +722,7 @@ export function ResearchDetails({
           >
             {datasetView === null ? (
               <TabContentLayout
-                header={
-                  <Breadcrumb>
-                    <BreadcrumbList>
-                      <BreadcrumbItem>
-                        <BreadcrumbPage>Datasets</BreadcrumbPage>
-                      </BreadcrumbItem>
-                    </BreadcrumbList>
-                  </Breadcrumb>
-                }
+                header={<span className="text-sm font-medium">Datasets</span>}
                 actions={
                   <Button
                     type="button"
@@ -766,6 +757,7 @@ export function ResearchDetails({
               <DatasetCreateView
                 humId={humId}
                 preview={datasetPreview}
+                relatedAccessions={jdsRelatedAccessions}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetPreview(false);

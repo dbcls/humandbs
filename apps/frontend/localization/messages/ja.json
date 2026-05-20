@@ -10,7 +10,12 @@
     "no-data": "データなし",
     "total-results": "全{count}件",
     "dataset": "データセット",
-    "research": "研究"
+    "research": "研究",
+    "filters": "フィルタ",
+    "items": "件",
+    "already-in-cart": "カートに追加済み",
+    "add-to-cart": "カートに追加",
+    "add-all-to-cart": "全てカートに追加"
   },
   "Footer": {
     "sitemap": "サイトマップ"
@@ -412,7 +417,9 @@
     "data-format": "データ形式",
     "policy": "ポリシー",
     "sort-by-name": "フィルター名",
-    "sort-by-count": "件数"
+    "sort-by-count": "件数",
+    "dates": "期間",
+    "basic-info": "基本情報"
   },
   "Pagination": {
     "itemsPerPage": "1ページあたりのアイテム数",

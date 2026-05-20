@@ -1,0 +1,24 @@
+{
+  "ja": [
+    {
+      "query": "筋萎縮性側索硬化症"
+    },
+    {
+      "query": "肝臓疾患"
+    },
+    {
+      "query": "NGS(Exome)"
+    }
+  ],
+  "en": [
+    {
+      "query": "Amyotrophic lateral sclerosis"
+    },
+    {
+      "query": "Liver disease"
+    },
+    {
+      "query": "NGS(Exome)"
+    }
+  ]
+}

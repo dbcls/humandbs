@@ -46,6 +46,8 @@ interface NavigationChartProps {
   entryPoint?: boolean;
   /** The key used to namespace answers for this flowchart in the answers map. */
   answerKey?: string;
+  /** Step ID to start from when this flowchart is opened via a linked option. */
+  initialStepId?: string;
   locale?: Locale;
   answers?: FlowchartAnswers;
   onAnswerChange?: (
@@ -54,7 +56,7 @@ interface NavigationChartProps {
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart?: (flowchartId: string) => void;
+  onNavigateToFlowchart?: (flowchartId: string, stepId?: string) => void;
   // Legacy prop
   data?: NavigationData;
   navigate?: (options: { to: string }) => void;
@@ -140,6 +142,11 @@ const OptionComponent = ({
   const [buttonHeight, setButtonHeight] = useState<number>(0);
 
   const title = locale === "ja" ? option.title.ja : option.title.en;
+  const description = option.description
+    ? locale === "ja"
+      ? (option.description.ja || option.description.en)
+      : (option.description.en || option.description.ja)
+    : null;
   const linkText =
     locale === "ja"
       ? (option.linkText?.ja ?? option.linkText?.en)
@@ -158,6 +165,15 @@ const OptionComponent = ({
   const optionBaseClasses =
     "border-tetriary w-full rounded-xl border-3 bg-white p-3 font-bold transition-colors text-3xl";
 
+  const titleBlock = (
+    <>
+      {title}
+      {description && (
+        <span className="block text-base font-normal">{description}</span>
+      )}
+    </>
+  );
+
   // Linked flowchart: show title + navigation button (same layout as external link)
   if (option.linkedFlowchartId) {
     const buttonLabel = linkedFlowchartName ?? "Continue →";
@@ -167,7 +183,7 @@ const OptionComponent = ({
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
         })}
       >
-        {title}
+        {titleBlock}
         <Button
           onClick={onOptionClick}
           className="px-8 text-sm disabled:opacity-100"
@@ -180,9 +196,12 @@ const OptionComponent = ({
     );
   }
 
-  if (option.link) {
-    const displayText = linkText ?? option.link;
-    const isExternal = option.link.startsWith("http");
+  const resolvedLink =
+    locale === "ja" ? option.link : (option.linkEn ?? option.link);
+
+  if (resolvedLink) {
+    const displayText = linkText ?? resolvedLink;
+    const isExternal = resolvedLink.startsWith("http");
 
     return (
       <div
@@ -190,10 +209,10 @@ const OptionComponent = ({
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
         })}
       >
-        {title}
+        {titleBlock}
         {isExternal ? (
           <a
-            href={option.link}
+            href={resolvedLink}
             target="_blank"
             rel="noopener noreferrer"
             className="from-accent to-accent-light inline-block rounded bg-gradient-to-r px-8 py-1 text-sm text-white"
@@ -238,7 +257,7 @@ const OptionComponent = ({
             isEnabled && !isSelected,
         })}
       >
-        {title}
+        {titleBlock}
       </button>
       {arrow}
     </div>
@@ -276,6 +295,9 @@ const StepComponent = ({
   const title = locale === "ja" ? step.title.ja : step.title.en;
   const text = locale === "ja" ? step.text.ja : step.text.en;
 
+  const sortedOptions = step.options
+    .slice()
+    .sort((a, b) => (a.nextStep ? 1 : 0) - (b.nextStep ? 1 : 0));
   return (
     <div className="relative">
       <div
@@ -287,11 +309,14 @@ const StepComponent = ({
         <h2 className="text-secondary mb-2 text-center text-4xl font-bold">
           {title}
         </h2>
-        <p className="m-auto mb-5 w-2/3 max-w-3xl">
-          <MarkdownClientPreview source={text} />
-        </p>
-        <div className="text-tetriary flex justify-center gap-8">
-          {step.options.map((option) => {
+
+        <MarkdownClientPreview
+          className="m-auto mb-5 w-2/3 max-w-3xl"
+          source={text}
+        />
+
+        <div className="text-tetriary flex flex-wrap justify-center gap-8">
+          {sortedOptions.map((option) => {
             // Arrow only for nextStep pointing to the immediately following step.
             // Linked flowchart options never get an arrow.
             const targetIdx = option.nextStep
@@ -342,6 +367,7 @@ function NavigationChartInner({
   linkedFlowchartNames,
   onAnswerChange,
   onNavigateToFlowchart,
+  initialStepId,
 }: {
   flowchartId: string;
   slug: string;
@@ -355,12 +381,17 @@ function NavigationChartInner({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart: (flowchartId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
+  initialStepId?: string;
 }) {
   const stepAnswers = answers[slug] ?? {};
 
   // Compute the furthest unlocked step index from existing answers
   const computeEnabledIndex = () => {
+    if (initialStepId) {
+      const idx = data.steps.findIndex((s) => s.id === initialStepId);
+      if (idx !== -1) return idx;
+    }
     let idx = 0;
     for (let i = 0; i < data.steps.length; i++) {
       const step = data.steps[i];
@@ -392,7 +423,7 @@ function NavigationChartInner({
     onAnswerChange(slug, step.id, option.id, stepsAfter);
 
     if (option.linkedFlowchartId) {
-      onNavigateToFlowchart(option.linkedFlowchartId);
+      onNavigateToFlowchart(option.linkedFlowchartId, option.linkedStepId);
       return;
     }
 
@@ -448,6 +479,7 @@ function NavigationChart({
   flowchartId,
   entryPoint = false,
   answerKey,
+  initialStepId,
   locale,
   answers = {},
   onAnswerChange,
@@ -480,6 +512,7 @@ function NavigationChart({
     <NavigationChartByIdDB
       flowchartId={flowchartId}
       answerKey={answerKey ?? flowchartId}
+      initialStepId={initialStepId}
       locale={locale}
       answers={answers}
       onAnswerChange={onAnswerChange}
@@ -508,7 +541,7 @@ function NavigationChartEntryPointDB({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart: (flowchartId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
 }) {
   const { data } = useQuery(getNavigationEntryPointQueryOptions(locale));
 
@@ -559,6 +592,7 @@ function NavigationChartByIdDB({
   answers,
   onAnswerChange,
   onNavigateToFlowchart,
+  initialStepId,
 }: {
   flowchartId: string;
   answerKey: string;
@@ -570,7 +604,8 @@ function NavigationChartByIdDB({
     optionId: string,
     clearStepIds?: string[],
   ) => void;
-  onNavigateToFlowchart: (flowchartId: string) => void;
+  onNavigateToFlowchart: (flowchartId: string, stepId?: string) => void;
+  initialStepId?: string;
 }) {
   const { data } = useQuery(
     getNavigationFlowchartByIdQueryOptions(flowchartId, locale),
@@ -608,6 +643,7 @@ function NavigationChartByIdDB({
       linkedFlowchartNames={linkedFlowchartNames}
       onAnswerChange={onAnswerChange}
       onNavigateToFlowchart={onNavigateToFlowchart}
+      initialStepId={initialStepId}
     />
   );
 }

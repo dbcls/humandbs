@@ -10,7 +10,12 @@
     "no-data": "No data",
     "total-results": "{count} results",
     "dataset": "Dataset",
-    "research": "Research"
+    "research": "Research",
+    "filters": "Filters",
+    "items": "items",
+    "already-in-cart": "Already in cart",
+    "add-to-cart": "Add to cart",
+    "add-all-to-cart": "Add all to cart"
   },
   "Footer": {
     "sitemap": "Sitemap"
@@ -411,7 +416,9 @@
     "data-format": "Data Format",
     "policy": "Policy",
     "sort-by-name": "Filter name",
-    "sort-by-count": "Results count"
+    "sort-by-count": "Results count",
+    "dates": "Period",
+    "basic-info": "Basic Information"
   },
   "Pagination": {
     "itemsPerPage": "Items per page",

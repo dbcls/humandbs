@@ -1,6 +1,5 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
@@ -114,41 +113,3 @@ export const $getActiveAlerts = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return await alertsRepository.listActive({ lang: data.locale });
   });
-
-/** Cookie key to store hidden alert ids */
-const hiddenAlerts = "hiddenAlerts";
-
-//* server function to set hidden alert ids */
-export const $saveHiddenAlertIds = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ alertId: z.string(), locale: localeSchema }))
-  .handler(async ({ data }) => {
-    // secretly reset the cookie to empty array if there are no active alerts
-    const activeAlerts = await $getActiveAlerts({
-      data: { locale: data.locale },
-    });
-
-    const existingAlertIdsCookie = getCookie(hiddenAlerts);
-
-    let existingIds: string[] = [];
-
-    if (activeAlerts.length > 0 && existingAlertIdsCookie) {
-      existingIds = JSON.parse(existingAlertIdsCookie);
-    }
-
-    const ids = new Set(existingIds);
-
-    ids.add(data.alertId);
-
-    setCookie(hiddenAlerts, JSON.stringify([...ids]), {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
-  });
-
-export const $getHiddenAlertIds = createServerFn({ method: "GET" }).handler(
-  () => {
-    const alertIdsCookie = getCookie(hiddenAlerts);
-    const alertIds = alertIdsCookie ? JSON.parse(alertIdsCookie) : [];
-    return alertIds as string[];
-  },
-);

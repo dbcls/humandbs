@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pencil } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 interface LocaleValue {
@@ -11,33 +11,24 @@ interface LocaleInlineEditorProps {
   value: LocaleValue;
   onChange: (value: LocaleValue) => void;
   placeholder?: string;
-  displayClassName?: string;
+  className?: string;
   /** If true, EN field is required (won't commit with empty EN) */
   required?: boolean;
-  /** Which locale to show in display (non-editing) mode. Defaults to "en". */
+  /** @deprecated Both locales are always shown. Kept for API compatibility. */
   displayLocale?: "en" | "ja";
 }
 
-/**
- * Inline bilingual (EN/JA) text editor.
- *
- * Renders as a clickable label showing the EN value. Clicking switches to a
- * two-field form (EN + JA). Changes are committed on blur (click outside),
- * Enter key, or focus moving to the JA field; Escape cancels. If `required`
- * is set, the form will not commit when the EN field is empty.
- */
 export function LocaleInlineEditor({
   value,
   onChange,
   placeholder = "Click to edit",
-  displayClassName,
+  className,
   required = false,
-  displayLocale = "en",
 }: LocaleInlineEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingLocale, setEditingLocale] = useState<"en" | "ja" | null>(null);
   const [editEn, setEditEn] = useState("");
   const [editJa, setEditJa] = useState("");
-  const formRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const enInputRef = useRef<HTMLInputElement | null>(null);
   const jaInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -45,98 +36,93 @@ export function LocaleInlineEditor({
   commitRef.current = commit;
 
   useEffect(() => {
-    if (!isEditing) return;
-
-    switch (displayLocale) {
-      case "en":
-        enInputRef.current?.focus();
-        enInputRef.current?.select();
-        break;
-      case "ja":
-        jaInputRef.current?.focus();
-        jaInputRef.current?.select();
-        break;
-    }
-  }, [isEditing, displayLocale]);
+    if (!editingLocale) return;
+    const ref = editingLocale === "en" ? enInputRef : jaInputRef;
+    ref.current?.focus();
+    ref.current?.select();
+  }, [editingLocale]);
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!editingLocale) return;
     function handleMouseDown(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Node)) return;
-      if (formRef.current?.contains(target)) return;
+      if (containerRef.current?.contains(target)) return;
       commitRef.current();
     }
     document.addEventListener("mousedown", handleMouseDown);
     return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [isEditing]);
+  }, [editingLocale]);
 
-  /** Opens the form, seeding it with the current value. */
-  function startEditing() {
+  function startEditing(locale: "en" | "ja") {
     setEditEn(value.en);
     setEditJa(value.ja);
-    setIsEditing(true);
+    setEditingLocale(locale);
   }
 
-  /** Saves trimmed values and closes the form. Falls back JA to EN when JA is blank. */
   function commit() {
     const en = editEn.trim();
     const ja = editJa.trim();
     if (required && !en) return;
     onChange({ en, ja: ja || en });
-    setIsEditing(false);
+    setEditingLocale(null);
   }
 
-  /** Discards edits and closes the form without firing onChange. */
   function cancel() {
-    setIsEditing(false);
+    setEditingLocale(null);
   }
 
-  if (isEditing) {
-    return (
-      <div ref={formRef} className="flex min-w-0 flex-col gap-1.5">
-        {(["en", "ja"] as const).map((locale) => (
-          <div key={locale} className="flex min-w-0 items-center gap-2">
-            <label className="w-6 shrink-0 text-xs font-medium text-gray-500 uppercase">
-              {locale}
-            </label>
-            <input
-              ref={locale === "en" ? enInputRef : jaInputRef}
-              type="text"
-              value={locale === "en" ? editEn : editJa}
-              onChange={(e) =>
-                locale === "en"
-                  ? setEditEn(e.target.value)
-                  : setEditJa(e.target.value)
-              }
-              placeholder={locale === "en" ? "English" : "日本語"}
-              className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commit();
-                if (e.key === "Escape") cancel();
-              }}
-            />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const isEditing = editingLocale !== null;
 
   return (
-    <button
-      type="button"
-      onClick={startEditing}
-      className={cn(
-        "group flex items-center gap-1.5 text-left hover:text-gray-900",
-        !value.en && "text-gray-400",
-        displayClassName,
-      )}
-      title="Click to edit"
-    >
-      <span>
-        {(displayLocale === "ja" ? value.ja : value.en) || placeholder}
-      </span>
-      <Pencil className="size-3 shrink-0 opacity-0 group-hover:opacity-50" />
-    </button>
+    <div ref={containerRef} className={cn("flex min-w-0 flex-col", className)}>
+      {(["ja", "en"] as const).map((locale) => {
+        const isFocused = editingLocale === locale;
+        const displayValue = locale === "en" ? value.en : value.ja;
+        const editValue = locale === "en" ? editEn : editJa;
+
+        return (
+          <div key={locale} className="flex min-w-0 items-baseline gap-2">
+            <span className="w-6 shrink-0 text-xs font-medium text-gray-400 uppercase">
+              {locale}
+            </span>
+
+            {isEditing ? (
+              <input
+                ref={locale === "en" ? enInputRef : jaInputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) =>
+                  locale === "en"
+                    ? setEditEn(e.target.value)
+                    : setEditJa(e.target.value)
+                }
+                placeholder={locale === "en" ? "English" : "日本語"}
+                className={cn(
+                  "min-w-0 flex-1 rounded border px-2 py-0.5 text-sm outline-none focus:ring-1 focus:ring-blue-400",
+                  isFocused ? "border-blue-300" : "border-gray-200",
+                )}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commit();
+                  if (e.key === "Escape") cancel();
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEditing(locale)}
+                className={cn(
+                  "group/btn min-w-0 flex-1 truncate rounded px-2 py-0.5 text-left text-sm hover:bg-gray-100 hover:text-gray-900",
+                  !displayValue && "text-gray-400",
+                )}
+                title="Click to edit"
+              >
+                {displayValue || placeholder}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }

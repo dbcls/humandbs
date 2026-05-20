@@ -4,7 +4,7 @@ import {
   useSuspenseInfiniteQuery,
 } from "@tanstack/react-query";
 import { getRouteApi, useRouteContext } from "@tanstack/react-router";
-import { Trash2, Trash2Icon } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Suspense, useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
@@ -174,7 +174,7 @@ function ListItems({
       cancelLabel: t("cancel"),
       actionLabel: (
         <>
-          <Trash2Icon className="mr-2 inline size-5 text-white" />
+          <Trash2 className="mr-2 inline size-5 text-white" />
           {t("confirm")}
         </>
       ),
@@ -256,8 +256,8 @@ function ListItems({
                   menuItems={[
                     {
                       label: (
-                        <Label className="text-danger flex justify-between">
-                          <Trash2 className="size-4" />
+                        <Label>
+                          <Trash2 />
                           Delete
                         </Label>
                       ),

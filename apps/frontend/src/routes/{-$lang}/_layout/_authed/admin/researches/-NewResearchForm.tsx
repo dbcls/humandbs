@@ -53,11 +53,12 @@ export function NewResearchForm({
   onDiscard,
 }: {
   lang: Locale;
-  onCreated: (humId: string) => void;
+  onCreated: (humId: string, relatedAccessions: string[]) => void;
   onDiscard: () => void;
 }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [relatedAccessions, setRelatedAccessions] = useState<string[]>([]);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (body: CreateResearchRequest) =>
@@ -88,7 +89,7 @@ export function NewResearchForm({
         };
       });
       queryClient.invalidateQueries({ queryKey: ["researches", "list"] });
-      onCreated(result.data.data.humId);
+      onCreated(result.data.data.humId, relatedAccessions);
     },
     onError: (err: Error) => {
       setError(err.message ?? "Failed to create research.");
@@ -108,7 +109,8 @@ export function NewResearchForm({
   });
   const formValues = useStore(form.store, (state) => state.values);
 
-  function applyMergedJDSValues(values: NewResearchMergeValues) {
+  function applyMergedJDSValues(values: NewResearchMergeValues, incoming: string[]) {
+    setRelatedAccessions(incoming);
     if (values.title !== undefined) form.setFieldValue("title", values.title);
     if (values.summary !== undefined)
       form.setFieldValue("summary", values.summary);
@@ -145,8 +147,8 @@ export function NewResearchForm({
             <MergeJDSResearchDialog
               className="mr-auto"
               currentValues={toResearchValuesForMerge(formValues)}
-              onMerge={(values) =>
-                applyMergedJDSValues(pickNewResearchMergeValues(values))
+              onMerge={(values, relatedAccessions) =>
+                applyMergedJDSValues(pickNewResearchMergeValues(values), relatedAccessions)
               }
             />
             <Button

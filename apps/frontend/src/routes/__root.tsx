@@ -41,6 +41,7 @@ export const Route = createRootRouteWithContext<Context>()({
       ...seo({
         title: "HumanDBS",
         description: `HumanDBs - databases of researches`,
+        image: "/favicon-48x48.ico",
       }),
     ],
     links: [
@@ -53,14 +54,20 @@ export const Route = createRootRouteWithContext<Context>()({
       {
         rel: "icon",
         type: "image/png",
-        sizes: "32x32",
-        href: "/favicon-32x32.png",
+        sizes: "192x192",
+        href: "/favicon-192x192.png",
       },
       {
         rel: "icon",
         type: "image/png",
-        sizes: "16x16",
-        href: "/favicon-16x16.png",
+        sizes: "48x48",
+        href: "/favicon-48x48.png",
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        sizes: "32x32",
+        href: "/favicon.ico",
       },
       { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
       { rel: "icon", href: "/favicon.ico" },

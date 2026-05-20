@@ -28,6 +28,9 @@ export default defineConfig(async () => {
     server: {
       port: 3000,
       allowedHosts: ["frontend"],
+      watch: {
+        usePolling: true,
+      },
     },
     resolve: {
       alias: {
@@ -50,7 +53,7 @@ export default defineConfig(async () => {
         projects: ["./tsconfig.json"],
       }),
       svgr(),
-      viteReact(),
+      viteReact({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
     ],
     define: {
       APP_VERSION: JSON.stringify(`v${packageJson.version}`),

@@ -32,6 +32,7 @@ export function DatasetVersionCard({
     | "version"
     | "experiments"
     | "humId"
+    | "versionReleaseDate"
   >;
   lang?: "ja" | "en";
   showPublicActions?: boolean;
@@ -43,6 +44,7 @@ export function DatasetVersionCard({
 
   const infoKeyValues = [
     { title: t("releaseDate"), value: versionData.releaseDate },
+    { title: t("date-modified"), value: versionData.versionReleaseDate },
     {
       title: t("research"),
       value: (
@@ -58,6 +60,7 @@ export function DatasetVersionCard({
     { title: t("criteria"), value: versionData.criteria },
   ];
 
+  console.log("infoKeyValues", infoKeyValues);
   const navigate = useNavigate();
   const currentLocation = useLocation();
 
