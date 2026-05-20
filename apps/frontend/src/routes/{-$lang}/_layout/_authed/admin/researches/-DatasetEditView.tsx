@@ -23,7 +23,10 @@ import {
   useSuspenseQuery,
   queryOptions,
 } from "@tanstack/react-query";
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
+import { AccessionChips } from "./-AccessionChips";
+import { mergeDatasetTemplate } from "./-mergeDatasetTemplate";
+import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { IntlProvider } from "use-intl";
 import { messages } from "@/config/messages";
@@ -114,8 +117,19 @@ function DatasetEditViewInner({
       experiments: dataset.experiments,
     }),
   );
+  const baseValues = useRef<DatasetFormValues>(defaultValues);
+  const formKey = useRef(0);
+  const [accessions, setAccessions] = useState<string[]>([]);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">(lang);
   const [previewValues, setPreviewValues] = useState(defaultValues);
+
+  function applyTemplate(data: DatasetTemplateData) {
+    setDefaultValues((prev) => {
+      const merged = mergeDatasetTemplate(prev, data);
+      formKey.current += 1;
+      return merged;
+    });
+  }
 
   const breadcrumb = (
     <Breadcrumb>
@@ -157,8 +171,19 @@ function DatasetEditViewInner({
   return (
     <TabContentLayout header={breadcrumb} actions={actions}>
       <div className={cn(preview && "hidden")}>
+        {isDraft && (
+          <div className="mb-4">
+            <AccessionChips
+              accessions={accessions}
+              onAccessionsChange={setAccessions}
+              onApply={applyTemplate}
+            />
+          </div>
+        )}
         <DatasetForm
+          key={formKey.current}
           defaultValues={defaultValues}
+          cleanValues={isDraft ? baseValues.current : undefined}
           readOnly={!isDraft}
           onSubmit={async (values) => {
             await save(values);
