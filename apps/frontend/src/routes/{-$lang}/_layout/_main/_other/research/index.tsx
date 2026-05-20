@@ -20,11 +20,11 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 import { useLocale, useTranslations } from "use-intl";
 
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -40,6 +40,7 @@ import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
 import { buildFacetSections } from "@/utils/buildFacetSections";
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 
 export const Route = createFileRoute(
@@ -47,6 +48,7 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
+  errorComponent: DefaultCatchBoundary,
   loader: ({ context, location }) => {
     return Promise.all([
       context.queryClient.ensureQueryData(
@@ -64,7 +66,7 @@ function RouteComponent() {
   const t = useTranslations("Research");
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
-  const { setFilters, resetFilters, filters } = useFilters(Route.id);
+  const { setFilters, filters } = useFilters(Route.id);
 
   const { data: researchesData } = useResearchesSearchQuery();
 
@@ -117,9 +119,15 @@ function RouteComponent() {
           filtersCount={Object.keys(filters.datasetFilters || {}).length}
           onFilterClick={onFilterClick}
           isPanelOpen={isOpen}
-          onCopy={() => copyTableData(exportData)}
-          onCsv={() => downloadCsv(exportData, "research-list")}
-          onExcel={() => downloadExcel(exportData, "research-list")}
+          onCopy={() => {
+            copyTableData(exportData);
+          }}
+          onCsv={() => {
+            downloadCsv(exportData, "research-list");
+          }}
+          onExcel={() => {
+            downloadExcel(exportData, "research-list");
+          }}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
@@ -571,7 +579,9 @@ function AddToCartAllDatasetsButton({
   async function handleAddAllToCart() {
     await refetch();
     // data updates, so need to wait until next render, in order to `data?.data` to have values
-    Promise.resolve().then(() => handleClickCart());
+    Promise.resolve().then(() => {
+      handleClickCart();
+    });
   }
 
   return (

@@ -21,8 +21,9 @@ import {
 } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
-import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
-
+import { AddToCartToggle } from "@/components/AddToCartToggle";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
@@ -30,17 +31,17 @@ import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
+import { useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
+import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { buildFacetSections } from "@/utils/buildFacetSections";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
+import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
+import { isCancelledError } from "@/utils/isCancelledError";
 
 const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   lang: true,
@@ -53,7 +54,10 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
   {
     component: RouteComponent,
     validateSearch: zodValidator(datasetListQuerySchema),
-    errorComponent: ({ error }) => <div>{error.message}</div>,
+    errorComponent: (props) =>
+      isCancelledError(props.error) ? null : (
+        <DefaultCatchBoundary {...props} />
+      ),
     loader: ({ context, location }) => {
       return Promise.all([
         context.queryClient.ensureQueryData(
@@ -74,7 +78,7 @@ function RouteComponent() {
   const t = useTranslations("Dataset");
   const search = Route.useSearch();
   const { lang } = Route.useRouteContext();
-  const { filters, setFilters, resetFilters } = useFilters(Route.id);
+  const { filters, setFilters } = useFilters(Route.id);
 
   const { data } = useDatasetsSearchQuery();
 
@@ -115,16 +119,19 @@ function RouteComponent() {
           onQueryChange={(query) => {
             setFilters({ query });
           }}
-          onResetFilters={() => {
-            resetFilters();
-          }}
           resultsCount={<ResultsCount />}
           filtersCount={filtersCount}
           isPanelOpen={isOpen}
           onFilterClick={onFilterClick}
-          onCopy={() => copyTableData(exportData)}
-          onCsv={() => downloadCsv(exportData, "dataset-list")}
-          onExcel={() => downloadExcel(exportData, "dataset-list")}
+          onCopy={() => {
+            copyTableData(exportData);
+          }}
+          onCsv={() => {
+            downloadCsv(exportData, "dataset-list");
+          }}
+          onExcel={() => {
+            downloadExcel(exportData, "dataset-list");
+          }}
         />
       )}
       renderPanel={({ onClose }) => <FacetsAdapter onClose={onClose} />}
@@ -170,17 +177,26 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
-      { type: "text-filter", id: "humId", value: filters.humId ?? "", uiGroup: "basic-info" },
+      {
+        type: "text-filter",
+        id: "humId",
+        value: filters.humId ?? "",
+        uiGroup: "basic-info",
+      },
     ];
+    const facetSections = buildFacetSections(
+      filters.filters ?? {},
+      "filters",
+      allFacetsData?.data,
+    );
+    const dateSections = facetSections.filter(
+      (section) => section.uiGroup === "dates",
+    );
+    const remainingFacetSections = facetSections.filter(
+      (section) => section.uiGroup !== "dates",
+    );
 
-    return [
-      ...topLevel,
-      ...buildFacetSections(
-        filters.filters ?? {},
-        "filters",
-        allFacetsData?.data,
-      ),
-    ];
+    return [...dateSections, ...topLevel, ...remainingFacetSections];
   }, [filters, allFacetsData]);
 
   return (

@@ -7,12 +7,16 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 
+import { isCancelledError } from "@/utils/isCancelledError";
+
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter();
   const isRoot = useMatch({
     strict: false,
     select: (state) => state.id === rootRouteId,
   });
+
+  if (isCancelledError(error)) return null;
 
   console.error("DefaultCatchBoundary Error:", error);
 

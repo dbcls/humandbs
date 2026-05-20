@@ -1,10 +1,13 @@
+import { useLocation, Link } from "@tanstack/react-router";
 import { Filter, Search, X } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
+import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
 export function SearchCaption({
   title,
@@ -53,8 +56,17 @@ export function SearchCaption({
     });
   }
 
+  const location = useLocation();
+
+  const place = location.pathname.split("/").at(-1) as "dataset" | "research";
+  const switchSearch = getTableSwitchSearch(
+    location.search as Record<string, unknown>,
+  );
+
+  const tCommon = useTranslations("common");
+
   return (
-    <div className="flex h-fit items-center justify-between">
+    <div className="flex h-fit flex-wrap items-center justify-between">
       <div className="flex items-baseline gap-10">
         <h3 className="before:bg-secondary relative pl-3 text-lg before:absolute before:-left-6 before:h-full before:w-2">
           {title}
@@ -62,7 +74,42 @@ export function SearchCaption({
         {resultsCount}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <ToggleGroup
+          variant="pill"
+          type="single"
+          value={place}
+          className="border border-gray-200"
+        >
+          <ToggleGroupItem
+            asChild
+            value="research"
+            variant="pill"
+            className="data-[state=on]:bg-accent px-8"
+          >
+            <Link
+              className="no-underline"
+              to="/{-$lang}/research"
+              search={switchSearch.research}
+            >
+              {tCommon("research")}
+            </Link>
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            asChild
+            value="dataset"
+            variant="pill"
+            className="data-[state=on]:bg-secondary px-8"
+          >
+            <Link
+              className="no-underline"
+              to="/{-$lang}/dataset"
+              search={switchSearch.dataset}
+            >
+              {tCommon("dataset")}
+            </Link>
+          </ToggleGroupItem>
+        </ToggleGroup>
         <div className="flex gap-1">
           <Button
             variant={"tableAction"}
@@ -152,4 +199,59 @@ export function SearchCaption({
       </div>
     </div>
   );
+}
+
+const researchSorts = new Set([
+  "humId",
+  "title",
+  "releaseDate",
+  "datePublished",
+  "dateModified",
+  "relevance",
+]);
+const datasetSorts = new Set(["datasetId", "releaseDate", "relevance"]);
+
+function getTableSwitchSearch(currentSearch: Record<string, unknown>) {
+  return {
+    research: cleanEmptyParams(
+      buildTableSwitchSearch(currentSearch, "research"),
+    ),
+    dataset: cleanEmptyParams(buildTableSwitchSearch(currentSearch, "dataset")),
+  };
+}
+
+function buildTableSwitchSearch(
+  currentSearch: Record<string, unknown>,
+  target: "dataset" | "research",
+) {
+  if (target === "research") {
+    return {
+      page: 1,
+      limit: currentSearch.limit,
+      sort: isStringInSet(currentSearch.sort, researchSorts)
+        ? currentSearch.sort
+        : undefined,
+      order: currentSearch.order,
+      query: currentSearch.query,
+      datePublished: currentSearch.datePublished,
+      dateModified: currentSearch.dateModified,
+      datasetFilters: currentSearch.datasetFilters ?? currentSearch.filters,
+    };
+  }
+
+  return {
+    page: 1,
+    limit: currentSearch.limit,
+    sort: isStringInSet(currentSearch.sort, datasetSorts)
+      ? currentSearch.sort
+      : undefined,
+    order: currentSearch.order,
+    query: currentSearch.query,
+    humId: currentSearch.humId,
+    filters: currentSearch.filters ?? currentSearch.datasetFilters,
+  };
+}
+
+function isStringInSet(value: unknown, set: Set<string>): value is string {
+  return typeof value === "string" && set.has(value);
 }

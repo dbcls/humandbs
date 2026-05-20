@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { Search as SearchIcon } from "lucide-react";
 import { Input as SearchInput } from "@/components/Input";
@@ -12,25 +13,38 @@ export function TextFacetItem({
   draftValue: string;
   onUpdate: (id: string, value: unknown) => void;
 }) {
-  const hasValue = draftValue.trim().length > 0;
+  const [value, setValue] = useState(draftValue);
+  const hasValue = value.trim().length > 0;
+
+  useEffect(() => {
+    setValue(draftValue);
+  }, [draftValue]);
 
   return (
     <FacetItemWrapper
       id={id}
       hasValue={hasValue}
       onReset={() => {
+        setValue("");
         onUpdate(id, undefined);
       }}
     >
       <SearchInput
         type="text"
-        value={draftValue}
+        value={value}
         onChange={(e) => {
-          onUpdate(id, e.target.value);
+          setValue(e.target.value);
+        }}
+        onBlur={(e) => {
+          if (e.currentTarget.value !== draftValue) {
+            onUpdate(id, e.currentTarget.value);
+          }
         }}
         placeholder={useTranslations("common")("search")}
-        beforeIcon={<SearchIcon size={16} className="text-muted-foreground ml-1" />}
-        className="h-[28px] text-sm -mx-[2px]"
+        beforeIcon={
+          <SearchIcon size={16} className="text-muted-foreground ml-1" />
+        }
+        className="-mx-[2px] h-[28px] text-sm"
       />
     </FacetItemWrapper>
   );

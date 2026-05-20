@@ -15,6 +15,7 @@ const toggleVariants = cva(
         outline:
           "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground",
         blue: "data-[state=on]:bg-secondary-light data-[state=on]:text-white",
+        pill: "rounded-full first:rounded-full last:rounded-full data-[state=on]:bg-secondary-light data-[state=on]:text-white px-8 py-2.5 text-sm font-bold transition-all duration-300",
       },
       size: {
         default: "h-9 px-2 min-w-9",

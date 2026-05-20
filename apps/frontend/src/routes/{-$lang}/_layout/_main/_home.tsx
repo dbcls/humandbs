@@ -9,15 +9,15 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
 import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
-
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { SkeletonLoading } from "@/components/Skeleton";
-import { News } from "../../-components/FrontNews";
 import searchSamples from "@/config/frontpageSearchSamples.json";
+
+import { News } from "../../-components/FrontNews";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
-  loader: async ({ context }) => {
+  loader: ({ context }) => {
     context.queryClient.ensureQueryData(
       getNewsTitlesQueryOptions({ locale: context.lang }),
     );
@@ -131,7 +131,13 @@ function RouteComponent() {
         </Card>
       </section>
       <div className="w-full">
-        <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Loading...</div>}>
+        <Suspense
+          fallback={
+            <div className="flex h-40 w-full items-center justify-center">
+              Loading...
+            </div>
+          }
+        >
           <LazyFrontStats />
         </Suspense>
       </div>
