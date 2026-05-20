@@ -94,12 +94,17 @@ function Table<T extends Record<string, unknown>>({
               key={headerGroup.id}
               className={tableHeaderRowVariants({ variant })}
             >
-              {headerGroup.headers.map((header) => (
+              {headerGroup.headers.map((header, index) => (
                 <th
                   key={header.id}
-                  className={
-                    "p-2 first-of-type:rounded-l last-of-type:rounded-r max-w-[300px]"
-                  }
+                  className={cn(
+                    "p-2 first-of-type:rounded-l last-of-type:rounded-r max-w-[300px]",
+                    {
+                      "sticky left-0 z-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 0,
+                      "bg-secondary-light": index === 0 && (variant === "default" || !variant),
+                      "bg-secondary": index === 0 && variant === "darker",
+                    }
+                  )}
                 >
                   {header.isPlaceholder
                     ? null
@@ -124,14 +129,17 @@ function Table<T extends Record<string, unknown>>({
           <tr
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            className={cn("transition-colors hover:bg-gray-50", {
+            className={cn("bg-white transition-colors hover:bg-gray-50", {
               "cursor-pointer": onRowClick,
             })}
           >
-            {row.getVisibleCells().map((cell) => (
+            {row.getVisibleCells().map((cell, index) => (
               <td
                 key={cell.id}
-                className="border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]"
+                className={cn(
+                  "border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]",
+                  { "sticky left-0 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 0 }
+                )}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>

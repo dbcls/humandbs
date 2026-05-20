@@ -36,6 +36,8 @@ import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ShoppingCartIcon } from "lucide-react";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
 import { getResearchesQueryOptions } from "@/serverFunctions/researches";
@@ -405,9 +407,17 @@ const columns = [
 
     cell: function Cell(ctx) {
       return (
-        <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
-          <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
-        </Route.Link>
+        <div className="flex items-center gap-3">
+          <ClientOnly fallback={<div className="size-8 shrink-0" />}>
+            <AddToCartAllDatasetsButton
+              humId={ctx.getValue()}
+              tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
+            />
+          </ClientOnly>
+          <Route.Link to="$humId" params={{ humId: ctx.getValue() }}>
+            <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
+          </Route.Link>
+        </div>
       );
     },
     size: 15,
@@ -416,24 +426,16 @@ const columns = [
     id: "datasets",
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => (
-      <>
-        <ClientOnly fallback={null}>
-          <AddToCartAllDatasetsButton
-            humId={ctx.row.original.humId}
-            tableDatasets={ctx.getValue().map((id) => ({ datasetId: id }))}
-          />
-        </ClientOnly>
-        <CollapsiblePreview
-          items={ctx.getValue().map((id) => ({
-            id,
-            content: (
-              <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
-                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
-              </Route.Link>
-            ),
-          }))}
-        />
-      </>
+      <CollapsiblePreview
+        items={ctx.getValue().map((id) => ({
+          id,
+          content: (
+            <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
+              <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
+            </Route.Link>
+          ),
+        }))}
+      />
     ),
 
     size: 15,
@@ -575,12 +577,15 @@ function AddToCartAllDatasetsButton({
   }
 
   return (
-    <AddToCartToggle
-      state={allInCart ? true : someInCart ? "indeterminate" : false}
+    <Button
+      variant="tableAction"
+      size="icon"
+      disabled={allInCart}
       onClick={handleAddAllToCart}
-      className="text-sm font-normal"
+      className="shrink-0"
+      title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
     >
-      <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
-    </AddToCartToggle>
+      <ShoppingCartIcon className="size-4" />
+    </Button>
   );
 }
