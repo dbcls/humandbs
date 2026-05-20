@@ -535,9 +535,31 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
       }),
   });
 
-  /** Returns IDs of EN steps that have fewer than 2 options (invalid for publishing). */
+  function isValidUrl(url: string) {
+    try {
+      return !!new URL(url);
+    } catch {
+      return false;
+    }
+  }
+
+  /** Returns a map of stepId → error reason for all invalid steps. */
   function validateSteps(config: NavigationFlowchartConfig) {
-    return config.steps.filter((s) => s.options.length < 2).map((s) => s.id);
+    const result: Record<string, "too-few-options" | "invalid-url"> = {};
+    for (const s of config.steps) {
+      if (s.options.length < 2) {
+        result[s.id] = "too-few-options";
+      } else if (
+        s.options.some(
+          (o) =>
+            (o.link && !isValidUrl(o.link)) ||
+            (o.linkEn && !isValidUrl(o.linkEn)),
+        )
+      ) {
+        result[s.id] = "invalid-url";
+      }
+    }
+    return result;
   }
 
   async function commitSave(currentMeta: FlowchartMeta) {
@@ -550,11 +572,9 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     setMetaErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    const invalidStepIds = validateSteps(configDraft);
-    if (invalidStepIds.length > 0) {
-      setError(
-        "Each step must have at least 2 options. Check highlighted steps.",
-      );
+    const stepErrors = validateSteps(configDraft);
+    if (Object.keys(stepErrors).length > 0) {
+      setError("Some steps have errors (too few options or invalid URLs). Check highlighted steps.");
       return;
     }
 
@@ -607,7 +627,8 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
     setError(null);
   }
 
-  const invalidStepIds = validateSteps(configDraft);
+  const stepErrors = validateSteps(configDraft);
+  const invalidStepIds = Object.keys(stepErrors);
   const otherFlowcharts = allFlowcharts.filter((fc) => fc.id !== record.id);
 
   const isDirty =
@@ -744,7 +765,7 @@ function FlowchartEditor({ record }: { record: NavigationFlowchartRecord }) {
               <StepList
                 config={configDraft}
                 onChange={setConfigDraft}
-                invalidStepIds={invalidStepIds}
+                stepErrors={stepErrors}
                 otherFlowcharts={otherFlowcharts}
               />
             </div>
@@ -902,12 +923,12 @@ const STEP_TYPE = "flowchart-step";
 function StepList({
   config,
   onChange,
-  invalidStepIds,
+  stepErrors,
   otherFlowcharts,
 }: {
   config: NavigationFlowchartConfig;
   onChange: (c: NavigationFlowchartConfig) => void;
-  invalidStepIds: string[];
+  stepErrors: Record<string, "too-few-options" | "invalid-url">;
   otherFlowcharts: NavigationFlowchartSummary[];
 }) {
   const steps = config.steps;
@@ -965,7 +986,7 @@ function StepList({
               key={step.id}
               step={step}
               index={index}
-              isInvalid={invalidStepIds.includes(step.id)}
+              invalidReason={stepErrors[step.id]}
               canDelete={canDeleteStep(step.id)}
               allSteps={steps}
               otherFlowcharts={otherFlowcharts}
@@ -1001,7 +1022,7 @@ function StepList({
 function StepCard({
   step,
   index,
-  isInvalid,
+  invalidReason,
   canDelete,
   allSteps,
   otherFlowcharts,
@@ -1010,7 +1031,7 @@ function StepCard({
 }: {
   step: NavigationFlowchartStep;
   index: number;
-  isInvalid: boolean;
+  invalidReason?: "too-few-options" | "invalid-url";
   canDelete: boolean;
   allSteps: NavigationFlowchartStep[];
   otherFlowcharts: NavigationFlowchartSummary[];
@@ -1061,7 +1082,7 @@ function StepCard({
       className={cn(
         "rounded-md border bg-white shadow-sm transition-opacity",
         isDragSource ? "opacity-40" : "",
-        isInvalid ? "border-red-300" : "border-gray-200",
+        invalidReason ? "border-red-300" : "border-gray-200",
       )}
     >
       {/* Card header */}
@@ -1091,9 +1112,9 @@ function StepCard({
             placeholder="Step title"
             className="text-sm font-medium"
           />
-          {isInvalid && (
+          {invalidReason && (
             <span className="ml-1 shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600">
-              needs ≥2 options
+              {invalidReason === "invalid-url" ? "invalid URL" : "needs ≥2 options"}
             </span>
           )}
         </div>
@@ -1458,29 +1479,42 @@ function OptionRow({
         )}
 
         {destType === "external-link" && (
-          <div className="flex flex-col gap-1.5">
-            <input
-              type="text"
-              value={option.link ?? ""}
-              onChange={(e) =>
-                onUpdate({
-                  link: e.target.value,
-                  nextStep: undefined,
-                  linkedFlowchartId: undefined,
-                })
-              }
-              placeholder="https://…"
-              className="rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400"
-            />
-            <LocaleInlineEditor
-              value={{
-                en: option.linkText?.en ?? "",
-                ja: option.linkText?.ja ?? "",
-              }}
-              onChange={(linkText) => onUpdate({ linkText })}
-              placeholder="Link label"
-              className="text-xs"
-            />
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-2xs font-medium text-gray-400 uppercase">URL</span>
+              {(["ja", "en"] as const).map((locale) => (
+                <div key={locale} className="flex min-w-0 items-center gap-2">
+                  <span className="w-6 shrink-0 text-xs font-medium text-gray-400 uppercase">
+                    {locale}
+                  </span>
+                  <input
+                    type="text"
+                    value={(locale === "ja" ? option.link : option.linkEn) ?? ""}
+                    onChange={(e) =>
+                      onUpdate(
+                        locale === "ja"
+                          ? { link: e.target.value, nextStep: undefined, linkedFlowchartId: undefined }
+                          : { linkEn: e.target.value },
+                      )
+                    }
+                    placeholder="https://…"
+                    className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-xs outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-2xs font-medium text-gray-400 uppercase">Label</span>
+              <LocaleInlineEditor
+                value={{
+                  en: option.linkText?.en ?? "",
+                  ja: option.linkText?.ja ?? "",
+                }}
+                onChange={(linkText) => onUpdate({ linkText })}
+                placeholder="Link label"
+                className="text-xs"
+              />
+            </div>
           </div>
         )}
       </div>

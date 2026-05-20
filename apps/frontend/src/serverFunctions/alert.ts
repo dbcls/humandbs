@@ -1,6 +1,5 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";

@@ -113,9 +113,6 @@ function RouteComponent() {
           onQueryChange={(query) => {
             setFilters({ query });
           }}
-          onResetFilters={() => {
-            resetFilters();
-          }}
           resultsCount={<ResultsCount />}
           filtersCount={Object.keys(filters.datasetFilters || {}).length}
           onFilterClick={onFilterClick}

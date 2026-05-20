@@ -11,6 +11,7 @@ export interface NavigationFlowchartOption {
   linkedFlowchartId?: string;
   linkedStepId?: string;
   link?: string;
+  linkEn?: string;
   linkText?: LocalizedText;
 }
 

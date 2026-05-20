@@ -196,9 +196,12 @@ const OptionComponent = ({
     );
   }
 
-  if (option.link) {
-    const displayText = linkText ?? option.link;
-    const isExternal = option.link.startsWith("http");
+  const resolvedLink =
+    locale === "ja" ? option.link : (option.linkEn ?? option.link);
+
+  if (resolvedLink) {
+    const displayText = linkText ?? resolvedLink;
+    const isExternal = resolvedLink.startsWith("http");
 
     return (
       <div
@@ -209,7 +212,7 @@ const OptionComponent = ({
         {titleBlock}
         {isExternal ? (
           <a
-            href={option.link}
+            href={resolvedLink}
             target="_blank"
             rel="noopener noreferrer"
             className="from-accent to-accent-light inline-block rounded bg-gradient-to-r px-8 py-1 text-sm text-white"

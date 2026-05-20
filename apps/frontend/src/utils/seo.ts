@@ -18,6 +18,7 @@ export const seo = ({
     { name: "og:type", content: "website" },
     { name: "og:title", content: title },
     { name: "og:description", content: description },
+    { name: "og:site_name", content: "HumanDBs" },
     ...(image
       ? [
           { name: "twitter:image", content: image },

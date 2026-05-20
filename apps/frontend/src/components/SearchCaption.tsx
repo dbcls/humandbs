@@ -17,7 +17,6 @@ export function SearchCaption({
   onCopy,
   onCsv,
   onExcel,
-  onResetFilters,
   filterButtonRef,
 }: {
   title: string;
@@ -30,7 +29,6 @@ export function SearchCaption({
   onCopy?: () => void;
   onCsv?: () => void;
   onExcel?: () => void;
-  onResetFilters: () => void;
   filterButtonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("common");
@@ -49,6 +47,12 @@ export function SearchCaption({
     }
   }
 
+  function handleSearch() {
+    startTransition(() => {
+      onQueryChange(inputValue || undefined);
+    });
+  }
+
   return (
     <div className="flex h-fit items-center justify-between">
       <div className="flex items-baseline gap-10">
@@ -58,8 +62,8 @@ export function SearchCaption({
         {resultsCount}
       </div>
 
-      <div className="flex gap-4">
-        <div className="mt-0.5 flex gap-1">
+      <div className="flex items-center gap-4">
+        <div className="flex gap-1">
           <Button
             variant={"tableAction"}
             className="h-fit"
@@ -94,25 +98,33 @@ export function SearchCaption({
             onChange={(e) => {
               setInputValue(e.target.value);
             }}
-            className="h-14 w-md"
-            beforeIcon={<Search size={22} />}
+            className="h-14 w-md py-2 pr-0 pl-8"
             afterIcon={
-              inputValue ? (
+              <>
+                {inputValue ? (
+                  <Button
+                    variant={"plain"}
+                    size={"icon"}
+                    className={"text-foreground-light pointer-events-auto"}
+                    onClick={handleResetInput}
+                  >
+                    <X size={22} />
+                  </Button>
+                ) : null}
                 <Button
-                  variant={"plain"}
-                  size={"icon"}
-                  className={"text-foreground-light pointer-events-auto"}
-                  onClick={handleResetInput}
+                  disabled={inputValue.trim().length === 0}
+                  variant="accent"
+                  size="default"
+                  className="pointer-events-auto gap-2 rounded-full px-6 py-2 text-sm"
+                  onClick={handleSearch}
                 >
-                  <X size={22} />
+                  <Search size={18} />
                 </Button>
-              ) : null
+              </>
             }
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                startTransition(() => {
-                  onQueryChange(inputValue || undefined);
-                });
+                handleSearch();
               }
             }}
           />
@@ -120,10 +132,9 @@ export function SearchCaption({
             ref={filterButtonRef}
             variant="tableAction"
             size="tableAction"
-            className={cn(
-              "flex items-center gap-2",
-              { "bg-secondary": isPanelOpen }
-            )}
+            className={cn("flex items-center gap-2", {
+              "bg-secondary": isPanelOpen,
+            })}
             onClick={onFilterClick}
             type="button"
           >
@@ -131,7 +142,7 @@ export function SearchCaption({
             <span className="flex items-center gap-1.5">
               {t("filters")}
               {filtersCount && filtersCount > 0 ? (
-                <span className="bg-white text-secondary rounded-full px-1.5 py-0.5 text-[10px] leading-none font-bold min-w-[1.2rem] text-center">
+                <span className="text-secondary min-w-[1.2rem] rounded-full bg-white px-1.5 py-0.5 text-center text-[10px] leading-none font-bold">
                   {filtersCount}
                 </span>
               ) : null}

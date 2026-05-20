@@ -19,6 +19,7 @@ export const navigationFlowchartOptionSchema = z.object({
   linkedFlowchartId: z.string().uuid().optional(),
   linkedStepId: z.string().optional(),
   link: z.string().optional(),
+  linkEn: z.string().optional(),
   linkText: localizedTextSchema.optional(),
 });
 
