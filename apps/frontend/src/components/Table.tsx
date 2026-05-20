@@ -87,7 +87,7 @@ function Table<T extends Record<string, unknown>>({
     <table
       className={cn("w-full table-auto align-top text-pretty", className)}
     >
-      <thead className="sticky top-0 z-30 text-white">
+      <thead className="sticky top-[88px] z-30 text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
             <tr
@@ -201,10 +201,10 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
       ) : (
         <Button
           variant={"ghost"}
-          className="text-white h-8 w-8 p-0 justify-center hover:bg-white/20"
+          className="text-white h-8 w-8 p-0 hover:bg-white/20"
           onClick={ctx.column.getToggleSortingHandler()}
         >
-          <span className="flex flex-col items-center justify-center text-[10px] leading-[0.8]">
+          <span className="m-auto flex flex-col items-center justify-center text-[10px] leading-[0.8]">
             <span className={cn("inline-block scale-y-[0.6] scale-x-125", sortingState === "asc" ? "opacity-100" : "opacity-40")}>▲</span>
             <span className={cn("inline-block scale-y-[0.6] scale-x-125", sortingState === "desc" ? "opacity-100" : "opacity-40")}>▼</span>
           </span>
