@@ -125,6 +125,8 @@ export function getDefaultDatasetFormValues(humId: string): DatasetFormValues {
 
 interface DatasetFormProps {
   defaultValues: DatasetFormValues;
+  /** If provided, used as the baseline for modified comparison instead of defaultValues */
+  cleanValues?: DatasetFormValues;
   readOnly: boolean;
   onSubmit: (values: DatasetFormValues) => Promise<void>;
   isSaving: boolean;
@@ -140,6 +142,7 @@ interface DatasetFormProps {
 
 export function DatasetForm({
   defaultValues,
+  cleanValues,
   readOnly,
   onSubmit,
   isSaving,
@@ -164,9 +167,10 @@ export function DatasetForm({
   const t = useTranslations("Dataset");
 
   const values = useStore(form.store, (state) => state.values);
+  const baseline = cleanValues ?? defaultValues;
   const isModified = useStore(
     form.store,
-    (state) => !deepEqual(state.values, defaultValues),
+    (state) => !deepEqual(state.values, baseline),
   );
 
   // Notify parent when dirty state changes
@@ -180,7 +184,7 @@ export function DatasetForm({
 
   const isExperimentsModified = useStore(
     form.store,
-    (state) => !deepEqual(state.values.experiments, defaultValues.experiments),
+    (state) => !deepEqual(state.values.experiments, baseline.experiments),
   );
 
   return (

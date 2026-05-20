@@ -45,6 +45,7 @@ export function DatasetCreateView({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [accessions, setAccessions] = useState<string[]>(initialAccessions);
+  const baseValues = useRef<DatasetFormValues>(getDefaultDatasetFormValues(humId));
   const [defaultValues, setDefaultValues] = useState<DatasetFormValues>(
     () => getDefaultDatasetFormValues(humId),
   );
@@ -152,6 +153,7 @@ export function DatasetCreateView({
         <DatasetForm
           key={formKey.current}
           defaultValues={defaultValues}
+          cleanValues={baseValues.current}
           readOnly={false}
           onSubmit={async (values) => {
             await create(values);

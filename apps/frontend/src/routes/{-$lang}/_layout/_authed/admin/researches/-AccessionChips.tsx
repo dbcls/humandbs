@@ -1,8 +1,9 @@
 import { $getDatasetTemplate } from "@/serverFunctions/researches";
 import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
-import { useState } from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Check, X, RotateCcw } from "lucide-react";
 
 const ACCESSION_REGEX = /^(JGAD|DRA)\d+$/;
@@ -53,7 +54,7 @@ export function AccessionChips({
   function addAccession(raw: string) {
     const trimmed = raw.trim().toUpperCase();
     if (!ACCESSION_REGEX.test(trimmed)) {
-      setInputError("Must start with JGAD or DRA followed by digits.");
+      setInputError("Must be JGAD or DRA followed by digits.");
       return;
     }
     if (accessions.includes(trimmed)) {
@@ -74,24 +75,12 @@ export function AccessionChips({
     });
   }
 
-  if (accessions.length === 0 && !inputValue) {
-    return (
-      <div className="flex flex-col gap-1">
-        <span className="text-foreground-light text-xs">Related accessions</span>
-        <AccessionInput
-          value={inputValue}
-          error={inputError}
-          onChange={(v) => { setInputValue(v); setInputError(null); }}
-          onAdd={addAccession}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-foreground-light text-xs">Related accessions — click to apply dataset template</span>
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-col gap-1.5">
+      <span className="text-foreground-light text-xs">
+        Related accessions{accessions.length > 0 ? " — click to apply dataset template" : ""}
+      </span>
+      <div className="focus-within:ring-ring flex flex-wrap items-start gap-1.5 rounded border border-gray-200 bg-white px-2 py-1.5 focus-within:ring-1">
         {accessions.map((accession) => {
           const state = chipStates[accession] ?? { status: "idle" };
           return (
@@ -104,13 +93,24 @@ export function AccessionChips({
             />
           );
         })}
-        <AccessionInput
-          value={inputValue}
-          error={inputError}
-          onChange={(v) => { setInputValue(v); setInputError(null); }}
-          onAdd={addAccession}
-          compact
-        />
+        <div className="flex min-w-[140px] flex-1 flex-col gap-0.5">
+          <Input
+            value={inputValue}
+            onChange={(e) => { setInputValue(e.target.value); setInputError(null); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (inputValue.trim()) addAccession(inputValue);
+              }
+            }}
+            onBlur={() => { if (inputValue.trim()) addAccession(inputValue); }}
+            placeholder="JGAD… or DRA…"
+            className="h-6 border-0 p-0 font-mono text-xs shadow-none focus-visible:ring-0"
+          />
+          {inputError && (
+            <span className="text-xs text-red-600">{inputError}</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -131,18 +131,18 @@ function AccessionChip({
 
   return (
     <div className="flex flex-col items-start gap-0.5">
-      <div
+      <Badge
         className={cn(
-          "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-mono transition-colors",
-          state.status === "idle" && "cursor-pointer border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50",
-          state.status === "loading" && "cursor-wait border-gray-200 bg-gray-50 opacity-70",
-          state.status === "done" && "cursor-pointer border-green-300 bg-green-50 text-green-800",
-          state.status === "error" && "cursor-pointer border-red-300 bg-red-50 text-red-800",
+          "inline-flex cursor-pointer items-center gap-1 font-mono text-xs font-normal transition-colors",
+          state.status === "idle" && "border-gray-300 bg-gray-100 text-gray-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800",
+          state.status === "loading" && "cursor-wait border-gray-200 bg-gray-100 text-gray-500 opacity-70",
+          state.status === "done" && "border-green-300 bg-green-100 text-green-800",
+          state.status === "error" && "border-red-300 bg-red-100 text-red-800",
         )}
         onClick={isLoading ? undefined : onClick}
         role="button"
         tabIndex={isLoading ? -1 : 0}
-        onKeyDown={(e) => { if (!isLoading && e.key === "Enter") onClick(); }}
+        onKeyDown={(e: React.KeyboardEvent) => { if (!isLoading && e.key === "Enter") onClick(); }}
       >
         {state.status === "loading" && (
           <span className="size-3 animate-spin rounded-full border border-current border-t-transparent" />
@@ -153,51 +153,15 @@ function AccessionChip({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="ml-0.5 text-current opacity-50 hover:opacity-100"
+          className="ml-0.5 opacity-50 hover:opacity-100"
           tabIndex={-1}
         >
           <X className="size-3" />
         </button>
-      </div>
+      </Badge>
       {state.status === "error" && (
         <span className="px-1 text-xs text-red-600">{state.message}</span>
       )}
-    </div>
-  );
-}
-
-function AccessionInput({
-  value,
-  error,
-  onChange,
-  onAdd,
-  compact = false,
-}: {
-  value: string;
-  error: string | null;
-  onChange: (v: string) => void;
-  onAdd: (v: string) => void;
-  compact?: boolean;
-}) {
-  return (
-    <div className={cn("flex flex-col gap-0.5", compact ? "min-w-[140px]" : "")}>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            if (value.trim()) onAdd(value);
-          }
-        }}
-        onBlur={() => { if (value.trim()) onAdd(value); }}
-        placeholder="JGAD… or DRA…"
-        className={cn(
-          "h-7 text-xs font-mono",
-          compact ? "border-0 shadow-none focus-visible:ring-0 bg-transparent p-0" : "",
-        )}
-      />
-      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
 }
