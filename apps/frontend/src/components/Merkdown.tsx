@@ -1,8 +1,7 @@
 // src/components/Markdown.tsx
 import { Link } from "@tanstack/react-router";
-import type parse from "html-react-parser";
 import type { HTMLReactParserOptions } from "html-react-parser";
-import { domToReact, Element } from "html-react-parser";
+import parse, { domToReact, Element } from "html-react-parser";
 
 import { Callout } from "@/components/markdown/Callout";
 import { cn } from "@/lib/utils";

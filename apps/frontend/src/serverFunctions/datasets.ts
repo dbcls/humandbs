@@ -24,6 +24,7 @@ import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
+import { clearSearchSignal, nextSearchSignal } from "@/utils/searchSignals";
 import type { DeepOmit } from "@/utils/typeUtils";
 
 export type CreateDatasetForResearchResult =
@@ -67,11 +68,17 @@ export const $getDatasetsPaginated = createServerFn()
 export function getDatasetsPaginatedQueryOptions(data: Omit<DatasetSearchBody, "includeFacets">) {
   return queryOptions({
     queryKey: ["datasets", "list", data],
-    queryFn: async ({ signal }) => {
-      return await $getDatasetsPaginated({
-        data: { ...data, includeFacets: true },
-        signal,
-      });
+    queryFn: async () => {
+      const signal = nextSearchSignal("dataset");
+
+      try {
+        return await $getDatasetsPaginated({
+          data: { ...data, includeFacets: true },
+          signal,
+        });
+      } finally {
+        clearSearchSignal("research", signal);
+      }
     },
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 60,

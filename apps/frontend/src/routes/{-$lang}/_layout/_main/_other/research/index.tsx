@@ -175,7 +175,6 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       isFetching={isFacetsPending || isDataPending}
       facetCounts={searchResults?.facets}
-      //@ts-expect-error TODO fix types
       onSetFilters={setFilters}
       sections={sections}
     />
@@ -216,9 +215,9 @@ function useResearchesSearchQuery() {
 
   useEffect(() => {
     if (!query.isFetching && query.data) {
-      lastResolvedSearchRef.current = searchParams;
+      lastResolvedSearchRef.current = { ...search, lang };
     }
-  }, [query.isFetching, query.data, searchParams]);
+  }, [query.isFetching, query.data, search, lang]);
 
   return { ...query, transitionType };
 }
@@ -403,7 +402,7 @@ const columns = [
     id: "title",
     header: (ctx) => ctx.table.options.meta?.t?.("title"),
     cell: function Cell(ctx) {
-      return ctx.renderValue()?.[ctx.table.options.meta?.lang!];
+      return ctx.renderValue()?.[ctx.table.options.meta!.lang];
     },
   }),
   columnHelper.accessor((row) => row.versions[0], {

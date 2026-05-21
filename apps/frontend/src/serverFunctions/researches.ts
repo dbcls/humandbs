@@ -29,7 +29,7 @@ import { throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
-import type { DeepOmit } from "@/utils/typeUtils";
+import { clearSearchSignal, nextSearchSignal } from "@/utils/searchSignals";
 
 import type {
   DatasetTemplateData,
@@ -336,8 +336,19 @@ export const $listResearches = createServerFn()
 export function getResearchesQueryOptions(data: Omit<ResearchSearchBody, "includeFacets">) {
   return queryOptions({
     queryKey: ["researches", "list", data],
-    queryFn: ({ signal }) => $getResearches({ data: { ...data, includeFacets: true }, signal }),
-    staleTime: 1000 * 60 * 5, // 5 minutes,
+    queryFn: async () => {
+      const signal = nextSearchSignal("research");
+
+      try {
+        return await $getResearches({
+          data: { ...data, includeFacets: true },
+          signal,
+        });
+      } finally {
+        clearSearchSignal("researches", signal);
+      }
+    },
+    staleTime: 1000 * 60 * 5,
     // placeholderData: keepPreviousData,
   });
 }

@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "use-intl";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import type { RangeFilter } from "@humandbs/backend/types";
 
@@ -212,28 +212,30 @@ export function SearchPanel({
   const committedDraft = useMemo(() => buildDraftState(sections), [sections]);
 
   const [draft, setDraft] = useState<DraftState>(committedDraft);
+  const hasPendingUserEditRef = useRef(false);
+  const latestSectionsRef = useRef(sections);
+  const latestOnSetFiltersRef = useRef(onSetFilters);
 
   useEffect(() => {
     setDraft(committedDraft);
   }, [committedDraft]);
 
+  useEffect(() => {
+    latestSectionsRef.current = sections;
+    latestOnSetFiltersRef.current = onSetFilters;
+  });
+
   const hasAnyFilter = hasAnyDraftValue(draft);
 
   const updateDraftField = (id: string, value: unknown) => {
+    hasPendingUserEditRef.current = true;
     setDraft((prev) => ({ ...prev, [id]: value }));
   };
 
   function handleResetAll() {
+    hasPendingUserEditRef.current = true;
     setDraft(Object.fromEntries(sections.map((s) => [s.id, undefined])));
   }
-
-  const handleSearch = () => {
-    const payload = buildPayload(sections, draft);
-
-    startTransition(() => {
-      onSetFilters({ ...payload, page: 1 });
-    });
-  };
 
   const groupedSections = sections.reduce((acc, curr) => {
     const displayKey = "uiGroup" in curr && curr.uiGroup ? curr.uiGroup : "top-level";
@@ -274,7 +276,18 @@ export function SearchPanel({
   };
 
   useEffect(() => {
-    const timeout = setTimeout(handleSearch, 500);
+    if (!hasPendingUserEditRef.current) {
+      return;
+    }
+    hasPendingUserEditRef.current = false;
+
+    const timeout = setTimeout(() => {
+      const payload = buildPayload(latestSectionsRef.current, draft);
+
+      startTransition(() => {
+        latestOnSetFiltersRef.current({ ...payload, page: 1 });
+      });
+    }, 500);
 
     return () => {
       clearTimeout(timeout);

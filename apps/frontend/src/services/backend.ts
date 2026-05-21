@@ -36,7 +36,6 @@ import { ResearchSearchResponseSchema } from "@humandbs/backend/types";
 import type { DeepOmit } from "@/utils/typeUtils";
 
 import type {
-  ResearchTemplateResponse,
   DatasetTemplateResponse,
   ResearchTemplateResponse,
 } from "../../../backend/src/api/types/templates";
