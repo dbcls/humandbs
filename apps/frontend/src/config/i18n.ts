@@ -1,6 +1,6 @@
 import { enumFromStringArray } from "@/utils/zod";
 
-import en from "../../localization/messages/en.json";
+import type en from "../../localization/messages/en.json";
 
 export type Messages = typeof en;
 

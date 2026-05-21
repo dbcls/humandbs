@@ -33,19 +33,14 @@ export type TabType = z.infer<typeof tabParamSchema>;
 function getTabRoute(tabFromPath: string | undefined): TabType | null {
   if (!tabFromPath) return null;
 
-  const afterAdminSegment = [
-    ...(/\/admin\/([^\/]+)/i.exec(tabFromPath) || []),
-  ]?.[1];
+  const afterAdminSegment = [...(/\/admin\/([^/]+)/i.exec(tabFromPath) || [])]?.[1];
 
-  if (tabParamSchema.safeParse(afterAdminSegment).success)
-    return afterAdminSegment as TabType;
+  if (tabParamSchema.safeParse(afterAdminSegment).success) return afterAdminSegment as TabType;
 
   return null;
 }
 
-function stringifySearch(
-  search: Record<string, string | number> | undefined | null,
-) {
+function stringifySearch(search: Record<string, string | number> | undefined | null) {
   if (!search) return "";
 
   const params = new URLSearchParams();
@@ -101,9 +96,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed")({
   beforeLoad: ({ context, matches, location }) => {
     if (!context.user) {
       const fallback =
-        typeof context.lang === "string" && context.lang.length > 0
-          ? `/${context.lang}`
-          : "/";
+        typeof context.lang === "string" && context.lang.length > 0 ? `/${context.lang}` : "/";
 
       const target = buildRedirectTarget(location, fallback);
 
@@ -236,7 +229,7 @@ function PanelItem({ tab, title }: { tab: TabType; title: React.ReactNode }) {
   return (
     <Link
       variant={"nav"}
-      className="data-[status=active]:bg-hover hover:bg-hover/50 hover:text-accent-foreground w-auto rounded-sm px-4 py-2"
+      className="w-auto rounded-sm px-4 py-2 hover:bg-hover/50 hover:text-accent-foreground data-[status=active]:bg-hover"
       to={`/{-$lang}/admin/${tab}` as never}
     >
       {title}

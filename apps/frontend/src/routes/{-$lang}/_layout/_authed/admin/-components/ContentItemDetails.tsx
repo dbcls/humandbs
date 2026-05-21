@@ -6,20 +6,23 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { Loader2, Pencil, Save } from "lucide-react";
+
 import { lazy, Suspense, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
-import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema";
+import type { ContentItemResponse, UpsertContentItemData } from "@/serverFunctions/contentItem";
 import {
   $publishContentItemDraftTranslation,
   $resetContentItemTranslationDraft,
@@ -28,17 +31,13 @@ import {
   $updateContentItemHideTOC,
   getContentQueryOptions,
   getContentsListQueryOptions,
-  type ContentItemResponse,
-  type UpsertContentItemData,
 } from "@/serverFunctions/contentItem";
 import { waitUntilNoMutations } from "@/utils/mutations";
 
 import { MarkdownFileActions } from "./MarkdownFileActions";
 import { UnpublishedDot } from "./UnpublishedDot";
 
-const MarkdownClientPreview = lazy(
-  () => import("@/components/markdown/MarkdownClientPreview"),
-);
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 type ContentItem = NonNullable<ContentItemResponse>;
 
@@ -65,9 +64,7 @@ function useContentItemDetailsForm({
   id,
 }: {
   initialValues: FormData;
-  setBaselineTranslation: React.Dispatch<
-    React.SetStateAction<FormData["translation"]>
-  >;
+  setBaselineTranslation: React.Dispatch<React.SetStateAction<FormData["translation"]>>;
   id: string;
 }) {
   const { mutate: saveDraft } = useSaveDraft(id);
@@ -103,10 +100,8 @@ function useContentItemDetailsForm({
           isIgnoreRef.current = true;
           try {
             await resetDraft({ lang: value.lang });
-            const publishedTitle =
-              value.translation?.[value.lang]?.published?.title ?? "";
-            const publishedContent =
-              value.translation?.[value.lang]?.published?.content ?? "";
+            const publishedTitle = value.translation?.[value.lang]?.published?.title ?? "";
+            const publishedContent = value.translation?.[value.lang]?.published?.content ?? "";
 
             const newTranslation = {
               ...value.translation,
@@ -166,10 +161,8 @@ function useContentItemDetailsForm({
             const draft = value.translation[loc]?.draft;
             const published = value.translation[loc]?.published;
             return (
-              normalizeTextValue(draft?.content) !==
-                normalizeTextValue(published?.content) ||
-              normalizeTextValue(draft?.title) !==
-                normalizeTextValue(published?.title)
+              normalizeTextValue(draft?.content) !== normalizeTextValue(published?.content) ||
+              normalizeTextValue(draft?.title) !== normalizeTextValue(published?.title)
             );
           });
 
@@ -229,12 +222,9 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
   });
 
   const { isPending: isPublishPending } = usePublishDraft(id);
-  const { mutate: unpublishDraft, isPending: isUnpublishPending } =
-    useUnpublishDraft(id);
+  const { mutate: unpublishDraft, isPending: isUnpublishPending } = useUnpublishDraft(id);
 
-  const [baselineTranslation, setBaselineTranslation] = useState(
-    () => data.translations,
-  );
+  const [baselineTranslation, setBaselineTranslation] = useState(() => data.translations);
 
   const form = useContentItemDetailsForm({
     initialValues: {
@@ -254,10 +244,8 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           const published = state.values.translation[loc]?.published;
           const changed =
             state.isValid &&
-            (normalizeTextValue(draft?.content) !==
-              normalizeTextValue(published?.content) ||
-              normalizeTextValue(draft?.title) !==
-                normalizeTextValue(published?.title));
+            (normalizeTextValue(draft?.content) !== normalizeTextValue(published?.content) ||
+              normalizeTextValue(draft?.title) !== normalizeTextValue(published?.title));
           return [loc, changed];
         }),
       ) as Record<Locale, boolean>,
@@ -292,9 +280,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                   variant="outline"
                   size="lg"
                   disabled={!dirtyLocales[lang]}
-                  onClick={() =>
-                    form.handleSubmit({ submitAction: "resetDraft" })
-                  }
+                  onClick={() => form.handleSubmit({ submitAction: "resetDraft" })}
                 >
                   Reset
                 </Button>
@@ -321,19 +307,13 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
           <TabsList variant="line">
             {i18n.locales.map((loc) => (
               <TabsTrigger key={loc} value={loc} variant="line">
-                <TabLabel dirty={dirtyLocales[loc]}>
-                  {loc.toUpperCase()}
-                </TabLabel>
+                <TabLabel dirty={dirtyLocales[loc]}>{loc.toUpperCase()}</TabLabel>
               </TabsTrigger>
             ))}
           </TabsList>
 
           {i18n.locales.map((loc) => (
-            <TabsContent
-              key={loc}
-              value={loc}
-              className="flex min-h-0 flex-1 flex-col"
-            >
+            <TabsContent key={loc} value={loc} className="flex min-h-0 flex-1 flex-col">
               <Tabs
                 className="flex min-h-0 flex-1 flex-col"
                 defaultValue={DOCUMENT_VERSION_STATUS.PUBLISHED}
@@ -372,10 +352,8 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                 >
                   <form.Subscribe
                     selector={(state) => ({
-                      draftContent:
-                        state.values.translation[loc]?.draft?.content ?? "",
-                      draftTitle:
-                        state.values.translation[loc]?.draft?.title ?? "",
+                      draftContent: state.values.translation[loc]?.draft?.content ?? "",
+                      draftTitle: state.values.translation[loc]?.draft?.title ?? "",
                     })}
                   >
                     {({ draftContent, draftTitle }) => (
@@ -451,7 +429,7 @@ export const ContentItemDetails = ({ id }: { id: string }) => {
                     <div>No published content</div>
                   ) : (
                     <>
-                      <div className="border-foreground-light flex justify-end border-b pb-2">
+                      <div className="flex justify-end border-foreground-light border-b pb-2">
                         <Button
                           variant={"outline"}
                           size={"lg"}
@@ -484,14 +462,12 @@ function ShowTOCCheckbox({ id }: { id: string }) {
   const { data } = useSuspenseQuery(contentItemQO);
 
   const { mutate: updateHideTOC, isPending } = useMutation({
-    mutationFn: (hideTOC: boolean) =>
-      $updateContentItemHideTOC({ data: { id, hideTOC } }),
+    mutationFn: (hideTOC: boolean) => $updateContentItemHideTOC({ data: { id, hideTOC } }),
     onMutate: async (hideTOC) => {
       await queryClient.cancelQueries(contentItemQO);
       const prev = queryClient.getQueryData(contentItemQO.queryKey);
-      queryClient.setQueryData(
-        contentItemQO.queryKey,
-        (old: typeof data | undefined) => (old ? { ...old, hideTOC } : old),
+      queryClient.setQueryData(contentItemQO.queryKey, (old: typeof data | undefined) =>
+        old ? { ...old, hideTOC } : old,
       );
       return { prev };
     },
@@ -534,9 +510,7 @@ function usePublishDraft(id: string) {
     onMutate: async (data) => {
       await queryClient.cancelQueries(contentItemQO);
 
-      const previousContentItem = queryClient.getQueryData(
-        contentItemQO.queryKey,
-      );
+      const previousContentItem = queryClient.getQueryData(contentItemQO.queryKey);
 
       queryClient.setQueryData(contentItemQO.queryKey, (old) => {
         if (!old) return old;
@@ -559,9 +533,7 @@ function usePublishDraft(id: string) {
 
       await queryClient.cancelQueries(contentsListQO);
 
-      const previousContentsList = queryClient.getQueryData(
-        contentsListQO.queryKey,
-      );
+      const previousContentsList = queryClient.getQueryData(contentsListQO.queryKey);
 
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
         if (!old) return old;
@@ -588,16 +560,10 @@ function usePublishDraft(id: string) {
     },
     onError: (_, __, context) => {
       if (context?.previousContentItem) {
-        queryClient.setQueryData(
-          contentItemQO.queryKey,
-          context.previousContentItem,
-        );
+        queryClient.setQueryData(contentItemQO.queryKey, context.previousContentItem);
       }
       if (context?.previousContentsList) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context.previousContentsList,
-        );
+        queryClient.setQueryData(contentsListQO.queryKey, context.previousContentsList);
       }
     },
     onSettled: async () => {
@@ -704,12 +670,8 @@ function useUnpublishDraft(id: string) {
       await queryClient.cancelQueries(contentItemQO);
       await queryClient.cancelQueries(contentsListQO);
 
-      const previousContentItem = queryClient.getQueryData(
-        contentItemQO.queryKey,
-      );
-      const previousContentsList = queryClient.getQueryData(
-        contentsListQO.queryKey,
-      );
+      const previousContentItem = queryClient.getQueryData(contentItemQO.queryKey);
+      const previousContentsList = queryClient.getQueryData(contentsListQO.queryKey);
 
       queryClient.setQueryData(contentItemQO.queryKey, (old) => {
         if (!old) return old;
@@ -752,16 +714,10 @@ function useUnpublishDraft(id: string) {
     },
     onError: (_, __, context) => {
       if (context?.previousContentItem) {
-        queryClient.setQueryData(
-          contentItemQO.queryKey,
-          context.previousContentItem,
-        );
+        queryClient.setQueryData(contentItemQO.queryKey, context.previousContentItem);
       }
       if (context?.previousContentsList) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context.previousContentsList,
-        );
+        queryClient.setQueryData(contentsListQO.queryKey, context.previousContentsList);
       }
     },
     onSettled: async () => {

@@ -1,4 +1,5 @@
 import { SearchIcon, XIcon } from "lucide-react";
+
 import { useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/Input";
@@ -58,7 +59,7 @@ export function FilterSearchInput({
           <Button
             variant="plain"
             size="icon"
-            className="text-muted-foreground hover:text-foreground pointer-events-auto p-0"
+            className="pointer-events-auto p-0 text-muted-foreground hover:text-foreground"
             onClick={handleClear}
           >
             <XIcon size={14} />

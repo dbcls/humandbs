@@ -1,18 +1,10 @@
-import { type Locale, localeSchema } from "@/config/i18n";
+import { and, desc, eq, exists, gte, ilike, isNull, lte, or } from "drizzle-orm";
+import z from "zod";
+
+import type { Locale } from "@/config/i18n";
+import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
 import { alert, alertTranslation, user } from "@/db/schema";
-import {
-  and,
-  desc,
-  eq,
-  exists,
-  gte,
-  ilike,
-  isNull,
-  lte,
-  or,
-} from "drizzle-orm";
-import z from "zod";
 
 export interface AlertTranslationInput {
   lang: Locale;
@@ -105,10 +97,7 @@ export interface AlertsRepository {
   /**
    * Private - update alert
    */
-  update: (
-    data: UpdateAlertPayload,
-    updatedById: string,
-  ) => Promise<AlertRecord>;
+  update: (data: UpdateAlertPayload, updatedById: string) => Promise<AlertRecord>;
 }
 
 function mapAlertRows(
@@ -221,9 +210,7 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
           }
 
           if (filters.activeTo) {
-            conditions.push(
-              or(isNull(table.from), lte(table.from, filters.activeTo)),
-            );
+            conditions.push(or(isNull(table.from), lte(table.from, filters.activeTo)));
           }
 
           return conditions.length > 0 ? and(...conditions) : undefined;
@@ -247,14 +234,15 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
         },
         from: item.from,
         to: item.to,
-        translations: item.trnanslations.reduce<
-          Partial<Record<Locale, { content: string }>>
-        >((acc, translation) => {
-          acc[translation.locale] = {
-            content: translation.content,
-          };
-          return acc;
-        }, {}),
+        translations: item.trnanslations.reduce<Partial<Record<Locale, { content: string }>>>(
+          (acc, translation) => {
+            acc[translation.locale] = {
+              content: translation.content,
+            };
+            return acc;
+          },
+          {},
+        ),
       }));
     },
 
@@ -323,9 +311,7 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
           })
           .where(eq(alert.id, updateData.id));
 
-        await tx
-          .delete(alertTranslation)
-          .where(eq(alertTranslation.alertId, updateData.id));
+        await tx.delete(alertTranslation).where(eq(alertTranslation.alertId, updateData.id));
 
         if (updateData.translations.length > 0) {
           await tx.insert(alertTranslation).values(
@@ -337,10 +323,7 @@ export function createAlertsRepository(database: typeof db): AlertsRepository {
           );
         }
 
-        const [updatedAlert] = await tx
-          .select()
-          .from(alert)
-          .where(eq(alert.id, updateData.id));
+        const [updatedAlert] = await tx.select().from(alert).where(eq(alert.id, updateData.id));
 
         const translations = await tx
           .select()

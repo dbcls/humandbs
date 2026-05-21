@@ -1,13 +1,8 @@
-import * as schema from "@/db/schema";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  test,
-} from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+
 import { sql } from "drizzle-orm";
+
+import * as schema from "@/db/schema";
 
 import {
   createTestDatabase,
@@ -24,9 +19,7 @@ const AUTHOR_ID = "test-user";
 
 async function clearAlertTables() {
   await db.execute(sql`SET session_replication_role = replica`);
-  await db.execute(
-    sql`TRUNCATE TABLE alert_translation, alert, "user" RESTART IDENTITY CASCADE`,
-  );
+  await db.execute(sql`TRUNCATE TABLE alert_translation, alert, "user" RESTART IDENTITY CASCADE`);
   await db.execute(sql`SET session_replication_role = DEFAULT`);
 }
 

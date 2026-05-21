@@ -1,6 +1,8 @@
 import { useTranslations } from "use-intl";
+
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { FacetItemWrapper } from "./FacetItemWrapper";
 
 export function BooleanFacetItem({
@@ -38,16 +40,14 @@ export function BooleanFacetItem({
           {realOptions.map((option) => (
             <Label
               key={option}
-              className="flex items-center justify-between gap-2 text-sm text-gray-700"
+              className="flex items-center justify-between gap-2 text-gray-700 text-sm"
             >
               <span>
                 <RadioGroupItem value={option} />
                 <span className="ml-2">{t(option)}</span>
               </span>
               <span className="text-gray-500">
-                {facetCounts?.find(
-                  (f) => f.value === (option === "true" ? "1" : "0"),
-                )?.count || 0}
+                {facetCounts?.find((f) => f.value === (option === "true" ? "1" : "0"))?.count || 0}
               </span>
             </Label>
           ))}

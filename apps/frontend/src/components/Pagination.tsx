@@ -1,6 +1,7 @@
-import type { Pagination as APIPagination } from "@humandbs/backend/types";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
+
+import type { Pagination as APIPagination } from "@humandbs/backend/types";
 
 import {
   Pagination as PaginationBase,
@@ -82,11 +83,7 @@ interface PaginationProps {
   className?: string;
 }
 
-export function Pagination({
-  pagination,
-  onItemsPerPageChange,
-  className,
-}: PaginationProps) {
+export function Pagination({ pagination, onItemsPerPageChange, className }: PaginationProps) {
   const navigate = useNavigate();
   const t = useTranslations("Pagination");
 
@@ -107,10 +104,7 @@ export function Pagination({
 
   return (
     <div
-      className={cn(
-        "mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row",
-        className,
-      )}
+      className={cn("mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row", className)}
     >
       <PaginationBase>
         <PaginationContent>
@@ -170,13 +164,8 @@ export function Pagination({
       </PaginationBase>
 
       <div className="flex items-center gap-2 whitespace-nowrap">
-        <span className="text-muted-foreground text-sm">
-          {t("itemsPerPage")}:
-        </span>
-        <Select
-          value={pagination.limit.toString()}
-          onValueChange={handleItemsPerPageChange}
-        >
+        <span className="text-muted-foreground text-sm">{t("itemsPerPage")}:</span>
+        <Select value={pagination.limit.toString()} onValueChange={handleItemsPerPageChange}>
           <SelectTrigger className="w-fit">
             <SelectValue />
           </SelectTrigger>

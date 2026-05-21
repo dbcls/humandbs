@@ -1,26 +1,25 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
 import { useLocale, useTranslations } from "use-intl";
+
+import { lazy, Suspense, useState } from "react";
 
 import SubmitDataIcon from "@/assets/submit-data.svg?react";
 import UseDataIcon from "@/assets/use-data.svg?react";
 import { Card } from "@/components/Card";
-import { Input } from "@/components/Input";
-import { Button } from "@/components/ui/button";
-import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { Input } from "@/components/Input";
 import { SkeletonLoading } from "@/components/Skeleton";
+import { Button } from "@/components/ui/button";
 import searchSamples from "@/config/frontpageSearchSamples.json";
+import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 import { News } from "../../-components/FrontNews";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_home")({
   component: RouteComponent,
   loader: ({ context }) => {
-    context.queryClient.ensureQueryData(
-      getNewsTitlesQueryOptions({ locale: context.lang }),
-    );
+    context.queryClient.ensureQueryData(getNewsTitlesQueryOptions({ locale: context.lang }));
   },
   errorComponent: () => <div>Oh no, an error!</div>,
 });
@@ -41,7 +40,7 @@ function RouteComponent() {
     // All that after the Navbar component
     <section className="flex w-full flex-col items-stretch gap-4">
       <section className="flex h-fit items-start justify-between gap-4">
-        <div className="prose-h1:text-secondary prose-h1:text-lg prose-h1:font-bold prose-h1:w-full prose-h1:text-left prose-h1:mt-8 prose-h1:mb-0 flex flex-1 flex-col items-center rounded-md bg-white p-8 pb-24">
+        <div className="prose-h1:mt-8 prose-h1:mb-0 flex prose-h1:w-full flex-1 flex-col items-center rounded-md bg-white p-8 pb-24 prose-h1:text-left prose-h1:font-bold prose-h1:text-lg prose-h1:text-secondary">
           <div className="flex w-full max-w-5xl flex-col items-center">
             <Outlet />
 
@@ -118,11 +117,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <Card
-          caption={"News"}
-          containerClassName="px-3"
-          className="w-[30rem] shrink-0"
-        >
+        <Card caption={"News"} containerClassName="px-3" className="w-[30rem] shrink-0">
           <ErrorResetBoundary getResetKey={() => "reset"}>
             <Suspense fallback={<SkeletonLoading />}>
               <News />
@@ -132,11 +127,7 @@ function RouteComponent() {
       </section>
       <div className="w-full">
         <Suspense
-          fallback={
-            <div className="flex h-40 w-full items-center justify-center">
-              Loading...
-            </div>
-          }
+          fallback={<div className="flex h-40 w-full items-center justify-center">Loading...</div>}
         >
           <LazyFrontStats />
         </Suspense>
@@ -145,6 +136,4 @@ function RouteComponent() {
   );
 }
 
-const LazyFrontStats = lazy(
-  () => import("@/components/FrontStatsVisualization/index"),
-);
+const LazyFrontStats = lazy(() => import("@/components/FrontStatsVisualization/index"));

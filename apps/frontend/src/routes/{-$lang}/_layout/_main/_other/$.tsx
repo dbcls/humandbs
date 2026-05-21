@@ -115,10 +115,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
         kind: "revisionList" as const,
         contentHtml: null,
         title: null,
-        crumbs: [
-          ...docCrumbs,
-          { label: "Revisions", href: `/${docId}/revision` },
-        ],
+        crumbs: [...docCrumbs, { label: "Revisions", href: `/${docId}/revision` }],
         hideTOC: false,
         previousVersions: versions,
         revisionsBasePath: docId,
@@ -177,14 +174,8 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/$")({
 });
 
 function RouteComponent() {
-  const {
-    kind,
-    contentHtml,
-    title,
-    hideTOC,
-    previousVersions,
-    revisionsBasePath,
-  } = Route.useLoaderData();
+  const { kind, contentHtml, title, hideTOC, previousVersions, revisionsBasePath } =
+    Route.useLoaderData();
 
   if (kind === "revisionList") {
     return (
@@ -192,10 +183,7 @@ function RouteComponent() {
         className="min-h-full w-full min-w-0 py-6"
         containerClassName="main-content mt-8 min-w-0"
       >
-        <PreviousVersionsList
-          versions={previousVersions}
-          revisionsBasePath={revisionsBasePath}
-        />
+        <PreviousVersionsList versions={previousVersions} revisionsBasePath={revisionsBasePath} />
       </Card>
     );
   }

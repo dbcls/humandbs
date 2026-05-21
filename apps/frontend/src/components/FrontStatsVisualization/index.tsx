@@ -1,8 +1,9 @@
 import { Environment } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, Suspense } from "react";
 import { useTranslations } from "use-intl";
+
+import { Suspense, useEffect, useState } from "react";
 
 import { SkeletonLoading } from "@/components/Skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -54,8 +55,7 @@ export default function FrontStatsVisualization() {
     let filterValue: any = [value];
     if (facet === "disease") filterValue = value;
     else if (facet === "isTumor") filterValue = value;
-    else if (facet === "hasPhenotypeData")
-      filterValue = value === "1" || value === "true";
+    else if (facet === "hasPhenotypeData") filterValue = value === "1" || value === "true";
 
     const filtersObj = { [facet]: filterValue };
     const to = mode === "dataset" ? "/{-$lang}/dataset" : "/{-$lang}/research";
@@ -84,28 +84,23 @@ export default function FrontStatsVisualization() {
         onValueChange={setMode}
         className="absolute top-6 z-10 flex items-center rounded-full bg-white/90 p-1.5 backdrop-blur-sm"
       >
-        <ToggleGroupItem
-          value="research"
-          variant="pill"
-          className="data-[state=on]:bg-accent px-8"
-        >
+        <ToggleGroupItem value="research" variant="pill" className="px-8 data-[state=on]:bg-accent">
           {tCommon("research")}
-          <span className="ml-2 text-xs font-normal opacity-80">
+          <span className="ml-2 font-normal text-xs opacity-80">
             {stats.researchTotal.toLocaleString()}
           </span>
         </ToggleGroupItem>
         <ToggleGroupItem
           value="dataset"
           variant="pill"
-          className="data-[state=on]:bg-secondary px-8"
+          className="px-8 data-[state=on]:bg-secondary"
         >
           {tCommon("dataset")}
-          <span className="ml-2 text-xs font-normal opacity-80">
+          <span className="ml-2 font-normal text-xs opacity-80">
             {stats.datasetTotal.toLocaleString()}
           </span>
         </ToggleGroupItem>
       </ToggleGroup>
-
 
       <div className="absolute inset-0">
         {isMounted && stats && (
@@ -149,9 +144,7 @@ export default function FrontStatsVisualization() {
 
       {/* Accessibility fallback for screen readers */}
       <div className="sr-only">
-        <h2>
-          {mode === "research" ? tCommon("research") : tCommon("dataset")}
-        </h2>
+        <h2>{mode === "research" ? tCommon("research") : tCommon("dataset")}</h2>
         <ul>
           {stats?.systems.map((sys) => (
             <li key={sys.facet}>

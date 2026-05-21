@@ -1,20 +1,13 @@
-import {
-  mkdir,
-  mkdtemp,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
+
 import { createServerOnlyFn } from "@tanstack/react-start";
 import tar from "tar-stream";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
-import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
 import { navigationFlowchartConfigSchema } from "@/config/navigation-flowchart.schema";
 import { siteNavigationConfigSchema } from "@/config/site-navigation.schema";
 import { db } from "@/db/database";
@@ -25,6 +18,7 @@ import {
   contentTranslation,
   document,
   documentVersion,
+  NAVIGATION_FLOWCHART_STATUS,
   navigationFlowchart,
   navigationFlowchartRevision,
   newsItem,
@@ -35,10 +29,10 @@ import {
   siteNavigationConfigRevision,
   user,
 } from "@/db/schema";
+import type { CmsDataTransferCategory } from "@/serverFunctions/cmsDataTransfer";
 import {
   CMS_DATA_TRANSFER_CATEGORIES,
   cmsDataTransferCategorySchema,
-  type CmsDataTransferCategory,
 } from "@/serverFunctions/cmsDataTransfer";
 
 export interface InspectCmsDataTransferArchiveParams {
@@ -55,10 +49,7 @@ export interface RestoreCmsDataTransferArchiveParams {
   restoredByUserId?: string;
 }
 
-type ArchiveFileInput = Record<
-  string,
-  string | Blob | ArrayBufferView | ArrayBufferLike
->;
+type ArchiveFileInput = Record<string, string | Blob | ArrayBufferView | ArrayBufferLike>;
 
 type Database = typeof db;
 
@@ -197,10 +188,7 @@ const flowchartRowSchema = z.object({
   nameEn: z.string(),
   nameJa: z.string(),
   config: navigationFlowchartConfigSchema,
-  status: z.enum([
-    NAVIGATION_FLOWCHART_STATUS.DRAFT,
-    NAVIGATION_FLOWCHART_STATUS.PUBLISHED,
-  ]),
+  status: z.enum([NAVIGATION_FLOWCHART_STATUS.DRAFT, NAVIGATION_FLOWCHART_STATUS.PUBLISHED]),
   revision: z.number().int(),
   updatedAt: z.string(),
   updatedBy: z.string().nullable(),
@@ -238,9 +226,7 @@ const archiveManifestSchema = z
     }
   });
 
-export type CmsDataTransferArchiveManifest = z.infer<
-  typeof archiveManifestSchema
->;
+export type CmsDataTransferArchiveManifest = z.infer<typeof archiveManifestSchema>;
 
 const inspectedCmsDataTransferArchiveSchema = z.object({
   archive: z.object({
@@ -258,9 +244,7 @@ const inspectedCmsDataTransferArchiveSchema = z.object({
   }),
 });
 
-export type InspectedCmsDataTransferArchive = z.infer<
-  typeof inspectedCmsDataTransferArchiveSchema
->;
+export type InspectedCmsDataTransferArchive = z.infer<typeof inspectedCmsDataTransferArchiveSchema>;
 
 const restoredCmsDataTransferArchiveSchema = z.object({
   archiveName: z.string(),
@@ -268,13 +252,10 @@ const restoredCmsDataTransferArchiveSchema = z.object({
   counts: archiveCountsSchema,
 });
 
-export type RestoredCmsDataTransferArchive = z.infer<
-  typeof restoredCmsDataTransferArchiveSchema
->;
+export type RestoredCmsDataTransferArchive = z.infer<typeof restoredCmsDataTransferArchiveSchema>;
 
 const $$getAssetDir = createServerOnlyFn(() => {
-  const filesSubdir =
-    process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
+  const filesSubdir = process.env.HUMANDBS_FRONTEND_PUBLIC_FILES_DIR ?? "public-files";
   return path.resolve(
     process.env.NODE_ENV === "development" ? "./public" : "./dist/client",
     filesSubdir,
@@ -339,9 +320,7 @@ export interface CreateCmsDataTransferArchiveParams {
 export interface CmsDataTransferArchiveBuilderDependencies {
   database: Database;
   getAssetDir?: () => string;
-  createArchive?: (
-    files: ArchiveFileInput,
-  ) =>
+  createArchive?: (files: ArchiveFileInput) =>
     | {
         bytes: () => Promise<Uint8Array<ArrayBufferLike>>;
       }
@@ -368,9 +347,7 @@ async function toUint8Array(
   return new Uint8Array(value);
 }
 
-function collectStreamBytes(
-  stream: NodeJS.ReadableStream,
-): Promise<Uint8Array<ArrayBufferLike>> {
+function collectStreamBytes(stream: NodeJS.ReadableStream): Promise<Uint8Array<ArrayBufferLike>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
 
@@ -380,9 +357,7 @@ function collectStreamBytes(
     stream.on("error", reject);
     stream.on("end", () => {
       const buffer = Buffer.concat(chunks);
-      resolve(
-        new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength),
-      );
+      resolve(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
     });
   });
 }
@@ -395,18 +370,14 @@ async function createTarGzArchive(files: ArchiveFileInput) {
     const content = await toUint8Array(files[name]!);
 
     await new Promise<void>((resolve, reject) => {
-      pack.entry(
-        { name, size: content.byteLength },
-        Buffer.from(content),
-        (error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
+      pack.entry({ name, size: content.byteLength }, Buffer.from(content), (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
 
-          resolve();
-        },
-      );
+        resolve();
+      });
     });
   }
 
@@ -416,12 +387,7 @@ async function createTarGzArchive(files: ArchiveFileInput) {
   const gzipped = gzipSync(Buffer.from(tarBytes));
 
   return {
-    bytes: async () =>
-      new Uint8Array(
-        gzipped.buffer,
-        gzipped.byteOffset,
-        gzipped.byteLength,
-      ),
+    bytes: async () => new Uint8Array(gzipped.buffer, gzipped.byteOffset, gzipped.byteLength),
   };
 }
 
@@ -477,11 +443,7 @@ function validateCategoryPayload(
         throw new Error('Archive is missing required file "categories/content.json".');
       }
       {
-        const payload = parseJsonFile(
-          entryBytes,
-          contentPayloadSchema,
-          "categories/content.json",
-        );
+        const payload = parseJsonFile(entryBytes, contentPayloadSchema, "categories/content.json");
         return {
           count: payload.items.length + payload.translations.length,
         };
@@ -505,11 +467,7 @@ function validateCategoryPayload(
         throw new Error('Archive is missing required file "categories/news.json".');
       }
       {
-        const payload = parseJsonFile(
-          entryBytes,
-          newsPayloadSchema,
-          "categories/news.json",
-        );
+        const payload = parseJsonFile(entryBytes, newsPayloadSchema, "categories/news.json");
         return {
           count:
             payload.items.length +
@@ -523,20 +481,14 @@ function validateCategoryPayload(
         throw new Error('Archive is missing required file "categories/alerts.json".');
       }
       {
-        const payload = parseJsonFile(
-          entryBytes,
-          alertsPayloadSchema,
-          "categories/alerts.json",
-        );
+        const payload = parseJsonFile(entryBytes, alertsPayloadSchema, "categories/alerts.json");
         return {
           count: payload.items.length + payload.translations.length,
         };
       }
     case "header-footer":
       if (!entryBytes) {
-        throw new Error(
-          'Archive is missing required file "categories/header-footer.json".',
-        );
+        throw new Error('Archive is missing required file "categories/header-footer.json".');
       }
       {
         const payload = parseJsonFile(
@@ -550,9 +502,7 @@ function validateCategoryPayload(
       }
     case "flowcharts":
       if (!entryBytes) {
-        throw new Error(
-          'Archive is missing required file "categories/flowcharts.json".',
-        );
+        throw new Error('Archive is missing required file "categories/flowcharts.json".');
       }
       {
         const payload = parseJsonFile(
@@ -577,52 +527,46 @@ async function extractArchiveEntries(
   const extract = tar.extract();
   const entries: Record<string, Uint8Array<ArrayBufferLike>> = {};
 
-  const done = new Promise<Record<string, Uint8Array<ArrayBufferLike>>>(
-    (resolve, reject) => {
-      extract.on("entry", (header, stream, next) => {
-        if (header.type === "directory") {
-          stream.resume();
-          stream.on("end", next);
-          return;
-        }
+  const done = new Promise<Record<string, Uint8Array<ArrayBufferLike>>>((resolve, reject) => {
+    extract.on("entry", (header, stream, next) => {
+      if (header.type === "directory") {
+        stream.resume();
+        stream.on("end", next);
+        return;
+      }
 
-        if (
-          header.name.startsWith("/") ||
-          header.name.split("/").includes("..") ||
-          header.name.length === 0
-        ) {
-          reject(new Error(`Archive contains an invalid entry path "${header.name}".`));
-          stream.resume();
-          return;
-        }
+      if (
+        header.name.startsWith("/") ||
+        header.name.split("/").includes("..") ||
+        header.name.length === 0
+      ) {
+        reject(new Error(`Archive contains an invalid entry path "${header.name}".`));
+        stream.resume();
+        return;
+      }
 
-        if (Object.hasOwn(entries, header.name)) {
-          reject(new Error(`Archive contains duplicate entry "${header.name}".`));
-          stream.resume();
-          return;
-        }
+      if (Object.hasOwn(entries, header.name)) {
+        reject(new Error(`Archive contains duplicate entry "${header.name}".`));
+        stream.resume();
+        return;
+      }
 
-        const chunks: Buffer[] = [];
+      const chunks: Buffer[] = [];
 
-        stream.on("data", (chunk) => {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-        });
-        stream.on("error", reject);
-        stream.on("end", () => {
-          const buffer = Buffer.concat(chunks);
-          entries[header.name] = new Uint8Array(
-            buffer.buffer,
-            buffer.byteOffset,
-            buffer.byteLength,
-          );
-          next();
-        });
+      stream.on("data", (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       });
+      stream.on("error", reject);
+      stream.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        entries[header.name] = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+        next();
+      });
+    });
 
-      extract.on("finish", () => resolve(entries));
-      extract.on("error", reject);
-    },
-  );
+    extract.on("finish", () => resolve(entries));
+    extract.on("error", reject);
+  });
 
   extract.end(Buffer.from(archiveBytes));
 
@@ -651,9 +595,7 @@ export async function inspectCmsDataTransferArchive(
   ) as CmsDataTransferArchiveManifest;
 
   const availableCategories: CmsDataTransferCategory[] = [];
-  const assetFileCount = Object.keys(entries).filter((name) =>
-    name.startsWith("assets/"),
-  ).length;
+  const assetFileCount = Object.keys(entries).filter((name) => name.startsWith("assets/")).length;
 
   for (const category of manifest.categories) {
     const payloadPath = getCategoryPayloadPath(category);
@@ -766,15 +708,9 @@ async function parseCmsDataTransferArchive(
     switch (category) {
       case "content": {
         if (!payloadPath || !entries[payloadPath]) {
-          throw new Error(
-            'Archive is missing required file "categories/content.json".',
-          );
+          throw new Error('Archive is missing required file "categories/content.json".');
         }
-        const payload = parseJsonFile(
-          entries[payloadPath],
-          contentPayloadSchema,
-          payloadPath,
-        );
+        const payload = parseJsonFile(entries[payloadPath], contentPayloadSchema, payloadPath);
         const actualCount = payload.items.length + payload.translations.length;
         if (expectedCount !== actualCount) {
           throw new Error(
@@ -787,17 +723,10 @@ async function parseCmsDataTransferArchive(
       }
       case "documents": {
         if (!payloadPath || !entries[payloadPath]) {
-          throw new Error(
-            'Archive is missing required file "categories/documents.json".',
-          );
+          throw new Error('Archive is missing required file "categories/documents.json".');
         }
-        const payload = parseJsonFile(
-          entries[payloadPath],
-          documentsPayloadSchema,
-          payloadPath,
-        );
-        const actualCount =
-          payload.documents.length + payload.versions.length;
+        const payload = parseJsonFile(entries[payloadPath], documentsPayloadSchema, payloadPath);
+        const actualCount = payload.documents.length + payload.versions.length;
         if (expectedCount !== actualCount) {
           throw new Error(
             `Archive count mismatch for "${category}": manifest=${expectedCount}, payload=${actualCount}.`,
@@ -809,15 +738,9 @@ async function parseCmsDataTransferArchive(
       }
       case "news": {
         if (!payloadPath || !entries[payloadPath]) {
-          throw new Error(
-            'Archive is missing required file "categories/news.json".',
-          );
+          throw new Error('Archive is missing required file "categories/news.json".');
         }
-        const payload = parseJsonFile(
-          entries[payloadPath],
-          newsPayloadSchema,
-          payloadPath,
-        );
+        const payload = parseJsonFile(entries[payloadPath], newsPayloadSchema, payloadPath);
         const actualCount =
           payload.items.length +
           payload.translations.length +
@@ -834,15 +757,9 @@ async function parseCmsDataTransferArchive(
       }
       case "alerts": {
         if (!payloadPath || !entries[payloadPath]) {
-          throw new Error(
-            'Archive is missing required file "categories/alerts.json".',
-          );
+          throw new Error('Archive is missing required file "categories/alerts.json".');
         }
-        const payload = parseJsonFile(
-          entries[payloadPath],
-          alertsPayloadSchema,
-          payloadPath,
-        );
+        const payload = parseJsonFile(entries[payloadPath], alertsPayloadSchema, payloadPath);
         const actualCount = payload.items.length + payload.translations.length;
         if (expectedCount !== actualCount) {
           throw new Error(
@@ -855,15 +772,9 @@ async function parseCmsDataTransferArchive(
       }
       case "header-footer": {
         if (!payloadPath || !entries[payloadPath]) {
-          throw new Error(
-            'Archive is missing required file "categories/header-footer.json".',
-          );
+          throw new Error('Archive is missing required file "categories/header-footer.json".');
         }
-        const payload = parseJsonFile(
-          entries[payloadPath],
-          headerFooterPayloadSchema,
-          payloadPath,
-        );
+        const payload = parseJsonFile(entries[payloadPath], headerFooterPayloadSchema, payloadPath);
         const actualCount = payload.activeConfig ? 1 : 0;
         if (expectedCount !== actualCount) {
           throw new Error(
@@ -876,15 +787,9 @@ async function parseCmsDataTransferArchive(
       }
       case "flowcharts": {
         if (!payloadPath || !entries[payloadPath]) {
-          throw new Error(
-            'Archive is missing required file "categories/flowcharts.json".',
-          );
+          throw new Error('Archive is missing required file "categories/flowcharts.json".');
         }
-        const payload = parseJsonFile(
-          entries[payloadPath],
-          flowchartsPayloadSchema,
-          payloadPath,
-        );
+        const payload = parseJsonFile(entries[payloadPath], flowchartsPayloadSchema, payloadPath);
         const actualCount = payload.flowcharts.length;
         if (expectedCount !== actualCount) {
           throw new Error(
@@ -945,15 +850,9 @@ async function writeArchiveAssetsToDirectory(
   }
 }
 
-async function replaceAssetDirectory(
-  assetDirectory: string,
-  stagedDirectory: string,
-) {
+async function replaceAssetDirectory(assetDirectory: string, stagedDirectory: string) {
   const parentDirectory = path.dirname(assetDirectory);
-  const backupDirectory = path.join(
-    parentDirectory,
-    `.cms-restore-backup-${Date.now()}`,
-  );
+  const backupDirectory = path.join(parentDirectory, `.cms-restore-backup-${Date.now()}`);
 
   await mkdir(parentDirectory, { recursive: true });
 
@@ -996,9 +895,7 @@ function assertSelectedRestoreCategories(
 
   for (const category of normalized) {
     if (!availableCategories.includes(category)) {
-      throw new Error(
-        `Archive does not include the selected "${category}" category.`,
-      );
+      throw new Error(`Archive does not include the selected "${category}" category.`);
     }
   }
 
@@ -1017,10 +914,7 @@ export function createCmsDataTransferArchiveRestorer({
   return async function restoreCmsDataTransferArchive(
     params: RestoreCmsDataTransferArchiveParams,
   ): Promise<RestoredCmsDataTransferArchive> {
-    const parsedArchive = await parseCmsDataTransferArchive(
-      params.fileName,
-      params.bytes,
-    );
+    const parsedArchive = await parseCmsDataTransferArchive(params.fileName, params.bytes);
     const restoredCategories = assertSelectedRestoreCategories(
       params.categories,
       parsedArchive.availableCategories,
@@ -1030,13 +924,8 @@ export function createCmsDataTransferArchiveRestorer({
 
     try {
       if (restoredCategories.includes("assets")) {
-        stagedAssetDirectory = await mkdtemp(
-          path.join(tmpdir(), "cms-data-restore-assets-"),
-        );
-        await writeArchiveAssetsToDirectory(
-          parsedArchive.assetEntries,
-          stagedAssetDirectory,
-        );
+        stagedAssetDirectory = await mkdtemp(path.join(tmpdir(), "cms-data-restore-assets-"));
+        await writeArchiveAssetsToDirectory(parsedArchive.assetEntries, stagedAssetDirectory);
       }
 
       await database.transaction(async (tx) => {
@@ -1067,9 +956,7 @@ export function createCmsDataTransferArchiveRestorer({
                 id: item.id,
                 createdAt: new Date(item.createdAt),
                 publishedAt: item.publishedAt,
-                authorId:
-                  mapRestoredUserId(effectiveUserId, item.authorId) ??
-                  item.authorId,
+                authorId: mapRestoredUserId(effectiveUserId, item.authorId) ?? item.authorId,
                 hideTOC: item.hideTOC ?? true,
               })),
             );
@@ -1118,10 +1005,7 @@ export function createCmsDataTransferArchiveRestorer({
                 locale: version.locale,
                 title: version.title,
                 content: version.content,
-                translatedBy: mapRestoredUserId(
-                  effectiveUserId,
-                  version.translatedBy,
-                ),
+                translatedBy: mapRestoredUserId(effectiveUserId, version.translatedBy),
                 createdAt: new Date(version.createdAt),
                 updatedAt: new Date(version.updatedAt),
               })),
@@ -1150,9 +1034,7 @@ export function createCmsDataTransferArchiveRestorer({
                 id: item.id,
                 createdAt: new Date(item.createdAt),
                 publishedAt: item.publishedAt,
-                authorId:
-                  mapRestoredUserId(effectiveUserId, item.authorId) ??
-                  item.authorId,
+                authorId: mapRestoredUserId(effectiveUserId, item.authorId) ?? item.authorId,
               })),
             );
           }
@@ -1190,12 +1072,8 @@ export function createCmsDataTransferArchiveRestorer({
                 createdAt: new Date(item.createdAt),
                 updatedAt: new Date(item.updatedAt),
                 enabled: item.enabled ?? true,
-                authorId:
-                  mapRestoredUserId(effectiveUserId, item.authorId) ??
-                  item.authorId,
-                updatedBy:
-                  mapRestoredUserId(effectiveUserId, item.updatedBy) ??
-                  item.updatedBy,
+                authorId: mapRestoredUserId(effectiveUserId, item.authorId) ?? item.authorId,
+                updatedBy: mapRestoredUserId(effectiveUserId, item.updatedBy) ?? item.updatedBy,
                 from: item.from,
                 to: item.to,
               })),
@@ -1210,9 +1088,7 @@ export function createCmsDataTransferArchiveRestorer({
         if (restoredCategories.includes("header-footer")) {
           const payload = parsedArchive.payloads["header-footer"];
           if (!payload) {
-            throw new Error(
-              "Header & Footer payload is missing from the archive.",
-            );
+            throw new Error("Header & Footer payload is missing from the archive.");
           }
 
           await tx.delete(siteNavigationConfigRevision);
@@ -1316,11 +1192,7 @@ async function buildCategoryPayload(
 
       return {
         files: {
-          "categories/content.json": JSON.stringify(
-            { items, translations },
-            null,
-            2,
-          ),
+          "categories/content.json": JSON.stringify({ items, translations }, null, 2),
         },
         count: items.length + translations.length,
       };
@@ -1334,11 +1206,7 @@ async function buildCategoryPayload(
 
       return {
         files: {
-          "categories/documents.json": JSON.stringify(
-            { documents, versions },
-            null,
-            2,
-          ),
+          "categories/documents.json": JSON.stringify({ documents, versions }, null, 2),
         },
         count: documents.length + versions.length,
       };
@@ -1354,14 +1222,9 @@ async function buildCategoryPayload(
 
       return {
         files: {
-          "categories/news.json": JSON.stringify(
-            { items, translations, tags, itemTags },
-            null,
-            2,
-          ),
+          "categories/news.json": JSON.stringify({ items, translations, tags, itemTags }, null, 2),
         },
-        count:
-          items.length + translations.length + tags.length + itemTags.length,
+        count: items.length + translations.length + tags.length + itemTags.length,
       };
     }
 
@@ -1373,11 +1236,7 @@ async function buildCategoryPayload(
 
       return {
         files: {
-          "categories/alerts.json": JSON.stringify(
-            { items, translations },
-            null,
-            2,
-          ),
+          "categories/alerts.json": JSON.stringify({ items, translations }, null, 2),
         },
         count: items.length + translations.length,
       };
@@ -1395,11 +1254,7 @@ async function buildCategoryPayload(
 
       return {
         files: {
-          "categories/header-footer.json": JSON.stringify(
-            { activeConfig },
-            null,
-            2,
-          ),
+          "categories/header-footer.json": JSON.stringify({ activeConfig }, null, 2),
         },
         count: activeConfig ? 1 : 0,
       };
@@ -1423,11 +1278,9 @@ export function createCmsDataTransferArchiveBuilder({
   getAssetDir = $$getAssetDir,
   createArchive = createTarGzArchive,
 }: CmsDataTransferArchiveBuilderDependencies) {
-  return async function createCmsDataTransferArchive(
-    params: CreateCmsDataTransferArchiveParams,
-  ) {
-    const normalizedCategories = CMS_DATA_TRANSFER_CATEGORIES.filter(
-      (category) => params.categories.includes(category),
+  return async function createCmsDataTransferArchive(params: CreateCmsDataTransferArchiveParams) {
+    const normalizedCategories = CMS_DATA_TRANSFER_CATEGORIES.filter((category) =>
+      params.categories.includes(category),
     );
 
     const archiveFiles: ArchiveFileInput = {};
@@ -1468,11 +1321,9 @@ const restoreCmsDataTransferArchive = createCmsDataTransferArchiveRestorer({
 });
 
 export const $$createCmsDataTransferArchive = createServerOnlyFn(
-  async (params: CreateCmsDataTransferArchiveParams) =>
-    createCmsDataTransferArchive(params),
+  async (params: CreateCmsDataTransferArchiveParams) => createCmsDataTransferArchive(params),
 );
 
 export const $$restoreCmsDataTransferArchive = createServerOnlyFn(
-  async (params: RestoreCmsDataTransferArchiveParams) =>
-    restoreCmsDataTransferArchive(params),
+  async (params: RestoreCmsDataTransferArchiveParams) => restoreCmsDataTransferArchive(params),
 );

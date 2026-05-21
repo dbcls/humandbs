@@ -9,6 +9,7 @@ import type {
 } from "@/config/navigation-flowchart";
 import * as schema from "@/db/schema";
 import { NAVIGATION_FLOWCHART_STATUS } from "@/db/schema";
+
 import { buildDatabaseUrl } from "./utils";
 
 // Legacy option shape from static JSON files
@@ -50,8 +51,7 @@ function transformSteps(
       const jaOpt = jaOptions[i];
 
       const isBeforeApplicationLink =
-        enOpt.link === BEFORE_APPLICATION_LINK ||
-        jaOpt?.link === BEFORE_APPLICATION_LINK;
+        enOpt.link === BEFORE_APPLICATION_LINK || jaOpt?.link === BEFORE_APPLICATION_LINK;
 
       const option: NavigationFlowchartOption = {
         id: enOpt.id,
@@ -164,11 +164,7 @@ async function seedNavigationFlowcharts() {
     ).json()) as LegacyNavigationData;
 
     // Seed before-application first (no cross-flowchart links)
-    const baSteps = transformSteps(
-      beforeApplicationEn.steps,
-      beforeApplicationJa.steps,
-      null,
-    );
+    const baSteps = transformSteps(beforeApplicationEn.steps, beforeApplicationJa.steps, null);
 
     // before-application is a linked flowchart
     const beforeApplicationId = await upsertFlowchart(db, {

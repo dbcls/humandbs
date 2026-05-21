@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Collapsible, CollapsibleTrigger } from "./ui/collapsible";
-import { Button } from "./ui/button";
 import { ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "use-intl";
+
+import { useState } from "react";
+
+import { Button } from "./ui/button";
+import { Collapsible, CollapsibleTrigger } from "./ui/collapsible";
 
 export function CollapsiblePreview({
   items,
@@ -40,7 +42,7 @@ export function CollapsiblePreview({
             className="text-foreground-light transition-colors hover:text-neutral-500"
           >
             <ChevronsUpDown className="size-6" />
-            <span className="text-xs font-normal">
+            <span className="font-normal text-xs">
               {open ? t("collapse") : t("more", { count: xMore })}
             </span>
           </Button>

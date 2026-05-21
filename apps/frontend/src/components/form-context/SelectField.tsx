@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-
 import { useFieldContext } from "./FormContext";
 
 export default function SelectField({
@@ -26,10 +25,7 @@ export default function SelectField({
   return (
     <Label className={cn({ "flex flex-col items-start": type === "col" })}>
       {label ? <span>{label}</span> : null}
-      <Select
-        value={field.state.value ?? ""}
-        onValueChange={(value) => field.handleChange(value)}
-      >
+      <Select value={field.state.value ?? ""} onValueChange={(value) => field.handleChange(value)}>
         <SelectTrigger className="w-fit min-w-[180px]">
           <SelectValue placeholder={`Select ${label}`} />
         </SelectTrigger>

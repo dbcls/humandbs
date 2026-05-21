@@ -1,7 +1,6 @@
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
-
 import { BilingualTextField } from "./BilingualTextField";
 import { ResetFieldButton } from "./ResetFieldButton";
 import { TagInput } from "./TagInput";
@@ -23,11 +22,7 @@ export const GrantField = withForm({
     return (
       <div className="flex flex-col gap-3">
         {/* Title */}
-        <BilingualTextField
-          form={form}
-          baseName={`${baseName}.title`}
-          label="Title"
-        />
+        <BilingualTextField form={form} baseName={`${baseName}.title`} label="Title" />
 
         {/* IDs — TagInput */}
         <form.AppField name={`${baseName}.id` as AnyName} mode="array">
@@ -54,13 +49,9 @@ export const GrantField = withForm({
 
         {/* Agency */}
         <fieldset className="flex flex-col gap-2">
-          <Label className="text-sm font-medium">Agency</Label>
+          <Label className="font-medium text-sm">Agency</Label>
           <div className="rounded border border-gray-300 p-3">
-            <BilingualTextField
-              form={form}
-              baseName={`${baseName}.agency.name`}
-              label="Name"
-            />
+            <BilingualTextField form={form} baseName={`${baseName}.agency.name`} label="Name" />
           </div>
         </fieldset>
       </div>

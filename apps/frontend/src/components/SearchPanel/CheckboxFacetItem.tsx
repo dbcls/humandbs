@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { useTranslations } from "use-intl";
 import { Search as SearchIcon } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { useTranslations } from "use-intl";
+
+import { useState } from "react";
+
 import { Input as SearchInput } from "@/components/Input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+
 import { FacetItemWrapper } from "./FacetItemWrapper";
 
 type CheckboxSortMode = "name" | "count";
@@ -33,8 +36,22 @@ function SortButton({
         className={"h-8 w-8 text-gray-700 hover:bg-hover"}
       >
         <span className="flex flex-col items-center justify-center text-[8px] leading-[0.8]">
-          <span className={cn("inline-block scale-y-[0.6] scale-x-125", dir === "asc" ? "opacity-100" : "opacity-40")}>▲</span>
-          <span className={cn("inline-block scale-y-[0.6] scale-x-125", dir === "desc" ? "opacity-100" : "opacity-40")}>▼</span>
+          <span
+            className={cn(
+              "inline-block scale-x-125 scale-y-[0.6]",
+              dir === "asc" ? "opacity-100" : "opacity-40",
+            )}
+          >
+            ▲
+          </span>
+          <span
+            className={cn(
+              "inline-block scale-x-125 scale-y-[0.6]",
+              dir === "desc" ? "opacity-100" : "opacity-40",
+            )}
+          >
+            ▼
+          </span>
         </span>
       </Button>
     </p>
@@ -56,9 +73,7 @@ export function CheckboxFacetItem({
   facetCounts?: { value: string; count: number }[];
   isFetching: boolean;
 }) {
-  const selectedValues = Array.isArray(draftValue)
-    ? (draftValue as string[])
-    : [];
+  const selectedValues = Array.isArray(draftValue) ? (draftValue as string[]) : [];
   const hasValue = selectedValues.length > 0;
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<CheckboxSortMode>("count");
@@ -123,10 +138,10 @@ export function CheckboxFacetItem({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={tCommon("search")}
-          beforeIcon={<SearchIcon size={16} className="text-muted-foreground ml-1" />}
+          beforeIcon={<SearchIcon size={16} className="ml-1 text-muted-foreground" />}
         />
       )}
-      <div className="text-gray-700 mb-1 flex items-center justify-between gap-2 text-sm font-medium">
+      <div className="mb-1 flex items-center justify-between gap-2 font-medium text-gray-700 text-sm">
         <SortButton
           label={tFilters("sort-by-name")}
           active={sortMode === "name"}
@@ -143,12 +158,11 @@ export function CheckboxFacetItem({
       <ul className="max-h-80 space-y-2 overflow-y-auto">
         {filteredOptions.map((optionValue) => {
           const isChecked = selectedValues.includes(optionValue);
-          const count =
-            facetCounts?.find((f) => f.value === optionValue)?.count ?? 0;
+          const count = facetCounts?.find((f) => f.value === optionValue)?.count ?? 0;
 
           return (
             <li key={`${id}-${optionValue}`}>
-              <Label className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 text-sm text-gray-700">
+              <Label className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 text-gray-700 text-sm">
                 <Checkbox
                   checked={isChecked}
                   onCheckedChange={(checked) => {
@@ -157,10 +171,7 @@ export function CheckboxFacetItem({
                         ? Array.from(new Set([...selectedValues, optionValue]))
                         : selectedValues.filter((v) => v !== optionValue);
 
-                    onUpdate(
-                      id,
-                      nextValues.length > 0 ? nextValues : undefined,
-                    );
+                    onUpdate(id, nextValues.length > 0 ? nextValues : undefined);
                   }}
                 />
                 <span

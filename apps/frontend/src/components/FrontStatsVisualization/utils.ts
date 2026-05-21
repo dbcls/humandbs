@@ -1,4 +1,4 @@
-import type { StatsSatellite, StatsSystem, NormalizedStats } from "./types";
+import type { NormalizedStats, StatsSatellite, StatsSystem } from "./types";
 
 export function hashString(str: string): number {
   let hash = 0;
@@ -16,7 +16,8 @@ export function capitalize(str: string) {
 
 // Removed global blobMaterial. Using inline material per cluster.
 export function normalizeStatsResponse(payload: unknown): NormalizedStats | null {
-  const data = typeof payload === "object" && payload && "data" in payload ? (payload as any).data : payload;
+  const data =
+    typeof payload === "object" && payload && "data" in payload ? (payload as any).data : payload;
   if (!data || typeof data !== "object") return null;
 
   const stats = data as any;
@@ -25,7 +26,7 @@ export function normalizeStatsResponse(payload: unknown): NormalizedStats | null
   const systems: StatsSystem[] = [];
   for (const [facet, values] of Object.entries(stats.facets ?? {})) {
     const satellites: StatsSatellite[] = [];
-    for (const [value, counts] of Object.entries(values as any ?? {})) {
+    for (const [value, counts] of Object.entries((values as any) ?? {})) {
       const research = Number((counts as any)?.research ?? 0);
       const dataset = Number((counts as any)?.dataset ?? 0);
       const total = research + dataset;

@@ -1,15 +1,18 @@
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { Trash2 } from "lucide-react";
+import { useTranslations } from "use-intl";
 import { z } from "zod";
 
+import { Suspense } from "react";
+
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
+import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
+import { Label } from "@/components/ui/label";
 import { localeSchema } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
 import {
@@ -22,12 +25,6 @@ import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
-import { useTranslations } from "use-intl";
-import { Label } from "@/components/ui/label";
-import { Trash2 } from "lucide-react";
-import { Suspense } from "react";
-import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
-import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { NoItemsMessage } from "./NoItemsMessage";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/content");
@@ -51,9 +48,7 @@ export function ContentList({
     mutationFn: (id: string) => $createContentItem({ data: { id } }),
     onMutate: async (id) => {
       await queryClient.cancelQueries(contentsListQO);
-      const prevContentItems = queryClient.getQueryData(
-        contentsListQO.queryKey,
-      );
+      const prevContentItems = queryClient.getQueryData(contentsListQO.queryKey);
       queryClient.setQueryData(contentsListQO.queryKey, (old) => {
         if (!old) return [];
         return [...old, { id, translations: [] }];
@@ -62,10 +57,7 @@ export function ContentList({
     },
     onError: (_, __, context) => {
       if (context?.prevContentItems) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context.prevContentItems,
-        );
+        queryClient.setQueryData(contentsListQO.queryKey, context.prevContentItems);
       }
     },
     onSettled: async () => {
@@ -92,12 +84,9 @@ export function ContentList({
         submitSchema={z
           .string()
           .min(3)
-          .refine(
-            (val) => !localeSchema.safeParse(val.split("/")?.[0]).success,
-            {
-              message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
-            },
-          )}
+          .refine((val) => !localeSchema.safeParse(val.split("/")?.[0]).success, {
+            message: `Please use CMS locale feature. Instead of setting id as "en/hogehoge", set id as "hogehoge" and use Locale selector tab of the Details panel to set the locale.`,
+          })}
         validateAsync={async (val) => {
           const validationResult = await validateContentId({ data: val });
           if (!validationResult.success)
@@ -112,10 +101,7 @@ export function ContentList({
 
       <ErrorResetBoundary getResetKey={() => `${q}`}>
         <Suspense fallback={<SkeletonLoadingPanelItems />}>
-          <ItemsList
-            selectedContentId={selectedContentId}
-            onSelectContent={onSelectContent}
-          />
+          <ItemsList selectedContentId={selectedContentId} onSelectContent={onSelectContent} />
         </Suspense>
       </ErrorResetBoundary>
     </>
@@ -152,10 +138,7 @@ function ItemsList({
     },
     onError: (_, __, context) => {
       if (context?.prevContentList) {
-        queryClient.setQueryData(
-          contentsListQO.queryKey,
-          context.prevContentList,
-        );
+        queryClient.setQueryData(contentsListQO.queryKey, context.prevContentList);
       }
     },
     onSettled: () => {
@@ -213,9 +196,7 @@ function ItemsList({
                 ]}
               />
             </ListItem>
-            {index < contents.length - 1 ? (
-              <hr className="my-2 border-gray-200" />
-            ) : null}
+            {index < contents.length - 1 ? <hr className="my-2 border-gray-200" /> : null}
           </li>
         );
       })}

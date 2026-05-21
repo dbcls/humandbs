@@ -2,7 +2,8 @@ import { copyFile, mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,9 +71,7 @@ async function loadDocuments(): Promise<DocumentLocaleMap> {
   return documents;
 }
 
-async function copyDocumentFiles(
-  documents: DocumentLocaleMap,
-): Promise<number> {
+async function copyDocumentFiles(documents: DocumentLocaleMap): Promise<number> {
   const copiedByDocumentId = new Map<string, Set<string>>();
   let totalCopied = 0;
 
@@ -85,9 +84,7 @@ async function copyDocumentFiles(
         continue;
       }
 
-      const filesToCopy = entries.filter(
-        (e) => e.isFile() && e.name !== "content.md",
-      );
+      const filesToCopy = entries.filter((e) => e.isFile() && e.name !== "content.md");
 
       if (filesToCopy.length === 0) continue;
 
@@ -106,9 +103,7 @@ async function copyDocumentFiles(
         await copyFile(src, dest);
         copied.add(entry.name);
         totalCopied++;
-        console.log(
-          `Copied: ${locale}/${documentId}/${entry.name} → ${destDir}/${entry.name}`,
-        );
+        console.log(`Copied: ${locale}/${documentId}/${entry.name} → ${destDir}/${entry.name}`);
       }
     }
   }

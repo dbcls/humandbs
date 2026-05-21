@@ -65,9 +65,7 @@ const databaseUrl =
   `postgres://${process.env.HUMANDBS_POSTGRES_USER}:${process.env.HUMANDBS_POSTGRES_PASSWORD}@${process.env.HUMANDBS_POSTGRES_HOST}:${process.env.HUMANDBS_POSTGRES_PORT}/${process.env.HUMANDBS_POSTGRES_DB}`;
 
 if (!databaseUrl || databaseUrl.includes("undefined")) {
-  console.error(
-    "DATABASE_URL or HUMANDBS_POSTGRES_* environment variables are required.",
-  );
+  console.error("DATABASE_URL or HUMANDBS_POSTGRES_* environment variables are required.");
   process.exit(1);
 }
 
@@ -78,9 +76,7 @@ const { rows } = await pool.query(
 );
 
 if (rows.length === 0) {
-  console.log(
-    "No existing site_navigation_config row found — nothing to migrate.",
-  );
+  console.log("No existing site_navigation_config row found — nothing to migrate.");
   await pool.end();
   process.exit(0);
 }

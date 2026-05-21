@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { renderMarkdown, type MarkdownResult } from "@/utils/markdown";
+import type { MarkdownResult } from "@/utils/markdown";
+import { renderMarkdown } from "@/utils/markdown";
 
 import { Markdown } from "../Merkdown";
 
@@ -26,15 +27,11 @@ export default function MarkdownClientPreview({
       });
   }, [source, setContentHtml, setError]);
 
-  if (error)
-    return <div>Some error occurred. Markdown couldn't be previewed </div>;
+  if (error) return <div>Some error occurred. Markdown couldn't be previewed </div>;
 
   return (
     <section className="w-full">
-      <Markdown
-        className={className}
-        contentHtml={contentHtml ?? { markup: "", headings: [] }}
-      />
+      <Markdown className={className} contentHtml={contentHtml ?? { markup: "", headings: [] }} />
     </section>
   );
 }

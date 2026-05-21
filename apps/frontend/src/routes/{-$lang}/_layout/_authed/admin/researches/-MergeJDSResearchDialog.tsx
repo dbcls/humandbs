@@ -1,8 +1,11 @@
-import type { ResearchDetailResponse } from "@humandbs/backend/types";
-import type { ResearchTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { useState } from "react";
 
+import type { ResearchDetailResponse } from "@humandbs/backend/types";
+
+import { getVisiblePages } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,18 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  $getJDSResearch,
-  getDsApplicationsQueryOptions,
-} from "@/serverFunctions/researches";
-import { AdminStatusMessage } from "../-components/AdminStatusMessage";
-import {
-  mergeEmptyResearchFields,
-  type MergeResearchResult,
-} from "./-mergeJDSResearch";
-import { getVisiblePages } from "@/components/Pagination";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { $getJDSResearch, getDsApplicationsQueryOptions } from "@/serverFunctions/researches";
+
+import type { ResearchTemplateData } from "../../../../../../../../backend/src/api/types/templates";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
+import type { MergeResearchResult } from "./-mergeJDSResearch";
+import { mergeEmptyResearchFields } from "./-mergeJDSResearch";
 
 type ResearchValues = ResearchDetailResponse["data"];
 
@@ -39,16 +37,12 @@ export function MergeJDSResearchDialog({
 }: {
   currentValues: ResearchValues | ResearchTemplateData;
   disabled?: boolean;
-  onMerge: (
-    values: MergeResearchResult["values"],
-    relatedAccessions: string[],
-  ) => void;
+  onMerge: (values: MergeResearchResult["values"], relatedAccessions: string[]) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [jdsId, setJdsId] = useState("");
-  const [fetchedResearch, setFetchedResearch] =
-    useState<ResearchTemplateData | null>(null);
+  const [fetchedResearch, setFetchedResearch] = useState<ResearchTemplateData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
@@ -104,8 +98,7 @@ export function MergeJDSResearchDialog({
     handleOpenChange(false);
   }
 
-  const displayTitle =
-    fetchedResearch?.title?.en || fetchedResearch?.title?.ja || "Untitled";
+  const displayTitle = fetchedResearch?.title?.en || fetchedResearch?.title?.ja || "Untitled";
   const warnings = fetchedResearch?.warnings ?? [];
 
   const pagination = listQuery.data?.meta.pagination;
@@ -114,13 +107,7 @@ export function MergeJDSResearchDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className={className}
-          size="lg"
-          disabled={disabled}
-        >
+        <Button type="button" variant="outline" className={className} size="lg" disabled={disabled}>
           Merge data from J-DS
         </Button>
       </DialogTrigger>
@@ -163,30 +150,20 @@ export function MergeJDSResearchDialog({
 
         {/* DS applications list */}
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">J-DS applications</span>
+          <span className="text-gray-500 text-xs">J-DS applications</span>
           <div className="overflow-hidden rounded border border-gray-200">
             {listQuery.isPending ? (
-              <div className="animate-pulse px-3 py-4 text-xs text-gray-400">
-                Loading…
-              </div>
+              <div className="animate-pulse px-3 py-4 text-gray-400 text-xs">Loading…</div>
             ) : listQuery.isError ? (
-              <div className="px-3 py-4 text-xs text-red-500">
-                Failed to load applications.
-              </div>
+              <div className="px-3 py-4 text-red-500 text-xs">Failed to load applications.</div>
             ) : items.length === 0 ? (
-              <div className="px-3 py-4 text-xs text-gray-400">
-                No applications found.
-              </div>
+              <div className="px-3 py-4 text-gray-400 text-xs">No applications found.</div>
             ) : (
               <table className="w-full text-xs">
-                <thead className="border-b border-gray-200 bg-gray-50">
+                <thead className="border-gray-200 border-b bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">
-                      JDS ID
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">
-                      HUM IDs
-                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">JDS ID</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">HUM IDs</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -218,30 +195,26 @@ export function MergeJDSResearchDialog({
                 <ChevronLeft className="size-3.5" /> Previous
               </button>
 
-              {getVisiblePages(pagination.page, pagination.totalPages).map(
-                (p, i) =>
-                  p === "ellipsis" ? (
-                    <span
-                      key={`e-${i}`}
-                      className="w-7 text-center text-gray-400"
-                    >
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPage(p)}
-                      className={cn(
-                        "w-fit min-w-6 rounded px-0.5 py-1 text-center",
-                        p === pagination.page
-                          ? "bg-gray-900 font-medium text-white"
-                          : "text-gray-600 hover:bg-gray-100",
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ),
+              {getVisiblePages(pagination.page, pagination.totalPages).map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`e-${i}`} className="w-7 text-center text-gray-400">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={cn(
+                      "w-fit min-w-6 rounded px-0.5 py-1 text-center",
+                      p === pagination.page
+                        ? "bg-gray-900 font-medium text-white"
+                        : "text-gray-600 hover:bg-gray-100",
+                    )}
+                  >
+                    {p}
+                  </button>
+                ),
               )}
 
               <button
@@ -287,11 +260,7 @@ export function MergeJDSResearchDialog({
         ) : null}
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-          >
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           {fetchedResearch && mergeResult ? (

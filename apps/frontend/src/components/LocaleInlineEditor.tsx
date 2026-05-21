@@ -83,7 +83,7 @@ export function LocaleInlineEditor({
 
         return (
           <div key={locale} className="flex min-w-0 items-baseline gap-2">
-            <span className="w-6 shrink-0 text-xs font-medium text-gray-400 uppercase">
+            <span className="w-6 shrink-0 font-medium text-gray-400 text-xs uppercase">
               {locale}
             </span>
 
@@ -93,9 +93,7 @@ export function LocaleInlineEditor({
                 type="text"
                 value={editValue}
                 onChange={(e) =>
-                  locale === "en"
-                    ? setEditEn(e.target.value)
-                    : setEditJa(e.target.value)
+                  locale === "en" ? setEditEn(e.target.value) : setEditJa(e.target.value)
                 }
                 placeholder={locale === "en" ? "English" : "日本語"}
                 className={cn(

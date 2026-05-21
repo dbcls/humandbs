@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import * as schema from "@/db/schema";
+
 import { buildNavigationConfig } from "./build-navigation-config";
 import { buildDatabaseUrl } from "./utils";
 

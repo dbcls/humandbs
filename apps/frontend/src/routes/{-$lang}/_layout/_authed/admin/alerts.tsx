@@ -8,16 +8,21 @@ import {
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import MDEditor from "@uiw/react-md-editor";
 import { Bell, Plus, Trash2Icon } from "lucide-react";
+
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DateRangePicker } from "@/components/DatePicker";
+import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { ListItem } from "@/components/ListItem";
+import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 import { hasPermission } from "@/config/permissions";
 import { useFilters } from "@/hooks/useFilters";
 import { cn } from "@/lib/utils";
@@ -33,20 +38,15 @@ import type { DateStringRange } from "@/utils/dates";
 import { toDateString } from "@/utils/dates";
 import { alertsAdminSearchParamsSchema } from "@/utils/queryParams";
 
-import { CollapsibleCard } from "@/components/CollapsibleCard";
-import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { AddNewButton } from "./-components/AddNewButton";
 import { AdminListItem } from "./-components/AdminListItem";
 import { AdminStatusMessage } from "./-components/AdminStatusMessage";
 import { AlertsFiltersBar } from "./-components/AlertsFiltersBar";
-import { TitleValue } from "./-components/TitleValue";
-import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { NoItemsMessage } from "./-components/NoItemsMessage";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
+import { TitleValue } from "./-components/TitleValue";
 
-const MarkdownClientPreview = lazy(
-  () => import("@/components/markdown/MarkdownClientPreview"),
-);
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 const NEW_ALERT_ID = "__new_alert__";
 
@@ -67,9 +67,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/alerts")({
 function RouteComponent() {
   const { selectedId: urlSelectedId } = Route.useSearch();
   const { setFilters } = useFilters(Route.id);
-  const [selectedId, setSelectedId] = useState<string | undefined>(
-    urlSelectedId,
-  );
+  const [selectedId, setSelectedId] = useState<string | undefined>(urlSelectedId);
 
   if (selectedId !== urlSelectedId && urlSelectedId !== undefined) {
     setSelectedId(urlSelectedId);
@@ -82,10 +80,7 @@ function RouteComponent() {
 
   return (
     <>
-      <AlertsList
-        selectedAlertId={selectedId}
-        onSelectAlert={handleSelectAlert}
-      />
+      <AlertsList selectedAlertId={selectedId} onSelectAlert={handleSelectAlert} />
       {selectedId ? (
         <AlertDetails
           key={selectedId}
@@ -115,10 +110,7 @@ function AlertsList({
       <div>
         <AlertsFiltersBar />
         {canCreate ? (
-          <AddNewButton
-            className="mb-5"
-            onClick={() => onSelectAlert(NEW_ALERT_ID)}
-          >
+          <AddNewButton className="mb-5" onClick={() => onSelectAlert(NEW_ALERT_ID)}>
             <Plus className="size-5" />
             <span className="ml-2">Add alert</span>
           </AddNewButton>
@@ -128,10 +120,7 @@ function AlertsList({
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <ErrorResetBoundary getResetKey={() => `${selectedAlertId}`}>
           <Suspense fallback={<SkeletonLoadingPanelItems />}>
-            <ListItems
-              selectedAlertId={selectedAlertId}
-              onSelectAlert={onSelectAlert}
-            />
+            <ListItems selectedAlertId={selectedAlertId} onSelectAlert={onSelectAlert} />
           </Suspense>
         </ErrorResetBoundary>
       </div>
@@ -207,19 +196,14 @@ function ListItems({
   function handleDeleteAlert(id: string) {
     openConfirmation({
       title: "Delete alert?",
-      description:
-        "This will permanently remove the alert and its translations.",
+      description: "This will permanently remove the alert and its translations.",
       onAction: async () => {
-        const prevAlerts = queryClient.getQueryData<
-          InfiniteData<AlertRecord[], number>
-        >(alertsQO.queryKey);
-
-        queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(
+        const prevAlerts = queryClient.getQueryData<InfiniteData<AlertRecord[], number>>(
           alertsQO.queryKey,
-          (prev) =>
-            updateInfiniteAlertPages(prev, (page) =>
-              page.filter((alert) => alert.id !== id),
-            ),
+        );
+
+        queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(alertsQO.queryKey, (prev) =>
+          updateInfiniteAlertPages(prev, (page) => page.filter((alert) => alert.id !== id)),
         );
         onSelectAlert(undefined);
 
@@ -243,9 +227,9 @@ function ListItems({
   }
 
   async function handleToggleEnabled(targetAlert: AlertRecord) {
-    const prevAlerts = queryClient.getQueryData<
-      InfiniteData<AlertRecord[], number>
-    >(alertsQO.queryKey);
+    const prevAlerts = queryClient.getQueryData<InfiniteData<AlertRecord[], number>>(
+      alertsQO.queryKey,
+    );
     const now = new Date();
     const optimisticAlert: AlertRecord = {
       ...targetAlert,
@@ -257,14 +241,10 @@ function ListItems({
       },
     };
 
-    queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(
-      alertsQO.queryKey,
-      (prev) =>
-        updateInfiniteAlertPages(prev, (page) =>
-          page.map((alert) =>
-            alert.id === targetAlert.id ? optimisticAlert : alert,
-          ),
-        ),
+    queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(alertsQO.queryKey, (prev) =>
+      updateInfiniteAlertPages(prev, (page) =>
+        page.map((alert) => (alert.id === targetAlert.id ? optimisticAlert : alert)),
+      ),
     );
 
     try {
@@ -283,12 +263,10 @@ function ListItems({
         },
       });
 
-      queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(
-        alertsQO.queryKey,
-        (prev) =>
-          updateInfiniteAlertPages(prev, (page) =>
-            page.map((alert) => (alert.id === saved.id ? saved : alert)),
-          ),
+      queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(alertsQO.queryKey, (prev) =>
+        updateInfiniteAlertPages(prev, (page) =>
+          page.map((alert) => (alert.id === saved.id ? saved : alert)),
+        ),
       );
     } catch (error) {
       queryClient.setQueryData(alertsQO.queryKey, prevAlerts);
@@ -298,8 +276,7 @@ function ListItems({
     }
   }
 
-  if (listItems.length === 0)
-    return <NoItemsMessage>No alerts found</NoItemsMessage>;
+  if (listItems.length === 0) return <NoItemsMessage>No alerts found</NoItemsMessage>;
 
   return (
     <ul
@@ -355,7 +332,7 @@ function ListItems({
                       </div>
                     ) : null}
                     {(alert.from || alert.to) && !isDraft ? (
-                      <div className="text-foreground-light font-mono text-xs group-data-[active=true]:text-white/80">
+                      <div className="font-mono text-foreground-light text-xs group-data-[active=true]:text-white/80">
                         {alert.from ?? "Any time"} - {alert.to ?? "Open ended"}
                       </div>
                     ) : null}
@@ -365,11 +342,7 @@ function ListItems({
                   ...(!isDraft && canUpdate
                     ? [
                         {
-                          label: (
-                            <Label>
-                              {alert.enabled ? "Disable" : "Enable"}
-                            </Label>
-                          ),
+                          label: <Label>{alert.enabled ? "Disable" : "Enable"}</Label>,
                           onSelect: () => {
                             void handleToggleEnabled(alert);
                           },
@@ -393,15 +366,13 @@ function ListItems({
                 ]}
               />
             </ListItem>
-            {index < listItems.length - 1 ? (
-              <hr className="my-2 border-gray-200" />
-            ) : null}
+            {index < listItems.length - 1 ? <hr className="my-2 border-gray-200" /> : null}
           </li>
         );
       })}
       <div ref={sentinelRef} className="h-4 shrink-0">
         {isFetchingNextPage ? (
-          <span className="text-foreground-light block py-2 text-center text-xs">
+          <span className="block py-2 text-center text-foreground-light text-xs">
             Loading more…
           </span>
         ) : null}
@@ -441,9 +412,7 @@ function AlertDetails({
   const hasAnyContent = Object.values(values.translations).some(
     (translation) => translation.trim().length > 0,
   );
-  const isDirty = isNew
-    ? hasAnyContent
-    : areAlertValuesDirty(values, initialValues);
+  const isDirty = isNew ? hasAnyContent : areAlertValuesDirty(values, initialValues);
   const dateRange =
     values.from || values.to
       ? { from: values.from ?? undefined, to: values.to ?? undefined }
@@ -479,9 +448,8 @@ function AlertDetails({
       await queryClient.cancelQueries({ queryKey: ["alerts"] });
 
       const prevAlerts =
-        queryClient.getQueryData<InfiniteData<AlertRecord[], number>>(
-          alertsQO.queryKey,
-        ) ?? emptyInfiniteAlertData();
+        queryClient.getQueryData<InfiniteData<AlertRecord[], number>>(alertsQO.queryKey) ??
+        emptyInfiniteAlertData();
       const now = new Date();
       const optimisticAlert = buildOptimisticAlertRecord({
         id: isNew ? `optimistic-alert-${now.getTime()}` : selectedAlertId,
@@ -494,20 +462,15 @@ function AlertDetails({
         updatedByName: user?.name ?? alert?.updatedBy.name ?? null,
       });
 
-      queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(
-        alertsQO.queryKey,
-        (prev) => {
-          if (isNew) {
-            return prependAlertToInfinitePages(prev, optimisticAlert);
-          }
+      queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(alertsQO.queryKey, (prev) => {
+        if (isNew) {
+          return prependAlertToInfinitePages(prev, optimisticAlert);
+        }
 
-          return updateInfiniteAlertPages(prev, (page) =>
-            page.map((item) =>
-              item.id === selectedAlertId ? optimisticAlert : item,
-            ),
-          );
-        },
-      );
+        return updateInfiniteAlertPages(prev, (page) =>
+          page.map((item) => (item.id === selectedAlertId ? optimisticAlert : item)),
+        );
+      });
 
       if (isNew) {
         onSelectAlert(optimisticAlert.id);
@@ -517,26 +480,22 @@ function AlertDetails({
     },
     onSuccess: async (saved, _vars, context) => {
       setSaveError(null);
-      queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(
-        alertsQO.queryKey,
-        (prev) =>
-          updateInfiniteAlertPages(prev, (page) =>
-            page.map((item) =>
-              item.id === saved.id ||
-              item.id === context?.optimisticId ||
-              (!isNew && item.id === selectedAlertId)
-                ? saved
-                : item,
-            ),
+      queryClient.setQueryData<InfiniteData<AlertRecord[], number>>(alertsQO.queryKey, (prev) =>
+        updateInfiniteAlertPages(prev, (page) =>
+          page.map((item) =>
+            item.id === saved.id ||
+            item.id === context?.optimisticId ||
+            (!isNew && item.id === selectedAlertId)
+              ? saved
+              : item,
           ),
+        ),
       );
       onSelectAlert(saved.id);
     },
     onError: (_error, _vars, context) => {
       queryClient.setQueryData(alertsQO.queryKey, context?.prevAlerts);
-      setSaveError(
-        _error instanceof Error ? _error.message : "Failed to save alert.",
-      );
+      setSaveError(_error instanceof Error ? _error.message : "Failed to save alert.");
       if (isNew) {
         onSelectAlert(NEW_ALERT_ID);
       }
@@ -571,29 +530,15 @@ function AlertDetails({
       </div>
 
       {saveError ? (
-        <AdminStatusMessage className="mx-5 mt-1">
-          {saveError}
-        </AdminStatusMessage>
+        <AdminStatusMessage className="mx-5 mt-1">{saveError}</AdminStatusMessage>
       ) : null}
 
       {!isNew && alert ? (
         <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
-          <TitleValue
-            title="Author"
-            value={alert.author.name ?? alert.authorId}
-          />
-          <TitleValue
-            title="Created at"
-            value={toDateString(alert.createdAt)}
-          />
-          <TitleValue
-            title="Updated by"
-            value={alert.updatedBy.name ?? alert.updatedById}
-          />
-          <TitleValue
-            title="Updated at"
-            value={toDateString(alert.updatedAt)}
-          />
+          <TitleValue title="Author" value={alert.author.name ?? alert.authorId} />
+          <TitleValue title="Created at" value={toDateString(alert.createdAt)} />
+          <TitleValue title="Updated by" value={alert.updatedBy.name ?? alert.updatedById} />
+          <TitleValue title="Updated at" value={toDateString(alert.updatedAt)} />
         </div>
       ) : null}
 
@@ -604,9 +549,7 @@ function AlertDetails({
             <Switch
               checked={values.enabled}
               disabled={!canSave || isPending}
-              onCheckedChange={(checked) =>
-                setValues((prev) => ({ ...prev, enabled: checked }))
-              }
+              onCheckedChange={(checked) => setValues((prev) => ({ ...prev, enabled: checked }))}
             />
           }
         />
@@ -642,11 +585,7 @@ function AlertDetails({
       >
         <TabsList variant="line">
           {i18n.locales.map((translationLocale) => (
-            <TabsTrigger
-              key={translationLocale}
-              value={translationLocale}
-              variant="line"
-            >
+            <TabsTrigger key={translationLocale} value={translationLocale} variant="line">
               {translationLocale.toUpperCase()}
             </TabsTrigger>
           ))}
@@ -658,7 +597,7 @@ function AlertDetails({
             value={translationLocale}
             className="flex flex-1 flex-col gap-2"
           >
-            <Label className="text-sm font-medium">Content</Label>
+            <Label className="font-medium text-sm">Content</Label>
             <div data-color-mode="light" className="min-h-0 flex-1">
               <MDEditor
                 value={values.translations[translationLocale]}
@@ -679,9 +618,7 @@ function AlertDetails({
                   disabled: !canSave || isPending,
                 }}
                 components={{
-                  preview: (source) => (
-                    <MarkdownClientPreview source={source} />
-                  ),
+                  preview: (source) => <MarkdownClientPreview source={source} />,
                 }}
               />
             </div>
@@ -709,10 +646,7 @@ function buildInitialValues(alert?: {
   };
 }
 
-function areAlertValuesDirty(
-  current: AlertFormValues,
-  initial: AlertFormValues,
-): boolean {
+function areAlertValuesDirty(current: AlertFormValues, initial: AlertFormValues): boolean {
   if (current.enabled !== initial.enabled) return true;
   if (current.from !== initial.from) return true;
   if (current.to !== initial.to) return true;
@@ -797,8 +731,6 @@ function prependAlertToInfinitePages(
 
   return {
     ...data,
-    pages: data.pages.map((page, index) =>
-      index === 0 ? [alert, ...page] : page,
-    ),
+    pages: data.pages.map((page, index) => (index === 0 ? [alert, ...page] : page)),
   };
 }

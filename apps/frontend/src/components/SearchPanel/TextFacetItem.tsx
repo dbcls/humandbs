@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
-import { useTranslations } from "use-intl";
 import { Search as SearchIcon } from "lucide-react";
+import { useTranslations } from "use-intl";
+
+import { useEffect, useState } from "react";
+
 import { Input as SearchInput } from "@/components/Input";
+
 import { FacetItemWrapper } from "./FacetItemWrapper";
 
 export function TextFacetItem({
@@ -41,9 +44,7 @@ export function TextFacetItem({
           }
         }}
         placeholder={useTranslations("common")("search")}
-        beforeIcon={
-          <SearchIcon size={16} className="text-muted-foreground ml-1" />
-        }
+        beforeIcon={<SearchIcon size={16} className="ml-1 text-muted-foreground" />}
         className="-mx-[2px] h-[28px] text-sm"
       />
     </FacetItemWrapper>

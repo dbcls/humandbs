@@ -6,4 +6,4 @@ interface ContentItemRepo {
   getContentItems: () => Promise<ContentItemRaw[]>;
 }
 
-export interface ContentItemRaw {}
+export type ContentItemRaw = {};

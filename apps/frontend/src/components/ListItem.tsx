@@ -5,12 +5,7 @@ interface ListItemProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-export function ListItem({
-  isActive = false,
-  children,
-  className,
-  ...rest
-}: ListItemProps) {
+export function ListItem({ isActive = false, children, className, ...rest }: ListItemProps) {
   return (
     <div
       data-active={isActive}

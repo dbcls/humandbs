@@ -18,17 +18,11 @@ export const CMS_DATA_TRANSFER_CATEGORIES = [
   "flowcharts",
 ] as const;
 
-export type CmsDataTransferCategory =
-  (typeof CMS_DATA_TRANSFER_CATEGORIES)[number];
+export type CmsDataTransferCategory = (typeof CMS_DATA_TRANSFER_CATEGORIES)[number];
 
-export const cmsDataTransferCategorySchema = z.enum(
-  CMS_DATA_TRANSFER_CATEGORIES,
-);
+export const cmsDataTransferCategorySchema = z.enum(CMS_DATA_TRANSFER_CATEGORIES);
 
-export const CMS_DATA_TRANSFER_CATEGORY_LABELS: Record<
-  CmsDataTransferCategory,
-  string
-> = {
+export const CMS_DATA_TRANSFER_CATEGORY_LABELS: Record<CmsDataTransferCategory, string> = {
   content: "Content",
   documents: "Documents",
   news: "News",
@@ -99,9 +93,7 @@ const downloadCmsDataArchiveInputSchema = z.object({
     .array(cmsDataTransferCategorySchema)
     .min(1)
     .transform((categories) =>
-      CMS_DATA_TRANSFER_CATEGORIES.filter((category) =>
-        categories.includes(category),
-      ),
+      CMS_DATA_TRANSFER_CATEGORIES.filter((category) => categories.includes(category)),
     ),
 });
 
@@ -133,7 +125,7 @@ export const $downloadCmsDataArchive = createServerFn({ method: "POST" })
       status: 200,
       headers: {
         "Content-Type": "application/gzip",
-        "Content-Disposition": `attachment; filename=\"cms-data-export-${timestamp}.tar.gz\"`,
+        "Content-Disposition": `attachment; filename="cms-data-export-${timestamp}.tar.gz"`,
         "Cache-Control": "no-store",
       },
     });
@@ -163,10 +155,7 @@ export const $restoreCmsDataArchive = createServerFn({ method: "POST" })
     }
 
     const rawCategories = data.getAll("category");
-    const parsedCategories = z
-      .array(cmsDataTransferCategorySchema)
-      .min(1)
-      .safeParse(rawCategories);
+    const parsedCategories = z.array(cmsDataTransferCategorySchema).min(1).safeParse(rawCategories);
 
     if (!parsedCategories.success) {
       return {
@@ -194,8 +183,7 @@ export const $restoreCmsDataArchive = createServerFn({ method: "POST" })
       return {
         ok: false as const,
         code: "RESTORE_FAILED" as const,
-        message:
-          error instanceof Error ? error.message : "CMS data restore failed.",
+        message: error instanceof Error ? error.message : "CMS data restore failed.",
       };
     }
   });
@@ -232,18 +220,14 @@ export const $validateCmsDataArchiveUpload = createServerFn({ method: "POST" })
       return {
         ok: true as const,
         code: "VALID_ARCHIVE" as const,
-        message:
-          "Archive validated. Review the included categories before running restore.",
+        message: "Archive validated. Review the included categories before running restore.",
         archive: summary.archive satisfies CmsDataArchiveUploadSummary,
       };
     } catch (error) {
       return {
         ok: false as const,
         code: "INVALID_ARCHIVE_CONTENT" as const,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Archive validation failed.",
+        message: error instanceof Error ? error.message : "Archive validation failed.",
       };
     }
   });

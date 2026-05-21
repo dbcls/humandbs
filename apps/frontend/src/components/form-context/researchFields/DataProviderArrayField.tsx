@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -13,17 +13,19 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useRef } from "react";
 import { z } from "zod";
+
+import { useId, useRef } from "react";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { PersonField } from "@/components/form-context/fields/PersonField";
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
+import { Button } from "@/components/ui/button";
 
 import { SortableItem } from "./SortableItem";
-import { Button } from "@/components/ui/button";
 
 const dataProviderSchema = z.object({
   ...ResearchDetailSchema.shape.dataProvider.element.shape,
@@ -52,12 +54,8 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
 
   const items: Person[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: Person[] =
-    (field.form.options.defaultValues as any)?.dataProvider ?? [];
-  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
-    items.length,
-    dndId,
-  );
+  const initialItems: Person[] = (field.form.options.defaultValues as any)?.dataProvider ?? [];
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
 
   function handleDragEnd(event: DragEndEvent) {
     if (fieldsetRef.current?.disabled) return;
@@ -86,9 +84,7 @@ function DataProviderSortableList({ form, field }: { form: any; field: any }) {
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
-              isModified={
-                i >= initialItems.length || !deepEqual(item, initialItems[i])
-              }
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);

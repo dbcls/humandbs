@@ -1,22 +1,19 @@
-import { type DatasetDoc } from "@humandbs/backend/types";
-import {
-  useLocation,
-  useNavigate,
-  useRouteContext,
-} from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
+
+import type { DatasetDoc } from "@humandbs/backend/types";
 
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { KeyValueCard } from "@/components/KeyValueCard";
+import { Link } from "@/components/Link";
+import { Separator } from "@/components/Separator";
+import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCart } from "@/hooks/useCart";
-import { Link } from "@/components/Link";
-import { TextWithIcon } from "@/components/TextWithIcon";
 import { FA_ICONS } from "@/lib/faIcons";
-import { Separator } from "@/components/Separator";
 
 export function DatasetVersionCard({
   versionData,
@@ -48,10 +45,7 @@ export function DatasetVersionCard({
     {
       title: t("research"),
       value: (
-        <Link
-          to="/{-$lang}/research/$humId"
-          params={{ humId: versionData.humId }}
-        >
+        <Link to="/{-$lang}/research/$humId" params={{ humId: versionData.humId }}>
           <TextWithIcon icon={FA_ICONS.books}>{versionData.humId}</TextWithIcon>
         </Link>
       ),
@@ -66,9 +60,7 @@ export function DatasetVersionCard({
 
   const { add, cart } = useCart();
 
-  const isInCart = cart.some(
-    (item) => item.datasetId === versionData.datasetId,
-  );
+  const isInCart = cart.some((item) => item.datasetId === versionData.datasetId);
 
   const handleAddToCart = () => {
     if (!user) {
@@ -85,8 +77,7 @@ export function DatasetVersionCard({
   };
 
   const identifier =
-    [versionData.datasetId, versionData.version].filter(Boolean).join(".") ||
-    "Preview";
+    [versionData.datasetId, versionData.version].filter(Boolean).join(".") || "Preview";
 
   return (
     <CardWithCaption
@@ -172,24 +163,20 @@ export function DatasetVersionCard({
   );
 }
 
-function Experiment({
-  experiment,
-}: {
-  experiment: DatasetDoc["experiments"][number];
-}) {
+function Experiment({ experiment }: { experiment: DatasetDoc["experiments"][number] }) {
   const t = useTranslations("Dataset");
   const lang = useLocale();
   return (
     <section>
-      <h2 className="from-secondary-light to-secondary-lighter rounded-t-md bg-linear-to-r px-7 pt-5 pb-4 text-white">
+      <h2 className="rounded-t-md bg-linear-to-r from-secondary-light to-secondary-lighter px-7 pt-5 pb-4 text-white">
         {experiment.header[lang]?.text}
       </h2>
 
-      <dl className="columns-2 space-y-6 border-x border-b border-gray-300 p-6">
+      <dl className="columns-2 space-y-6 border-gray-300 border-x border-b p-6">
         {Object.entries(experiment.data).map(([title, content]) => (
           <KeyValueCard
             key={title}
-            // @ts-ignore
+            // @ts-expect-error
             title={t(title)}
             value={content?.[lang]?.rawHtml}
           />

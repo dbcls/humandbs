@@ -1,21 +1,13 @@
 import { ChevronDownIcon, XIcon } from "lucide-react";
+
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  type DateStringRange,
-  toDate,
-  toDateRange,
-  toDateString,
-  toDateStringRange,
-} from "@/utils/dates";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { DateStringRange } from "@/utils/dates";
+import { toDate, toDateRange, toDateString, toDateStringRange } from "@/utils/dates";
 
 export function DatePicker({
   dateValue,
@@ -34,10 +26,7 @@ export function DatePicker({
           <ChevronDownIcon className="inline-block size-5" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-auto overflow-hidden bg-white p-0"
-        align="start"
-      >
+      <PopoverContent className="w-auto overflow-hidden bg-white p-0" align="start">
         <Calendar
           required={false}
           mode="single"
@@ -67,9 +56,7 @@ export function DateRangePicker({
   const [open, setOpen] = useState(false);
 
   // In-progress local selection, independent of the committed value prop.
-  const [draftRange, setDraftRange] = useState<DateRange | undefined>(
-    toDateRange(value),
-  );
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>(toDateRange(value));
 
   // Seed/reset draft from the committed value on every open/close.
   const handleOpenChange = (next: boolean) => {
@@ -77,15 +64,10 @@ export function DateRangePicker({
     setOpen(next);
   };
 
-  const handleSelect = (
-    nextRange: DateRange | undefined,
-    selectedDay: Date,
-  ) => {
+  const handleSelect = (nextRange: DateRange | undefined, selectedDay: Date) => {
     // If a complete (non-trivial) range already exists, the user is starting a new selection.
     const hasCompleteRange =
-      draftRange?.from &&
-      draftRange?.to &&
-      draftRange.from.getTime() !== draftRange.to.getTime();
+      draftRange?.from && draftRange?.to && draftRange.from.getTime() !== draftRange.to.getTime();
 
     const incoming: DateRange = hasCompleteRange
       ? { from: selectedDay, to: undefined }
@@ -109,10 +91,7 @@ export function DateRangePicker({
             <ChevronDownIcon className="inline-block size-5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent
-          className="w-auto overflow-hidden bg-white p-0"
-          align="start"
-        >
+        <PopoverContent className="w-auto overflow-hidden bg-white p-0" align="start">
           <Calendar
             numberOfMonths={2}
             mode="range"
@@ -127,7 +106,7 @@ export function DateRangePicker({
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:text-foreground size-7"
+          className="size-7 text-muted-foreground hover:text-foreground"
           onClick={onClear}
         >
           <XIcon className="size-4" />

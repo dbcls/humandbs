@@ -7,7 +7,7 @@ export function TitleValue({
 }) {
   return (
     <div className="flex flex-col items-start gap-2">
-      <span className="text-sm leading-none font-medium">{title}</span>
+      <span className="font-medium text-sm leading-none">{title}</span>
       <div className="text-xs">{value}</div>
     </div>
   );

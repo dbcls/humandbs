@@ -1,9 +1,9 @@
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { Trash2 } from "lucide-react";
+import { useTranslations } from "use-intl";
+
 import { Suspense, useMemo, useState } from "react";
 
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
@@ -11,29 +11,24 @@ import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { InputDialog } from "@/components/InputDialog";
 import { ListItem } from "@/components/ListItem";
 import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
-import { type ContentId } from "@/config/content-config";
+import { Label } from "@/components/ui/label";
+import type { ContentId } from "@/config/content-config";
 import { PROTECTED_DOC_IDS } from "@/config/routing-config";
 import { useFilters } from "@/hooks/useFilters";
+import { cn } from "@/lib/utils";
+import type { DocumentsListItemResponse } from "@/serverFunctions/document";
 import {
   $changeIdOfDocument,
   $createDocument,
   $deleteDocument,
-  type DocumentsListItemResponse,
   getDocumentsQueryOptions,
 } from "@/serverFunctions/document";
-import {
-  $validateEntityId,
-  type ValidationResponse,
-} from "@/serverFunctions/validate";
+import type { ValidationResponse } from "@/serverFunctions/validate";
+import { $validateEntityId } from "@/serverFunctions/validate";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
-import { useServerFn } from "@tanstack/react-start";
-import { useTranslations } from "use-intl";
-import { Trash2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import { NoItemsMessage } from "./NoItemsMessage";
 
 const routeApi = getRouteApi("/{-$lang}/_layout/_authed/admin/documents");
@@ -56,8 +51,7 @@ export function DocumentsList({
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const { mutateAsync: createDocument } = useMutation({
-    mutationFn: (contentId: ContentId) =>
-      $createDocument({ data: { contentId: contentId } }),
+    mutationFn: (contentId: ContentId) => $createDocument({ data: { contentId: contentId } }),
 
     onMutate: async (contentId) => {
       await queryClient.cancelQueries(documentsListQO);
@@ -92,8 +86,7 @@ export function DocumentsList({
   });
 
   const { mutate: deleteDocument } = useMutation({
-    mutationFn: async (contentId: string) =>
-      $deleteDocument({ data: { contentId } }),
+    mutationFn: async (contentId: string) => $deleteDocument({ data: { contentId } }),
     onMutate: async (contentId) => {
       await queryClient.cancelQueries(documentsListQO);
       const prevDocList = queryClient.getQueryData(documentsListQO.queryKey);
@@ -119,17 +112,14 @@ export function DocumentsList({
   });
 
   const { mutateAsync: changeIdOfDocument } = useMutation({
-    mutationFn: (data: { oldId: string; newId: string }) =>
-      $changeIdOfDocument({ data }),
+    mutationFn: (data: { oldId: string; newId: string }) => $changeIdOfDocument({ data }),
     onMutate: async ({ oldId, newId }) => {
       await queryClient.cancelQueries(documentsListQO);
       const prevDocList = queryClient.getQueryData(documentsListQO.queryKey);
 
       queryClient.setQueryData(documentsListQO.queryKey, (oldData) => {
         if (!oldData) return [];
-        return oldData.map((doc) =>
-          doc.contentId === oldId ? { ...doc, contentId: newId } : doc,
-        );
+        return oldData.map((doc) => (doc.contentId === oldId ? { ...doc, contentId: newId } : doc));
       });
       return { prevDocList };
     },
@@ -191,8 +181,7 @@ export function DocumentsList({
         trigger={<AddNewButton className="mb-5" />}
         validateAsync={async (value) => {
           if (!value || value.length < 1) return "Content ID is required";
-          if (value.length > 100)
-            return "Content ID must be 100 characters or less";
+          if (value.length > 100) return "Content ID must be 100 characters or less";
           const validationResult = await validate({
             data: value,
           });
@@ -323,9 +312,7 @@ function ListItems({
             );
           })}
 
-          {groupIndex < groupedDocs.length - 1 && (
-            <hr className="my-2 border-gray-200" />
-          )}
+          {groupIndex < groupedDocs.length - 1 && <hr className="my-2 border-gray-200" />}
         </li>
       ))}
     </ul>
@@ -337,7 +324,5 @@ function makeValidationErrorMessage(
   tErrors: (errorCode: any) => string,
 ) {
   if (validationResponse.success) return undefined;
-  return validationResponse.errors
-    .map((error) => tErrors(error.errorCode))
-    .join(", ");
+  return validationResponse.errors.map((error) => tErrors(error.errorCode)).join(", ");
 }

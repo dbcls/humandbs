@@ -11,10 +11,10 @@ import * as fs from "fs";
 import * as path from "path";
 
 import {
-  fetchSitemapPages,
-  processAttachmentsConcurrently,
-  generateAttachmentsCSV,
   displayAttachmentsSummary,
+  fetchSitemapPages,
+  generateAttachmentsCSV,
+  processAttachmentsConcurrently,
 } from "./utils";
 
 /**
@@ -71,9 +71,7 @@ async function filterExample() {
     );
 
     // Filter images
-    const images = allAttachments.filter(
-      (attachment) => attachment.type === "image",
-    );
+    const images = allAttachments.filter((attachment) => attachment.type === "image");
 
     console.log(`📊 Filtered Results:`);
     console.log(`PDF Files: ${pdfFiles.length}`);
@@ -111,12 +109,8 @@ async function languageAnalysis() {
     const allAttachments = await processAttachmentsConcurrently(pages, 3);
 
     // Group by language
-    const englishAttachments = allAttachments.filter(
-      (a) => a.language === "en",
-    );
-    const japaneseAttachments = allAttachments.filter(
-      (a) => a.language === "ja",
-    );
+    const englishAttachments = allAttachments.filter((a) => a.language === "en");
+    const japaneseAttachments = allAttachments.filter((a) => a.language === "ja");
 
     console.log(`📊 Language Distribution:`);
     console.log(`English pages: ${englishAttachments.length} attachments`);
@@ -127,12 +121,8 @@ async function languageAnalysis() {
     const japaneseUrls = new Set(japaneseAttachments.map((a) => a.url));
 
     const sharedFiles = [...englishUrls].filter((url) => japaneseUrls.has(url));
-    const englishOnlyFiles = [...englishUrls].filter(
-      (url) => !japaneseUrls.has(url),
-    );
-    const japaneseOnlyFiles = [...japaneseUrls].filter(
-      (url) => !englishUrls.has(url),
-    );
+    const englishOnlyFiles = [...englishUrls].filter((url) => !japaneseUrls.has(url));
+    const japaneseOnlyFiles = [...japaneseUrls].filter((url) => !englishUrls.has(url));
 
     console.log(`\n📋 File Sharing Analysis:`);
     console.log(`Shared between languages: ${sharedFiles.length} files`);
@@ -254,12 +244,8 @@ async function summaryReport() {
     console.log(`  Total Pages: ${report.totalPages}`);
     console.log(`  Total Attachments: ${report.totalAttachments}`);
     console.log(`  Unique Files: ${report.uniqueAttachments}`);
-    console.log(
-      `  Files: ${report.byType.files}, Images: ${report.byType.images}`,
-    );
-    console.log(
-      `  English: ${report.byLanguage.english}, Japanese: ${report.byLanguage.japanese}`,
-    );
+    console.log(`  Files: ${report.byType.files}, Images: ${report.byType.images}`);
+    console.log(`  English: ${report.byLanguage.english}, Japanese: ${report.byLanguage.japanese}`);
 
     console.log("\n📄 Full report saved to: attachment-summary-report.json");
     console.log("✅ Summary report completed!");
@@ -274,9 +260,7 @@ async function summaryReport() {
 async function main() {
   console.log("🚀 Attachment Aggregation Examples");
   console.log("=".repeat(80));
-  console.log(
-    "This script demonstrates various ways to use attachment aggregation.\n",
-  );
+  console.log("This script demonstrates various ways to use attachment aggregation.\n");
 
   // You can run individual examples or all of them
   // Comment out the ones you don't want to run:
@@ -312,10 +296,4 @@ if (import.meta.main) {
   });
 }
 
-export {
-  basicExample,
-  filterExample,
-  languageAnalysis,
-  pathAnalysis,
-  summaryReport,
-};
+export { basicExample, filterExample, languageAnalysis, pathAnalysis, summaryReport };

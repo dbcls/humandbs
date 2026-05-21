@@ -1,12 +1,10 @@
-import { type DatasetDoc } from "@humandbs/backend/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  useNavigate,
-  useRouteContext,
-  useSearch,
-} from "@tanstack/react-router";
+import { useNavigate, useRouteContext, useSearch } from "@tanstack/react-router";
 import { createIsomorphicFn } from "@tanstack/react-start";
+
 import { useCallback, useEffect } from "react";
+
+import type { DatasetDoc } from "@humandbs/backend/types";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
@@ -15,8 +13,7 @@ export type CartItem = DatasetDoc;
 function isQuotaExceeded(error: unknown) {
   return (
     error instanceof DOMException &&
-    (error.name === "QuotaExceededError" ||
-      error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+    (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED")
   );
 }
 
@@ -47,9 +44,7 @@ export function useCart() {
       localStorage.setItem(keyFor(user?.id), JSON.stringify(cart));
     } catch (error) {
       if (isQuotaExceeded(error)) {
-        console.warn(
-          "Cart data exceeds localStorage quota and cannot be saved.",
-        );
+        console.warn("Cart data exceeds localStorage quota and cannot be saved.");
       } else {
         throw error;
       }
@@ -57,24 +52,18 @@ export function useCart() {
   }, [cart, user?.id]);
 
   const setCart = (updater: (prev: CartItem[]) => CartItem[]) => {
-    queryClient.setQueryData<CartItem[]>(["cart", user?.id], (prev) =>
-      updater(prev ?? []),
-    );
+    queryClient.setQueryData<CartItem[]>(["cart", user?.id], (prev) => updater(prev ?? []));
   };
 
   return {
     cart,
     add: (dataset: CartItem) => {
       setCart((prev) =>
-        prev.some((item) => item.datasetId === dataset.datasetId)
-          ? prev
-          : [...prev, dataset],
+        prev.some((item) => item.datasetId === dataset.datasetId) ? prev : [...prev, dataset],
       );
     },
     remove: (dataset: CartItem) => {
-      setCart((prev) =>
-        prev.filter((item) => item.datasetId !== dataset.datasetId),
-      );
+      setCart((prev) => prev.filter((item) => item.datasetId !== dataset.datasetId));
     },
     clear: () => {
       setCart(() => []);
@@ -117,13 +106,9 @@ export function useCartTableHeader({
 
   const datasetIdsInCart = cart.map((item) => item.datasetId);
 
-  const allInCart = tableDatasets.every((ds) =>
-    datasetIdsInCart.includes(ds.datasetId),
-  );
+  const allInCart = tableDatasets.every((ds) => datasetIdsInCart.includes(ds.datasetId));
 
-  const someInCart = tableDatasets.some((ds) =>
-    datasetIdsInCart.includes(ds.datasetId),
-  );
+  const someInCart = tableDatasets.some((ds) => datasetIdsInCart.includes(ds.datasetId));
 
   const handleClickCart = useCallback(() => {
     if (allInCart) {

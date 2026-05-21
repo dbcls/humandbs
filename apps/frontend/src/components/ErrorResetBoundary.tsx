@@ -1,7 +1,8 @@
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
-import { CatchBoundary } from "@tanstack/react-router";
-import { Button } from "./ui/button";
 import type { ErrorRouteComponent } from "@tanstack/react-router";
+import { CatchBoundary } from "@tanstack/react-router";
+
+import { Button } from "./ui/button";
 
 export function ErrorResetBoundary({
   getResetKey,
@@ -20,14 +21,12 @@ export function ErrorResetBoundary({
           onCatch={reset}
           errorComponent={
             errorComponent ??
-            function (props) {
-              return (
-                <div className="flex-1">
-                  <h3>Error</h3>
-                  <ErrorContent {...props} />
-                </div>
-              );
-            }
+            ((props) => (
+              <div className="flex-1">
+                <h3>Error</h3>
+                <ErrorContent {...props} />
+              </div>
+            ))
           }
         >
           {children}
@@ -37,13 +36,7 @@ export function ErrorResetBoundary({
   );
 }
 
-export function ErrorContent({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+export function ErrorContent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <>
       <p className="text-red-500">

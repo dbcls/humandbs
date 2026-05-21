@@ -1,41 +1,45 @@
-import type { DeepOmit } from "@/utils/typeUtils";
-import {
-  type DatasetIdParams,
-  type DatasetListingQuery,
-  type DatasetVersionsListResponse,
-  type HumIdParams,
-  type LangQuery,
-  type LangVersionQuery,
-  type ResearchListingQuery,
-  ResearchSearchResponseSchema,
-  type ResearchVersionsListResponse,
-  type ResearchSearchResponse,
-  type DatasetDetailResponse,
-  type DatasetSearchResponse,
-  type ResearchDetailResponse,
-  type ResearchSearchBody,
-  type AllFacetsResponse,
-  type DatasetSearchBody,
-  type CreateResearchRequest,
-  type UpdateResearchRequest,
-  type UpdateDatasetRequest,
-  type DatasetUpdateResponse,
-  type UpdateUidsRequest,
-  type CreateVersionRequest,
-  type CreateDatasetForResearchRequest,
-  type ResearchWithLockResponse,
-  type WorkflowResponse,
-  type VersionCreateResponse,
-  type DatasetCreateResponse,
-  type LinkedDatasetsListResponse,
+import { createIsomorphicFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import type {
+  AllFacetsResponse,
+  CreateDatasetForResearchRequest,
+  CreateResearchRequest,
+  CreateVersionRequest,
+  DatasetCreateResponse,
+  DatasetDetailResponse,
+  DatasetIdParams,
+  DatasetListingQuery,
+  DatasetSearchBody,
+  DatasetSearchResponse,
+  DatasetUpdateResponse,
+  DatasetVersionsListResponse,
+  DsApplicationListResponse,
+  HumIdParams,
+  LangQuery,
+  LangVersionQuery,
+  LinkedDatasetsListResponse,
+  ResearchDetailResponse,
+  ResearchListingQuery,
+  ResearchSearchBody,
+  ResearchSearchResponse,
+  ResearchVersionsListResponse,
+  ResearchWithLockResponse,
+  UpdateDatasetRequest,
+  UpdateResearchRequest,
+  UpdateUidsRequest,
+  VersionCreateResponse,
+  WorkflowResponse,
 } from "@humandbs/backend/types";
+import { ResearchSearchResponseSchema } from "@humandbs/backend/types";
+
+import type { DeepOmit } from "@/utils/typeUtils";
+
 import type {
   ResearchTemplateResponse,
   DatasetTemplateResponse,
+  ResearchTemplateResponse,
 } from "../../../backend/src/api/types/templates";
-import type { DsApplicationListResponse } from "@humandbs/backend/types";
-import { createIsomorphicFn } from "@tanstack/react-start";
-import { z } from "zod";
 
 const getBackendBaseUrl = createIsomorphicFn()
   .client(() => `/api`)
@@ -106,20 +110,11 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
-function get<T>(
-  path: string,
-  params?: Record<string, unknown>,
-  headers?: HeadersInit,
-) {
+function get<T>(path: string, params?: Record<string, unknown>, headers?: HeadersInit) {
   return request<T>(path, { method: "GET", params, headers });
 }
 
-function post<T>(
-  path: string,
-  body: unknown,
-  headers?: HeadersInit,
-  signal?: AbortSignal,
-) {
+function post<T>(path: string, body: unknown, headers?: HeadersInit, signal?: AbortSignal) {
   return request<T>(path, {
     method: "POST",
     body: body != null ? JSON.stringify(body) : undefined,
@@ -161,9 +156,7 @@ interface APIService {
     query: { humId: string },
     accessToken?: string,
   ): Promise<LinkedDatasetsListResponse>;
-  getDatasetsPaginated(query: {
-    search: DatasetListingQuery;
-  }): Promise<DatasetSearchResponse>;
+  getDatasetsPaginated(query: { search: DatasetListingQuery }): Promise<DatasetSearchResponse>;
   getDataset(query: {
     params: DatasetIdParams;
     search: LangVersionQuery;
@@ -205,15 +198,9 @@ interface APIService {
     accessToken: string,
   ): Promise<VersionCreateResponse>;
   submitResearch(humId: string, accessToken: string): Promise<WorkflowResponse>;
-  approveResearch(
-    humId: string,
-    accessToken: string,
-  ): Promise<WorkflowResponse>;
+  approveResearch(humId: string, accessToken: string): Promise<WorkflowResponse>;
   rejectResearch(humId: string, accessToken: string): Promise<WorkflowResponse>;
-  unpublishResearch(
-    humId: string,
-    accessToken: string,
-  ): Promise<WorkflowResponse>;
+  unpublishResearch(humId: string, accessToken: string): Promise<WorkflowResponse>;
   createDatasetForResearch(
     humId: string,
     body: DeepOmit<CreateDatasetForResearchRequest, "rawHtml">,
@@ -225,14 +212,8 @@ interface APIService {
     accessToken: string,
   ): Promise<DatasetUpdateResponse>;
   deleteDataset(datasetId: string, accessToken: string): Promise<void>;
-  getResearchTemplate(
-    jdsId: string,
-    accessToken: string,
-  ): Promise<ResearchTemplateResponse>;
-  getDatasetTemplate(
-    externalId: string,
-    accessToken: string,
-  ): Promise<DatasetTemplateResponse>;
+  getResearchTemplate(jdsId: string, accessToken: string): Promise<ResearchTemplateResponse>;
+  getDatasetTemplate(externalId: string, accessToken: string): Promise<DatasetTemplateResponse>;
   listDsApplications(
     query: { page: number; limit: number },
     accessToken: string,
@@ -279,10 +260,7 @@ const api: APIService = {
   },
 
   getDatasetsPaginated(query) {
-    return get<DatasetSearchResponse>(
-      `/dataset`,
-      query.search as Record<string, unknown>,
-    );
+    return get<DatasetSearchResponse>(`/dataset`, query.search as Record<string, unknown>);
   },
 
   getDataset(query) {
@@ -323,11 +301,7 @@ const api: APIService = {
   },
 
   createResearch(body, accessToken) {
-    return post<ResearchWithLockResponse>(
-      `/research/new`,
-      body,
-      authHeader(accessToken),
-    );
+    return post<ResearchWithLockResponse>(`/research/new`, body, authHeader(accessToken));
   },
 
   updateResearch(humId, body, accessToken) {
@@ -339,19 +313,11 @@ const api: APIService = {
   },
 
   async deleteResearch(humId, accessToken) {
-    await post<undefined>(
-      `/research/${humId}/delete`,
-      null,
-      authHeader(accessToken),
-    );
+    await post<undefined>(`/research/${humId}/delete`, null, authHeader(accessToken));
   },
 
   updateResearchUids(humId, body, accessToken) {
-    return put<ResearchWithLockResponse>(
-      `/research/${humId}/uids`,
-      body,
-      authHeader(accessToken),
-    );
+    return put<ResearchWithLockResponse>(`/research/${humId}/uids`, body, authHeader(accessToken));
   },
 
   createResearchVersion(humId, body, accessToken) {
@@ -363,35 +329,19 @@ const api: APIService = {
   },
 
   submitResearch(humId, accessToken) {
-    return post<WorkflowResponse>(
-      `/research/${humId}/submit`,
-      null,
-      authHeader(accessToken),
-    );
+    return post<WorkflowResponse>(`/research/${humId}/submit`, null, authHeader(accessToken));
   },
 
   approveResearch(humId, accessToken) {
-    return post<WorkflowResponse>(
-      `/research/${humId}/approve`,
-      null,
-      authHeader(accessToken),
-    );
+    return post<WorkflowResponse>(`/research/${humId}/approve`, null, authHeader(accessToken));
   },
 
   rejectResearch(humId, accessToken) {
-    return post<WorkflowResponse>(
-      `/research/${humId}/reject`,
-      null,
-      authHeader(accessToken),
-    );
+    return post<WorkflowResponse>(`/research/${humId}/reject`, null, authHeader(accessToken));
   },
 
   unpublishResearch(humId, accessToken) {
-    return post<WorkflowResponse>(
-      `/research/${humId}/unpublish`,
-      null,
-      authHeader(accessToken),
-    );
+    return post<WorkflowResponse>(`/research/${humId}/unpublish`, null, authHeader(accessToken));
   },
 
   createDatasetForResearch(humId, body, accessToken) {
@@ -411,11 +361,7 @@ const api: APIService = {
   },
 
   deleteDataset(datasetId, accessToken) {
-    return post<void>(
-      `/dataset/${datasetId}/delete`,
-      null,
-      authHeader(accessToken),
-    );
+    return post<void>(`/dataset/${datasetId}/delete`, null, authHeader(accessToken));
   },
 
   getResearchTemplate(jdsId, accessToken) {
@@ -445,11 +391,7 @@ const api: APIService = {
 
 export { api };
 
-type StandardErrorCode =
-  | "CONFLICT"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "UNAUTHORIZED";
+type StandardErrorCode = "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "UNAUTHORIZED";
 
 export function mapApiError<C extends string = never>(
   error: unknown,
@@ -457,18 +399,13 @@ export function mapApiError<C extends string = never>(
   extraMappings?: Partial<Record<number, C>>,
 ): { ok: false; error: string; code: StandardErrorCode | C } {
   if (error instanceof APIError) {
-    const detail =
-      (error.data as { detail?: string } | undefined)?.detail ?? fallback;
+    const detail = (error.data as { detail?: string } | undefined)?.detail ?? fallback;
     const extra = extraMappings?.[error.status];
     if (extra !== undefined) return { ok: false, error: detail, code: extra };
-    if (error.status === 409)
-      return { ok: false, error: detail, code: "CONFLICT" };
-    if (error.status === 403)
-      return { ok: false, error: detail, code: "FORBIDDEN" };
-    if (error.status === 404)
-      return { ok: false, error: detail, code: "NOT_FOUND" };
-    if (error.status === 401)
-      return { ok: false, error: detail, code: "UNAUTHORIZED" };
+    if (error.status === 409) return { ok: false, error: detail, code: "CONFLICT" };
+    if (error.status === 403) return { ok: false, error: detail, code: "FORBIDDEN" };
+    if (error.status === 404) return { ok: false, error: detail, code: "NOT_FOUND" };
+    if (error.status === 401) return { ok: false, error: detail, code: "UNAUTHORIZED" };
   }
   throw error;
 }

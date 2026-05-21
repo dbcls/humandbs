@@ -1,26 +1,12 @@
-import type {
-  ResearchSearchBody,
-  ResearchSearchResponse,
-} from "@humandbs/backend/types";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ClientOnly,
-  createFileRoute,
-  functionalUpdate,
-} from "@tanstack/react-router";
-import {
-  createColumnHelper,
-  type SortingState,
-  type Updater,
-} from "@tanstack/react-table";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-router";
+import type { SortingState, Updater } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { useLocale, useTranslations } from "use-intl";
+
+import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+
+import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
 
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
@@ -28,7 +14,8 @@ import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
-import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
+import type { SectionConfig } from "@/components/SearchPanel";
+import { SearchPanel } from "@/components/SearchPanel";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,9 +30,7 @@ import { buildFacetSections } from "@/utils/buildFacetSections";
 import { copyTableData, downloadCsv, downloadExcel } from "@/utils/exportTable";
 import { researchesSearchParamsSchema } from "@/utils/queryParams";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/research/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/")({
   component: RouteComponent,
   validateSearch: researchesSearchParamsSchema,
   errorComponent: DefaultCatchBoundary,
@@ -78,8 +63,7 @@ function RouteComponent() {
       { header: t("title"), value: (row) => row.title[lang] ?? "" },
       {
         header: t("datePublished"),
-        value: (row) =>
-          `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
+        value: (row) => `${row.versions[0]?.releaseDate ?? ""} (${row.versions[0]?.version ?? ""})`,
       },
       {
         header: t("dateModified"),
@@ -98,9 +82,7 @@ function RouteComponent() {
     ];
     return {
       headers: columns.map((c) => c.header),
-      rows: (researchesData?.data ?? []).map((row) =>
-        columns.map((c) => c.value(row)),
-      ),
+      rows: (researchesData?.data ?? []).map((row) => columns.map((c) => c.value(row))),
     };
   }, [researchesData, lang, t]);
 
@@ -164,9 +146,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
     getResearchesQueryOptions({ ...filters, lang }),
   );
 
-  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(
-    getAllFacetsQueryOptions(),
-  );
+  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(getAllFacetsQueryOptions());
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
@@ -186,11 +166,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 
     return [
       ...topLevel,
-      ...buildFacetSections(
-        filters.datasetFilters ?? {},
-        "datasetFilters",
-        allFacetsData?.data,
-      ),
+      ...buildFacetSections(filters.datasetFilters ?? {}, "datasetFilters", allFacetsData?.data),
     ];
   }, [filters, allFacetsData]);
 
@@ -199,7 +175,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       isFetching={isFacetsPending || isDataPending}
       facetCounts={searchResults?.facets}
-      //@ts-ignore TODO fix types
+      //@ts-expect-error TODO fix types
       onSetFilters={setFilters}
       sections={sections}
     />
@@ -221,9 +197,9 @@ function useResearchesSearchQuery() {
   const search = Route.useSearch();
   const lang = useLocale();
   const searchParams = { ...search, lang };
-  const lastResolvedSearchRef = useRef<
-    Omit<ResearchSearchBody, "includeFacets"> | undefined
-  >(undefined);
+  const lastResolvedSearchRef = useRef<Omit<ResearchSearchBody, "includeFacets"> | undefined>(
+    undefined,
+  );
 
   const query = useQuery({
     ...getResearchesQueryOptions(searchParams),
@@ -232,16 +208,11 @@ function useResearchesSearchQuery() {
         ? (previousQuery.queryKey as readonly unknown[])[2]
         : undefined;
 
-      return isBackgroundTransition(previousSearch, searchParams)
-        ? previousData
-        : undefined;
+      return isBackgroundTransition(previousSearch, searchParams) ? previousData : undefined;
     },
   });
 
-  const transitionType = getSearchTransitionType(
-    lastResolvedSearchRef.current,
-    searchParams,
-  );
+  const transitionType = getSearchTransitionType(lastResolvedSearchRef.current, searchParams);
 
   useEffect(() => {
     if (!query.isFetching && query.data) {
@@ -285,11 +256,7 @@ function getSearchTransitionType(
 }
 
 function omitSortParams(value: unknown) {
-  const {
-    sort: _sort,
-    order: _order,
-    ...rest
-  } = value as Record<string, unknown>;
+  const { sort: _sort, order: _order, ...rest } = value as Record<string, unknown>;
 
   return rest;
 }
@@ -308,10 +275,7 @@ function stableSerialize(value: unknown): string {
   if (value && typeof value === "object") {
     return `{${Object.entries(value)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([key, entryValue]) =>
-          `${JSON.stringify(key)}:${stableSerialize(entryValue)}`,
-      )
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
       .join(",")}}`;
   }
 
@@ -361,8 +325,7 @@ function TableWrapper() {
     isFetching && isPlaceholderData && transitionType === "sort"
       ? (search.sort ?? "humId")
       : undefined;
-  const isPaginating =
-    isFetching && isPlaceholderData && transitionType === "pagination";
+  const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!researchesData || (isFetching && !isPlaceholderData))
     return (
@@ -387,29 +350,19 @@ function TableWrapper() {
 }
 
 function PaginationWrapper() {
-  const {
-    data: researchesData,
-    isFetching,
-    isPlaceholderData,
-  } = useResearchesSearchQuery();
+  const { data: researchesData, isFetching, isPlaceholderData } = useResearchesSearchQuery();
 
-  if (!researchesData || (isFetching && !isPlaceholderData))
-    return <PaginationLoadingSkeleton />;
+  if (!researchesData || (isFetching && !isPlaceholderData)) return <PaginationLoadingSkeleton />;
 
-  return (
-    <Pagination className="pr-5" pagination={researchesData.meta.pagination} />
-  );
+  return <Pagination className="pr-5" pagination={researchesData.meta.pagination} />;
 }
 
-const columnHelper =
-  createColumnHelper<ResearchSearchResponse["data"][number]>();
+const columnHelper = createColumnHelper<ResearchSearchResponse["data"][number]>();
 
 const columns = [
   columnHelper.accessor("humId", {
     id: "humId",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />,
 
     cell: function Cell(ctx) {
       return (
@@ -455,12 +408,7 @@ const columns = [
   }),
   columnHelper.accessor((row) => row.versions[0], {
     id: "datePublished",
-    header: (ctx) => (
-      <SortHeader
-        ctx={ctx}
-        label={ctx.table.options.meta?.t?.("datePublished")}
-      />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("datePublished")} />,
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -483,12 +431,7 @@ const columns = [
 
   columnHelper.accessor((row) => row.versions[row.versions.length - 1], {
     id: "dateModified",
-    header: (ctx) => (
-      <SortHeader
-        ctx={ctx}
-        label={ctx.table.options.meta?.t?.("dateModified")}
-      />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("dateModified")} />,
     minSize: 0,
     maxSize: 14,
     cell: (ctx) => (
@@ -511,16 +454,14 @@ const columns = [
   columnHelper.accessor("methods", {
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("methods"),
-    cell: (ctx) => <p className="text-sm break-all">{ctx.renderValue()}</p>,
+    cell: (ctx) => <p className="break-all text-sm">{ctx.renderValue()}</p>,
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
     cell: (ctx) => (
       <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
+        items={ctx.renderValue()?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
       />
     ),
   }),
@@ -529,9 +470,7 @@ const columns = [
     header: (ctx) => ctx.table.options.meta?.t("platforms"),
     cell: (ctx) => (
       <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
+        items={ctx.renderValue()?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
       />
     ),
   }),
@@ -542,7 +481,7 @@ const columns = [
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    // @ts-ignore TODO fix types
+    // @ts-expect-error TODO fix types
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
   columnHelper.accessor("dataProvider", {
@@ -550,9 +489,7 @@ const columns = [
     header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
     cell: (ctx) => (
       <CollapsiblePreview
-        items={ctx
-          .renderValue()
-          ?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
+        items={ctx.renderValue()?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
       />
     ),
   }),
@@ -588,7 +525,7 @@ function AddToCartAllDatasetsButton({
     <AddToCartToggle
       state={allInCart ? true : someInCart ? "indeterminate" : false}
       onClick={handleAddAllToCart}
-      className="text-sm font-normal"
+      className="font-normal text-sm"
     >
       <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
     </AddToCartToggle>

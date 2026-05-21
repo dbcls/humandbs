@@ -1,11 +1,5 @@
-import {
-  ErrorComponent,
-  Link,
-  rootRouteId,
-  useMatch,
-  useRouter,
-} from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { ErrorComponent, Link, rootRouteId, useMatch, useRouter } from "@tanstack/react-router";
 
 import { isCancelledError } from "@/utils/isCancelledError";
 
@@ -34,7 +28,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
         </button>
         {isRoot ? (
           <Link
-            //@ts-ignore
+            //@ts-expect-error
             to="/"
             className={`rounded-sm bg-gray-600 px-2 py-1 font-extrabold text-white uppercase dark:bg-gray-700`}
           >

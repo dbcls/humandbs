@@ -1,14 +1,15 @@
 import * as fs from "fs";
 import * as path from "path";
+
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import type { PageInfo } from "./utils";
 import {
-  fetchSitemapPages,
-  processAttachmentsConcurrently,
-  generateAttachmentsCSV,
   displayAttachmentsSummary,
-  PageInfo,
+  fetchSitemapPages,
+  generateAttachmentsCSV,
+  processAttachmentsConcurrently,
 } from "./utils";
 
 interface ParsedArguments {
@@ -45,9 +46,7 @@ async function main(): Promise<void> {
     const pages = await fetchSitemapPages();
 
     if (argv["dry-run"]) {
-      console.log(
-        "\n🔍 DRY RUN - Pages that would be processed for attachments:",
-      );
+      console.log("\n🔍 DRY RUN - Pages that would be processed for attachments:");
       console.log("=".repeat(80));
 
       // Group by language for better display
@@ -61,9 +60,7 @@ async function main(): Promise<void> {
       );
 
       Object.entries(pagesByLanguage).forEach(([language, langPages]) => {
-        console.log(
-          `\n📄 ${language.toUpperCase()} Pages (${langPages.length}):`,
-        );
+        console.log(`\n📄 ${language.toUpperCase()} Pages (${langPages.length}):`);
         langPages.forEach((page) => {
           console.log(`  • ${page.title}`);
           console.log(`    URL: ${page.url}`);
@@ -84,10 +81,7 @@ async function main(): Promise<void> {
     }
 
     // Process all pages and extract attachments
-    const allAttachments = await processAttachmentsConcurrently(
-      pages,
-      argv.concurrency,
-    );
+    const allAttachments = await processAttachmentsConcurrently(pages, argv.concurrency);
 
     // Display summary statistics
     displayAttachmentsSummary(allAttachments, pages.length);

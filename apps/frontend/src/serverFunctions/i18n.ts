@@ -1,12 +1,13 @@
 import { match as matchLocale } from "@formatjs/intl-localematcher";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
-import { type DeepPartial } from "@tanstack/router-core";
+import type { DeepPartial } from "@tanstack/router-core";
 import Negotiator from "negotiator";
-import { type Messages } from "use-intl";
+import type { Messages } from "use-intl";
 import { z } from "zod";
 
-import { i18n as i18nConfig, type Locale, localeSchema } from "../config/i18n";
+import type { Locale } from "../config/i18n";
+import { i18n as i18nConfig, localeSchema } from "../config/i18n";
 
 const localeKey = "locale";
 
@@ -52,15 +53,9 @@ export const $getLocale = createServerFn().handler(() => {
     const locales: string[] = i18nConfig.locales;
 
     // Use negotiator and intl-localematcher to get best locale
-    const languages = new Negotiator({ headers: negotiatorHeaders }).languages(
-      locales,
-    );
+    const languages = new Negotiator({ headers: negotiatorHeaders }).languages(locales);
 
-    locale = matchLocale(
-      languages,
-      locales,
-      i18nConfig.defaultLocale,
-    ) as Locale;
+    locale = matchLocale(languages, locales, i18nConfig.defaultLocale) as Locale;
 
     return locale;
   }

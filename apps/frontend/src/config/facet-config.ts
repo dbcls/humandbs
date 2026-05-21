@@ -1,4 +1,5 @@
 import type { DatasetFilters } from "@humandbs/backend/types";
+
 import { IsTumorSchema } from "../../../backend/src/crawler/types";
 
 /**
@@ -28,8 +29,7 @@ export const FACET_CATEGORY = {
 
 type FacetType = (typeof FACET_TYPES)[keyof typeof FACET_TYPES];
 
-export type FacetCategory =
-  (typeof FACET_CATEGORY)[keyof typeof FACET_CATEGORY];
+export type FacetCategory = (typeof FACET_CATEGORY)[keyof typeof FACET_CATEGORY];
 
 export type FacetConfig =
   | {

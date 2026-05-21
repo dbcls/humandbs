@@ -20,9 +20,7 @@ const inputPath = process.argv[2];
 const outputPath = process.argv[3] ?? inputPath;
 
 if (!inputPath) {
-  console.error(
-    "Usage: bun run convert-publications-to-table.ts <input.md> [output.md]",
-  );
+  console.error("Usage: bun run convert-publications-to-table.ts <input.md> [output.md]");
   process.exit(1);
 }
 
@@ -40,13 +38,7 @@ const paragraphs = body
   .filter(Boolean);
 
 // The first 5 paragraphs should be the header row labels
-const HEADER = [
-  "Principal Investigator",
-  "Title",
-  "Journal",
-  "Published",
-  "Used Dataset ID",
-];
+const HEADER = ["Principal Investigator", "Title", "Journal", "Published", "Used Dataset ID"];
 
 // Find where data rows start — skip any leading header-label paragraphs
 let startIndex = 0;
@@ -54,10 +46,7 @@ if (paragraphs.slice(0, 5).join("\n") === HEADER.join("\n")) {
   startIndex = 5;
 } else if (HEADER.includes(paragraphs[0])) {
   // partial match — skip however many header labels appear
-  while (
-    startIndex < paragraphs.length &&
-    HEADER.includes(paragraphs[startIndex])
-  ) {
+  while (startIndex < paragraphs.length && HEADER.includes(paragraphs[startIndex])) {
     startIndex++;
   }
 }
@@ -81,10 +70,7 @@ const rows: string[] = [];
 const count = Math.floor(dataParas.length / 5);
 
 for (let i = 0; i < count; i++) {
-  const [pi, title, journal, published, datasets] = dataParas.slice(
-    i * 5,
-    i * 5 + 5,
-  );
+  const [pi, title, journal, published, datasets] = dataParas.slice(i * 5, i * 5 + 5);
   rows.push(
     `| ${escapeCell(pi)} | ${escapeCell(title)} | ${escapeCell(journal)} | ${escapeCell(published)} | ${escapeCell(datasets)} |`,
   );

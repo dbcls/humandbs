@@ -1,4 +1,5 @@
 import { Download, Upload } from "lucide-react";
+
 import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,7 @@ export function MarkdownFileActions({
     reader.onload = (ev) => {
       const text = ev.target?.result;
       if (typeof text === "string") {
-        const { content: parsedContent, title: parsedTitle } =
-          parseFrontmatter(text);
+        const { content: parsedContent, title: parsedTitle } = parseFrontmatter(text);
         onUpload(parsedContent, parsedTitle);
       }
     };

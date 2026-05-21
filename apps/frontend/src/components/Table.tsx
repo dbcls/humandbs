@@ -1,43 +1,38 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import type {
+  ColumnDef,
+  DeepValue,
+  HeaderContext,
+  OnChangeFn,
+  RowData,
+  SortingState,
+  TableMeta,
+} from "@tanstack/react-table";
 import {
-  type ColumnDef,
-  type DeepValue,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  type HeaderContext,
-  type OnChangeFn,
-  type RowData,
-  type SortingState,
-  type TableMeta,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  ChevronDown,
-  ChevronsUpDown,
-  ChevronUp,
-  LoaderCircle,
-} from "lucide-react";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
+import { ChevronDown, ChevronsUpDown, ChevronUp, LoaderCircle } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
-import { useTranslations } from "use-intl";
 
-const tableHeaderRowVariants = cva(
-  "rounded bg-linear-to-r text-left text-white",
-  {
-    variants: {
-      variant: {
-        default: "from-secondary-light to-secondary-lighter",
-        darker: "from-secondary to-secondary-light",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
+const tableHeaderRowVariants = cva("rounded bg-linear-to-r text-left text-white", {
+  variants: {
+    variant: {
+      default: "from-secondary-light to-secondary-lighter",
+      darker: "from-secondary to-secondary-light",
     },
   },
-);
+  defaultVariants: {
+    variant: "default",
+  },
+});
 
 function Table<T extends Record<string, unknown>>({
   className,
@@ -84,29 +79,19 @@ function Table<T extends Record<string, unknown>>({
   });
 
   return (
-    <table
-      className={cn("w-full table-auto align-top text-pretty", className)}
-    >
+    <table className={cn("w-full table-auto text-pretty align-top", className)}>
       <thead className="sticky top-0 z-30 text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
-            <tr
-              key={headerGroup.id}
-              className={tableHeaderRowVariants({ variant })}
-            >
+            <tr key={headerGroup.id} className={tableHeaderRowVariants({ variant })}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className={
-                    "p-2 first-of-type:rounded-l last-of-type:rounded-r max-w-[300px]"
-                  }
+                  className={"max-w-[300px] p-2 first-of-type:rounded-l last-of-type:rounded-r"}
                 >
                   {header.isPlaceholder
                     ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                    : flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>
@@ -131,7 +116,7 @@ function Table<T extends Record<string, unknown>>({
             {row.getVisibleCells().map((cell) => (
               <td
                 key={cell.id}
-                className="border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]"
+                className="max-w-[300px] border-foreground-light/50 border-b-2 p-2 align-top"
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
@@ -155,10 +140,7 @@ function Table<T extends Record<string, unknown>>({
               <th key={header.id}>
                 {header.isPlaceholder
                   ? null
-                  : flexRender(
-                      header.column.columnDef.footer,
-                      header.getContext(),
-                    )}
+                  : flexRender(header.column.columnDef.footer, header.getContext())}
               </th>
             ))}
           </tr>
@@ -193,12 +175,26 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
       ) : (
         <Button
           variant={"ghost"}
-          className="text-white h-8 w-8 hover:bg-white/20"
+          className="h-8 w-8 text-white hover:bg-white/20"
           onClick={ctx.column.getToggleSortingHandler()}
         >
           <span className="flex flex-col items-center justify-center text-[10px] leading-[0.8]">
-            <span className={cn("inline-block scale-y-[0.6] scale-x-125", sortingState === "asc" ? "opacity-100" : "opacity-40")}>▲</span>
-            <span className={cn("inline-block scale-y-[0.6] scale-x-125", sortingState === "desc" ? "opacity-100" : "opacity-40")}>▼</span>
+            <span
+              className={cn(
+                "inline-block scale-x-125 scale-y-[0.6]",
+                sortingState === "asc" ? "opacity-100" : "opacity-40",
+              )}
+            >
+              ▲
+            </span>
+            <span
+              className={cn(
+                "inline-block scale-x-125 scale-y-[0.6]",
+                sortingState === "desc" ? "opacity-100" : "opacity-40",
+              )}
+            >
+              ▼
+            </span>
           </span>
         </Button>
       )}
@@ -224,9 +220,7 @@ function TableLoadingSpinner<T extends Record<string, unknown>>({
   });
 
   return (
-    <table
-      className={cn("w-full table-fixed align-top text-pretty", className)}
-    >
+    <table className={cn("w-full table-fixed text-pretty align-top", className)}>
       <thead className="relative z-10 text-white">
         {table.getHeaderGroups().map((headerGroup) => (
           <tr key={headerGroup.id} className={tableHeaderRowVariants()}>
@@ -238,10 +232,7 @@ function TableLoadingSpinner<T extends Record<string, unknown>>({
               >
                 {header.isPlaceholder
                   ? null
-                  : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
+                  : flexRender(header.column.columnDef.header, header.getContext())}
               </th>
             ))}
           </tr>
@@ -251,7 +242,7 @@ function TableLoadingSpinner<T extends Record<string, unknown>>({
         <tr>
           <td colSpan={columns.length} className="h-32">
             <div className="flex items-center justify-center">
-              <LoaderCircle className="text-secondary size-8 animate-spin" />
+              <LoaderCircle className="size-8 animate-spin text-secondary" />
             </div>
           </td>
         </tr>
@@ -260,4 +251,4 @@ function TableLoadingSpinner<T extends Record<string, unknown>>({
   );
 }
 
-export { Table, SortHeader, TableLoadingSpinner };
+export { SortHeader, Table, TableLoadingSpinner };

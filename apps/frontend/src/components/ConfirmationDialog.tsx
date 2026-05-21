@@ -15,15 +15,8 @@ import useConfirmationStore from "@/stores/confirmationStore";
  * Use `useConfirmationStore` hook for that.
  */
 function ConfirmationDialog() {
-  const {
-    open,
-    title,
-    description,
-    cancelLabel,
-    actionLabel,
-    onAction,
-    onCancel,
-  } = useConfirmationStore();
+  const { open, title, description, cancelLabel, actionLabel, onAction, onCancel } =
+    useConfirmationStore();
 
   return (
     <AlertDialog
@@ -37,15 +30,11 @@ function ConfirmationDialog() {
       <AlertDialogContent className="bg-primary">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base">{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-sm">
-            {description}
-          </AlertDialogDescription>
+          <AlertDialogDescription className="text-sm">{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
-          <AlertDialogAction onClick={onAction}>
-            {actionLabel}
-          </AlertDialogAction>
+          <AlertDialogAction onClick={onAction}>{actionLabel}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

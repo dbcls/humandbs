@@ -1,7 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
 import { useLocale } from "use-intl";
 
-import { i18n, i18n as i18nConfig, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n, i18n as i18nConfig } from "@/config/i18n";
 import { cn } from "@/lib/utils";
 
 export function LangSwitcherPill({
@@ -12,14 +13,14 @@ export function LangSwitcherPill({
   onChange: (lang: Locale) => void;
 }) {
   return (
-    <div className="bg-primary/50 relative flex rounded-full p-2">
+    <div className="relative flex rounded-full bg-primary/50 p-2">
       {i18nConfig.locales.map((lang) => (
         <button
           type="button"
           onClick={() => onChange(lang)}
           key={lang}
           className={cn(
-            "text-foreground-light z-10 h-10 w-10 cursor-pointer rounded-full text-center text-[10px] font-bold uppercase",
+            "z-10 h-10 w-10 cursor-pointer rounded-full text-center font-bold text-[10px] text-foreground-light uppercase",
             { "text-white": value === lang },
           )}
         >
@@ -27,7 +28,7 @@ export function LangSwitcherPill({
         </button>
       ))}
       <div
-        className="bg-secondary absolute z-0 size-10 rounded-full transition-transform"
+        className="absolute z-0 size-10 rounded-full bg-secondary transition-transform"
         style={{
           transform: `translateX(${i18nConfig.locales.indexOf(value) * 2.5}rem)`,
         }}

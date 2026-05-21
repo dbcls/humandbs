@@ -4,13 +4,9 @@ import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import {
-  alertsRepository,
-  createAlertSchema,
-  updateAlertSchema,
-  type AlertFilters,
-  type AlertRecord,
-} from "@/repositories/alert";
+import type { AlertFilters, AlertRecord } from "@/repositories/alert";
+import { alertsRepository, createAlertSchema, updateAlertSchema } from "@/repositories/alert";
+
 import { $getAuthUser } from "./authUser";
 
 const alertFiltersSchema = z.object({
@@ -59,9 +55,7 @@ export function getAllAlertsInfiniteQueryOptions(filters: AlertFilters = {}) {
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) =>
-      lastPage.length < ALERTS_PAGE_SIZE
-        ? undefined
-        : lastPageParam + ALERTS_PAGE_SIZE,
+      lastPage.length < ALERTS_PAGE_SIZE ? undefined : lastPageParam + ALERTS_PAGE_SIZE,
   });
 }
 

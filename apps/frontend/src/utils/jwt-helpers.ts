@@ -57,9 +57,7 @@ export interface EnsureFreshSessionResult {
 }
 
 const JWKS = jose.createRemoteJWKSet(
-  new URL(
-    `${process.env.HUMANDBS_AUTH_ISSUER_URL}/protocol/openid-connect/certs`,
-  ),
+  new URL(`${process.env.HUMANDBS_AUTH_ISSUER_URL}/protocol/openid-connect/certs`),
 );
 
 function computeAbsoluteExpiry(expiresIn?: number): string | undefined {
@@ -71,9 +69,7 @@ function computeAbsoluteExpiry(expiresIn?: number): string | undefined {
 
 function computeCookieMaxAge(session: Session): number {
   if (session.expires_at) {
-    const diff = Math.floor(
-      (Date.parse(session.expires_at) - Date.now()) / 1000,
-    );
+    const diff = Math.floor((Date.parse(session.expires_at) - Date.now()) / 1000);
     if (diff > 0) return diff;
   }
   if (session.expires_in && session.expires_in > 0) {
@@ -112,16 +108,12 @@ export const $$getJWT = createServerOnlyFn(() => {
 });
 
 export const $$buildSessionFromTokenResponse = createServerOnlyFn(
-  (
-    tokens: oidc.TokenEndpointResponse,
-    fallbackRefreshToken?: string,
-  ): Session | null => {
+  (tokens: oidc.TokenEndpointResponse, fallbackRefreshToken?: string): Session | null => {
     if (!tokens.access_token) {
       return null;
     }
 
-    const refreshExpiresIn = (tokens as { refresh_expires_in?: number })
-      .refresh_expires_in;
+    const refreshExpiresIn = (tokens as { refresh_expires_in?: number }).refresh_expires_in;
 
     const session: Session = {
       access_token: tokens.access_token,
@@ -142,18 +134,16 @@ export const $$buildSessionFromTokenResponse = createServerOnlyFn(
   },
 );
 /** Refreshes the access token using the refresh token */
-export const $$refreshAccessToken = createServerOnlyFn(
-  async (refreshToken: string) => {
-    try {
-      const cfg = await $$getOIDCConfig();
-      const tokens = await oidc.refreshTokenGrant(cfg, refreshToken);
-      return $$buildSessionFromTokenResponse(tokens, refreshToken);
-    } catch (error) {
-      console.error("Failed to refresh token:", error);
-      return null;
-    }
-  },
-);
+export const $$refreshAccessToken = createServerOnlyFn(async (refreshToken: string) => {
+  try {
+    const cfg = await $$getOIDCConfig();
+    const tokens = await oidc.refreshTokenGrant(cfg, refreshToken);
+    return $$buildSessionFromTokenResponse(tokens, refreshToken);
+  } catch (error) {
+    console.error("Failed to refresh token:", error);
+    return null;
+  }
+});
 
 /** Verifies signature + standard claims and returns the token payload. */
 export const $$verifyAccessToken = createServerOnlyFn(
@@ -177,12 +167,7 @@ export const $$verifyAccessToken = createServerOnlyFn(
 );
 
 export const $$ensureFreshSession = createServerOnlyFn(
-  async (
-    options: {
-      clockToleranceSec?: number;
-      session?: Session | null;
-    } = {},
-  ) => {
+  async (options: { clockToleranceSec?: number; session?: Session | null } = {}) => {
     const { clockToleranceSec = 60, session: providedSession } = options;
     const session = providedSession ?? $$getSession();
 
@@ -204,18 +189,13 @@ export const $$ensureFreshSession = createServerOnlyFn(
       };
     }
 
-    const expiresAtMs = session.expires_at
-      ? Date.parse(session.expires_at)
-      : undefined;
+    const expiresAtMs = session.expires_at ? Date.parse(session.expires_at) : undefined;
     const shouldAttemptProactiveRefresh =
       typeof expiresAtMs === "number" &&
       !Number.isNaN(expiresAtMs) &&
       expiresAtMs - Date.now() <= PROACTIVE_REFRESH_WINDOW_SEC * 1000;
 
-    const claims = await $$verifyAccessToken(
-      session.access_token,
-      clockToleranceSec,
-    );
+    const claims = await $$verifyAccessToken(session.access_token, clockToleranceSec);
 
     if (claims && !shouldAttemptProactiveRefresh) {
       return {
@@ -285,17 +265,15 @@ export const $$ensureFreshSession = createServerOnlyFn(
   },
 );
 
-export const $$getSessionCookieOptions = createServerOnlyFn(
-  (session: Session) => {
-    return {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: computeCookieMaxAge(session),
-    };
-  },
-);
+export const $$getSessionCookieOptions = createServerOnlyFn((session: Session) => {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: computeCookieMaxAge(session),
+  };
+});
 
 export function getClearSessionCookieOptions() {
   return {

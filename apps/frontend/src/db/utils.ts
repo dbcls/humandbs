@@ -1,6 +1,7 @@
-import { getTableColumns, SQL, sql } from "drizzle-orm";
-import { PgTable } from "drizzle-orm/pg-core";
-import { SQLiteTable } from "drizzle-orm/sqlite-core";
+import type { SQL } from "drizzle-orm";
+import { getTableColumns, sql } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
+import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 
 /**
  * Builds an object with columns to be updated in a conflict clause.

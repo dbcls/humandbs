@@ -1,13 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  boolean,
-  integer,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import type { NavigationFlowchartConfig } from "@/config/navigation-flowchart";
 
@@ -37,30 +29,24 @@ export const navigationFlowchart = pgTable("navigation_flowchart", {
   updatedBy: text("updated_by").references(() => user.id),
 });
 
-export const navigationFlowchartRevision = pgTable(
-  "navigation_flowchart_revision",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    flowchartId: uuid("flowchart_id")
-      .notNull()
-      .references(() => navigationFlowchart.id, { onDelete: "cascade" }),
-    config: jsonb("config").$type<NavigationFlowchartConfig>().notNull(),
-    revision: integer("revision").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    createdBy: text("created_by").references(() => user.id),
-  },
-);
+export const navigationFlowchartRevision = pgTable("navigation_flowchart_revision", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  flowchartId: uuid("flowchart_id")
+    .notNull()
+    .references(() => navigationFlowchart.id, { onDelete: "cascade" }),
+  config: jsonb("config").$type<NavigationFlowchartConfig>().notNull(),
+  revision: integer("revision").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: text("created_by").references(() => user.id),
+});
 
-export const navigationFlowchartRelations = relations(
-  navigationFlowchart,
-  ({ many, one }) => ({
-    revisions: many(navigationFlowchartRevision),
-    updater: one(user, {
-      fields: [navigationFlowchart.updatedBy],
-      references: [user.id],
-    }),
+export const navigationFlowchartRelations = relations(navigationFlowchart, ({ many, one }) => ({
+  revisions: many(navigationFlowchartRevision),
+  updater: one(user, {
+    fields: [navigationFlowchart.updatedBy],
+    references: [user.id],
   }),
-);
+}));
 
 export const navigationFlowchartRevisionRelations = relations(
   navigationFlowchartRevision,

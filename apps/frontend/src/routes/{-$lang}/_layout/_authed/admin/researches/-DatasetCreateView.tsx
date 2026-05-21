@@ -1,14 +1,20 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft } from "lucide-react";
+import { IntlProvider } from "use-intl";
+
+import { useRef, useState } from "react";
+
+import type {
+  DatasetFormHandle,
+  DatasetFormValues,
+} from "@/components/form-context/datasetFields/DatasetForm";
 import {
   DatasetForm,
   datasetFormValuesToPreviewDataset,
   getDefaultDatasetFormValues,
-  type DatasetFormValues,
-  type DatasetFormHandle,
 } from "@/components/form-context/datasetFields/DatasetForm";
 import { entriesToExperimentData } from "@/components/form-context/datasetFields/ExperimentsArrayField";
-import { ChevronLeft } from "lucide-react";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,17 +25,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { messages } from "@/config/messages";
+import { cn } from "@/lib/utils";
 import { DatasetVersionCard } from "@/routes/{-$lang}/_layout/_main/_other/dataset/$datasetId/-DatasetVersionCard";
 import { $createDatasetForResearch } from "@/serverFunctions/datasets";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
-import { IntlProvider } from "use-intl";
-import { messages } from "@/config/messages";
-import { TabContentLayout } from "./-TabContentLayout";
-import { cn } from "@/lib/utils";
+
+import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 import { AccessionChips } from "./-AccessionChips";
 import { mergeDatasetTemplate, templateWouldOverwrite } from "./-mergeDatasetTemplate";
-import type { DatasetTemplateData } from "../../../../../../../../backend/src/api/types/templates";
+import { TabContentLayout } from "./-TabContentLayout";
 
 interface DatasetCreateViewProps {
   humId: string;
@@ -52,7 +57,10 @@ export function DatasetCreateView({
   const defaultValues = getDefaultDatasetFormValues(humId);
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
   const [previewValues, setPreviewValues] = useState(defaultValues);
-  const [pendingTemplate, setPendingTemplate] = useState<{ data: DatasetTemplateData; accession: string } | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<{
+    data: DatasetTemplateData;
+    accession: string;
+  } | null>(null);
   const [lastAppliedId, setLastAppliedId] = useState<string | null>(null);
   const [chipsResetKey, setChipsResetKey] = useState(0);
   const currentValuesRef = useRef<DatasetFormValues>(defaultValues);
@@ -117,13 +125,13 @@ export function DatasetCreateView({
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+        className="flex items-center gap-1 text-gray-500 text-sm hover:text-gray-800"
       >
         <ChevronLeft className="size-4" />
         All datasets
       </button>
       <span className="text-gray-300">/</span>
-      <span className="text-sm font-medium">New dataset</span>
+      <span className="font-medium text-sm">New dataset</span>
     </div>
   );
 
@@ -137,9 +145,7 @@ export function DatasetCreateView({
       onClick={() => {
         document
           .getElementById("dataset-edit-form")
-          ?.dispatchEvent(
-            new Event("submit", { bubbles: true, cancelable: true }),
-          );
+          ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
       }}
     >
       {isSaving ? "Creating…" : "Create dataset"}
@@ -148,7 +154,12 @@ export function DatasetCreateView({
 
   return (
     <TabContentLayout header={header} actions={actions}>
-      <AlertDialog open={pendingTemplate !== null} onOpenChange={(open) => { if (!open) setPendingTemplate(null); }}>
+      <AlertDialog
+        open={pendingTemplate !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTemplate(null);
+        }}
+      >
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Overwrite existing fields?</AlertDialogTitle>
@@ -160,7 +171,8 @@ export function DatasetCreateView({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (pendingTemplate) doApplyTemplate(pendingTemplate.data, pendingTemplate.accession);
+                if (pendingTemplate)
+                  doApplyTemplate(pendingTemplate.data, pendingTemplate.accession);
                 setPendingTemplate(null);
               }}
             >

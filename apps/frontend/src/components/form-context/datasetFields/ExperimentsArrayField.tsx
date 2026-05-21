@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -15,23 +15,18 @@ import {
 } from "@dnd-kit/sortable";
 import { useStore } from "@tanstack/react-form";
 import { Download, Trash2, Upload } from "lucide-react";
+import { useTranslations } from "use-intl";
+
 import { useId, useRef } from "react";
 
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
+import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   deepEqual,
   getFieldDefaultValue,
   isFieldModified,
 } from "@/components/form-context/fields/useFieldModified";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-import { SortableItem } from "../researchFields/SortableItem";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { Button } from "@/components/ui/button";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
-import type { DeepOmit } from "@/utils/typeUtils";
-
-import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
 import {
   Combobox,
   ComboboxContent,
@@ -40,8 +35,13 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { useTranslations } from "use-intl";
+import type { DeepOmit } from "@/utils/typeUtils";
+
+import { SortableItem } from "../researchFields/SortableItem";
 
 type AnyForm = any;
 
@@ -109,10 +109,7 @@ function DataEntriesTable({
   }
 
   function applyKeys(keys: string[]) {
-    form.setFieldValue(
-      `experiments[${experimentIndex}].data`,
-      keys.map(newDataEntry),
-    );
+    form.setFieldValue(`experiments[${experimentIndex}].data`, keys.map(newDataEntry));
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -128,10 +125,7 @@ function DataEntriesTable({
       } catch {
         return;
       }
-      if (
-        !Array.isArray(parsed) ||
-        !parsed.every((v) => typeof v === "string")
-      ) {
+      if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === "string")) {
         return;
       }
       const validKeys = parsed.filter((k) =>
@@ -158,9 +152,7 @@ function DataEntriesTable({
   return (
     <div className="flex w-full flex-col gap-2">
       <div className="flex items-center gap-1">
-        <span className="flex-1 text-xs font-medium text-gray-500">
-          Moldata entries
-        </span>
+        <span className="flex-1 font-medium text-gray-500 text-xs">Moldata entries</span>
         {entries.length > 0 && (
           <Button
             type="button"
@@ -195,7 +187,7 @@ function DataEntriesTable({
       {entries.length > 0 && (
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-gray-100 text-left text-gray-400">
+            <tr className="border-gray-100 border-b text-left text-gray-400">
               <th className="w-48 pr-3 pb-2 font-medium">Key</th>
               <th className="pr-3 pb-2 font-medium">En</th>
               <th className="pr-3 pb-2 font-medium">Ja</th>
@@ -204,35 +196,25 @@ function DataEntriesTable({
           </thead>
           <tbody>
             {entries.map((entry, di) => {
-              const isKnown = (
-                ALLOWED_MOLDATA_KEYS as readonly string[]
-              ).includes(entry.key);
+              const isKnown = (ALLOWED_MOLDATA_KEYS as readonly string[]).includes(entry.key);
 
               return (
                 <tr
                   key={`${experimentIndex}-${di}`}
-                  className="border-b border-gray-100 last:border-0"
+                  className="border-gray-100 border-b last:border-0"
                 >
                   <td className="py-2 pr-3 align-middle">
                     {isKnown ? (
-                      <span className="font-medium text-gray-700">
-                        {entry.key}
-                      </span>
+                      <span className="font-medium text-gray-700">{entry.key}</span>
                     ) : (
                       <span className="inline-flex items-center gap-1">
-                        <span className="font-medium text-gray-700">
-                          {entry.key}
-                        </span>
-                        <span className="rounded bg-amber-100 px-1 text-amber-700">
-                          unknown
-                        </span>
+                        <span className="font-medium text-gray-700">{entry.key}</span>
+                        <span className="rounded bg-amber-100 px-1 text-amber-700">unknown</span>
                       </span>
                     )}
                   </td>
                   <td className="py-2 pr-3 align-middle">
-                    <form.AppField
-                      name={`experiments[${experimentIndex}].data[${di}].en.text`}
-                    >
+                    <form.AppField name={`experiments[${experimentIndex}].data[${di}].en.text`}>
                       {(f: AnyForm) => (
                         <div className="relative flex items-center">
                           <Input
@@ -245,9 +227,7 @@ function DataEntriesTable({
                           {isFieldModified(f) && (
                             <ResetFieldButton
                               onClick={() =>
-                                f.handleChange(
-                                  (getFieldDefaultValue(f) as string) ?? null,
-                                )
+                                f.handleChange((getFieldDefaultValue(f) as string) ?? null)
                               }
                             />
                           )}
@@ -256,9 +236,7 @@ function DataEntriesTable({
                     </form.AppField>
                   </td>
                   <td className="py-2 pr-3 align-middle">
-                    <form.AppField
-                      name={`experiments[${experimentIndex}].data[${di}].ja.text`}
-                    >
+                    <form.AppField name={`experiments[${experimentIndex}].data[${di}].ja.text`}>
                       {(f: AnyForm) => (
                         <div className="relative flex items-center">
                           <Input
@@ -271,9 +249,7 @@ function DataEntriesTable({
                           {isFieldModified(f) && (
                             <ResetFieldButton
                               onClick={() =>
-                                f.handleChange(
-                                  (getFieldDefaultValue(f) as string) ?? null,
-                                )
+                                f.handleChange((getFieldDefaultValue(f) as string) ?? null)
                               }
                             />
                           )}
@@ -334,13 +310,11 @@ function ExperimentItemForm({
   // Track current header values to highlight modified inputs
   const currentEnText = useStore(
     form.store,
-    (state: AnyForm) =>
-      state.values?.experiments?.[index]?.header?.en?.text ?? "",
+    (state: AnyForm) => state.values?.experiments?.[index]?.header?.en?.text ?? "",
   );
   const currentJaText = useStore(
     form.store,
-    (state: AnyForm) =>
-      state.values?.experiments?.[index]?.header?.ja?.text ?? "",
+    (state: AnyForm) => state.values?.experiments?.[index]?.header?.ja?.text ?? "",
   );
   const isHeaderEnModified = !deepEqual(
     currentEnText || null,
@@ -355,7 +329,7 @@ function ExperimentItemForm({
     <div className="flex flex-col items-start gap-3">
       {/* Header — bilingual, binding to .text subfields */}
       <Label className="flex w-full flex-col items-start gap-2">
-        <span className="text-xs font-medium text-gray-500">Header</span>
+        <span className="font-medium text-gray-500 text-xs">Header</span>
         <div className="flex w-full gap-2">
           <form.AppField name={`experiments[${index}].header.en.text`}>
             {(f: AnyForm) => (
@@ -416,8 +390,10 @@ function ExperimentsSortableList({
   );
 
   const items: ExperimentItem[] = field.state.value ?? [];
-  const { itemIds, moveItemId, removeItemId, insertItemId } =
-    useStableSortableIds(items.length, dndId);
+  const { itemIds, moveItemId, removeItemId, insertItemId } = useStableSortableIds(
+    items.length,
+    dndId,
+  );
 
   function handleDragEnd(event: DragEndEvent) {
     if (fieldsetRef.current?.disabled) return;
@@ -442,8 +418,7 @@ function ExperimentsSortableList({
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           {items.map((item, i) => {
             const initialItem = initialItems[i];
-            const isModified =
-              i >= initialItems.length || !deepEqual(item, initialItem);
+            const isModified = i >= initialItems.length || !deepEqual(item, initialItem);
             return (
               <SortableItem
                 key={itemIds[i]}
@@ -460,11 +435,7 @@ function ExperimentsSortableList({
                   field.removeValue(i);
                 }}
               >
-                <ExperimentItemForm
-                  form={form}
-                  index={i}
-                  initialItem={initialItem}
-                />
+                <ExperimentItemForm form={form} index={i} initialItem={initialItem} />
               </SortableItem>
             );
           })}
@@ -491,11 +462,7 @@ export function ExperimentsArrayField({
   return (
     <form.Field name="experiments" mode="array">
       {(field: AnyForm) => (
-        <ExperimentsSortableList
-          form={form}
-          field={field}
-          initialItems={initialItems}
-        />
+        <ExperimentsSortableList form={form} field={field} initialItems={initialItems} />
       )}
     </form.Field>
   );

@@ -1,7 +1,7 @@
-import { useState } from "react";
-
 import { useLoaderData } from "@tanstack/react-router";
 import { LucideX, TriangleAlert } from "lucide-react";
+
+import { useState } from "react";
 
 import { Button } from "./ui/button";
 
@@ -35,17 +35,12 @@ export function AlertMessage({
   content: string;
 }) {
   return (
-    <div className="text-foreground-dark flex items-center justify-between gap-2 rounded-sm border border-amber-600 bg-amber-50 px-4 py-2">
+    <div className="flex items-center justify-between gap-2 rounded-sm border border-amber-600 bg-amber-50 px-4 py-2 text-foreground-dark">
       <div className="flex items-center gap-4">
         <TriangleAlert className="size-5 text-amber-700" />
-        <p className="text-xs whitespace-pre-wrap">{content}</p>
+        <p className="whitespace-pre-wrap text-xs">{content}</p>
       </div>
-      <Button
-        onClick={() => onHide?.(id)}
-        variant={"ghost"}
-        size={"icon"}
-        aria-label="Hide alert"
-      >
+      <Button onClick={() => onHide?.(id)} variant={"ghost"} size={"icon"} aria-label="Hide alert">
         <LucideX className="size-5" />
       </Button>
     </div>

@@ -1,29 +1,19 @@
+import { CollisionPriority } from "@dnd-kit/abstract";
+import { move } from "@dnd-kit/helpers";
 import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { move } from "@dnd-kit/helpers";
-import { CollisionPriority } from "@dnd-kit/abstract";
-import {
-  createFileRoute,
-  useRouteContext,
-  useRouter,
-} from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type Ref, useEffect, useRef, useState } from "react";
-import {
-  GripVertical,
-  Plus,
-  Trash2,
-  Check,
-  X,
-  Link2,
-  FileText,
-} from "lucide-react";
+import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { Check, FileText, GripVertical, Link2, Plus, Trash2, X } from "lucide-react";
+import { useLocale } from "use-intl";
+
+import type { Ref } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { LocaleInlineEditor } from "@/components/LocaleInlineEditor";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -31,39 +21,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  type NavigationItem,
-  type NavigationGroup,
-  type NavPriority,
-  type SiteNavigationConfig,
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import type { Locale } from "@/config/i18n";
+import type {
+  NavigationGroup,
+  NavigationItem,
+  NavPriority,
+  SiteNavigationConfig,
 } from "@/config/site-navigation";
-import {
-  deriveNavbarCommittedGroups,
-  mergeCommittedNavbarGroups,
-  type NavbarCommittedGroup,
-} from "@/config/site-navigation-admin";
-import { type Locale } from "@/config/i18n";
 import {
   normalizeSiteNavigationConfig,
   siteNavigationConfigSchema,
 } from "@/config/site-navigation.schema";
+import type { NavbarCommittedGroup } from "@/config/site-navigation-admin";
+import {
+  deriveNavbarCommittedGroups,
+  mergeCommittedNavbarGroups,
+} from "@/config/site-navigation-admin";
+import type { DocumentsListItemResponse } from "@/serverFunctions/document";
+import { $getDocuments, getDocumentsQueryOptions } from "@/serverFunctions/document";
 import {
   $resetSiteNavigationConfig,
   $saveSiteNavigationConfig,
   getSiteNavigationConfigQueryOptions,
 } from "@/serverFunctions/siteNavigation";
-import {
-  $getDocuments,
-  getDocumentsQueryOptions,
-  type DocumentsListItemResponse,
-} from "@/serverFunctions/document";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
-import { AdminStatusMessage } from "./-components/AdminStatusMessage";
-import { useLocale } from "use-intl";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/header-footer",
-)({
+import { AdminStatusMessage } from "./-components/AdminStatusMessage";
+
+export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/header-footer")({
   component: RouteComponent,
 });
 
@@ -88,10 +74,7 @@ type ItemsRecord = Record<string, string[]>;
 // Label helpers
 // ---------------------------------------------------------------------------
 
-function getDocumentLabel(
-  doc: DocumentsListItemResponse,
-  lang?: Locale,
-): string {
+function getDocumentLabel(doc: DocumentsListItemResponse, lang?: Locale): string {
   if (lang) {
     const currentTranslation = doc.translations.find((t) => t.lang === lang);
     if (currentTranslation?.statuses.published) {
@@ -151,18 +134,10 @@ function NavigationItemLeadingIcon({ item }: { item: NavigationItem }) {
   return <Link2 className="mt-0.5 size-3 shrink-0 text-amber-600" />;
 }
 
-function CardWithPath({
-  path,
-  children,
-}: {
-  path: string | undefined;
-  children: React.ReactNode;
-}) {
+function CardWithPath({ path, children }: { path: string | undefined; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span className="text-2xs font-mono leading-none text-gray-400">
-        {path}
-      </span>
+      <span className="font-mono text-2xs text-gray-400 leading-none">{path}</span>
       {children}
     </div>
   );
@@ -203,8 +178,7 @@ function RouteComponent() {
   });
 
   const { mutateAsync: resetConfig, isPending: isResetting } = useMutation({
-    mutationFn: async () =>
-      $resetSiteNavigationConfig({ data: { expectedRevision: revision } }),
+    mutationFn: async () => $resetSiteNavigationConfig({ data: { expectedRevision: revision } }),
   });
 
   if (isPending) {
@@ -224,10 +198,10 @@ function RouteComponent() {
       <Card className="flex h-full flex-1 flex-col" caption="Site Navigation">
         <div className="flex flex-col gap-4 p-5">
           <div>
-            <p className="text-danger text-sm font-medium">
+            <p className="font-medium text-danger text-sm">
               Failed to load site navigation config.
             </p>
-            <p className="text-foreground-light mt-1 text-sm">
+            <p className="mt-1 text-foreground-light text-sm">
               {queryError instanceof Error
                 ? queryError.message
                 : "The CMS config request did not complete successfully."}
@@ -272,9 +246,7 @@ function RouteComponent() {
     const normalizedDraft = normalizeSiteNavigationConfig(draft);
     const validation = siteNavigationConfigSchema.safeParse(normalizedDraft);
     if (!validation.success) {
-      setError(
-        validation.error.issues[0]?.message ?? "Navigation config is invalid.",
-      );
+      setError(validation.error.issues[0]?.message ?? "Navigation config is invalid.");
       return;
     }
     const result = await saveConfig(normalizedDraft);
@@ -310,9 +282,7 @@ function RouteComponent() {
     setError(null);
   }
 
-  function updateDraft(
-    updater: (current: SiteNavigationConfig) => SiteNavigationConfig,
-  ) {
+  function updateDraft(updater: (current: SiteNavigationConfig) => SiteNavigationConfig) {
     setDraft((current) => (current ? updater(current) : current));
   }
 
@@ -346,18 +316,13 @@ function RouteComponent() {
     }));
   }
 
-  function renameNavbarGroup(
-    groupId: string,
-    label: { en: string; ja: string },
-  ) {
+  function renameNavbarGroup(groupId: string, label: { en: string; ja: string }) {
     updateDraft((current) => ({
       ...current,
       zones: {
         ...current.zones,
         navbar: {
-          groups: current.zones.navbar.groups.map((g) =>
-            g.id === groupId ? { ...g, label } : g,
-          ),
+          groups: current.zones.navbar.groups.map((g) => (g.id === groupId ? { ...g, label } : g)),
         },
       },
     }));
@@ -382,9 +347,7 @@ function RouteComponent() {
         ...current.zones,
         navbar: {
           groups: current.zones.navbar.groups.map((g) =>
-            g.id === groupId
-              ? { ...g, enabled: enabled ? g.items.length > 0 : false }
-              : g,
+            g.id === groupId ? { ...g, enabled: enabled ? g.items.length > 0 : false } : g,
           ),
         },
       },
@@ -405,13 +368,8 @@ function RouteComponent() {
     }));
   }
 
-  function assignDocumentToNavbarGroup(
-    contentId: string,
-    groupId: string,
-    documentId?: string,
-  ) {
-    const resolvedDocumentId =
-      documentId ?? documents.find((d) => d.contentId === contentId)?.id;
+  function assignDocumentToNavbarGroup(contentId: string, groupId: string, documentId?: string) {
+    const resolvedDocumentId = documentId ?? documents.find((d) => d.contentId === contentId)?.id;
     updateDraft((current) => {
       const existingItem = current.items.find(
         (i) =>
@@ -426,9 +384,7 @@ function RouteComponent() {
             item.id === existingItem.id
               ? {
                   ...item,
-                  ...(resolvedDocumentId
-                    ? { documentId: resolvedDocumentId }
-                    : { contentId }),
+                  ...(resolvedDocumentId ? { documentId: resolvedDocumentId } : { contentId }),
                 }
               : item,
           )
@@ -437,9 +393,7 @@ function RouteComponent() {
             {
               id: itemId,
               type: "document" as const,
-              ...(resolvedDocumentId
-                ? { documentId: resolvedDocumentId }
-                : { contentId }),
+              ...(resolvedDocumentId ? { documentId: resolvedDocumentId } : { contentId }),
             },
           ];
 
@@ -451,9 +405,7 @@ function RouteComponent() {
 
       // Add to target group
       const targetGroups = newGroups.map((g) =>
-        g.id === groupId
-          ? { ...g, items: [...g.items, { id: itemId, enabled: true }] }
-          : g,
+        g.id === groupId ? { ...g, items: [...g.items, { id: itemId, enabled: true }] } : g,
       );
 
       return {
@@ -471,20 +423,14 @@ function RouteComponent() {
         ...current.zones,
         navbar: {
           groups: current.zones.navbar.groups.map((g) =>
-            g.id === groupId
-              ? { ...g, items: g.items.filter((ref) => ref.id !== itemId) }
-              : g,
+            g.id === groupId ? { ...g, items: g.items.filter((ref) => ref.id !== itemId) } : g,
           ),
         },
       },
     }));
   }
 
-  function toggleNavbarItemEnabled(
-    itemId: string,
-    groupId: string,
-    enabled: boolean,
-  ) {
+  function toggleNavbarItemEnabled(itemId: string, groupId: string, enabled: boolean) {
     updateDraft((current) => ({
       ...current,
       zones: {
@@ -494,9 +440,7 @@ function RouteComponent() {
             g.id === groupId
               ? {
                   ...g,
-                  items: g.items.map((ref) =>
-                    ref.id === itemId ? { ...ref, enabled } : ref,
-                  ),
+                  items: g.items.map((ref) => (ref.id === itemId ? { ...ref, enabled } : ref)),
                 }
               : g,
           ),
@@ -518,9 +462,7 @@ function RouteComponent() {
         ...current.zones,
         navbar: {
           groups: current.zones.navbar.groups.map((g) =>
-            g.id === groupId
-              ? { ...g, items: [...g.items, { id, enabled: true }] }
-              : g,
+            g.id === groupId ? { ...g, items: [...g.items, { id, enabled: true }] } : g,
           ),
         },
       },
@@ -536,9 +478,7 @@ function RouteComponent() {
       // Build new group list preserving all groups (including those not in the
       // drag-drop view, i.e. empty groups that were filtered out)
       const updatedGroupIds = new Set(groups.map((g) => g.group.id));
-      const unchangedGroups = current.zones.footer.groups.filter(
-        (g) => !updatedGroupIds.has(g.id),
-      );
+      const unchangedGroups = current.zones.footer.groups.filter((g) => !updatedGroupIds.has(g.id));
 
       const updatedGroups = groups.map((g) => ({
         ...g.group,
@@ -567,27 +507,19 @@ function RouteComponent() {
       zones: {
         ...current.zones,
         footer: {
-          groups: [
-            ...current.zones.footer.groups,
-            { id, label, enabled: true, items: [] },
-          ],
+          groups: [...current.zones.footer.groups, { id, label, enabled: true, items: [] }],
         },
       },
     }));
   }
 
-  function renameFooterGroup(
-    groupId: string,
-    label: { en: string; ja: string },
-  ) {
+  function renameFooterGroup(groupId: string, label: { en: string; ja: string }) {
     updateDraft((current) => ({
       ...current,
       zones: {
         ...current.zones,
         footer: {
-          groups: current.zones.footer.groups.map((g) =>
-            g.id === groupId ? { ...g, label } : g,
-          ),
+          groups: current.zones.footer.groups.map((g) => (g.id === groupId ? { ...g, label } : g)),
         },
       },
     }));
@@ -620,13 +552,8 @@ function RouteComponent() {
     }));
   }
 
-  function assignDocumentToGroup(
-    contentId: string,
-    groupId: string,
-    documentId?: string,
-  ) {
-    const resolvedDocumentId =
-      documentId ?? documents.find((d) => d.contentId === contentId)?.id;
+  function assignDocumentToGroup(contentId: string, groupId: string, documentId?: string) {
+    const resolvedDocumentId = documentId ?? documents.find((d) => d.contentId === contentId)?.id;
     updateDraft((current) => {
       // Find existing NavigationItem for this document, or create one
       const existingItem = current.items.find(
@@ -637,14 +564,12 @@ function RouteComponent() {
       );
       const itemId = existingItem?.id ?? crypto.randomUUID();
 
-      let newItems = existingItem
+      const newItems = existingItem
         ? current.items.map((item) =>
             item.id === existingItem.id
               ? {
                   ...item,
-                  ...(resolvedDocumentId
-                    ? { documentId: resolvedDocumentId }
-                    : { contentId }),
+                  ...(resolvedDocumentId ? { documentId: resolvedDocumentId } : { contentId }),
                 }
               : item,
           )
@@ -653,9 +578,7 @@ function RouteComponent() {
             {
               id: itemId,
               type: "document" as const,
-              ...(resolvedDocumentId
-                ? { documentId: resolvedDocumentId }
-                : { contentId }),
+              ...(resolvedDocumentId ? { documentId: resolvedDocumentId } : { contentId }),
             },
           ];
 
@@ -686,11 +609,7 @@ function RouteComponent() {
     });
   }
 
-  function addLinkItemToGroup(
-    groupId: string,
-    url: string,
-    label: { en: string; ja: string },
-  ) {
+  function addLinkItemToGroup(groupId: string, url: string, label: { en: string; ja: string }) {
     const id = crypto.randomUUID();
     updateDraft((current) => {
       const newItem: NavigationItem = { id, type: "link", url, label };
@@ -749,19 +668,14 @@ function RouteComponent() {
         footer: {
           groups: current.zones.footer.groups.map((group) => ({
             ...group,
-            items: group.items.map((ref) =>
-              ref.id === itemId ? { ...ref, enabled } : ref,
-            ),
+            items: group.items.map((ref) => (ref.id === itemId ? { ...ref, enabled } : ref)),
           })),
         },
       },
     }));
   }
 
-  function createUnassignedLinkItem(
-    url: string,
-    label: { en: string; ja: string },
-  ) {
+  function createUnassignedLinkItem(url: string, label: { en: string; ja: string }) {
     const id = crypto.randomUUID();
     updateDraft((current) => ({
       ...current,
@@ -805,20 +719,15 @@ function RouteComponent() {
         const item = itemById.get(ref.id);
         return item ? { item, enabled: ref.enabled !== false } : undefined;
       })
-      .filter(
-        (e): e is { item: NavigationItem; enabled: boolean } => e !== undefined,
-      );
+      .filter((e): e is { item: NavigationItem; enabled: boolean } => e !== undefined);
   }
 
-  const navbarGroups: NavbarGroupWithItems[] =
-    deriveNavbarCommittedGroups(draft);
+  const navbarGroups: NavbarGroupWithItems[] = deriveNavbarCommittedGroups(draft);
 
-  const footerGroups: FooterGroupWithItems[] = draft.zones.footer.groups.map(
-    (group) => ({
-      group,
-      items: resolveGroupItems(group),
-    }),
-  );
+  const footerGroups: FooterGroupWithItems[] = draft.zones.footer.groups.map((group) => ({
+    group,
+    items: resolveGroupItems(group),
+  }));
 
   return (
     <Card
@@ -828,12 +737,10 @@ function RouteComponent() {
     >
       <div className="flex items-center justify-between px-5 pt-5">
         <div>
-          <p className="text-sm font-medium">
-            Shared structure for both locales
-          </p>
+          <p className="font-medium text-sm">Shared structure for both locales</p>
           <p className="text-foreground-light text-sm">
-            Labels come from document titles and item labels. This editor
-            changes ordering, visibility, priority, and footer grouping.
+            Labels come from document titles and item labels. This editor changes ordering,
+            visibility, priority, and footer grouping.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -855,11 +762,7 @@ function RouteComponent() {
             Reset
           </Button>
 
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={!isDirty || isSaving || isResetting}
-          >
+          <Button type="button" onClick={handleSave} disabled={!isDirty || isSaving || isResetting}>
             {isSaving ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -871,16 +774,14 @@ function RouteComponent() {
         </AdminStatusMessage>
       ) : null}
 
-      {error ? (
-        <AdminStatusMessage className="mx-5 mt-4">{error}</AdminStatusMessage>
-      ) : null}
+      {error ? <AdminStatusMessage className="mx-5 mt-4">{error}</AdminStatusMessage> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-5 px-5 pt-5 pb-5">
           {/* Navbar preview */}
           <section className="rounded-md border border-gray-200 p-4">
-            <h2 className="text-base font-medium">Navbar</h2>
-            <p className="text-foreground-light mt-1 text-sm">
+            <h2 className="font-medium text-base">Navbar</h2>
+            <p className="mt-1 text-foreground-light text-sm">
               Drag groups to reorder. Drag items between groups to reassign.
             </p>
             <div className="mt-4">
@@ -902,10 +803,10 @@ function RouteComponent() {
 
           {/* Footer preview */}
           <section className="rounded-md border border-gray-200 p-4">
-            <h2 className="text-base font-medium">Footer</h2>
-            <p className="text-foreground-light mt-1 text-sm">
-              Drag group columns to reorder. Drag items between columns to
-              reassign. Click a group header to rename it.
+            <h2 className="font-medium text-base">Footer</h2>
+            <p className="mt-1 text-foreground-light text-sm">
+              Drag group columns to reorder. Drag items between columns to reassign. Click a group
+              header to rename it.
             </p>
             <div className="mt-4">
               <FooterPreview
@@ -963,9 +864,7 @@ function parseNavbarGroupLinkedSlotId(value: string): string | null {
 }
 
 function parseNavbarGroupSubItemsId(value: string): string | null {
-  return value.startsWith("navbar-group-sub:")
-    ? value.slice("navbar-group-sub:".length)
-    : null;
+  return value.startsWith("navbar-group-sub:") ? value.slice("navbar-group-sub:".length) : null;
 }
 
 function updateNavbarAssignedItem(
@@ -977,9 +876,7 @@ function updateNavbarAssignedItem(
 ): NavbarGroupWithItems[] {
   return currentGroups.map((group) => ({
     ...group,
-    subItems: group.subItems.map((item) =>
-      item.item.id === itemId ? updater(item) : item,
-    ),
+    subItems: group.subItems.map((item) => (item.item.id === itemId ? updater(item) : item)),
   }));
 }
 
@@ -1033,12 +930,8 @@ function NavbarPreview({
 
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
-  const [draggingDocContentId, setDraggingDocContentId] = useState<
-    string | null
-  >(null);
-  const [draggingLinkItemId, setDraggingLinkItemId] = useState<string | null>(
-    null,
-  );
+  const [draggingDocContentId, setDraggingDocContentId] = useState<string | null>(null);
+  const [draggingLinkItemId, setDraggingLinkItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -1052,9 +945,7 @@ function NavbarPreview({
   const draggingItem = draggingItemId
     ? (groups
         .flatMap((group) => [
-          ...(group.linkedItem
-            ? [{ item: group.linkedItem.item, enabled: true }]
-            : []),
+          ...(group.linkedItem ? [{ item: group.linkedItem.item, enabled: true }] : []),
           ...group.subItems,
         ])
         .find((item) => item.item.id === draggingItemId) ?? null)
@@ -1067,9 +958,7 @@ function NavbarPreview({
     ]),
   );
 
-  const documentPathById = new Map(
-    documents.map((doc) => [doc.id, doc.contentId] as const),
-  );
+  const documentPathById = new Map(documents.map((doc) => [doc.id, doc.contentId] as const));
 
   const docItemMap = new Map<string, NavigationItem>(
     allItems
@@ -1085,23 +974,16 @@ function NavbarPreview({
   );
 
   const documentTitleByContentId = new Map([
-    ...documents.map(
-      (doc) => [doc.contentId, getDocumentLabel(doc, lang)] as const,
-    ),
+    ...documents.map((doc) => [doc.contentId, getDocumentLabel(doc, lang)] as const),
     ...documents.map((doc) => [doc.id, getDocumentLabel(doc, lang)] as const),
   ]);
 
-  function normalizeGroups(
-    nextGroups: NavbarGroupWithItems[],
-  ): NavbarGroupWithItems[] {
+  function normalizeGroups(nextGroups: NavbarGroupWithItems[]): NavbarGroupWithItems[] {
     return nextGroups.map((group) => ({
       ...group,
       group: {
         ...group.group,
-        enabled:
-          group.linkedItem || group.subItems.length > 0
-            ? group.group.enabled
-            : false,
+        enabled: group.linkedItem || group.subItems.length > 0 ? group.group.enabled : false,
       },
     }));
   }
@@ -1115,9 +997,7 @@ function NavbarPreview({
       record[getNavbarGroupLinkedSlotId(group.group.id)] = group.linkedItem
         ? [group.linkedItem.item.id]
         : [];
-      record[getNavbarGroupSubItemsId(group.group.id)] = group.subItems.map(
-        (item) => item.item.id,
-      );
+      record[getNavbarGroupSubItemsId(group.group.id)] = group.subItems.map((item) => item.item.id);
     }
 
     return record;
@@ -1134,12 +1014,7 @@ function NavbarPreview({
     const itemById = new Map(
       prevGroups.flatMap((group) => [
         ...(group.linkedItem
-          ? [
-              [
-                group.linkedItem.item.id,
-                { item: group.linkedItem.item, enabled: true },
-              ] as const,
-            ]
+          ? [[group.linkedItem.item.id, { item: group.linkedItem.item, enabled: true }] as const]
           : []),
         ...group.subItems.map((item) => [item.item.id, item] as const),
       ]),
@@ -1150,11 +1025,8 @@ function NavbarPreview({
         const group = groupById.get(groupSortId);
         if (!group) return null;
 
-        const linkedItemId =
-          record[getNavbarGroupLinkedSlotId(group.group.id)]?.[0];
-        const linkedItem = linkedItemId
-          ? itemById.get(linkedItemId)
-          : undefined;
+        const linkedItemId = record[getNavbarGroupLinkedSlotId(group.group.id)]?.[0];
+        const linkedItem = linkedItemId ? itemById.get(linkedItemId) : undefined;
 
         return {
           ...group,
@@ -1255,9 +1127,7 @@ function NavbarPreview({
             setGroups((prev) => {
               const record = buildItemsRecord(prev);
               const next = move(record, event);
-              return normalizeGroups(
-                applyItemsRecord(next as ItemsRecord, prev),
-              );
+              return normalizeGroups(applyItemsRecord(next as ItemsRecord, prev));
             });
           }
         }}
@@ -1446,9 +1316,7 @@ function NavbarPreview({
               label={
                 documents.find((doc) => doc.contentId === draggingDocContentId)
                   ? getDocumentLabel(
-                      documents.find(
-                        (doc) => doc.contentId === draggingDocContentId,
-                      )!,
+                      documents.find((doc) => doc.contentId === draggingDocContentId)!,
                       lang,
                     )
                   : draggingDocContentId
@@ -1456,11 +1324,7 @@ function NavbarPreview({
             />
           ) : draggingLinkItemId ? (
             <NavbarItemOverlay
-              item={
-                unassignedLinkItems.find(
-                  (item) => item.id === draggingLinkItemId,
-                )!
-              }
+              item={unassignedLinkItems.find((item) => item.id === draggingLinkItemId)!}
               lang={lang}
               documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
@@ -1472,10 +1336,10 @@ function NavbarPreview({
       {/* Add group */}
       {showAddForm ? (
         <div className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
-          <p className="mb-2 text-xs font-medium text-gray-600">New group</p>
+          <p className="mb-2 font-medium text-gray-600 text-xs">New group</p>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">EN</label>
               <input
                 type="text"
                 value={newLabelEn}
@@ -1490,7 +1354,7 @@ function NavbarPreview({
               />
             </div>
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">JA</label>
               <input
                 type="text"
                 value={newLabelJa}
@@ -1592,20 +1456,15 @@ function NavbarUnassignedPool({
         isDropTarget ? "border-blue-300 bg-blue-50" : "",
       ].join(" ")}
     >
-      <p className="mb-2 shrink-0 text-xs font-semibold text-gray-500 uppercase">
+      <p className="mb-2 shrink-0 font-semibold text-gray-500 text-xs uppercase">
         Available navbar items
       </p>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
           {documents.map((doc) => {
-            const navItem =
-              docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
-            const isAssigned = navItem
-              ? assignedItemIds.has(navItem.id)
-              : false;
-            const groupName = navItem
-              ? itemGroupName.get(navItem.id)
-              : undefined;
+            const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
+            const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
+            const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
             return (
               <NavbarPoolDocCard
                 key={doc.contentId}
@@ -1621,7 +1480,7 @@ function NavbarUnassignedPool({
 
         {unassignedLinkItems.length > 0 ? (
           <>
-            <p className="mt-3 mb-2 text-xs font-semibold text-gray-500 uppercase">
+            <p className="mt-3 mb-2 font-semibold text-gray-500 text-xs uppercase">
               Unassigned links
             </p>
             <ul className="flex flex-col gap-1">
@@ -1687,7 +1546,7 @@ function NavbarPoolDocCard({
           <div className="min-w-0 flex-1">
             <span className="break-words">{getDocumentLabel(doc, lang)}</span>
             {isAssigned && (
-              <span className="text-2xs mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-gray-500">
+              <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-2xs text-gray-500">
                 {groupName ?? "assigned"}
               </span>
             )}
@@ -1782,29 +1641,18 @@ function NavbarGroupColumn({
   const [subUrl, setSubUrl] = useState("");
   const [subEn, setSubEn] = useState("");
   const [subJa, setSubJa] = useState("");
-  const { ref: linkedDropRef, isDropTarget: isLinkedDropTarget } = useDroppable(
-    {
-      id: getNavbarGroupLinkedSlotId(g.group.id),
-      accept: [
-        NAVBAR_ASSIGNED_ITEM_TYPE,
-        NAVBAR_UNASSIGNED_DOC_TYPE,
-        NAVBAR_UNASSIGNED_LINK_TYPE,
-      ],
-      collisionPriority: CollisionPriority.Low,
-      disabled: g.linkedItem !== undefined,
-    },
-  );
+  const { ref: linkedDropRef, isDropTarget: isLinkedDropTarget } = useDroppable({
+    id: getNavbarGroupLinkedSlotId(g.group.id),
+    accept: [NAVBAR_ASSIGNED_ITEM_TYPE, NAVBAR_UNASSIGNED_DOC_TYPE, NAVBAR_UNASSIGNED_LINK_TYPE],
+    collisionPriority: CollisionPriority.Low,
+    disabled: g.linkedItem !== undefined,
+  });
 
-  const { ref: subItemsDropRef, isDropTarget: isSubItemsDropTarget } =
-    useDroppable({
-      id: getNavbarGroupSubItemsId(g.group.id),
-      accept: [
-        NAVBAR_ASSIGNED_ITEM_TYPE,
-        NAVBAR_UNASSIGNED_DOC_TYPE,
-        NAVBAR_UNASSIGNED_LINK_TYPE,
-      ],
-      collisionPriority: CollisionPriority.Low,
-    });
+  const { ref: subItemsDropRef, isDropTarget: isSubItemsDropTarget } = useDroppable({
+    id: getNavbarGroupSubItemsId(g.group.id),
+    accept: [NAVBAR_ASSIGNED_ITEM_TYPE, NAVBAR_UNASSIGNED_DOC_TYPE, NAVBAR_UNASSIGNED_LINK_TYPE],
+    collisionPriority: CollisionPriority.Low,
+  });
 
   const { ref: groupSortRef, handleRef: groupHandleRef } = useSortable({
     id: getNavbarGroupSortId(g.group.id),
@@ -1817,14 +1665,8 @@ function NavbarGroupColumn({
   const priority = g.group.priority ?? "important";
   const canEnableGroup = g.linkedItem !== undefined || g.subItems.length > 0;
 
-  function updateCurrentGroup(
-    updater: (group: NavbarGroupWithItems) => NavbarGroupWithItems,
-  ) {
-    onCommit(
-      allGroups.map((group) =>
-        group.group.id === g.group.id ? updater(group) : group,
-      ),
-    );
+  function updateCurrentGroup(updater: (group: NavbarGroupWithItems) => NavbarGroupWithItems) {
+    onCommit(allGroups.map((group) => (group.group.id === g.group.id ? updater(group) : group)));
   }
 
   function confirmAddLinkedLink() {
@@ -1893,16 +1735,14 @@ function NavbarGroupColumn({
     <div
       ref={groupSortRef as Ref<HTMLDivElement>}
       className={[
-        "max-w-96 min-w-40 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
         isDragging ? "opacity-40" : "",
         !g.group.enabled ? "opacity-50" : "",
-        (isLinkedDropTarget || isSubItemsDropTarget) && !isDragging
-          ? "ring-2 ring-blue-400"
-          : "",
+        (isLinkedDropTarget || isSubItemsDropTarget) && !isDragging ? "ring-2 ring-blue-400" : "",
       ].join(" ")}
     >
       {/* Group header */}
-      <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2">
+      <div className="flex flex-col gap-2 border-gray-100 border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-1">
           <button
             type="button"
@@ -1918,16 +1758,14 @@ function NavbarGroupColumn({
                 ja: g.group.label["ja"] ?? "",
               }}
               onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
-              className="text-xs font-semibold text-gray-500 uppercase"
+              className="font-semibold text-gray-500 text-xs uppercase"
               required
             />
           </div>
           <Switch
             checked={g.group.enabled}
             disabled={!canEnableGroup}
-            onCheckedChange={(checked) =>
-              onToggleGroupEnabled(g.group.id, checked)
-            }
+            onCheckedChange={(checked) => onToggleGroupEnabled(g.group.id, checked)}
             className="shrink-0 scale-75"
           />
           <button
@@ -1941,9 +1779,7 @@ function NavbarGroupColumn({
         </div>
         <Select
           value={priority}
-          onValueChange={(value) =>
-            onChangePriority(g.group.id, value as NavPriority)
-          }
+          onValueChange={(value) => onChangePriority(g.group.id, value as NavPriority)}
         >
           <SelectTrigger className="h-7 w-full text-xs">
             <SelectValue />
@@ -1960,15 +1796,11 @@ function NavbarGroupColumn({
         ref={linkedDropRef as Ref<HTMLDivElement>}
         className={[
           "mx-2 mt-2 rounded border p-2",
-          g.linkedItem
-            ? "border-gray-200"
-            : "border-dashed border-gray-300 bg-gray-50",
+          g.linkedItem ? "border-gray-200" : "border-gray-300 border-dashed bg-gray-50",
           isLinkedDropTarget ? "border-blue-400 bg-blue-50" : "",
         ].join(" ")}
       >
-        <p className="text-2xs mb-1 font-semibold text-gray-400 uppercase">
-          Linked item
-        </p>
+        <p className="mb-1 font-semibold text-2xs text-gray-400 uppercase">Linked item</p>
         {g.linkedItem ? (
           <NavbarLinkedItemRow
             item={g.linkedItem.item}
@@ -2012,13 +1844,11 @@ function NavbarGroupColumn({
           />
         ) : (
           <div className="px-1 py-2">
-            <p className="text-foreground-light text-xs">
-              Drop a document or link here
-            </p>
+            <p className="text-foreground-light text-xs">Drop a document or link here</p>
             <button
               type="button"
               onClick={() => setShowLinkedAddLink(true)}
-              className="mt-2 flex items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="mt-2 flex items-center gap-1 rounded px-1 py-1 text-gray-400 text-xs hover:bg-gray-100 hover:text-gray-600"
             >
               <Plus className="size-3" />
               Add link
@@ -2027,16 +1857,14 @@ function NavbarGroupColumn({
         )}
       </div>
 
-      <div className="border-t border-gray-100 px-2 py-2">
-        <p className="text-2xs mb-1 font-semibold text-gray-400 uppercase">
-          Sub-groups
-        </p>
+      <div className="border-gray-100 border-t px-2 py-2">
+        <p className="mb-1 font-semibold text-2xs text-gray-400 uppercase">Sub-groups</p>
         <ul
           ref={subItemsDropRef as Ref<HTMLUListElement>}
           className={[
             "flex min-h-8 flex-col gap-1 rounded border p-2",
             g.subItems.length === 0
-              ? "border-dashed border-gray-300 bg-gray-50"
+              ? "border-gray-300 border-dashed bg-gray-50"
               : "border-gray-100",
             isSubItemsDropTarget ? "border-blue-400 bg-blue-50" : "",
           ].join(" ")}
@@ -2053,41 +1881,29 @@ function NavbarGroupColumn({
               documentTitleByContentId={documentTitleByContentId}
               onSave={(value) =>
                 onCommit(
-                  updateNavbarAssignedItem(
-                    allGroups,
-                    item.id,
-                    (currentItem) => ({
-                      ...currentItem,
-                      item: {
-                        ...currentItem.item,
-                        url: value.url,
-                        label: value.label,
-                      },
-                    }),
-                  ),
+                  updateNavbarAssignedItem(allGroups, item.id, (currentItem) => ({
+                    ...currentItem,
+                    item: {
+                      ...currentItem.item,
+                      url: value.url,
+                      label: value.label,
+                    },
+                  })),
                 )
               }
-              onRemove={() =>
-                onCommit(removeNavbarAssignedItem(allGroups, item.id))
-              }
+              onRemove={() => onCommit(removeNavbarAssignedItem(allGroups, item.id))}
               onToggleEnabled={(checked) =>
                 onCommit(
-                  updateNavbarAssignedItem(
-                    allGroups,
-                    item.id,
-                    (currentItem) => ({
-                      ...currentItem,
-                      enabled: checked,
-                    }),
-                  ),
+                  updateNavbarAssignedItem(allGroups, item.id, (currentItem) => ({
+                    ...currentItem,
+                    enabled: checked,
+                  })),
                 )
               }
             />
           ))}
           {g.subItems.length === 0 && (
-            <li className="text-foreground-light px-2 py-3 text-xs">
-              Drop submenu items here
-            </li>
+            <li className="px-2 py-3 text-foreground-light text-xs">Drop submenu items here</li>
           )}
         </ul>
 
@@ -2107,7 +1923,7 @@ function NavbarGroupColumn({
             <button
               type="button"
               onClick={() => setShowSubAddLink(true)}
-              className="flex w-full items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+              className="flex w-full items-center gap-1 rounded px-1 py-1 text-gray-400 text-xs hover:bg-gray-50 hover:text-gray-600"
             >
               <Plus className="size-3" />
               Add link
@@ -2169,7 +1985,7 @@ function NavbarLinkedItemRow({
             item={item}
             lang={lang}
             documentTitleByContentId={documentTitleByContentId}
-            className="min-w-0 flex-1 text-left text-xs break-words whitespace-normal"
+            className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
             onSave={onSave}
           />
         </div>
@@ -2243,16 +2059,12 @@ function NavbarSubItemRow({
             item={item}
             lang={lang}
             documentTitleByContentId={documentTitleByContentId}
-            className="min-w-0 flex-1 text-left text-xs break-words whitespace-normal"
+            className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
             onSave={onSave}
           />
         </div>
       </CardWithPath>
-      <Switch
-        checked={enabled}
-        onCheckedChange={onToggleEnabled}
-        className="shrink-0 scale-75"
-      />
+      <Switch checked={enabled} onCheckedChange={onToggleEnabled} className="shrink-0 scale-75" />
       <button
         type="button"
         onClick={onRemove}
@@ -2298,7 +2110,7 @@ function NavbarAddLinkForm({
         }}
       />
       <div className="flex items-center gap-3">
-        <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+        <label className="w-8 shrink-0 text-gray-500 text-xs">EN</label>
         <input
           type="text"
           value={labelEn}
@@ -2312,7 +2124,7 @@ function NavbarAddLinkForm({
         />
       </div>
       <div className="flex items-center gap-3">
-        <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+        <label className="w-8 shrink-0 text-gray-500 text-xs">JA</label>
         <input
           type="text"
           value={labelJa}
@@ -2366,65 +2178,46 @@ function NavbarGroupOverlay({
   documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
-  const groupLabel =
-    g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
+  const groupLabel = g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
   return (
     <div
       className={[
-        "max-w-96 min-w-40 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
         !g.group.enabled ? "opacity-50" : "",
       ].join(" ")}
     >
-      <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+      <div className="flex items-center gap-1 border-gray-100 border-b px-3 py-2">
         <GripVertical className="size-4 shrink-0 text-gray-400" />
-        <span className="flex-1 truncate text-xs font-semibold text-gray-500 uppercase">
+        <span className="flex-1 truncate font-semibold text-gray-500 text-xs uppercase">
           {groupLabel}
         </span>
       </div>
       <ul className="flex flex-col gap-1 p-2">
         {g.linkedItem ? (
-          <li
-            key={g.linkedItem.item.id}
-            className="flex items-start gap-1 rounded px-1 py-1"
-          >
+          <li key={g.linkedItem.item.id} className="flex items-start gap-1 rounded px-1 py-1">
             <NavigationItemLeadingIcon item={g.linkedItem.item} />
-            <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
-              {getEditorItemLabel(
-                g.linkedItem.item,
-                lang,
-                documentTitleByContentId,
-              )}
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
+              {getEditorItemLabel(g.linkedItem.item, lang, documentTitleByContentId)}
             </span>
           </li>
         ) : (
-          <li className="text-foreground-light px-2 py-2 text-xs">
-            No linked item
-          </li>
+          <li className="px-2 py-2 text-foreground-light text-xs">No linked item</li>
         )}
       </ul>
-      <div className="border-t border-gray-100 px-2 py-2">
-        <p className="text-2xs mb-1 font-semibold text-gray-400 uppercase">
-          Sub-groups
-        </p>
+      <div className="border-gray-100 border-t px-2 py-2">
+        <p className="mb-1 font-semibold text-2xs text-gray-400 uppercase">Sub-groups</p>
         <ul className="flex flex-col gap-1">
           {g.subItems.map(({ item, enabled }) => (
-            <li
-              key={item.id}
-              className="flex items-start gap-1 rounded px-1 py-1"
-            >
+            <li key={item.id} className="flex items-start gap-1 rounded px-1 py-1">
               <NavigationItemLeadingIcon item={item} />
-              <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
+              <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
                 {getEditorItemLabel(item, lang, documentTitleByContentId)}
               </span>
-              {!enabled ? (
-                <span className="text-2xs text-gray-400">off</span>
-              ) : null}
+              {!enabled ? <span className="text-2xs text-gray-400">off</span> : null}
             </li>
           ))}
           {g.subItems.length === 0 && (
-            <li className="text-foreground-light px-2 py-2 text-xs">
-              No submenu items
-            </li>
+            <li className="px-2 py-2 text-foreground-light text-xs">No submenu items</li>
           )}
         </ul>
       </div>
@@ -2450,7 +2243,7 @@ function NavbarItemOverlay({
       <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <NavigationItemLeadingIcon item={item} />
-          <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
+          <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
             {getEditorItemLabel(item, lang, documentTitleByContentId)}
           </span>
         </div>
@@ -2478,9 +2271,7 @@ function getFooterGroupItemsId(groupId: string): string {
 }
 
 function parseFooterGroupItemsId(value: string): string | null {
-  return value.startsWith("footer-group-items:")
-    ? value.slice("footer-group-items:".length)
-    : null;
+  return value.startsWith("footer-group-items:") ? value.slice("footer-group-items:".length) : null;
 }
 
 function FooterPreview({
@@ -2510,20 +2301,9 @@ function FooterPreview({
   onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
   onDeleteGroup: (groupId: string) => void;
   onAddGroup: (label: { en: string; ja: string }) => void;
-  onAssignDocument: (
-    contentId: string,
-    groupId: string,
-    documentId?: string,
-  ) => void;
-  onAddLinkToGroup: (
-    groupId: string,
-    url: string,
-    label: { en: string; ja: string },
-  ) => void;
-  onCreateUnassignedLinkItem: (
-    url: string,
-    label: { en: string; ja: string },
-  ) => void;
+  onAssignDocument: (contentId: string, groupId: string, documentId?: string) => void;
+  onAddLinkToGroup: (groupId: string, url: string, label: { en: string; ja: string }) => void;
+  onCreateUnassignedLinkItem: (url: string, label: { en: string; ja: string }) => void;
   onDeleteLinkItem: (itemId: string) => void;
   onUpdateLinkLabel: (
     itemId: string,
@@ -2541,12 +2321,8 @@ function FooterPreview({
 
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
-  const [draggingDocContentId, setDraggingDocContentId] = useState<
-    string | null
-  >(null);
-  const [draggingLinkItemId, setDraggingLinkItemId] = useState<string | null>(
-    null,
-  );
+  const [draggingDocContentId, setDraggingDocContentId] = useState<string | null>(null);
+  const [draggingLinkItemId, setDraggingLinkItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -2558,19 +2334,13 @@ function FooterPreview({
     ? (groups.find((g) => g.group.id === draggingGroupId) ?? null)
     : null;
   const draggingItem = draggingItemId
-    ? (groups
-        .flatMap((g) => g.items)
-        .find((i) => i.item.id === draggingItemId) ?? null)
+    ? (groups.flatMap((g) => g.items).find((i) => i.item.id === draggingItemId) ?? null)
     : null;
 
   // Compute which item IDs are assigned to any group
-  const assignedItemIds = new Set(
-    groups.flatMap((g) => g.items.map((i) => i.item.id)),
-  );
+  const assignedItemIds = new Set(groups.flatMap((g) => g.items.map((i) => i.item.id)));
 
-  const documentPathById = new Map(
-    documents.map((doc) => [doc.id, doc.contentId] as const),
-  );
+  const documentPathById = new Map(documents.map((doc) => [doc.id, doc.contentId] as const));
 
   const docItemMap = new Map<string, NavigationItem>(
     allItems
@@ -2586,9 +2356,7 @@ function FooterPreview({
     (i) => i.type === "link" && !assignedItemIds.has(i.id),
   );
   const documentTitleByContentId = new Map([
-    ...documents.map(
-      (doc) => [doc.contentId, getDocumentLabel(doc, lang)] as const,
-    ),
+    ...documents.map((doc) => [doc.contentId, getDocumentLabel(doc, lang)] as const),
     ...documents.map((doc) => [doc.id, getDocumentLabel(doc, lang)] as const),
   ]);
 
@@ -2607,12 +2375,8 @@ function FooterPreview({
     prevGroups: FooterGroupWithItems[],
   ): FooterGroupWithItems[] {
     const groupOrder = record["_groups"] as string[];
-    const groupById = new Map(
-      prevGroups.map((g) => [getFooterGroupSortId(g.group.id), g.group]),
-    );
-    const itemById = new Map(
-      prevGroups.flatMap((g) => g.items.map((i) => [i.item.id, i])),
-    );
+    const groupById = new Map(prevGroups.map((g) => [getFooterGroupSortId(g.group.id), g.group]));
+    const itemById = new Map(prevGroups.flatMap((g) => g.items.map((i) => [i.item.id, i])));
 
     return groupOrder
       .map((groupId) => {
@@ -2667,10 +2431,7 @@ function FooterPreview({
           const src = event.operation.source;
           if (!src) return;
           // Only use move() for footer-item and footer-group drag types
-          if (
-            src.data?.type === FOOTER_ITEM_TYPE ||
-            src.data?.type === FOOTER_GROUP_TYPE
-          ) {
+          if (src.data?.type === FOOTER_ITEM_TYPE || src.data?.type === FOOTER_GROUP_TYPE) {
             setGroups((prev) => {
               const record = buildItemsRecord(prev);
               const next = move(record, event);
@@ -2726,9 +2487,7 @@ function FooterPreview({
                         items: [
                           ...g.items,
                           {
-                            item: unassignedLinkItems.find(
-                              (item) => item.id === itemId,
-                            )!,
+                            item: unassignedLinkItems.find((item) => item.id === itemId)!,
                             enabled: true,
                           },
                         ],
@@ -2821,11 +2580,7 @@ function FooterPreview({
             />
           ) : draggingLinkItemId ? (
             <FooterItemOverlay
-              item={
-                unassignedLinkItems.find(
-                  (item) => item.id === draggingLinkItemId,
-                )!
-              }
+              item={unassignedLinkItems.find((item) => item.id === draggingLinkItemId)!}
               lang={lang}
               documentPathById={documentPathById}
               documentTitleByContentId={documentTitleByContentId}
@@ -2835,9 +2590,7 @@ function FooterPreview({
               label={
                 documents.find((d) => d.contentId === draggingDocContentId)
                   ? getDocumentLabel(
-                      documents.find(
-                        (d) => d.contentId === draggingDocContentId,
-                      )!,
+                      documents.find((d) => d.contentId === draggingDocContentId)!,
                       lang,
                     )
                   : draggingDocContentId
@@ -2850,10 +2603,10 @@ function FooterPreview({
       {/* Add group */}
       {showAddForm ? (
         <div className="rounded-md border border-gray-200 bg-white p-3 shadow-sm">
-          <p className="mb-2 text-xs font-medium text-gray-600">New group</p>
+          <p className="mb-2 font-medium text-gray-600 text-xs">New group</p>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">EN</label>
               <input
                 type="text"
                 value={newLabelEn}
@@ -2868,7 +2621,7 @@ function FooterPreview({
               />
             </div>
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">JA</label>
               <input
                 type="text"
                 value={newLabelJa}
@@ -2993,20 +2746,15 @@ function FooterUnassignedPool({
         isPoolDropTarget ? "border-blue-300 bg-blue-50" : "",
       ].join(" ")}
     >
-      <p className="mb-2 shrink-0 text-xs font-semibold text-gray-500 uppercase">
+      <p className="mb-2 shrink-0 font-semibold text-gray-500 text-xs uppercase">
         Available documents
       </p>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ul className="flex flex-col gap-1">
           {documents.map((doc) => {
-            const navItem =
-              docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
-            const isAssigned = navItem
-              ? assignedItemIds.has(navItem.id)
-              : false;
-            const groupName = navItem
-              ? itemGroupName.get(navItem.id)
-              : undefined;
+            const navItem = docItemMap.get(doc.id) ?? docItemMap.get(doc.contentId);
+            const isAssigned = navItem ? assignedItemIds.has(navItem.id) : false;
+            const groupName = navItem ? itemGroupName.get(navItem.id) : undefined;
             return (
               <FooterPoolDocCard
                 key={doc.contentId}
@@ -3019,13 +2767,13 @@ function FooterUnassignedPool({
             );
           })}
           {documents.length === 0 && (
-            <li className="text-foreground-light py-2 text-xs">No documents</li>
+            <li className="py-2 text-foreground-light text-xs">No documents</li>
           )}
         </ul>
 
         {unassignedLinkItems.length > 0 && (
           <>
-            <p className="mt-3 mb-2 text-xs font-semibold text-gray-500 uppercase">
+            <p className="mt-3 mb-2 font-semibold text-gray-500 text-xs uppercase">
               Unassigned links
             </p>
             <ul className="flex flex-col gap-1">
@@ -3044,7 +2792,7 @@ function FooterUnassignedPool({
         )}
       </div>
 
-      <div className="mt-3 border-t border-gray-200 pt-2">
+      <div className="mt-3 border-gray-200 border-t pt-2">
         {showAddLink ? (
           <div className="flex flex-col gap-1.5">
             <input
@@ -3059,7 +2807,7 @@ function FooterUnassignedPool({
               }}
             />
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">EN</label>
               <input
                 type="text"
                 value={linkEn}
@@ -3073,7 +2821,7 @@ function FooterUnassignedPool({
               />
             </div>
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">JA</label>
               <input
                 type="text"
                 value={linkJa}
@@ -3113,7 +2861,7 @@ function FooterUnassignedPool({
           <button
             type="button"
             onClick={() => setShowAddLink(true)}
-            className="flex w-full items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="flex w-full items-center gap-1 rounded px-1 py-1 text-gray-400 text-xs hover:bg-gray-100 hover:text-gray-600"
           >
             <Plus className="size-3" />
             Add link
@@ -3170,7 +2918,7 @@ function FooterPoolDocCard({
           <div className="min-w-0 flex-1">
             <span className="break-words">{label}</span>
             {isAssigned && (
-              <span className="text-2xs mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-gray-500">
+              <span className="mt-0.5 block w-fit rounded bg-gray-200 px-1 py-0.5 text-2xs text-gray-500">
                 {groupName ?? "assigned"}
               </span>
             )}
@@ -3289,9 +3037,7 @@ function EditableLinkLabel({
 
   if (item.type !== "link") {
     return (
-      <span className={className}>
-        {getEditorItemLabel(item, lang, documentTitleByContentId)}
-      </span>
+      <span className={className}>{getEditorItemLabel(item, lang, documentTitleByContentId)}</span>
     );
   }
 
@@ -3311,7 +3057,7 @@ function EditableLinkLabel({
           }}
         />
         <div className="flex items-center gap-3">
-          <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+          <label className="w-8 shrink-0 text-gray-500 text-xs">EN</label>
           <input
             type="text"
             value={editEn}
@@ -3325,7 +3071,7 @@ function EditableLinkLabel({
           />
         </div>
         <div className="flex items-center gap-3">
-          <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+          <label className="w-8 shrink-0 text-gray-500 text-xs">JA</label>
           <input
             type="text"
             value={editJa}
@@ -3377,11 +3123,7 @@ function FooterGroupColumn({
   onToggleGroupEnabled: (groupId: string, enabled: boolean) => void;
   onRenameGroup: (groupId: string, label: { en: string; ja: string }) => void;
   onDeleteGroup: (groupId: string) => void;
-  onAddLinkToGroup: (
-    groupId: string,
-    url: string,
-    label: { en: string; ja: string },
-  ) => void;
+  onAddLinkToGroup: (groupId: string, url: string, label: { en: string; ja: string }) => void;
   onUpdateLinkLabel: (
     itemId: string,
     value: { url: string; label: { en: string; ja: string } },
@@ -3395,11 +3137,7 @@ function FooterGroupColumn({
   const [linkJa, setLinkJa] = useState("");
   const { ref: groupDropRef, isDropTarget } = useDroppable({
     id: getFooterGroupItemsId(g.group.id),
-    accept: [
-      FOOTER_ITEM_TYPE,
-      FOOTER_UNASSIGNED_DOC_TYPE,
-      FOOTER_UNASSIGNED_LINK_TYPE,
-    ],
+    accept: [FOOTER_ITEM_TYPE, FOOTER_UNASSIGNED_DOC_TYPE, FOOTER_UNASSIGNED_LINK_TYPE],
     collisionPriority: CollisionPriority.Low,
   });
 
@@ -3434,14 +3172,14 @@ function FooterGroupColumn({
     <div
       ref={groupSortRef as Ref<HTMLDivElement>}
       className={[
-        "max-w-96 min-w-40 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-sm ring-1 ring-gray-200 transition-opacity",
         isDragging ? "opacity-40" : "",
         !g.group.enabled ? "opacity-50" : "",
         isDropTarget && !isDragging ? "ring-2 ring-blue-400" : "",
       ].join(" ")}
     >
       {/* Group header */}
-      <div className="flex min-w-0 items-center gap-1 border-b border-gray-100 px-3 py-2">
+      <div className="flex min-w-0 items-center gap-1 border-gray-100 border-b px-3 py-2">
         <button
           type="button"
           ref={groupHandleRef as Ref<HTMLButtonElement>}
@@ -3456,15 +3194,13 @@ function FooterGroupColumn({
               ja: g.group.label["ja"] ?? "",
             }}
             onChange={({ en, ja }) => onRenameGroup(g.group.id, { en, ja })}
-            className="text-xs font-semibold text-gray-500 uppercase"
+            className="font-semibold text-gray-500 text-xs uppercase"
             required
           />
         </div>
         <Switch
           checked={g.group.enabled}
-          onCheckedChange={(checked) =>
-            onToggleGroupEnabled(g.group.id, checked)
-          }
+          onCheckedChange={(checked) => onToggleGroupEnabled(g.group.id, checked)}
           className="shrink-0 scale-75"
         />
         <button
@@ -3477,10 +3213,7 @@ function FooterGroupColumn({
         </button>
       </div>
 
-      <ul
-        ref={groupDropRef as Ref<HTMLUListElement>}
-        className="flex min-h-8 flex-col gap-1 p-2"
-      >
+      <ul ref={groupDropRef as Ref<HTMLUListElement>} className="flex min-h-8 flex-col gap-1 p-2">
         {g.items.map(({ item, enabled }, itemIndex) => (
           <FooterItemRow
             key={item.id}
@@ -3497,12 +3230,12 @@ function FooterGroupColumn({
           />
         ))}
         {g.items.length === 0 && (
-          <li className="text-foreground-light px-2 py-3 text-xs">No items</li>
+          <li className="px-2 py-3 text-foreground-light text-xs">No items</li>
         )}
       </ul>
 
       {/* Add link button / inline form */}
-      <div className="border-t border-gray-100 px-2 pt-1 pb-2">
+      <div className="border-gray-100 border-t px-2 pt-1 pb-2">
         {showAddLink ? (
           <div className="flex flex-col gap-1.5 pt-1">
             <input
@@ -3517,7 +3250,7 @@ function FooterGroupColumn({
               }}
             />
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">EN</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">EN</label>
               <input
                 type="text"
                 value={linkEn}
@@ -3531,7 +3264,7 @@ function FooterGroupColumn({
               />
             </div>
             <div className="flex items-center gap-3">
-              <label className="w-8 shrink-0 text-xs text-gray-500">JA</label>
+              <label className="w-8 shrink-0 text-gray-500 text-xs">JA</label>
               <input
                 type="text"
                 value={linkJa}
@@ -3571,7 +3304,7 @@ function FooterGroupColumn({
           <button
             type="button"
             onClick={() => setShowAddLink(true)}
-            className="flex w-full items-center gap-1 rounded px-1 py-1 text-xs text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            className="flex w-full items-center gap-1 rounded px-1 py-1 text-gray-400 text-xs hover:bg-gray-50 hover:text-gray-600"
           >
             <Plus className="size-3" />
             Add link
@@ -3642,7 +3375,7 @@ function FooterItemRow({
             item={item}
             lang={lang}
             documentTitleByContentId={documentTitleByContentId}
-            className="min-w-0 flex-1 text-left text-xs break-words whitespace-normal"
+            className="min-w-0 flex-1 whitespace-normal break-words text-left text-xs"
             onSave={(value) => onUpdateLinkLabel(item.id, value)}
           />
         </div>
@@ -3679,38 +3412,32 @@ function FooterGroupOverlay({
   documentPathById: Map<string, string>;
   documentTitleByContentId: Map<string, string>;
 }) {
-  const groupLabel =
-    g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
+  const groupLabel = g.group.label[lang] ?? g.group.label["en"] ?? g.group.label["ja"] ?? "";
   return (
     <div
       className={[
-        "max-w-96 min-w-40 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
+        "min-w-40 max-w-96 shrink-0 rounded-md bg-white shadow-lg ring-2 ring-blue-300",
         !g.group.enabled ? "opacity-50" : "",
       ].join(" ")}
     >
-      <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+      <div className="flex items-center gap-1 border-gray-100 border-b px-3 py-2">
         <GripVertical className="size-4 shrink-0 text-gray-400" />
-        <span className="flex-1 truncate text-xs font-semibold text-gray-500 uppercase">
+        <span className="flex-1 truncate font-semibold text-gray-500 text-xs uppercase">
           {groupLabel}
         </span>
       </div>
       <ul className="flex flex-col gap-1 p-2">
         {g.items.map(({ item, enabled }) => (
-          <li
-            key={item.id}
-            className="flex items-start gap-1 rounded px-1 py-1"
-          >
+          <li key={item.id} className="flex items-start gap-1 rounded px-1 py-1">
             <NavigationItemLeadingIcon item={item} />
-            <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
               {getEditorItemLabel(item, lang, documentTitleByContentId)}
             </span>
-            {!enabled ? (
-              <span className="text-2xs text-gray-400">off</span>
-            ) : null}
+            {!enabled ? <span className="text-2xs text-gray-400">off</span> : null}
           </li>
         ))}
         {g.items.length === 0 && (
-          <li className="text-foreground-light px-2 py-3 text-xs">No items</li>
+          <li className="px-2 py-3 text-foreground-light text-xs">No items</li>
         )}
       </ul>
     </div>
@@ -3735,7 +3462,7 @@ function FooterItemOverlay({
       <CardWithPath path={itemPath}>
         <div className="flex items-start gap-1">
           <NavigationItemLeadingIcon item={item} />
-          <span className="min-w-0 flex-1 text-xs break-words whitespace-normal">
+          <span className="min-w-0 flex-1 whitespace-normal break-words text-xs">
             {getEditorItemLabel(item, lang, documentTitleByContentId)}
           </span>
         </div>

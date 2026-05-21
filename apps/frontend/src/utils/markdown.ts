@@ -24,8 +24,7 @@ export interface MarkdownResult {
 
 function parseTagAttributes(rawAttributes: string): Record<string, string> {
   const attributes: Record<string, string> = {};
-  const attributeRegex =
-    /([A-Za-z_][\w.-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"']+)))?/g;
+  const attributeRegex = /([A-Za-z_][\w.-]*)(?:=(?:"([^"]*)"|'([^']*)'|([^\s"']+)))?/g;
   let match: RegExpExecArray | null;
 
   match = attributeRegex.exec(rawAttributes);
@@ -39,11 +38,7 @@ function parseTagAttributes(rawAttributes: string): Record<string, string> {
   return attributes;
 }
 
-function getNodeText(node: {
-  type: string;
-  value?: string;
-  children?: unknown[];
-}): string {
+function getNodeText(node: { type: string; value?: string; children?: unknown[] }): string {
   if (node.type === "text") {
     return node.value ?? "";
   }
@@ -51,11 +46,7 @@ function getNodeText(node: {
     return "";
   }
   return node.children
-    .map((child) =>
-      getNodeText(
-        child as { type: string; value?: string; children?: unknown[] },
-      ),
-    )
+    .map((child) => getNodeText(child as { type: string; value?: string; children?: unknown[] }))
     .join("");
 }
 
@@ -83,8 +74,7 @@ function collectHeadings(headings: MarkdownHeading[]) {
       }
 
       const level = Number(node.tagName[1]);
-      const id =
-        typeof node.properties?.id === "string" ? node.properties.id : "";
+      const id = typeof node.properties?.id === "string" ? node.properties.id : "";
       const text = getNodeText(node).trim();
 
       if (!id || !text) {
@@ -104,17 +94,14 @@ function normalizeCalloutFences(content: string): string {
 }
 
 function getMdastText(node: Node): string {
-  if (node.type === "text")
-    return (node as unknown as { value: string }).value ?? "";
+  if (node.type === "text") return (node as unknown as { value: string }).value ?? "";
   const parent = node as Parent;
   if (!parent.children) return "";
   return parent.children.map(getMdastText).join("");
 }
 
 function isClosingMarker(node: Node): boolean {
-  return (
-    node.type === "paragraph" && /^:::\s*$/.test(getMdastText(node).trim())
-  );
+  return node.type === "paragraph" && /^:::\s*$/.test(getMdastText(node).trim());
 }
 
 function hasClosingMarker(node: Node): boolean {

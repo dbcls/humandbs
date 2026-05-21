@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -13,17 +13,19 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useRef } from "react";
 import { z } from "zod";
+
+import { useId, useRef } from "react";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { GrantField } from "@/components/form-context/fields/GrantField";
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
+import { Button } from "@/components/ui/button";
 
 import { SortableItem } from "./SortableItem";
-import { Button } from "@/components/ui/button";
 
 const grantSchema = z.object({
   ...ResearchDetailSchema.shape.grant.element.shape,
@@ -52,12 +54,8 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
 
   const items: Grant[] = field.state.value ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialItems: Grant[] =
-    (field.form.options.defaultValues as any)?.grant ?? [];
-  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
-    items.length,
-    dndId,
-  );
+  const initialItems: Grant[] = (field.form.options.defaultValues as any)?.grant ?? [];
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
 
   function handleDragEnd(event: DragEndEvent) {
     if (fieldsetRef.current?.disabled) return;
@@ -86,9 +84,7 @@ function GrantSortableList({ form, field }: { form: any; field: any }) {
               id={itemIds[i]!}
               index={i}
               title={item?.title?.en ?? item?.title?.ja ?? ""}
-              isModified={
-                i >= initialItems.length || !deepEqual(item, initialItems[i])
-              }
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);

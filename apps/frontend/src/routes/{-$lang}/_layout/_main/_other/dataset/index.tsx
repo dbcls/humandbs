@@ -1,25 +1,14 @@
-import {
-  DatasetSearchBodySchema,
-  type DatasetSearchBody,
-  type DatasetSearchResponse,
-} from "@humandbs/backend/types";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  createColumnHelper,
-  functionalUpdate,
-  type SortingState,
-  type Updater,
-} from "@tanstack/react-table";
+import type { SortingState, Updater } from "@tanstack/react-table";
+import { createColumnHelper, functionalUpdate } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
 import { useLocale, useTranslations } from "use-intl";
+
+import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+
+import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
+import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
@@ -27,7 +16,8 @@ import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
-import { SearchPanel, type SectionConfig } from "@/components/SearchPanel";
+import type { SectionConfig } from "@/components/SearchPanel";
+import { SearchPanel } from "@/components/SearchPanel";
 import { SkeletonLoading } from "@/components/Skeleton";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
@@ -50,29 +40,25 @@ const datasetListQuerySchema = DatasetSearchBodySchema.omit({
   sort: DatasetSearchBodySchema.shape.sort.default("relevance"),
 });
 
-export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")(
-  {
-    component: RouteComponent,
-    validateSearch: zodValidator(datasetListQuerySchema),
-    errorComponent: (props) =>
-      isCancelledError(props.error) ? null : (
-        <DefaultCatchBoundary {...props} />
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/")({
+  component: RouteComponent,
+  validateSearch: zodValidator(datasetListQuerySchema),
+  errorComponent: (props) =>
+    isCancelledError(props.error) ? null : <DefaultCatchBoundary {...props} />,
+  loader: ({ context, location }) => {
+    return Promise.all([
+      context.queryClient.ensureQueryData(
+        getDatasetsPaginatedQueryOptions({
+          ...(location.search as Omit<DatasetSearchBody, "includeFacets">),
+          lang: context.lang,
+        }),
       ),
-    loader: ({ context, location }) => {
-      return Promise.all([
-        context.queryClient.ensureQueryData(
-          getDatasetsPaginatedQueryOptions({
-            ...(location.search as Omit<DatasetSearchBody, "includeFacets">),
-            lang: context.lang,
-          }),
-        ),
-        context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
-      ]);
-    },
-    wrapInSuspense: true,
-    pendingComponent: () => <SkeletonLoading />,
+      context.queryClient.ensureQueryData(getAllFacetsQueryOptions()),
+    ]);
   },
-);
+  wrapInSuspense: true,
+  pendingComponent: () => <SkeletonLoading />,
+});
 
 function RouteComponent() {
   const t = useTranslations("Dataset");
@@ -171,9 +157,7 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
     }),
   );
 
-  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(
-    getAllFacetsQueryOptions(),
-  );
+  const { data: allFacetsData, isPending: isFacetsPending } = useQuery(getAllFacetsQueryOptions());
 
   const sections = useMemo((): SectionConfig[] => {
     const topLevel: SectionConfig[] = [
@@ -184,17 +168,9 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
         uiGroup: "basic-info",
       },
     ];
-    const facetSections = buildFacetSections(
-      filters.filters ?? {},
-      "filters",
-      allFacetsData?.data,
-    );
-    const dateSections = facetSections.filter(
-      (section) => section.uiGroup === "dates",
-    );
-    const remainingFacetSections = facetSections.filter(
-      (section) => section.uiGroup !== "dates",
-    );
+    const facetSections = buildFacetSections(filters.filters ?? {}, "filters", allFacetsData?.data);
+    const dateSections = facetSections.filter((section) => section.uiGroup === "dates");
+    const remainingFacetSections = facetSections.filter((section) => section.uiGroup !== "dates");
 
     return [...dateSections, ...topLevel, ...remainingFacetSections];
   }, [filters, allFacetsData]);
@@ -225,9 +201,9 @@ function useDatasetsSearchQuery() {
   const search = Route.useSearch();
   const lang = useLocale();
   const searchParams = { ...search, lang };
-  const lastResolvedSearchRef = useRef<
-    Omit<DatasetSearchBody, "includeFacets"> | undefined
-  >(undefined);
+  const lastResolvedSearchRef = useRef<Omit<DatasetSearchBody, "includeFacets"> | undefined>(
+    undefined,
+  );
 
   const query = useQuery({
     ...getDatasetsPaginatedQueryOptions(searchParams),
@@ -236,16 +212,11 @@ function useDatasetsSearchQuery() {
         ? (previousQuery.queryKey as readonly unknown[])[2]
         : undefined;
 
-      return isBackgroundTransition(previousSearch, searchParams)
-        ? previousData
-        : undefined;
+      return isBackgroundTransition(previousSearch, searchParams) ? previousData : undefined;
     },
   });
 
-  const transitionType = getSearchTransitionType(
-    lastResolvedSearchRef.current,
-    searchParams,
-  );
+  const transitionType = getSearchTransitionType(lastResolvedSearchRef.current, searchParams);
 
   useEffect(() => {
     if (!query.isFetching && query.data) {
@@ -289,11 +260,7 @@ function getSearchTransitionType(
 }
 
 function omitSortParams(value: unknown) {
-  const {
-    sort: _sort,
-    order: _order,
-    ...rest
-  } = value as Record<string, unknown>;
+  const { sort: _sort, order: _order, ...rest } = value as Record<string, unknown>;
 
   return rest;
 }
@@ -312,10 +279,7 @@ function stableSerialize(value: unknown): string {
   if (value && typeof value === "object") {
     return `{${Object.entries(value)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([key, entryValue]) =>
-          `${JSON.stringify(key)}:${stableSerialize(entryValue)}`,
-      )
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
       .join(",")}}`;
   }
 
@@ -355,15 +319,13 @@ function TableWrapper() {
     [setFilters, filters],
   );
 
-  const { data, isFetching, isPlaceholderData, transitionType } =
-    useDatasetsSearchQuery();
+  const { data, isFetching, isPlaceholderData, transitionType } = useDatasetsSearchQuery();
 
   const loadingSortColumnId =
     isFetching && isPlaceholderData && transitionType === "sort"
       ? (search.sort ?? "datasetId")
       : undefined;
-  const isPaginating =
-    isFetching && isPlaceholderData && transitionType === "pagination";
+  const isPaginating = isFetching && isPlaceholderData && transitionType === "pagination";
 
   if (!data || (isFetching && !isPlaceholderData)) {
     return (
@@ -398,8 +360,7 @@ function PaginationWrapper() {
   return <Pagination className="pr-5" pagination={data.meta.pagination} />;
 }
 
-export const datasetsColumnHelper =
-  createColumnHelper<DatasetSearchResponse["data"][number]>();
+export const datasetsColumnHelper = createColumnHelper<DatasetSearchResponse["data"][number]>();
 
 export const datasetsColumns = [
   datasetsColumnHelper.display({
@@ -429,9 +390,7 @@ export const datasetsColumns = [
   }),
   datasetsColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
     cell: (ctx) => (
       <Route.Link to="$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
@@ -444,12 +403,7 @@ export const datasetsColumns = [
 
   datasetsColumnHelper.accessor("releaseDate", {
     id: "releaseDate",
-    header: (ctx) => (
-      <SortHeader
-        ctx={ctx}
-        label={ctx.table.options.meta?.t?.("releaseDate")}
-      />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t?.("releaseDate")} />,
   }),
 
   datasetsColumnHelper.accessor("versionReleaseDate", {
@@ -461,9 +415,7 @@ export const datasetsColumns = [
     header: (ctx) => {
       return <p>{ctx.table.options.meta?.t?.("typeOfData")}</p>;
     },
-    cell: (ctx) =>
-      ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ??
-      "",
+    cell: (ctx) => ctx.getValue()?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale] ?? "",
   }),
   datasetsColumnHelper.accessor("experiments", {
     id: "experiments",
@@ -473,13 +425,7 @@ export const datasetsColumns = [
         items={ctx.getValue().map((item, i) => ({
           id: i,
           content: (
-            <span>
-              {
-                item.header?.[
-                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                ]?.text
-              }
-            </span>
+            <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
           ),
         }))}
       />
@@ -488,7 +434,7 @@ export const datasetsColumns = [
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-ignore TODO fix types`
+    //@ts-expect-error TODO fix types`
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 ];

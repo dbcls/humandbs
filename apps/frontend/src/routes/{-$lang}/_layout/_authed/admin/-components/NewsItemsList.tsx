@@ -1,12 +1,10 @@
-import {
-  type InfiniteData,
-  useQueryClient,
-  useSuspenseInfiniteQuery,
-} from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, useRouteContext } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { Suspense, useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "use-intl";
+
+import { Suspense, useEffect, useRef } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
@@ -15,20 +13,13 @@ import { SkeletonLoadingPanelItems } from "@/components/Skeleton";
 import { TagPill } from "@/components/TagPill";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import {
-  $deleteNewsItem,
-  newsItemsInfiniteQueryOptions,
-  type NewsItemResponse,
-} from "@/serverFunctions/news";
+import type { NewsItemResponse } from "@/serverFunctions/news";
+import { $deleteNewsItem, newsItemsInfiniteQueryOptions } from "@/serverFunctions/news";
 import useConfirmationStore from "@/stores/confirmationStore";
 
 import { AddNewButton } from "./AddNewButton";
 import { AdminListItem } from "./AdminListItem";
-import {
-  createDraftNewsItem,
-  DRAFT_NEWS_ID,
-  isDraftNewsItem,
-} from "./draftNewsItem";
+import { createDraftNewsItem, DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
 import { NewsFiltersBar } from "./NewsFiltersBar";
 import { NoItemsMessage } from "./NoItemsMessage";
 
@@ -56,13 +47,11 @@ export function NewsItemsList({
 
   /** Add draft dummy to query cache */
   function handleClickAdd() {
-    const existingData = queryClient.getQueryData<
-      InfiniteData<NewsItemResponse[], number>
-    >(listQO.queryKey);
+    const existingData = queryClient.getQueryData<InfiniteData<NewsItemResponse[], number>>(
+      listQO.queryKey,
+    );
     const cacheHasDraft =
-      existingData?.pages.some((page) =>
-        page.some((item) => isDraftNewsItem(item.id)),
-      ) ?? false;
+      existingData?.pages.some((page) => page.some((item) => isDraftNewsItem(item.id))) ?? false;
 
     if (cacheHasDraft) {
       onSelectNewsItem(DRAFT_NEWS_ID);
@@ -73,18 +62,13 @@ export function NewsItemsList({
       email: user?.email ?? "",
     });
 
-    queryClient.setQueryData<InfiniteData<NewsItemResponse[], number>>(
-      listQO.queryKey,
-      (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page, i) =>
-            i === 0 ? [draft, ...page] : page,
-          ),
-        };
-      },
-    );
+    queryClient.setQueryData<InfiniteData<NewsItemResponse[], number>>(listQO.queryKey, (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page, i) => (i === 0 ? [draft, ...page] : page)),
+      };
+    });
 
     onSelectNewsItem(DRAFT_NEWS_ID);
   }
@@ -93,17 +77,11 @@ export function NewsItemsList({
     <CollapsibleCard title={"News"}>
       <div>
         <NewsFiltersBar />
-        <AddNewButton
-          className="mb-5"
-          onClick={handleClickAdd}
-          disabled={hasDraft}
-        />
+        <AddNewButton className="mb-5" onClick={handleClickAdd} disabled={hasDraft} />
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <ErrorResetBoundary
-          getResetKey={() =>
-            `${q}-${publishedFrom}-${publishedTo}-${tagIds?.join(",")}`
-          }
+          getResetKey={() => `${q}-${publishedFrom}-${publishedTo}-${tagIds?.join(",")}`}
         >
           <Suspense fallback={<SkeletonLoadingPanelItems />}>
             <ListItems
@@ -182,18 +160,13 @@ function ListItems({
   }
 
   function handleDiscardDraft() {
-    queryClient.setQueryData<InfiniteData<NewsItemResponse[], number>>(
-      listQO.queryKey,
-      (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page) =>
-            page.filter((i) => !isDraftNewsItem(i.id)),
-          ),
-        };
-      },
-    );
+    queryClient.setQueryData<InfiniteData<NewsItemResponse[], number>>(listQO.queryKey, (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => page.filter((i) => !isDraftNewsItem(i.id))),
+      };
+    });
     onSelectNewsItem(undefined);
   }
 
@@ -231,17 +204,13 @@ function ListItems({
               >
                 <AdminListItem
                   id={item.id}
-                  header={
-                    isDraft ? "New news item" : item.publishedAt || "No date"
-                  }
-                  translations={Object.entries(item.translations ?? {}).map(
-                    ([lang, tr]) => ({
-                      lang,
-                      statuses: {
-                        published: tr.title,
-                      },
-                    }),
-                  )}
+                  header={isDraft ? "New news item" : item.publishedAt || "No date"}
+                  translations={Object.entries(item.translations ?? {}).map(([lang, tr]) => ({
+                    lang,
+                    statuses: {
+                      published: tr.title,
+                    },
+                  }))}
                   meta={
                     item.tags && item.tags.length > 0 ? (
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -267,15 +236,13 @@ function ListItems({
                   ]}
                 />
               </ListItem>
-              {index < newsItems.length - 1 ? (
-                <hr className="my-2 border-gray-200" />
-              ) : null}
+              {index < newsItems.length - 1 ? <hr className="my-2 border-gray-200" /> : null}
             </li>
           );
         })}
         <div ref={sentinelRef} className="h-4 shrink-0">
           {isFetchingNextPage && (
-            <span className="text-foreground-light block py-2 text-center text-xs">
+            <span className="block py-2 text-center text-foreground-light text-xs">
               Loading more…
             </span>
           )}
@@ -284,8 +251,8 @@ function ListItems({
 
       {isFetching && !isFetchingNextPage ? (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
-          <div className="bg-primary/20 mx-2 h-1 rounded-full">
-            <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
+          <div className="mx-2 h-1 rounded-full bg-primary/20">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
           </div>
         </div>
       ) : null}

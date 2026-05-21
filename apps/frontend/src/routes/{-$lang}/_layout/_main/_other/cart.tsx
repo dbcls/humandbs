@@ -1,18 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
-import { CardWithCaption } from "@/components/Card";
-import { SortHeader, Table } from "@/components/Table";
-import { Button } from "@/components/ui/button";
-import { useCart } from "@/hooks/useCart";
-
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
-import { TextWithIcon } from "@/components/TextWithIcon";
-import { i18n } from "@/config/i18n";
-import { FA_ICONS } from "@/lib/faIcons";
 import type { DatasetDoc } from "@humandbs/backend/types";
-import { createColumnHelper } from "@tanstack/react-table";
+
+import { CardWithCaption } from "@/components/Card";
+import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { SortHeader, Table } from "@/components/Table";
+import { TextWithIcon } from "@/components/TextWithIcon";
+import { Button } from "@/components/ui/button";
+import { i18n } from "@/config/i18n";
+import { useCart } from "@/hooks/useCart";
+import { FA_ICONS } from "@/lib/faIcons";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
@@ -26,14 +26,9 @@ const cartDatasetColumns = [
   // ...datasetsColumns.filter((col) => col.id !== "cart"),
   cartColumnsHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => (
-      <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />
-    ),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
     cell: (ctx) => (
-      <Route.Link
-        to="/{-$lang}/dataset/$datasetId"
-        params={{ datasetId: ctx.getValue() }}
-      >
+      <Route.Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon className="text-secondary" icon={FA_ICONS.dataset}>
           {ctx.renderValue()}
         </TextWithIcon>
@@ -49,13 +44,7 @@ const cartDatasetColumns = [
         items={ctx.getValue().map((item, i) => ({
           id: i,
           content: (
-            <span>
-              {
-                item.header?.[
-                  ctx.table.options.meta?.lang ?? i18n.defaultLocale
-                ]?.text
-              }
-            </span>
+            <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
           ),
         }))}
       />
@@ -64,7 +53,7 @@ const cartDatasetColumns = [
   cartColumnsHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-ignore TODO fix types`
+    //@ts-expect-error TODO fix types`
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 
@@ -80,7 +69,7 @@ const cartDatasetColumns = [
             remove(ctx.row.original);
           }}
         >
-          <Trash2 className="text-danger size-5" />
+          <Trash2 className="size-5 text-danger" />
         </Button>
       );
     },
@@ -115,11 +104,7 @@ function RouteComponent() {
           <Button className="mb-4 ml-auto" onClick={handleSubmit}>
             Copy Cart Contents
           </Button>
-          <Table
-            columns={cartDatasetColumns}
-            data={cart}
-            meta={{ t, lang: locale }}
-          />
+          <Table columns={cartDatasetColumns} data={cart} meta={{ t, lang: locale }} />
         </>
       )}
     </CardWithCaption>

@@ -57,9 +57,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 type AnyFieldApi = any;
 
 export function resetFieldKeyToDefault(field: AnyFieldApi, key: string): void {
-  const defaultValue = (
-    getFieldDefaultValue(field) as Record<string, unknown>
-  )?.[key];
+  const defaultValue = (getFieldDefaultValue(field) as Record<string, unknown>)?.[key];
   field.handleChange((prev: Record<string, unknown>) => ({
     ...prev,
     [key]: defaultValue ?? null,
@@ -73,9 +71,7 @@ export function resetFieldKeyToDefault(field: AnyFieldApi, key: string): void {
  */
 export function isFieldModified(field: AnyFieldApi, key?: string): boolean {
   const currentValue =
-    key != null
-      ? (field.state.value as Record<string, unknown>)?.[key]
-      : field.state.value;
+    key != null ? (field.state.value as Record<string, unknown>)?.[key] : field.state.value;
 
   const defaultValue =
     key != null

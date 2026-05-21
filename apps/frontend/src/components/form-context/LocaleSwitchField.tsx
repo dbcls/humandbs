@@ -1,7 +1,7 @@
-import { i18n, type Locale } from "@/config/i18n";
+import type { Locale } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
 
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
-
 import { useFieldContext } from "./FormContext";
 
 export default function LocaleSwitchField() {
@@ -17,11 +17,7 @@ export default function LocaleSwitchField() {
       }}
     >
       {i18n.locales.map((loc) => (
-        <ToggleGroupItem
-          className="cursor-pointer capitalize"
-          key={loc}
-          value={loc}
-        >
+        <ToggleGroupItem className="cursor-pointer capitalize" key={loc} value={loc}>
           {loc}
         </ToggleGroupItem>
       ))}

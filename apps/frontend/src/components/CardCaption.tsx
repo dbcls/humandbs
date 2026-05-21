@@ -1,8 +1,8 @@
 import { FA_ICONS } from "@/lib/faIcons";
+import { cn } from "@/lib/utils";
 
 import { TextWithIcon } from "./TextWithIcon";
 import { Badge } from "./ui/badge";
-import { cn } from "@/lib/utils";
 
 export function CardCaption({
   title,

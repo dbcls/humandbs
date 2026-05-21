@@ -4,9 +4,7 @@ import { getResearchQueryOptions } from "@/serverFunctions/researches";
 
 import { VersionCard } from "./-VersionCard";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/research/$humId/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/research/$humId/")({
   loader: async ({ context, params }) => {
     const data = await context.queryClient.ensureQueryData(
       getResearchQueryOptions({

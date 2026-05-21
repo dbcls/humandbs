@@ -1,16 +1,17 @@
-import { createFormHookContexts, createFormHook } from "@tanstack/react-form";
+import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
+
 import { lazy } from "react";
 
 import CheckboxField from "./CheckboxField";
 import LocaleSwitchField from "./LocaleSwitchField";
+import BilingualTextField from "./researchFields/BilingualTextField";
+import BilingualTextValueField from "./researchFields/BilingualTextValueField";
+import BilingualURLArrayField from "./researchFields/BilingualURLArrayField";
 import SelectField from "./SelectField";
 import SwitchField from "./SwitchField";
 import TextAreaField from "./TextAreaField";
 import TextField from "./TextField";
 import UpdateButton from "./UpdateButton";
-import BilingualTextField from "./researchFields/BilingualTextField";
-import BilingualTextValueField from "./researchFields/BilingualTextValueField";
-import BilingualURLArrayField from "./researchFields/BilingualURLArrayField";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();

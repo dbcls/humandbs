@@ -1,40 +1,40 @@
+import { infiniteQueryOptions, keepPreviousData, queryOptions } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import type {
+  CreateResearchRequest,
+  CreateVersionRequest,
+  DsApplicationListResponse,
+  ResearchDetailResponse,
+  ResearchSearchBody,
+  ResearchSearchResponse,
+  ResearchWithLockResponse,
+  UpdateResearchRequest,
+  UpdateUidsRequest,
+  VersionCreateResponse,
+  WorkflowResponse,
+} from "@humandbs/backend/types";
 import {
   HumIdParamsSchema,
   LangQuerySchema,
   LangVersionQuerySchema,
   ResearchSearchBodySchema,
-  type CreateResearchRequest,
-  type CreateVersionRequest,
-  type DsApplicationListResponse,
-  type ResearchDetailResponse,
-  type ResearchSearchBody,
-  type ResearchSearchResponse,
-  type ResearchWithLockResponse,
-  type UpdateResearchRequest,
-  type UpdateUidsRequest,
-  type VersionCreateResponse,
-  type WorkflowResponse,
 } from "@humandbs/backend/types";
-import type {
-  ResearchTemplateData,
-  DatasetTemplateData,
-} from "../../../backend/src/api/types/templates";
-import {
-  infiniteQueryOptions,
-  keepPreviousData,
-  queryOptions,
-} from "@tanstack/react-query";
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
+import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
+import { throwSerializableApiError } from "@/utils/errors";
 import { filterDefined } from "@/utils/filterDefined";
 import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
-import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
-import { throwSerializableApiError } from "@/utils/errors";
 import type { DeepOmit } from "@/utils/typeUtils";
+
+import type {
+  DatasetTemplateData,
+  ResearchTemplateData,
+} from "../../../backend/src/api/types/templates";
 
 export type CreateResearchResult =
   | { ok: true; data: ResearchWithLockResponse }
@@ -105,19 +105,13 @@ export const $createResearch = createServerFn({ method: "POST" })
  * it ignores the rawHtml but it is still required by the zod schema
  */
 export const $updateResearch = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: { humId: string; body: UpdateResearchRequest }) => data,
-  )
+  .inputValidator((data: { humId: string; body: UpdateResearchRequest }) => data)
   .handler<Promise<UpdateResearchResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
     if (!accessToken) throw new Error("Unauthorized");
 
     try {
-      const result = await api.updateResearch(
-        data.humId,
-        data.body,
-        accessToken,
-      );
+      const result = await api.updateResearch(data.humId, data.body, accessToken);
 
       return { ok: true, data: result };
     } catch (error) {
@@ -265,10 +259,7 @@ export type CreateVersionResult =
  */
 export const $createResearchVersion = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: {
-      humId: string;
-      releaseNote: CreateVersionRequest["releaseNote"];
-    }) => data,
+    (data: { humId: string; releaseNote: CreateVersionRequest["releaseNote"] }) => data,
   )
   .handler<Promise<CreateVersionResult>>(async ({ data }) => {
     const accessToken = $$getJWT();
@@ -291,19 +282,14 @@ export const $getResearches = createServerFn()
   .handler<Promise<ResearchSearchResponse>>(({ data, context }) => {
     const accessToken = $$getJWT();
 
-    return api.searchResearches(
-      data,
-      accessToken ?? undefined,
-      context.requestSignal,
-    );
+    return api.searchResearches(data, accessToken ?? undefined, context.requestSignal);
   });
 
-const authedResearchesListSearchParamsInnerSchema =
-  authedResearchesListSearchParamsSchema.extend(
-    z.object({
-      lang: localeSchema,
-    }).shape,
-  );
+const authedResearchesListSearchParamsInnerSchema = authedResearchesListSearchParamsSchema.extend(
+  z.object({
+    lang: localeSchema,
+  }).shape,
+);
 
 type AuthedResearchesListSearchParamsInner = z.infer<
   typeof authedResearchesListSearchParamsInnerSchema
@@ -347,13 +333,10 @@ export const $listResearches = createServerFn()
     }
   });
 
-export function getResearchesQueryOptions(
-  data: Omit<ResearchSearchBody, "includeFacets">,
-) {
+export function getResearchesQueryOptions(data: Omit<ResearchSearchBody, "includeFacets">) {
   return queryOptions({
     queryKey: ["researches", "list", data],
-    queryFn: ({ signal }) =>
-      $getResearches({ data: { ...data, includeFacets: true }, signal }),
+    queryFn: ({ signal }) => $getResearches({ data: { ...data, includeFacets: true }, signal }),
     staleTime: 1000 * 60 * 5, // 5 minutes,
     // placeholderData: keepPreviousData,
   });
@@ -375,9 +358,7 @@ export function getAuthedResearchesInfiniteQueryOptions(
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
-      lastPage.meta.pagination.hasNext
-        ? lastPage.meta.pagination.page + 1
-        : undefined,
+      lastPage.meta.pagination.hasNext ? lastPage.meta.pagination.page + 1 : undefined,
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
   });
@@ -434,9 +415,7 @@ export const $getResearch = createServerFn()
     }
   });
 
-export function getResearchQueryOptions(
-  query: z.infer<typeof ResearchQuerySchema>,
-) {
+export function getResearchQueryOptions(query: z.infer<typeof ResearchQuerySchema>) {
   return queryOptions({
     queryKey: ["researches", "byId", query],
     queryFn: () => $getResearch({ data: query }),
@@ -483,9 +462,7 @@ export function getDsApplicationsQueryOptions(page: number, limit = 20) {
   });
 }
 
-export function getResearchForEditQueryOptions(
-  query: z.infer<typeof ResearchEditQuerySchema>,
-) {
+export function getResearchForEditQueryOptions(query: z.infer<typeof ResearchEditQuerySchema>) {
   return queryOptions({
     queryKey: ["researches", "byId", "edit", query],
     queryFn: () => $getResearchForEdit({ data: query }),

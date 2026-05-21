@@ -1,11 +1,7 @@
 /// <reference types="vite/client" />
-import {
-  HeadContent,
-  Scripts,
-  createRootRouteWithContext,
-  Outlet,
-} from "@tanstack/react-router";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+
 import * as React from "react";
 
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -92,7 +88,7 @@ function RootDocument() {
       <head>
         <HeadContent />
       </head>
-      <body className="font-family-sans main-bg bg-primary-translucent text-foreground relative flex h-screen flex-col">
+      <body className="main-bg relative flex h-screen flex-col bg-primary-translucent font-family-sans text-foreground">
         <Outlet />
         <TanStackRouterDevtools position="bottom-left" />
         <SessionRefreshHandler session={session} />

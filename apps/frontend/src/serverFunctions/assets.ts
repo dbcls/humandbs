@@ -1,8 +1,9 @@
-import { queryOptions } from "@tanstack/react-query";
-import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
-import { write } from "bun";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
+import { write } from "bun";
+
+import { queryOptions } from "@tanstack/react-query";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
@@ -61,9 +62,7 @@ export interface AssetHierarchyFolder {
 
 export type AssetHierarchyItem = AssetHierarchyFolder | AssetHierarchyFile;
 
-async function readAssetFolder(
-  relativePath = "",
-): Promise<AssetHierarchyFolder> {
+async function readAssetFolder(relativePath = ""): Promise<AssetHierarchyFolder> {
   const folderPath = getAbsoluteAssetPath(relativePath);
   const entries = await readdir(folderPath, { withFileTypes: true });
 
@@ -151,9 +150,7 @@ const assetFolderPathSchema = z
 
 async function uploadAssetFileToFolder(file: File, folderPath: string) {
   const safeName = path.posix.basename(file.name);
-  const relativePath = folderPath
-    ? path.posix.join(folderPath, safeName)
-    : safeName;
+  const relativePath = folderPath ? path.posix.join(folderPath, safeName) : safeName;
 
   await mkdir(path.dirname(getAbsoluteAssetPath(relativePath)), {
     recursive: true,
@@ -204,13 +201,9 @@ export const $createAssetFolder = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("assets", "create");
 
-    const parentPath = data.parentPath
-      ? normalizeRelativeAssetPath(data.parentPath)
-      : "";
+    const parentPath = data.parentPath ? normalizeRelativeAssetPath(data.parentPath) : "";
     const folderName = path.posix.basename(data.folderName.trim());
-    const folderPath = parentPath
-      ? path.posix.join(parentPath, folderName)
-      : folderName;
+    const folderPath = parentPath ? path.posix.join(parentPath, folderName) : folderName;
 
     const normalizedFolderPath = normalizeRelativeAssetPath(folderPath);
 

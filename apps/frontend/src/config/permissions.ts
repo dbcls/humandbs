@@ -1,7 +1,8 @@
+import type { ResearchDetail } from "@humandbs/backend/types";
+
 import type { Document, DocumentVersion } from "@/db/schema";
 import type { Alert, ContentItem, NewsItem } from "@/db/types";
-import type { ResearchDetail } from "@humandbs/backend/types";
-import { type SessionUser } from "@/utils/jwt-helpers";
+import type { SessionUser } from "@/utils/jwt-helpers";
 
 export const USER_ROLES = {
   ADMIN: "admin",
@@ -17,9 +18,7 @@ type PermissionCheck<Key extends keyof Permissions> =
 type RolesWithPermissions = Record<
   UserRole,
   Partial<{
-    [Key in keyof Permissions]: Partial<
-      Record<Permissions[Key]["action"], PermissionCheck<Key>>
-    >;
+    [Key in keyof Permissions]: Partial<Record<Permissions[Key]["action"], PermissionCheck<Key>>>;
   }>
 >;
 
@@ -162,8 +161,7 @@ export function can<R extends keyof AccessResources>(
   const isAuthed = !!user;
 
   if (resource === "researches") {
-    const research = (params as AccessResources["researches"]["params"])
-      ?.research;
+    const research = (params as AccessResources["researches"]["params"])?.research;
     const isOwner = isAuthed && !!research && research.uids.includes(user!.id);
     const status = research?.status;
 
@@ -190,8 +188,7 @@ export function can<R extends keyof AccessResources>(
   }
 
   if (resource === "datasets") {
-    const research = (params as AccessResources["datasets"]["params"])
-      ?.research;
+    const research = (params as AccessResources["datasets"]["params"])?.research;
     const isOwner = isAuthed && !!research && research.uids.includes(user!.id);
     const isDraft = research?.status === "draft";
 
@@ -218,9 +215,9 @@ export function hasPermission<Resource extends keyof Permissions>(
   action: Permissions[Resource]["action"],
   data?: Permissions[Resource]["dataType"],
 ) {
-  const permission = (ROLES as RolesWithPermissions)[
-    user?.role || USER_ROLES.USER
-  ][resource]?.[action];
+  const permission = (ROLES as RolesWithPermissions)[user?.role || USER_ROLES.USER][resource]?.[
+    action
+  ];
 
   if (permission === null || permission === undefined) return false;
 
