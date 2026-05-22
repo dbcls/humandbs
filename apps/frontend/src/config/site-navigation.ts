@@ -194,6 +194,16 @@ const navigationRegistry = new Map<string, NavigationItemRegistry>([
     },
   ],
   [
+    "data-use",
+    {
+      getLinkOptions: (lang) => ({
+        to: "/{-$lang}/data-use",
+        params: { lang },
+      }),
+      defaultLabel: { en: "Data Usage", ja: "データの利用" },
+    },
+  ],
+  [
     "data-usage",
     {
       getLinkOptions: (lang) => ({
