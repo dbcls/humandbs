@@ -93,9 +93,10 @@ function Table<T extends Record<string, unknown>>({
                   className={cn(
                     "p-2 first-of-type:rounded-l last-of-type:rounded-r max-w-[300px]",
                     {
-                      "sticky left-0 z-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 0,
-                      "bg-secondary-light": index === 0 && (variant === "default" || !variant),
-                      "bg-secondary": index === 0 && variant === "darker",
+                      "sticky left-0 z-40 w-12 min-w-[3rem] max-w-[3rem] px-1.5 py-2": index === 0,
+                      "sticky left-12 z-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 1,
+                      "bg-secondary-light": (index === 0 || index === 1) && (variant === "default" || !variant),
+                      "bg-secondary": (index === 0 || index === 1) && variant === "darker",
                     }
                   )}
                 >
@@ -128,7 +129,10 @@ function Table<T extends Record<string, unknown>>({
                 key={cell.id}
                 className={cn(
                   "border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]",
-                  { "sticky left-0 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 0 }
+                  {
+                    "sticky left-0 z-20 bg-inherit w-12 min-w-[3rem] max-w-[3rem] px-1.5 py-2": index === 0,
+                    "sticky left-12 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 1,
+                  }
                 )}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

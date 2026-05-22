@@ -380,20 +380,24 @@ const columns = [
       });
 
       return (
-        <AddToCartToggle
-          variant={"header"}
-          state={allInCart || (someInCart ? "indeterminate" : false)}
-          onClick={handleClickCart}
-        />
+        <div className="w-full flex items-center justify-center">
+          <AddToCartToggle
+            variant={"header"}
+            state={allInCart || (someInCart ? "indeterminate" : false)}
+            onClick={handleClickCart}
+          />
+        </div>
       );
     },
     cell: (ctx) => (
-      <ClientOnly fallback={<div className="size-8 shrink-0" />}>
-        <AddToCartAllDatasetsButton
-          humId={ctx.row.original.humId}
-          tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
-        />
-      </ClientOnly>
+      <div className="w-full flex items-center justify-center">
+        <ClientOnly fallback={<div className="size-8 shrink-0" />}>
+          <AddToCartAllDatasetsButton
+            humId={ctx.row.original.humId}
+            tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
+          />
+        </ClientOnly>
+      </div>
     ),
     maxSize: 1,
     size: 1,

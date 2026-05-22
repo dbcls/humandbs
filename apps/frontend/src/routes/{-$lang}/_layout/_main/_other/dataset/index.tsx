@@ -375,14 +375,14 @@ export const datasetsColumns = [
   datasetsColumnHelper.display({
     id: "cart",
     header: (ctx) => (
-      <div className="w-9">
+      <div className="w-full flex items-center justify-center">
         <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
           <DatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
         </ClientOnly>
       </div>
     ),
     cell: (ctx) => (
-      <div className="w-9">
+      <div className="w-full flex items-center justify-center">
         <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
           <DatasetCartRowButton dataset={ctx.row.original} />
         </ClientOnly>
