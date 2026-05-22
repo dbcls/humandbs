@@ -12,6 +12,7 @@ import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { ModalCell } from "@/components/ModalCell";
+import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
@@ -417,7 +418,10 @@ const columns = [
       <ModalCell>
         <ul className="space-y-4">
           {ctx.getValue().map((id) => (
-            <li key={id}>
+            <li key={id} className="flex items-center gap-2">
+              <ClientOnly fallback={null}>
+                <ResearchDatasetCartRowButton datasetId={id} humId={ctx.row.original.humId} />
+              </ClientOnly>
               <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
                 <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
               </Route.Link>
