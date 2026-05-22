@@ -370,25 +370,13 @@ const columnHelper = createColumnHelper<ResearchSummary>();
 const columns = [
   columnHelper.display({
     id: "cart",
-    header: (ctx) => {
-      const allDatasets = ctx.table.options.data.flatMap((row) =>
-        row.datasetIds.map((id) => ({ datasetId: id })),
-      );
-
-      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-        tableDatasets: allDatasets,
-      });
-
-      return (
-        <div className="w-full flex items-center justify-center">
-          <AddToCartToggle
-            variant={"header"}
-            state={allInCart || (someInCart ? "indeterminate" : false)}
-            onClick={handleClickCart}
-          />
-        </div>
-      );
-    },
+    header: (ctx) => (
+      <div className="w-full flex items-center justify-center">
+        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+          <ResearchCartHeaderButton tableResearches={ctx.table.options.data} />
+        </ClientOnly>
+      </div>
+    ),
     cell: (ctx) => (
       <div className="w-full flex items-center justify-center">
         <ClientOnly fallback={<div className="size-8 shrink-0" />}>
@@ -609,6 +597,28 @@ function AddToCartAllDatasetsButton({
       disabled={!hasCartableDatasets}
       className={cn("shrink-0", className)}
       title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
+    />
+  );
+}
+
+function ResearchCartHeaderButton({
+  tableResearches,
+}: {
+  tableResearches: ResearchSummary[];
+}) {
+  const allDatasets = tableResearches.flatMap((row) =>
+    row.datasetIds.map((id) => ({ datasetId: id })),
+  );
+
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets: allDatasets,
+  });
+
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
+      onClick={handleClickCart}
     />
   );
 }
