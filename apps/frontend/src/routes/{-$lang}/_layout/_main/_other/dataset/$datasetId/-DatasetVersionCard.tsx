@@ -1,8 +1,6 @@
 import { useLocation, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
-import type { DatasetDoc } from "@humandbs/backend/types";
-
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
@@ -14,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCart } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
+import type { DatasetDoc } from "@/lib/types";
 
 export function DatasetVersionCard({
   versionData,

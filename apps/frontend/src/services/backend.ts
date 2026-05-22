@@ -14,7 +14,6 @@ import type {
   DatasetSearchResponse,
   DatasetUpdateResponse,
   DatasetVersionsListResponse,
-  DsApplicationListResponse,
   HumIdParams,
   LangQuery,
   LangVersionQuery,
@@ -33,8 +32,10 @@ import type {
 } from "@humandbs/backend/types";
 import { ResearchSearchResponseSchema } from "@humandbs/backend/types";
 
+import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import type { DeepOmit } from "@/utils/typeUtils";
 
+import type { DsApplicationListResponse } from "../../../backend/src/api/types";
 import type {
   DatasetTemplateResponse,
   ResearchTemplateResponse,
@@ -169,7 +170,7 @@ interface APIService {
     query: ResearchSearchBody,
     accessToken?: string,
     signal?: AbortSignal,
-  ): Promise<ResearchSearchResponse>;
+  ): Promise<ResearchSearchResponseWithTypedCriteria>;
   searchDatasets(
     query: DatasetSearchBody,
     accessToken?: string,
@@ -278,7 +279,7 @@ const api: APIService = {
   },
 
   searchResearches(query, accessToken, signal) {
-    return post<ResearchSearchResponse>(
+    return post<ResearchSearchResponseWithTypedCriteria>(
       `/research/search`,
       query,
       accessToken ? authHeader(accessToken) : undefined,

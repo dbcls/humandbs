@@ -3,8 +3,6 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
-import type { DatasetDoc } from "@humandbs/backend/types";
-
 import { CardWithCaption } from "@/components/Card";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { SortHeader, Table } from "@/components/Table";
@@ -13,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
 import { useCart } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
+import type { DatasetDoc } from "@/lib/types";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/cart")({
   component: RouteComponent,
@@ -39,21 +38,24 @@ const cartDatasetColumns = [
   cartColumnsHelper.accessor("experiments", {
     id: "experiments",
     header: (ctx) => ctx.table.options.meta?.t("experiments"),
-    cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.getValue().map((item, i) => ({
-          id: i,
-          content: (
-            <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
-          ),
-        }))}
-      />
-    ),
+    cell: (ctx) => {
+      console.log("ctx.getValue()", ctx.getValue());
+      return (
+        <CollapsiblePreview
+          items={ctx.getValue().map((item, i) => ({
+            id: i,
+            content: (
+              <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
+            ),
+          }))}
+        />
+      );
+    },
   }),
   cartColumnsHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-expect-error TODO fix types`
+
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 
@@ -94,6 +96,8 @@ function RouteComponent() {
     console.log("Copied to clipboard:", JSON.stringify(payload, null, 2));
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
   }
+
+  console.log("cart", cart);
 
   return (
     <CardWithCaption size={"sm"} containerClassName="p-8">

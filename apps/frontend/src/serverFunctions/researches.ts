@@ -5,10 +5,8 @@ import { z } from "zod";
 import type {
   CreateResearchRequest,
   CreateVersionRequest,
-  DsApplicationListResponse,
   ResearchDetailResponse,
   ResearchSearchBody,
-  ResearchSearchResponse,
   ResearchWithLockResponse,
   UpdateResearchRequest,
   UpdateUidsRequest,
@@ -23,6 +21,7 @@ import {
 } from "@humandbs/backend/types";
 
 import { localeSchema } from "@/config/i18n";
+import type { ResearchSearchResponseWithTypedCriteria } from "@/lib/types";
 import { requestSignalMiddleware } from "@/middleware/requestSignalMiddleware";
 import { api, mapApiError } from "@/services/backend";
 import { throwSerializableApiError } from "@/utils/errors";
@@ -31,6 +30,7 @@ import { $$getJWT } from "@/utils/jwt-helpers";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
 import { clearSearchSignal, nextSearchSignal } from "@/utils/searchSignals";
 
+import type { DsApplicationListResponse } from "../../../backend/src/api/types";
 import type {
   DatasetTemplateData,
   ResearchTemplateData,
@@ -279,7 +279,7 @@ export const $createResearchVersion = createServerFn({ method: "POST" })
 export const $getResearches = createServerFn()
   .middleware([requestSignalMiddleware])
   .inputValidator(ResearchSearchBodySchema)
-  .handler<Promise<ResearchSearchResponse>>(({ data, context }) => {
+  .handler<Promise<ResearchSearchResponseWithTypedCriteria>>(({ data, context }) => {
     const accessToken = $$getJWT();
 
     return api.searchResearches(data, accessToken ?? undefined, context.requestSignal);
@@ -345,7 +345,7 @@ export function getResearchesQueryOptions(data: Omit<ResearchSearchBody, "includ
           signal,
         });
       } finally {
-        clearSearchSignal("researches", signal);
+        clearSearchSignal("research", signal);
       }
     },
     staleTime: 1000 * 60 * 5,

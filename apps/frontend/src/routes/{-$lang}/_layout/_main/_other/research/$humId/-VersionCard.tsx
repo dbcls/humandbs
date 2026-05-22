@@ -1,9 +1,8 @@
-import { useRouteContext } from "@tanstack/react-router";
+import { ClientOnly, useRouteContext } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { ShoppingCartIcon } from "lucide-react";
 import { useMessages, useTranslations } from "use-intl";
 
-import type { DatasetDoc, ResearchDetailResponse } from "@humandbs/backend/types";
+import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CardWithCaption } from "@/components/Card";
@@ -11,14 +10,13 @@ import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
 import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
+import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Separator } from "@/components/Separator";
 import { Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
-import { Button } from "@/components/ui/button";
 import { i18n } from "@/config/i18n";
-import { useCart, useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { FA_ICONS } from "@/lib/faIcons";
-import { cn } from "@/lib/utils";
 
 export function VersionCard({
   versionData,
@@ -97,9 +95,9 @@ export function VersionCard({
       <section>
         <ContentHeader>{t("dataProvider")}</ContentHeader>
         <ul>
-          {versionData?.dataProvider.map((p, i) => {
+          {versionData?.dataProvider.map((p) => {
             return (
-              <dl key={i} className="columns-2">
+              <dl key={`${p.name.ja?.text}-${p.name.en?.text}`} className="columns-2">
                 <KeyValueCard title={t("representative")} value={p.name[lang]?.text ?? ""} />
                 <KeyValueCard
                   title={t("organization")}
@@ -146,26 +144,19 @@ const datasetColumnHelper =
 const datasetColumns = [
   datasetColumnHelper.display({
     id: "cart",
-    header: (ctx) => {
-      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-        tableDatasets: ctx.table.options.data,
-      });
-
-      return (
-        <AddToCartToggle
-          variant={"header"}
-          state={allInCart ? true : someInCart ? "indeterminate" : false}
-          onClick={handleClickCart}
+    header: (ctx) => (
+      <ClientOnly fallback={null}>
+        <ResearchDatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
+      </ClientOnly>
+    ),
+    cell: (ctx) => (
+      <ClientOnly fallback={null}>
+        <ResearchDatasetCartRowButton
+          datasetId={ctx.row.original.datasetId}
+          humId={ctx.row.original.humId}
         />
-      );
-    },
-    cell: (ctx) => {
-      const { handleClickCart, inCart } = useCartTableRow({
-        dataset: ctx.row.original,
-      });
-
-      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
-    },
+      </ClientOnly>
+    ),
 
     size: 1,
     maxSize: 1,
@@ -183,7 +174,6 @@ const datasetColumns = [
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-expect-error TODO fix types
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()), //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
   }),
@@ -195,6 +185,24 @@ const datasetColumns = [
     maxSize: 14,
   }),
 ];
+
+function ResearchDatasetsCartHeaderButton({
+  tableDatasets,
+}: {
+  tableDatasets: ResearchDetailResponse["data"]["datasets"];
+}) {
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets,
+  });
+
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart ? true : someInCart ? "indeterminate" : false}
+      onClick={handleClickCart}
+    />
+  );
+}
 
 const publicationsColumnHelper =
   createColumnHelper<ResearchDetailResponse["data"]["relatedPublication"][number]>();

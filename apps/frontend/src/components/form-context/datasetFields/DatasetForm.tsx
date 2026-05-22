@@ -4,13 +4,14 @@ import { useTranslations } from "use-intl";
 import type { Ref } from "react";
 import { useEffect, useImperativeHandle } from "react";
 
-import type { DatasetDoc, UpdateDatasetRequest } from "@humandbs/backend/types";
+import type { UpdateDatasetRequest } from "@humandbs/backend/types";
 
 import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { DatasetDoc } from "@/lib/types";
 import type { DeepOmit } from "@/utils/typeUtils";
 
 import { CriteriaCanonicalSchema } from "../../../../../backend/src/crawler/types";

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-router";
 import type { SortingState, Updater } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
@@ -13,13 +13,14 @@ import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCartTableHeader } from "@/hooks/useCart";
+import { isCartableDatasetId, useCart, useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
@@ -381,21 +382,26 @@ const columns = [
           <AddToCartAllDatasetsButton
             humId={ctx.row.original.humId}
             tableDatasets={ctx.getValue().map((id) => ({ datasetId: id }))}
+            className="mb-2"
           />
         </ClientOnly>
         <CollapsiblePreview
           items={ctx.getValue().map((id) => ({
             id,
             content: (
-              <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
-                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
-              </Route.Link>
+              <div className="flex items-center gap-2">
+                <ClientOnly fallback={null}>
+                  <ResearchDatasetCartRowButton datasetId={id} humId={ctx.row.original.humId} />
+                </ClientOnly>
+                <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
+                  <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
+                </Route.Link>
+              </div>
             ),
           }))}
         />
       </>
     ),
-
     size: 15,
   }),
   columnHelper.accessor("title", {
@@ -497,34 +503,49 @@ const columns = [
 function AddToCartAllDatasetsButton({
   tableDatasets,
   humId,
+  className,
 }: {
   humId: string;
   tableDatasets: { datasetId: string }[];
+  className?: string;
 }) {
   const t = useTranslations("common");
   const datasetsQO = getDatasetsOfResearchQueryOptions(humId);
 
-  const { data, refetch } = useQuery(datasetsQO);
+  const queryClient = useQueryClient();
+  const { data } = useQuery(datasetsQO);
+  const { addMany } = useCart();
 
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
     tableDatasets:
       // get actual data if exist, or just add ids (on first render) so the icon would know if its in cart or no
       data?.data || tableDatasets,
   });
+  const hasCartableDatasets = tableDatasets.some((dataset) =>
+    isCartableDatasetId(dataset.datasetId),
+  );
 
   async function handleAddAllToCart() {
-    await refetch();
-    // data updates, so need to wait until next render, in order to `data?.data` to have values
-    Promise.resolve().then(() => {
+    if (!hasCartableDatasets) return;
+
+    if (allInCart) {
       handleClickCart();
-    });
+      return;
+    }
+
+    const result = await queryClient.ensureQueryData(datasetsQO);
+
+    if (result.data) {
+      addMany(result.data);
+    }
   }
 
   return (
     <AddToCartToggle
       state={allInCart ? true : someInCart ? "indeterminate" : false}
       onClick={handleAddAllToCart}
-      className="font-normal text-sm"
+      disabled={!hasCartableDatasets}
+      className={cn("font-normal text-sm", className)}
     >
       <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
     </AddToCartToggle>

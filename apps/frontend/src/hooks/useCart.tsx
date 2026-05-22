@@ -4,11 +4,15 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 
 import { useCallback, useEffect } from "react";
 
-import type { DatasetDoc } from "@humandbs/backend/types";
+import type { DatasetDoc } from "@/lib/types";
 
 const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
 export type CartItem = DatasetDoc;
+
+export function isCartableDatasetId(datasetId: string) {
+  return !datasetId.startsWith("DRA");
+}
 
 function isQuotaExceeded(error: unknown) {
   return (
@@ -58,9 +62,22 @@ export function useCart() {
   return {
     cart,
     add: (dataset: CartItem) => {
+      if (!isCartableDatasetId(dataset.datasetId)) return;
+
       setCart((prev) =>
         prev.some((item) => item.datasetId === dataset.datasetId) ? prev : [...prev, dataset],
       );
+    },
+    addMany: (datasets: CartItem[]) => {
+      setCart((prev) => {
+        const datasetIdsInCart = new Set(prev.map((item) => item.datasetId));
+        const newDatasets = datasets.filter(
+          (dataset) =>
+            isCartableDatasetId(dataset.datasetId) && !datasetIdsInCart.has(dataset.datasetId),
+        );
+
+        return newDatasets.length ? [...prev, ...newDatasets] : prev;
+      });
     },
     remove: (dataset: CartItem) => {
       setCart((prev) => prev.filter((item) => item.datasetId !== dataset.datasetId));
@@ -83,14 +100,14 @@ export function useAutoAddToCart(data: DatasetDoc) {
   const { addToCart } = useSearch({ strict: false });
 
   useEffect(() => {
-    if (!addToCart || !user) return;
+    if (!addToCart || !user?.id) return;
     add(data);
     void navigate({
       to: ".",
       search: (prev) => ({ ...prev, addToCart: undefined }),
       replace: true,
     });
-  }, [addToCart, user?.id]);
+  }, [addToCart, user?.id, add, navigate, data]);
 }
 
 /**
@@ -103,24 +120,32 @@ export function useCartTableHeader({
   tableDatasets: (CartItem | { datasetId: string })[];
 }) {
   const { add, remove, cart } = useCart();
+  const cartableDatasets = tableDatasets.filter((dataset) =>
+    isCartableDatasetId(dataset.datasetId),
+  );
 
   const datasetIdsInCart = cart.map((item) => item.datasetId);
 
-  const allInCart = tableDatasets.every((ds) => datasetIdsInCart.includes(ds.datasetId));
+  const hasDatasets = cartableDatasets.length > 0;
 
-  const someInCart = tableDatasets.some((ds) => datasetIdsInCart.includes(ds.datasetId));
+  const allInCart =
+    hasDatasets && cartableDatasets.every((ds) => datasetIdsInCart.includes(ds.datasetId));
+
+  const someInCart = cartableDatasets.some((ds) => datasetIdsInCart.includes(ds.datasetId));
 
   const handleClickCart = useCallback(() => {
     if (allInCart) {
-      tableDatasets.forEach((dataset) => remove(dataset as DatasetDoc));
+      cartableDatasets.forEach((dataset) => {
+        remove(dataset as DatasetDoc);
+      });
     } else {
-      tableDatasets.forEach((dataset) => {
+      cartableDatasets.forEach((dataset) => {
         if (!datasetIdsInCart.includes(dataset.datasetId)) {
           add(dataset as DatasetDoc);
         }
       });
     }
-  }, [tableDatasets, datasetIdsInCart, allInCart]);
+  }, [cartableDatasets, datasetIdsInCart, allInCart, add, remove]);
 
   return {
     handleClickCart,
@@ -137,13 +162,13 @@ export function useCartTableRow({ dataset }: { dataset: DatasetDoc }): {
 
   const inCart = cart.some((item) => item.datasetId === dataset.datasetId);
 
-  const handleClickCart = useCallback(() => {
+  function handleClickCart() {
     if (inCart) {
       remove(dataset);
     } else {
       add(dataset);
     }
-  }, [dataset, inCart]);
+  }
 
   return {
     handleClickCart,

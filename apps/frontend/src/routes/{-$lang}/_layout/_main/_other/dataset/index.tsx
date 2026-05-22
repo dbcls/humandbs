@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import type { SortingState, Updater } from "@tanstack/react-table";
 import { createColumnHelper, functionalUpdate } from "@tanstack/react-table";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -12,6 +12,7 @@ import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
+import { DatasetCartRowButton } from "@/components/DatasetCartRowButton";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
@@ -23,7 +24,7 @@ import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
-import { useCartTableHeader, useCartTableRow } from "@/hooks/useCart";
+import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
@@ -220,9 +221,9 @@ function useDatasetsSearchQuery() {
 
   useEffect(() => {
     if (!query.isFetching && query.data) {
-      lastResolvedSearchRef.current = searchParams;
+      lastResolvedSearchRef.current = { ...search, lang };
     }
-  }, [query.isFetching, query.data, searchParams]);
+  }, [query.isFetching, query.data, search, lang]);
 
   return { ...query, transitionType };
 }
@@ -365,26 +366,20 @@ export const datasetsColumnHelper = createColumnHelper<DatasetSearchResponse["da
 export const datasetsColumns = [
   datasetsColumnHelper.display({
     id: "cart",
-    header: (ctx) => {
-      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
-        tableDatasets: ctx.table.options.data,
-      });
-
-      return (
-        <AddToCartToggle
-          variant={"header"}
-          state={allInCart || (someInCart ? "indeterminate" : false)}
-          onClick={handleClickCart}
-        />
-      );
-    },
-    cell: (ctx) => {
-      const { handleClickCart, inCart } = useCartTableRow({
-        dataset: ctx.row.original,
-      });
-
-      return <AddToCartToggle state={inCart} onClick={handleClickCart} />;
-    },
+    header: (ctx) => (
+      <div className="w-9">
+        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+          <DatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
+        </ClientOnly>
+      </div>
+    ),
+    cell: (ctx) => (
+      <div className="w-9">
+        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+          <DatasetCartRowButton dataset={ctx.row.original} />
+        </ClientOnly>
+      </div>
+    ),
     maxSize: 1,
     size: 1,
   }),
@@ -434,7 +429,24 @@ export const datasetsColumns = [
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    //@ts-expect-error TODO fix types`
     cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
   }),
 ];
+
+function DatasetsCartHeaderButton({
+  tableDatasets,
+}: {
+  tableDatasets: DatasetSearchResponse["data"];
+}) {
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets,
+  });
+
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
+      onClick={handleClickCart}
+    />
+  );
+}

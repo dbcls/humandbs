@@ -15,8 +15,10 @@ import {
 } from "@tanstack/react-table";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { ChevronDown, ChevronsUpDown, ChevronUp, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useTranslations } from "use-intl";
+
+import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -56,6 +58,9 @@ function Table<T extends Record<string, unknown>>({
   isDimmed?: boolean;
 }) {
   const t = useTranslations("common");
+  const [localSorting, setLocalSorting] = useState<SortingState>([]);
+  const isControlledSorting = sorting !== undefined && onSortingChange !== undefined;
+
   const table = useReactTable({
     data,
     columns,
@@ -66,16 +71,11 @@ function Table<T extends Record<string, unknown>>({
       minSize: 5,
     },
     meta,
-    ...(sorting !== undefined && onSortingChange !== undefined
-      ? {
-          // Server-side sorting configuration
-          state: { sorting },
-          onSortingChange,
-          manualSorting: true,
-        }
-      : {
-          // Client-side sorting (default behavior)
-        }),
+    state: {
+      sorting: isControlledSorting ? sorting : localSorting,
+    },
+    onSortingChange: isControlledSorting ? onSortingChange : setLocalSorting,
+    manualSorting: isControlledSorting,
   });
 
   return (
@@ -158,13 +158,19 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
   label: React.ReactNode;
 }) {
   const activeSort = ctx.table.options.meta?.activeSort;
+  const localSort = ctx.table
+    .getState()
+    .sorting?.find((sortEntry) => sortEntry.id === ctx.column.id);
   const sortingState =
     activeSort?.id === ctx.column.id
       ? activeSort.desc
         ? "desc"
         : "asc"
-      : ctx.column.getIsSorted();
-
+      : localSort
+        ? localSort.desc
+          ? "desc"
+          : "asc"
+        : false;
   return (
     <p className="flex items-center gap-2 text-white">
       <span>{label}</span>
