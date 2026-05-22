@@ -125,6 +125,7 @@ function Table<T extends Record<string, unknown>>({
           >
             {row.getVisibleCells().map((cell, index) => (
               <td
+                key={cell.id}
                 className={cn(
                   "border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]",
                   { "sticky left-0 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": index === 0 }
