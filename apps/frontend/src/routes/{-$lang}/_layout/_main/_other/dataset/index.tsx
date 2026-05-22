@@ -32,6 +32,7 @@ import { SortHeader, Table, TableLoadingSpinner } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { useFilters } from "@/hooks/useFilters";
+import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
@@ -107,7 +108,6 @@ function RouteComponent() {
   return (
     <FilterableCard
       className="flex flex-col"
-      captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
           filterButtonRef={filterButtonRef}
@@ -193,9 +193,15 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const { containerRef, maxHeight } = useMaxHeight(130);
+
   return (
     <>
-      <div className="flex max-h-[calc(100vh-16rem)] min-w-full flex-1 flex-col overflow-auto">
+      <div
+        ref={containerRef}
+        style={{ maxHeight }}
+        className="flex min-w-full flex-1 flex-col overflow-auto"
+      >
         <TableWrapper />
       </div>
       <PaginationWrapper />

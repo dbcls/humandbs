@@ -34,6 +34,7 @@ import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
+import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -201,9 +202,15 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const { containerRef, maxHeight } = useMaxHeight(130);
+
   return (
     <>
-      <div className="flex max-h-[calc(100vh-16rem)] min-w-full flex-1 flex-col overflow-auto">
+      <div
+        ref={containerRef}
+        style={{ maxHeight }}
+        className="flex min-w-full flex-1 flex-col overflow-auto"
+      >
         <TableWrapper />
       </div>
       <PaginationWrapper />
