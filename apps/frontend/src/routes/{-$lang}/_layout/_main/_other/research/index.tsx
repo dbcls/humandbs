@@ -353,6 +353,7 @@ function TableWrapper() {
       onSortingChange={handleSortingChange}
       meta={{ t, lang, loadingSortColumnId, activeSort }}
       isDimmed={isPaginating}
+      stickyColumnCount={2}
     />
   );
 }

@@ -44,20 +44,6 @@ export function FilterableCard({
     return () => observer.disconnect();
   }, [caption]);
 
-  useEffect(() => {
-    const captionEl = document.getElementById("caption");
-    if (!captionEl) return;
-    const updateHeight = () => {
-      document.documentElement.style.setProperty(
-        "--caption-height",
-        `${captionEl.offsetHeight}px`
-      );
-    };
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(captionEl);
-    updateHeight();
-    return () => observer.disconnect();
-  }, [caption]);
 
   return (
     <Card

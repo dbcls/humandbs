@@ -33,9 +33,13 @@ export function useMaxHeight(bottomReservedSpace = 130) {
     // Recalculate on window resize
     window.addEventListener("resize", updateHeight);
 
-    // Also watch for any DOM mutations or layout shifts
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(document.body);
+    // Also watch for any DOM mutations or layout shifts in the parent container
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(updateHeight);
+    });
+    if (el.parentElement) {
+      observer.observe(el.parentElement);
+    }
 
     return () => {
       window.removeEventListener("resize", updateHeight);

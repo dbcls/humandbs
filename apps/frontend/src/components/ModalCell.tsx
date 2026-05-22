@@ -1,8 +1,7 @@
-import { useState, useRef, useLayoutEffect } from "react";
-import { Button } from "./ui/button";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "use-intl";
-import { cn } from "@/lib/utils";
+
 import {
   Dialog,
   DialogContent,
@@ -10,6 +9,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+import { Button } from "./ui/button";
 
 export function ModalCell({
   children,
@@ -24,7 +26,7 @@ export function ModalCell({
   const contentRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("common");
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!contentRef.current) return;
 
     const checkOverflow = () => {
