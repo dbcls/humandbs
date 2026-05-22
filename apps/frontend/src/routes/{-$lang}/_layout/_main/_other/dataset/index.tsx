@@ -453,6 +453,7 @@ function DatasetsCartHeaderButton({
 }: {
   tableDatasets: DatasetSearchResponse["data"];
 }) {
+  const t = useTranslations("common");
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
     tableDatasets,
   });
@@ -462,6 +463,7 @@ function DatasetsCartHeaderButton({
       variant={"header"}
       state={allInCart || (someInCart ? "indeterminate" : false)}
       onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );
 }

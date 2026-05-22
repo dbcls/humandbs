@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "use-intl";
 
 import { isCartableDatasetId } from "@/hooks/useCart";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
@@ -13,6 +14,7 @@ export function ResearchDatasetCartRowButton({
   datasetId: string;
   humId: string;
 }) {
+  const t = useTranslations("common");
   const isCartable = isCartableDatasetId(datasetId);
 
   const { data } = useQuery({
@@ -27,7 +29,7 @@ export function ResearchDatasetCartRowButton({
   const dataset = data?.data.find((item) => item.datasetId === datasetId);
 
   if (!dataset) {
-    return <AddToCartToggle state={false} disabled />;
+    return <AddToCartToggle state={false} disabled aria-label={t("add-to-cart")} />;
   }
 
   return <DatasetCartRowButton dataset={dataset} />;

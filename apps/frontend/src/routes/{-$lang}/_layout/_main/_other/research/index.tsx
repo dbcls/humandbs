@@ -597,6 +597,7 @@ function AddToCartAllDatasetsButton({
       disabled={!hasCartableDatasets}
       className={cn("shrink-0", className)}
       title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
+      aria-label={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
     />
   );
 }
@@ -606,6 +607,7 @@ function ResearchCartHeaderButton({
 }: {
   tableResearches: ResearchSummary[];
 }) {
+  const t = useTranslations("common");
   const allDatasets = tableResearches.flatMap((row) =>
     row.datasetIds.map((id) => ({ datasetId: id })),
   );
@@ -619,6 +621,7 @@ function ResearchCartHeaderButton({
       variant={"header"}
       state={allInCart || (someInCart ? "indeterminate" : false)}
       onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );
 }

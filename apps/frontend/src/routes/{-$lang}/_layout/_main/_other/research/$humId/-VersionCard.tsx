@@ -192,6 +192,7 @@ function ResearchDatasetsCartHeaderButton({
 }: {
   tableDatasets: ResearchDetailResponse["data"]["datasets"];
 }) {
+  const t = useTranslations("common");
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
     tableDatasets,
   });
@@ -201,6 +202,7 @@ function ResearchDatasetsCartHeaderButton({
       variant={"header"}
       state={allInCart ? true : someInCart ? "indeterminate" : false}
       onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );
 }
