@@ -408,7 +408,23 @@ const columnHelper =
 const columns = [
   columnHelper.display({
     id: "cart",
-    header: () => null,
+    header: (ctx) => {
+      const allDatasets = ctx.table.options.data.flatMap((row) =>
+        row.datasetIds.map((id) => ({ datasetId: id })),
+      );
+
+      const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+        tableDatasets: allDatasets,
+      });
+
+      return (
+        <AddToCartToggle
+          variant={"header"}
+          state={allInCart || (someInCart ? "indeterminate" : false)}
+          onClick={handleClickCart}
+        />
+      );
+    },
     cell: (ctx) => (
       <ClientOnly fallback={<div className="size-8 shrink-0" />}>
         <AddToCartAllDatasetsButton
