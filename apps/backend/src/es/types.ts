@@ -136,9 +136,11 @@ export const EsDatasetSchema = CrawlerDatasetSchema.extend({
   // `.openapi({ type: "object" })` keeps the generated schema valid under
   // OpenAPI 3.0's nullable-type-sibling rule (`z.any()` / `z.unknown()` alone
   // emit `{ nullable: true }` with no `type`).
-  originalMetadata: z.record(z.string(), z.any()).nullable().optional()
+  originalMetadata: z.record(z.string(), z.any())
+    .openapi({ type: "object" })
     .describe("Original metadata preserved from the data source (for debugging/audit)")
-    .openapi({ type: "object" }),
+    .nullable()
+    .optional(),
 })
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 

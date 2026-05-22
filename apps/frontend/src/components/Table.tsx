@@ -192,6 +192,7 @@ function SortHeader<T extends RowData, V extends DeepValue<T, T>>({
         </div>
       ) : (
         <Button
+          variant="ghost"
           className="h-8 w-8 p-0 text-white hover:bg-white/20"
           onClick={ctx.column.getToggleSortingHandler()}
         >

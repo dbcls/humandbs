@@ -338,7 +338,6 @@ export const SearchableDatasetSchema = DatasetSchema.extend({
   // `.openapi({ type: "object" })` is required so that the generated schema
   // has a `type` sibling to `nullable: true` (OpenAPI 3.0 forbids `nullable`
   // without a `type`; `z.any()` alone emits `{ nullable: true }`).
-  originalMetadata: z.record(z.string(), z.any()).nullable().optional()
-    .openapi({ type: "object" }),
+  originalMetadata: z.record(z.string(), z.any()).openapi({ type: "object" }).nullable().optional(),
 })
 export type SearchableDataset = z.infer<typeof SearchableDatasetSchema>
