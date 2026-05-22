@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { withForm } from "../FormContext";
-
-import { BilingualTextValueField } from "./BilingualTextValueField";
 import { BilingualColumnHeader } from "../researchFields/BilingualColumnHeader";
+import { BilingualTextValueField } from "./BilingualTextValueField";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyName = any;
@@ -27,12 +26,7 @@ export const PersonField = withForm({
     withPeriodOfDataUse?: boolean;
     withDatasetIds?: boolean;
   },
-  render({
-    form,
-    baseName,
-    withPeriodOfDataUse = false,
-    withDatasetIds = false,
-  }) {
+  render({ form, baseName, withPeriodOfDataUse = false, withDatasetIds = false }) {
     return (
       <div className="flex flex-col gap-3">
         {/* ORCID search placeholder */}
@@ -44,11 +38,7 @@ export const PersonField = withForm({
 
         {/* Name + Title share a column header */}
         <BilingualColumnHeader />
-        <BilingualTextValueField
-          form={form}
-          baseName={`${baseName}.name`}
-          label="Name *"
-        />
+        <BilingualTextValueField form={form} baseName={`${baseName}.name`} label="Name *" />
 
         <BilingualTextValueField
           form={form}
@@ -70,16 +60,12 @@ export const PersonField = withForm({
         {withPeriodOfDataUse && (
           <div className="flex gap-2">
             <div className="flex-1">
-              <form.AppField
-                name={`${baseName}.periodOfDataUse.startDate` as AnyName}
-              >
+              <form.AppField name={`${baseName}.periodOfDataUse.startDate` as AnyName}>
                 {(f: AnyName) => <f.DateField label="Start Date" />}
               </form.AppField>
             </div>
             <div className="flex-1">
-              <form.AppField
-                name={`${baseName}.periodOfDataUse.endDate` as AnyName}
-              >
+              <form.AppField name={`${baseName}.periodOfDataUse.endDate` as AnyName}>
                 {(f: AnyName) => <f.DateField label="End Date" />}
               </form.AppField>
             </div>
@@ -88,7 +74,7 @@ export const PersonField = withForm({
 
         {/* Organization */}
         <fieldset className="flex flex-col gap-2">
-          <Label className="text-sm font-medium">Organization</Label>
+          <Label className="font-medium text-sm">Organization</Label>
           <div className="rounded border border-gray-300 p-3">
             <div className="flex flex-col gap-2">
               <BilingualTextValueField
@@ -96,9 +82,7 @@ export const PersonField = withForm({
                 baseName={`${baseName}.organization.name`}
                 label="Name"
               />
-              <form.AppField
-                name={`${baseName}.organization.address.country` as AnyName}
-              >
+              <form.AppField name={`${baseName}.organization.address.country` as AnyName}>
                 {(f: AnyName) => <f.TextField type="col" label="Country" />}
               </form.AppField>
             </div>
@@ -107,22 +91,17 @@ export const PersonField = withForm({
 
         {/* Dataset IDs (conditional) */}
         {withDatasetIds && (
-          <form.AppField
-            name={`${baseName}.datasetIds` as AnyName}
-            mode="array"
-          >
+          <form.AppField name={`${baseName}.datasetIds` as AnyName} mode="array">
             {(field: AnyName) => (
               <div className="flex flex-col gap-1">
                 <Label className="text-sm">Dataset IDs</Label>
                 {field.state.value?.map((_: string, j: number) => (
                   <div key={j} className="flex items-center gap-1">
-                    <form.AppField
-                      name={`${baseName}.datasetIds[${j}]` as AnyName}
-                    >
+                    <form.AppField name={`${baseName}.datasetIds[${j}]` as AnyName}>
                       {(f: AnyName) => <f.TextField />}
                     </form.AppField>
                     <button type="button" onClick={() => field.removeValue(j)}>
-                      <Trash2 className="text-danger size-4" />
+                      <Trash2 className="size-4 text-danger" />
                     </button>
                   </div>
                 ))}

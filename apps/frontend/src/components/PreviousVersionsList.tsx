@@ -19,7 +19,7 @@ export function PreviousVersionsList({
 
   return (
     <div>
-      <h2 className="text-md font-bold text-neutral-800">
+      <h2 className="font-bold text-md text-neutral-800">
         {tCommon("previous-versions", { documentName: name })}
       </h2>
       <ul>

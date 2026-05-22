@@ -295,3 +295,27 @@ export const getJgadReleaseDate = async (
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(datePublished)
   return match ? match[1] : null
 }
+
+/**
+ * Fetch JGAD entry and return properties + datePublished in one round trip.
+ * Used by the template API where the admin draft must reflect the latest
+ * upstream record, so this bypasses jgadClient cache.
+ */
+export const getJgadEntry = async (
+  datasetId: string,
+): Promise<
+  { properties: Record<string, unknown>; datePublished: string | null } | null
+> => {
+  if (!datasetId.startsWith("JGAD")) return null
+
+  const response = await fetchJgadFromApi(datasetId)
+  if (!response?.found || !response._source?.properties) return null
+
+  const rawDate = response._source.datePublished
+  const match = rawDate ? /^(\d{4}-\d{2}-\d{2})/.exec(rawDate) : null
+
+  return {
+    properties: response._source.properties,
+    datePublished: match ? match[1] : null,
+  }
+}

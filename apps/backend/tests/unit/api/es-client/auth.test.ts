@@ -11,9 +11,10 @@ import {
   buildStatusFilter,
   canAccessResearchDoc,
   canPerformTransition,
+  checkRequestedStatus,
   validateStatusTransition,
 } from "@/api/es-client/auth"
-import type { AuthUser, EsResearch } from "@/api/types"
+import type { AuthUser, EsResearch, ResearchStatus } from "@/api/types"
 
 import { createMockResearchDoc, createMockAuthUser } from "../helpers/mock-es"
 
@@ -149,6 +150,42 @@ describe("canAccessResearchDoc", () => {
   it("other user can access draft with latestVersion (public visible)", () => {
     expect(canAccessResearchDoc(otherUser, draftWithPublished)).toBe(true)
   })
+})
+
+// === checkRequestedStatus ===
+
+describe("checkRequestedStatus", () => {
+  const cases: { user: "public" | "auth" | "admin"; status: ResearchStatus | undefined; allowed: boolean }[] = [
+    { user: "public", status: undefined, allowed: true },
+    { user: "auth", status: undefined, allowed: true },
+    { user: "admin", status: undefined, allowed: true },
+    { user: "public", status: "published", allowed: true },
+    { user: "auth", status: "published", allowed: true },
+    { user: "admin", status: "published", allowed: true },
+    { user: "public", status: "draft", allowed: false },
+    { user: "auth", status: "draft", allowed: true },
+    { user: "admin", status: "draft", allowed: true },
+    { user: "public", status: "review", allowed: false },
+    { user: "auth", status: "review", allowed: true },
+    { user: "admin", status: "review", allowed: true },
+    { user: "public", status: "deleted", allowed: false },
+    { user: "auth", status: "deleted", allowed: false },
+    { user: "admin", status: "deleted", allowed: true },
+  ]
+
+  for (const { user, status, allowed } of cases) {
+    it(`${user} requesting status=${status ?? "(none)"} -> ${allowed ? "allow" : "deny"}`, () => {
+      const authUser = user === "public"
+        ? null
+        : createMockAuthUser({ isAdmin: user === "admin" })
+      const result = checkRequestedStatus(authUser, status)
+      expect(result.allowed).toBe(allowed)
+      if (!allowed && !result.allowed) {
+        expect(result.message).toBeString()
+        expect(result.message.length).toBeGreaterThan(0)
+      }
+    })
+  }
 })
 
 // === validateStatusTransition ===

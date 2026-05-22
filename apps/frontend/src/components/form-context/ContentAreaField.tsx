@@ -1,6 +1,7 @@
 import MDEditor from "@uiw/react-md-editor";
 import GithubSlugger from "github-slugger";
 import { ListIcon, PaperclipIcon } from "lucide-react";
+
 import { lazy, Suspense, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,9 @@ import {
 import type { AssetHierarchyFile } from "@/serverFunctions/assets";
 
 import { buildAssetMarkdown } from "./content-area-asset-utils";
-
 import { useFieldContext } from "./FormContext";
 
-const MarkdownClientPreview = lazy(
-  () => import("@/components/markdown/MarkdownClientPreview"),
-);
+const MarkdownClientPreview = lazy(() => import("@/components/markdown/MarkdownClientPreview"));
 
 export default function ContentAreaField({
   label,
@@ -37,9 +35,7 @@ export default function ContentAreaField({
   const field = useFieldContext<string>();
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<AssetHierarchyFile | null>(
-    null,
-  );
+  const [selectedAsset, setSelectedAsset] = useState<AssetHierarchyFile | null>(null);
 
   function generateTOC() {
     const currentValue = field.state.value ?? "";
@@ -63,20 +59,16 @@ export default function ContentAreaField({
   function insertAssetMarkdown(asset: AssetHierarchyFile) {
     const markdown = buildAssetMarkdown(asset);
     const currentValue = field.state.value ?? "";
-    const textarea =
-      editorContainerRef.current?.querySelector("textarea") ?? null;
+    const textarea = editorContainerRef.current?.querySelector("textarea") ?? null;
 
     if (!textarea) {
-      field.handleChange(
-        currentValue ? `${currentValue}\n${markdown}` : markdown,
-      );
+      field.handleChange(currentValue ? `${currentValue}\n${markdown}` : markdown);
       return;
     }
 
     const start = textarea.selectionStart ?? currentValue.length;
     const end = textarea.selectionEnd ?? currentValue.length;
-    const nextValue =
-      currentValue.slice(0, start) + markdown + currentValue.slice(end);
+    const nextValue = currentValue.slice(0, start) + markdown + currentValue.slice(end);
 
     field.handleChange(nextValue);
 
@@ -88,7 +80,7 @@ export default function ContentAreaField({
   }
 
   return (
-    <div className="flex w-full flex-1 flex-col gap-2 text-sm font-medium">
+    <div className="flex w-full flex-1 flex-col gap-2 font-medium text-sm">
       <div className="flex items-center justify-between gap-2">
         <span>{label}</span>
         <div className="flex items-center gap-5">
@@ -96,21 +88,13 @@ export default function ContentAreaField({
             <ListIcon className="mr-2 size-4" />
             Append TOC to the top
           </Button>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setDialogOpen(true)}
-          >
+          <Button variant="outline" type="button" onClick={() => setDialogOpen(true)}>
             <PaperclipIcon className="mr-2 size-4" />
             Attach asset
           </Button>
         </div>
       </div>
-      <div
-        ref={editorContainerRef}
-        data-color-mode="light"
-        className="min-h-0 flex-1"
-      >
+      <div ref={editorContainerRef} data-color-mode="light" className="min-h-0 flex-1">
         <MDEditor
           highlightEnable={true}
           value={field.state.value ?? ""}
@@ -152,11 +136,7 @@ export default function ContentAreaField({
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => setDialogOpen(false)}
-            >
+            <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
             <Button

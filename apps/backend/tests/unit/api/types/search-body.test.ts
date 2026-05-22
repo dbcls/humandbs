@@ -89,3 +89,69 @@ describe("DatasetSearchBodySchema", () => {
     })
   })
 })
+
+describe("SearchBody pagination & boundary", () => {
+  it("rejects page = 0 / -1 / NaN", () => {
+    for (const page of [0, -1, Number.NaN]) {
+      expect(ResearchSearchBodySchema.safeParse({ page }).success).toBe(false)
+    }
+  })
+
+  it("rejects limit = 0 and limit > 100", () => {
+    expect(ResearchSearchBodySchema.safeParse({ limit: 0 }).success).toBe(false)
+    expect(ResearchSearchBodySchema.safeParse({ limit: 101 }).success).toBe(false)
+  })
+
+  it("rejects unsupported lang values", () => {
+    expect(ResearchSearchBodySchema.safeParse({ lang: "zh" }).success).toBe(false)
+  })
+
+  it("rejects includeFacets given a non-boolean", () => {
+    // The body schema treats includeFacets as a strict boolean (no coercion):
+    // a string "yes" is invalid input.
+    expect(ResearchSearchBodySchema.safeParse({ includeFacets: "yes" }).success).toBe(false)
+  })
+
+  it("strips unexpected fields silently (zod default behaviour)", () => {
+    const parsed = ResearchSearchBodySchema.parse({ futureField: 1, somethingElse: "x" } as unknown as object)
+    // strip semantics: unknown keys do not survive the parse.
+    expect((parsed as Record<string, unknown>).futureField).toBeUndefined()
+    expect((parsed as Record<string, unknown>).somethingElse).toBeUndefined()
+  })
+
+  it("rejects datasetFilters that contain null or invalid entries", () => {
+    // datasetFilters is an object on Research search; null is structurally invalid.
+    expect(ResearchSearchBodySchema.safeParse({ datasetFilters: null }).success).toBe(false)
+  })
+
+  it("rejects datePublished.min when not ISO-formatted", () => {
+    const r = ResearchSearchBodySchema.safeParse({ datePublished: { min: "not-a-date" } })
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      const issuePaths = r.error.issues.map(i => i.path.join("."))
+      expect(issuePaths).toContain("datePublished.min")
+    }
+  })
+
+  it("accepts datePublished.min as ISO 8601 date (YYYY-MM-DD)", () => {
+    const r = ResearchSearchBodySchema.safeParse({ datePublished: { min: "2024-01-01" } })
+    expect(r.success).toBe(true)
+  })
+
+  it("accepts datePublished as ISO 8601 date-time with UTC offset", () => {
+    const r = ResearchSearchBodySchema.safeParse({
+      datePublished: { min: "2024-01-01T00:00:00Z", max: "2024-12-31T23:59:59+09:00" },
+    })
+    expect(r.success).toBe(true)
+  })
+
+  it("accepts datePublished.max with timezone-less time (regex permits HH:MM without zone)", () => {
+    const r = ResearchSearchBodySchema.safeParse({ datePublished: { max: "2024-01-01T00:00" } })
+    expect(r.success).toBe(true)
+  })
+
+  it("rejects non-ISO formats like '2024/01/01'", () => {
+    const r = ResearchSearchBodySchema.safeParse({ datePublished: { max: "2024/01/01" } })
+    expect(r.success).toBe(false)
+  })
+})

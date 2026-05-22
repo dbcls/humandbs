@@ -70,8 +70,6 @@ describe("ResearchDetailSchema (unified)", () => {
     versionReleaseDate: "2024-01-01",
     releaseNote: { ja: null, en: null },
     datasets: [],
-    _seq_no: 1,
-    _primary_term: 1,
   }
 
   it("always includes status, uids, draftVersion", () => {
@@ -118,17 +116,19 @@ describe("ResearchDetailSchema (unified)", () => {
     }
   })
 
-  it("includes optimistic locking fields", () => {
+  it("excludes optimistic locking fields (lock travels in response meta)", () => {
     const result = ResearchDetailSchema.safeParse({
       ...baseDetail,
       status: "published",
       uids: [],
       draftVersion: null,
+      _seq_no: 1,
+      _primary_term: 1,
     })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data._seq_no).toBe(1)
-      expect(result.data._primary_term).toBe(1)
+      expect("_seq_no" in result.data).toBe(false)
+      expect("_primary_term" in result.data).toBe(false)
     }
   })
 })

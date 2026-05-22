@@ -2,7 +2,6 @@ import type { DateStringRange } from "@/utils/dates";
 
 import { DateRangePicker } from "../DatePicker";
 import { Label } from "../ui/label";
-
 import { useFieldContext } from "./FormContext";
 
 export default function DateRangeField({
@@ -17,10 +16,7 @@ export default function DateRangeField({
   return (
     <Label className={className}>
       <span>{label}</span>
-      <DateRangePicker
-        value={field.state.value}
-        onSelect={field.handleChange}
-      />
+      <DateRangePicker value={field.state.value} onSelect={field.handleChange} />
     </Label>
   );
 }

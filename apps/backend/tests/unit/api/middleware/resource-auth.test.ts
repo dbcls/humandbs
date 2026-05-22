@@ -105,7 +105,7 @@ const { loadResearchAndAuthorize, loadDatasetAndAuthorize } = await import(
 )
 
 /** Create a minimal Hono app with the middleware under test */
-const createTestApp = (options: { requireOwnership?: boolean; adminOnly?: boolean } = {}) => {
+const createTestApp = (options: { requireOwnership?: boolean; requireAdmin?: boolean } = {}) => {
   const app = new Hono()
 
   // Error handler: convert AppError to proper HTTP status
@@ -248,8 +248,8 @@ describe("loadResearchAndAuthorize", () => {
     })
   })
 
-  describe("adminOnly: true", () => {
-    const app = createTestApp({ adminOnly: true })
+  describe("requireAdmin: true", () => {
+    const app = createTestApp({ requireAdmin: true })
 
     it("allows admin", async () => {
       mockGetResearchWithSeqNo.mockResolvedValue({ doc: ownerDoc, seqNo: 1, primaryTerm: 1 })
@@ -286,7 +286,7 @@ describe("loadResearchAndAuthorize", () => {
 /** Minimal Hono app exercising loadDatasetAndAuthorize on /:datasetId/action */
 const createDatasetTestApp = (options: {
   requireOwnership?: boolean
-  adminOnly?: boolean
+  requireAdmin?: boolean
   requireParentDraft?: boolean
 } = {}) => {
   const app = new Hono()
@@ -428,7 +428,7 @@ describe("loadDatasetAndAuthorize", () => {
       expect(body.detail).toBe("Not authorized to update this dataset")
     })
 
-    it("returns 403 with parent-draft message when parent is published", async () => {
+    it("returns 409 with parent-draft message when parent is published", async () => {
       mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
       mockGetResearchDoc.mockResolvedValue(publishedParent)
 
@@ -437,12 +437,12 @@ describe("loadDatasetAndAuthorize", () => {
         headers: { "X-Test-Auth": JSON.stringify(admin) },
       })
 
-      expect(res.status).toBe(403)
+      expect(res.status).toBe(409)
       const body = (await res.json()) as { detail: string }
-      expect(body.detail).toMatch(/parent Research is not in draft/i)
+      expect(body.detail).toMatch(/'published' status, expected 'draft'/)
     })
 
-    it("returns 403 with parent-draft message when parent is in review", async () => {
+    it("returns 409 with parent-draft message when parent is in review", async () => {
       mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
       mockGetResearchDoc.mockResolvedValue(reviewParent)
 
@@ -451,9 +451,9 @@ describe("loadDatasetAndAuthorize", () => {
         headers: { "X-Test-Auth": JSON.stringify(owner) },
       })
 
-      expect(res.status).toBe(403)
+      expect(res.status).toBe(409)
       const body = (await res.json()) as { detail: string }
-      expect(body.detail).toMatch(/parent Research is not in draft/i)
+      expect(body.detail).toMatch(/'review' status, expected 'draft'/)
     })
 
     it("returns 404 when parent Research has status=deleted (before parent-draft check)", async () => {
@@ -544,8 +544,8 @@ describe("loadDatasetAndAuthorize", () => {
     })
   })
 
-  describe("adminOnly: true", () => {
-    const app = createDatasetTestApp({ adminOnly: true })
+  describe("requireAdmin: true", () => {
+    const app = createDatasetTestApp({ requireAdmin: true })
 
     it("allows admin", async () => {
       mockGetDatasetWithSeqNo.mockResolvedValue({ doc: dataset, seqNo: 1, primaryTerm: 1 })
@@ -566,7 +566,7 @@ describe("loadDatasetAndAuthorize", () => {
       })
 
       expect(res.status).toBe(403)
-      // adminOnly fails before any ES lookup
+      // requireAdmin fails before any ES lookup
       expect(mockGetDatasetWithSeqNo).not.toHaveBeenCalled()
     })
 

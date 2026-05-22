@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import type * as THREE from "three";
 // --- Types & Data Fetching ---
 
 export type StatsSatellite = {
@@ -27,7 +27,7 @@ export type StatsState = {
   error: string;
   stats: NormalizedStats | null;
 };
-export type SimNode = StatsSatellite & { 
+export type SimNode = StatsSatellite & {
   d3Radius: number;
   color: THREE.Color;
   baseColor: THREE.Color;

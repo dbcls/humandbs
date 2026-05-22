@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,9 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { TextareaAutosize } from "@/components/ui/textarea";
 import { $createResearchVersion } from "@/serverFunctions/researches";
+
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 
 export function NewVersionDialog({
   humId,
@@ -82,32 +84,27 @@ export function NewVersionDialog({
         {error ? <AdminStatusMessage>{error}</AdminStatusMessage> : null}
 
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-gray-500">
-            Optionally add a bilingual release note describing what changed in
-            this version.
+          <p className="text-gray-500 text-sm">
+            Optionally add a bilingual release note describing what changed in this version.
           </p>
           <div className="flex gap-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs font-medium text-gray-400 uppercase">
-                En
-              </label>
+              <label className="font-medium text-gray-400 text-xs uppercase">En</label>
               <TextareaAutosize
                 minRows={4}
                 maxRows={8}
-                className="bg-primary w-full resize-none rounded-lg px-3 py-2 text-sm"
+                className="w-full resize-none rounded-lg bg-primary px-3 py-2 text-sm"
                 placeholder="Release note (English)"
                 value={enText}
                 onChange={(e) => setEnText(e.target.value)}
               />
             </div>
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs font-medium text-gray-400 uppercase">
-                Ja
-              </label>
+              <label className="font-medium text-gray-400 text-xs uppercase">Ja</label>
               <TextareaAutosize
                 minRows={4}
                 maxRows={8}
-                className="bg-primary w-full resize-none rounded-lg px-3 py-2 text-sm"
+                className="w-full resize-none rounded-lg bg-primary px-3 py-2 text-sm"
                 placeholder="リリースノート（日本語）"
                 value={jaText}
                 onChange={(e) => setJaText(e.target.value)}
@@ -125,11 +122,7 @@ export function NewVersionDialog({
           >
             Cancel
           </Button>
-          <Button
-            size="slim"
-            onClick={() => createVersion()}
-            disabled={isPending}
-          >
+          <Button size="slim" onClick={() => createVersion()} disabled={isPending}>
             {isPending ? "Creating…" : "Create version"}
           </Button>
         </DialogFooter>

@@ -153,9 +153,11 @@ describe("Bug42: research list ignored lang=en for title", () => {
 
 ```bash
 # Unit (デフォルト)
-docker compose exec backend bun test
+docker compose exec backend bun run test              # test:api && test:es && test:crawler のチェーン (公式の入り口)
 docker compose exec backend bun run test:api          # API のみ (テストファイル毎に独立プロセス、mock 干渉なし)
 docker compose exec backend bun run test:api:bulk     # 1 プロセス一括実行 (高速だが mock.module 干渉あり)
+# NOTE: `bun test` (npm script を bypass) は全ファイルを 1 プロセスで実行するため
+# mock.module() がファイル間で leak して fail する。必ず `bun run test` 経由で実行する。
 
 # Integration (実 ES + 実 DB 必要)
 docker compose exec backend bun run test:integration

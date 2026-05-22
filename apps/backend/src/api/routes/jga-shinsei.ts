@@ -15,7 +15,14 @@ import {
 import { createOpenAPIHono } from "@/api/helpers/openapi-hono"
 import { listResponse, singleReadOnlyResponse } from "@/api/helpers/response"
 import { requireAdmin, requireAuth } from "@/api/middleware/auth"
-import { ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
+import { SECURITY_REQUIRES_AUTH } from "@/api/openapi/document"
+import {
+  exampleDsApplicationDetailResponse,
+  exampleDsApplicationListResponse,
+  exampleDuApplicationDetailResponse,
+  exampleDuApplicationListResponse,
+} from "@/api/openapi/examples"
+import { ErrorSpec400, ErrorSpec401, ErrorSpec403, ErrorSpec404, ErrorSpec500 } from "@/api/routes/errors"
 import {
   createPagination,
   PaginationQuerySchema,
@@ -33,16 +40,20 @@ const listDsRoute = createRoute({
   method: "get",
   path: "/ds",
   tags: ["JGA Shinsei"],
+  operationId: "listDsApplications",
   summary: "List DS Applications",
-  description: "List all DS (data submission) applications. Requires admin authentication.",
+  description: "**Authorization:** Admin only.\n\nList all DS (data submission) applications.",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   request: {
     query: PaginationQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DsApplicationListResponseSchema } },
+      content: { "application/json": { schema: DsApplicationListResponseSchema, example: exampleDsApplicationListResponse } },
       description: "List of DS applications",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     500: ErrorSpec500,
@@ -53,16 +64,20 @@ const getDsRoute = createRoute({
   method: "get",
   path: "/ds/{jdsId}",
   tags: ["JGA Shinsei"],
+  operationId: "getDsApplication",
   summary: "Get DS Application",
-  description: "Get a single DS application by jdsId. Requires admin authentication.",
+  description: "**Authorization:** Admin only.\n\nGet a single DS application by jdsId.",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   request: {
     params: JdsIdParamsSchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DsApplicationDetailResponseSchema } },
+      content: { "application/json": { schema: DsApplicationDetailResponseSchema, example: exampleDsApplicationDetailResponse } },
       description: "DS application detail",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,
@@ -74,16 +89,20 @@ const listDuRoute = createRoute({
   method: "get",
   path: "/du",
   tags: ["JGA Shinsei"],
+  operationId: "listDuApplications",
   summary: "List DU Applications",
-  description: "List all DU (data use) applications. Requires admin authentication.",
+  description: "**Authorization:** Admin only.\n\nList all DU (data use) applications.",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   request: {
     query: PaginationQuerySchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DuApplicationListResponseSchema } },
+      content: { "application/json": { schema: DuApplicationListResponseSchema, example: exampleDuApplicationListResponse } },
       description: "List of DU applications",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     500: ErrorSpec500,
@@ -94,16 +113,20 @@ const getDuRoute = createRoute({
   method: "get",
   path: "/du/{jduId}",
   tags: ["JGA Shinsei"],
+  operationId: "getDuApplication",
   summary: "Get DU Application",
-  description: "Get a single DU application by jduId. Requires admin authentication.",
+  description: "**Authorization:** Admin only.\n\nGet a single DU application by jduId.",
+  security: SECURITY_REQUIRES_AUTH,
+  "x-admin-only": true,
   request: {
     params: JduIdParamsSchema,
   },
   responses: {
     200: {
-      content: { "application/json": { schema: DuApplicationDetailResponseSchema } },
+      content: { "application/json": { schema: DuApplicationDetailResponseSchema, example: exampleDuApplicationDetailResponse } },
       description: "DU application detail",
     },
+    400: ErrorSpec400,
     401: ErrorSpec401,
     403: ErrorSpec403,
     404: ErrorSpec404,

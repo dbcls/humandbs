@@ -1,0 +1,101 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+  },
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "!**/routeTree.gen.ts",
+      "!!**/dist",
+      "!!**/node_modules/**/*",
+      "!!**/bun.lock",
+    ],
+  },
+
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100, // default is `80`
+  },
+
+  "linter": {
+    "includes": ["**", "!**/*.test.ts"],
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "noUnusedImports": "error",
+      },
+      "nursery": {
+        "useSortedClasses": {
+          "level": "on",
+          "fix": "safe",
+          "options": {
+            "attributes": ["classList", "\\w*[(c|C)lassName]"],
+            "functions": ["clsx", "cva", "tw", "tw.*"],
+          },
+        },
+      },
+      "style": {
+        "useImportType": {
+          "level": "on",
+          "options": {
+            "style": "separatedType",
+          },
+        },
+      },
+    },
+    "domains": {
+      "react": "recommended",
+    },
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+    },
+  },
+  "json": {
+    "formatter": {
+      "enabled": false,
+    },
+  },
+
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              [":BUN:", ":NODE:"],
+              ":BLANK_LINE:",
+              [
+                ":PACKAGE:",
+                ":PACKAGE_WITH_PROTOCOL:",
+                "!@humandbs/backend/**",
+                "!react",
+                "!react/**",
+                "!react-*",
+                "!react-*/**",
+              ],
+              ":BLANK_LINE:",
+              ["react", "react/**", "react-*", "react-*/**"],
+              ":BLANK_LINE:",
+              "@humandbs/backend/**",
+              ":BLANK_LINE:",
+              ":ALIAS:",
+              ":BLANK_LINE:",
+              ":PATH:",
+            ],
+          },
+        },
+      },
+    },
+  },
+}

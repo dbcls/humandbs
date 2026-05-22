@@ -1,15 +1,15 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 
-import { USER_ROLES, type UserRole } from "@/config/permissions";
+import type { UserRole } from "@/config/permissions";
+import { USER_ROLES } from "@/config/permissions";
+import type { SessionMeta, SessionUser } from "@/utils/jwt-helpers";
 import {
   $$ensureFreshSession,
-  getClearSessionCookieOptions,
   $$getSessionCookieOptions,
-  SESSION_COOKIE_NAME,
-  type SessionUser,
   $$stringifySession,
-  type SessionMeta,
+  getClearSessionCookieOptions,
+  SESSION_COOKIE_NAME,
 } from "@/utils/jwt-helpers";
 
 interface AuthUserResponse {
@@ -26,9 +26,7 @@ export const $$getServerBackendBaseUrl = createServerOnlyFn(
 export const $$resolveUserRole = createServerOnlyFn(
   async (accessToken: string): Promise<UserRole> => {
     const backendBaseUrl = $$getServerBackendBaseUrl();
-    const base = backendBaseUrl.endsWith("/")
-      ? backendBaseUrl
-      : `${backendBaseUrl}/`;
+    const base = backendBaseUrl.endsWith("/") ? backendBaseUrl : `${backendBaseUrl}/`;
     const isAdminUrl = new URL("admin/is-admin", base);
 
     const isAdminRes = await fetch(isAdminUrl, {
@@ -58,8 +56,7 @@ function getDevBypassResponse(): AuthUserResponse | null {
   }
 
   const roleEnv = process.env.AUTH_DEV_ROLE?.toLowerCase();
-  const role: UserRole =
-    roleEnv === "user" ? USER_ROLES.USER : USER_ROLES.ADMIN;
+  const role: UserRole = roleEnv === "user" ? USER_ROLES.USER : USER_ROLES.ADMIN;
 
   const mockUser: SessionUser = {
     id: process.env.AUTH_DEV_USER_ID ?? "dev-user-id",
@@ -79,72 +76,69 @@ function getDevBypassResponse(): AuthUserResponse | null {
   return { user: mockUser, session: mockSession };
 }
 
-export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(
-  async () => {
-    // Check for dev bypass first
-    const bypassResponse = getDevBypassResponse();
-    if (bypassResponse && process.env.NODE_ENV === "development") {
-      return bypassResponse;
+export const $getAuthUser = createServerFn().handler<Promise<AuthUserResponse>>(async () => {
+  // Check for dev bypass first
+  const bypassResponse = getDevBypassResponse();
+  if (bypassResponse && process.env.NODE_ENV === "development") {
+    return bypassResponse;
+  }
+
+  try {
+    const { session, claims, refreshed, shouldClear } = await $$ensureFreshSession();
+
+    if (shouldClear) {
+      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
     }
 
-    try {
-      const { session, claims, refreshed, shouldClear } =
-        await $$ensureFreshSession();
-
-      if (shouldClear) {
-        setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
-      }
-
-      if (!session || !claims?.sub) {
-        return { user: null, session: null };
-      }
-
-      if (refreshed) {
-        setCookie(
-          SESSION_COOKIE_NAME,
-          $$stringifySession(session),
-          $$getSessionCookieOptions(session),
-        );
-      }
-
-      let role = session.role;
-
-      if (!role) {
-        role = await $$resolveUserRole(session.access_token);
-
-        setCookie(
-          SESSION_COOKIE_NAME,
-          $$stringifySession({
-            ...session,
-            role,
-          }),
-          $$getSessionCookieOptions({
-            ...session,
-            role,
-          }),
-        );
-      }
-
-      const user: SessionUser = {
-        id: claims.sub,
-        name: claims.name ?? "",
-        email: claims.email ?? "",
-        username: claims.preferred_username ?? "",
-        role,
-      };
-
-      const sessionMeta: SessionMeta = {
-        expires_at: session.expires_at,
-        refresh_expires_at: session.refresh_expires_at,
-        expires_in: session.expires_in,
-        refresh_expires_in: session.refresh_expires_in,
-      };
-
-      return { user, session: sessionMeta };
-    } catch (error) {
-      console.error("Error in $getAuthUser:", error);
-      setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+    if (!session || !claims?.sub) {
       return { user: null, session: null };
     }
-  },
-);
+
+    if (refreshed) {
+      setCookie(
+        SESSION_COOKIE_NAME,
+        $$stringifySession(session),
+        $$getSessionCookieOptions(session),
+      );
+    }
+
+    let role = session.role;
+
+    if (!role) {
+      role = await $$resolveUserRole(session.access_token);
+
+      setCookie(
+        SESSION_COOKIE_NAME,
+        $$stringifySession({
+          ...session,
+          role,
+        }),
+        $$getSessionCookieOptions({
+          ...session,
+          role,
+        }),
+      );
+    }
+
+    const user: SessionUser = {
+      id: claims.sub,
+      name: claims.name ?? "",
+      email: claims.email ?? "",
+      username: claims.preferred_username ?? "",
+      role,
+    };
+
+    const sessionMeta: SessionMeta = {
+      expires_at: session.expires_at,
+      refresh_expires_at: session.refresh_expires_at,
+      expires_in: session.expires_in,
+      refresh_expires_in: session.refresh_expires_in,
+    };
+
+    return { user, session: sessionMeta };
+  } catch (error) {
+    console.error("Error in $getAuthUser:", error);
+    setCookie(SESSION_COOKIE_NAME, "", getClearSessionCookieOptions());
+    return { user: null, session: null };
+  }
+});

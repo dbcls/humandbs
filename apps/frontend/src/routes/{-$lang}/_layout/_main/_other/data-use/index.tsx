@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button";
 import { $getLatestPublishedDocumentVersion } from "@/serverFunctions/documentVersion";
 import { renderMarkdown } from "@/utils/markdown";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/data-use/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/data-use/")({
   component: RouteComponent,
   loader: async ({ context }) => {
     const data = await $getLatestPublishedDocumentVersion({

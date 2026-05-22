@@ -1,11 +1,13 @@
 import { QueryClient } from "@tanstack/react-query";
-import { createRouter, type LocationRewrite } from "@tanstack/react-router";
+import type { LocationRewrite } from "@tanstack/react-router";
+import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { NotFound } from "@/components/NotFound";
-import { i18n, type Locale, type Messages } from "@/config/i18n";
-import { type ResolvedSiteNavigation } from "@/config/site-navigation";
+import type { Locale, Messages } from "@/config/i18n";
+import { i18n } from "@/config/i18n";
+import type { ResolvedSiteNavigation } from "@/config/site-navigation";
 import { routeTree } from "@/routeTree.gen";
 
 export interface Context {

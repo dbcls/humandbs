@@ -47,6 +47,24 @@ void mock.module("@/api/es-client/client", () => ({
   isDocumentExistsError: () => false,
 }))
 
+// `logger` is mocked at the module boundary so the post-filter defence-in-depth
+// test below can observe `logger.error` calls without monkey-patching the
+// exported object at runtime.
+const noopLog: (message: string, context?: unknown) => void = () => undefined
+const mockLoggerError = mock<(message: string, context?: unknown) => void>(noopLog)
+const mockLoggerWarn = mock<(message: string, context?: unknown) => void>(noopLog)
+const mockLoggerInfo = mock<(message: string, context?: unknown) => void>(noopLog)
+const mockLoggerDebug = mock<(message: string, context?: unknown) => void>(noopLog)
+
+void mock.module("@/api/logger", () => ({
+  logger: {
+    error: mockLoggerError,
+    warn: mockLoggerWarn,
+    info: mockLoggerInfo,
+    debug: mockLoggerDebug,
+  },
+}))
+
 const { searchResearches } = await import("@/api/es-client/search")
 
 // ResearchSearchQuery has many required fields; cast to the runtime shape via unknown for tests.
@@ -64,6 +82,10 @@ beforeEach(() => {
   mockEsSearch.mockReset()
   mockEsMget.mockReset()
   mockEsMget.mockResolvedValue({ docs: [] })
+  mockLoggerError.mockClear()
+  mockLoggerWarn.mockClear()
+  mockLoggerInfo.mockClear()
+  mockLoggerDebug.mockClear()
 })
 
 describe("searchResearches: full-text query via Dataset-side resolution (IT-SEARCH-12)", () => {
@@ -167,15 +189,28 @@ describe("searchResearches: visibility filter", () => {
   })
 })
 
-describe("searchResearches: explicit status request authorization", () => {
-  it("public requesting non-published returns empty without contacting ES research index", async () => {
-    const result = await searchResearches({ ...baseQuery, status: "draft" }, null)
+describe("searchResearches: post-filter defence-in-depth", () => {
+  it("excludes a doc with latestVersion=null + empty uids that the ES query should have filtered (public)", async () => {
+    // Inject a doc the public ES query "should" never return — to prove the
+    // post-filter actually drops it as a backstop and reports via logger.error.
+    const goodDoc = createMockResearchDoc({ humId: "hum0001", latestVersion: "v1", uids: [] })
+    const leakedDoc = createMockResearchDoc({ humId: "hum0099", latestVersion: null, uids: [] })
+    mockEsSearch.mockImplementationOnce(async () => ({
+      hits: { total: { value: 2 }, hits: [{ _source: goodDoc }, { _source: leakedDoc }] },
+    }))
 
-    expect(result.data).toEqual([])
-    expect(result.pagination.total).toBe(0)
-    // No research-index search should have been issued (route layer enforces 403, this layer short-circuits)
-    expect(searchCalls.some(c => c.index === "research")).toBe(false)
+    const result = await searchResearches({ ...baseQuery }, null)
+
+    expect(result.data.map(d => d.humId)).toEqual(["hum0001"])
+    const loggedMessages = mockLoggerError.mock.calls.map(call => call[0])
+    expect(loggedMessages.some(m => m.includes("post-filter excluded"))).toBe(true)
   })
+})
+
+describe("searchResearches: explicit status request scoping", () => {
+  // Authorization (e.g. forbidding public from requesting `draft`) is the route
+  // layer's job; this layer just builds the ES query. The route caller is
+  // expected to short-circuit with 403 before reaching here.
 
   it("authenticated non-admin requesting draft scopes to own uids (IT-AUTH-17 / IT-RESEARCH-03)", async () => {
     mockEsSearch.mockImplementationOnce(async () => ({ hits: { total: { value: 0 }, hits: [] } }))

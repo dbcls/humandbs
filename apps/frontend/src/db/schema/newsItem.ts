@@ -1,11 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { user } from "./auth-schema";
 import { newsItemTag } from "./newsTag";
@@ -43,12 +37,9 @@ export const newsTranslation = pgTable(
   (table) => [primaryKey({ columns: [table.newsId, table.lang] })],
 );
 
-export const newsTranslationRelations = relations(
-  newsTranslation,
-  ({ one }) => ({
-    newsItem: one(newsItem, {
-      fields: [newsTranslation.newsId],
-      references: [newsItem.id],
-    }),
+export const newsTranslationRelations = relations(newsTranslation, ({ one }) => ({
+  newsItem: one(newsItem, {
+    fields: [newsTranslation.newsId],
+    references: [newsItem.id],
   }),
-);
+}));

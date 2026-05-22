@@ -25,9 +25,7 @@ export function useSessionRefresh({
   bufferSeconds = 60,
   onUnauthorized,
 }: UseSessionRefreshOptions) {
-  const [expiresAt, setExpiresAt] = useState<string | null>(
-    session?.expires_at ?? null,
-  );
+  const [expiresAt, setExpiresAt] = useState<string | null>(session?.expires_at ?? null);
   const timeoutRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -69,17 +67,14 @@ export function useSessionRefresh({
       }
 
       const data = (await response.json()) as RefreshResponse;
-      const nextExpiresAt =
-        data?.session?.expires_at ?? data?.session?.expiresAt ?? null;
+      const nextExpiresAt = data?.session?.expires_at ?? data?.session?.expiresAt ?? null;
 
       if (nextExpiresAt) {
         setExpiresAt(nextExpiresAt);
       }
 
       const refreshExpiresAt =
-        data?.session?.refresh_expires_at ??
-        data?.session?.refreshExpiresAt ??
-        null;
+        data?.session?.refresh_expires_at ?? data?.session?.refreshExpiresAt ?? null;
 
       if (refreshExpiresAt) {
         // If refresh token already expired, force re-login.

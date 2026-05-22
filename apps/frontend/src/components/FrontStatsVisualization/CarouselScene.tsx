@@ -1,15 +1,17 @@
-import { useRef, useState, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { NormalizedStats, DebugParams } from "./types";
+
+import { useEffect, useRef, useState } from "react";
+
 import BlobCluster from "./BlobCluster";
 import CameraUpdater from "./CameraUpdater";
 import { INITIAL_SCENE_OFFSET_Y } from "./constants";
+import type { DebugParams, NormalizedStats } from "./types";
 
-export default function CarouselScene({ 
-  stats, 
-  mode, 
-  onNavigate, 
+export default function CarouselScene({
+  stats,
+  mode,
+  onNavigate,
   carouselRadius,
   rotationSpeed,
   particleScale,
@@ -19,21 +21,21 @@ export default function CarouselScene({
   lightPoint1,
   lightPoint2,
   globalMaxCount,
-  debugParams
-}: { 
-  stats: NormalizedStats, 
-  mode: "dataset" | "research", 
-  onNavigate: (facet: string, value: string) => void,
-  carouselRadius: number,
-  rotationSpeed: number,
-  particleScale: number,
-  lightAmbient: number,
-  lightAmbientColor: string,
-  lightDirectional: number,
-  lightPoint1: number,
-  lightPoint2: number,
-  globalMaxCount: number,
-  debugParams: DebugParams
+  debugParams,
+}: {
+  stats: NormalizedStats;
+  mode: "dataset" | "research";
+  onNavigate: (facet: string, value: string) => void;
+  carouselRadius: number;
+  rotationSpeed: number;
+  particleScale: number;
+  lightAmbient: number;
+  lightAmbientColor: string;
+  lightDirectional: number;
+  lightPoint1: number;
+  lightPoint2: number;
+  globalMaxCount: number;
+  debugParams: DebugParams;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -46,7 +48,7 @@ export default function CarouselScene({
 
   useEffect(() => {
     return () => {
-      document.body.style.cursor = 'auto';
+      document.body.style.cursor = "auto";
     };
   }, []);
 
@@ -67,7 +69,7 @@ export default function CarouselScene({
 
     let normalizedRot = groupRef.current.rotation.y % (Math.PI * 2);
     if (normalizedRot < 0) normalizedRot += Math.PI * 2;
-    
+
     const slice = (Math.PI * 2) / total;
     let closestIdx = Math.round(normalizedRot / slice) % total;
     closestIdx = (total - closestIdx) % total;
@@ -111,25 +113,32 @@ export default function CarouselScene({
         isAnyHovered={hoveredIndex !== null}
       />
 
-      <fog attach="fog" args={['#f8fafc', debugParams?.fogNear ?? 500, (hoveredIndex !== null ? 6000 : (debugParams?.fogFar ?? 3000))]} />
+      <fog
+        attach="fog"
+        args={[
+          "#f8fafc",
+          debugParams?.fogNear ?? 500,
+          hoveredIndex !== null ? 6000 : (debugParams?.fogFar ?? 3000),
+        ]}
+      />
       <ambientLight intensity={lightAmbient} color={lightAmbientColor} />
       <directionalLight position={[10, 20, 15]} intensity={lightDirectional} color="#ffffff" />
       <directionalLight position={[-20, -10, -20]} intensity={lightPoint1} color="#00f0ff" />
       <directionalLight position={[20, -10, 20]} intensity={lightPoint2} color="#ff00a0" />
 
-      <mesh 
-        onPointerOver={() => document.body.style.cursor = isDragging ? 'grabbing' : 'grab'}
+      <mesh
+        onPointerOver={() => (document.body.style.cursor = isDragging ? "grabbing" : "grab")}
         onPointerDown={(e) => {
-          document.body.style.cursor = 'grabbing';
+          document.body.style.cursor = "grabbing";
           handlePointerDown(e);
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={(e) => {
-          document.body.style.cursor = 'grab';
+          document.body.style.cursor = "grab";
           handlePointerUp(e);
         }}
         onPointerOut={(e) => {
-          document.body.style.cursor = 'auto';
+          document.body.style.cursor = "auto";
           handlePointerUp(e);
         }}
       >
@@ -137,7 +146,10 @@ export default function CarouselScene({
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.BackSide} />
       </mesh>
 
-      <group rotation={[-0.2, 0, 0]} position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}>
+      <group
+        rotation={[-0.2, 0, 0]}
+        position={[0, debugParams?.sceneOffsetY ?? INITIAL_SCENE_OFFSET_Y, 0]}
+      >
         <group ref={groupRef}>
           {stats.systems.map((sys, i) => {
             const angle = i * ((Math.PI * 2) / total);

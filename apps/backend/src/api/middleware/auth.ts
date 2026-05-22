@@ -8,14 +8,14 @@
  * Admin determination is done via admin_uids.json file.
  */
 
-import type { MiddlewareHandler } from "hono"
+import type { Context, MiddlewareHandler } from "hono"
 import { createMiddleware } from "hono/factory"
 import * as jose from "jose"
 import * as fs from "node:fs/promises"
 
 import { CACHE_TTL } from "../constants"
+import { ForbiddenError, InternalError, UnauthorizedError } from "../errors"
 import { logger } from "../logger"
-import { ForbiddenError, UnauthorizedError } from "../routes/errors"
 import type { AuthUser, JwtClaims } from "../types"
 import { JwtClaimsSchema } from "../types"
 
@@ -161,8 +161,11 @@ async function verifyToken(token: string): Promise<JwtClaims | null> {
 
     return parseResult.data
   } catch (error) {
-    // Handle signature verification errors with cache refresh retry
-    if (error instanceof jose.errors.JWTInvalid || error instanceof jose.errors.JWSSignatureVerificationFailed) {
+    // Only signature verification failures imply possible JWKS key rotation;
+    // retry once with a fresh JWKS. JWTInvalid (malformed token string) is
+    // independent of the JWKS, so retrying would only let attackers force a
+    // JWKS HTTP fetch by spamming garbage Authorization headers.
+    if (error instanceof jose.errors.JWSSignatureVerificationFailed) {
       logger.warn("JWT signature verification failed, clearing JWKS cache and retrying")
       jwksCache.clear()
 
@@ -185,7 +188,9 @@ async function verifyToken(token: string): Promise<JwtClaims | null> {
     }
 
     // Handle other JWT errors
-    if (error instanceof jose.errors.JWTExpired) {
+    if (error instanceof jose.errors.JWTInvalid) {
+      logger.debug("JWT malformed", { message: error.message })
+    } else if (error instanceof jose.errors.JWTExpired) {
       logger.warn("JWT token expired")
     } else if (error instanceof jose.errors.JWTClaimValidationFailed) {
       logger.warn("JWT claim validation failed", { message: error.message })
@@ -205,11 +210,37 @@ function extractBearerToken(authHeader: string | undefined): string | null {
   return match ? match[1] : null
 }
 
-// Extend Hono context with auth user
+// Extend Hono context with auth user.
+//
+// - `authUser` is set by `optionalAuth` and is nullable (no Bearer token / bad token → null).
+// - `authenticatedUser` is set additionally by `requireAuth` and by
+//   `loadResource*AndAuthorize({requireOwnership|requireAdmin})`. Handlers behind
+//   those middlewares should read `authenticatedUser` via `getAuthenticatedUser(c)`
+//   to convert the type-system "non-null" promise into a runtime check.
 declare module "hono" {
   interface ContextVariableMap {
     authUser: AuthUser | null
+    authenticatedUser: AuthUser
   }
+}
+
+/**
+ * Read the authenticated user that prior auth middleware promised to set.
+ *
+ * The Hono ContextVariableMap types `authenticatedUser` as non-null because
+ * we only call this helper from handlers gated by `requireAuth` or
+ * `loadResource*AndAuthorize({requireOwnership|requireAdmin})`. If a future
+ * route forgets that gate, this helper makes the mistake fail fast with a
+ * 500 instead of dereferencing `undefined`.
+ */
+export const getAuthenticatedUser = (c: Context): AuthUser => {
+  const user = c.get("authenticatedUser") as AuthUser | undefined
+  if (!user) {
+    throw new InternalError(
+      "getAuthenticatedUser called without prior auth middleware",
+    )
+  }
+  return user
 }
 
 /**
@@ -252,7 +283,9 @@ export const requireAuth: MiddlewareHandler = createMiddleware(async (c, next) =
     throw new UnauthorizedError("Invalid or expired token")
   }
 
-  c.set("authUser", await buildAuthUser(claims))
+  const authUser = await buildAuthUser(claims)
+  c.set("authUser", authUser)
+  c.set("authenticatedUser", authUser)
   await next()
 })
 
@@ -271,10 +304,3 @@ export const requireAdmin: MiddlewareHandler = createMiddleware(async (c, next) 
   await next()
 })
 
-/**
- * Check if user can delete a resource
- * Returns true only for admin
- */
-export function canDeleteResource(authUser: AuthUser | null): boolean {
-  return authUser?.isAdmin ?? false
-}

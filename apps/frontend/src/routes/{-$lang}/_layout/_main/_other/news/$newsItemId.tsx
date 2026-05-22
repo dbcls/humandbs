@@ -1,15 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useLocale } from "use-intl";
 
 import { Card } from "@/components/Card";
+import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
 import { Markdown } from "@/components/Merkdown";
 import { getNewsTranslationQueryOptions } from "@/serverFunctions/news";
 import { renderMarkdown } from "@/utils/markdown";
-import { MarkdownWithTOC } from "@/components/MarkdownWithTOC";
-import { useLocale } from "use-intl";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/news/$newsItemId",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/news/$newsItemId")({
   component: RouteComponent,
 
   loader: async ({ context, params }) => {

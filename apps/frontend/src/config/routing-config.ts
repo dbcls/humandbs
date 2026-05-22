@@ -14,8 +14,4 @@ export const RESERVED_SEGMENTS = [
   "home",
 ];
 
-export const PROTECTED_DOC_IDS = [
-  "home",
-  "data-use",
-  "data-submission",
-] as const;
+export const PROTECTED_DOC_IDS = ["home", "data-use", "data-submission"] as const;

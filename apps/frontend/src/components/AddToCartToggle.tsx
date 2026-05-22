@@ -1,14 +1,17 @@
-import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { ShoppingCartIcon } from "lucide-react";
-import { cva, type VariantProps } from "class-variance-authority";
 
-const addToCartVariants = cva("hover:text-white flex items-center gap-2", {
+import { cn } from "@/lib/utils";
+
+import { Button } from "./ui/button";
+
+const addToCartVariants = cva("flex items-center gap-2 hover:text-white", {
   variants: {
     variant: {
-      row: "text-foreground-light  hover:text-white hover:bg-secondary-light/40 data-[state=indeterminate]:hover:bg-secondary-light/80 data-[state=true]:bg-secondary-light data-[state=true]:text-white data-[state=indeterminate]:bg-secondary-light/50 data-[state=indeterminate]:text-white/50",
+      row: "text-foreground-light hover:bg-secondary-light/40 hover:text-white data-[state=indeterminate]:bg-secondary-light/50 data-[state=true]:bg-secondary-light data-[state=indeterminate]:text-white/50 data-[state=true]:text-white data-[state=indeterminate]:hover:bg-secondary-light/80",
       header:
-        "text-white bg-none　hover:bg-white/30  data-[state=true]:bg-white data-[state=true]:text-secondary data-[state=indeterminate]:bg-white/50 data-[state=indeterminate]:text-secondary/50",
+        "bg-none text-white hover:bg-white/30 data-[state=indeterminate]:bg-white/50 data-[state=true]:bg-white data-[state=indeterminate]:text-secondary/50 data-[state=true]:text-secondary",
     },
   },
   defaultVariants: {
@@ -17,8 +20,7 @@ const addToCartVariants = cva("hover:text-white flex items-center gap-2", {
 });
 
 interface AddToCartToggleProps
-  extends
-    Omit<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size">,
+  extends Omit<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size">,
     VariantProps<typeof addToCartVariants> {
   state: boolean | "indeterminate";
 }

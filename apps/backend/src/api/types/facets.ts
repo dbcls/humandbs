@@ -3,6 +3,7 @@
  *
  * Centralized facet name definitions for type safety.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 /**

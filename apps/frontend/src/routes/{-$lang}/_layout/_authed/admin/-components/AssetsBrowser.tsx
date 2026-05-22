@@ -1,8 +1,4 @@
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
   ChevronRight,
   CopyIcon,
@@ -13,6 +9,7 @@ import {
   ImageIcon,
   Trash2Icon,
 } from "lucide-react";
+
 import { useMemo, useState } from "react";
 
 import { Card } from "@/components/Card";
@@ -21,15 +18,17 @@ import { SkeletonLoading } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
+import type {
+  AssetHierarchyFile,
+  AssetHierarchyFolder,
+  AssetHierarchyItem,
+} from "@/serverFunctions/assets";
 import {
-  assetHierarchyQueryOptions,
   $createAssetFolder,
   $deleteAssetByPath,
   $deleteAssetFolder,
   $uploadAsset,
-  type AssetHierarchyFolder,
-  type AssetHierarchyFile,
-  type AssetHierarchyItem,
+  assetHierarchyQueryOptions,
 } from "@/serverFunctions/assets";
 import { $getLocationOrigin } from "@/utils/clientOnly";
 
@@ -53,8 +52,7 @@ function getCurrentFolder(
 
   for (const segment of segments) {
     const next = current.children.find(
-      (item): item is AssetHierarchyFolder =>
-        item.type === "folder" && item.name === segment,
+      (item): item is AssetHierarchyFolder => item.type === "folder" && item.name === segment,
     );
 
     if (!next) break;
@@ -76,8 +74,7 @@ function getFolderColumns(
 
   for (const segment of segments) {
     const next = current.children.find(
-      (item): item is AssetHierarchyFolder =>
-        item.type === "folder" && item.name === segment,
+      (item): item is AssetHierarchyFolder => item.type === "folder" && item.name === segment,
     );
 
     if (!next) break;
@@ -117,8 +114,7 @@ export function AssetsBrowser({
 }: AssetsBrowserProps) {
   const queryClient = useQueryClient();
   const { data: root } = useSuspenseQuery(assetHierarchyQueryOptions());
-  const [selectedFolderPath, setSelectedFolderPath] =
-    useState(initialFolderPath);
+  const [selectedFolderPath, setSelectedFolderPath] = useState(initialFolderPath);
   const [selectedItemPath, setSelectedItemPath] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -165,12 +161,10 @@ export function AssetsBrowser({
     },
   });
 
-  const { mutate: deleteAssetByPath, isPending: isDeletingAsset } = useMutation(
-    {
-      mutationFn: $deleteAssetByPath,
-      onSuccess: invalidateHierarchy,
-    },
-  );
+  const { mutate: deleteAssetByPath, isPending: isDeletingAsset } = useMutation({
+    mutationFn: $deleteAssetByPath,
+    onSuccess: invalidateHierarchy,
+  });
 
   const { mutate: deleteFolder, isPending: isDeletingFolder } = useMutation({
     mutationFn: $deleteAssetFolder,
@@ -195,8 +189,7 @@ export function AssetsBrowser({
     selectedFolderPath === "" || currentFolder.path === selectedFolderPath;
 
   const selectedItem =
-    currentFolder.children.find((item) => item.path === selectedItemPath) ??
-    null;
+    currentFolder.children.find((item) => item.path === selectedItemPath) ?? null;
 
   const canManageDeletes = mode === "manage";
 
@@ -232,9 +225,8 @@ export function AssetsBrowser({
               });
             }}
           >
-            <div className="text-sm font-medium">
-              Create folder in{" "}
-              <span className="text-secondary">{displayFolderPath}</span>
+            <div className="font-medium text-sm">
+              Create folder in <span className="text-secondary">{displayFolderPath}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -243,10 +235,7 @@ export function AssetsBrowser({
                 placeholder="Folder name"
                 variant="form"
               />
-              <Button
-                disabled={!newFolderName.trim() || isCreatingFolder}
-                type="submit"
-              >
+              <Button disabled={!newFolderName.trim() || isCreatingFolder} type="submit">
                 <FolderPlus className="mr-2 size-4" />
                 Create
               </Button>
@@ -266,9 +255,8 @@ export function AssetsBrowser({
               uploadAsset({ data: formData });
             }}
           >
-            <div className="text-sm font-medium">
-              Upload to{" "}
-              <span className="text-secondary">{displayFolderPath}</span>
+            <div className="font-medium text-sm">
+              Upload to <span className="text-secondary">{displayFolderPath}</span>
             </div>
             <div className="flex gap-2">
               <Input
@@ -289,8 +277,7 @@ export function AssetsBrowser({
         {!selectedFolderExists && selectedFolderPath ? (
           <div className="mt-4 flex items-center justify-between rounded-sm border border-dashed p-3 text-sm">
             <div>
-              Folder <span className="font-medium">{selectedFolderPath}</span>{" "}
-              does not exist yet.
+              Folder <span className="font-medium">{selectedFolderPath}</span> does not exist yet.
             </div>
             <Button
               disabled={isCreatingFolder}
@@ -324,7 +311,7 @@ export function AssetsBrowser({
                 <div className="min-h-0 overflow-y-auto">
                   <ul className="space-y-1">
                     {folder.children.length === 0 ? (
-                      <li className="rounded-sm border border-dashed p-3 text-sm text-gray-500">
+                      <li className="rounded-sm border border-dashed p-3 text-gray-500 text-sm">
                         Empty folder
                       </li>
                     ) : (
@@ -337,9 +324,7 @@ export function AssetsBrowser({
                               variant="plain"
                               className={cn(
                                 "flex w-full items-center justify-start gap-2 rounded-sm px-3 py-2 text-left",
-                                isActive
-                                  ? "bg-secondary-light text-white"
-                                  : "hover:bg-hover",
+                                isActive ? "bg-secondary-light text-white" : "hover:bg-hover",
                               )}
                               onClick={() => {
                                 handleSelectItem(item);
@@ -348,15 +333,13 @@ export function AssetsBrowser({
                               {item.type === "folder" ? (
                                 <>
                                   <Folder className="size-4 shrink-0" />
-                                  <span className="min-w-0 flex-1 truncate">
-                                    {item.name}
-                                  </span>
+                                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
                                   <ChevronRight className="size-4 shrink-0" />
                                 </>
                               ) : (
                                 <>
                                   {isImageFile(item) ? (
-                                    <span className="bg-primary flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border">
+                                    <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border bg-primary">
                                       <img
                                         src={item.url}
                                         alt={item.name}
@@ -366,9 +349,7 @@ export function AssetsBrowser({
                                   ) : (
                                     <FileText className="size-4 shrink-0" />
                                   )}
-                                  <span className="min-w-0 truncate">
-                                    {item.name}
-                                  </span>
+                                  <span className="min-w-0 truncate">{item.name}</span>
                                 </>
                               )}
                             </Button>
@@ -391,27 +372,23 @@ export function AssetsBrowser({
             selectedItem.type === "folder" ? (
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <Folder className="text-secondary size-5" />
+                  <Folder className="size-5 text-secondary" />
                   <div className="font-medium">{selectedItem.name}</div>
                 </div>
                 <dl className="space-y-2">
                   <div>
-                    <dt className="text-xs text-gray-500 uppercase">Path</dt>
+                    <dt className="text-gray-500 text-xs uppercase">Path</dt>
                     <dd className="break-all">{selectedItem.path}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-gray-500 uppercase">Items</dt>
+                    <dt className="text-gray-500 text-xs uppercase">Items</dt>
                     <dd>{selectedItem.children.length}</dd>
                   </div>
                 </dl>
                 <Button
-                  disabled={
-                    selectedItem.children.length > 0 || isDeletingFolder
-                  }
+                  disabled={selectedItem.children.length > 0 || isDeletingFolder}
                   variant="outline"
-                  onClick={() =>
-                    deleteFolder({ data: { folderPath: selectedItem.path } })
-                  }
+                  onClick={() => deleteFolder({ data: { folderPath: selectedItem.path } })}
                 >
                   <Trash2Icon className="mr-2 size-4" />
                   Delete empty folder
@@ -428,7 +405,7 @@ export function AssetsBrowser({
                     />
                   ) : (
                     <div className="flex h-48 items-center justify-center">
-                      <FileText className="text-secondary size-12" />
+                      <FileText className="size-12 text-secondary" />
                     </div>
                   )}
                 </div>
@@ -437,30 +414,26 @@ export function AssetsBrowser({
                   <div className="font-medium">{selectedItem.name}</div>
                   <dl className="space-y-2">
                     <div>
-                      <dt className="text-xs text-gray-500 uppercase">Type</dt>
+                      <dt className="text-gray-500 text-xs uppercase">Type</dt>
                       <dd>{selectedItem.mimeType || "Unknown"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-500 uppercase">URL</dt>
+                      <dt className="text-gray-500 text-xs uppercase">URL</dt>
                       <dd className="break-all">{selectedItem.url}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-500 uppercase">Path</dt>
+                      <dt className="text-gray-500 text-xs uppercase">Path</dt>
                       <dd className="break-all">{selectedItem.path}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-500 uppercase">Size</dt>
-                      <dd>
-                        {Intl.NumberFormat().format(selectedItem.size)} bytes
-                      </dd>
+                      <dt className="text-gray-500 text-xs uppercase">Size</dt>
+                      <dd>{Intl.NumberFormat().format(selectedItem.size)} bytes</dd>
                     </div>
                   </dl>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() =>
-                        copy(`${$getLocationOrigin() ?? ""}${selectedItem.url}`)
-                      }
+                      onClick={() => copy(`${$getLocationOrigin() ?? ""}${selectedItem.url}`)}
                     >
                       <CopyIcon className="mr-2 size-4" />
                       Copy URL
@@ -484,7 +457,7 @@ export function AssetsBrowser({
               </div>
             )
           ) : (
-            <div className="flex min-h-40 items-center justify-center text-sm text-gray-500">
+            <div className="flex min-h-40 items-center justify-center text-gray-500 text-sm">
               Select a folder or file
             </div>
           )}

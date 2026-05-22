@@ -1,5 +1,5 @@
+import type { Locale } from "@/config/i18n";
 import { deriveNavbarCommittedGroups } from "@/config/site-navigation-admin";
-import { type Locale } from "@/config/i18n";
 
 // ---------------------------------------------------------------------------
 // Core model types
@@ -574,10 +574,7 @@ export type DocumentPathResolver = (documentId: string) => string | undefined;
  * The server function passes in published document titles from the DB;
  * without it, the registry default labels are used as fallback.
  */
-export type DocumentLabelResolver = (
-  contentId: string,
-  lang: Locale,
-) => string | undefined;
+export type DocumentLabelResolver = (contentId: string, lang: Locale) => string | undefined;
 
 export function buildSiteNavigation(
   lang: Locale,
@@ -586,18 +583,8 @@ export function buildSiteNavigation(
   resolveDocumentPath?: DocumentPathResolver,
 ): ResolvedSiteNavigation {
   return {
-    navbar: buildNavbarItems(
-      lang,
-      config,
-      resolveDocumentLabel,
-      resolveDocumentPath,
-    ),
-    footer: buildFooterGroups(
-      lang,
-      config,
-      resolveDocumentLabel,
-      resolveDocumentPath,
-    ),
+    navbar: buildNavbarItems(lang, config, resolveDocumentLabel, resolveDocumentPath),
+    footer: buildFooterGroups(lang, config, resolveDocumentLabel, resolveDocumentPath),
   };
 }
 
@@ -683,12 +670,7 @@ function buildNavbarItems(
         .filter((subItem) => subItem.enabled)
         .map(({ item }) => ({
           id: item.id,
-          label: resolveItemLabel(
-            item,
-            lang,
-            resolveDocumentLabel,
-            resolveDocumentPath,
-          ),
+          label: resolveItemLabel(item, lang, resolveDocumentLabel, resolveDocumentPath),
           linkOptions: resolveItemLinkOptions(item, lang, resolveDocumentPath),
         }));
 
@@ -697,11 +679,7 @@ function buildNavbarItems(
         label,
         ...(linkedItem
           ? {
-              linkOptions: resolveItemLinkOptions(
-                linkedItem.item,
-                lang,
-                resolveDocumentPath,
-              ),
+              linkOptions: resolveItemLinkOptions(linkedItem.item, lang, resolveDocumentPath),
             }
           : {}),
         priority: group.priority ?? "important",
@@ -729,12 +707,7 @@ function buildFooterGroups(
         .filter((item): item is NavigationItem => item !== undefined)
         .map((item) => ({
           id: item.id,
-          label: resolveItemLabel(
-            item,
-            lang,
-            resolveDocumentLabel,
-            resolveDocumentPath,
-          ),
+          label: resolveItemLabel(item, lang, resolveDocumentLabel, resolveDocumentPath),
           linkOptions: resolveItemLinkOptions(item, lang, resolveDocumentPath),
         })),
     }))

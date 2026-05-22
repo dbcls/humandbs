@@ -8,6 +8,7 @@
  * These fragments are composed via .merge()/.extend() in query-params.ts
  * to build endpoint-specific query schemas.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import { IsTumorSchema } from "../../es/types"
@@ -68,8 +69,8 @@ export const DatasetFilterQuerySchema = z.object({
     .describe("Filter by data access criteria: Controlled-access (Type I/II), Unrestricted-access"),
   assayType: z.string().optional()
     .describe("Filter by assay type (comma-separated for OR, e.g., 'WGS,WES')"),
-  disease: z.string().optional()
-    .describe("Filter by disease label (partial match)"),
+  disease: z.string().max(256).optional()
+    .describe("Filter by disease label (partial match, max 256 chars)"),
   diseaseIcd10: z.string().optional()
     .describe("Filter by ICD-10 code (prefix match, comma-separated for OR)"),
   tissues: z.string().optional()

@@ -10,13 +10,7 @@ const textAreaClasses =
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
-    return (
-      <textarea
-        className={cn(textAreaClasses, className)}
-        ref={ref}
-        {...props}
-      />
-    );
+    return <textarea className={cn(textAreaClasses, className)} ref={ref} {...props} />;
   },
 );
 Textarea.displayName = "Textarea";

@@ -15,6 +15,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import * as schema from "@/db/schema";
+
 import { buildNavigationConfig } from "./database/build-navigation-config";
 
 // ---------------------------------------------------------------------------
@@ -70,10 +71,7 @@ const ITEM_ID_MAP: Record<string, string> = {
   "supported-browsers": "00000000-0000-4000-8000-000000000018",
 };
 
-const LINK_ITEMS: Record<
-  string,
-  { url: string; label: Record<string, string> }
-> = {
+const LINK_ITEMS: Record<string, { url: string; label: Record<string, string> }> = {
   "research-list": {
     url: "/research",
     label: { en: "Research List", ja: "研究一覧" },
@@ -107,14 +105,8 @@ const GROUP_LABELS: Record<string, Record<string, string>> = {
 const GUIDELINE_RENAMES: [string, string][] = [
   ["data-sharing-guidelines", "guidelines/data-sharing-guidelines"],
   ["security-guidelines-for-users", "guidelines/security-guidelines-for-users"],
-  [
-    "security-guidelines-for-submitters",
-    "guidelines/security-guidelines-for-submitters",
-  ],
-  [
-    "security-guidelines-for-dbcenters",
-    "guidelines/security-guidelines-for-dbcenters",
-  ],
+  ["security-guidelines-for-submitters", "guidelines/security-guidelines-for-submitters"],
+  ["security-guidelines-for-dbcenters", "guidelines/security-guidelines-for-dbcenters"],
 ];
 
 // ---------------------------------------------------------------------------
@@ -142,17 +134,12 @@ function convertOldShape(old: OldConfig): unknown {
     const newItem: Record<string, unknown> = {
       id: newId,
       type: isLink ? "link" : "document",
-      ...(isLink
-        ? { url: linkInfo.url, label: linkInfo.label }
-        : { contentId: item.id }),
+      ...(isLink ? { url: linkInfo.url, label: linkInfo.label } : { contentId: item.id }),
     };
 
     if (item.navbar) {
-      const parentNewId = item.parentId
-        ? ITEM_ID_MAP[item.parentId]
-        : undefined;
-      if (item.parentId && !parentNewId)
-        throw new Error(`Unknown old parentId: ${item.parentId}`);
+      const parentNewId = item.parentId ? ITEM_ID_MAP[item.parentId] : undefined;
+      if (item.parentId && !parentNewId) throw new Error(`Unknown old parentId: ${item.parentId}`);
       newItem.navbar = {
         enabled: item.navbar.enabled,
         visibility: item.navbar.visibility,
@@ -170,8 +157,7 @@ function convertOldShape(old: OldConfig): unknown {
     .sort((a, b) => a.order - b.order)
     .map((oldGroup, idx) => {
       const newGroupId = GROUP_ID_MAP[oldGroup.id];
-      if (!newGroupId)
-        throw new Error(`Unknown old footer group id: ${oldGroup.id}`);
+      if (!newGroupId) throw new Error(`Unknown old footer group id: ${oldGroup.id}`);
 
       const groupItems = old.items
         .filter((item) => item.footer?.groupId === oldGroup.id)
@@ -216,9 +202,7 @@ const databaseUrl =
   `postgres://${process.env.HUMANDBS_POSTGRES_USER}:${process.env.HUMANDBS_POSTGRES_PASSWORD}@${process.env.HUMANDBS_POSTGRES_HOST}:${process.env.HUMANDBS_POSTGRES_PORT}/${process.env.HUMANDBS_POSTGRES_DB}`;
 
 if (!databaseUrl || databaseUrl.includes("undefined")) {
-  console.error(
-    "DATABASE_URL or HUMANDBS_POSTGRES_* environment variables are required.",
-  );
+  console.error("DATABASE_URL or HUMANDBS_POSTGRES_* environment variables are required.");
   process.exit(1);
 }
 
@@ -237,9 +221,7 @@ try {
   );
 
   if (navRows.length === 0) {
-    console.log(
-      "No site_navigation_config row found — skipping shape migration.",
-    );
+    console.log("No site_navigation_config row found — skipping shape migration.");
   } else {
     const row = navRows[0] as { id: string; config: unknown; revision: number };
 
@@ -268,23 +250,19 @@ try {
   console.log("Step 2: renaming guideline document IDs...");
 
   for (const [oldId, newId] of GUIDELINE_RENAMES) {
-    const { rows: existing } = await client.query(
-      `SELECT name FROM document WHERE name = $1`,
-      [oldId],
-    );
+    const { rows: existing } = await client.query(`SELECT name FROM document WHERE name = $1`, [
+      oldId,
+    ]);
     if (existing.length === 0) {
       console.log(`  Skipping "${oldId}" — not found (already migrated?)`);
       continue;
     }
 
-    const { rows: collision } = await client.query(
-      `SELECT name FROM document WHERE name = $1`,
-      [newId],
-    );
+    const { rows: collision } = await client.query(`SELECT name FROM document WHERE name = $1`, [
+      newId,
+    ]);
     if (collision.length > 0) {
-      throw new Error(
-        `Cannot rename "${oldId}" → "${newId}": target already exists.`,
-      );
+      throw new Error(`Cannot rename "${oldId}" → "${newId}": target already exists.`);
     }
 
     await client.query(

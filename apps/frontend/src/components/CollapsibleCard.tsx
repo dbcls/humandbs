@@ -1,8 +1,10 @@
+import { SidebarCloseIcon, SidebarOpenIcon } from "lucide-react";
+
 import { useTogglePanel } from "@/hooks/useTogglePanel";
+import { cn } from "@/lib/utils";
+
 import { Card } from "./Card";
 import { Button } from "./ui/button";
-import { SidebarCloseIcon, SidebarOpenIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 /** A card that can be vertically collapsed */
 export function CollapsibleCard({
@@ -16,13 +18,8 @@ export function CollapsibleCard({
   className?: string;
   wLeftPanel?: boolean;
 }) {
-  const {
-    open,
-    handleTransitionEnd,
-    handleTransitionStart,
-    renderContent,
-    togglePanel,
-  } = useTogglePanel();
+  const { open, handleTransitionEnd, handleTransitionStart, renderContent, togglePanel } =
+    useTogglePanel();
 
   return (
     <Card
@@ -42,12 +39,7 @@ export function CollapsibleCard({
               {title}
             </span>
           ) : null}
-          <Button
-            onClick={togglePanel}
-            variant={"plain"}
-            className="hover:bg-hover"
-            size={"icon"}
-          >
+          <Button onClick={togglePanel} variant={"plain"} className="hover:bg-hover" size={"icon"}>
             {open ? (
               <SidebarCloseIcon className="size-4" />
             ) : (

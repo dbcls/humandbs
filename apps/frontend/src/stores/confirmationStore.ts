@@ -22,44 +22,42 @@ interface ConfirmationActions {
   closeConfirmation: () => void;
 }
 
-const useConfirmationStore = create<ConfirmationState & ConfirmationActions>(
-  (set) => ({
-    open: false,
-    title: null,
-    description: null,
-    cancelLabel: null,
-    actionLabel: null,
-    onAction: () => {},
-    onCancel: () => {},
-    openConfirmation: (data) => {
-      set((state) => ({
-        open: true,
-        title: data.title,
-        description: data.description,
-        cancelLabel: data.cancelLabel ?? "Cancel",
-        actionLabel: data.actionLabel,
-        onAction: () => {
-          data.onAction();
-          state.closeConfirmation();
-        },
-        onCancel: () => {
-          data.onCancel?.();
-          state.closeConfirmation();
-        },
-      }));
-    },
-    closeConfirmation: () => {
-      set(() => ({
-        open: false,
-        title: null,
-        description: null,
-        cancelLabel: null,
-        actionLabel: null,
-        onAction: () => {},
-        onCancel: () => {},
-      }));
-    },
-  }),
-);
+const useConfirmationStore = create<ConfirmationState & ConfirmationActions>((set) => ({
+  open: false,
+  title: null,
+  description: null,
+  cancelLabel: null,
+  actionLabel: null,
+  onAction: () => {},
+  onCancel: () => {},
+  openConfirmation: (data) => {
+    set((state) => ({
+      open: true,
+      title: data.title,
+      description: data.description,
+      cancelLabel: data.cancelLabel ?? "Cancel",
+      actionLabel: data.actionLabel,
+      onAction: () => {
+        data.onAction();
+        state.closeConfirmation();
+      },
+      onCancel: () => {
+        data.onCancel?.();
+        state.closeConfirmation();
+      },
+    }));
+  },
+  closeConfirmation: () => {
+    set(() => ({
+      open: false,
+      title: null,
+      description: null,
+      cancelLabel: null,
+      actionLabel: null,
+      onAction: () => {},
+      onCancel: () => {},
+    }));
+  },
+}));
 
 export default useConfirmationStore;

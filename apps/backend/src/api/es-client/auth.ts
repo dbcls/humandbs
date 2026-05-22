@@ -9,7 +9,7 @@
 import type { estypes } from "@elastic/elasticsearch"
 
 import { esClient, ES_INDEX } from "@/api/es-client/client"
-import type { AuthUser, EsResearch, StatusAction } from "@/api/types"
+import type { AuthUser, EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 import { StatusTransitions } from "@/api/types"
 
 // === Authorization Filters ===
@@ -50,6 +50,40 @@ export const buildStatusFilter = (authUser: AuthUser | null): estypes.QueryDslQu
 
   // Public: latestVersion exists AND not deleted
   return publicFilter
+}
+
+/**
+ * Result of `checkRequestedStatus` — pure data, no HTTP semantics.
+ *
+ * The route layer translates `{ allowed: false }` to `ForbiddenError`.
+ * Status-aware result filtering (own-resources scoping for authenticated
+ * non-admins) is performed separately in the search/listing layer; this
+ * function only gates entry.
+ *
+ * Rules (architecture.md § deleted 状態, § status フィルタの権限):
+ * - undefined: allowed (default visibility applies)
+ * - "published": allowed for everyone
+ * - "deleted": admin only
+ * - others ("draft", "review"): authenticated only
+ */
+export type RequestedStatusCheck =
+  | { allowed: true }
+  | { allowed: false; message: string }
+
+export const checkRequestedStatus = (
+  authUser: AuthUser | null,
+  requestedStatus: ResearchStatus | undefined,
+): RequestedStatusCheck => {
+  if (!requestedStatus) return { allowed: true }
+  if (requestedStatus === "published") return { allowed: true }
+  if (requestedStatus === "deleted") {
+    if (authUser?.isAdmin) return { allowed: true }
+    return { allowed: false, message: "Only admins can access deleted resources" }
+  }
+  if (!authUser) {
+    return { allowed: false, message: "Public users can only access published resources" }
+  }
+  return { allowed: true }
 }
 
 /**

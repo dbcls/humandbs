@@ -1,14 +1,8 @@
-import type { Locale } from "@/config/i18n";
 import { relations, sql } from "drizzle-orm";
-import {
-  boolean,
-  index,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+
+import type { Locale } from "@/config/i18n";
+
 import { user } from "./auth-schema";
 
 export const alert = pgTable("alert", {
@@ -35,9 +29,7 @@ export const alertTranslation = pgTable(
     content: text("content").notNull(),
     locale: text("locale").notNull().$type<Locale>(),
   },
-  (table) => [
-    unique("alert_translation_unique").on(table.alertId, table.locale),
-  ],
+  (table) => [unique("alert_translation_unique").on(table.alertId, table.locale)],
 );
 
 export const alertRelations = relations(alert, ({ many, one }) => ({
@@ -53,12 +45,9 @@ export const alertRelations = relations(alert, ({ many, one }) => ({
   }),
 }));
 
-export const alertTranslationRelations = relations(
-  alertTranslation,
-  ({ one }) => ({
-    alert: one(alert, {
-      fields: [alertTranslation.alertId],
-      references: [alert.id],
-    }),
+export const alertTranslationRelations = relations(alertTranslation, ({ one }) => ({
+  alert: one(alert, {
+    fields: [alertTranslation.alertId],
+    references: [alert.id],
   }),
-);
+}));

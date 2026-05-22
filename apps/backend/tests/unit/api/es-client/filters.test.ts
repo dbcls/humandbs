@@ -117,27 +117,26 @@ describe("filter constant table consistency", () => {
     }
   })
 
-  it("ARRAY_FIELD_MAPPINGS from values exist in string filter or range params", () => {
+  it("ARRAY_FIELD_MAPPINGS from values are reachable via known filter param sets", () => {
     const allParams = new Set<string>([
       ...DATASET_STRING_FILTER_PARAMS,
       ...DATASET_BOOLEAN_FILTER_PARAMS,
       ...DATASET_RANGE_FILTER_PARAMS,
-      // Some mappings may go to params with different names
-      ...ARRAY_FIELD_MAPPINGS.map(m => m.to),
     ])
 
     for (const { from } of ARRAY_FIELD_MAPPINGS) {
-      // Either the 'from' is directly in the param sets,
-      // or it maps to a known filter category
-      const knownFilter = allParams.has(from) ||
-        // Check if this is mapped to a range field
-        NESTED_RANGE_FILTERS.some(r =>
-          from === r.field.split(".").pop() ||
-          from === r.minParam.replace("min", "").replace("max", ""),
+      const knownFilter = allParams.has(from)
+        || NESTED_RANGE_FILTERS.some(r =>
+          from === r.field.split(".").pop()
+          || from === r.minParam.replace("min", "").replace("max", ""),
         )
-      // Allow unmapped fields from ARRAY_FIELD_MAPPINGS
-      expect(knownFilter || ARRAY_FIELD_MAPPINGS.some(m => m.from === from)).toBe(true)
+      expect(knownFilter).toBe(true)
     }
+  })
+
+  it("ARRAY_FIELD_MAPPINGS has no duplicate `from` keys", () => {
+    const froms = ARRAY_FIELD_MAPPINGS.map(m => m.from)
+    expect(new Set(froms).size).toBe(froms.length)
   })
 
   it("NESTED_TERMS_FILTERS have no duplicate params", () => {

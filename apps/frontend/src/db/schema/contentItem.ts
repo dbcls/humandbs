@@ -1,11 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  boolean,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-} from "drizzle-orm/pg-core";
+import { boolean, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth-schema";
 import { documentVersionStatus } from "./documentVersion";
@@ -41,17 +35,12 @@ export const contentTranslation = pgTable(
     content: text("content").notNull(),
     status: documentVersionStatus("status").notNull().default("draft"),
   },
-  (table) => [
-    primaryKey({ columns: [table.contentId, table.lang, table.status] }),
-  ],
+  (table) => [primaryKey({ columns: [table.contentId, table.lang, table.status] })],
 );
 
-export const contentTranslationRelations = relations(
-  contentTranslation,
-  ({ one }) => ({
-    contentItem: one(contentItem, {
-      fields: [contentTranslation.contentId],
-      references: [contentItem.id],
-    }),
+export const contentTranslationRelations = relations(contentTranslation, ({ one }) => ({
+  contentItem: one(contentItem, {
+    fields: [contentTranslation.contentId],
+    references: [contentItem.id],
   }),
-);
+}));

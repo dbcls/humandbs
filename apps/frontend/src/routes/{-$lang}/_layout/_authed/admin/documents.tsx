@@ -1,23 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { FilesIcon } from "lucide-react";
+import { z } from "zod";
+
 import { Suspense, useCallback } from "react";
 
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { FA_ICONS } from "@/lib/faIcons";
 import {
   getDocumentVersionListQueryOptions,
   getDocumentVersionQueryOptions,
 } from "@/serverFunctions/documentVersion";
-import { z } from "zod";
+
 import { DocumentsList } from "./-components/DocumentsList";
 import { DocumentVersion } from "./-components/DocumentVersion";
 import { FallbackDetailsCard } from "./-components/FallbackDetailsCard";
 import { NoSelectedItemMessage } from "./-components/NoSelectedItemMessage";
-import { FA_ICONS } from "@/lib/faIcons";
-import { FilesIcon } from "lucide-react";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/documents",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/documents")({
   validateSearch: z.object({
     selectedId: z.string().optional(),
     selectedVer: z.number().optional(),
@@ -67,10 +67,7 @@ function RouteComponent() {
   return (
     <>
       <CollapsibleCard title="Documents">
-        <DocumentsList
-          onSelectDoc={setSelectedContentId}
-          selectedContentId={selectedId}
-        />
+        <DocumentsList onSelectDoc={setSelectedContentId} selectedContentId={selectedId} />
       </CollapsibleCard>
 
       {selectedId ? (

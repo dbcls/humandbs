@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -16,13 +16,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
+
 import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
 
 import { ModifiedTag } from "./ModifiedTag";
-import { useStableSortableIds } from "./useStableSortableIds";
 import { deepEqual } from "./useFieldModified";
+import { useStableSortableIds } from "./useStableSortableIds";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyForm = any;
@@ -57,14 +58,9 @@ function SortableItem({
   onRemove,
   children,
 }: SortableItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -73,11 +69,7 @@ function SortableItem({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="rounded border bg-white shadow-sm"
-    >
+    <div ref={setNodeRef} style={style} className="rounded border bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <button
           type="button"
@@ -87,15 +79,11 @@ function SortableItem({
         >
           <GripVertical className="size-4" />
         </button>
-        <span className="flex-1 text-sm font-medium">
+        <span className="flex-1 font-medium text-sm">
           #{index + 1} {icon} {title}
         </span>
         <ModifiedTag isModified={isModified} />
-        <button
-          type="button"
-          onClick={onRemove}
-          className="text-gray-400 hover:text-red-500"
-        >
+        <button type="button" onClick={onRemove} className="text-gray-400 hover:text-red-500">
           <Trash2 className="size-4" />
         </button>
       </div>
@@ -126,10 +114,7 @@ export function ArrayField<T>({
     <form.AppField name={name} mode="array">
       {(field: AnyForm) => {
         const items: T[] = field.state.value ?? [];
-        const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
-          items.length,
-          dndId,
-        );
+        const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
 
         function handleDragEnd(event: DragEndEvent) {
           const { active, over } = event;
@@ -146,23 +131,17 @@ export function ArrayField<T>({
 
         return (
           <fieldset className="flex flex-col gap-3">
-            {label && (
-              <legend className="text-sm font-semibold">{label}</legend>
-            )}
+            {label && <legend className="font-semibold text-sm">{label}</legend>}
             <DndContext
               id={dndId}
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext
-                items={itemIds}
-                strategy={verticalListSortingStrategy}
-              >
+              <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                 {items.map((_item: T, i: number) => {
                   const isItemModified = initialItems
-                    ? i >= initialItems.length ||
-                      !deepEqual(_item, initialItems[i])
+                    ? i >= initialItems.length || !deepEqual(_item, initialItems[i])
                     : false;
 
                   return (
@@ -171,9 +150,7 @@ export function ArrayField<T>({
                       id={itemIds[i]}
                       index={i}
                       icon={icon}
-                      title={
-                        getItemTitle ? getItemTitle(_item, i) : `Item ${i + 1}`
-                      }
+                      title={getItemTitle ? getItemTitle(_item, i) : `Item ${i + 1}`}
                       isModified={isItemModified}
                       onRemove={() => {
                         removeItemId(i);

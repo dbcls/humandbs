@@ -1,8 +1,9 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const separatorVariants = cva("border-foreground-light my-4 h-px", {
+const separatorVariants = cva("my-4 h-px border-foreground-light", {
   variants: {
     variant: {
       dashed: "border-dashed",
@@ -23,14 +24,7 @@ type SeparatorProps = { className?: string; show?: boolean } & VariantProps<
   typeof separatorVariants
 >;
 
-export function Separator({
-  className,
-  variant,
-  show,
-  extend,
-}: SeparatorProps) {
+export function Separator({ className, variant, show, extend }: SeparatorProps) {
   if (!show) return null;
-  return (
-    <hr className={cn(separatorVariants({ variant, extend }), className)} />
-  );
+  return <hr className={cn(separatorVariants({ variant, extend }), className)} />;
 }

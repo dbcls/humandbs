@@ -9,9 +9,8 @@
  */
 import { ConflictError } from "@/api/errors"
 import { canAccessResearchDoc } from "@/api/es-client/auth"
-import { esClient, ES_INDEX, isDocumentExistsError } from "@/api/es-client/client"
+import { esClient, ES_INDEX, isConflictError, isDocumentExistsError } from "@/api/es-client/client"
 import { getResearchVersion } from "@/api/es-client/research-version"
-import { MAX_RESULT_WINDOW } from "@/api/es-client/search"
 import { mgetMap } from "@/api/es-client/utils"
 import {
   EsDatasetSchema,
@@ -43,22 +42,12 @@ interface EsErrorMeta {
   meta?: { statusCode?: number; body?: { error?: { type?: string; reason?: string } } }
 }
 
-/**
- * Type guard for Elasticsearch client errors
- */
 const isEsError = (error: unknown): error is EsErrorMeta => {
   return error !== null && typeof error === "object" && "meta" in error
 }
 
 /**
- * Check if error is a version conflict (HTTP 409)
- */
-const isVersionConflict = (error: unknown): boolean => {
-  return isEsError(error) && error.meta?.statusCode === 409
-}
-
-/**
- * Create an Error with ES operation context
+ * Wrap an Elasticsearch error with operation context (preserves the original via `cause`).
  */
 const createEsError = (error: unknown, operation: string, humId: string): Error => {
   if (isEsError(error)) {
@@ -78,7 +67,7 @@ const createEsError = (error: unknown, operation: string, humId: string): Error 
 export const getResearchDoc = async (
   humId: string,
 ): Promise<EsResearch | null> => {
-  const id = humId // lang suffix removed (BilingualText format)
+  const id = humId
   const res = await esClient.get<EsResearch>({
     index: ES_INDEX.research,
     id,
@@ -112,10 +101,8 @@ export const getResearchDetail = async (
   authUser: AuthUser | null = null,
 ): Promise<ResearchDetail | null> => {
   // Fetch Research first (version resolution depends on Research fields)
-  const researchWithSeqNo = await getResearchWithSeqNo(humId)
-  if (!researchWithSeqNo) return null
-
-  const { doc: researchDoc, seqNo, primaryTerm } = researchWithSeqNo
+  const researchDoc = await getResearchDoc(humId)
+  if (!researchDoc) return null
 
   // Authorization check: verify user can access this Research
   if (!canAccessResearchDoc(authUser, researchDoc)) {
@@ -144,9 +131,6 @@ export const getResearchDetail = async (
     versionReleaseDate: researchVersionDoc.versionReleaseDate,
     releaseNote: researchVersionDoc.releaseNote,
     datasets,
-    // Include optimistic locking fields
-    _seq_no: seqNo,
-    _primary_term: primaryTerm,
   })
 }
 
@@ -367,7 +351,7 @@ export const updateResearch = async (
 
     return await getResearchDoc(humId)
   } catch (error: unknown) {
-    if (isVersionConflict(error)) return null
+    if (isConflictError(error)) return null
     throw createEsError(error,"updateResearch", humId)
   }
 }
@@ -423,7 +407,7 @@ export const updateResearchStatus = async (
       dateModified: now,
     }
   } catch (error: unknown) {
-    if (isVersionConflict(error)) return null
+    if (isConflictError(error)) return null
     throw createEsError(error,"updateResearchStatus", humId)
   }
 }
@@ -458,7 +442,7 @@ export const updateResearchUids = async (
 
     return uids
   } catch (error: unknown) {
-    if (isVersionConflict(error)) return null
+    if (isConflictError(error)) return null
     throw createEsError(error,"updateResearchUids", humId)
   }
 }
@@ -506,44 +490,8 @@ export const deleteResearch = async (
 
     return true
   } catch (error: unknown) {
-    if (isVersionConflict(error)) return false
+    if (isConflictError(error)) return false
     throw createEsError(error,"deleteResearch", humId)
   }
 }
 
-// === Additional Research Functions ===
-
-/**
- * Get pending reviews (Research with status='review')
- * Admin only - returns list of Research awaiting approval
- */
-export const getPendingReviews = async (
-  page = 1,
-  limit = 20,
-): Promise<{ data: EsResearch[]; total: number }> => {
-  const from = (page - 1) * limit
-
-  // Pagination beyond ES `index.max_result_window` would 500. Short-circuit.
-  if (from + limit > MAX_RESULT_WINDOW) {
-    return { data: [], total: 0 }
-  }
-
-  const res = await esClient.search<EsResearch>({
-    index: ES_INDEX.research,
-    from,
-    size: limit,
-    query: { term: { status: "review" } },
-    sort: [{ dateModified: { order: "desc" } }],
-    _source: true,
-    track_total_hits: true,
-  })
-
-  const data = res.hits.hits
-    .map(hit => hit._source)
-    .filter((doc): doc is EsResearch => !!doc)
-    .map(doc => EsResearchSchema.parse(doc))
-
-  const total = typeof res.hits.total === "number" ? res.hits.total : res.hits.total?.value ?? 0
-
-  return { data, total }
-}

@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   closestCenter,
   DndContext,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -13,17 +13,19 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { useId, useRef } from "react";
 import { z } from "zod";
+
+import { useId, useRef } from "react";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
 
 import { withFieldGroup } from "@/components/form-context/FormContext";
 import { ResearchProjectField } from "@/components/form-context/fields/ResearchProjectField";
-import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { useStableSortableIds } from "@/components/form-context/fields/useStableSortableIds";
+import { Button } from "@/components/ui/button";
 
 import { SortableItem } from "./SortableItem";
-import { Button } from "@/components/ui/button";
 
 const researchProjectSchema = z.object({
   ...ResearchDetailSchema.shape.researchProject.element.shape,
@@ -40,13 +42,7 @@ const ResearchProjectItemForm = withFieldGroup({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ResearchProjectSortableList({
-  form,
-  field,
-}: {
-  form: any;
-  field: any;
-}) {
+function ResearchProjectSortableList({ form, field }: { form: any; field: any }) {
   const dndId = useId();
   const fieldsetRef = useRef<HTMLFieldSetElement>(null);
   const sensors = useSensors(
@@ -60,10 +56,7 @@ function ResearchProjectSortableList({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const initialItems: ResearchProject[] =
     (field.form.options.defaultValues as any)?.researchProject ?? [];
-  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(
-    items.length,
-    dndId,
-  );
+  const { itemIds, moveItemId, removeItemId } = useStableSortableIds(items.length, dndId);
 
   function handleDragEnd(event: DragEndEvent) {
     if (fieldsetRef.current?.disabled) return;
@@ -92,9 +85,7 @@ function ResearchProjectSortableList({
               id={itemIds[i]!}
               index={i}
               title={item?.name?.en?.text ?? item?.name?.ja?.text ?? ""}
-              isModified={
-                i >= initialItems.length || !deepEqual(item, initialItems[i])
-              }
+              isModified={i >= initialItems.length || !deepEqual(item, initialItems[i])}
               onRemove={() => {
                 removeItemId(i);
                 field.removeValue(i);
@@ -133,9 +124,7 @@ export function ResearchProjectArrayField({ form }: { form: any }) {
   return (
     <form.Field name="researchProject" mode="array">
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {(field: any) => (
-        <ResearchProjectSortableList form={form} field={field} />
-      )}
+      {(field: any) => <ResearchProjectSortableList form={form} field={field} />}
     </form.Field>
   );
 }

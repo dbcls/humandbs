@@ -1,11 +1,9 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "use-intl";
 
 import { Link } from "@/components/Link";
-import {
-  getNewsTitlesQueryOptions,
-  type NewsTitleResponse,
-} from "@/serverFunctions/news";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import type { NewsTitleResponse } from "@/serverFunctions/news";
+import { getNewsTitlesQueryOptions } from "@/serverFunctions/news";
 
 function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
   const lang = useLocale();
@@ -18,7 +16,7 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
       ) : null}
 
       <Link
-        className="text-secondary line-clamp-3 h-fit text-base underline"
+        className="line-clamp-3 h-fit text-base text-secondary underline"
         to="/{-$lang}/news/$newsItemId"
         params={
           {
@@ -34,9 +32,7 @@ function NewsItem({ newsItem }: { newsItem: NewsTitleResponse }) {
 
 function News() {
   const lang = useLocale();
-  const { data: newsTitles } = useSuspenseQuery(
-    getNewsTitlesQueryOptions({ locale: lang }),
-  );
+  const { data: newsTitles } = useSuspenseQuery(getNewsTitlesQueryOptions({ locale: lang }));
 
   const t = useTranslations("Navbar");
 

@@ -1,18 +1,12 @@
-import {
-  useNavigate,
-  useSearch,
-  type RegisteredRouter,
-  type RouteIds,
-} from "@tanstack/react-router";
+import type { RegisteredRouter, RouteIds } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 // import { startTransition } from "react";
 
 import { cleanEmptyParams } from "@/utils/cleanEmptyParams";
 
 const preservedKeys = ["sort", "limit", "order"];
 
-export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
-  routeId: TId,
-) {
+export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(routeId: TId) {
   const navigate = useNavigate();
   const filters = useSearch({ from: routeId });
 
@@ -23,14 +17,15 @@ export function useFilters<TId extends RouteIds<RegisteredRouter["routeTree"]>>(
       resetScroll: false,
     });
 
-  const preservedSearch = Object.entries(filters).reduce<
-    Record<string, unknown>
-  >((acc, [key, value]) => {
-    if (preservedKeys.includes(key)) {
-      acc[key] = value;
-    }
-    return acc;
-  }, {});
+  const preservedSearch = Object.entries(filters).reduce<Record<string, unknown>>(
+    (acc, [key, value]) => {
+      if (preservedKeys.includes(key)) {
+        acc[key] = value;
+      }
+      return acc;
+    },
+    {},
+  );
 
   const resetFilters = () => {
     navigate({

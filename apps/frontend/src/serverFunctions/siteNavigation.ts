@@ -1,22 +1,19 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import {
-  buildSiteNavigation,
-  getDefaultSiteNavigationConfig,
-  type DocumentLabelResolver,
-  type DocumentPathResolver,
-} from "@/config/site-navigation";
-import { localeSchema, type Locale } from "@/config/i18n";
-import { siteNavigationConfigUpdateSchema } from "@/db/types";
+import type { Locale } from "@/config/i18n";
+import { localeSchema } from "@/config/i18n";
+import type { DocumentLabelResolver, DocumentPathResolver } from "@/config/site-navigation";
+import { buildSiteNavigation, getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import { db } from "@/db/database";
-import { document, documentVersion, DOCUMENT_VERSION_STATUS } from "@/db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { DOCUMENT_VERSION_STATUS, document, documentVersion } from "@/db/schema";
+import { siteNavigationConfigUpdateSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
 import {
-  siteNavigationRepository,
   SiteNavigationConfigConflictError,
+  siteNavigationRepository,
 } from "@/repositories/siteNavigation";
 
 async function buildResolvers(lang: Locale): Promise<{
@@ -72,10 +69,7 @@ export const $getSiteNavigation = createServerFn({ method: "GET" })
       const config = active?.config ?? getDefaultSiteNavigationConfig();
       return buildSiteNavigation(lang, config, labelResolver, pathResolver);
     } catch (error) {
-      console.error(
-        "Failed to load persisted site navigation config, using fallback.",
-        error,
-      );
+      console.error("Failed to load persisted site navigation config, using fallback.", error);
       return buildSiteNavigation(lang, getDefaultSiteNavigationConfig());
     }
   });
@@ -112,8 +106,7 @@ export const $saveSiteNavigationConfig = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
 
-    const userId =
-      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
     try {
       return {
@@ -142,8 +135,7 @@ export const $resetSiteNavigationConfig = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
 
-    const userId =
-      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
     try {
       return {

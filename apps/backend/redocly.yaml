@@ -1,0 +1,25 @@
+extends:
+  - recommended
+
+rules:
+  # `localhost` in `servers[].url` triggers a false positive against the
+  # `example.com` heuristic. Disable it; the URLs are intentional dev hosts.
+  no-server-example.com: off
+
+  # `no-invalid-media-type-examples` flags structural mismatches between the
+  # generated OpenAPI schema and our `example:` blocks. Kept as `warn` so any
+  # future drift between examples and Zod schemas surfaces in CI without
+  # failing the run.
+  no-invalid-media-type-examples: warn
+
+  # `/health` and `/stats` are public read-only endpoints with no request
+  # validation surface — they cannot 4xx in normal operation, so omitting 4xx
+  # responses there is intentional.
+  operation-4xx-response: off
+
+  # `components.schemas` is populated for the Swagger UI "Schemas" panel — it
+  # documents the data model so readers don't need to drill into every route
+  # to see types. Operations intentionally inline their bodies (no `$ref`
+  # rewiring), so these registered components are "unused" by Redocly's
+  # heuristic. Suppress the warning rather than fake-using them.
+  no-unused-components: off

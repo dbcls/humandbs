@@ -212,11 +212,11 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
     expect(res.status).toBe(403)
   })
 
-  itWithAdminToken("IT-DATASET-11: PUT update on a published-parent dataset returns 403", async (token) => {
+  itWithAdminToken("IT-DATASET-11: PUT update on a published-parent dataset returns 409", async (token) => {
     // IT-DATASET-11
-    // Admin bypasses ownership but parent-draft check still fires (403) before
-    // validators run. The error detail must surface the parent-status reason so a
-    // 403 from any earlier gate would not match.
+    // Admin bypasses ownership but parent-draft check still fires (409 Conflict)
+    // before validators run. The error detail must surface the parent-status
+    // reason so a 409 from any earlier gate would not match.
     const app = getApp()
     const listRes = await app.request(url("/dataset?limit=1"))
     const list = (await listRes.json()) as SearchResponse<EsDataset>
@@ -230,10 +230,10 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       headers: { ...authHeaders(token), "Content-Type": "application/json" },
       body: JSON.stringify({ experiments: [] }),
     })
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(409)
     const json = (await res.json()) as { title?: string; detail?: string }
-    expect(json.title).toBe("Forbidden")
-    expect(json.detail ?? "").toMatch(/parent Research is not in draft/i)
+    expect(json.title).toBe("Conflict")
+    expect(json.detail ?? "").toMatch(/expected 'draft'/)
   })
 
   itWithEs("IT-DATASET-17: GET /dataset/{datasetId}/versions returns ascending version array", async () => {
@@ -515,6 +515,56 @@ describe("IT-DATASET-*: Dataset endpoints", () => {
       expect(versionSet.size).toBe(2)
     } finally {
       if (humId) await purgeResearch(admin, humId)
+    }
+  })
+
+  itWithIsolationIndex("IT-DATASET-T8: PUT update rejects body.humId that does not match the dataset's parent linkage", async ({ admin, nonAdmin }) => {
+    // The handler authorizes against the URL-resolved parent Research only; a
+    // body that overrides humId would otherwise try to reattach the dataset
+    // to an unrelated Research. The handler rejects such bodies with 400
+    // before reaching the writer. (humVersionId rotates across draft cycles
+    // so it is not compared at the handler boundary; the ES layer pins it
+    // from the existing dataset doc + parent.draftVersion regardless.)
+    const sub = decodeJwtSub(nonAdmin)
+    expect(sub).toBeTruthy()
+    let humIdA = ""
+    let humIdB = ""
+    try {
+      const a = await createDraftResearch(admin)
+      humIdA = a.humId
+      await setOwnerUids(admin, humIdA, [sub!])
+      const b = await createDraftResearch(admin)
+      humIdB = b.humId
+
+      const ds = await createDatasetForResearch(nonAdmin, humIdA)
+      const app = getApp()
+      const tamperedBody = {
+        humId: humIdB,
+        humVersionId: `${humIdB}-v1`,
+        releaseDate: ds.releaseDate ?? new Date().toISOString().split("T")[0],
+        criteria: ds.criteria ?? "Controlled-access (Type I)",
+        typeOfData: { ja: null, en: null },
+        experiments: [],
+        _seq_no: ds.seqNo,
+        _primary_term: ds.primaryTerm,
+      }
+      const tampered = await app.request(url(`/dataset/${ds.datasetId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify(tamperedBody),
+      })
+      expect(tampered.status).toBe(400)
+
+      // Sanity check: the same body with the correct linkage succeeds.
+      const ok = await app.request(url(`/dataset/${ds.datasetId}/update`), {
+        method: "PUT",
+        headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
+        body: JSON.stringify({ ...tamperedBody, humId: humIdA, humVersionId: `${humIdA}-v1` }),
+      })
+      expect(ok.status).toBe(200)
+    } finally {
+      if (humIdA) await purgeResearch(admin, humIdA)
+      if (humIdB) await purgeResearch(admin, humIdB)
     }
   })
 

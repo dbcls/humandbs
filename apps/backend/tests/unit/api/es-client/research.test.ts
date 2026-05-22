@@ -384,9 +384,14 @@ const humNumericPart = (id: string): number => {
 describe("createResearch humId collision retry", () => {
   const baseParams = { uids: ["owner-1"] } as Parameters<typeof research.createResearch>[0]
 
-  it("PBT (a): succeeds on the (n+1)-th attempt when ResearchVersion has n preceding collisions", async () => {
+  it("PBT (a): succeeds on the (n+1)-th attempt with n collisions; throws when n hits MAX_RETRIES", async () => {
+    // collisionCount in [0, 3] covers both the success path (0..2) and the
+    // MAX_RETRIES=3 boundary (3 collisions → no further retries, last error
+    // surfaces). Keeping the success and failure shapes in one property guards
+    // against silent regressions on either side of the boundary.
+    const MAX_RETRIES = 3
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 0, max: 2 }), async (collisionCount) => {
+      fc.asyncProperty(fc.integer({ min: 0, max: MAX_RETRIES }), async (collisionCount) => {
         mockEsSearch.mockReset()
         mockEsIndex.mockReset()
         mockEsDelete.mockReset()
@@ -410,12 +415,21 @@ describe("createResearch humId collision retry", () => {
         })
         mockEsGet.mockResolvedValue({ found: true, _source: {}, _seq_no: 0, _primary_term: 1 })
 
+        if (collisionCount >= MAX_RETRIES) {
+          let caught: unknown
+          try {
+            await research.createResearch(baseParams)
+          } catch (e) {
+            caught = e
+          }
+          return caught !== undefined && versionIndexAttempt === MAX_RETRIES
+        }
         const result = await research.createResearch(baseParams)
         const expectedNum = collisionCount + 2
         const expectedHumId = `hum${String(expectedNum).padStart(4, "0")}`
         return result.research.humId === expectedHumId
       }),
-      { numRuns: 15 },
+      { numRuns: 20 },
     )
   })
 

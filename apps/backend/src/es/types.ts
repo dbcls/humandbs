@@ -7,7 +7,13 @@
  * 3. TypeScript types inferred from Zod schemas
  *
  * Dependency flow: crawler/types → es/types → api/types
+ *
+ * The bare `@hono/zod-openapi` import is a side-effect: it calls
+ * `extendZodWithOpenApi(z)` on load, so the `.openapi(...)` method is available
+ * on the schemas defined below regardless of whether the consumer (test runner,
+ * crawler CLI, API server) has imported `@hono/zod-openapi` itself.
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import {
@@ -127,8 +133,12 @@ export type {
 // === ES Dataset Schema (diff: + originalMetadata) ===
 
 export const EsDatasetSchema = CrawlerDatasetSchema.extend({
+  // `.openapi({ type: "object" })` keeps the generated schema valid under
+  // OpenAPI 3.0's nullable-type-sibling rule (`z.any()` / `z.unknown()` alone
+  // emit `{ nullable: true }` with no `type`).
   originalMetadata: z.record(z.string(), z.any()).nullable().optional()
-    .describe("Original metadata preserved from the data source (for debugging/audit)"),
+    .describe("Original metadata preserved from the data source (for debugging/audit)")
+    .openapi({ type: "object" }),
 })
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 

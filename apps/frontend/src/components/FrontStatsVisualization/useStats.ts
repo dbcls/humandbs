@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
 import type { StatsState } from "./types";
 import { normalizeStatsResponse } from "./utils";
 
 export default function useStats() {
   const [state, setState] = useState<StatsState>({ loading: true, error: "", stats: null });
-  
+
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -22,8 +23,10 @@ export default function useStats() {
       }
     }
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
-  
+
   return state;
 }

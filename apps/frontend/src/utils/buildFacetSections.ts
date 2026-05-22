@@ -1,7 +1,8 @@
 import type { DatasetFilters } from "@humandbs/backend/types";
 
 import type { SectionConfig } from "@/components/SearchPanel";
-import { DATASET_FACET_CONFIG, type FacetConfig } from "@/config/facet-config";
+import type { FacetConfig } from "@/config/facet-config";
+import { DATASET_FACET_CONFIG } from "@/config/facet-config";
 
 /**
  * Builds SectionConfig[] from DATASET_FACET_CONFIG given the active filter
@@ -31,8 +32,7 @@ export function buildFacetSections(
           groupKey,
           uiGroup,
           value: (activeValue as string[]) ?? [],
-          options:
-            allFacetsData?.[key]?.map((f: { value: string }) => f.value) ?? [],
+          options: allFacetsData?.[key]?.map((f: { value: string }) => f.value) ?? [],
         } as SectionConfig);
         break;
       case "text":

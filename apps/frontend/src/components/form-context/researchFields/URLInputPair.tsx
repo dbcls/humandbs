@@ -1,13 +1,13 @@
-import { ResearchDetailSchema } from "@humandbs/backend/types";
 import { z } from "zod";
-import { useFieldContext } from "../FormContext";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
+
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
+import { useFieldContext } from "../FormContext";
 import { ResetFieldButton } from "../fields/ResetFieldButton";
-import {
-  deepEqual,
-  getFieldDefaultValue,
-} from "../fields/useFieldModified";
+import { deepEqual, getFieldDefaultValue } from "../fields/useFieldModified";
 
 const urlSchema = z.object({
   ...ResearchDetailSchema.shape.summary.shape.url.shape.en.element.shape,
@@ -26,8 +26,7 @@ export function URLInputPair({
   onChange: (next: UrlItem) => void;
   onReset?: () => void;
 }) {
-  const modified =
-    defaultValue !== undefined && !deepEqual(value, defaultValue);
+  const modified = defaultValue !== undefined && !deepEqual(value, defaultValue);
 
   return (
     <div className="relative flex flex-col items-stretch gap-1">
@@ -49,9 +48,7 @@ export function URLInputPair({
         })}
         onChange={(e) => onChange({ ...value, url: e.target.value })}
       />
-      {modified && onReset && (
-        <ResetFieldButton className="-top-1" onClick={onReset} />
-      )}
+      {modified && onReset && <ResetFieldButton className="-top-1" onClick={onReset} />}
     </div>
   );
 }

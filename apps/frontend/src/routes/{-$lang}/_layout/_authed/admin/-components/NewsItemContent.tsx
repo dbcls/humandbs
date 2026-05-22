@@ -1,13 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useStore, uuid } from "@tanstack/react-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouteContext } from "@tanstack/react-router";
+import type { Locale } from "use-intl";
+import { useLocale } from "use-intl";
+
 import { Suspense, useState } from "react";
-import { type Locale, useLocale } from "use-intl";
 
 import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { ModifiedTag } from "@/components/form-context/fields/ModifiedTag";
-import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
+import { isFieldModified } from "@/components/form-context/fields/useFieldModified";
+import { SkeletonLoading } from "@/components/Skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Combobox,
   ComboboxChip,
@@ -19,26 +24,24 @@ import {
   ComboboxList,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/config/i18n";
 import { cn } from "@/lib/utils";
 import type { NewsItemRecord, NewsTag } from "@/repositories/newsItem";
+import type { NewsItemResponse } from "@/serverFunctions/news";
 import {
   $createNewsItem,
   $createTag,
   $updateNewsItem,
   getNewsItemQueryOptions,
   getTagsQueryOptions,
-  type NewsItemResponse,
 } from "@/serverFunctions/news";
-import { Label } from "@/components/ui/label";
-import { DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
-import { useRouteContext } from "@tanstack/react-router";
-import type { SessionUser } from "@/utils/jwt-helpers";
-import { SkeletonLoading } from "@/components/Skeleton";
-import { TitleValue } from "./TitleValue";
 import { toDateString } from "@/utils/dates";
+import type { SessionUser } from "@/utils/jwt-helpers";
+
+import { DRAFT_NEWS_ID, isDraftNewsItem } from "./draftNewsItem";
+import { TitleValue } from "./TitleValue";
 
 interface FormDataType {
   translations: Record<Locale, { title: string; content: string }>;
@@ -193,14 +196,9 @@ function NewsItemForm({
       await queryClient.cancelQueries(newsListQueryFilter);
 
       const prevNewsItem = queryClient.getQueryData(newsItemQO.queryKey);
-      const prevNewsListEntries =
-        queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
+      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
-      const optimisticNewsItem = getOptimisticallyUpdatedNewsValue(
-        newsItem,
-        inputValues,
-        allTags,
-      );
+      const optimisticNewsItem = getOptimisticallyUpdatedNewsValue(newsItem, inputValues, allTags);
       queryClient.setQueryData(newsItemQO.queryKey, optimisticNewsItem);
 
       queryClient.setQueriesData<NewsListData>(newsListQueryFilter, (prev) => {
@@ -208,9 +206,7 @@ function NewsItemForm({
         return {
           ...prev,
           pages: prev.pages.map((page) =>
-            page.map((item) =>
-              item.id === newsItem.id ? optimisticNewsItem : item,
-            ),
+            page.map((item) => (item.id === newsItem.id ? optimisticNewsItem : item)),
           ),
         };
       });
@@ -249,23 +245,16 @@ function NewsItemForm({
     onMutate: async (inputValues) => {
       await queryClient.cancelQueries(newsListQueryFilter);
 
-      const prevNewsListEntries =
-        queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
+      const prevNewsListEntries = queryClient.getQueriesData<NewsListData>(newsListQueryFilter);
 
-      const optimisticNewsItem = getOptimisticallyCreatedNewsItem(
-        user,
-        inputValues,
-        allTags,
-      );
+      const optimisticNewsItem = getOptimisticallyCreatedNewsItem(user, inputValues, allTags);
 
       queryClient.setQueriesData<NewsListData>(newsListQueryFilter, (prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           pages: prev.pages.map((page) =>
-            page.map((item) =>
-              isDraftNewsItem(item.id) ? optimisticNewsItem : item,
-            ),
+            page.map((item) => (isDraftNewsItem(item.id) ? optimisticNewsItem : item)),
           ),
         };
       });
@@ -280,10 +269,7 @@ function NewsItemForm({
       return { prevNewsListEntries };
     },
     onSuccess: (newItem) => {
-      queryClient.setQueryData(
-        getNewsItemQueryOptions(newItem.id).queryKey,
-        newItem,
-      );
+      queryClient.setQueryData(getNewsItemQueryOptions(newItem.id).queryKey, newItem);
       onSelectNewsItemId(newItem.id);
     },
     onError: (_, __, context) => {
@@ -318,10 +304,7 @@ function NewsItemForm({
   const { mutateAsync: createTag } = useMutation({
     mutationFn: (name: string) => $createTag({ data: { name } }),
     onSuccess: (newTag) => {
-      queryClient.setQueryData(tagsQO.queryKey, (prev: NewsTag[] = []) => [
-        ...prev,
-        newTag,
-      ]);
+      queryClient.setQueryData(tagsQO.queryKey, (prev: NewsTag[] = []) => [...prev, newTag]);
       form.setFieldValue("tags", [...form.state.values.tags, newTag.id]);
     },
   });
@@ -344,13 +327,7 @@ function NewsItemForm({
     >
       {/* Top bar: tags + submit button */}
       <div className="flex items-center justify-end gap-4">
-        <form.Subscribe
-          selector={(state) => [
-            state.isSubmitting,
-            state.isTouched,
-            state.isValid,
-          ]}
-        >
+        <form.Subscribe selector={(state) => [state.isSubmitting, state.isTouched, state.isValid]}>
           {([isSubmitting, isTouched, isValid]) => (
             <Button
               disabled={isSubmitting || !isTouched || !isValid}
@@ -395,21 +372,14 @@ function NewsItemForm({
 
         {mode === "update" && (
           <>
-            <TitleValue
-              title="Created at:"
-              value={toDateString(newsItem.createdAt)}
-            />
+            <TitleValue title="Created at:" value={toDateString(newsItem.createdAt)} />
             <TitleValue
               title="Updated at:"
               value={toDateString(
-                newsItem.translations[form.state.values.locale]?.updatedAt ??
-                  undefined,
+                newsItem.translations[form.state.values.locale]?.updatedAt ?? undefined,
               )}
             />
-            <TitleValue
-              title="Author:"
-              value={newsItem.author.name ?? undefined}
-            />
+            <TitleValue title="Author:" value={newsItem.author.name ?? undefined} />
           </>
         )}
       </div>
@@ -477,9 +447,7 @@ function TagPicker({
   const filteredTags = allTags.filter((t) =>
     t.name.toLowerCase().includes(inputValue.toLowerCase()),
   );
-  const hasExactMatch = allTags.some(
-    (t) => t.name.toLowerCase() === inputValue.toLowerCase(),
-  );
+  const hasExactMatch = allTags.some((t) => t.name.toLowerCase() === inputValue.toLowerCase());
   const showCreate = inputValue.trim().length > 0 && !hasExactMatch;
 
   function handleValueChange(ids: string[]) {
@@ -525,9 +493,7 @@ function TagPicker({
               Create tag: <span className="font-medium">{inputValue}</span>
             </ComboboxItem>
           )}
-          {filteredTags.length === 0 && !showCreate && (
-            <ComboboxEmpty>No tags found</ComboboxEmpty>
-          )}
+          {filteredTags.length === 0 && !showCreate && <ComboboxEmpty>No tags found</ComboboxEmpty>}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>

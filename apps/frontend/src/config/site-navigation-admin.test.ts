@@ -1,14 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  buildSiteNavigation,
-  type SiteNavigationConfig,
-} from "@/config/site-navigation";
+import { buildSiteNavigation, type SiteNavigationConfig } from "@/config/site-navigation";
 
-import {
-  deriveNavbarCommittedGroups,
-  mergeCommittedNavbarGroups,
-} from "./site-navigation-admin";
+import { deriveNavbarCommittedGroups, mergeCommittedNavbarGroups } from "./site-navigation-admin";
 
 describe("deriveNavbarCommittedGroups", () => {
   test("treats the item matching linkedItemId as linked and the rest as submenu items", () => {
@@ -57,9 +51,7 @@ describe("deriveNavbarCommittedGroups", () => {
     const [group] = deriveNavbarCommittedGroups(config);
 
     expect(group?.linkedItem?.item.id).toBe("item-sub-1");
-    expect(
-      group?.subItems.map(({ item, enabled }) => ({ id: item.id, enabled })),
-    ).toEqual([
+    expect(group?.subItems.map(({ item, enabled }) => ({ id: item.id, enabled }))).toEqual([
       { id: "item-top", enabled: true },
       { id: "item-sub-2", enabled: false },
     ]);

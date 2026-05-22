@@ -13,16 +13,16 @@ export function Footer() {
     <footer className="mt-2 flex flex-wrap justify-between gap-6 bg-white p-6 text-sm">
       <nav className="min-w-0 flex-1">
         <h3 className="font-semibold text-secondary">{tFooter("sitemap")}</h3>
-        <div className="mt-4 columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-8 pb-12">
+        <div className="mt-4 columns-1 gap-8 pb-12 sm:columns-2 md:columns-3 lg:columns-4">
           {siteNavigation.footer.map((group) => (
-            <section key={group.id} className="break-inside-avoid mb-12">
-              <h4 className="text-xs uppercase text-neutral-400">{group.label}</h4>
+            <section key={group.id} className="mb-12 break-inside-avoid">
+              <h4 className="text-neutral-400 text-xs uppercase">{group.label}</h4>
               <ul className="mt-3 flex flex-col gap-2">
                 {group.items.map((item) => (
                   <li key={item.id} className="min-w-0">
                     <Link
                       {...asLinkProps(item.linkOptions)}
-                      className="text-foreground hover:text-secondary hover:underline text-xs break-words no-underline"
+                      className="break-words text-foreground text-xs no-underline hover:text-secondary hover:underline"
                     >
                       {item.label}
                     </Link>

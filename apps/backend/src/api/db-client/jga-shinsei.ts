@@ -4,7 +4,7 @@
  * Reference SQL: `apps/backend/jga-shinsei/scripts/dump-all-data.sh`.
  */
 import { JGA_DB_SCHEMA, jgaSql } from "@/api/db-client/client"
-import { NotFoundError } from "@/api/routes/errors"
+import { NotFoundError } from "@/api/errors"
 import {
   transformDsApplication,
   transformDuApplication,

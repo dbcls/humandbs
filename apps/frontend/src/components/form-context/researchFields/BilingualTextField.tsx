@@ -1,14 +1,16 @@
+import type { z } from "zod";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
+
+import { useFieldContext } from "@/components/form-context/FormContext";
+import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
 import {
   isFieldModified,
   resetFieldKeyToDefault,
 } from "@/components/form-context/fields/useFieldModified";
-import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
-import { useFieldContext } from "@/components/form-context/FormContext";
 import { Input } from "@/components/Input";
-import { TextareaAutosize } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { z } from "zod";
+import { TextareaAutosize } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const BilingualTextSchema = ResearchDetailSchema.pick({ title: true });
@@ -38,9 +40,7 @@ export default function BilingualTextField({
                 "modified-field": isEnModified,
               })}
               value={field.state.value.en ?? ""}
-              onChange={(e) =>
-                field.handleChange((prev) => ({ ...prev, en: e.target.value }))
-              }
+              onChange={(e) => field.handleChange((prev) => ({ ...prev, en: e.target.value }))}
               placeholder="En"
             />
           ) : (
@@ -49,17 +49,11 @@ export default function BilingualTextField({
               variant="form"
               className={`flex-1 ${isEnModified ? "modified-field" : ""}`}
               value={field.state.value.en ?? ""}
-              onChange={(e) =>
-                field.handleChange((prev) => ({ ...prev, en: e.target.value }))
-              }
+              onChange={(e) => field.handleChange((prev) => ({ ...prev, en: e.target.value }))}
               placeholder="En"
             />
           )}
-          {isEnModified && (
-            <ResetFieldButton
-              onClick={() => resetFieldKeyToDefault(field, "en")}
-            />
-          )}
+          {isEnModified && <ResetFieldButton onClick={() => resetFieldKeyToDefault(field, "en")} />}
         </div>
         <div className="relative flex flex-1 items-center">
           {variant === "textarea" ? (
@@ -69,9 +63,7 @@ export default function BilingualTextField({
                 "modified-field": isJaModified,
               })}
               value={field.state.value.ja ?? ""}
-              onChange={(e) =>
-                field.setValue((prev) => ({ ...prev, ja: e.target.value }))
-              }
+              onChange={(e) => field.setValue((prev) => ({ ...prev, ja: e.target.value }))}
               placeholder="Ja"
             />
           ) : (
@@ -80,17 +72,11 @@ export default function BilingualTextField({
               variant="form"
               className={`flex-1 ${isJaModified ? "modified-field" : ""}`}
               value={field.state.value.ja ?? ""}
-              onChange={(e) =>
-                field.setValue((prev) => ({ ...prev, ja: e.target.value }))
-              }
+              onChange={(e) => field.setValue((prev) => ({ ...prev, ja: e.target.value }))}
               placeholder="Ja"
             />
           )}
-          {isJaModified && (
-            <ResetFieldButton
-              onClick={() => resetFieldKeyToDefault(field, "ja")}
-            />
-          )}
+          {isJaModified && <ResetFieldButton onClick={() => resetFieldKeyToDefault(field, "ja")} />}
         </div>
       </div>
     </Label>

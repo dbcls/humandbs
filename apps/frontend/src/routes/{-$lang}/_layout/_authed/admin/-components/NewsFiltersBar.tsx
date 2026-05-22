@@ -48,21 +48,17 @@ export function NewsFiltersBar() {
       <DateRangeFilter
         from={search.publishedFrom}
         to={search.publishedTo}
-        onChange={({ publishedFrom, publishedTo }) =>
-          setFilters({ publishedFrom, publishedTo })
-        }
+        onChange={({ publishedFrom, publishedTo }) => setFilters({ publishedFrom, publishedTo })}
       />
       <TagFilter
         value={search.tagIds ?? []}
-        onChange={(tagIds) =>
-          setFilters({ tagIds: tagIds.length > 0 ? tagIds : undefined })
-        }
+        onChange={(tagIds) => setFilters({ tagIds: tagIds.length > 0 ? tagIds : undefined })}
       />
       {hasActiveFilters && (
         <Button
           variant="ghost"
           size="slim"
-          className="text-muted-foreground self-start text-xs"
+          className="self-start text-muted-foreground text-xs"
           onClick={handleClearAll}
         >
           <XIcon className="mr-1 size-3" />
@@ -98,29 +94,18 @@ function DateRangeFilter({
   to: string | undefined;
   onChange: (range: { publishedFrom?: string; publishedTo?: string }) => void;
 }) {
-  const value: DateStringRange | undefined =
-    from || to ? { from, to } : undefined;
+  const value: DateStringRange | undefined = from || to ? { from, to } : undefined;
 
   return (
     <DateRangePicker
       value={value}
-      onSelect={(range) =>
-        onChange({ publishedFrom: range.from, publishedTo: range.to })
-      }
-      onClear={() =>
-        onChange({ publishedFrom: undefined, publishedTo: undefined })
-      }
+      onSelect={(range) => onChange({ publishedFrom: range.from, publishedTo: range.to })}
+      onClear={() => onChange({ publishedFrom: undefined, publishedTo: undefined })}
     />
   );
 }
 
-function TagFilter({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (tagIds: string[]) => void;
-}) {
+function TagFilter({ value, onChange }: { value: string[]; onChange: (tagIds: string[]) => void }) {
   const { data: allTags = [] } = useQuery(getTagsQueryOptions());
   const anchor = useComboboxAnchor();
 
@@ -136,16 +121,12 @@ function TagFilter({
             </ComboboxChip>
           );
         })}
-        <ComboboxChipsInput
-          placeholder={value.length === 0 ? "Filter by tag…" : ""}
-        />
+        <ComboboxChipsInput placeholder={value.length === 0 ? "Filter by tag…" : ""} />
       </ComboboxChips>
       <ComboboxContent anchor={anchor}>
         <ComboboxList>
           {allTags.length === 0 ? (
-            <div className="text-muted-foreground py-2 text-center text-sm">
-              No tags found
-            </div>
+            <div className="py-2 text-center text-muted-foreground text-sm">No tags found</div>
           ) : (
             allTags.map((tag) => (
               <ComboboxItem key={tag.id} value={tag.id}>

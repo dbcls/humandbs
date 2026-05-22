@@ -89,7 +89,7 @@ describe("IT-ERROR-*: RFC 7807 problem details", () => {
   itWithNonAdminToken("IT-ERROR-04: 403 when authenticated non-admin hits admin-only endpoint", async (token) => {
     // IT-ERROR-04
     // Hitting POST /research/{humId}/approve as a non-admin should be rejected before any state change.
-    // The exact humId is incidental: even nonexistent paths are gated by adminOnly before the resource lookup.
+    // The exact humId is incidental: even nonexistent paths are gated by requireAdmin before the resource lookup.
     const app = getApp()
     const res = await app.request(url("/research/hum0001/approve"), {
       method: "POST",

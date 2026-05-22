@@ -9,7 +9,7 @@ export function TrashButton({
 }) {
   return (
     <Button variant={"ghost"} size={"slim"} onClick={onClick}>
-      <Trash2Icon className="text-danger size-5 transition-colors group-data-[active=true]:text-white" />
+      <Trash2Icon className="size-5 text-danger transition-colors group-data-[active=true]:text-white" />
     </Button>
   );
 }

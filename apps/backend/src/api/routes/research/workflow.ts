@@ -6,10 +6,10 @@
 import type { OpenAPIHono, RouteConfig } from "@hono/zod-openapi"
 import type { Context } from "hono"
 
+import { ConflictError } from "@/api/errors"
 import { validateStatusTransition } from "@/api/es-client/auth"
 import { updateResearchStatus } from "@/api/es-client/research"
 import { singleResponse } from "@/api/helpers/response"
-import { ConflictError } from "@/api/routes/errors"
 import type { EsResearch, ResearchStatus, StatusAction } from "@/api/types"
 
 import {
@@ -107,21 +107,21 @@ export function registerWorkflowHandlers(router: OpenAPIHono): void {
   )
 
   // POST /research/{humId}/approve
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(
     approveRoute as RouteConfig,
     createStatusTransitionHandler("approve", "published"),
   )
 
   // POST /research/{humId}/reject
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(
     rejectRoute as RouteConfig,
     createStatusTransitionHandler("reject", "draft"),
   )
 
   // POST /research/{humId}/unpublish
-  // Middleware: loadResearchAndAuthorize({ adminOnly: true })
+  // Middleware: loadResearchAndAuthorize({ requireAdmin: true })
   router.openapi(
     unpublishRoute as RouteConfig,
     createStatusTransitionHandler("unpublish", "draft"),

@@ -1,6 +1,5 @@
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
-
 import { useFieldContext } from "./FormContext";
 
 export default function CheckboxField({ label }: { label: React.ReactNode }) {

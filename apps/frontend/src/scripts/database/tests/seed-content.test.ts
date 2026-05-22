@@ -1,14 +1,9 @@
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+
 import { eq } from "drizzle-orm";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  test,
-} from "bun:test";
 
 import * as schema from "@/db/schema";
+
 import { seedContent } from "../seed-content";
 import {
   clearTables,
@@ -85,10 +80,7 @@ describe("seedContent", () => {
 
     const items = await db.select().from(schema.contentItem).execute();
     expect(items).toHaveLength(2);
-    expect(items.map((i) => i.id).sort()).toEqual([
-      "acknowledgement",
-      "guidelines",
-    ]);
+    expect(items.map((i) => i.id).sort()).toEqual(["acknowledgement", "guidelines"]);
   });
 
   test("sets publishedAt from releaseDate", async () => {
@@ -132,10 +124,7 @@ describe("seedContent", () => {
   test("translations are seeded with status published", async () => {
     await seedContent(SAMPLE_PAGES, false, db);
 
-    const translations = await db
-      .select()
-      .from(schema.contentTranslation)
-      .execute();
+    const translations = await db.select().from(schema.contentTranslation).execute();
 
     expect(translations.every((t) => t.status === "published")).toBe(true);
   });

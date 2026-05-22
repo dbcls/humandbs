@@ -6,6 +6,7 @@
  * - Status transition actions
  * - Status transition rules
  */
+import "@hono/zod-openapi"
 import { z } from "zod"
 
 import { ResearchStatusSchema } from "../../es/types"

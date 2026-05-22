@@ -109,11 +109,12 @@ describe("IT-JGA-*: JGA Shinsei (admin-only HTTP + db-client invariants)", () =>
     expect(json.title).toBe("Not Found")
   })
 
-  itWithJgaAdmin("IT-JGA-07: malformed jdsId without J-DS prefix is rejected (400 or 404)", async (token) => {
-    // IT-JGA-07
+  itWithJgaAdmin("IT-JGA-07: malformed jdsId without J-DS prefix is rejected by zod regex (400)", async (token) => {
+    // IT-JGA-07: JdsIdParamsSchema's `^J-DS\d+$` regex rejects this at the
+    // OpenAPIHono validator boundary, so the response is a 400 ProblemDetails.
     const app = getApp()
     const res = await app.request(url("/jga-shinsei/ds/invalid-id"), { headers: authHeaders(token) })
-    expect([400, 404]).toContain(res.status)
+    expect(res.status).toBe(400)
   })
 
   itWithNonAdminToken("IT-JGA-08: /jga-shinsei/du enforces admin (401 / 403 / 200 by token)", async (token) => {

@@ -152,6 +152,33 @@ snapshot_restore_exception
 
 → リストア前に既存のインデックスを削除するか、`rename_pattern` を使用する。
 
+## Mapping 変更時の標準オペレーション
+
+`apps/backend/src/es/*-schema.ts` のフィールド定義 (`keyword` ↔ `text` の切替、`bilingualTextKw` 化、`nested` の追加など) を変えた場合、ES は既存 index の mapping を後付けで変更できないため、対象 index を **削除して再作成 → データを再投入** する。`apps/backend/src/es/load-mappings.ts` は既存 index がある場合 skip するので、必ず先に DELETE すること。
+
+以下の手順は `dataset` index を例にしたもの。`research` / `research-version` でも対象 index 名を差し替えて同じ流れになる。
+
+```bash
+# 0. 直前にスナップショットを取り、ロールバック手段を確保する
+./scripts/es_snapshot.sh -n pre_mapping_change_$(date +%Y%m%d_%H%M%S)
+
+# 1. 書き込みを止める (crawler / API の write path を停止 — staging は実害低、production は短時間メンテ枠)
+
+# 2. 対象 index を削除
+curl -X DELETE "http://localhost:9200/dataset"
+
+# 3. 新スキーマで mapping を再作成
+docker compose exec backend bun run src/es/load-mappings.ts
+
+# 4. crawler-results/structured-json から再投入
+docker compose exec backend bun run src/es/load-docs.ts
+
+# 5. 動作確認 (例: 全文検索が想定どおりヒットするか)
+curl 'http://localhost:3000/dataset/search?query=NGS&limit=5'
+```
+
+失敗した場合は手順 0 で取得したスナップショットからリストアできる (上記「リストア手順」を参照)。
+
 ## 参考リンク
 
 - [Elasticsearch Snapshot and Restore](https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore.html)

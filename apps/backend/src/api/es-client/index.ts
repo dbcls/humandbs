@@ -13,9 +13,11 @@ export {
   buildStatusFilter,
   canAccessResearchDoc,
   getPublishedHumIds,
+  checkRequestedStatus,
   validateStatusTransition,
   canPerformTransition,
 } from "@/api/es-client/auth"
+export type { RequestedStatusCheck } from "@/api/es-client/auth"
 
 // Filters
 export {
@@ -32,7 +34,7 @@ export type {
 } from "@/api/es-client/filters"
 
 // Utilities
-export { esTotal, uniq, mgetMap } from "@/api/es-client/utils"
+export { escapeEsWildcard, esTotal, uniq, mgetMap } from "@/api/es-client/utils"
 
 // Query helpers
 export {
@@ -46,7 +48,6 @@ export {
 // Helpers
 export {
   splitComma,
-  canAccessDataset,
   nestedFacetAgg,
   doubleNestedFacetAgg,
   platformFacetAgg,
@@ -64,7 +65,6 @@ export {
   updateResearchStatus,
   updateResearchUids,
   deleteResearch,
-  getPendingReviews,
 } from "@/api/es-client/research"
 
 // Research version operations
@@ -82,11 +82,11 @@ export {
 export {
   getDataset,
   getDatasetWithSeqNo,
+  resolveLatestDatasetVersion,
   listDatasetVersions,
   generateDraftDatasetId,
   createDataset,
   updateDataset,
-  replaceDatasetId,
   deleteDataset,
   getResearchByDatasetId,
 } from "@/api/es-client/dataset"
@@ -105,3 +105,6 @@ export {
   searchDatasets,
   searchResearches,
 } from "@/api/es-client/search"
+
+// Stats operations
+export { getPublicStats } from "@/api/es-client/stats"

@@ -1,3 +1,7 @@
+import { LucideMoreVertical } from "lucide-react";
+
+import type { ReactNode } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,8 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LucideMoreVertical } from "lucide-react";
-import type { ReactNode } from "react";
+
 import { UnpublishedDot } from "./UnpublishedDot";
 
 interface AdminListItemTranslation {
@@ -31,19 +34,19 @@ export function AdminListItem({
   meta,
   translations,
   menuItems = [],
-  hideUnpublishedDot
+  hideUnpublishedDot,
 }: {
   id: string;
   header?: string;
   meta?: ReactNode;
   translations: AdminListItemTranslation[];
-    menuItems?: AdminListItemMenuItem[];
-    hideUnpublishedDot?: boolean;
+  menuItems?: AdminListItemMenuItem[];
+  hideUnpublishedDot?: boolean;
 }) {
   return (
     <>
       <div className="min-w-0 flex-1">
-        <div className="text-foreground-light mb-1 text-xs group-data-[active=true]:text-white/80 items-baseline flex gap-2">
+        <div className="mb-1 flex items-baseline gap-2 text-foreground-light text-xs group-data-[active=true]:text-white/80">
           {header ?? id} {meta ? <div className="mt-1">{meta}</div> : null}
         </div>
 
@@ -54,16 +57,12 @@ export function AdminListItem({
             const reviewTitle = translation.statuses.review;
             const displayTitle = publishedTitle || draftTitle || reviewTitle;
 
-            const hasChangedDraft =
-              !!draftTitle && draftTitle !== publishedTitle;
+            const hasChangedDraft = !!draftTitle && draftTitle !== publishedTitle;
 
             if (!displayTitle) return null;
 
             return (
-              <li
-                key={translation.lang}
-                className="flex min-w-0 items-center gap-2 text-xs"
-              >
+              <li key={translation.lang} className="flex min-w-0 items-center gap-2 text-xs">
                 <span className="truncate text-sm">{displayTitle}</span>
                 {hasChangedDraft && !hideUnpublishedDot ? <UnpublishedDot /> : null}
               </li>

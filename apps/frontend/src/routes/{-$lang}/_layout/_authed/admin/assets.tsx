@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { Suspense } from "react";
 
 import { Card } from "@/components/Card";
 
-import {
-  AssetsBrowser,
-  AssetsBrowserFallback,
-} from "./-components/AssetsBrowser";
+import { AssetsBrowser, AssetsBrowserFallback } from "./-components/AssetsBrowser";
+
 export { AssetsPanel } from "./-components/AssetsPanel";
 
 export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/assets")({

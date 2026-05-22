@@ -1,6 +1,8 @@
 import type { RangeFilter } from "@humandbs/backend/types";
+
 import { Input as SearchInput } from "@/components/Input";
 import { cn } from "@/lib/utils";
+
 import { FacetItemWrapper } from "./FacetItemWrapper";
 
 export function RangeFacetItem({
@@ -39,8 +41,8 @@ export function RangeFacetItem({
             });
           }}
           className={cn(
-            "h-[28px] flex-1 -mx-[2px]",
-            isDate ? "text-xs min-w-0 [&_input]:px-1" : "text-sm",
+            "-mx-[2px] h-[28px] flex-1",
+            isDate ? "min-w-0 text-xs [&_input]:px-1" : "text-sm",
           )}
         />
         <span className="text-muted-foreground text-xs">—</span>
@@ -56,8 +58,8 @@ export function RangeFacetItem({
             });
           }}
           className={cn(
-            "h-[28px] flex-1 -mx-[2px]",
-            isDate ? "text-xs min-w-0 [&_input]:px-1" : "text-sm",
+            "-mx-[2px] h-[28px] flex-1",
+            isDate ? "min-w-0 text-xs [&_input]:px-1" : "text-sm",
           )}
         />
       </div>

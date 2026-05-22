@@ -1,13 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  integer,
-  pgEnum,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import type { Locale } from "@/config/i18n";
 
@@ -44,28 +36,20 @@ export const documentVersion = pgTable(
   },
   (table) => [
     primaryKey({
-      columns: [
-        table.documentId,
-        table.versionNumber,
-        table.locale,
-        table.status,
-      ],
+      columns: [table.documentId, table.versionNumber, table.locale, table.status],
     }),
   ],
 );
 
 export type DocumentVersion = typeof documentVersion.$inferSelect;
 
-export const documentVersionRelations = relations(
-  documentVersion,
-  ({ one }) => ({
-    document: one(document, {
-      fields: [documentVersion.documentId],
-      references: [document.id],
-    }),
-    author: one(user, {
-      fields: [documentVersion.translatedBy],
-      references: [user.id],
-    }),
+export const documentVersionRelations = relations(documentVersion, ({ one }) => ({
+  document: one(document, {
+    fields: [documentVersion.documentId],
+    references: [document.id],
   }),
-);
+  author: one(user, {
+    fields: [documentVersion.translatedBy],
+    references: [user.id],
+  }),
+}));

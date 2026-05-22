@@ -1,20 +1,17 @@
+import type { z } from "zod";
+
+import { ResearchDetailSchema } from "@humandbs/backend/types";
+
 import { useFieldContext } from "@/components/form-context/FormContext";
 import { ResetFieldButton } from "@/components/form-context/fields/ResetFieldButton";
-import {
-  deepEqual,
-  getFieldDefaultValue,
-} from "@/components/form-context/fields/useFieldModified";
+import { deepEqual, getFieldDefaultValue } from "@/components/form-context/fields/useFieldModified";
 import { Input } from "@/components/Input";
 import { TextareaAutosize } from "@/components/ui/textarea";
-import { ResearchDetailSchema } from "@humandbs/backend/types";
-import { z } from "zod";
 import { cn } from "@/lib/utils";
 
 const BilingualTextValueSchema = ResearchDetailSchema.pick({ summary: true });
 
-export type BilingualTextValue = z.infer<
-  typeof BilingualTextValueSchema
->["summary"]["aims"];
+export type BilingualTextValue = z.infer<typeof BilingualTextValueSchema>["summary"]["aims"];
 
 export default function BilingualTextValueField({
   label,
@@ -27,18 +24,12 @@ export default function BilingualTextValueField({
 }) {
   const field = useFieldContext<BilingualTextValue>();
   const initial = getFieldDefaultValue(field) as BilingualTextValue | undefined;
-  const isEnModified = !deepEqual(
-    field.state.value?.en?.text,
-    initial?.en?.text,
-  );
-  const isJaModified = !deepEqual(
-    field.state.value?.ja?.text,
-    initial?.ja?.text,
-  );
+  const isEnModified = !deepEqual(field.state.value?.en?.text, initial?.en?.text);
+  const isJaModified = !deepEqual(field.state.value?.ja?.text, initial?.ja?.text);
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <span className="text-sm font-medium">{label ?? "Text Value"}</span>
+      <span className="font-medium text-sm">{label ?? "Text Value"}</span>
       <div className={inputsClassName ?? "flex gap-2"}>
         <div className="relative flex-1">
           {variant === "textarea" ? (

@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import type { MarkdownHeading } from "@/utils/markdown";
 import { cn } from "@/lib/utils";
+import type { MarkdownHeading } from "@/utils/markdown";
 
 export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
-  const headingsToShow =
-    headings?.filter((heading) => heading.level <= 2) || [];
+  const headingsToShow = headings?.filter((heading) => heading.level <= 2) || [];
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -41,7 +40,7 @@ export function TOC({ headings }: { headings: MarkdownHeading[] | null }) {
           key={heading.id}
           href={`#${heading.id}`}
           className={cn(
-            "text-sm font-medium text-neutral-500 no-underline hover:text-neutral-800",
+            "font-medium text-neutral-500 text-sm no-underline hover:text-neutral-800",
             {
               "font-bold text-neutral-900": activeId === heading.id,
             },

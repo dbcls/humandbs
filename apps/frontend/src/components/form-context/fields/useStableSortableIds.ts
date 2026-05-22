@@ -1,4 +1,5 @@
 import { arrayMove } from "@dnd-kit/sortable";
+
 import { useEffect, useRef, useState } from "react";
 
 function appendGeneratedIds(
@@ -11,10 +12,7 @@ function appendGeneratedIds(
     return ids;
   }
 
-  return [
-    ...ids,
-    ...Array.from({ length: count }, () => `${prefix}-${nextIdRef.current++}`),
-  ];
+  return [...ids, ...Array.from({ length: count }, () => `${prefix}-${nextIdRef.current++}`)];
 }
 
 export function useStableSortableIds(itemCount: number, prefix: string) {
@@ -33,12 +31,7 @@ export function useStableSortableIds(itemCount: number, prefix: string) {
         return previousIds.slice(0, itemCount);
       }
 
-      return appendGeneratedIds(
-        previousIds,
-        itemCount - previousIds.length,
-        prefix,
-        nextIdRef,
-      );
+      return appendGeneratedIds(previousIds, itemCount - previousIds.length, prefix, nextIdRef);
     });
   }, [itemCount, prefix]);
 

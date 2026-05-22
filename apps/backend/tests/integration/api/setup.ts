@@ -136,7 +136,7 @@ export const itWithJga = (name: string, fn: () => Promise<void>): void => {
 
 /**
  * Run `fn` if the JGA PostgreSQL is reachable AND a staging admin token is available.
- * Required for `/jga-shinsei/*` endpoints which combine adminOnly with a live DB query.
+ * Required for `/jga-shinsei/*` endpoints which combine requireAdmin with a live DB query.
  *
  * Live PostgreSQL aggregations on staging routinely exceed bun:test's 5s default
  * (the listing CTE can take 30s+), so the per-test timeout is extended to 60s.
@@ -389,7 +389,7 @@ export const setupIntegration = async (): Promise<void> => {
 
   // Guard against "fake non-admin" tokens: if `HUMANDBS_STAGING_USERNAME` happens to be in
   // `admin_uids.json`, the resulting token is actually admin and would silently bypass
-  // ownership/adminOnly guards in mutating tests (see `.claude/docs/staging-integration-test.md`).
+  // ownership/requireAdmin guards in mutating tests (see `.claude/docs/staging-integration-test.md`).
   // Drop the token in that case so `itWithNonAdminToken` falls back to skip rather than mutate
   // shared ES with admin privileges.
   if (esConnected && nonAdminToken) {

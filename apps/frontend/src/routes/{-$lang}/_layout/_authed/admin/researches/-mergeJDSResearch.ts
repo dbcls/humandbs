@@ -1,15 +1,13 @@
-import type {
-  CreateResearchRequest,
-  ResearchDetailResponse,
-} from "@humandbs/backend/types";
-import type { DeepOmit } from "@/utils/typeUtils";
+import type { CreateResearchRequest, ResearchDetailResponse } from "@humandbs/backend/types";
+
+import type { ResearchTemplateData } from "../../../../../../../../backend/src/api/types/templates";
 
 type ResearchValues = ResearchDetailResponse["data"];
-type IncomingResearchValues = DeepOmit<ResearchValues, "rawHtml">;
-type BilingualText = ResearchValues["title"];
-type MergeBilingualTextValue =
-  | ResearchValues["summary"]["aims"]
-  | IncomingResearchValues["summary"]["aims"];
+type IncomingResearchValues = ResearchTemplateData;
+type BilingualText = { ja: string | null; en: string | null };
+type SummaryTextValue = { ja: { text: string } | null; en: { text: string } | null };
+type UrlValue = { text: string; url: string };
+type SummaryUrlValue = { ja: UrlValue[]; en: UrlValue[] };
 
 const editableFields = [
   "title",
@@ -18,14 +16,22 @@ const editableFields = [
   "researchProject",
   "grant",
   "relatedPublication",
-  "controlledAccessUser",
 ] as const;
 
 export type EditableResearchField = (typeof editableFields)[number];
-export type EditableResearchValues = DeepOmit<
-  Pick<ResearchValues, EditableResearchField>,
-  "rawHtml"
->;
+export type EditableResearchValues = {
+  title: BilingualText;
+  summary: {
+    aims: SummaryTextValue;
+    methods: SummaryTextValue;
+    targets: SummaryTextValue;
+    url: SummaryUrlValue;
+  };
+  dataProvider: NonNullable<ResearchTemplateData["dataProvider"]>;
+  researchProject: NonNullable<ResearchTemplateData["researchProject"]>;
+  grant: NonNullable<ResearchTemplateData["grant"]>;
+  relatedPublication: NonNullable<ResearchTemplateData["relatedPublication"]>;
+};
 
 export type MergeResearchResult = {
   values: EditableResearchValues;
@@ -54,35 +60,20 @@ function isEmptyTextValue(value: { text?: string | null } | null | undefined) {
   return value == null || isEmptyString(value.text);
 }
 
-function mergeBilingualText(
-  current: BilingualText,
-  incoming: DeepOmit<BilingualText, "rawHtml">,
-): BilingualText {
+function mergeBilingualText(current: BilingualText, incoming: BilingualText): BilingualText {
   return {
-    ja:
-      isEmptyString(current.ja) && !isEmptyString(incoming.ja)
-        ? incoming.ja
-        : current.ja,
-    en:
-      isEmptyString(current.en) && !isEmptyString(incoming.en)
-        ? incoming.en
-        : current.en,
+    ja: isEmptyString(current.ja) && !isEmptyString(incoming.ja) ? incoming.ja : current.ja,
+    en: isEmptyString(current.en) && !isEmptyString(incoming.en) ? incoming.en : current.en,
   };
 }
 
 function mergeBilingualTextValue(
-  current: MergeBilingualTextValue,
-  incoming: DeepOmit<ResearchValues["summary"]["aims"], "rawHtml">,
-): DeepOmit<ResearchValues["summary"]["aims"], "rawHtml"> {
+  current: SummaryTextValue,
+  incoming: SummaryTextValue,
+): SummaryTextValue {
   return {
-    ja:
-      isEmptyTextValue(current.ja) && !isEmptyTextValue(incoming.ja)
-        ? incoming.ja
-        : current.ja,
-    en:
-      isEmptyTextValue(current.en) && !isEmptyTextValue(incoming.en)
-        ? incoming.en
-        : current.en,
+    ja: isEmptyTextValue(current.ja) && !isEmptyTextValue(incoming.ja) ? incoming.ja : current.ja,
+    en: isEmptyTextValue(current.en) && !isEmptyTextValue(incoming.en) ? incoming.en : current.en,
   };
 }
 
@@ -98,62 +89,58 @@ export function mergeEmptyResearchFields(
   current: ResearchValues | IncomingResearchValues,
   incoming: IncomingResearchValues,
 ): MergeResearchResult {
-  const title = mergeBilingualText(current.title, incoming.title);
+  const title = mergeBilingualText(
+    current.title ?? { ja: null, en: null },
+    incoming.title ?? { ja: null, en: null },
+  );
   const summary = {
-    aims: mergeBilingualTextValue(current.summary.aims, incoming.summary.aims),
+    aims: mergeBilingualTextValue(
+      current.summary?.aims ?? { ja: null, en: null },
+      incoming.summary?.aims ?? { ja: null, en: null },
+    ),
     methods: mergeBilingualTextValue(
-      current.summary.methods,
-      incoming.summary.methods,
+      current.summary?.methods ?? { ja: null, en: null },
+      incoming.summary?.methods ?? { ja: null, en: null },
     ),
     targets: mergeBilingualTextValue(
-      current.summary.targets,
-      incoming.summary.targets,
+      current.summary?.targets ?? { ja: null, en: null },
+      incoming.summary?.targets ?? { ja: null, en: null },
     ),
     url: {
-      ja: mergeArray(current.summary.url.ja, incoming.summary.url.ja),
-      en: mergeArray(current.summary.url.en, incoming.summary.url.en),
+      ja: mergeArray(current.summary?.url?.ja ?? [], incoming.summary?.url?.ja ?? []),
+      en: mergeArray(current.summary?.url?.en ?? [], incoming.summary?.url?.en ?? []),
     },
   };
-  const dataProvider = mergeArray(current.dataProvider, incoming.dataProvider);
-  const researchProject = mergeArray(
-    current.researchProject,
-    incoming.researchProject,
-  );
-  const grant = mergeArray(current.grant, incoming.grant);
+  const dataProvider = mergeArray(current.dataProvider ?? [], incoming.dataProvider ?? []);
+  const researchProject = mergeArray(current.researchProject ?? [], incoming.researchProject ?? []);
+  const grant = mergeArray(current.grant ?? [], incoming.grant ?? []);
   const relatedPublication = mergeArray(
-    current.relatedPublication,
-    incoming.relatedPublication,
-  );
-  const controlledAccessUser = mergeArray(
-    current.controlledAccessUser,
-    incoming.controlledAccessUser,
+    current.relatedPublication ?? [],
+    incoming.relatedPublication ?? [],
   );
 
-  const values = {
+  const values: EditableResearchValues = {
     title,
     summary,
-    dataProvider,
-    researchProject,
-    grant,
-    relatedPublication,
-    controlledAccessUser,
+    dataProvider: dataProvider as EditableResearchValues["dataProvider"],
+    researchProject: researchProject as EditableResearchValues["researchProject"],
+    grant: grant as EditableResearchValues["grant"],
+    relatedPublication: relatedPublication as EditableResearchValues["relatedPublication"],
   };
 
   const changedFields = editableFields.filter((field) =>
-    didChange(current[field], values[field]),
+    didChange(
+      (current as Record<string, unknown>)[field],
+      (values as Record<string, unknown>)[field],
+    ),
   );
 
   return { values, changedFields };
 }
 
-export function toResearchValuesForMerge(
-  value: CreateResearchRequest,
-): DeepOmit<ResearchValues, "rawHtml"> {
-  const now = new Date().toISOString();
-
+export function toResearchValuesForMerge(value: CreateResearchRequest): ResearchTemplateData {
   return {
     humId: value.humId ?? "",
-    url: { ja: null, en: null },
     title: value.title ?? { ja: null, en: null },
     summary: value.summary ?? {
       aims: { ja: null, en: null },
@@ -165,18 +152,9 @@ export function toResearchValuesForMerge(
     researchProject: value.researchProject ?? [],
     grant: value.grant ?? [],
     relatedPublication: value.relatedPublication ?? [],
-    controlledAccessUser: [],
-    latestVersion: null,
-    datePublished: null,
-    dateModified: now,
-    status: "draft",
     uids: value.uids ?? [],
-    draftVersion: null,
-    humVersionId: "",
-    version: "",
-    versionReleaseDate: now,
-    datasets: [],
-    releaseNote: value.initialReleaseNote ?? { ja: null, en: null },
+    relatedAccessions: { jgad: [] },
+    warnings: [],
   };
 }
 
@@ -185,12 +163,10 @@ export function pickNewResearchMergeValues(
 ): NewResearchMergeValues {
   return {
     title: values.title,
-    summary: values.summary as CreateResearchRequest["summary"],
+    summary: values.summary as unknown as CreateResearchRequest["summary"],
     dataProvider: values.dataProvider as CreateResearchRequest["dataProvider"],
-    researchProject:
-      values.researchProject as CreateResearchRequest["researchProject"],
+    researchProject: values.researchProject as CreateResearchRequest["researchProject"],
     grant: values.grant as CreateResearchRequest["grant"],
-    relatedPublication:
-      values.relatedPublication as CreateResearchRequest["relatedPublication"],
+    relatedPublication: values.relatedPublication as CreateResearchRequest["relatedPublication"],
   };
 }

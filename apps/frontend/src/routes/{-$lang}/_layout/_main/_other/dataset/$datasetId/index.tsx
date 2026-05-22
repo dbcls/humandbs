@@ -5,9 +5,7 @@ import { getDatasetQueryOptions } from "@/serverFunctions/datasets";
 
 import { DatasetVersionCard } from "./-DatasetVersionCard";
 
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_main/_other/dataset/$datasetId/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_main/_other/dataset/$datasetId/")({
   component: RouteComponent,
   loader: async ({ context, params }) => {
     const dataset = await context.queryClient.ensureQueryData(
@@ -20,9 +18,7 @@ export const Route = createFileRoute(
 
     return { data: dataset.data };
   },
-  errorComponent: (ctx) => (
-    <div className="text-danger">{ctx.error.message}</div>
-  ),
+  errorComponent: (ctx) => <div className="text-danger">{ctx.error.message}</div>,
 });
 
 function RouteComponent() {

@@ -31,8 +31,34 @@ export type {
 } from "./response"
 
 // === Common ===
-export { LANG_TYPES, booleanFromString } from "./common"
+export { LANG_TYPES, booleanFromString, VersionStringSchema, VERSION_STRING_REGEX } from "./common"
 export type { LangType } from "./common"
+
+// === Errors ===
+export { ERROR_CODES, ProblemDetailsSchema } from "./errors"
+export type { ErrorCode, ProblemDetails } from "./errors"
+
+// === Stats ===
+export { StatsFacetCountSchema, StatsResponseSchema } from "./stats"
+export type { StatsFacetCount, StatsResponse } from "./stats"
+
+// === Path Params ===
+export {
+  HumIdParamsSchema,
+  DatasetIdParamsSchema,
+  VersionParamsSchema,
+  DatasetVersionParamsSchema,
+  JdsIdParamsSchema,
+  JduIdParamsSchema,
+} from "./path-params"
+export type {
+  HumIdParams,
+  DatasetIdParams,
+  VersionParams,
+  DatasetVersionParams,
+  JdsIdParams,
+  JduIdParams,
+} from "./path-params"
 
 // === Authentication ===
 export { JwtClaimsSchema, AuthUserSchema } from "./auth"
@@ -91,6 +117,25 @@ export type {
   DuApplicationTransformed,
 } from "../../crawler/types/jga-shinsei"
 
+// === Templates ===
+export {
+  EXTERNAL_ID_REGEX,
+  RelatedAccessionsSchema,
+  TemplateDatasetParamsSchema,
+  ResearchTemplateDataSchema,
+  ResearchTemplateResponseSchema,
+  DatasetTemplateDataSchema,
+  DatasetTemplateResponseSchema,
+} from "./templates"
+export type {
+  RelatedAccessions,
+  TemplateDatasetParams,
+  ResearchTemplateData,
+  ResearchTemplateResponse,
+  DatasetTemplateData,
+  DatasetTemplateResponse,
+} from "./templates"
+
 // === API View Models ===
 export {
   ResearchDetailSchema,
@@ -147,9 +192,6 @@ export {
   // Experiment/Dataset schemas
   ExperimentSchemaBase,
   ApiDatasetSchema,
-  // Error schemas
-  ERROR_CODES,
-  ProblemDetailsSchema,
   // Research API
   CreateResearchRequestSchema,
   UpdateResearchRequestSchema,
@@ -169,17 +211,9 @@ export {
   FacetValueWithCountSchema,
   FacetFieldResponseSchema,
   AllFacetsResponseSchema,
-  // Path params
-  HumIdParamsSchema,
-  DatasetIdParamsSchema,
-  VersionParamsSchema,
-  DatasetVersionParamsSchema,
   // Simple responses
   HealthResponseSchema,
   IsAdminResponseSchema,
-  // Stats API
-  StatsFacetCountSchema,
-  StatsResponseSchema,
   // Re-exported schemas
   ResearchSchema,
   // Response schema factories
@@ -208,16 +242,12 @@ export {
   DatasetVersionDetailResponseSchema,
   LinkedResearchesListResponseSchema,
   // JGA Shinsei
-  JdsIdParamsSchema,
-  JduIdParamsSchema,
   DsApplicationListResponseSchema,
   DsApplicationDetailResponseSchema,
   DuApplicationListResponseSchema,
   DuApplicationDetailResponseSchema,
 } from "./request-response"
 export type {
-  ErrorCode,
-  ProblemDetails,
   CreateResearchRequest,
   UpdateResearchRequest,
   ResearchWithStatus,
@@ -232,14 +262,8 @@ export type {
   FacetValueWithCount,
   FacetFieldResponse,
   AllFacetsResponse,
-  HumIdParams,
-  DatasetIdParams,
-  VersionParams,
-  DatasetVersionParams,
   HealthResponse,
   IsAdminResponse,
-  StatsFacetCount,
-  StatsResponse,
   // Response types for /research routes
   WorkflowData,
   WorkflowResponse,
@@ -261,8 +285,6 @@ export type {
   DatasetVersionDetailResponse,
   LinkedResearchesListResponse,
   // JGA Shinsei
-  JdsIdParams,
-  JduIdParams,
   DsApplicationListResponse,
   DsApplicationDetailResponse,
   DuApplicationListResponse,

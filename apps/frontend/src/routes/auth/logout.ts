@@ -11,21 +11,15 @@ export const Route = createFileRoute("/auth/logout")({
     handlers: {
       POST: async ({ request }) => {
         const cookies = parse(request.headers.get("cookie") ?? "");
-        const session = cookies.session_tokens
-          ? JSON.parse(cookies.session_tokens)
-          : null;
+        const session = cookies.session_tokens ? JSON.parse(cookies.session_tokens) : null;
         const idTokenHint = session?.id_token as string | undefined;
 
         // Use OIDC_REDIRECT_URI origin instead of request.url, which
         // reflects the internal proxy address behind nginx.
-        const externalOrigin = new URL(process.env.HUMANDBS_AUTH_REDIRECT_URI!)
-          .origin;
+        const externalOrigin = new URL(process.env.HUMANDBS_AUTH_REDIRECT_URI!).origin;
         const postLogoutRedirect = new URL("/", externalOrigin).href;
 
-        const endSession = await $$getLogoutUrl(
-          idTokenHint,
-          postLogoutRedirect,
-        );
+        const endSession = await $$getLogoutUrl(idTokenHint, postLogoutRedirect);
 
         const clears = [
           createClearSessionCookie(),

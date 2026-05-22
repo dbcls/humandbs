@@ -1,8 +1,21 @@
-import { useMemo, useEffect } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-export default function CameraUpdater({ cameraY, cameraZ, radius, sceneOffsetY, isAnyHovered }: { cameraY: number, cameraZ: number, radius: number, sceneOffsetY: number, isAnyHovered: boolean }) {
+import { useEffect, useMemo } from "react";
+
+export default function CameraUpdater({
+  cameraY,
+  cameraZ,
+  radius,
+  sceneOffsetY,
+  isAnyHovered,
+}: {
+  cameraY: number;
+  cameraZ: number;
+  radius: number;
+  sceneOffsetY: number;
+  isAnyHovered: boolean;
+}) {
   const { camera, scene } = useThree();
   const lookAtTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
   const targetPosition = useMemo(() => new THREE.Vector3(0, 0, 0), []);

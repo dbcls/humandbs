@@ -36,12 +36,8 @@ export const TextValueArrayField = withForm({
                     {/* Column headers */}
                     {enItems.length > 0 && (
                       <div className="flex gap-2">
-                        <div className="flex-1 text-xs font-medium text-gray-500 uppercase">
-                          En
-                        </div>
-                        <div className="flex-1 text-xs font-medium text-gray-500 uppercase">
-                          Ja
-                        </div>
+                        <div className="flex-1 font-medium text-gray-500 text-xs uppercase">En</div>
+                        <div className="flex-1 font-medium text-gray-500 text-xs uppercase">Ja</div>
                         <div className="w-8" />
                       </div>
                     )}
@@ -49,16 +45,12 @@ export const TextValueArrayField = withForm({
                     {enItems.map((_: unknown, i: number) => (
                       <div key={i} className="flex items-center gap-2">
                         <div className="flex-1">
-                          <form.AppField
-                            name={`${baseName}.en[${i}].text` as AnyName}
-                          >
+                          <form.AppField name={`${baseName}.en[${i}].text` as AnyName}>
                             {(f: AnyName) => <f.TextField />}
                           </form.AppField>
                         </div>
                         <div className="flex-1">
-                          <form.AppField
-                            name={`${baseName}.ja[${i}].text` as AnyName}
-                          >
+                          <form.AppField name={`${baseName}.ja[${i}].text` as AnyName}>
                             {(f: AnyName) => <f.TextField />}
                           </form.AppField>
                         </div>
@@ -69,7 +61,7 @@ export const TextValueArrayField = withForm({
                             jaField.removeValue(i);
                           }}
                         >
-                          <Trash2 className="text-danger size-4" />
+                          <Trash2 className="size-4 text-danger" />
                         </button>
                       </div>
                     ))}

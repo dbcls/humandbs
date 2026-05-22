@@ -33,9 +33,7 @@ async function resetDatabase(tables?: string[]) {
       if (tableNames.length > 0) {
         for (const tablename of tableNames) {
           console.log(`🗑️  Dropping table: ${tablename}`);
-          await tx.execute(
-            sql.raw(`DROP TABLE IF EXISTS "${tablename}" CASCADE;`),
-          );
+          await tx.execute(sql.raw(`DROP TABLE IF EXISTS "${tablename}" CASCADE;`));
         }
         console.log("✨ Tables dropped");
       } else {

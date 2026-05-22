@@ -1,15 +1,15 @@
 import { asc } from "drizzle-orm";
 import { v5 as uuidv5 } from "uuid";
 
-import {
-  getDefaultSiteNavigationConfig,
-  type NavigationGroup,
-  type NavigationItem,
-  type NavPriority,
-  type SiteNavigationConfig,
+import type {
+  NavigationGroup,
+  NavigationItem,
+  NavPriority,
+  SiteNavigationConfig,
 } from "@/config/site-navigation";
+import { getDefaultSiteNavigationConfig } from "@/config/site-navigation";
 import { normalizeSiteNavigationConfig } from "@/config/site-navigation.schema";
-import { db } from "@/db/database";
+import type { db } from "@/db/database";
 import { document } from "@/db/schema";
 
 const NAVBAR_GROUP_NAMESPACE = "62ca65af-a081-4daf-8db6-a491d694c7a6";
@@ -63,9 +63,7 @@ function buildTemplateGroups(
       .map((ref) => itemById.get(ref.id))
       .filter(
         (item): item is NavigationItem =>
-          item !== undefined &&
-          item.type === "document" &&
-          item.contentId !== undefined,
+          item !== undefined && item.type === "document" && item.contentId !== undefined,
       );
 
     const rootContentId = documentItems[0]?.contentId;
@@ -92,9 +90,7 @@ function getOrderedRoots(
   options?: { includeHome?: boolean },
 ): string[] {
   const templateRoots = [...templateGroups.keys()];
-  const extraRoots = [
-    ...new Set(documents.map((doc) => getRootSegment(doc.contentId))),
-  ]
+  const extraRoots = [...new Set(documents.map((doc) => getRootSegment(doc.contentId)))]
     .filter((root) => !templateGroups.has(root))
     .filter((root) => options?.includeHome || root !== "home")
     .sort((a, b) => a.localeCompare(b));
@@ -113,8 +109,7 @@ function buildNavbarGroups(
     const template = templateGroups.get(root);
     const links = template?.links ?? [];
 
-    const linkedDoc =
-      docsInRoot.find((doc) => doc.contentId === root) ?? docsInRoot[0];
+    const linkedDoc = docsInRoot.find((doc) => doc.contentId === root) ?? docsInRoot[0];
     const linkedItemId = linkedDoc?.id ?? links[0]?.id;
 
     if (!linkedItemId) return [];
@@ -135,11 +130,7 @@ function buildNavbarGroups(
         },
         enabled: true,
         priority: template?.priority ?? "important",
-        items: [
-          { id: linkedItemId, enabled: true },
-          ...remainingDocIds,
-          ...remainingLinkIds,
-        ],
+        items: [{ id: linkedItemId, enabled: true }, ...remainingDocIds, ...remainingLinkIds],
       },
     ];
   });
@@ -179,13 +170,9 @@ function buildFooterGroups(
   });
 }
 
-export async function buildNavigationConfig(
-  database: DbLike,
-): Promise<SiteNavigationConfig> {
+export async function buildNavigationConfig(database: DbLike): Promise<SiteNavigationConfig> {
   const defaultConfig = getDefaultSiteNavigationConfig();
-  const defaultItemsById = new Map(
-    defaultConfig.items.map((item) => [item.id, item]),
-  );
+  const defaultItemsById = new Map(defaultConfig.items.map((item) => [item.id, item]));
 
   const [documents] = await Promise.all([
     database

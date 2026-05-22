@@ -111,6 +111,21 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
     // No further assertion here: IT-AUTH-17 owns the uids membership check.
   })
 
+  itWithNonAdminToken("IT-RESEARCH-T9: authenticated non-admin status=deleted returns 403 on listing and POST search", async (token) => {
+    // architecture.md § deleted 状態: admin のみ閲覧可能 (一覧・詳細・バージョン一覧)。
+    // owner を含むそれ以外のユーザーには 404 を返す。一覧は 403 (permission gate) で弾く。
+    const app = getApp()
+    const list = await app.request(url("/research?status=deleted&limit=10"), { headers: authHeaders(token) })
+    expect(list.status).toBe(403)
+
+    const post = await app.request(url("/research/search"), {
+      method: "POST",
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify({ page: 1, limit: 10, status: "deleted" }),
+    })
+    expect(post.status).toBe(403)
+  })
+
   itWithNonAdminToken("IT-RESEARCH-06: POST /research/new by non-admin authenticated returns 403", async (token) => {
     // IT-RESEARCH-06
     const app = getApp()
@@ -655,16 +670,17 @@ describe("IT-RESEARCH-*: Research CRUD & versioning", () => {
       await setOwnerUids(admin, humId, [sub!])
       await submitForReview(nonAdmin, humId)
       await approveResearch(admin, humId)
-      // Parent is now published, so dataset/new must be refused (403, parent-not-draft guard).
+      // Parent is now published, so dataset/new must be refused (409 Conflict,
+      // requireDraftStatus middleware in routes/research/index.ts).
       const app = getApp()
       const res = await app.request(url(`/research/${humId}/dataset/new`), {
         method: "POST",
         headers: { ...authHeaders(nonAdmin), "Content-Type": "application/json" },
         body: "{}",
       })
-      expect(res.status).toBe(403)
+      expect(res.status).toBe(409)
       const json = (await res.json()) as { title?: string; detail?: string }
-      expect(json.detail ?? "").toMatch(/parent Research is not in draft/i)
+      expect(json.detail ?? "").toMatch(/expected 'draft'/)
     } finally {
       if (humId) await purgeResearch(admin, humId)
     }

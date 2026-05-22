@@ -1,7 +1,8 @@
-import axios from "axios";
-import * as cheerio from "cheerio";
 import * as fs from "fs";
 import * as path from "path";
+
+import axios from "axios";
+import * as cheerio from "cheerio";
 import TurndownService from "turndown";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -72,12 +73,7 @@ async function fetchAndParse(): Promise<void> {
       console.log(`Files downloaded to ${documentDir}`);
     } else {
       // Normal mode: parse markdown and download files
-      const markdown = await convertToMarkdown(
-        content,
-        $,
-        documentDir,
-        filesDirName,
-      );
+      const markdown = await convertToMarkdown(content, $, documentDir, filesDirName);
 
       const mdFilePath = path.join(documentDir, mdFileName);
       fs.writeFileSync(mdFilePath, markdown, "utf-8");
@@ -92,11 +88,7 @@ async function fetchAndParse(): Promise<void> {
 }
 
 // Function to download files only (without markdown processing)
-async function downloadFiles(
-  html: string,
-  $: cheerio.CheerioAPI,
-  filesDir: string,
-): Promise<void> {
+async function downloadFiles(html: string, $: cheerio.CheerioAPI, filesDir: string): Promise<void> {
   // Download images
   const imagePromises = $("div.item-page img")
     .map(async (_, el) => {
@@ -121,10 +113,7 @@ async function downloadFiles(
           console.log(`Downloaded image: ${imageName}`);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          console.error(
-            `Failed to download image from ${imageUrl.href}:`,
-            errorMessage,
-          );
+          console.error(`Failed to download image from ${imageUrl.href}:`, errorMessage);
         }
       }
     })
@@ -171,14 +160,12 @@ async function convertToMarkdown(
   filesDirName: string,
 ): Promise<string> {
   const turndownService = new TurndownService({
-    blankReplacement: function (content: string, node: any) {
-      return node.isBlock ? "\n\n" : "";
-    },
+    blankReplacement: (content: string, node: any) => (node.isBlock ? "\n\n" : ""),
   });
 
   turndownService.addRule("heading", {
     filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
-    replacement: function (content: string, node: any) {
+    replacement: (content: string, node: any) => {
       const level = Number(node.nodeName.charAt(1));
       // Remove any existing bold markers from the content
       content = content.replace(/^\*\*|\*\*$/g, "").trim();
@@ -194,9 +181,7 @@ async function convertToMarkdown(
   // Add rule for paragraphs to ensure proper spacing
   turndownService.addRule("paragraph", {
     filter: "p",
-    replacement: function (content: string, node: any) {
-      return "\n\n" + content + "\n\n";
-    },
+    replacement: (content: string, node: any) => "\n\n" + content + "\n\n",
   });
 
   // Download images and replace with local references
@@ -225,10 +210,7 @@ async function convertToMarkdown(
           $(el).after(`![${alt}](${filesDirName}/${imageName})`);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          console.error(
-            `Failed to download image from ${imageUrl.href}:`,
-            errorMessage,
-          );
+          console.error(`Failed to download image from ${imageUrl.href}:`, errorMessage);
         }
       }
 

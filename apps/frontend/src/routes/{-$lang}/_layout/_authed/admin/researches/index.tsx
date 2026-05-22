@@ -1,26 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { Card } from "@/components/Card";
-import { Skeleton } from "@/components/ui/skeleton";
-
 import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { ErrorContent, ErrorResetBoundary } from "@/components/ErrorResetBoundary";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FA_ICONS } from "@/lib/faIcons";
 import { authedResearchesListSearchParamsSchema } from "@/utils/queryParams";
+
+import { NoSelectedItemMessage } from "../-components/NoSelectedItemMessage";
 import { DUMMY_HUM_ID, isDummyResearch } from "./-dummyResearch";
 import { NewResearchForm } from "./-NewResearchForm";
 import { ResearchDetails } from "./-ResearchDetails";
 import { ResearchesList } from "./-ResearchesList";
 
-import {
-  ErrorContent,
-  ErrorResetBoundary,
-} from "@/components/ErrorResetBoundary";
-import { FA_ICONS } from "@/lib/faIcons";
-import { NoSelectedItemMessage } from "../-components/NoSelectedItemMessage";
-
-export const Route = createFileRoute(
-  "/{-$lang}/_layout/_authed/admin/researches/",
-)({
+export const Route = createFileRoute("/{-$lang}/_layout/_authed/admin/researches/")({
   validateSearch: authedResearchesListSearchParamsSchema,
   ssr: false,
   component: RouteComponent,
@@ -29,6 +24,7 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { lang, queryClient } = Route.useRouteContext();
   const [selectedHumId, setSelectedHumId] = useState<string | null>(null);
+  const [pendingAccessions, setPendingAccessions] = useState<string[]>([]);
 
   const removeDummyResearch = useCallback(() => {
     queryClient.setQueriesData<{
@@ -49,6 +45,7 @@ function RouteComponent() {
   function handleDiscardNewResearch() {
     removeDummyResearch();
     setSelectedHumId(null);
+    setPendingAccessions([]);
   }
 
   // Clean up dummy entry when navigating away from this route
@@ -71,7 +68,10 @@ function RouteComponent() {
       {selectedHumId && isDummyResearch(selectedHumId) ? (
         <NewResearchForm
           lang={lang}
-          onCreated={(humId) => setSelectedHumId(humId)}
+          onCreated={(humId, relatedAccessions) => {
+            setPendingAccessions(relatedAccessions);
+            setSelectedHumId(humId);
+          }}
           onDiscard={handleDiscardNewResearch}
         />
       ) : selectedHumId ? (
@@ -83,14 +83,16 @@ function RouteComponent() {
             </Card>
           )}
         >
-          <Suspense
-            fallback={<ResearchDetailsFallback humId={selectedHumId} />}
-          >
+          <Suspense fallback={<ResearchDetailsFallback humId={selectedHumId} />}>
             <ResearchDetails
               key={selectedHumId}
               humId={selectedHumId}
               lang={lang}
-              onDeselect={() => setSelectedHumId(null)}
+              initialRelatedAccessions={pendingAccessions}
+              onDeselect={() => {
+                setSelectedHumId(null);
+                setPendingAccessions([]);
+              }}
             />
           </Suspense>
         </ErrorResetBoundary>
@@ -111,7 +113,7 @@ function ResearchDetailsFallback({ humId }: { humId: string }) {
           <Skeleton className="ml-3 h-6 w-20" />
           <Skeleton className="ml-3 h-8 w-40" />
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-sm font-normal text-gray-500">Preview</span>
+            <span className="font-normal text-gray-500 text-sm">Preview</span>
             <Skeleton className="h-6 w-10 rounded-full" />
           </div>
         </>

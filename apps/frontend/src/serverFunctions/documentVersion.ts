@@ -1,21 +1,20 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { type Locale } from "use-intl";
+import type { Locale } from "use-intl";
 import { z } from "zod";
 
 import { localeSchema } from "@/config/i18n";
 import { db } from "@/db/database";
-import { type DocVersionStatus } from "@/db/schema";
-import {
-  documentSelectSchema,
-  type DocumentVersionStatus,
-} from "@/db/types";
+import type { DocVersionStatus } from "@/db/schema";
+import type { DocumentVersionStatus } from "@/db/types";
+import { documentSelectSchema } from "@/db/types";
 import { hasPermissionMiddleware } from "@/middleware/authMiddleware";
-import {
-  createDocumentVersionRepository,
-  type DocVersionListItemResponseRaw,
-  type DocAnyVersionResponseRaw,
+import type {
+  DocAnyVersionResponseRaw,
+  DocVersionListItemResponseRaw,
 } from "@/repositories/documentVersion";
+import { createDocumentVersionRepository } from "@/repositories/documentVersion";
+
 import { $getContentItemTranslation } from "./contentItem";
 
 const documentVersionRepo = createDocumentVersionRepository(db);
@@ -52,11 +51,7 @@ export const $getDocumentVersionList = createServerFn({
     return groupDocumentVersions(versions);
   });
 
-export const getDocumentVersionListQueryOptions = ({
-  contentId,
-}: {
-  contentId: string | null;
-}) =>
+export const getDocumentVersionListQueryOptions = ({ contentId }: { contentId: string | null }) =>
   queryOptions({
     queryKey: ["documents", contentId, "versions"],
     queryFn: () => {
@@ -74,9 +69,7 @@ export function groupDocumentVersions(
 
   for (const version of rawVersions) {
     const existingVersion = groupedVersions.find(
-      (v) =>
-        v.contentId === version.contentId &&
-        v.versionNumber === version.versionNumber,
+      (v) => v.contentId === version.contentId && v.versionNumber === version.versionNumber,
     );
 
     if (existingVersion) {
@@ -118,10 +111,7 @@ export interface DocVersionResponse {
   contentId: string;
   versionNumber: number;
   translations: Partial<
-    Record<
-      Locale,
-      Partial<Record<DocVersionStatus, { title: string; content: string }>>
-    >
+    Record<Locale, Partial<Record<DocVersionStatus, { title: string; content: string }>>>
   >;
 }
 
@@ -140,10 +130,7 @@ export const $getDocumentVersion = createServerFn({
 
     const { contentId, versionNumber } = data;
 
-    const version = await documentVersionRepo.getVersion(
-      contentId,
-      versionNumber,
-    );
+    const version = await documentVersionRepo.getVersion(contentId, versionNumber);
 
     return groupDocVersion(version);
   });
@@ -172,9 +159,7 @@ export const getDocumentVersionQueryOptions = ({
  * @param rawVersion raw version return
  * @returns grouped result
  */
-export function groupDocVersion(
-  rawVersion: DocAnyVersionResponseRaw[],
-): DocVersionResponse {
+export function groupDocVersion(rawVersion: DocAnyVersionResponseRaw[]): DocVersionResponse {
   if (rawVersion.length === 0) {
     return {
       contentId: "",
@@ -253,11 +238,7 @@ export const $publishDocumentVersionDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "publish");
 
-    await documentVersionRepo.publish(
-      data.contentId,
-      data.versionNumber,
-      data.locale,
-    );
+    await documentVersionRepo.publish(data.contentId, data.versionNumber, data.locale);
   });
 
 // === UNPUBLISH DRAFT
@@ -268,11 +249,7 @@ export const $unpublishDocumentVersion = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "delete");
 
-    await documentVersionRepo.unpublish(
-      data.contentId,
-      data.versionNumber,
-      data.locale,
-    );
+    await documentVersionRepo.unpublish(data.contentId, data.versionNumber, data.locale);
   });
 
 // === RESET DRAFT
@@ -283,11 +260,7 @@ export const $resetDocumentVersionDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     context.checkPermission("documentVersions", "update");
 
-    await documentVersionRepo.resetDraft(
-      data.contentId,
-      data.versionNumber,
-      data.locale,
-    );
+    await documentVersionRepo.resetDraft(data.contentId, data.versionNumber, data.locale);
   });
 
 // === DELETE VERSION
@@ -325,13 +298,9 @@ export const $createDocumentVersion = createServerFn({
 
     const { contentId } = data;
     // Don't pass dev bypass user ID as it doesn't exist in the user table
-    const userId =
-      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
-    const result = await documentVersionRepo.createVersionFromPublished(
-      contentId,
-      userId,
-    );
+    const result = await documentVersionRepo.createVersionFromPublished(contentId, userId);
 
     return result;
   });
@@ -350,10 +319,7 @@ export const $getLatestDocumentOrContent = createServerFn()
   .handler(async ({ data }) => {
     const { id, lang } = data;
 
-    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(
-      id,
-      lang,
-    );
+    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(id, lang);
 
     if (docVersion) {
       return docVersion;
@@ -375,10 +341,7 @@ export const $getLatestPublishedDocumentVersion = createServerFn({
   .inputValidator(docPublishedVersionsRequestSchema)
   .handler(async ({ data }) => {
     const { contentId, locale } = data;
-    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(
-      contentId,
-      locale,
-    );
+    const docVersion = await documentVersionRepo.getLatestPublishedForLocale(contentId, locale);
 
     if (!docVersion) {
       throw new Error("Page not found");
@@ -396,20 +359,18 @@ export const $getPublishedDocumentVersion = createServerFn({
   .inputValidator(getDocumentVersionRequestSchema)
   .handler(async ({ data }) => {
     const { contentId, versionNumber, locale } = data;
-    const docVersion =
-      await documentVersionRepo.getPublishedForVersionNumberAndLocale(
-        contentId,
-        versionNumber,
-        locale,
-      );
+    const docVersion = await documentVersionRepo.getPublishedForVersionNumberAndLocale(
+      contentId,
+      versionNumber,
+      locale,
+    );
 
     return docVersion;
   });
 
 // === GET PUBLISHED VERSIONS LIST
 
-const getPublishedDocVersionListRequestSchema =
-  docPublishedVersionsRequestSchema;
+const getPublishedDocVersionListRequestSchema = docPublishedVersionsRequestSchema;
 
 export const $getPublishedDocumentVersionList = createServerFn({
   method: "GET",
@@ -418,10 +379,7 @@ export const $getPublishedDocumentVersionList = createServerFn({
   .handler(async ({ data }) => {
     const { contentId, locale } = data;
 
-    const versions = await documentVersionRepo.getPublishedListForLocale(
-      contentId,
-      locale,
-    );
+    const versions = await documentVersionRepo.getPublishedListForLocale(contentId, locale);
 
     return versions;
   });
@@ -443,10 +401,7 @@ export const $getDocumentBreadcrumbs = createServerFn({ method: "GET" })
     const crumbs = await Promise.all(
       segments.map(async (_, i) => {
         const path = segments.slice(0, i + 1).join("/");
-        const doc = await documentVersionRepo.getLatestPublishedForLocale(
-          path,
-          locale,
-        );
+        const doc = await documentVersionRepo.getLatestPublishedForLocale(path, locale);
         return { label: doc?.title ?? path, href: `/${path}` };
       }),
     );
@@ -460,7 +415,6 @@ export const getDocumentPublishedVersionsListQueryOptions = ({
 }: z.infer<typeof getPublishedDocVersionListRequestSchema>) =>
   queryOptions({
     queryKey: ["documents", contentId, "published-versions", locale],
-    queryFn: () =>
-      $getPublishedDocumentVersionList({ data: { contentId, locale } }),
+    queryFn: () => $getPublishedDocumentVersionList({ data: { contentId, locale } }),
     staleTime: 5 * 1000 * 60,
   });

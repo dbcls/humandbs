@@ -46,10 +46,7 @@ const saveInputSchema = z.object({
   nameEn: z.string().min(1),
   nameJa: z.string().min(1),
   isEntryPoint: z.boolean(),
-  status: z.enum([
-    NAVIGATION_FLOWCHART_STATUS.DRAFT,
-    NAVIGATION_FLOWCHART_STATUS.PUBLISHED,
-  ]),
+  status: z.enum([NAVIGATION_FLOWCHART_STATUS.DRAFT, NAVIGATION_FLOWCHART_STATUS.PUBLISHED]),
   config: navigationFlowchartConfigSchema,
   expectedRevision: z.number().int().min(1),
 });
@@ -60,8 +57,7 @@ export const $saveNavigationFlowchartConfig = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
 
-    const userId =
-      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
     try {
       return {
@@ -99,8 +95,7 @@ export const $createNavigationFlowchart = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     context.checkPermission("admin-panel", "view-cms");
 
-    const userId =
-      context.user?.id === "dev-user-id" ? undefined : context.user?.id;
+    const userId = context.user?.id === "dev-user-id" ? undefined : context.user?.id;
 
     return navigationFlowchartRepository.create({
       nameEn: data.nameEn,

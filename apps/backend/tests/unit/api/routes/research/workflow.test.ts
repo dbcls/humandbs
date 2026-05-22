@@ -1,12 +1,51 @@
 /**
- * Tests for computeVersionUpdates (workflow state transitions)
+ * Tests for computeVersionUpdates (workflow state transitions) and the HTTP
+ * surface of submit / approve / reject / unpublish.
  */
-import { describe, expect, it } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import fc from "fast-check"
 
-import { computeVersionUpdates } from "@/api/routes/research/workflow"
+import type { EsResearch } from "@/api/types"
 
+import { adminAuthHeader, buildMockAuthModule, userAuthHeader } from "../../helpers/mock-auth"
 import { createMockResearchDoc } from "../../helpers/mock-es"
+
+// === Auth + ES mocks (load before importing the workflow module / app) ===
+
+void mock.module("@/api/middleware/auth", buildMockAuthModule)
+
+const mockUpdateResearchStatus = mock<
+  (...args: unknown[]) => Promise<({ doc: EsResearch; seqNo: number; primaryTerm: number; dateModified: string } | null)>
+>()
+const mockGetResearchWithSeqNo = mock<
+  (humId: string) => Promise<{ doc: EsResearch; seqNo: number; primaryTerm: number } | null>
+>()
+
+void mock.module("@/api/es-client/research", () => ({
+  createResearch: mock(() => Promise.resolve(null)),
+  deleteResearch: mock(() => Promise.resolve(false)),
+  getResearchDetail: mock(() => Promise.resolve(null)),
+  getResearchDoc: mock(() => Promise.resolve(null)),
+  getResearchWithSeqNo: (...args: unknown[]) => mockGetResearchWithSeqNo(args[0] as string),
+  updateResearch: mock(() => Promise.resolve(null)),
+  updateResearchStatus: (...args: unknown[]) => mockUpdateResearchStatus(...args),
+  updateResearchUids: mock(() => Promise.resolve(null)),
+  generateNextHumId: mock(() => Promise.resolve("hum0001")),
+}))
+
+void mock.module("@/api/es-client/search", () => ({
+  searchResearches: mock(() => Promise.resolve({
+    data: [],
+    pagination: { page: 1, limit: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+  })),
+  searchDatasets: mock(() => Promise.resolve({
+    data: [],
+    pagination: { page: 1, limit: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+  })),
+}))
+
+const { computeVersionUpdates } = await import("@/api/routes/research/workflow")
+const { getTestApp } = await import("../../helpers")
 
 describe("computeVersionUpdates", () => {
   it("approve sets datePublished when it is null", () => {
@@ -116,7 +155,11 @@ describe("computeVersionUpdates", () => {
     fc.assert(
       fc.property(
         arbVersion,
-        fc.date({ min: new Date("2020-01-01"), max: new Date("2030-12-31") }).map(d => d.toISOString().split("T")[0]),
+        fc.date({
+          min: new Date("2020-01-01"),
+          max: new Date("2030-12-31"),
+          noInvalidDate: true,
+        }).map(d => d.toISOString().split("T")[0]),
         (draftVersion, datePublished) => {
           const research = createMockResearchDoc({
             draftVersion,
@@ -150,5 +193,151 @@ describe("computeVersionUpdates", () => {
         },
       ),
     )
+  })
+})
+
+describe("POST /research/{humId}/{submit|approve|reject|unpublish} HTTP plumbing", () => {
+  const adminHeaders = { "Content-Type": "application/json", ...adminAuthHeader() }
+  const owner = userAuthHeader({ userId: "owner-1" })
+
+  beforeEach(() => {
+    mockGetResearchWithSeqNo.mockReset()
+    mockUpdateResearchStatus.mockReset()
+  })
+
+  const updatedStub = (status: EsResearch["status"], extras: Partial<EsResearch> = {}) => ({
+    doc: createMockResearchDoc({ status, ...extras }),
+    seqNo: 2,
+    primaryTerm: 1,
+    dateModified: "2024-01-02",
+  })
+
+  it("approve: review→published returns 200 and updateResearchStatus is called", async () => {
+    const reviewDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "review",
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: reviewDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("published", { latestVersion: "v1", draftVersion: null }))
+
+    const res = await getTestApp().request("/research/hum0001/approve", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateResearchStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it("approve: invalid current status (draft) returns 409 and updateResearchStatus is NOT called", async () => {
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/research/hum0001/approve", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+    expect(res.status).toBe(409)
+    expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
+  })
+
+  it("submit: draft→review by owner returns 200", async () => {
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      uids: ["owner-1"],
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("review"))
+
+    const res = await getTestApp().request("/research/hum0001/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: "{}",
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it("reject: invalid current status (published) returns 409", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/research/hum0001/reject", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+    expect(res.status).toBe(409)
+    expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
+  })
+
+  it("unpublish: published→draft returns 200", async () => {
+    const publishedDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "published",
+      latestVersion: "v1",
+      draftVersion: null,
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: publishedDoc, seqNo: 1, primaryTerm: 1 })
+    mockUpdateResearchStatus.mockResolvedValue(updatedStub("draft", { latestVersion: null, draftVersion: "v1" }))
+
+    const res = await getTestApp().request("/research/hum0001/unpublish", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it("unpublish: invalid current status (draft) returns 409", async () => {
+    const draftDoc = createMockResearchDoc({
+      humId: "hum0001",
+      status: "draft",
+      latestVersion: null,
+      draftVersion: "v1",
+    })
+    mockGetResearchWithSeqNo.mockResolvedValue({ doc: draftDoc, seqNo: 1, primaryTerm: 1 })
+
+    const res = await getTestApp().request("/research/hum0001/unpublish", {
+      method: "POST",
+      headers: adminHeaders,
+      body: "{}",
+    })
+    expect(res.status).toBe(409)
+  })
+
+  it("approve without auth: 401 (requireAdmin middleware fires before status check)", async () => {
+    const res = await getTestApp().request("/research/hum0001/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    })
+    expect(res.status).toBe(401)
+    expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
+  })
+
+  it("approve by non-admin: 403", async () => {
+    const res = await getTestApp().request("/research/hum0001/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...owner },
+      body: "{}",
+    })
+    expect(res.status).toBe(403)
+    expect(mockUpdateResearchStatus).not.toHaveBeenCalled()
   })
 })

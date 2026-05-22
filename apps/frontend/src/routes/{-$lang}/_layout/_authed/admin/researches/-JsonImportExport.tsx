@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import useConfirmationStore from "@/stores/confirmationStore";
 
@@ -65,12 +66,7 @@ export function JsonImportExport({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="slim"
-          onClick={handleDownload}
-        >
+        <Button type="button" variant="outline" size="slim" onClick={handleDownload}>
           Download JSON
         </Button>
         <Button

@@ -8,9 +8,7 @@ export interface DateRange {
   to?: Date | undefined;
 }
 
-export function toDateString(
-  date: Date | string | undefined,
-): string | undefined {
+export function toDateString(date: Date | string | undefined): string | undefined {
   if (!date) return undefined;
 
   if (typeof date === "string") {
@@ -23,17 +21,13 @@ export function toDateString(
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-export function toDate(
-  dateString: string | undefined | null,
-): Date | undefined {
+export function toDate(dateString: string | undefined | null): Date | undefined {
   if (!dateString) return undefined;
   const [year, month, day] = dateString.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
-export function toDateStringRange(
-  dateRange: DateRange | undefined,
-): DateStringRange | undefined {
+export function toDateStringRange(dateRange: DateRange | undefined): DateStringRange | undefined {
   if (!dateRange) return undefined;
 
   const result = {} as DateStringRange;
@@ -47,9 +41,7 @@ export function toDateStringRange(
   return result;
 }
 
-export function toDateRange(
-  dateStrRange: DateStringRange | undefined,
-): DateRange | undefined {
+export function toDateRange(dateStrRange: DateStringRange | undefined): DateRange | undefined {
   if (!dateStrRange) return undefined;
 
   const result = {} as DateRange;

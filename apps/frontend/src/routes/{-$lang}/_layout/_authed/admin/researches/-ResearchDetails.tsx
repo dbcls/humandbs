@@ -1,10 +1,35 @@
+import { useStore } from "@tanstack/react-form";
+import type { QueryKey } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
+import { IntlProvider } from "use-intl";
+
+import { useState } from "react";
+
+import type { ResearchDetailResponse, ResearchStatus } from "@humandbs/backend/types";
+
 import { Card } from "@/components/Card";
+import { useAppForm } from "@/components/form-context/FormContext";
+import { TabLabel } from "@/components/form-context/fields/TabLabel";
+import { deepEqual } from "@/components/form-context/fields/useFieldModified";
+import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
+import { DataProviderArrayField } from "@/components/form-context/researchFields/DataProviderArrayField";
+import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
+import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
+import { ResearchProjectArrayField } from "@/components/form-context/researchFields/ResearchProjectArrayField";
+import { SummaryForm } from "@/components/form-context/researchFields/SummaryForm";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
+import { StatusTag, Tag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
+import { messages } from "@/config/messages";
 import { useCan } from "@/hooks/useCan";
+import { cn } from "@/lib/utils";
+import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
+import type { UpdateResearchResult } from "@/serverFunctions/researches";
 import {
   $approveResearch,
   $deleteResearch,
@@ -13,73 +38,36 @@ import {
   $updateResearch,
   $updateResearchUids,
   getResearchQueryOptions,
-  type UpdateResearchResult,
 } from "@/serverFunctions/researches";
 import useConfirmationStore from "@/stores/confirmationStore";
-import { ResearchVersionSelector } from "./-ResearchVersionSelector";
-import { StatusTag, Tag } from "@/components/StatusTag";
-import { VersionCard } from "@/routes/{-$lang}/_layout/_main/_other/research/$humId/-VersionCard";
-import type {
-  ResearchDetailResponse,
-  ResearchStatus,
-} from "@humandbs/backend/types";
-import {
-  useMutation,
-  useQueryClient,
-  type QueryKey,
-} from "@tanstack/react-query";
-import { useStore } from "@tanstack/react-form";
-import { Trash2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 
-import { useAppForm } from "@/components/form-context/FormContext";
-import { deepEqual } from "@/components/form-context/fields/useFieldModified";
-import { SummaryForm } from "@/components/form-context/researchFields/SummaryForm";
-import { DataProviderArrayField } from "@/components/form-context/researchFields/DataProviderArrayField";
-import { ResearchProjectArrayField } from "@/components/form-context/researchFields/ResearchProjectArrayField";
-import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
-import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
-import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
-import { TabLabel } from "@/components/form-context/fields/TabLabel";
-import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
-import { DatasetEditView } from "./-DatasetEditView";
+import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DatasetCreateView } from "./-DatasetCreateView";
-import { TabContentLayout } from "./-TabContentLayout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/Breadcrumb";
-import { cn } from "@/lib/utils";
-import { IntlProvider } from "use-intl";
-import { messages } from "@/config/messages";
+import { DatasetEditView } from "./-DatasetEditView";
 import { MergeJDSResearchDialog } from "./-MergeJDSResearchDialog";
 import type { MergeResearchResult } from "./-mergeJDSResearch";
+import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
+import { ResearchVersionSelector } from "./-ResearchVersionSelector";
+import { TabContentLayout } from "./-TabContentLayout";
 
 export function ResearchDetails({
   humId,
   lang,
   onDeselect,
+  initialRelatedAccessions = [],
 }: {
   humId: string;
   lang: Locale;
   onDeselect?: () => void;
+  initialRelatedAccessions?: string[];
 }) {
   const queryClient = useQueryClient();
 
   // Initial load — no version param to get the default (draftVersion ?? latestVersion)
-  const { data: initialData } = useSuspenseQuery(
-    getResearchQueryOptions({ humId, lang }),
-  );
+  const { data: initialData } = useSuspenseQuery(getResearchQueryOptions({ humId, lang }));
 
   const [selectedVersion, setSelectedVersion] = useState(
-    initialData.data.draftVersion ??
-      initialData.data.latestVersion ??
-      initialData.data.version,
+    initialData.data.draftVersion ?? initialData.data.latestVersion ?? initialData.data.version,
   );
 
   // TODO - clean up so RQ wont fetch same twice
@@ -142,9 +130,9 @@ export function ResearchDetails({
   // Datasets tab view: null = table, string = editing existing, "new" = creating
   const [datasetView, setDatasetView] = useState<string | "new" | null>(null);
   const [datasetDirty, setDatasetDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState<"metadata" | "datasets">(
-    "metadata",
-  );
+  const [jdsRelatedAccessions, setJdsRelatedAccessions] =
+    useState<string[]>(initialRelatedAccessions);
+  const [activeTab, setActiveTab] = useState<"metadata" | "datasets">("metadata");
 
   const { mutateAsync: updateResearch, isPending: isSaving } = useMutation({
     mutationFn: async (value: typeof researchValues) => {
@@ -242,8 +230,7 @@ export function ResearchDetails({
     });
     queryClient.setQueriesData<ResearchDetailResponse>(
       { queryKey: ["researches", "byId"] },
-      (old) =>
-        old ? { ...old, data: { ...old.data, status: targetStatus } } : old,
+      (old) => (old ? { ...old, data: { ...old.data, status: targetStatus } } : old),
     );
 
     // Patch list (infinite) cache — filter-aware
@@ -257,20 +244,15 @@ export function ResearchDetails({
     });
     previousList.forEach(([key, old]) => {
       if (!old) return;
-      const params = (key as unknown[])[3] as
-        | { status?: ResearchStatus }
-        | undefined;
+      const params = (key as unknown[])[3] as { status?: ResearchStatus } | undefined;
       const filterStatus = params?.status; // undefined = "all"
-      const matchesFilter =
-        filterStatus === undefined || filterStatus === targetStatus;
+      const matchesFilter = filterStatus === undefined || filterStatus === targetStatus;
       queryClient.setQueryData<InfiniteData>(key, {
         ...old,
         pages: old.pages.map((page) => ({
           ...page,
           data: matchesFilter
-            ? page.data.map((r) =>
-                r.humId === humId ? { ...r, status: targetStatus } : r,
-              )
+            ? page.data.map((r) => (r.humId === humId ? { ...r, status: targetStatus } : r))
             : page.data.filter((r) => r.humId !== humId),
         })),
       });
@@ -350,8 +332,7 @@ export function ResearchDetails({
   function handleApprove() {
     openConfirmation({
       title: "Approve research?",
-      description:
-        "This will publish the research and make it publicly visible.",
+      description: "This will publish the research and make it publicly visible.",
       actionLabel: "Approve",
       onAction: () => approveResearch(),
     });
@@ -382,16 +363,13 @@ export function ResearchDetails({
     },
   });
 
-  function applyMergedJDSValues(values: MergeResearchResult["values"]) {
+  function applyMergedJDSValues(
+    values: MergeResearchResult["values"],
+    relatedAccessions: string[],
+  ) {
     form.setFieldValue("title", values.title);
-    form.setFieldValue(
-      "summary",
-      values.summary as typeof researchValues.summary,
-    );
-    form.setFieldValue(
-      "dataProvider",
-      values.dataProvider as typeof researchValues.dataProvider,
-    );
+    form.setFieldValue("summary", values.summary as unknown as typeof researchValues.summary);
+    form.setFieldValue("dataProvider", values.dataProvider as typeof researchValues.dataProvider);
     form.setFieldValue(
       "researchProject",
       values.researchProject as typeof researchValues.researchProject,
@@ -401,10 +379,7 @@ export function ResearchDetails({
       "relatedPublication",
       values.relatedPublication as typeof researchValues.relatedPublication,
     );
-    form.setFieldValue(
-      "controlledAccessUser",
-      values.controlledAccessUser as typeof researchValues.controlledAccessUser,
-    );
+    setJdsRelatedAccessions(relatedAccessions);
   }
 
   const previewValues = useStore(form.store, (state) => state.values);
@@ -412,15 +387,10 @@ export function ResearchDetails({
   const [previewLang, setPreviewLang] = useState<"ja" | "en">("ja");
   const [datasetPreview, setDatasetPreview] = useState(false);
 
-  const isDatasetSubviewActive =
-    activeTab === "datasets" && datasetView !== null;
+  const isDatasetSubviewActive = activeTab === "datasets" && datasetView !== null;
   const effectivePreview = isDatasetSubviewActive ? datasetPreview : preview;
-  const setEffectivePreview = isDatasetSubviewActive
-    ? setDatasetPreview
-    : setPreview;
-  const previewLabel = isDatasetSubviewActive
-    ? "Dataset preview"
-    : "Research preview";
+  const setEffectivePreview = isDatasetSubviewActive ? setDatasetPreview : setPreview;
+  const previewLabel = isDatasetSubviewActive ? "Dataset preview" : "Research preview";
 
   // True only when the selected version is the current draft being edited.
   // researchValues.draftVersion always reflects the current research state —
@@ -467,7 +437,7 @@ export function ResearchDetails({
             canNewVersion={canNewVersion}
             onVersionChange={setSelectedVersion}
           />
-          <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm font-normal text-gray-500">
+          <label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
             {previewLabel}
             <Switch
               checked={effectivePreview}
@@ -480,11 +450,9 @@ export function ResearchDetails({
       captionClassName="flex items-center"
       containerClassName="flex flex-1 flex-col min-h-0"
     >
-      {error ? (
-        <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage>
-      ) : null}
+      {error ? <AdminStatusMessage className="mx-5 mt-5">{error}</AdminStatusMessage> : null}
       {isConflict && (
-        <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+        <div className="mx-5 mt-5 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-amber-800 text-sm">
           <span>Someone else saved a newer version. Reload to continue.</span>
           <Button
             size="slim"
@@ -500,12 +468,7 @@ export function ResearchDetails({
           </Button>
         </div>
       )}
-      <div
-        className={cn(
-          "min-h-0 flex-1 flex-col overflow-hidden",
-          preview ? "flex" : "hidden",
-        )}
-      >
+      <div className={cn("min-h-0 flex-1 flex-col overflow-hidden", preview ? "flex" : "hidden")}>
         <div className="flex shrink-0 items-center gap-2 px-5 pt-3 pb-2">
           <LangSwitcherPill value={previewLang} onChange={setPreviewLang} />
         </div>
@@ -539,12 +502,9 @@ export function ResearchDetails({
             </TabsList>
           </div>
 
-          <TabsContent
-            value="metadata"
-            className="flex max-h-full min-h-0 flex-1 flex-col"
-          >
+          <TabsContent value="metadata" className="flex max-h-full min-h-0 flex-1 flex-col">
             {/* Workflow action row */}
-            <div className="mx-5 mt-5 flex shrink-0 items-center gap-2">
+            <div className="mx-5 mt-5 flex shrink-0 flex-wrap items-center gap-2">
               <MergeJDSResearchDialog
                 className="mr-auto"
                 currentValues={formValues}
@@ -559,32 +519,17 @@ export function ResearchDetails({
               )}
 
               {isViewingDraft && canSubmit && (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                >
+                <Button variant="outline" size="lg" onClick={handleSubmit} disabled={isSubmitting}>
                   {isSubmitting ? "Submitting…" : "Submit for review"}
                 </Button>
               )}
               {isViewingDraft && canReject && (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleReject}
-                  disabled={isRejecting}
-                >
+                <Button variant="outline" size="lg" onClick={handleReject} disabled={isRejecting}>
                   {isRejecting ? "Rejecting…" : "Reject"}
                 </Button>
               )}
               {isViewingDraft && canApprove && (
-                <Button
-                  variant="action"
-                  size="lg"
-                  onClick={handleApprove}
-                  disabled={isApproving}
-                >
+                <Button variant="action" size="lg" onClick={handleApprove} disabled={isApproving}>
                   {isApproving ? "Approving…" : "Approve"}
                 </Button>
               )}
@@ -610,11 +555,7 @@ export function ResearchDetails({
 
               {canUpdateUids && (
                 <div className="px-5 pt-5">
-                  <form.AppField
-                    name="uids"
-                    mode="array"
-                    disabled={!isViewingDraft || !canUpdate}
-                  >
+                  <form.AppField name="uids" mode="array" disabled={!isViewingDraft || !canUpdate}>
                     {(field) => (
                       <fieldset className="flex flex-col gap-2">
                         <Label>User IDs (uids)</Label>
@@ -624,11 +565,8 @@ export function ResearchDetails({
                               <form.AppField name={`uids[${i}]`}>
                                 {(f) => <f.TextField className="flex-1" />}
                               </form.AppField>
-                              <button
-                                type="button"
-                                onClick={() => field.removeValue(i)}
-                              >
-                                <Trash2 className="text-danger size-4" />
+                              <button type="button" onClick={() => field.removeValue(i)}>
+                                <Trash2 className="size-4 text-danger" />
                               </button>
                             </div>
                           ))}
@@ -658,14 +596,10 @@ export function ResearchDetails({
                       <TabLabel dirty={dirtyFields.summary}>Summary</TabLabel>
                     </TabsTrigger>
                     <TabsTrigger variant="line" value="dataProvider">
-                      <TabLabel dirty={dirtyFields.dataProvider}>
-                        Data providers
-                      </TabLabel>
+                      <TabLabel dirty={dirtyFields.dataProvider}>Data providers</TabLabel>
                     </TabsTrigger>
                     <TabsTrigger variant="line" value="researchProject">
-                      <TabLabel dirty={dirtyFields.researchProject}>
-                        Research project
-                      </TabLabel>
+                      <TabLabel dirty={dirtyFields.researchProject}>Research project</TabLabel>
                     </TabsTrigger>
                     <TabsTrigger variant="line" value="grant">
                       <TabLabel dirty={dirtyFields.grant}>Grant</TabLabel>
@@ -688,9 +622,7 @@ export function ResearchDetails({
                 >
                   <TabsContent value="title">
                     <form.AppField name="title">
-                      {(field) => (
-                        <field.BilingualTextField variant="textarea" />
-                      )}
+                      {(field) => <field.BilingualTextField variant="textarea" />}
                     </form.AppField>
                   </TabsContent>
                   <TabsContent value="summary">
@@ -723,15 +655,7 @@ export function ResearchDetails({
           >
             {datasetView === null ? (
               <TabContentLayout
-                header={
-                  <Breadcrumb>
-                    <BreadcrumbList>
-                      <BreadcrumbItem>
-                        <BreadcrumbPage>Datasets</BreadcrumbPage>
-                      </BreadcrumbItem>
-                    </BreadcrumbList>
-                  </Breadcrumb>
-                }
+                header={<span className="font-medium text-sm">Datasets</span>}
                 actions={
                   <Button
                     type="button"
@@ -766,6 +690,7 @@ export function ResearchDetails({
               <DatasetCreateView
                 humId={humId}
                 preview={datasetPreview}
+                relatedAccessions={jdsRelatedAccessions}
                 onBack={() => {
                   setDatasetView(null);
                   setDatasetPreview(false);
@@ -783,10 +708,7 @@ export function ResearchDetails({
 function ReleaseNoteDisplay({
   releaseNote,
 }: {
-  releaseNote:
-    | { en: { text: string } | null; ja: { text: string } | null }
-    | null
-    | undefined;
+  releaseNote: { en: { text: string } | null; ja: { text: string } | null } | null | undefined;
 }) {
   const en = releaseNote?.en?.text;
   const ja = releaseNote?.ja?.text;
@@ -796,17 +718,13 @@ function ReleaseNoteDisplay({
     <div className="mx-5 mt-5 flex gap-2 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
       {en && (
         <div className="flex-1">
-          <p className="mb-1 text-xs font-medium text-gray-400 uppercase">
-            Release note (En)
-          </p>
+          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (En)</p>
           <p className="whitespace-pre-wrap text-gray-700">{en}</p>
         </div>
       )}
       {ja && (
         <div className="flex-1">
-          <p className="mb-1 text-xs font-medium text-gray-400 uppercase">
-            Release note (Ja)
-          </p>
+          <p className="mb-1 font-medium text-gray-400 text-xs uppercase">Release note (Ja)</p>
           <p className="whitespace-pre-wrap text-gray-700">{ja}</p>
         </div>
       )}

@@ -59,8 +59,10 @@ Keycloak の管理設定は [keycloak-admin.md](../../../docs/keycloak-admin.md)
 | ユーザー種別 | 指定可能な status | 範囲外を指定した場合 |
 |-------------|------------------|---------------------|
 | public | `published` のみ（内部では `latestVersion exists AND not deleted` に変換） | 403 Forbidden |
-| authenticated | `draft`, `review`, `published`, `deleted`（自分のリソースのみ） | 403 Forbidden |
+| authenticated | `draft`, `review`, `published`（非 `published` は自分のリソースのみ） | 403 Forbidden |
 | admin | `draft`, `review`, `published`, `deleted` | - |
+
+`deleted` は admin 専用。owner を含む非 admin が `status=deleted` を指定した場合は 403 Forbidden を返す。これは [`§ deleted 状態`](#deleted-状態) の「admin のみ閲覧可」と整合する。
 
 ### 認可マトリクス
 
