@@ -10,8 +10,14 @@ const keyFor = (userId: string | undefined) => `cart:${userId}`;
 
 export type CartItem = DatasetDoc;
 
+// const DRA_RREGEX = /^DRA\d+$/i;
+// const HUM_REGEX = /^hum\d+\..+$/i;
+const JGAD_REGEX = /^JGAD\d+$/i;
+/**
+ * validates whether the datasetId is belongs to restricted-access or unrestricted-access dataset by its ID
+ */
 export function isCartableDatasetId(datasetId: string) {
-  return !datasetId.startsWith("DRA");
+  return JGAD_REGEX.test(datasetId);
 }
 
 function isQuotaExceeded(error: unknown) {

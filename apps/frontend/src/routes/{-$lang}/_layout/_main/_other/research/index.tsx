@@ -8,6 +8,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef } from "react"
 
 import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
 
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
@@ -23,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isCartableDatasetId, useCart, useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
 import { FA_ICONS } from "@/lib/faIcons";
+import type { ResearchSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getDatasetsOfResearchQueryOptions } from "@/serverFunctions/datasets";
 import { getAllFacetsQueryOptions } from "@/serverFunctions/facets";
@@ -357,7 +359,7 @@ function PaginationWrapper() {
   return <Pagination className="pr-5" pagination={researchesData.meta.pagination} />;
 }
 
-const columnHelper = createColumnHelper<ResearchSearchResponse["data"][number]>();
+const columnHelper = createColumnHelper<ResearchSummary>();
 
 const columns = [
   columnHelper.accessor("humId", {
@@ -486,8 +488,8 @@ const columns = [
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    // @ts-expect-error TODO fix types
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",

@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useLocale, useTranslations } from "use-intl";
 
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
 import { ContentHeader } from "@/components/ContentHeader";
@@ -50,10 +51,12 @@ export function DatasetVersionCard({
       ),
     },
     { title: t("typeOfData"), value: versionData.typeOfData?.[lang] ?? "—" },
-    { title: t("criteria"), value: versionData.criteria },
+    {
+      title: t("criteria"),
+      value: <AccessCriteriaLabel size={"md"} criteria={versionData.criteria} />,
+    },
   ];
 
-  console.log("infoKeyValues", infoKeyValues);
   const navigate = useNavigate();
   const currentLocation = useLocation();
 
@@ -125,27 +128,6 @@ export function DatasetVersionCard({
     >
       <section>
         <dl className="mb-7 columns-2">
-          {/*<div className="break-inside-avoid-column">
-            <KeyValueCard
-              title={t("releaseDate")}
-              value={versionData.releaseDate}
-            ></KeyValueCard>
-            <Separator show variant={"solid"} />
-          </div>
-
-          <KeyValueCard title={t("date-modified")}>
-            <p>{versionData.releaseDate}</p>
-          </KeyValueCard>
-
-          <div className="break-inside-avoid-column">
-            <KeyValueCard
-              title={t("typeOfData")}
-              value={versionData.typeOfData?.[lang] ?? "—"}
-            />
-            <Separator show variant={"solid"} />
-          </div>
-
-          <KeyValueCard title={t("criteria")} value={t(versionData.criteria)} />*/}
           {infoKeyValues.map((info) => (
             <div key={info.title} className="break-inside-avoid-column">
               <KeyValueCard title={info.title} value={info.value} />

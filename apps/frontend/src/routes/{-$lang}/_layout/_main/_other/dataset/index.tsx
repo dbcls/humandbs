@@ -10,6 +10,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef } from "react"
 import type { DatasetSearchBody, DatasetSearchResponse } from "@humandbs/backend/types";
 import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { DatasetCartRowButton } from "@/components/DatasetCartRowButton";
@@ -429,7 +430,7 @@ export const datasetsColumns = [
   datasetsColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()),
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
 ];
 

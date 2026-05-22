@@ -4,6 +4,7 @@ import { useMessages, useTranslations } from "use-intl";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
+import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { CardWithCaption } from "@/components/Card";
 import { CardCaption } from "@/components/CardCaption";
@@ -12,7 +13,7 @@ import { KeyValueCard } from "@/components/KeyValueCard";
 import { Link } from "@/components/Link";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Separator } from "@/components/Separator";
-import { Table } from "@/components/Table";
+import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
@@ -163,7 +164,7 @@ const datasetColumns = [
   }),
   datasetColumnHelper.accessor("datasetId", {
     id: "datasetId",
-    header: (ctx) => ctx.table.options.meta?.t("datasetId"),
+    header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("datasetId")} />,
     cell: (ctx) => (
       <Link to="/{-$lang}/dataset/$datasetId" params={{ datasetId: ctx.getValue() }}>
         <TextWithIcon icon={FA_ICONS.books}>{ctx.getValue()}</TextWithIcon>
@@ -174,7 +175,7 @@ const datasetColumns = [
   datasetColumnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-    cell: (ctx) => ctx.table.options.meta?.t(ctx.getValue()), //<span className="text-sm">{ctx.getValue()}</span>,
+    cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />, //<span className="text-sm">{ctx.getValue()}</span>,
     maxSize: 10,
   }),
   datasetColumnHelper.accessor("typeOfData", {
