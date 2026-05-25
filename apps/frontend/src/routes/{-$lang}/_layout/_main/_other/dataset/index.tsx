@@ -356,6 +356,7 @@ function TableWrapper() {
       columns={datasetsColumns}
       data={data.data}
       isDimmed={isPaginating}
+      stickyColumnCount={2}
     />
   );
 }
