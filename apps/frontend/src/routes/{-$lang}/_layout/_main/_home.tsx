@@ -1,11 +1,9 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { Download, Search, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { lazy, Suspense, useState } from "react";
 
-import SubmitDataIcon from "@/assets/submit-data.svg?react";
-import UseDataIcon from "@/assets/use-data.svg?react";
 import { Card } from "@/components/Card";
 import { ErrorResetBoundary } from "@/components/ErrorResetBoundary";
 import { Input } from "@/components/Input";
@@ -89,29 +87,27 @@ function RouteComponent() {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap justify-center gap-4 [&_button>svg]:ml-4">
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Button
                 variant={"accent"}
                 onClick={() => {
                   navigate({ to: "/{-$lang}/data-submission" });
                 }}
-                size={"xl"}
-                className="relative block h-[6.8rem] w-[27rem] text-center"
+                className="flex h-32 w-[27rem] flex-col items-center pt-5 gap-1.5 rounded-2xl text-base font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
+                <Upload className="h-10 w-10 shrink-0" />
                 <span>{t("data-submission-button")}</span>
-                <SubmitDataIcon className="absolute right-2 bottom-2 h-auto w-40" />
               </Button>
 
               <Button
                 variant={"action"}
-                size={"xl"}
-                className="relative block h-[6.8rem] w-[27rem] text-center"
+                className="flex h-32 w-[27rem] flex-col items-center pt-5 gap-1.5 rounded-2xl text-base font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                 onClick={() => {
                   navigate({ to: "/{-$lang}/data-use" });
                 }}
               >
+                <Download className="h-10 w-10 shrink-0" />
                 <span>{t("data-usage-button")}</span>
-                <UseDataIcon className="absolute bottom-2 left-0 h-auto w-40" />
               </Button>
             </div>
           </div>
