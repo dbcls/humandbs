@@ -14,15 +14,6 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
-// Provide a fallback stub for .openapi() in frontend environments where
-// @hono/zod-openapi side-effects might not be registered or tree-shaken.
-if (!(z.ZodType.prototype as any).openapi) {
-  (z.ZodType.prototype as any).openapi = function (this: any) {
-    return this;
-  };
-}
-
-
 import {
   BilingualTextSchema,
   BilingualTextValueSchema,
@@ -347,6 +338,7 @@ export const SearchableDatasetSchema = DatasetSchema.extend({
   // `.openapi({ type: "object" })` is required so that the generated schema
   // has a `type` sibling to `nullable: true` (OpenAPI 3.0 forbids `nullable`
   // without a `type`; `z.any()` alone emits `{ nullable: true }`).
-  originalMetadata: z.record(z.string(), z.any()).openapi({ type: "object" }).nullable().optional(),
+  originalMetadata: z.record(z.string(), z.any()).nullable().optional()
+    .openapi({ type: "object" }),
 })
 export type SearchableDataset = z.infer<typeof SearchableDatasetSchema>

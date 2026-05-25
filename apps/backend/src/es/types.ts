@@ -16,15 +16,6 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
-// Provide a fallback stub for .openapi() in frontend environments where
-// @hono/zod-openapi side-effects might not be registered or tree-shaken.
-if (!(z.ZodType.prototype as any).openapi) {
-  (z.ZodType.prototype as any).openapi = function (this: any) {
-    return this;
-  };
-}
-
-
 import {
   // Common schemas (used locally)
   LANG_TYPES,
@@ -145,11 +136,9 @@ export const EsDatasetSchema = CrawlerDatasetSchema.extend({
   // `.openapi({ type: "object" })` keeps the generated schema valid under
   // OpenAPI 3.0's nullable-type-sibling rule (`z.any()` / `z.unknown()` alone
   // emit `{ nullable: true }` with no `type`).
-  originalMetadata: z.record(z.string(), z.any())
-    .openapi({ type: "object" })
+  originalMetadata: z.record(z.string(), z.any()).nullable().optional()
     .describe("Original metadata preserved from the data source (for debugging/audit)")
-    .nullable()
-    .optional(),
+    .openapi({ type: "object" }),
 })
 export type EsDataset = z.infer<typeof EsDatasetSchema>
 
