@@ -44,10 +44,11 @@ export function FilterableCard({
     return () => observer.disconnect();
   }, [caption]);
 
+
   return (
     <Card
       className={cn("flex-1", className)}
-      captionClassName="sticky top-0 z-40 bg-white py-4 -my-4"
+      captionClassName="z-40 bg-white py-4"
       caption={
         <div className="relative">
           {caption({

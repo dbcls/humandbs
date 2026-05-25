@@ -12,10 +12,10 @@ import { DatasetSearchBodySchema } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { DatasetCartRowButton } from "@/components/DatasetCartRowButton";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
+import { ModalCell } from "@/components/ModalCell";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { i18n } from "@/config/i18n";
 import { useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
+import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
 import { cn } from "@/lib/utils";
 import { getDatasetsPaginatedQueryOptions } from "@/serverFunctions/datasets";
@@ -98,6 +99,7 @@ function RouteComponent() {
   const filtersCount = Object.keys(filters.filters || {}).length;
   return (
     <FilterableCard
+      className="flex flex-col"
       captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
@@ -189,9 +191,15 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const { containerRef, maxHeight } = useMaxHeight(130);
+
   return (
     <>
-      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
+      <div
+        ref={containerRef}
+        style={{ maxHeight }}
+        className="flex min-w-full flex-1 flex-col overflow-auto"
+      >
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -332,7 +340,7 @@ function TableWrapper() {
   if (!data || (isFetching && !isPlaceholderData)) {
     return (
       <TableLoadingSpinner
-        className="mt-4 min-h-full w-max min-w-full flex-1 text-sm"
+        className="min-h-full w-max min-w-full flex-1 text-sm"
         columns={datasetsColumns}
         meta={{ t, lang }}
       />
@@ -341,13 +349,14 @@ function TableWrapper() {
 
   return (
     <Table
-      className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+      className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
       onSortingChange={handleSortingChange}
       sorting={sorting}
       meta={{ t, lang, loadingSortColumnId, activeSort }}
       columns={datasetsColumns}
       data={data.data}
       isDimmed={isPaginating}
+      stickyColumnCount={2}
     />
   );
 }
@@ -368,14 +377,14 @@ export const datasetsColumns = [
   datasetsColumnHelper.display({
     id: "cart",
     header: (ctx) => (
-      <div className="w-9">
+      <div className="w-full flex items-center justify-center">
         <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
           <DatasetsCartHeaderButton tableDatasets={ctx.table.options.data} />
         </ClientOnly>
       </div>
     ),
     cell: (ctx) => (
-      <div className="w-9">
+      <div className="w-full flex items-center justify-center">
         <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
           <DatasetCartRowButton dataset={ctx.row.original} />
         </ClientOnly>
@@ -417,14 +426,21 @@ export const datasetsColumns = [
     id: "experiments",
     header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.getValue().map((item, i) => ({
-          id: i,
-          content: (
-            <span>{item.header?.[ctx.table.options.meta?.lang ?? i18n.defaultLocale]?.text}</span>
-          ),
-        }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue().map((item, i) => (
+            <li key={i}>
+              <span>
+                {
+                  item.header?.[
+                    ctx.table.options.meta?.lang ?? i18n.defaultLocale
+                  ]?.text
+                }
+              </span>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   datasetsColumnHelper.accessor("criteria", {
@@ -439,6 +455,7 @@ function DatasetsCartHeaderButton({
 }: {
   tableDatasets: DatasetSearchResponse["data"];
 }) {
+  const t = useTranslations("common");
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
     tableDatasets,
   });
@@ -448,6 +465,7 @@ function DatasetsCartHeaderButton({
       variant={"header"}
       state={allInCart || (someInCart ? "indeterminate" : false)}
       onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
     />
   );
 }

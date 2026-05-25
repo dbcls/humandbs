@@ -40,7 +40,7 @@ export function AddToCartToggle({
       size={"icon"}
       className={cn(addToCartVariants({ variant }), className)}
     >
-      <ShoppingCartIcon className="size-4" />
+      <ShoppingCartIcon className="size-5" />
       {children}
     </Button>
   );

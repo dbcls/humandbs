@@ -3,18 +3,17 @@ import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-r
 import type { SortingState, Updater } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useLocale, useTranslations } from "use-intl";
-
 import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
 
 import { AccessCriteriaLabel } from "@/components/AccessCriteriaLabel";
 import { AddToCartToggle } from "@/components/AddToCartToggle";
-import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
-import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { ModalCell } from "@/components/ModalCell";
 import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
+import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
@@ -23,6 +22,7 @@ import { TextWithIcon } from "@/components/TextWithIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isCartableDatasetId, useCart, useCartTableHeader } from "@/hooks/useCart";
 import { useFilters } from "@/hooks/useFilters";
+import { useMaxHeight } from "@/hooks/useMaxHeight";
 import { FA_ICONS } from "@/lib/faIcons";
 import type { ResearchSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,7 @@ function RouteComponent() {
   return (
     <FilterableCard
       className="flex flex-col"
+      captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
           filterButtonRef={filterButtonRef}
@@ -185,9 +186,15 @@ function FacetsAdapter({ onClose }: { onClose: () => void }) {
 }
 
 function CardContent() {
+  const { containerRef, maxHeight } = useMaxHeight(130);
+
   return (
     <>
-      <div className="flex h-full min-w-full flex-1 flex-col overflow-x-auto">
+      <div
+        ref={containerRef}
+        style={{ maxHeight }}
+        className="flex min-w-full flex-1 flex-col overflow-auto"
+      >
         <TableWrapper />
       </div>
       <PaginationWrapper />
@@ -332,7 +339,7 @@ function TableWrapper() {
   if (!researchesData || (isFetching && !isPlaceholderData))
     return (
       <TableLoadingSpinner
-        className="mt-4 min-h-full w-max min-w-full flex-1 text-sm"
+        className="min-h-full w-max min-w-full flex-1 text-sm"
         columns={columns}
         meta={{ t, lang }}
       />
@@ -340,13 +347,14 @@ function TableWrapper() {
 
   return (
     <Table
-      className={cn("mt-4 min-h-full w-max min-w-full flex-1 text-sm")}
+      className={cn("min-h-full w-max min-w-full flex-1 text-sm")}
       columns={columns}
       data={researchesData.data}
       sorting={sorting}
       onSortingChange={handleSortingChange}
       meta={{ t, lang, loadingSortColumnId, activeSort }}
       isDimmed={isPaginating}
+      stickyColumnCount={2}
     />
   );
 }
@@ -362,6 +370,28 @@ function PaginationWrapper() {
 const columnHelper = createColumnHelper<ResearchSummary>();
 
 const columns = [
+  columnHelper.display({
+    id: "cart",
+    header: (ctx) => (
+      <div className="w-full flex items-center justify-center">
+        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+          <ResearchCartHeaderButton tableResearches={ctx.table.options.data} />
+        </ClientOnly>
+      </div>
+    ),
+    cell: (ctx) => (
+      <div className="w-full flex items-center justify-center">
+        <ClientOnly fallback={<div className="size-8 shrink-0" />}>
+          <AddToCartAllDatasetsButton
+            humId={ctx.row.original.humId}
+            tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
+          />
+        </ClientOnly>
+      </div>
+    ),
+    maxSize: 1,
+    size: 1,
+  }),
   columnHelper.accessor("humId", {
     id: "humId",
     header: (ctx) => <SortHeader ctx={ctx} label={ctx.table.options.meta?.t("research-id")} />,
@@ -379,30 +409,20 @@ const columns = [
     id: "datasets",
     header: (ctx) => ctx.table.options.meta?.t("datasets"),
     cell: (ctx) => (
-      <>
-        <ClientOnly fallback={null}>
-          <AddToCartAllDatasetsButton
-            humId={ctx.row.original.humId}
-            tableDatasets={ctx.getValue().map((id) => ({ datasetId: id }))}
-            className="mb-2"
-          />
-        </ClientOnly>
-        <CollapsiblePreview
-          items={ctx.getValue().map((id) => ({
-            id,
-            content: (
-              <div className="flex items-center gap-2">
-                <ClientOnly fallback={null}>
-                  <ResearchDatasetCartRowButton datasetId={id} humId={ctx.row.original.humId} />
-                </ClientOnly>
-                <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
-                  <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
-                </Route.Link>
-              </div>
-            ),
-          }))}
-        />
-      </>
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.getValue().map((id) => (
+            <li key={id} className="flex items-center gap-2">
+              <ClientOnly fallback={null}>
+                <ResearchDatasetCartRowButton datasetId={id} humId={ctx.row.original.humId} />
+              </ClientOnly>
+              <Route.Link to="../dataset/$datasetId" params={{ datasetId: id }}>
+                <TextWithIcon icon={FA_ICONS.dataset}>{id}</TextWithIcon>
+              </Route.Link>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
     size: 15,
   }),
@@ -410,7 +430,11 @@ const columns = [
     id: "title",
     header: (ctx) => ctx.table.options.meta?.t?.("title"),
     cell: function Cell(ctx) {
-      return ctx.renderValue()?.[ctx.table.options.meta!.lang];
+      return (
+        <ModalCell maxHeight={96}>
+          <p className="text-sm">{ctx.renderValue()?.[ctx.table.options.meta?.lang!]}</p>
+        </ModalCell>
+      );
     },
   }),
   columnHelper.accessor((row) => row.versions[0], {
@@ -461,43 +485,69 @@ const columns = [
   columnHelper.accessor("methods", {
     id: "methods",
     header: (ctx) => ctx.table.options.meta?.t("methods"),
-    cell: (ctx) => <p className="break-all text-sm">{ctx.renderValue()}</p>,
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="text-sm break-all whitespace-pre-wrap">{ctx.renderValue()}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("typeOfData", {
     id: "typeOfData",
     header: (ctx) => ctx.table.options.meta?.t("typeOfData"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.renderValue()?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   columnHelper.accessor("platforms", {
     id: "platforms",
     header: (ctx) => ctx.table.options.meta?.t("platforms"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.renderValue()?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
   columnHelper.accessor("targets", {
     id: "targets",
     header: (ctx) => ctx.table.options.meta?.t("targets"),
+    cell: (ctx) => (
+      <ModalCell maxHeight={96}>
+        <p className="text-sm whitespace-pre-wrap">{ctx.getValue()}</p>
+      </ModalCell>
+    ),
   }),
   columnHelper.accessor("criteria", {
     id: "criteria",
     header: (ctx) => ctx.table.options.meta?.t("criteria"),
-
     cell: (ctx) => <AccessCriteriaLabel criteria={ctx.getValue()} />,
   }),
   columnHelper.accessor("dataProvider", {
     id: "dataProvider",
     header: (ctx) => ctx.table.options.meta?.t("dataProvider"),
     cell: (ctx) => (
-      <CollapsiblePreview
-        items={ctx.renderValue()?.map((item, i) => ({ id: i, content: <p>{item}</p> }))}
-      />
+      <ModalCell>
+        <ul className="space-y-4">
+          {ctx.renderValue()?.map((item, i) => (
+            <li key={i}>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ul>
+      </ModalCell>
     ),
   }),
 ];
@@ -544,12 +594,38 @@ function AddToCartAllDatasetsButton({
 
   return (
     <AddToCartToggle
-      state={allInCart ? true : someInCart ? "indeterminate" : false}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
       onClick={handleAddAllToCart}
       disabled={!hasCartableDatasets}
-      className={cn("font-normal text-sm", className)}
-    >
-      <span>{!allInCart ? t("add-all-to-cart") : t("already-in-cart")}</span>
-    </AddToCartToggle>
+      className={cn("shrink-0", className)}
+      title={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
+      aria-label={!allInCart ? t("add-all-datasets-to-cart") : t("already-in-cart")}
+    />
+  );
+}
+
+function ResearchCartHeaderButton({
+  tableResearches,
+}: {
+  tableResearches: ResearchSummary[];
+}) {
+  const t = useTranslations("common");
+  const allDatasets = useMemo(() => {
+    return tableResearches.flatMap((row) =>
+      row.datasetIds.map((id) => ({ datasetId: id })),
+    );
+  }, [tableResearches]);
+
+  const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
+    tableDatasets: allDatasets,
+  });
+
+  return (
+    <AddToCartToggle
+      variant={"header"}
+      state={allInCart || (someInCart ? "indeterminate" : false)}
+      onClick={handleClickCart}
+      aria-label={allInCart ? t("already-in-cart") : t("add-all-to-cart")}
+    />
   );
 }
