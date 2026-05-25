@@ -14,7 +14,15 @@
 import "@hono/zod-openapi"
 import { z } from "zod"
 
-import "../../../types/zod-patch"
+// Provide a fallback stub for .openapi() in frontend environments where
+// @hono/zod-openapi side-effects might not be registered or tree-shaken.
+if (!(z.ZodType.prototype as any).openapi) {
+  (z.ZodType.prototype as any).openapi = function (this: any) {
+    return this;
+  };
+}
+
+
 import {
   BilingualTextSchema,
   BilingualTextValueSchema,
