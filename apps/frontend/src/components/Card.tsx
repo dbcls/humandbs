@@ -17,9 +17,9 @@ interface CardProps
 const cardCaptionVariants = cva("relative font-bold text-secondary", {
   variants: {
     captionSize: {
-      lg: "mt-10 text-lg",
-      sm: "mt-3 text-sm",
-      default: "mt-1 text-base",
+      lg: "text-lg",
+      sm: "text-sm",
+      default: "text-base",
     },
     hideCaptionBorder: {
       false: "pl-3 before:absolute before:-left-6 before:h-full before:w-2 before:bg-secondary",
