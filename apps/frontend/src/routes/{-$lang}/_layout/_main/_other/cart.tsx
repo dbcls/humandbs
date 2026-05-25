@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
+import { CodeSnippet } from "@/components/CodeSnippet";
 import { CollapsiblePreview } from "@/components/CollapsiblePreview";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
@@ -39,7 +40,6 @@ const cartDatasetColumns = [
     id: "experiments",
     header: (ctx) => ctx.table.options.meta?.t("experiments"),
     cell: (ctx) => {
-      console.log("ctx.getValue()", ctx.getValue());
       return (
         <CollapsiblePreview
           items={ctx.getValue().map((item, i) => ({
@@ -85,19 +85,18 @@ function RouteComponent() {
   const t = useTranslations("Dataset");
   const locale = useLocale();
 
+  const payload = {
+    language_type: locale === "ja" ? 1 : 2,
+    components: cart.map((item) => ({
+      key: "use_dataset_request",
+      value: item.datasetId,
+    })),
+  };
+
   function handleSubmit() {
-    const payload = {
-      language_type: locale === "ja" ? 1 : 2,
-      components: cart.map((item) => ({
-        key: "use_dataset_request",
-        value: item.datasetId,
-      })),
-    };
     console.log("Copied to clipboard:", JSON.stringify(payload, null, 2));
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
   }
-
-  console.log("cart", cart);
 
   return (
     <CardWithCaption size={"sm"} containerClassName="p-8">
@@ -108,6 +107,7 @@ function RouteComponent() {
           <Button className="mb-4 ml-auto" onClick={handleSubmit}>
             Copy Cart Contents
           </Button>
+          <CodeSnippet lang="json" code={JSON.stringify(payload, null, 2)} />
           <Table columns={cartDatasetColumns} data={cart} meta={{ t, lang: locale }} />
         </>
       )}

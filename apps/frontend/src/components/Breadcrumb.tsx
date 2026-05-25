@@ -126,7 +126,6 @@ function Breadcrumbs() {
           <React.Fragment key={`${href}-${index}`}>
             <BreadcrumbItem>
               <Link
-                //@ts-expect-error
                 to={href}
                 className={cn("text-foreground-light", {
                   "text-secondary": index === crumbs.length - 1,
