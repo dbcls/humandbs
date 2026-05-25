@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { CardWithCaption } from "@/components/Card";
 import { ModalCell } from "@/components/ModalCell";
+import { CodeSnippet } from "@/components/CodeSnippet";
 import { SortHeader, Table } from "@/components/Table";
 import { TextWithIcon } from "@/components/TextWithIcon";
 import { Button } from "@/components/ui/button";
@@ -85,19 +86,18 @@ function RouteComponent() {
   const t = useTranslations("Dataset");
   const locale = useLocale();
 
+  const payload = {
+    language_type: locale === "ja" ? 1 : 2,
+    components: cart.map((item) => ({
+      key: "use_dataset_request",
+      value: item.datasetId,
+    })),
+  };
+
   function handleSubmit() {
-    const payload = {
-      language_type: locale === "ja" ? 1 : 2,
-      components: cart.map((item) => ({
-        key: "use_dataset_request",
-        value: item.datasetId,
-      })),
-    };
     console.log("Copied to clipboard:", JSON.stringify(payload, null, 2));
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
   }
-
-  console.log("cart", cart);
 
   return (
     <CardWithCaption size={"sm"} containerClassName="p-8">
