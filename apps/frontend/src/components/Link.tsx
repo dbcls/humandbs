@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const linkVariants = cva("text-secondary underline", {
   variants: {
     variant: {
-      default: "inline-block",
+      default: "inline-block visited:text-visited",
       nav: "block w-fit text-foreground no-underline [&.active]:text-secondary",
       alert: "text-alert",
       button:
