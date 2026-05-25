@@ -92,6 +92,7 @@ function RouteComponent() {
   return (
     <FilterableCard
       className="flex flex-col"
+      captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
           filterButtonRef={filterButtonRef}
@@ -609,9 +610,11 @@ function ResearchCartHeaderButton({
   tableResearches: ResearchSummary[];
 }) {
   const t = useTranslations("common");
-  const allDatasets = tableResearches.flatMap((row) =>
-    row.datasetIds.map((id) => ({ datasetId: id })),
-  );
+  const allDatasets = useMemo(() => {
+    return tableResearches.flatMap((row) =>
+      row.datasetIds.map((id) => ({ datasetId: id })),
+    );
+  }, [tableResearches]);
 
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
     tableDatasets: allDatasets,

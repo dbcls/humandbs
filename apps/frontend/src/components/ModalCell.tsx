@@ -46,7 +46,7 @@ export function ModalCell({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [maxHeight, children]);
+  }, [maxHeight]);
 
   return (
     <Dialog>

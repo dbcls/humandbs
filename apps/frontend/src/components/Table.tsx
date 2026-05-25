@@ -57,7 +57,7 @@ function Table<T extends Record<string, unknown>>({
   meta?: TableMeta<T>;
   variant?: VariantProps<typeof tableHeaderRowVariants>["variant"];
   isDimmed?: boolean;
-  stickyColumnCount?: number;
+  stickyColumnCount?: 0 | 1 | 2;
 }) {
   const t = useTranslations("common");
   const [localSorting, setLocalSorting] = useState<SortingState>([]);

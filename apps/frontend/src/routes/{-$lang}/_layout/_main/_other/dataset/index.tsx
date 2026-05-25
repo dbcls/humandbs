@@ -100,6 +100,7 @@ function RouteComponent() {
   return (
     <FilterableCard
       className="flex flex-col"
+      captionSize="lg"
       caption={({ onFilterClick, isOpen, filterButtonRef }) => (
         <SearchCaption
           filterButtonRef={filterButtonRef}
