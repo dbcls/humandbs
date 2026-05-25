@@ -79,11 +79,15 @@ export function ResearchDatasetTabs() {
     "h-[29px] -translate-y-[1px] bg-gray-100/90 text-muted-foreground hover:bg-gray-50 hover:before:bg-gray-50 z-0 border-b border-b-gray-200 before:bg-gray-100/90 before:border-b before:border-b-gray-200 shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)] before:shadow-[inset_0_-3px_5px_-1px_rgba(0,0,0,0.06)]";
 
   return (
-    <div className="flex items-end pl-6 mr-[-1px]">
+    <nav
+      aria-label={`${tCommon("research")} / ${tCommon("dataset")}`}
+      className="flex items-end pl-6 mr-[-1px]"
+    >
       {/* 研究タブ */}
       <Link
         to="/{-$lang}/research"
         search={switchSearch.research}
+        aria-current={currentPlace === "research" ? "page" : undefined}
         className={cn(
           baseTabClass,
           skewBeforeClass,
@@ -101,6 +105,7 @@ export function ResearchDatasetTabs() {
       <Link
         to="/{-$lang}/dataset"
         search={switchSearch.dataset}
+        aria-current={currentPlace === "dataset" ? "page" : undefined}
         className={cn(
           baseTabClass,
           skewBeforeClass,
@@ -114,6 +119,6 @@ export function ResearchDatasetTabs() {
           {tCommon("dataset")}
         </span>
       </Link>
-    </div>
+    </nav>
   );
 }

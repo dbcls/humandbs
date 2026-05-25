@@ -9,7 +9,7 @@ export const Route = createFileRoute("/{-$lang}/_layout/_main/_other")({
   errorComponent: ({ error }) => (
     <Card captionSize={"lg"} caption={<span className="text-danger">Error</span>}>
       <pre>{error.message}</pre>
-      <pre>{error.cause != null ? String(error.cause) : null}</pre>
+      {error.cause != null && <pre>{String(error.cause)}</pre>}
     </Card>
   ),
 });
