@@ -347,6 +347,8 @@
 
   --color-ring: var(--color-secondary);
 
+  --color-visited: #6b21a8;
+
   --text-lg: 2.8rem;
   --text-base: 1.6rem;
   --text-sm: 1.4rem;
@@ -444,7 +446,7 @@
   }
 
   a {
-    @apply text-secondary hover:text-secondary-light underline visited:text-neutral-500;
+    @apply text-secondary hover:text-secondary-light underline visited:text-visited;
   }
 
   @font-face {
@@ -486,7 +488,7 @@
     @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:content-[''] prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
 
     a {
-      @apply text-secondary font-medium visited:text-neutral-400;
+      @apply text-secondary font-medium visited:text-visited;
     }
 
     h1,
