@@ -3,6 +3,7 @@ import { ClientOnly, createFileRoute, functionalUpdate } from "@tanstack/react-r
 import type { SortingState, Updater } from "@tanstack/react-table";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useLocale, useTranslations } from "use-intl";
+
 import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { ResearchSearchBody, ResearchSearchResponse } from "@humandbs/backend/types";
@@ -12,8 +13,8 @@ import { AddToCartToggle } from "@/components/AddToCartToggle";
 import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { FilterableCard } from "@/components/FilterableCard";
 import { ModalCell } from "@/components/ModalCell";
-import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { Pagination, PaginationLoadingSkeleton } from "@/components/Pagination";
+import { ResearchDatasetCartRowButton } from "@/components/ResearchDatasetCartRowButton";
 import { SearchCaption } from "@/components/SearchCaption";
 import type { SectionConfig } from "@/components/SearchPanel";
 import { SearchPanel } from "@/components/SearchPanel";
@@ -373,21 +374,17 @@ const columns = [
   columnHelper.display({
     id: "cart",
     header: (ctx) => (
-      <div className="w-full flex items-center justify-center">
-        <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
-          <ResearchCartHeaderButton tableResearches={ctx.table.options.data} />
-        </ClientOnly>
-      </div>
+      <ClientOnly fallback={<span className="inline-block w-9" aria-hidden="true" />}>
+        <ResearchCartHeaderButton tableResearches={ctx.table.options.data} />
+      </ClientOnly>
     ),
     cell: (ctx) => (
-      <div className="w-full flex items-center justify-center">
-        <ClientOnly fallback={<div className="size-8 shrink-0" />}>
-          <AddToCartAllDatasetsButton
-            humId={ctx.row.original.humId}
-            tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
-          />
-        </ClientOnly>
-      </div>
+      <ClientOnly fallback={<div className="size-8 shrink-0" />}>
+        <AddToCartAllDatasetsButton
+          humId={ctx.row.original.humId}
+          tableDatasets={ctx.row.original.datasetIds.map((id) => ({ datasetId: id }))}
+        />
+      </ClientOnly>
     ),
     maxSize: 1,
     size: 1,
@@ -487,7 +484,7 @@ const columns = [
     header: (ctx) => ctx.table.options.meta?.t("methods"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
-        <p className="text-sm break-all whitespace-pre-wrap">{ctx.renderValue()}</p>
+        <p className="whitespace-pre-wrap break-all text-sm">{ctx.renderValue()}</p>
       </ModalCell>
     ),
   }),
@@ -526,7 +523,7 @@ const columns = [
     header: (ctx) => ctx.table.options.meta?.t("targets"),
     cell: (ctx) => (
       <ModalCell maxHeight={96}>
-        <p className="text-sm whitespace-pre-wrap">{ctx.getValue()}</p>
+        <p className="whitespace-pre-wrap text-sm">{ctx.getValue()}</p>
       </ModalCell>
     ),
   }),
@@ -552,6 +549,9 @@ const columns = [
   }),
 ];
 
+/** Button to add all datasets of the research
+ * to cart
+ */
 function AddToCartAllDatasetsButton({
   tableDatasets,
   humId,
@@ -604,16 +604,10 @@ function AddToCartAllDatasetsButton({
   );
 }
 
-function ResearchCartHeaderButton({
-  tableResearches,
-}: {
-  tableResearches: ResearchSummary[];
-}) {
+function ResearchCartHeaderButton({ tableResearches }: { tableResearches: ResearchSummary[] }) {
   const t = useTranslations("common");
   const allDatasets = useMemo(() => {
-    return tableResearches.flatMap((row) =>
-      row.datasetIds.map((id) => ({ datasetId: id })),
-    );
+    return tableResearches.flatMap((row) => row.datasetIds.map((id) => ({ datasetId: id })));
   }, [tableResearches]);
 
   const { allInCart, someInCart, handleClickCart } = useCartTableHeader({
