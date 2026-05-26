@@ -66,13 +66,11 @@ export function ResearchDatasetTabs() {
   const currentPlace: "research" | "dataset" = isResearch ? "research" : "dataset";
   const switchSearch = getTableSwitchSearch(location.search as Record<string, unknown>);
 
-  // スタイルの共通定義（左が斜め、右が垂直の台形タブ）
   const baseTabClass =
-    "relative px-8 flex items-end pb-1 border-t border-r border-gray-200 transition-all duration-200 cursor-pointer font-bold text-sm select-none rounded-tr-md no-underline";
+    "relative px-8 flex items-end pb-1 border-t border-r border-gray-200 cursor-pointer font-bold text-sm select-none rounded-tr-md no-underline";
   const skewBeforeClass =
-    "before:content-[''] before:absolute before:top-[-1px] before:bottom-0 before:left-[-14px] before:w-[14px] before:border-t before:border-l before:border-gray-200 before:rounded-tl-md before:skew-x-[-25deg] before:origin-bottom-right before:transition-all before:duration-200";
+    "before:content-[''] before:absolute before:top-[-1px] before:bottom-0 before:left-[-14px] before:w-[14px] before:border-t before:border-l before:border-gray-200 before:rounded-tl-md before:skew-x-[-25deg] before:origin-bottom-right";
 
-  // Active / Inactive 用のクラス
   const activeClass =
     "h-[30px] bg-white text-secondary z-10 border-b border-b-white before:bg-white before:border-b before:border-b-white shadow-[0_-2px_3px_rgba(0,0,0,0.02)]";
   const inactiveClass =
@@ -81,7 +79,7 @@ export function ResearchDatasetTabs() {
   return (
     <nav
       aria-label={`${tCommon("research")} / ${tCommon("dataset")}`}
-      className="flex items-end pl-6 mr-[-1px]"
+      className="flex items-end pl-6 mr-[-1px] -mt-[5px]"
     >
       {/* 研究タブ */}
       <Link
@@ -109,7 +107,7 @@ export function ResearchDatasetTabs() {
         className={cn(
           baseTabClass,
           skewBeforeClass,
-          "-ml-1.5", // タブの重なり
+          "-ml-1.5",
           currentPlace === "dataset" ? activeClass : inactiveClass,
         )}
       >
