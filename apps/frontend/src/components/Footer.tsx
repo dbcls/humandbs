@@ -22,7 +22,7 @@ export function Footer() {
                   <li key={item.id} className="min-w-0">
                     <Link
                       {...asLinkProps(item.linkOptions)}
-                      className="break-words text-foreground text-xs no-underline hover:text-secondary hover:underline"
+                      className="break-words text-xs"
                     >
                       {item.label}
                     </Link>
