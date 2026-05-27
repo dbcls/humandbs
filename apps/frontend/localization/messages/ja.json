@@ -429,6 +429,15 @@
     "previous": "前へ",
     "next": "次へ"
   },
+  "MergeWizard": {
+    "field-status-conflict": "値が異なります",
+    "field-status-can-fill": "こちらは空、J-DSに値あり",
+    "field-status-same": "最新の状態",
+    "field-status-na": "J-DSにデータなし",
+    "field-decision-accepted": "J-DSの値を使用",
+    "field-decision-rejected": "現在の値を保持",
+    "field-decision-custom": "カスタム値を設定済み"
+  },
   "Errors": {
     "RESERVED_SEGMENTS": "このIDはシステム予約パスのいずれかと競合しています",
     "RESERVED_PATH_PREFIXES": "このIDは予約済みのものと競合しています",

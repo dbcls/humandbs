@@ -1,4 +1,5 @@
 import { AlertTriangle, Check, CheckCircle2, Minus, PlusCircle } from "lucide-react";
+import { useTranslations } from "use-intl";
 
 import { useEffect, useRef } from "react";
 
@@ -51,6 +52,7 @@ export function FieldList({
   activeKey: string | null;
   onSelect: (key: string) => void;
 }) {
+  const t = useTranslations("MergeWizard");
   const activeRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -93,7 +95,9 @@ export function FieldList({
                 <StatusIcon status={field.status} decided={decided} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-gray-800 text-xs">{field.label}</div>
-                  <div className="truncate text-2xs text-gray-400">{field.status}</div>
+                  <div className="truncate text-2xs text-gray-400">
+                    {decided ? t(`field-decision-${decision}`) : t(`field-status-${field.status}`)}
+                  </div>
                 </div>
               </button>
             );

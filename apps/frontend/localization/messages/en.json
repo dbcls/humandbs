@@ -428,6 +428,15 @@
     "previous": "Previous",
     "next": "Next"
   },
+  "MergeWizard": {
+    "field-status-conflict": "Values differ",
+    "field-status-can-fill": "Empty here, has value",
+    "field-status-same": "Already up to date",
+    "field-status-na": "Not in J-DS",
+    "field-decision-accepted": "Using J-DS value",
+    "field-decision-rejected": "Keeping current",
+    "field-decision-custom": "Custom value set"
+  },
   "Errors": {
     "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",
     "RESERVED_PATH_PREFIXES": "This id is conflicting with reserved one",

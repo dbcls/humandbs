@@ -22,6 +22,7 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { LoadingSpinner } from "./LoadingSpinner";
 import { Button } from "./ui/button";
 
 const tableHeaderRowVariants = cva("rounded bg-linear-to-r text-left text-white", {
@@ -85,10 +86,7 @@ function Table<T extends Record<string, unknown>>({
       <thead className="sticky top-0 z-30 text-white">
         {table.getHeaderGroups().map((headerGroup) => {
           return (
-            <tr
-              key={headerGroup.id}
-              className={tableHeaderRowVariants({ variant })}
-            >
+            <tr key={headerGroup.id} className={tableHeaderRowVariants({ variant })}>
               {headerGroup.headers.map((header, index) => {
                 const isSticky = index < stickyColumnCount;
                 const isCartColumn = header.column.id === "cart";
@@ -96,14 +94,19 @@ function Table<T extends Record<string, unknown>>({
                   <th
                     key={header.id}
                     className={cn(
-                      "p-2 first-of-type:rounded-l last-of-type:rounded-r max-w-[300px]",
+                      "max-w-[300px] p-2 first-of-type:rounded-l last-of-type:rounded-r",
                       {
                         "sticky left-0 z-40 px-1.5 py-2": isSticky && index === 0,
                         "w-12 min-w-[3rem] max-w-[3rem]": isSticky && index === 0 && isCartColumn,
-                        "sticky left-12 z-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": isSticky && index === 1,
-                        "bg-secondary-light": isSticky && (index === 0 || index === 1) && (variant === "default" || !variant),
-                        "bg-secondary": isSticky && (index === 0 || index === 1) && variant === "darker",
-                      }
+                        "sticky left-12 z-40 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]":
+                          isSticky && index === 1,
+                        "bg-secondary-light":
+                          isSticky &&
+                          (index === 0 || index === 1) &&
+                          (variant === "default" || !variant),
+                        "bg-secondary":
+                          isSticky && (index === 0 || index === 1) && variant === "darker",
+                      },
                     )}
                   >
                     {header.isPlaceholder
@@ -128,7 +131,7 @@ function Table<T extends Record<string, unknown>>({
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
             className={cn("bg-white transition-colors", {
-              "cursor-pointer hover:bg-gray-50 group": onRowClick,
+              "group cursor-pointer hover:bg-gray-50": onRowClick,
             })}
           >
             {row.getVisibleCells().map((cell, index) => {
@@ -138,12 +141,13 @@ function Table<T extends Record<string, unknown>>({
                 <td
                   key={cell.id}
                   className={cn(
-                    "border-foreground-light/50 border-b-2 p-2 align-top max-w-[300px]",
+                    "max-w-[300px] border-foreground-light/50 border-b-2 p-2 align-top",
                     {
                       "sticky left-0 z-20 bg-inherit px-1.5 py-2": isSticky && index === 0,
                       "w-12 min-w-[3rem] max-w-[3rem]": isSticky && index === 0 && isCartColumn,
-                      "sticky left-12 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]": isSticky && index === 1,
-                    }
+                      "sticky left-12 z-20 bg-inherit shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]":
+                        isSticky && index === 1,
+                    },
                   )}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -277,7 +281,7 @@ function TableLoadingSpinner<T extends Record<string, unknown>>({
         <tr>
           <td colSpan={columns.length} className="h-32">
             <div className="flex items-center justify-center">
-              <LoaderCircle className="size-8 animate-spin text-secondary" />
+              <LoadingSpinner variant={"secondary"} size={"lg"} />
             </div>
           </td>
         </tr>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -177,10 +178,10 @@ export function MergeJDSResearchDialog({
         <div className="flex shrink-0 items-end gap-2 border-gray-100 border-b px-4 py-3">
           <Label className="flex-col items-stretch gap-1">
             <span className="text-xs">J-DS ID</span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Input
                 value={jdsId}
-                placeholder="e.g. JDS000001"
+                placeholder="J-DS000001"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -191,10 +192,16 @@ export function MergeJDSResearchDialog({
                   setJdsId(e.target.value);
                   setError(null);
                 }}
-                className="h-8 w-48 text-sm"
+                className="block w-48 text-sm"
               />
-              <Button type="button" variant="outline" size="default" disabled={isPending} onClick={handleGet}>
-                {isPending ? "Getting…" : "Get"}
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                disabled={isPending}
+                onClick={handleGet}
+              >
+                {isPending ? <LoadingSpinner variant={"outline"} /> : "Get"}
               </Button>
             </div>
           </Label>
