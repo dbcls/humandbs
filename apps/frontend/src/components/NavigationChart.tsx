@@ -176,6 +176,7 @@ const OptionComponent = ({
       <div
         className={cn(optionBaseClasses, "flex flex-col items-center gap-2", {
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
+          "bg-tetriary text-white": isSelected,
         })}
       >
         {titleBlock}
@@ -201,6 +202,7 @@ const OptionComponent = ({
       <div
         className={cn(optionBaseClasses, "flex flex-col items-center gap-2", {
           "pointer-events-none cursor-not-allowed": !isEnabled || isSelected,
+          "bg-tetriary text-white": isSelected,
         })}
       >
         {titleBlock}
@@ -248,6 +250,7 @@ const OptionComponent = ({
         disabled={!isEnabled || isSelected}
         className={cn(optionBaseClasses, {
           "cursor-pointer hover:bg-tetriary hover:text-white": isEnabled && !isSelected,
+          "bg-tetriary text-white": isSelected,
         })}
       >
         {titleBlock}
@@ -426,7 +429,9 @@ function NavigationChartInner({
         return (
           <div
             key={step.id}
-            ref={(el) => { stepRefs.current[index] = el; }}
+            ref={(el) => {
+              stepRefs.current[index] = el;
+            }}
             className={cn(
               "transition-opacity duration-300",
               isEnabled ? "opacity-100" : "opacity-30",

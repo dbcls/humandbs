@@ -1298,7 +1298,7 @@ function OptionRow({
         <button
           type="button"
           onClick={onDelete}
-          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+          className="shrink-0 place-self-start rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
         >
           <Trash2 className="size-3" />
         </button>
