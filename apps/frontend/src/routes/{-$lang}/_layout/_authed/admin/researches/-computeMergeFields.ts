@@ -1,9 +1,14 @@
 import type { ResearchTemplateData } from "../../../../../../../../backend/src/api/types/templates";
-
-import type { EditableResearchValues } from "./-mergeJDSResearch";
+import type { EditableResearchValues } from "./-jdsResearchValues";
 
 export type FieldStatus = "conflict" | "can-fill" | "same" | "na";
-export type FieldDataType = "scalar" | "links" | "providers" | "projects" | "grants" | "publications";
+export type FieldDataType =
+  | "scalar"
+  | "links"
+  | "providers"
+  | "projects"
+  | "grants"
+  | "publications";
 export type FieldDecision = "pending" | "accepted" | "rejected" | "custom";
 
 export type MergeFieldDescriptor = {
@@ -31,7 +36,10 @@ function isEmptyArray(v: unknown[] | null | undefined): boolean {
   return v == null || v.length === 0;
 }
 
-function scalarStatus(current: string | null | undefined, incoming: string | null | undefined): FieldStatus {
+function scalarStatus(
+  current: string | null | undefined,
+  incoming: string | null | undefined,
+): FieldStatus {
   const curEmpty = isEmptyString(current);
   const incEmpty = isEmptyString(incoming);
   if (incEmpty) return "na";
@@ -52,7 +60,10 @@ function textValueStatus(
   return "conflict";
 }
 
-function arrayStatus(current: unknown[] | null | undefined, incoming: unknown[] | null | undefined): FieldStatus {
+function arrayStatus(
+  current: unknown[] | null | undefined,
+  incoming: unknown[] | null | undefined,
+): FieldStatus {
   const curEmpty = isEmptyArray(current);
   const incEmpty = isEmptyArray(incoming);
   if (incEmpty) return "na";
@@ -96,12 +107,48 @@ export function computeMergeFields(
   const incSummary = incoming.summary;
 
   const summarySubFields = [
-    { key: "summary.aims.ja", label: "Aims (JA)", path: "summary.aims.ja", cur: curSummary?.aims?.ja, inc: incSummary?.aims?.ja },
-    { key: "summary.aims.en", label: "Aims (EN)", path: "summary.aims.en", cur: curSummary?.aims?.en, inc: incSummary?.aims?.en },
-    { key: "summary.methods.ja", label: "Methods (JA)", path: "summary.methods.ja", cur: curSummary?.methods?.ja, inc: incSummary?.methods?.ja },
-    { key: "summary.methods.en", label: "Methods (EN)", path: "summary.methods.en", cur: curSummary?.methods?.en, inc: incSummary?.methods?.en },
-    { key: "summary.targets.ja", label: "Targets (JA)", path: "summary.targets.ja", cur: curSummary?.targets?.ja, inc: incSummary?.targets?.ja },
-    { key: "summary.targets.en", label: "Targets (EN)", path: "summary.targets.en", cur: curSummary?.targets?.en, inc: incSummary?.targets?.en },
+    {
+      key: "summary.aims.ja",
+      label: "Aims (JA)",
+      path: "summary.aims.ja",
+      cur: curSummary?.aims?.ja,
+      inc: incSummary?.aims?.ja,
+    },
+    {
+      key: "summary.aims.en",
+      label: "Aims (EN)",
+      path: "summary.aims.en",
+      cur: curSummary?.aims?.en,
+      inc: incSummary?.aims?.en,
+    },
+    {
+      key: "summary.methods.ja",
+      label: "Methods (JA)",
+      path: "summary.methods.ja",
+      cur: curSummary?.methods?.ja,
+      inc: incSummary?.methods?.ja,
+    },
+    {
+      key: "summary.methods.en",
+      label: "Methods (EN)",
+      path: "summary.methods.en",
+      cur: curSummary?.methods?.en,
+      inc: incSummary?.methods?.en,
+    },
+    {
+      key: "summary.targets.ja",
+      label: "Targets (JA)",
+      path: "summary.targets.ja",
+      cur: curSummary?.targets?.ja,
+      inc: incSummary?.targets?.ja,
+    },
+    {
+      key: "summary.targets.en",
+      label: "Targets (EN)",
+      path: "summary.targets.en",
+      cur: curSummary?.targets?.en,
+      inc: incSummary?.targets?.en,
+    },
   ] as const;
 
   for (const sf of summarySubFields) {

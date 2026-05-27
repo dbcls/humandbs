@@ -1,5 +1,5 @@
-import type { MergeFieldDescriptor, FieldDecision } from "./-computeMergeFields";
-import type { EditableResearchValues } from "./-mergeJDSResearch";
+import type { FieldDecision, MergeFieldDescriptor } from "./-computeMergeFields";
+import type { EditableResearchValues } from "./-jdsResearchValues";
 
 type DecisionsMap = Record<string, FieldDecision>;
 type CustomValuesMap = Record<string, unknown>;
@@ -56,6 +56,7 @@ export function applyMergeDecisions(
     dataProvider: (get("dataProvider") as EditableResearchValues["dataProvider"]) ?? [],
     researchProject: (get("researchProject") as EditableResearchValues["researchProject"]) ?? [],
     grant: (get("grant") as EditableResearchValues["grant"]) ?? [],
-    relatedPublication: (get("relatedPublication") as EditableResearchValues["relatedPublication"]) ?? [],
+    relatedPublication:
+      (get("relatedPublication") as EditableResearchValues["relatedPublication"]) ?? [],
   };
 }

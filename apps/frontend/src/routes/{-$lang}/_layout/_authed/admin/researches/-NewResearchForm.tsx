@@ -21,9 +21,9 @@ import { $createResearch } from "@/serverFunctions/researches";
 
 import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DUMMY_HUM_ID } from "./-dummyResearch";
-import { MergeJDSResearchDialog } from "./-MergeJDSResearchDialog";
-import type { NewResearchMergeValues } from "./-mergeJDSResearch";
-import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./-mergeJDSResearch";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearch/index";
+import type { NewResearchMergeValues } from "./-jdsResearchValues";
+import { pickNewResearchMergeValues, toResearchValuesForMerge } from "./-jdsResearchValues";
 
 const defaultValues: CreateResearchRequest = {
   humId: undefined,
