@@ -387,6 +387,11 @@ function NavigationChartInner({
   };
 
   const [enabledStepIndex, setEnabledStepIndex] = useState(computeEnabledIndex);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    stepRefs.current[enabledStepIndex]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [enabledStepIndex]);
 
   const handleOptionClick = (option: NavigationFlowchartOption, stepIndex: number) => {
     const step = data.steps[stepIndex];
@@ -421,6 +426,7 @@ function NavigationChartInner({
         return (
           <div
             key={step.id}
+            ref={(el) => { stepRefs.current[index] = el; }}
             className={cn(
               "transition-opacity duration-300",
               isEnabled ? "opacity-100" : "opacity-30",
