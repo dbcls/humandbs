@@ -25,12 +25,14 @@ export interface DocVersionListItemResponseRaw extends BaseDoc {
 export interface DocPublishedVersionResponseRaw extends BaseDoc {
   content: string | null;
   hideTOC: boolean;
+  hideRevisions: boolean;
   updatedAt: Date;
 }
 
 export interface DocAnyVersionResponseRaw extends BaseDoc {
   content: string | null;
   hideTOC: boolean;
+  hideRevisions: boolean;
   status: DocVersionStatus;
 }
 
@@ -117,7 +119,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
             eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
             eq(table.locale, locale),
           ),
-        with: { document: { columns: { hideTOC: true } } },
+        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
           content: true,
@@ -129,7 +131,12 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         orderBy: [desc(documentVersion.versionNumber)],
       });
       if (!row) return undefined;
-      return { ...row, contentId, hideTOC: row.document.hideTOC ?? true };
+      return {
+        ...row,
+        contentId,
+        hideTOC: row.document.hideTOC ?? true,
+        hideRevisions: row.document.hideRevisions ?? true,
+      };
     },
 
     getPublishedForVersionNumberAndLocale: async (contentId, versionNumber, locale) => {
@@ -142,7 +149,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
             eq(table.locale, locale),
             eq(table.status, DOCUMENT_VERSION_STATUS.PUBLISHED),
           ),
-        with: { document: { columns: { hideTOC: true } } },
+        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
           content: true,
@@ -154,7 +161,12 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         },
       });
       if (!row) return undefined;
-      return { ...row, contentId, hideTOC: row.document.hideTOC ?? true };
+      return {
+        ...row,
+        contentId,
+        hideTOC: row.document.hideTOC ?? true,
+        hideRevisions: row.document.hideRevisions ?? true,
+      };
     },
 
     getVersionList: async (contentId) => {
@@ -177,7 +189,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
       const rows = await database.query.documentVersion.findMany({
         where: (table, { and, eq }) =>
           and(eq(table.documentId, documentId), eq(table.versionNumber, versionNumber)),
-        with: { document: { columns: { hideTOC: true } } },
+        with: { document: { columns: { hideTOC: true, hideRevisions: true } } },
         columns: {
           title: true,
           content: true,
@@ -191,6 +203,7 @@ export function createDocumentVersionRepository(database: typeof db): DocumentVe
         ...r,
         contentId,
         hideTOC: r.document.hideTOC ?? true,
+        hideRevisions: r.document.hideRevisions ?? true,
       }));
     },
 

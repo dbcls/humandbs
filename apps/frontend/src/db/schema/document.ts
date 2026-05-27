@@ -5,6 +5,7 @@ export const document = pgTable("document", {
   contentId: text("name").notNull().unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   hideTOC: boolean("hide_toc").default(true),
+  hideRevisions: boolean("hide_revisions").default(true),
 });
 
 export type Document = typeof document.$inferSelect;

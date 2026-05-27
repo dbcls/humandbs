@@ -170,6 +170,19 @@ export const $updateDocumentHideTOC = createServerFn({ method: "POST" })
       .where(eq(document.contentId, data.contentId));
   });
 
+/** Update hideRevisions flag for a document */
+export const $updateDocumentHideRevisions = createServerFn({ method: "POST" })
+  .middleware([hasPermissionMiddleware])
+  .inputValidator(z.object({ contentId: z.string(), hideRevisions: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    context.checkPermission("documents", "update");
+
+    await db
+      .update(document)
+      .set({ hideRevisions: data.hideRevisions })
+      .where(eq(document.contentId, data.contentId));
+  });
+
 /**
  * Delete document by contentId
  */

@@ -31,7 +31,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Locale } from "@/config/i18n";
 import { i18n } from "@/config/i18n";
 import { DOCUMENT_VERSION_STATUS } from "@/db/schema/documentVersion";
-import { $updateDocumentHideTOC, getDocumentQueryOptions } from "@/serverFunctions/document";
+import {
+  $updateDocumentHideRevisions,
+  $updateDocumentHideTOC,
+  getDocumentQueryOptions,
+} from "@/serverFunctions/document";
 import type {
   DocVersionListItemResponse,
   DocVersionResponse,
@@ -126,6 +130,9 @@ export function DocumentVersion({
           />
           <Suspense>
             <ShowTOCCheckbox contentId={contentId} />
+          </Suspense>
+          <Suspense>
+            <ShowRevisionsCheckbox contentId={contentId} />
           </Suspense>
         </span>
       }
@@ -418,6 +425,45 @@ function ShowTOCCheckbox({ contentId }: { contentId: string }) {
       />
       <Label htmlFor="show-toc" className="cursor-pointer font-normal">
         Show table of contents
+      </Label>
+    </div>
+  );
+}
+
+function ShowRevisionsCheckbox({ contentId }: { contentId: string }) {
+  const queryClient = useQueryClient();
+  const docQO = getDocumentQueryOptions(contentId);
+  const { data: doc } = useSuspenseQuery(docQO);
+
+  const { mutate: updateHideRevisions, isPending } = useMutation({
+    mutationFn: (hideRevisions: boolean) =>
+      $updateDocumentHideRevisions({ data: { contentId, hideRevisions } }),
+    onMutate: async (hideRevisions) => {
+      await queryClient.cancelQueries(docQO);
+      const prev = queryClient.getQueryData(docQO.queryKey);
+      queryClient.setQueryData(docQO.queryKey, (old: typeof doc | undefined) =>
+        old ? { ...old, hideRevisions } : old,
+      );
+      return { prev };
+    },
+    onError: (_, __, context) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(docQO.queryKey, context.prev);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries(docQO),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="show-revisions"
+        checked={!(doc?.hideRevisions ?? true)}
+        disabled={isPending}
+        onCheckedChange={(checked) => updateHideRevisions(!checked)}
+      />
+      <Label htmlFor="show-revisions" className="cursor-pointer font-normal">
+        Show previous versions
       </Label>
     </div>
   );

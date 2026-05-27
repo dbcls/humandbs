@@ -1,0 +1,1 @@
+ALTER TABLE "document" ADD COLUMN "hide_revisions" boolean DEFAULT true;
