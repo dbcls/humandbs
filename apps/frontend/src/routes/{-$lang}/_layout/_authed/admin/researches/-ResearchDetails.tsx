@@ -19,7 +19,7 @@ import { RelatedPublicationArrayField } from "@/components/form-context/research
 import { ResearchProjectArrayField } from "@/components/form-context/researchFields/ResearchProjectArrayField";
 import { SummaryForm } from "@/components/form-context/researchFields/SummaryForm";
 import { LangSwitcherPill } from "@/components/LanguageSwitcher";
-import { StatusTag, Tag } from "@/components/StatusTag";
+import { StatusTag } from "@/components/StatusTag";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -265,8 +265,12 @@ export function ResearchDetails({
     previousById: [QueryKey, ResearchDetailResponse | undefined][],
     previousList: [QueryKey, unknown][],
   ) {
-    previousById.forEach(([key, data]) => queryClient.setQueryData(key, data));
-    previousList.forEach(([key, data]) => queryClient.setQueryData(key, data));
+    previousById.forEach(([key, data]) => {
+      queryClient.setQueryData(key, data);
+    });
+    previousList.forEach(([key, data]) => {
+      queryClient.setQueryData(key, data);
+    });
   }
 
   const { mutate: submitResearch, isPending: isSubmitting } = useMutation({

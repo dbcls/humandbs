@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ResearchDetailResponse } from "@humandbs/backend/types";
 
+import { TagInput } from "@/components/form-context/fields/TagInput";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,11 +45,11 @@ type ArrayItem = Record<string, unknown>;
 // ── Status icon ──────────────────────────────────────────────────────────────
 
 function StatusIcon({ status, decided }: { status: FieldStatus; decided: boolean }) {
-  if (decided) return <CheckCircle2 className="size-3.5 text-green-600" />;
-  if (status === "conflict") return <AlertTriangle className="size-3.5 text-amber-500" />;
-  if (status === "can-fill") return <PlusCircle className="size-3.5 text-blue-500" />;
-  if (status === "same") return <Check className="size-3.5 text-gray-400" />;
-  return <Minus className="size-3.5 text-gray-300" />;
+  if (decided) return <CheckCircle2 className="size-5 text-green-600" />;
+  if (status === "conflict") return <AlertTriangle className="size-5 text-amber-500" />;
+  if (status === "can-fill") return <PlusCircle className="size-5 text-blue-500" />;
+  if (status === "same") return <Check className="size-5 text-gray-400" />;
+  return <Minus className="size-5 text-gray-300" />;
 }
 
 // ── Stat pills ───────────────────────────────────────────────────────────────
@@ -116,8 +117,8 @@ function FieldList({
           </div>
           {groupFields.map((field) => {
             const isActive = field.key === activeKey;
-            const isNa = field.status === "na";
-            const isDimmed = field.status === "same" || field.status === "na";
+            const isSame = field.status === "same";
+            const isDimmed = field.status === "same";
             const decision = decisions[field.key] ?? "pending";
             const decided = decision !== "pending";
 
@@ -126,20 +127,20 @@ function FieldList({
                 key={field.key}
                 ref={isActive ? activeRef : null}
                 type="button"
-                disabled={isNa}
-                onClick={() => !isNa && onSelect(field.key)}
+                disabled={isSame}
+                onClick={() => !isSame && onSelect(field.key)}
                 className={cn(
                   "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors",
                   isActive && "bg-blue-50",
-                  !isActive && !isNa && "hover:bg-gray-50",
+                  !isActive && !isSame && "hover:bg-gray-50",
                   isDimmed && "opacity-40",
-                  isNa && "cursor-default",
+                  isSame && "cursor-default",
                 )}
               >
                 <StatusIcon status={field.status} decided={decided} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-gray-800 text-xs">{field.label}</div>
-                  <div className="truncate text-[10px] text-gray-400">{field.schemaPath}</div>
+                  <div className="truncate text-2xs text-gray-400">{field.status}</div>
                 </div>
               </button>
             );
@@ -172,52 +173,110 @@ function ScalarValue({ value, placeholder }: { value: unknown; placeholder: stri
   );
 }
 
+// ── Shared card primitives ────────────────────────────────────────────────────
+
+function CardField({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] text-gray-400">{label}</span>
+      <span className="min-h-[1.25rem] text-xs">
+        {value || <span className="text-gray-300">—</span>}
+      </span>
+    </div>
+  );
+}
+
+function BilingualRow({
+  label,
+  en,
+  ja,
+}: {
+  label: string;
+  en?: string | null;
+  ja?: string | null;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-0.5">
+      <span className="text-gray-600 text-xs">{label}</span>
+      <div className="flex gap-2">
+        <div className="flex-1 rounded border border-gray-200 bg-gray-50 px-2 py-1">
+          <span className="block text-[10px] text-gray-400">En</span>
+          <span className="text-xs">{en || <span className="text-gray-300">—</span>}</span>
+        </div>
+        <div className="flex-1 rounded border border-gray-200 bg-gray-50 px-2 py-1">
+          <span className="block text-[10px] text-gray-400">Ja</span>
+          <span className="text-xs">{ja || <span className="text-gray-300">—</span>}</span>
+        </div>
+      </div>
+    </fieldset>
+  );
+}
+
 function ProviderCard({ item }: { item: ArrayItem }) {
   const name = item.name as { ja?: { text?: string }; en?: { text?: string } } | undefined;
-  const nameJa = name?.ja?.text ?? "";
-  const nameEn = name?.en?.text ?? "";
   const email = typeof item.email === "string" ? item.email : null;
   const orcid = typeof item.orcid === "string" ? item.orcid : null;
+  const org = item.organization as
+    | {
+        name?: { ja?: { text?: string }; en?: { text?: string } };
+        address?: { country?: string | null } | null;
+      }
+    | null
+    | undefined;
+
   return (
-    <div className="space-y-0.5 rounded border border-gray-200 bg-white p-2 text-xs">
-      {nameJa && (
-        <div>
-          <span className="text-gray-400">JA</span> {nameJa}
+    <div className="flex flex-col gap-2 rounded border border-gray-300 bg-white p-3">
+      <BilingualRow label="Name" en={name?.en?.text} ja={name?.ja?.text} />
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <CardField label="Email" value={email} />
         </div>
-      )}
-      {nameEn && (
-        <div>
-          <span className="text-gray-400">EN</span> {nameEn}
+        <div className="flex-1">
+          <CardField label="ORCID" value={orcid} />
         </div>
-      )}
-      {email && (
-        <div>
-          <span className="text-gray-400">Email</span> {email}
-        </div>
-      )}
-      {orcid && (
-        <div>
-          <span className="text-gray-400">ORCID</span> {orcid}
-        </div>
-      )}
+      </div>
+      <fieldset className="flex flex-col gap-1.5 rounded border border-gray-300 p-2">
+        <span className="font-medium text-gray-600 text-xs">Organization</span>
+        <BilingualRow label="Name" en={org?.name?.en?.text} ja={org?.name?.ja?.text} />
+        <CardField label="Country" value={org?.address?.country} />
+      </fieldset>
     </div>
   );
 }
 
 function ProjectCard({ item }: { item: ArrayItem }) {
   const name = item.name as { ja?: { text?: string }; en?: { text?: string } } | undefined;
+  const url = item.url as
+    | { ja?: { text?: string; url?: string } | null; en?: { text?: string; url?: string } | null }
+    | null
+    | undefined;
+
   return (
-    <div className="space-y-0.5 rounded border border-gray-200 bg-white p-2 text-xs">
-      {name?.ja?.text && (
-        <div>
-          <span className="text-gray-400">JA</span> {name.ja.text}
+    <div className="flex flex-col gap-2 rounded border border-gray-300 bg-white p-3">
+      <BilingualRow label="Name" en={name?.en?.text} ja={name?.ja?.text} />
+      <fieldset className="flex flex-col gap-0.5">
+        <span className="text-gray-600 text-xs">URL</span>
+        <div className="flex gap-2">
+          <div className="flex flex-1 flex-col gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1">
+            <span className="text-[10px] text-gray-400">En</span>
+            <span className="text-gray-500 text-xs">
+              {url?.en?.text || <span className="text-gray-300">—</span>}
+            </span>
+            <span className="break-all text-blue-600 text-xs">
+              {url?.en?.url || <span className="text-gray-300">—</span>}
+            </span>
+          </div>
+          <div className="flex flex-1 flex-col gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-1">
+            <span className="text-[10px] text-gray-400">Ja</span>
+            <span className="text-gray-500 text-xs">
+              {url?.ja?.text || <span className="text-gray-300">—</span>}
+            </span>
+            <span className="break-all text-blue-600 text-xs">
+              {url?.ja?.url || <span className="text-gray-300">—</span>}
+            </span>
+          </div>
         </div>
-      )}
-      {name?.en?.text && (
-        <div>
-          <span className="text-gray-400">EN</span> {name.en.text}
-        </div>
-      )}
+      </fieldset>
     </div>
   );
 }
@@ -225,23 +284,29 @@ function ProjectCard({ item }: { item: ArrayItem }) {
 function GrantCard({ item }: { item: ArrayItem }) {
   const ids = (item.id as string[] | undefined) ?? [];
   const title = item.title as { ja?: string | null; en?: string | null } | undefined;
+  const agency = item.agency as { name?: { ja?: string | null; en?: string | null } } | undefined;
+
   return (
-    <div className="space-y-0.5 rounded border border-gray-200 bg-white p-2 text-xs">
-      {ids.length > 0 && (
-        <div>
-          <span className="text-gray-400">ID</span> {ids.join(", ")}
-        </div>
-      )}
-      {title?.ja && (
-        <div>
-          <span className="text-gray-400">JA</span> {title.ja}
-        </div>
-      )}
-      {title?.en && (
-        <div>
-          <span className="text-gray-400">EN</span> {title.en}
-        </div>
-      )}
+    <div className="flex flex-col gap-2 rounded border border-gray-300 bg-white p-3">
+      <BilingualRow label="Title" en={title?.en} ja={title?.ja} />
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] text-gray-400">IDs</span>
+        {ids.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {ids.map((id) => (
+              <span key={id} className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-700 text-xs">
+                {id}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-gray-300 text-xs">—</span>
+        )}
+      </div>
+      <fieldset className="flex flex-col gap-1.5 rounded border border-gray-300 p-2">
+        <span className="font-medium text-gray-600 text-xs">Agency</span>
+        <BilingualRow label="Name" en={agency?.name?.en} ja={agency?.name?.ja} />
+      </fieldset>
     </div>
   );
 }
@@ -249,23 +314,11 @@ function GrantCard({ item }: { item: ArrayItem }) {
 function PubCard({ item }: { item: ArrayItem }) {
   const title = item.title as { ja?: string | null; en?: string | null } | undefined;
   const doi = typeof item.doi === "string" ? item.doi : null;
+
   return (
-    <div className="space-y-0.5 rounded border border-gray-200 bg-white p-2 text-xs">
-      {title?.ja && (
-        <div>
-          <span className="text-gray-400">JA</span> {title.ja}
-        </div>
-      )}
-      {title?.en && (
-        <div>
-          <span className="text-gray-400">EN</span> {title.en}
-        </div>
-      )}
-      {doi && (
-        <div>
-          <span className="text-gray-400">DOI</span> {doi}
-        </div>
-      )}
+    <div className="flex flex-col gap-2 rounded border border-gray-300 bg-white p-3">
+      <BilingualRow label="Title" en={title?.en} ja={title?.ja} />
+      <CardField label="DOI" value={doi} />
     </div>
   );
 }
@@ -274,17 +327,9 @@ function LinkCard({ item }: { item: ArrayItem }) {
   const text = typeof item.text === "string" ? item.text : null;
   const url = typeof item.url === "string" ? item.url : null;
   return (
-    <div className="space-y-0.5 rounded border border-gray-200 bg-white p-2 text-xs">
-      {text && (
-        <div>
-          <span className="text-gray-400">Text</span> {text}
-        </div>
-      )}
-      {url && (
-        <div>
-          <span className="text-gray-400">URL</span> {url}
-        </div>
-      )}
+    <div className="flex flex-col gap-2 rounded border border-gray-300 bg-white p-3">
+      <CardField label="Label" value={text} />
+      <CardField label="URL" value={url} />
     </div>
   );
 }
@@ -407,7 +452,7 @@ function InlineScalarEditor({
 
 // ── Inline array editor ───────────────────────────────────────────────────────
 
-type EditableCard = { fields: Record<string, string> };
+type EditableCard = { fields: Record<string, string>; grantIds?: string[] };
 
 function itemToFields(
   item: ArrayItem,
@@ -420,26 +465,40 @@ function itemToFields(
   }
 
   if (dataType === "providers") {
+    const org = item.organization as
+      | {
+          name?: { ja?: { text?: string }; en?: { text?: string } };
+          address?: { country?: string | null } | null;
+        }
+      | null
+      | undefined;
     return {
       "name.ja": bv((item.name as { ja?: { text?: string } })?.ja),
       "name.en": bv((item.name as { en?: { text?: string } })?.en),
       email: String(item.email ?? ""),
       orcid: String(item.orcid ?? ""),
-      "org.ja": bv((item.organization as { name?: { ja?: { text?: string } } })?.name?.ja),
-      "org.en": bv((item.organization as { name?: { en?: { text?: string } } })?.name?.en),
+      "org.ja": bv(org?.name?.ja),
+      "org.en": bv(org?.name?.en),
+      "org.country": org?.address?.country ?? "",
     };
   }
   if (dataType === "projects") {
+    const url = item.url as
+      | { ja?: { text?: string; url?: string } | null; en?: { text?: string; url?: string } | null }
+      | null
+      | undefined;
     return {
       "name.ja": bv((item.name as { ja?: { text?: string } })?.ja),
       "name.en": bv((item.name as { en?: { text?: string } })?.en),
+      "url.ja.text": url?.ja?.text ?? "",
+      "url.ja.url": url?.ja?.url ?? "",
+      "url.en.text": url?.en?.text ?? "",
+      "url.en.url": url?.en?.url ?? "",
     };
   }
   if (dataType === "grants") {
-    const ids = (item.id as string[] | undefined) ?? [];
     const title = item.title as { ja?: string; en?: string } | undefined;
     return {
-      id: ids.join(", "),
       "title.ja": title?.ja ?? "",
       "title.en": title?.en ?? "",
       "agency.ja": (item.agency as { name?: { ja?: string } })?.name?.ja ?? "",
@@ -464,32 +523,40 @@ function itemToFields(
 function fieldsToItem(
   fields: Record<string, string>,
   dataType: MergeFieldDescriptor["dataType"],
+  grantIds?: string[],
 ): ArrayItem {
   function tv(s: string): { text: string } | null {
     return s.trim() ? { text: s.trim() } : null;
   }
   if (dataType === "providers") {
+    const hasOrg = fields["org.ja"] || fields["org.en"] || fields["org.country"];
     return {
       name: { ja: tv(fields["name.ja"] ?? ""), en: tv(fields["name.en"] ?? "") },
       email: fields["email"] || null,
       orcid: fields["orcid"] || null,
-      organization:
-        fields["org.ja"] || fields["org.en"]
-          ? { name: { ja: tv(fields["org.ja"] ?? ""), en: tv(fields["org.en"] ?? "") } }
-          : null,
+      organization: hasOrg
+        ? {
+            name: { ja: tv(fields["org.ja"] ?? ""), en: tv(fields["org.en"] ?? "") },
+            address: fields["org.country"] ? { country: fields["org.country"] } : null,
+          }
+        : null,
     };
   }
   if (dataType === "projects") {
-    return { name: { ja: tv(fields["name.ja"] ?? ""), en: tv(fields["name.en"] ?? "") } };
+    const urlJa = fields["url.ja.url"]
+      ? { text: fields["url.ja.text"] ?? "", url: fields["url.ja.url"] }
+      : null;
+    const urlEn = fields["url.en.url"]
+      ? { text: fields["url.en.text"] ?? "", url: fields["url.en.url"] }
+      : null;
+    return {
+      name: { ja: tv(fields["name.ja"] ?? ""), en: tv(fields["name.en"] ?? "") },
+      url: urlJa || urlEn ? { ja: urlJa, en: urlEn } : null,
+    };
   }
   if (dataType === "grants") {
     return {
-      id: fields["id"]
-        ? fields["id"]
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
+      id: grantIds ?? [],
       title: { ja: fields["title.ja"] ?? null, en: fields["title.en"] ?? null },
       agency: { name: { ja: fields["agency.ja"] ?? null, en: fields["agency.en"] ?? null } },
     };
@@ -506,14 +573,34 @@ function fieldsToItem(
 function blankCard(dataType: MergeFieldDescriptor["dataType"]): EditableCard {
   if (dataType === "providers") {
     return {
-      fields: { "name.ja": "", "name.en": "", email: "", orcid: "", "org.ja": "", "org.en": "" },
+      fields: {
+        "name.ja": "",
+        "name.en": "",
+        email: "",
+        orcid: "",
+        "org.ja": "",
+        "org.en": "",
+        "org.country": "",
+      },
     };
   }
   if (dataType === "projects") {
-    return { fields: { "name.ja": "", "name.en": "" } };
+    return {
+      fields: {
+        "name.ja": "",
+        "name.en": "",
+        "url.ja.text": "",
+        "url.ja.url": "",
+        "url.en.text": "",
+        "url.en.url": "",
+      },
+    };
   }
   if (dataType === "grants") {
-    return { fields: { id: "", "title.ja": "", "title.en": "", "agency.ja": "", "agency.en": "" } };
+    return {
+      fields: { "title.ja": "", "title.en": "", "agency.ja": "", "agency.en": "" },
+      grantIds: [],
+    };
   }
   if (dataType === "publications") {
     return { fields: { "title.ja": "", "title.en": "", doi: "" } };
@@ -532,26 +619,98 @@ function cardTitle(
   return fields["text"] || fields["url"] || "";
 }
 
-const fieldLabels: Record<string, Record<string, string>> = {
-  providers: {
-    "name.ja": "Name JA",
-    "name.en": "Name EN",
-    email: "Email",
-    orcid: "ORCID",
-    "org.ja": "Org JA",
-    "org.en": "Org EN",
-  },
-  projects: { "name.ja": "Name JA", "name.en": "Name EN" },
-  grants: {
-    id: "IDs (comma-sep)",
-    "title.ja": "Title JA",
-    "title.en": "Title EN",
-    "agency.ja": "Agency JA",
-    "agency.en": "Agency EN",
-  },
-  publications: { "title.ja": "Title JA", "title.en": "Title EN", doi: "DOI" },
-  links: { text: "Label", url: "URL" },
-};
+function BilingualInputRow({
+  label,
+  enKey,
+  jaKey,
+  fields,
+  onChange,
+}: {
+  label: string;
+  enKey: string;
+  jaKey: string;
+  fields: Record<string, string>;
+  onChange: (key: string, val: string) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-1">
+      <span className="text-gray-600 text-xs">{label}</span>
+      <div className="flex gap-2">
+        <div className="flex flex-1 flex-col gap-0.5">
+          <span className="text-[10px] text-gray-400">En</span>
+          <Input
+            value={fields[enKey] ?? ""}
+            onChange={(e) => onChange(enKey, e.target.value)}
+            className="h-7 text-xs"
+          />
+        </div>
+        <div className="flex flex-1 flex-col gap-0.5">
+          <span className="text-[10px] text-gray-400">Ja</span>
+          <Input
+            value={fields[jaKey] ?? ""}
+            onChange={(e) => onChange(jaKey, e.target.value)}
+            className="h-7 text-xs"
+          />
+        </div>
+      </div>
+    </fieldset>
+  );
+}
+
+function URLInputRow({
+  label,
+  textKey,
+  urlKey,
+  fields,
+  onChange,
+}: {
+  label: string;
+  textKey: string;
+  urlKey: string;
+  fields: Record<string, string>;
+  onChange: (key: string, val: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] text-gray-400">{label}</span>
+      <Input
+        value={fields[textKey] ?? ""}
+        onChange={(e) => onChange(textKey, e.target.value)}
+        className="h-7 rounded-b-none text-xs"
+        placeholder="Title"
+      />
+      <Input
+        value={fields[urlKey] ?? ""}
+        onChange={(e) => onChange(urlKey, e.target.value)}
+        className="h-7 rounded-t-none text-xs"
+        placeholder="URL"
+      />
+    </div>
+  );
+}
+
+function CardFieldInput({
+  label,
+  fieldKey,
+  fields,
+  onChange,
+}: {
+  label: string;
+  fieldKey: string;
+  fields: Record<string, string>;
+  onChange: (key: string, val: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] text-gray-400">{label}</span>
+      <Input
+        value={fields[fieldKey] ?? ""}
+        onChange={(e) => onChange(fieldKey, e.target.value)}
+        className="h-7 text-xs"
+      />
+    </div>
+  );
+}
 
 function InlineArrayEditor({
   field,
@@ -564,9 +723,16 @@ function InlineArrayEditor({
   onSave: (items: ArrayItem[]) => void;
   onCancel: () => void;
 }) {
-  const seed = (customValue !== undefined ? customValue : field.incomingValue) as ArrayItem[];
+  const incomingArr = field.incomingValue as ArrayItem[] | null;
+  const currentArr = field.currentValue as ArrayItem[] | null;
+  const seed = (
+    customValue !== undefined ? customValue : incomingArr?.length ? incomingArr : currentArr
+  ) as ArrayItem[];
   const [cards, setCards] = useState<EditableCard[]>(() =>
-    (seed ?? []).map((item) => ({ fields: itemToFields(item, field.dataType) })),
+    (seed ?? []).map((item) => ({
+      fields: itemToFields(item, field.dataType),
+      grantIds: field.dataType === "grants" ? ((item.id as string[] | undefined) ?? []) : undefined,
+    })),
   );
 
   function setCard(index: number, card: EditableCard) {
@@ -578,17 +744,145 @@ function InlineArrayEditor({
   }
 
   function handleSave() {
-    onSave(cards.map((c) => fieldsToItem(c.fields, field.dataType)));
+    onSave(cards.map((c) => fieldsToItem(c.fields, field.dataType, c.grantIds)));
   }
 
-  const labels = fieldLabels[field.dataType] ?? {};
+  function renderCardBody(card: EditableCard, i: number) {
+    const ch = (key: string, val: string) =>
+      setCard(i, { ...card, fields: { ...card.fields, [key]: val } });
+    const f = card.fields;
+
+    if (field.dataType === "providers") {
+      return (
+        <div className="flex flex-col gap-3 p-3">
+          <BilingualInputRow
+            label="Name"
+            enKey="name.en"
+            jaKey="name.ja"
+            fields={f}
+            onChange={ch}
+          />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <CardFieldInput label="Email" fieldKey="email" fields={f} onChange={ch} />
+            </div>
+            <div className="flex-1">
+              <CardFieldInput label="ORCID" fieldKey="orcid" fields={f} onChange={ch} />
+            </div>
+          </div>
+          <fieldset className="flex flex-col gap-2 rounded border border-gray-300 p-3">
+            <span className="font-medium text-gray-600 text-xs">Organization</span>
+            <BilingualInputRow
+              label="Name"
+              enKey="org.en"
+              jaKey="org.ja"
+              fields={f}
+              onChange={ch}
+            />
+            <CardFieldInput label="Country" fieldKey="org.country" fields={f} onChange={ch} />
+          </fieldset>
+        </div>
+      );
+    }
+
+    if (field.dataType === "projects") {
+      return (
+        <div className="flex flex-col gap-3 p-3">
+          <BilingualInputRow
+            label="Name"
+            enKey="name.en"
+            jaKey="name.ja"
+            fields={f}
+            onChange={ch}
+          />
+          <fieldset className="flex flex-col gap-1">
+            <span className="text-gray-600 text-xs">URL</span>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <URLInputRow
+                  label="En"
+                  textKey="url.en.text"
+                  urlKey="url.en.url"
+                  fields={f}
+                  onChange={ch}
+                />
+              </div>
+              <div className="flex-1">
+                <URLInputRow
+                  label="Ja"
+                  textKey="url.ja.text"
+                  urlKey="url.ja.url"
+                  fields={f}
+                  onChange={ch}
+                />
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      );
+    }
+
+    if (field.dataType === "grants") {
+      return (
+        <div className="flex flex-col gap-3 p-3">
+          <BilingualInputRow
+            label="Title"
+            enKey="title.en"
+            jaKey="title.ja"
+            fields={f}
+            onChange={ch}
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-gray-400">IDs</span>
+            <TagInput
+              value={card.grantIds ?? []}
+              onChange={(ids) => setCard(i, { ...card, grantIds: ids })}
+              placeholder="Type and press comma or Enter"
+            />
+          </div>
+          <fieldset className="flex flex-col gap-2 rounded border border-gray-300 p-3">
+            <span className="font-medium text-gray-600 text-xs">Agency</span>
+            <BilingualInputRow
+              label="Name"
+              enKey="agency.en"
+              jaKey="agency.ja"
+              fields={f}
+              onChange={ch}
+            />
+          </fieldset>
+        </div>
+      );
+    }
+
+    if (field.dataType === "publications") {
+      return (
+        <div className="flex flex-col gap-3 p-3">
+          <BilingualInputRow
+            label="Title"
+            enKey="title.en"
+            jaKey="title.ja"
+            fields={f}
+            onChange={ch}
+          />
+          <CardFieldInput label="DOI" fieldKey="doi" fields={f} onChange={ch} />
+        </div>
+      );
+    }
+
+    // links
+    return (
+      <div className="flex flex-col gap-2 p-3">
+        <CardFieldInput label="Label" fieldKey="text" fields={f} onChange={ch} />
+        <CardFieldInput label="URL" fieldKey="url" fields={f} onChange={ch} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="space-y-3">
         {cards.map((card, i) => (
           <div key={i} className="rounded border border-gray-300 bg-white">
-            {/* Card header — matches SortableItem without grip */}
             <div className="flex items-center gap-2 border-gray-400 border-b bg-gray-300 px-3 py-2">
               <span className="flex-1 font-medium text-sm">
                 #{i + 1} {cardTitle(card.fields, field.dataType)}
@@ -601,24 +895,7 @@ function InlineArrayEditor({
                 <Trash2 className="size-4" />
               </button>
             </div>
-            {/* Card body */}
-            <div className="grid grid-cols-2 gap-1.5 p-3">
-              {Object.entries(card.fields).map(([fieldKey, val]) => (
-                <div key={fieldKey} className="flex flex-col gap-0.5">
-                  <span className="text-[10px] text-gray-400">{labels[fieldKey] ?? fieldKey}</span>
-                  <Input
-                    value={val}
-                    onChange={(e) =>
-                      setCard(i, {
-                        ...card,
-                        fields: { ...card.fields, [fieldKey]: e.target.value },
-                      })
-                    }
-                    className="h-7 text-xs"
-                  />
-                </div>
-              ))}
-            </div>
+            {renderCardBody(card, i)}
           </div>
         ))}
       </div>
@@ -690,6 +967,7 @@ function CompareArea({
   const isNa = field.status === "na";
   const isSame = field.status === "same";
   const isActionable = !isNa && !isSame;
+  const isEditable = !isSame;
   const isDecided = decision !== "pending";
 
   function resolveResultValue(): unknown {
@@ -703,11 +981,36 @@ function CompareArea({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      {/* Top: two source columns, shrink to content */}
+      {/* Top: two source columns — clickable when actionable */}
       <div className="grid grid-cols-2">
         {/* Current value */}
-        <div className="flex flex-col gap-2 border-gray-200 border-r border-b p-4">
-          <div className="font-semibold text-gray-500 text-xs">Current value</div>
+        <div
+          role={isActionable ? "button" : undefined}
+          tabIndex={isActionable ? 0 : undefined}
+          onClick={isActionable ? onReject : undefined}
+          onKeyDown={
+            isActionable ? (e) => (e.key === "Enter" || e.key === " ") && onReject() : undefined
+          }
+          className={cn(
+            "group flex flex-col gap-2 border-gray-200 border-r border-b p-4",
+            isActionable && "cursor-pointer transition-colors hover:bg-blue-50",
+            decision === "rejected" && "bg-blue-50",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-gray-500 text-xs">Current value</div>
+            {isActionable && (
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-medium text-[10px] opacity-0 transition-opacity group-hover:opacity-100",
+                  decision === "rejected" && "opacity-100",
+                  "bg-blue-100 text-blue-700",
+                )}
+              >
+                {field.status === "conflict" ? "Use this" : "Leave empty"}
+              </span>
+            )}
+          </div>
           {isScalar ? (
             <ScalarValue value={field.currentValue} placeholder="(empty)" />
           ) : (
@@ -719,8 +1022,33 @@ function CompareArea({
         </div>
 
         {/* Value from J-DS */}
-        <div className="flex flex-col gap-2 border-gray-200 border-b p-4">
-          <div className="font-semibold text-gray-500 text-xs">Value from J-DS</div>
+        <div
+          role={isActionable ? "button" : undefined}
+          tabIndex={isActionable ? 0 : undefined}
+          onClick={isActionable ? onAccept : undefined}
+          onKeyDown={
+            isActionable ? (e) => (e.key === "Enter" || e.key === " ") && onAccept() : undefined
+          }
+          className={cn(
+            "group flex flex-col gap-2 border-gray-200 border-b p-4",
+            isActionable && "cursor-pointer transition-colors hover:bg-pink-50",
+            decision === "accepted" && "bg-pink-50",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-gray-500 text-xs">Value from J-DS</div>
+            {isActionable && (
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-medium text-[10px] opacity-0 transition-opacity group-hover:opacity-100",
+                  decision === "accepted" && "opacity-100",
+                  "bg-pink-100 text-pink-700",
+                )}
+              >
+                Use this
+              </span>
+            )}
+          </div>
           {isScalar ? (
             <ScalarValue value={field.incomingValue} placeholder="(none)" />
           ) : (
@@ -734,28 +1062,6 @@ function CompareArea({
 
       {/* Bottom: New value — full width */}
       <div className="p-4">
-        {/* Button row aligned under source columns */}
-        {isActionable && !editing && (
-          <div className="mb-3 grid grid-cols-2 gap-4">
-            <Button
-              type="button"
-              size="default"
-              variant={decision === "rejected" ? "action" : "outline"}
-              onClick={onReject}
-            >
-              {field.status === "conflict" ? "Use current value" : "Leave empty"}
-            </Button>
-            <Button
-              type="button"
-              size="default"
-              variant={decision === "accepted" ? "accent" : "outline"}
-              onClick={onAccept}
-            >
-              Use J-DS value
-            </Button>
-          </div>
-        )}
-
         {/* New value header */}
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -828,17 +1134,17 @@ function CompareArea({
           <div
             className={cn(
               "flex flex-col gap-1",
-              isActionable && "group cursor-pointer",
-              !isActionable && "opacity-50",
+              isEditable && "group cursor-pointer",
+              !isEditable && "opacity-50",
             )}
-            onClick={() => isActionable && onEditStart()}
+            onClick={() => isEditable && onEditStart()}
           >
             {isScalar ? (
               <ScalarValue value={resultValue} placeholder="(empty)" />
             ) : (
               <ArrayCards items={(resultValue as ArrayItem[]) ?? []} dataType={field.dataType} />
             )}
-            {isActionable && (
+            {isEditable && (
               <div className="text-[10px] text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
                 Click to edit custom value
               </div>
@@ -939,6 +1245,33 @@ function FieldHeader({
   );
 }
 
+// ── Merge summary (footer) ────────────────────────────────────────────────────
+
+function MergeSummary({
+  fields,
+  decisions,
+}: {
+  fields: MergeFieldDescriptor[];
+  decisions: Record<string, FieldDecision>;
+}) {
+  const overwritten = fields.filter((f) => {
+    const d = decisions[f.key] ?? "pending";
+    return d === "accepted" || d === "custom";
+  });
+
+  if (overwritten.length === 0) {
+    return <span className="text-gray-400 text-xs">No fields will be changed yet.</span>;
+  }
+
+  return (
+    <div className="flex min-w-0 items-baseline gap-1.5 text-xs">
+      <span className="shrink-0 text-gray-500">Will overwrite:</span>
+      <span className="truncate text-gray-700">{overwritten.map((f) => f.label).join(", ")}</span>
+      <span className="shrink-0 text-gray-400">({overwritten.length})</span>
+    </div>
+  );
+}
+
 // ── Main dialog ───────────────────────────────────────────────────────────────
 
 export function MergeJDSResearchDialog({
@@ -968,7 +1301,7 @@ export function MergeJDSResearchDialog({
       const fields = computeMergeFields(currentValues, result.data);
       store.setFetchedResearch(result.data, fields);
       setError(null);
-      const firstActionable = fields.find((f) => f.status !== "na" && f.status !== "same");
+      const firstActionable = fields.find((f) => f.status !== "same");
       if (firstActionable) store.setActiveField(firstActionable.key);
     },
     onError: (err: Error) => {
@@ -996,7 +1329,7 @@ export function MergeJDSResearchDialog({
 
   const { fields, decisions, customValues, activeFieldKey, editing } = store;
 
-  const actionable = fields.filter((f) => f.status !== "na" && f.status !== "same");
+  const actionable = fields.filter((f) => f.status !== "same");
   const activeField = activeFieldKey ? fields.find((f) => f.key === activeFieldKey) : null;
   const activeDecision: FieldDecision = activeFieldKey
     ? (decisions[activeFieldKey] ?? "pending")
@@ -1084,10 +1417,7 @@ export function MergeJDSResearchDialog({
           Merge data from J-DS
         </Button>
       </DialogTrigger>
-      <DialogContent
-        className="flex flex-col gap-0 overflow-hidden p-0"
-        style={{ minWidth: "min(95vw, 1100px)", minHeight: "min(85vh, 700px)", maxHeight: "90vh" }}
-      >
+      <DialogContent className="flex max-h-[90vh] min-h-[min(85vh,700px)] min-w-[min(95vw,1100px)] flex-col gap-0 overflow-hidden">
         {/* Header */}
         <div className="flex shrink-0 items-center gap-4 border-gray-200 border-b px-4 py-3">
           <DialogTitle className="font-semibold text-base">Merge data from J-DS</DialogTitle>
@@ -1136,7 +1466,7 @@ export function MergeJDSResearchDialog({
         {fields.length > 0 && (
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Left panel */}
-            <div className="w-56 shrink-0">
+            <div className="w-fit shrink-0">
               <FieldList
                 fields={fields}
                 decisions={decisions}
@@ -1189,18 +1519,16 @@ export function MergeJDSResearchDialog({
         )}
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2 border-gray-200 border-t px-4 py-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="default"
-            onClick={() => handleOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button type="button" size="default" disabled={!canApply} onClick={handleApply}>
-            Apply
-          </Button>
+        <div className="flex shrink-0 items-center gap-4 border-gray-200 border-t px-4 py-3">
+          <MergeSummary fields={fields} decisions={decisions} />
+          <div className="ml-auto flex items-center gap-2">
+            <Button type="button" variant="ghost" size="lg" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="button" size="lg" disabled={!canApply} onClick={handleApply}>
+              Apply
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
