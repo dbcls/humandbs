@@ -37,7 +37,7 @@ export function AlertMessage({
   return (
     <div className="flex items-center justify-between gap-2 rounded-sm border border-amber-600 bg-amber-50 px-4 py-2 text-foreground-dark">
       <div className="flex items-center gap-4">
-        <TriangleAlert className="size-5 text-amber-700" />
+        <TriangleAlert className="size-6 shrink-0 text-amber-700" />
         <p className="whitespace-pre-wrap text-xs">{content}</p>
       </div>
       <Button onClick={() => onHide?.(id)} variant={"ghost"} size={"icon"} aria-label="Hide alert">
