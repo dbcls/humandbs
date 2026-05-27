@@ -436,6 +436,11 @@
     "field-decision-accepted": "Using J-DS value",
     "field-decision-rejected": "Keeping current",
     "field-decision-custom": "Custom value set",
+    "decision-label-accepted": "Using J-DS value",
+    "decision-label-rejected-conflict": "Keeping current",
+    "decision-label-rejected-fill": "Leaving empty",
+    "decision-label-custom": "Custom value",
+    "decision-label-pending": "No decision yet — will keep current on apply",
     "will-overwrite": "Will overwrite fields",
     "no-changes": "No fields will be overwritten"
   },
