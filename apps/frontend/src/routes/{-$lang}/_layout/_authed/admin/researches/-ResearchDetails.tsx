@@ -12,7 +12,6 @@ import { Card } from "@/components/Card";
 import { useAppForm } from "@/components/form-context/FormContext";
 import { TabLabel } from "@/components/form-context/fields/TabLabel";
 import { deepEqual } from "@/components/form-context/fields/useFieldModified";
-import { ControlledAccessUserArrayField } from "@/components/form-context/researchFields/ControlledAccessUserArrayField";
 import { DataProviderArrayField } from "@/components/form-context/researchFields/DataProviderArrayField";
 import { GrantArrayField } from "@/components/form-context/researchFields/GrantArrayField";
 import { RelatedPublicationArrayField } from "@/components/form-context/researchFields/RelatedPublicationArrayField";
@@ -441,14 +440,14 @@ export function ResearchDetails({
             canNewVersion={canNewVersion}
             onVersionChange={setSelectedVersion}
           />
-          <label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
+          <Label className="ml-auto flex cursor-pointer items-center gap-2 font-normal text-gray-500 text-sm">
             {previewLabel}
             <Switch
               checked={effectivePreview}
               onCheckedChange={setEffectivePreview}
               className="data-[state=checked]:bg-secondary"
             />
-          </label>
+          </Label>
         </>
       }
       captionClassName="flex items-center"
@@ -613,11 +612,6 @@ export function ResearchDetails({
                         Related publication
                       </TabLabel>
                     </TabsTrigger>
-                    <TabsTrigger variant="line" value="controlledAccessUser">
-                      <TabLabel dirty={dirtyFields.controlledAccessUser}>
-                        Controlled access user
-                      </TabLabel>
-                    </TabsTrigger>
                   </TabsList>
                 </div>
                 <fieldset
@@ -643,9 +637,6 @@ export function ResearchDetails({
                   </TabsContent>
                   <TabsContent value="relatedPublication">
                     <RelatedPublicationArrayField form={form} />
-                  </TabsContent>
-                  <TabsContent value="controlledAccessUser">
-                    <ControlledAccessUserArrayField form={form} />
                   </TabsContent>
                 </fieldset>
               </Tabs>

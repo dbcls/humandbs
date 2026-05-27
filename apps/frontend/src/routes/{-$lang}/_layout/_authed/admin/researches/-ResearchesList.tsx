@@ -252,7 +252,7 @@ function ListItems({
             }));
 
             return (
-              <li key={`${research.humId}-${index}`}>
+              <li key={`${research.humId}`}>
                 <ListItem
                   role="menuitem"
                   onClick={() => onSelectResearch(research.humId)}
