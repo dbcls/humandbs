@@ -25,7 +25,7 @@ export default function TextField({
   const [isValid, errors] = useStore(field.store, (s) => [s.meta.isValid, s.meta.errors]);
 
   return (
-    <Label className="flex-col items-stretch">
+    <Label className="flex-1 flex-col items-stretch">
       <div
         className={cn("flex items-center gap-2", className, {
           "flex-col items-stretch": type === "col",
