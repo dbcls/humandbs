@@ -62,8 +62,12 @@ function useCartSelector<T>(
   const queryClient = useQueryClient();
   const queryKey = ["cart", userId];
 
-  // Keep a stable ref to the latest selector result so the subscribe callback
-  // can compare without stale closure issues.
+  // Always-current refs so subscribe/getSnapshot callbacks don't go stale.
+  const selectorRef = useRef(selector);
+  const isEqualRef = useRef(isEqual);
+  selectorRef.current = selector;
+  isEqualRef.current = isEqual;
+
   const lastResultRef = useRef<T>(
     selector((queryClient.getQueryData<CartItem[]>(queryKey) ?? getLocalStorageValues(userId))),
   );
@@ -77,8 +81,8 @@ function useCartSelector<T>(
           event.query.queryKey[1] === userId
         ) {
           const cart = (event.query.state.data as CartItem[] | undefined) ?? [];
-          const next = selector(cart);
-          if (!isEqual(lastResultRef.current, next)) {
+          const next = selectorRef.current(cart);
+          if (!isEqualRef.current(lastResultRef.current, next)) {
             lastResultRef.current = next;
             onStoreChange();
           }
@@ -86,21 +90,24 @@ function useCartSelector<T>(
       });
       return unsubscribe;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [queryClient, userId],
   );
 
   const getSnapshot = useCallback(() => {
-    const cart = queryClient.getQueryData<CartItem[]>(queryKey) ?? getLocalStorageValues(userId);
-    const next = selector(cart);
-    if (isEqual(lastResultRef.current, next)) return lastResultRef.current;
+    // Prefer cached query data. Fall back to lastResultRef to avoid calling
+    // getLocalStorageValues on every snapshot read (it returns a new array
+    // each time, which would break useSyncExternalStore's stable-result requirement).
+    const cachedCart = queryClient.getQueryData<CartItem[]>(queryKey);
+    if (cachedCart === undefined) return lastResultRef.current;
+    const next = selectorRef.current(cachedCart);
+    if (isEqualRef.current(lastResultRef.current, next)) return lastResultRef.current;
     lastResultRef.current = next;
     return next;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient, userId]);
 
   return useSyncExternalStore(subscribe, getSnapshot, () =>
-    selector(getLocalStorageValues(userId)),
+    selectorRef.current(getLocalStorageValues(userId)),
   );
 }
 
