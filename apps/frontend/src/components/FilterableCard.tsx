@@ -44,7 +44,6 @@ export function FilterableCard({
     return () => observer.disconnect();
   }, [caption]);
 
-
   return (
     <Card
       className={cn("flex-1", className)}
@@ -77,11 +76,13 @@ export function FilterableCard({
               style={{ right: `${arrowOffset - 8}px` }}
             >
               <svg
+                role="img"
                 viewBox="0 0 16 8"
                 width="16"
                 height="8"
                 className="block"
                 xmlns="http://www.w3.org/2000/svg"
+                aria-label="Filters panel arrow"
               >
                 <path d="M8 1L15 8H1L8 1Z" className="fill-white" />
                 <path d="M8 1L15 8H1L8 1Z" className="fill-secondary/10" />

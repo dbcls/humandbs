@@ -446,7 +446,7 @@
   }
 
   a {
-    @apply text-secondary hover:text-secondary-light underline visited:text-visited;
+    @apply text-secondary hover:text-secondary-light visited:text-visited underline;
   }
 
   @font-face {
@@ -485,14 +485,14 @@
   }
 
   .custom-prose {
-    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:content-[''] prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
+    @apply prose prose-h1:text-secondary prose-h1:font-bold prose-h1:text-lg prose-h1:relative prose-h1:before:absolute prose-h1:before:left-0 prose-h1:before:h-full prose-h1:before:w-2 prose-h1:before:bg-secondary prose-h1:pl-9 prose-headings:[&_a]:no-underline prose-headings:[&_a]:text-inherit prose-headings:[&_a:visited]:text-inherit max-w-none min-w-0 text-base text-pretty break-words;
 
     table {
       @apply w-full table-auto;
     }
 
     thead tr {
-      @apply rounded bg-linear-to-r from-secondary-light to-secondary-lighter text-white;
+      @apply from-secondary-light to-secondary-lighter rounded bg-linear-to-r text-white;
     }
 
     thead th {
@@ -508,7 +508,7 @@
     }
 
     a {
-      @apply text-secondary font-medium visited:text-visited;
+      @apply text-secondary visited:text-visited font-medium;
     }
 
     h1,

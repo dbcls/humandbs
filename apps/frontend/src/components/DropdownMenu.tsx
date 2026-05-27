@@ -23,10 +23,10 @@ export function DropdownMenu({ trigger, dropdownItems }: DropdownMenuProps) {
   const grouped = dropdownItems.reduce(
     (acc, curr) => {
       if (!curr.group) {
-        if (!acc["ungrouped"]) {
-          acc["ungrouped"] = [curr];
+        if (!acc.ungrouped) {
+          acc.ungrouped = [curr];
         } else {
-          acc["ungrouped"].push(curr);
+          acc.ungrouped.push(curr);
         }
       } else {
         if (!acc[curr.group]) {
