@@ -436,7 +436,9 @@
     "field-status-na": "J-DSにデータなし",
     "field-decision-accepted": "J-DSの値を使用",
     "field-decision-rejected": "現在の値を保持",
-    "field-decision-custom": "カスタム値を設定済み"
+    "field-decision-custom": "カスタム値を設定済み",
+    "will-overwrite": "上書きされる値",
+    "no-changes": "変更はありません"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "このIDはシステム予約パスのいずれかと競合しています",

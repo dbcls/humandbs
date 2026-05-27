@@ -435,7 +435,9 @@
     "field-status-na": "Not in J-DS",
     "field-decision-accepted": "Using J-DS value",
     "field-decision-rejected": "Keeping current",
-    "field-decision-custom": "Custom value set"
+    "field-decision-custom": "Custom value set",
+    "will-overwrite": "Will overwrite fields",
+    "no-changes": "No fields will be overwritten"
   },
   "Errors": {
     "RESERVED_SEGMENTS": "This id is conflicting with one of the system-reserved paths",

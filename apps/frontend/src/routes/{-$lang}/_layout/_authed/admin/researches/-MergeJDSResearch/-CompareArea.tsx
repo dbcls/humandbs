@@ -1,4 +1,4 @@
-import { PlusCircle, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -184,13 +184,13 @@ function InlineArrayEditor({
           </div>
         ))}
       </div>
-      <button
+      <Button
         type="button"
+        variant="dashed"
         onClick={() => setCards((prev) => [...prev, codec.blank()])}
-        className="flex items-center gap-1 self-start text-blue-600 text-xs hover:underline"
       >
-        <PlusCircle className="size-3.5" /> Add item
-      </button>
+        + Add
+      </Button>
       <div className="flex items-center gap-2">
         <Button size="default" type="button" onClick={() => onSave(cards.map((c) => codec!.toItem(c)))}>Save</Button>
         <Button size="default" type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
