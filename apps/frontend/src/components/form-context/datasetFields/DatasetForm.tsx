@@ -53,6 +53,7 @@ export function datasetToFormValues(
     experiments: dataset.experiments.map((exp) => ({
       header: exp.header,
       data: experimentDataToEntries(exp.data as any),
+      searchable: (exp as any).searchable,
     })),
   };
 }
@@ -74,6 +75,7 @@ export function formValuesToDatasetUpdate(
     experiments: values.experiments.map((exp) => ({
       header: exp.header,
       data: entriesToExperimentData(exp.data),
+      ...(exp.searchable !== undefined ? { searchable: exp.searchable } : {}),
     })),
     _seq_no: seqNo,
     _primary_term: primaryTerm,

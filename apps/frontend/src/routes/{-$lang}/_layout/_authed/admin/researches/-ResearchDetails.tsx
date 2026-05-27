@@ -43,8 +43,8 @@ import useConfirmationStore from "@/stores/confirmationStore";
 import { AdminStatusMessage } from "../-components/AdminStatusMessage";
 import { DatasetCreateView } from "./-DatasetCreateView";
 import { DatasetEditView } from "./-DatasetEditView";
-import { MergeJDSResearchDialog } from "./-MergeJDSResearch/index";
 import type { MergeResearchResult } from "./-jdsResearchValues";
+import { MergeJDSResearchDialog } from "./-MergeJDSResearch/index";
 import { ResearchDatasetsTab } from "./-ResearchDatasetsTab";
 import { ResearchVersionSelector } from "./-ResearchVersionSelector";
 import { TabContentLayout } from "./-TabContentLayout";
@@ -426,7 +426,7 @@ export function ResearchDetails({
 
   return (
     <Card
-      className="flex h-full min-w-0 flex-1 flex-col"
+      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden"
       caption={
         <>
           <span>{researchValues.humId}</span>

@@ -15,7 +15,6 @@ import {
 } from "@dnd-kit/sortable";
 import { useStore } from "@tanstack/react-form";
 import { Download, Trash2, Upload } from "lucide-react";
-import { useTranslations } from "use-intl";
 
 import { useId, useRef } from "react";
 
@@ -41,7 +40,9 @@ import ALLOWED_MOLDATA_KEYS from "@/config/moldataKeys.json";
 import useConfirmationStore from "@/stores/confirmationStore";
 import type { DeepOmit } from "@/utils/typeUtils";
 
+import type { SearchableExperimentFields } from "../../../../../backend/src/crawler/types/structured";
 import { SortableItem } from "../researchFields/SortableItem";
+import { SearchableFields } from "./SearchableFields";
 
 type AnyForm = any;
 
@@ -61,6 +62,7 @@ export type ExperimentItem = {
     en: { text: string } | null;
   };
   data: DeepOmit<ExperimentDataEntry[], "rawHtml">;
+  searchable?: SearchableExperimentFields;
 };
 
 const EMPTY_EXPERIMENT: ExperimentItem = {
@@ -367,6 +369,9 @@ function ExperimentItemForm({
           />
         )}
       </form.Field>
+
+      {/* Searchable fields */}
+      <SearchableFields form={form} experimentIndex={index} />
     </div>
   );
 }
